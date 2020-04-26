@@ -16,30 +16,29 @@
  */
 package org.apache.lucene.analysis.util;
 
-
 import java.io.IOException;
 import java.io.InputStream;
+import org.apache.lucene.util.ResourceLoader;
 
 /**
- * Simple {@link ResourceLoader} that uses {@link ClassLoader#getResourceAsStream(String)}
- * and {@link Class#forName(String,boolean,ClassLoader)} to open resources and
- * classes, respectively.
+ * Simple {@link ResourceLoader} that uses {@link ClassLoader#getResourceAsStream(String)} and
+ * {@link Class#forName(String,boolean,ClassLoader)} to open resources and classes, respectively.
  */
 public final class ClasspathResourceLoader implements ResourceLoader {
   private final Class<?> clazz;
   private final ClassLoader loader;
 
   /**
-   * Creates an instance using the given classloader to load Resources and classes.
-   * Resource paths must be absolute.
+   * Creates an instance using the given classloader to load Resources and classes. Resource paths
+   * must be absolute.
    */
   public ClasspathResourceLoader(ClassLoader loader) {
     this(null, loader);
   }
 
   /**
-   * Creates an instance using the context classloader to load Resources and classes
-   * Resources are resolved relative to the given class, if path is not absolute.
+   * Creates an instance using the context classloader to load Resources and classes Resources are
+   * resolved relative to the given class, if path is not absolute.
    */
   public ClasspathResourceLoader(Class<?> clazz) {
     this(clazz, clazz.getClassLoader());
@@ -52,14 +51,14 @@ public final class ClasspathResourceLoader implements ResourceLoader {
 
   @Override
   public InputStream openResource(String resource) throws IOException {
-    final InputStream stream = (clazz != null) ?
-      clazz.getResourceAsStream(resource) :
-      loader.getResourceAsStream(resource);
-    if (stream == null)
-      throw new IOException("Resource not found: " + resource);
+    final InputStream stream =
+        (clazz != null)
+            ? clazz.getResourceAsStream(resource)
+            : loader.getResourceAsStream(resource);
+    if (stream == null) throw new IOException("Resource not found: " + resource);
     return stream;
   }
-  
+
   @Override
   public <T> Class<? extends T> findClass(String cname, Class<T> expectedType) {
     try {

@@ -25,6 +25,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSelector;
 import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -176,10 +177,24 @@ public class BlockJoinSelector {
     return wrap(values, selection, parents, children);
   }
 
-  /** Wraps the provided {@link NumericDocValues}, iterating over only
-   *  child documents, in order to only select one value per parent among
-   *  its {@code children} using the configured {@code selection} type. */
-  public static NumericDocValues wrap(final NumericDocValues values, Type selection, BitSet parents, DocIdSetIterator children) {
+  /**
+   * Wraps the provided {@link NumericDocValues}, iterating over only child documents, in order to
+   * only select one value per parent among its {@code children} using the configured {@code
+   * selection} type.
+   */
+  @Deprecated
+  public static NumericDocValues wrap(
+      final NumericDocValues values, Type selection, BitSet parents, BitSet children) {
+    return wrap(values, selection, parents, toIter(children));
+  }
+
+  /**
+   * Wraps the provided {@link NumericDocValues}, iterating over only child documents, in order to
+   * only select one value per parent among its {@code children} using the configured {@code
+   * selection} type.
+   */
+  public static NumericDocValues wrap(
+      final NumericDocValues values, Type selection, BitSet parents, DocIdSetIterator children) {
     if (values.docID() != -1) {
       throw new IllegalArgumentException(
           "values iterator was already consumed: values.docID=" + values.docID());

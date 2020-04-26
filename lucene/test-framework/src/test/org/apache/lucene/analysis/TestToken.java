@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.analysis;
 
-
 import java.io.StringReader;
 import java.util.HashMap;
-
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -171,7 +169,6 @@ public class TestToken extends LuceneTestCase {
           }
         });
   }
-
 
   public static <T extends AttributeImpl> T assertCloneIsEqual(T att) {
     @SuppressWarnings("unchecked")

@@ -3071,10 +3071,9 @@ public abstract class LuceneTestCase extends Assert {
 
   /**
    * Creates an empty, temporary folder with the given name prefix.
-   *  
-   * <p>The folder will be automatically removed after the
-   * test class completes successfully. The test should close any file handles that would prevent
-   * the folder from being removed. 
+   *
+   * <p>The folder will be automatically removed after the test class completes successfully. The
+   * test should close any file handles that would prevent the folder from being removed.
    */
   public static Path createTempDir(String prefix) {
     return tempFilesCleanupRule.createTempDir(prefix);
@@ -3082,10 +3081,9 @@ public abstract class LuceneTestCase extends Assert {
 
   /**
    * Creates an empty file with the given prefix and suffix.
-   * 
-   * <p>The file will be automatically removed after the
-   * test class completes successfully. The test should close any file handles that would prevent
-   * the folder from being removed. 
+   *
+   * <p>The file will be automatically removed after the test class completes successfully. The test
+   * should close any file handles that would prevent the folder from being removed.
    */
   public static Path createTempFile(String prefix, String suffix) throws IOException {
     return tempFilesCleanupRule.createTempFile(prefix, suffix);

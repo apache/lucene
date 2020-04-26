@@ -59,10 +59,10 @@ public class SloppyMath {
   }
 
   /**
-   * Returns a sort key for distance. This is less expensive to compute than 
-   * {@link #haversinMeters(double, double, double, double)}, but it always compares the same.
-   * This can be converted into an actual distance with {@link #haversinMeters(double)}, which
-   * effectively does the second half of the computation.
+   * Returns a sort key for distance. This is less expensive to compute than {@link
+   * #haversinMeters(double, double, double, double)}, but it always compares the same. This can be
+   * converted into an actual distance with {@link #haversinMeters(double)}, which effectively does
+   * the second half of the computation.
    */
   public static double haversinSortKey(double lat1, double lon1, double lat2, double lon2) {
     double x1 = Math.toRadians(lat1);
@@ -181,7 +181,6 @@ public class SloppyMath {
   // Earth's mean radius, in meters and kilometers; see
   // http://earth-info.nga.mil/GandG/publications/tr8350.2/wgs84fin.pdf
   private static final double TO_METERS = 6_371_008.7714D; // equatorial radius
-  private static final double TO_KILOMETERS = 6_371.0087714D; // equatorial radius
 
   // cos/asin
   private static final double ONE_DIV_F2 = 1 / 2.0;

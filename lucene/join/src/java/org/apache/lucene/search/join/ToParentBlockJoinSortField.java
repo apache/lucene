@@ -34,7 +34,6 @@ import org.apache.lucene.search.comparators.FloatComparator;
 import org.apache.lucene.search.comparators.IntComparator;
 import org.apache.lucene.search.comparators.LongComparator;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.NumericUtils;
 
 /**

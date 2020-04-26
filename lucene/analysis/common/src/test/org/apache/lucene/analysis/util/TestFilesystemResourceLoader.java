@@ -73,10 +73,12 @@ public class TestFilesystemResourceLoader extends LuceneTestCase {
     } finally {
       IOUtils.closeWhileHandlingException(os);
     }
-      
-    ResourceLoader rl = new FilesystemResourceLoader(base, TestFilesystemResourceLoader.class.getClassLoader());
-    assertEquals("foobar", WordlistLoader.getLines(rl.openResource("template.txt"), StandardCharsets.UTF_8).get(0));
 
+    ResourceLoader rl =
+        new FilesystemResourceLoader(base, TestFilesystemResourceLoader.class.getClassLoader());
+    assertEquals(
+        "foobar",
+        WordlistLoader.getLines(rl.openResource("template.txt"), StandardCharsets.UTF_8).get(0));
     // Same with full path name:
     String fullPath = base.resolve("template.txt").toAbsolutePath().toString();
     assertEquals(

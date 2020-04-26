@@ -36,16 +36,6 @@ import org.apache.lucene.benchmark.byTask.utils.AnalyzerFactory;
 import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.Version;
 
-import org.apache.lucene.analysis.util.AbstractAnalysisFactory;
-import org.apache.lucene.analysis.util.CharFilterFactory;
-import org.apache.lucene.analysis.util.FilesystemResourceLoader;
-import org.apache.lucene.analysis.util.ResourceLoaderAware;
-import org.apache.lucene.analysis.util.TokenFilterFactory;
-import org.apache.lucene.analysis.util.TokenizerFactory;
-import org.apache.lucene.benchmark.byTask.PerfRunData;
-import org.apache.lucene.benchmark.byTask.utils.AnalyzerFactory;
-import org.apache.lucene.util.Version;
-
 /**
  * Analyzer factory construction task. The name given to the constructed factory may be given to
  * NewAnalyzerTask, which will call AnalyzerFactory.create().
@@ -350,7 +340,7 @@ public class AnalyzerFactoryTask extends PerfTask {
    * @param stok stream tokenizer from which to draw analysis factory params
    * @param clazz analysis factory class to instantiate
    */
-  @SuppressWarnings({"fallthrough", "deprecation"})
+  @SuppressWarnings("fallthrough")
   private void createAnalysisPipelineComponent(
       StreamTokenizer stok, Class<? extends AbstractAnalysisFactory> clazz) {
     Map<String, String> argMap = new HashMap<>();
@@ -449,7 +439,9 @@ public class AnalyzerFactoryTask extends PerfTask {
         if (!Files.isDirectory(baseDir)) {
           baseDir = Paths.get(".");
         }
-        ((ResourceLoaderAware)instance).inform(new FilesystemResourceLoader(baseDir, AnalyzerFactoryTask.class.getClassLoader()));
+        ((ResourceLoaderAware) instance)
+            .inform(
+                new FilesystemResourceLoader(baseDir, AnalyzerFactoryTask.class.getClassLoader()));
       }
       if (CharFilterFactory.class.isAssignableFrom(clazz)) {
         charFilterFactories.add((CharFilterFactory) instance);

@@ -30,7 +30,6 @@ allprojects {
     // Configure warnings.
     tasks.withType(JavaCompile) {
       options.encoding = "UTF-8"
-      options.deprecation = true
       options.compilerArgs += [
         "-Xlint:-deprecation",
         "-Xlint:-serial",
