@@ -92,6 +92,11 @@ API Changes
 * LUCENE-9480: Make DataInput's skipBytes(long) abstract as the implementation was not performant.
   IndexInput's api is unaffected: skipBytes() is implemented via seek(). (Greg Miller)
 
+* LUCENE-9334:  Require consistency between data-structures on a per-field basis.
+  A field across all documents within a segment must be indexed with the same index
+  options and data-structures.
+
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
