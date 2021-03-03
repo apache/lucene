@@ -1262,6 +1262,7 @@ public class IndexWriter
             fi.name,
             fi.number,
             fi.getIndexOptions(),
+            fi.hasVectors(),
             fi.omitsNorms(),
             fi.getDocValuesType(),
             fi.getPointDimensionCount(),
@@ -1864,8 +1865,8 @@ public class IndexWriter
    */
   public long updateNumericDocValue(Term term, String field, long value) throws IOException {
     ensureOpen();
-    if (!globalFieldNumberMap.contains(field, DocValuesType.NUMERIC)) {
-      throw new IllegalArgumentException("can only update existing numeric-docvalues fields!");
+    if (globalFieldNumberMap.containsDvOnlyField(field, DocValuesType.NUMERIC) == false) {
+      throw new IllegalArgumentException("can only update existing numeric docvalues only fields!");
     }
     if (config.getIndexSortFields().contains(field)) {
       throw new IllegalArgumentException(
@@ -1903,8 +1904,8 @@ public class IndexWriter
     if (value == null) {
       throw new IllegalArgumentException("cannot update a field to a null value: " + field);
     }
-    if (!globalFieldNumberMap.contains(field, DocValuesType.BINARY)) {
-      throw new IllegalArgumentException("can only update existing binary-docvalues fields!");
+    if (globalFieldNumberMap.containsDvOnlyField(field, DocValuesType.BINARY) == false) {
+      throw new IllegalArgumentException("can only update existing binary docvalues only fields!");
     }
     try {
       return maybeProcessEvents(
@@ -1950,7 +1951,7 @@ public class IndexWriter
         throw new IllegalArgumentException(
             "can only update NUMERIC or BINARY fields! field=" + f.name());
       }
-      if (globalFieldNumberMap.contains(f.name(), dvType) == false) {
+      if (globalFieldNumberMap.containsDvOnlyField(f.name(), dvType) == false) {
         // if this field doesn't exists we try to add it. if it exists and the DV type doesn't match
         // we
         // get a consistent error message as if you try to do that during an indexing operation.
@@ -1959,6 +1960,7 @@ public class IndexWriter
             -1,
             IndexOptions.NONE,
             false,
+            false,
             dvType,
             0,
             0,
@@ -1966,7 +1968,7 @@ public class IndexWriter
             0,
             VectorValues.SearchStrategy.NONE,
             f.name().equals(config.softDeletesField));
-        assert globalFieldNumberMap.contains(f.name(), dvType);
+        assert globalFieldNumberMap.containsDvOnlyField(f.name(), dvType);
       }
       if (config.getIndexSortFields().contains(f.name())) {
         throw new IllegalArgumentException(
@@ -3029,6 +3031,7 @@ public class IndexWriter
                   fi.name,
                   fi.number,
                   fi.getIndexOptions(),
+                  fi.hasVectors(),
                   fi.omitsNorms(),
                   fi.getDocValuesType(),
                   fi.getPointDimensionCount(),
