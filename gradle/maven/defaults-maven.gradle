@@ -137,13 +137,6 @@ configure(subprojects.findAll { it.path in rootProject.published }) { prj ->
 
             mailingLists {
               mailingList {
-                name = "General List"
-                subscribe = "general-subscribe@lucene.apache.org"
-                unsubscribe = "general-unsubscribe@lucene.apache.org"
-                archive = "https://mail-archives.apache.org/mod_mbox/lucene-general/"
-              }
-
-              mailingList {
                 name = "Java User List"
                 subscribe = "java-user-subscribe@lucene.apache.org"
                 unsubscribe = "java-user-unsubscribe@lucene.apache.org"
@@ -166,9 +159,9 @@ configure(subprojects.findAll { it.path in rootProject.published }) { prj ->
             }
 
             scm {
-              connection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene-solr.git'
-              developerConnection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene-solr.git'
-              url = 'https://gitbox.apache.org/repos/asf?p=lucene-solr.git'
+              connection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene.git'
+              developerConnection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene.git'
+              url = 'https://gitbox.apache.org/repos/asf?p=lucene.git'
             }
         }
 
