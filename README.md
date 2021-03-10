@@ -36,8 +36,7 @@ comprehensive documentation, visit:
   0. Install OpenJDK 11 (or greater)
   1. Download Lucene/Solr from Apache and unpack it
   2. Connect to the top-level of your installation (parent of the lucene top-level directory)
-  3. Install JavaCC (optional)
-  4. Run gradle
+  3. Run gradle
 
 ### Step 0) Set up your development environment (OpenJDK 11 or greater)
 
@@ -78,7 +77,7 @@ file for the combined build. By default, you do not need to change any of
 the settings in this file, but you do need to run Gradle from this location so 
 it knows where to find the necessary configurations.
 
-### Step 4) Run Gradle
+### Step 3) Run Gradle
 
 Assuming you can exectue "./gradlew help" should show you the main tasks that
 can be executed to show help sub-topics.
@@ -125,5 +124,5 @@ contributing.
 ## Discussion and Support
 
 - [Lucene Issue Tracker](https://issues.apache.org/jira/browse/LUCENE)
-- IRC: `#lucene` and `#lucene-dev` on freenode.net
 - [Mailing Lists](https://lucene.apache.org/core/discussion.html)
+- IRC: `#lucene` and `#lucene-dev` on freenode.net
