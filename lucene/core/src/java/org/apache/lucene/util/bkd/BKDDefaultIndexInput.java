@@ -340,11 +340,7 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
       }
       // save the dimension we are going to change
       System.arraycopy(
-              maxPackedValue,
-              splitDimPos,
-              splitDimValueStack[level],
-              0,
-              config.bytesPerDim);
+          maxPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
       assert Arrays.compareUnsigned(
                   maxPackedValue,
                   splitDimPos,
@@ -365,11 +361,11 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
       level++;
       // add the split dim value:
       System.arraycopy(
-              splitValuesStack[level - 1],
-              splitDimPos,
-              maxPackedValue,
-              splitDimPos,
-              config.bytesPerDim);
+          splitValuesStack[level - 1],
+          splitDimPos,
+          maxPackedValue,
+          splitDimPos,
+          config.bytesPerDim);
       readNodeData(true);
     }
 
@@ -379,11 +375,7 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
       assert splitDimValueStack[level] != null;
       // same the dimension we are going to change
       System.arraycopy(
-              minPackedValue,
-              splitDimPos,
-              splitDimValueStack[level],
-              0,
-              config.bytesPerDim);
+          minPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
       assert Arrays.compareUnsigned(
                   minPackedValue,
                   splitDimPos,
@@ -412,11 +404,11 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
       level++;
       // add the split dim value:
       System.arraycopy(
-              splitValuesStack[level - 1],
-              splitDimPos,
-              minPackedValue,
-              splitDimPos,
-              config.bytesPerDim);
+          splitValuesStack[level - 1],
+          splitDimPos,
+          minPackedValue,
+          splitDimPos,
+          config.bytesPerDim);
       readNodeData(false);
     }
 
@@ -434,22 +426,22 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
     private void pop(boolean isLeft) {
       nodeID /= 2;
       level--;
-      // restore the split dimension 
+      // restore the split dimension
       if (isLeft) {
         System.arraycopy(
-                splitDimValueStack[level],
-                0,
-                maxPackedValue,
-                splitDims[level] * config.bytesPerDim,
-                config.bytesPerDim);
+            splitDimValueStack[level],
+            0,
+            maxPackedValue,
+            splitDims[level] * config.bytesPerDim,
+            config.bytesPerDim);
       } else {
-        
+
         System.arraycopy(
-                splitDimValueStack[level],
-                0,
-                minPackedValue,
-                splitDims[level] * config.bytesPerDim,
-                config.bytesPerDim);
+            splitDimValueStack[level],
+            0,
+            minPackedValue,
+            splitDims[level] * config.bytesPerDim,
+            config.bytesPerDim);
       }
     }
 
