@@ -94,6 +94,10 @@ final class Stemmer {
     }
 
     List<CharsRef> list = new ArrayList<>();
+    if (length == 0) {
+      return list;
+    }
+
     RootProcessor processor =
         (stem, formID, stemException) -> {
           list.add(newStem(stem, stemException));
@@ -483,6 +487,8 @@ final class Stemmer {
     int stripStart = dictionary.stripOffsets[stripOrd];
     int stripEnd = dictionary.stripOffsets[stripOrd + 1];
     int stripLen = stripEnd - stripStart;
+
+    if (stripLen + deAffixedLen == 0) return null;
 
     char[] stripData = dictionary.stripData;
     int condition = dictionary.getAffixCondition(affix);
