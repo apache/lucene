@@ -15,18 +15,12 @@
     limitations under the License.
  -->
 
-# Apache Lucene and Solr
+# Apache Lucene
 
 Apache Lucene is a high-performance, full featured text search engine library
 written in Java.
 
-Apache Solr is an enterprise search platform written in Java and using Apache Lucene.
-Major features include full-text search, index replication and sharding, and
-result faceting and highlighting.
-
-
 [![Build Status](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-master/badge/icon?subject=Lucene)](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-master/) [![Build Status](https://ci-builds.apache.org/job/Lucene/job/Solr-Artifacts-master/badge/icon?subject=Solr)](https://ci-builds.apache.org/job/Lucene/job/Solr-Artifacts-master/)
-
 
 ## Online Documentation
 
@@ -34,7 +28,6 @@ This README file only contains basic setup instructions.  For more
 comprehensive documentation, visit:
 
 - Lucene: <http://lucene.apache.org/core/documentation.html>
-- Solr: <http://lucene.apache.org/solr/guide/>
 
 ## Building with Gradle
 
