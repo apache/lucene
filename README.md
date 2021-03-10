@@ -20,7 +20,7 @@
 Apache Lucene is a high-performance, full featured text search engine library
 written in Java.
 
-[![Build Status](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-master/badge/icon?subject=Lucene)](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-master/) [![Build Status](https://ci-builds.apache.org/job/Lucene/job/Solr-Artifacts-master/badge/icon?subject=Solr)](https://ci-builds.apache.org/job/Lucene/job/Solr-Artifacts-master/)
+[![Build Status](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-master/badge/icon?subject=Lucene)](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-master/)
 
 ## Online Documentation
 
@@ -35,66 +35,6 @@ comprehensive documentation, visit:
 
 See [lucene/BUILD.md](./lucene/BUILD.md).
 
-### Building Solr
-
-Firstly, you need to set up your development environment (OpenJDK 11 or greater).
-
-We'll assume that you know how to get and set up the JDK - if you
-don't, then we suggest starting at https://www.oracle.com/java/ and learning
-more about Java, before returning to this README. Solr runs with
-Java 11 and later.
-
-As of 9.0, Lucene/Solr uses [Gradle](https://gradle.org/) as the build
-system. Ant build support has been removed.
-
-To build Lucene and Solr, run (`./` can be omitted on Windows):
-
-`./gradlew assemble`
-
-NOTE: DO NOT use `gradle` command that is already installed on your machine (unless you know what you'll do).
-The "gradle wrapper" (gradlew) does the job - downloads the correct version of it, setups necessary configurations.
-
-The first time you run Gradle, it will create a file "gradle.properties" that
-contains machine-specific settings. Normally you can use this file as-is, but it
-can be modified if necessary.
-
-The command above packages a full distribution of Solr server; the 
-package can be located at:
-
-`solr/packaging/build/solr-*`
-
-Note that the gradle build does not create or copy binaries throughout the
-source repository so you need to switch to the packaging output folder above;
-the rest of the instructions below remain identical. The packaging directory 
-is rewritten on each build. 
-
-For development, especially when you have created test indexes etc, use
-the `./gradlew dev` task which will copy binaries to `./solr/packaging/build/dev`
-but _only_ overwrite the binaries which will preserve your test setup.
-
-If you want to build the documentation, type `./gradlew -p solr documentation`.
-
-## Running Solr
-
-After [building Solr](#building-lucene-solr), the server can be started using
-the `bin/solr` control scripts.  Solr can be run in either standalone or
-distributed (SolrCloud mode).
-
-To run Solr in standalone mode, run the following command from the `solr/`
-directory:
-
-`bin/solr start`
-
-To run Solr in SolrCloud mode, run the following command from the `solr/`
-directory:
-
-`bin/solr start -c`
-
-The `bin/solr` control script allows heavy modification of the started Solr.
-Common options are described in some detail in solr/README.txt.  For an
-exhaustive treatment of options, run `bin/solr start -h` from the `solr/`
-directory.
-
 ### Gradle build and IDE support
 
 - *IntelliJ* - IntelliJ idea can import the project out of the box. 
@@ -105,10 +45,9 @@ directory.
 
 ### Gradle build and tests
 
-`./gradlew assemble` will build a runnable Solr as noted above.
+`./gradlew assemble` will build libraries and documentation.
 
-`./gradlew check` will assemble Lucene/Solr and run all validation
-  tasks unit tests.
+`./gradlew check` will run all validation tasks and unit tests.
 
 `./gradlew help` will print a list of help commands for high-level tasks. One
   of these is `helpAnt` that shows the gradle tasks corresponding to ant
@@ -116,14 +55,13 @@ directory.
 
 ## Contributing
 
-Please review the [Contributing to Solr
-Guide](https://cwiki.apache.org/confluence/display/solr/HowToContribute) for information on
+Please review the [Contributing to Lucene
+Guide](https://cwiki.apache.org/confluence/display/lucene/HowToContribute) for information on
 contributing.
 
 ## Discussion and Support
 
-- [Users Mailing List](http://lucene.apache.org/solr/community.html#solr-user-list-solr-userluceneapacheorg)
-- [Developers Mailing List](http://lucene.apache.org/solr/community.html#developer-list-devluceneapacheorg)
-- [Lucene Issue Tracker](https://issues.apache.org/jira/browse/LUCENE)
-- [Solr Issue Tracker](https://issues.apache.org/jira/browse/SOLR)
-- IRC: `#solr` and `#solr-dev` on freenode.net
+- [Users Mailing List](https://lucene.apache.org/core/discussion.html#java-user-list-java-userluceneapacheorg)
+- [Developers Mailing List](https://lucene.apache.org/core/discussion.html#developer-lists)
+- [Issue Tracker](https://issues.apache.org/jira/browse/LUCENE)
+- IRC: `#lucene` and `#lucene-dev` on freenode.net
