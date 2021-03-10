@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-rootProject.name = "lucene-solr"
+rootProject.name = "lucene-root"
 
 includeBuild("dev-tools/missing-doclet")
 
