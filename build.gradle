@@ -115,9 +115,6 @@ apply from: file('gradle/generate-defaults.gradle')
 // Ant-compatibility layer: apply folder layout early so that
 // evaluation of other scripts doesn't need to be deferred.
 apply from: file('gradle/ant-compat/folder-layout.gradle')
-if (!skipSolr) {
-  apply from: file('gradle/ant-compat/solr.folder-layout.gradle') // SOLR ONLY
-}
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
@@ -156,10 +153,6 @@ if (!skipLucene) {
   apply from: file('gradle/validation/spotless.gradle')
 }
 
-if (!skipSolr) {
-  apply from: file('gradle/validation/solr.config-file-sanity.gradle') // SOLR ONLY
-}
-
 // Source or data regeneration tasks
 if (!skipLucene) {
   apply from: file('gradle/generation/jflex.gradle')
@@ -192,34 +185,15 @@ if (!skipLucene) {
   apply from: file('gradle/ant-compat/test-classes-cross-deps.gradle')
 }
 
-if (!skipSolr) {
-  apply from: file('gradle/ant-compat/force-versions.gradle') // SOLR ONLY
-  apply from: file('gradle/ant-compat/solr.test-classes-cross-deps.gradle') // SOLR ONLY
-  apply from: file('gradle/ant-compat/artifact-naming.gradle') // SOLR ONLY
-}
-
 apply from: file('gradle/documentation/documentation.gradle')
 apply from: file('gradle/documentation/changes-to-html.gradle')
 apply from: file('gradle/documentation/markdown.gradle')
 apply from: file('gradle/documentation/render-javadoc.gradle')
 
 apply from: file('gradle/hacks/gradle-archives.gradle')
-if (!skipSolr) {
-  apply from: file('gradle/hacks/solr.findbugs.gradle') // SOLR ONLY
-}
 apply from: file('gradle/hacks/gradle.gradle')
 apply from: file('gradle/hacks/hashmapAssertions.gradle')
 
 if (skipLucene) {
   apply from: file('gradle/solr-tlp-migration/inaccessible-test-sources.gradle')
-}
-apply from: file('gradle/solr-tlp-migration/temp-disable-constraint-checking.gradle')
-
-if (!skipSolr) {
-  apply from: file('gradle/solr/packaging.gradle') // SOLR ONLY
-  apply from: file('gradle/solr/solr-forbidden-apis.gradle') // SOLR ONLY
-}
-
-if (!skipSolr) {
-  apply from: file('gradle/ant-compat/solr.post-jar.gradle') // SOLR ONLY
 }

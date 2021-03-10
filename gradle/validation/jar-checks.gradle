@@ -45,12 +45,6 @@ if (!skipLucene) {
   }
 }
 
-if (!skipSolr) {
-  configure(project(":solr")) {
-    ext.licensesDir = file("licenses")
-  }
-}
-
 // All known license types. If 'noticeOptional' is true then
 // the notice file must accompany the license.
 def licenseTypes = [
@@ -282,9 +276,6 @@ def plist = []
 if (!skipLucene) {
   plist.add(project(":lucene"))
 }
-if (!skipSolr) {
-  plist.add(project(":solr"))
-}
 
 configure(plist) {
   def validationTasks = subprojects.collectMany { it.tasks.matching { it.name == "licenses" } }
@@ -383,26 +374,6 @@ if (!skipLucene) {
           "ant-*",
           "ivy-*",
       ]
-    }
-  }
-}
-
-// SOLR ONLY
-if (!skipSolr) {
-  configure(project(":solr")) {
-    checkDanglingLicenseFiles {
-      exclude += [
-          "README.committers.txt"
-      ]
-    }
-  }
-
-  // solr-ref-guide doesn't contribute any JARs to dependency checks.
-  configure(project(":solr:solr-ref-guide")) {
-    configurations {
-      jarValidation {
-        exclude group: "*"
-      }
     }
   }
 }

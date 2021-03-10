@@ -66,11 +66,6 @@ allprojects {
       if (!skipLucene) {
         commonDir = project(":lucene").projectDir
       }
-
-      // SOLR ONLY
-      if (!skipSolr) {
-        commonSolrDir = project(":solr").projectDir
-      }
     }
 
     def verboseMode = resolvedTestOption("tests.verbose").toBoolean()

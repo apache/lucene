@@ -56,26 +56,3 @@ if (!(System.getProperty("skip.lucene") as Boolean)) {
   include "lucene:documentation"
   include "lucene:packaging"
 }
-
-if (!(System.getProperty("skip.solr") as Boolean)) {
-  include "solr:solrj"
-  include "solr:core"
-  include "solr:server"
-  include "solr:contrib:analysis-extras"
-  include "solr:contrib:analytics"
-  include "solr:contrib:clustering"
-  include "solr:contrib:extraction"
-  include "solr:contrib:langid"
-  include "solr:contrib:jaegertracer-configurator"
-  include "solr:contrib:prometheus-exporter"
-  include "solr:contrib:scripting"
-  include "solr:contrib:ltr"
-  include "solr:webapp"
-  include "solr:test-framework"
-  include "solr:solr-ref-guide"
-  include "solr:example"
-
-  include "solr:documentation"
-  include "solr:packaging"
-  include "solr:docker"
-}

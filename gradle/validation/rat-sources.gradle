@@ -99,29 +99,6 @@ if (!skipLucene) {
     }
 }
 
-// SOLR ONLY
-if (!skipSolr) {
-    configure(project(":solr:core")) {
-        rat {
-            srcExcludes += [
-                "**/htmlStripReaderTest.html"
-            ]
-        }
-    }
-
-    configure(project(":solr:webapp")) {
-        rat {
-            includes = ["**"]
-            excludes += [
-                "web/img/**",
-                "*.iml",
-                "build.gradle",
-                "build/**",
-            ]
-        }
-    }
-}
-
 // Structure inspired by existing task from Apache Kafka, heavily modified since then.
 class RatTask extends DefaultTask {
     @Input

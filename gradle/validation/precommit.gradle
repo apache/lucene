@@ -27,12 +27,6 @@ configure(rootProject) {
     dependsOn ":versionsPropsAreSorted"
     dependsOn ":checkWorkingCopyClean"
 
-    // SOLR ONLY
-    if (!skipSolr) {
-      // Solr validation tasks.
-      dependsOn ":solr:validateConfigFileSanity"
-    }
-
     // Attach all these tasks from all projects that have them.
     // This uses lazy collections as they may not yet be defined.
     dependsOn allprojects.collect { prj ->
