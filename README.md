@@ -109,17 +109,6 @@ If you want to build the documentation, type:
 ./gradlew documentation
 ```
 
-For further information on Lucene, go to:
-
-  https://lucene.apache.org/
-
-Please join the Lucene-User mailing list by visiting this site:
-
-  https://lucene.apache.org/core/discussion.html
-
-Please post suggestions, questions, corrections or additions to this
-document to the lucene-user mailing list.
-
 ### Gradle build and IDE support
 
 - *IntelliJ* - IntelliJ idea can import the project out of the box. 
