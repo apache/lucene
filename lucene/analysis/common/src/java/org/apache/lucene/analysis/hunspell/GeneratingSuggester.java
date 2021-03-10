@@ -19,6 +19,8 @@ package org.apache.lucene.analysis.hunspell;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_APPEND;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_FLAG;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_STRIP_ORD;
+import static org.apache.lucene.analysis.hunspell.Dictionary.FLAG_UNSET;
+import static org.apache.lucene.analysis.hunspell.Dictionary.HIDDEN_FLAG;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,6 +31,7 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
 
@@ -60,9 +63,15 @@ class GeneratingSuggester {
       String word, WordCase originalCase) {
     Comparator<Weighted<Root<String>>> natural = Comparator.naturalOrder();
     PriorityQueue<Weighted<Root<String>>> roots = new PriorityQueue<>(natural.reversed());
-    List<Root<String>> entries = new ArrayList<>();
+    EntryFilter filter = new EntryFilter(dictionary);
     boolean ignoreTitleCaseRoots = originalCase == WordCase.LOWER && !dictionary.hasLanguage("de");
-    TrigramAutomaton automaton = new TrigramAutomaton(word);
+    TrigramAutomaton automaton =
+        new TrigramAutomaton(word) {
+          @Override
+          char transformChar(char c) {
+            return dictionary.caseFold(c);
+          }
+        };
 
     dictionary.words.processAllWords(
         word.length() + 4,
@@ -75,25 +84,29 @@ class GeneratingSuggester {
             return;
           }
 
-          String root = rootChars.toString();
-          filterSuitableEntries(root, forms, entries);
-          if (entries.isEmpty()) return;
+          int suitable = filter.findSuitableFormIndex(forms, 0);
+          if (suitable < 0) return;
 
-          if (ignoreTitleCaseRoots && WordCase.caseOf(rootChars) == WordCase.TITLE) {
+          if (ignoreTitleCaseRoots
+              && Character.isUpperCase(rootChars.charAt(0))
+              && WordCase.caseOf(rootChars) == WordCase.TITLE) {
             return;
           }
 
-          String lower = dictionary.toLowerCase(root);
           int sc =
-              automaton.ngramScore(lower)
-                  - longerWorsePenalty(word, lower)
-                  + commonPrefix(word, root);
+              automaton.ngramScore(rootChars)
+                  - longerWorsePenalty(word.length(), rootChars.length)
+                  + commonPrefix(word, rootChars);
 
           if (roots.size() == MAX_ROOTS && sc < roots.peek().score) {
             return;
           }
 
-          entries.forEach(e -> roots.add(new Weighted<>(e, sc)));
+          String root = rootChars.toString();
+          do {
+            roots.add(new Weighted<>(new Root<>(root, forms.ints[forms.offset + suitable]), sc));
+            suitable = filter.findSuitableFormIndex(forms, suitable + filter.formStep);
+          } while (suitable > 0);
           while (roots.size() > MAX_ROOTS) {
             roots.poll();
           }
@@ -102,17 +115,28 @@ class GeneratingSuggester {
     return roots.stream().sorted().collect(Collectors.toList());
   }
 
-  private void filterSuitableEntries(String word, IntsRef forms, List<Root<String>> result) {
-    result.clear();
-    for (int i = 0; i < forms.length; i += dictionary.formStep()) {
-      int entryId = forms.ints[forms.offset + i];
-      if (dictionary.hasFlag(entryId, dictionary.forbiddenword)
-          || dictionary.hasFlag(entryId, dictionary.noSuggest)
-          || dictionary.hasFlag(entryId, Dictionary.HIDDEN_FLAG)
-          || dictionary.hasFlag(entryId, dictionary.onlyincompound)) {
-        continue;
+  private static class EntryFilter {
+    private final int formStep;
+    private final FlagEnumerator.Lookup flagLookup;
+    private final char[] excludeFlags;
+
+    EntryFilter(Dictionary dic) {
+      formStep = dic.formStep();
+      flagLookup = dic.flagLookup;
+
+      Character[] flags = {HIDDEN_FLAG, dic.noSuggest, dic.forbiddenword, dic.onlyincompound};
+      excludeFlags =
+          Dictionary.toSortedCharArray(
+              Stream.of(flags).filter(c -> c != FLAG_UNSET).collect(Collectors.toSet()));
+    }
+
+    int findSuitableFormIndex(IntsRef forms, int start) {
+      for (int i = start; i < forms.length; i += formStep) {
+        if (!flagLookup.hasAnyFlag(forms.ints[forms.offset + i], excludeFlags)) {
+          return i;
+        }
       }
-      result.add(new Root<>(word, entryId));
+      return -1;
     }
   }
 
@@ -335,7 +359,7 @@ class GeneratingSuggester {
     return result;
   }
 
-  static int commonPrefix(String s1, String s2) {
+  static int commonPrefix(CharSequence s1, CharSequence s2) {
     int i = 0;
     int limit = Math.min(s1.length(), s2.length());
     while (i < limit && s1.charAt(i) == s2.charAt(i)) {
@@ -376,8 +400,8 @@ class GeneratingSuggester {
   }
 
   // NGRAM_LONGER_WORSE flag in Hunspell
-  private static int longerWorsePenalty(String s1, String s2) {
-    return Math.max((s2.length() - s1.length()) - 2, 0);
+  private static int longerWorsePenalty(int length1, int length2) {
+    return Math.max((length2 - length1) - 2, 0);
   }
 
   // NGRAM_ANY_MISMATCH flag in Hunspell
