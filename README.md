@@ -34,7 +34,7 @@ comprehensive documentation, visit:
 ### Basic steps:
   
   0. Install OpenJDK 11 (or greater)
-  1. Download Lucene/Solr from Apache and unpack it
+  1. Download Lucene from Apache and unpack it
   2. Connect to the top-level of your installation (parent of the lucene top-level directory)
   3. Run gradle
 
@@ -46,10 +46,6 @@ more about Java, before returning to this README. Lucene runs with
 Java 11 and later.
 
 Lucene uses [Gradle](https://gradle.org/) for build control.
-
-NOTE: When Solr moves to a Top Level Project, it will no longer
-be necessary to download Solr to build Lucene. You can track
-progress at: https://issues.apache.org/jira/browse/SOLR-14497 
 
 NOTE: Lucene changed from Ant to Gradle as of release 9.0. Prior releases
 still use Ant.
@@ -72,10 +68,10 @@ uncompress it into a directory of your choice.
 
 ### Step 2) Change directory (cd) into the top-level directory of the source tree
 
-The parent directory for both Lucene and Solr contains the base configuration
-file for the combined build. By default, you do not need to change any of
-the settings in this file, but you do need to run Gradle from this location so 
-it knows where to find the necessary configurations.
+The parent directory for Lucene contains the base configuration file for the build.
+By default, you do not need to change any of the settings in this file, but you do
+need to run Gradle from this location so it knows where to find the necessary
+configurations.
 
 ### Step 3) Run Gradle
 
@@ -95,7 +91,7 @@ The first time you run Gradle, it will create a file "gradle.properties" that
 contains machine-specific settings. Normally you can use this file as-is, but it
 can be modified if necessary.
 
-`./gradlew check` will assemble Lucene/Solr and run all validation
+`./gradlew check` will assemble Lucene and run all validation
   tasks unit tests.
 
 `./gradlew help` will print a list of help commands for high-level tasks. One
