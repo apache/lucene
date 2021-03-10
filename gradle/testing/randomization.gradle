@@ -189,15 +189,9 @@ allprojects {
           } else if (project.path.startsWith(":lucene")) {
             systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")
-          } else {
-            systemProperty 'common-solr.dir', commonSolrDir
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/solr-tests.policy")
           }
 
-          if (!skipLucene) {
-            systemProperty 'common.dir', commonDir
-          }
+          systemProperty 'common.dir', commonDir
 
           def gradleUserHome = project.gradle.getGradleUserHomeDir()
           systemProperty 'gradle.lib.dir', Paths.get(project.class.location.toURI()).parent.toAbsolutePath().toString().replace('\\', '/')
