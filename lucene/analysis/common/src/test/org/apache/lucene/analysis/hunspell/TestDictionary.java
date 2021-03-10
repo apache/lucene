@@ -77,20 +77,26 @@ public class TestDictionary extends LuceneTestCase {
           reader.lines().skip(1).map(s -> s.split("/")[0]).collect(Collectors.toSet());
       int maxLength = allWords.stream().mapToInt(String::length).max().orElseThrow();
 
-      for (int i = 1; i <= maxLength + 1; i++) {
-        checkProcessWords(dictionary, allWords, i);
+      for (int min = 1; min <= maxLength + 1; min++) {
+        for (int max = min; max <= maxLength + 1; max++) {
+          checkProcessWords(dictionary, allWords, min, max);
+        }
       }
     }
   }
 
-  private void checkProcessWords(Dictionary dictionary, Set<String> allWords, int maxLength) {
+  private void checkProcessWords(
+      Dictionary dictionary, Set<String> allWords, int minLength, int maxLength) {
     Set<String> processed = new HashSet<>();
-    dictionary.words.processAllWords(maxLength, (word, __) -> processed.add(word.toString()));
+    dictionary.words.processAllWords(
+        minLength, maxLength, (word, __) -> processed.add(word.toString()));
 
     Set<String> filtered =
-        allWords.stream().filter(s -> s.length() <= maxLength).collect(Collectors.toSet());
+        allWords.stream()
+            .filter(s -> minLength <= s.length() && s.length() <= maxLength)
+            .collect(Collectors.toSet());
 
-    assertEquals("For length " + maxLength, filtered, processed);
+    assertEquals("For lengths [" + minLength + "," + maxLength + "]", filtered, processed);
   }
 
   public void testCompressedDictionary() throws Exception {
