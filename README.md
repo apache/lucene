@@ -22,7 +22,7 @@
 Apache Lucene is a high-performance, full featured text search engine library
 written in Java.
 
-[![Build Status](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-master/badge/icon?subject=Lucene)](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-master/)
+[![Build Status](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/badge/icon?subject=Lucene)](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/)
 
 ## Online Documentation
 
