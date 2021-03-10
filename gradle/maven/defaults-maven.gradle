@@ -259,7 +259,8 @@ configure(subprojects.findAll { it.path in rootProject.published }) { prj ->
               //
               // https://github.com/palantir/gradle-consistent-versions/issues/550
               withXml {
-                asNode().dependencyManagement.replaceNode {}
+                def dm = asNode().dependencyManagement
+                if (dm) dm.replaceNode {}
               }
             })
           }
