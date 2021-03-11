@@ -225,6 +225,10 @@ public class TestSpellChecking extends LuceneTestCase {
     doTest("keyDefault");
   }
 
+  public void testDoNotFailWhenExpandingRootWithLongerStrippingAffix() throws Exception {
+    doTest("longStrip");
+  }
+
   protected void doTest(String name) throws Exception {
     checkSpellCheckerExpectations(
         Path.of(getClass().getResource(name + ".aff").toURI()).getParent().resolve(name));

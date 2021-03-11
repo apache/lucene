@@ -267,6 +267,7 @@ class GeneratingSuggester {
   }
 
   private boolean checkAffixCondition(int suffixId, char[] word, int offset, int length) {
+    if (length < 0) return false;
     int condition = dictionary.getAffixCondition(suffixId);
     return condition == 0 || dictionary.patterns.get(condition).acceptsStem(word, offset, length);
   }
