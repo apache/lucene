@@ -84,9 +84,9 @@ public final class ICUTransformFilter extends TokenFilter {
    * Configures the specified {@link Transliterator} to optimize common use case when the input
    * doesn't match the filter anyway.
    *
-   * This is cheating, but speeds things up a lot.
-   * If we wanted to use pkg-private APIs we could probably do better.
-   * 
+   * <p>This is cheating, but speeds things up a lot. If we wanted to use pkg-private APIs we could
+   * probably do better.
+   *
    * @param transform {@link Transliterator} to be optimized
    * @return the input argument, optionally configured to optimize common case.
    */

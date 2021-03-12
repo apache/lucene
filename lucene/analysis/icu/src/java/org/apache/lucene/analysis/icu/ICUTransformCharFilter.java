@@ -17,47 +17,50 @@
 
 package org.apache.lucene.analysis.icu;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.Locale;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.WeakHashMap;
-
+import com.ibm.icu.impl.Utility;
 import com.ibm.icu.text.ReplaceableString;
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.Transliterator.Position;
-import com.ibm.icu.impl.Utility;
 import com.ibm.icu.text.UTF16;
-
+import java.io.IOException;
+import java.io.Reader;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.WeakHashMap;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
  * A {@link CharFilter} that transforms text with ICU.
- * <p>
- * ICU provides text-transformation functionality via its Transliteration API.
- * Although script conversion is its most common use, a Transliterator can
- * actually perform a more general class of tasks. In fact, Transliterator
- * defines a very general API which specifies only that a segment of the input
- * text is replaced by new text. The particulars of this conversion are
- * determined entirely by subclasses of Transliterator.
- * </p>
- * <p>
- * Some useful transformations for search are built-in:
+ *
+ * <p>ICU provides text-transformation functionality via its Transliteration API. Although script
+ * conversion is its most common use, a Transliterator can actually perform a more general class of
+ * tasks. In fact, Transliterator defines a very general API which specifies only that a segment of
+ * the input text is replaced by new text. The particulars of this conversion are determined
+ * entirely by subclasses of Transliterator.
+ *
+ * <p>Some useful transformations for search are built-in:
+ *
  * <ul>
- * <li>Conversion from Traditional to Simplified Chinese characters
- * <li>Conversion from Hiragana to Katakana
- * <li>Conversion from Fullwidth to Halfwidth forms.
- * <li>Script conversions, for example Serbian Cyrillic to Latin
+ *   <li>Conversion from Traditional to Simplified Chinese characters
+ *   <li>Conversion from Hiragana to Katakana
+ *   <li>Conversion from Fullwidth to Halfwidth forms.
+ *   <li>Script conversions, for example Serbian Cyrillic to Latin
  * </ul>
- * <p>
- * Example usage: <blockquote>stream = new ICUTransformCharFilter(reader,
- * Transliterator.getInstance("Traditional-Simplified"));</blockquote>
+ *
+ * <p>Example usage:
+ *
+ * <blockquote>
+ *
+ * stream = new ICUTransformCharFilter(reader,
+ * Transliterator.getInstance("Traditional-Simplified"));
+ *
+ * </blockquote>
+ *
  * <br>
- * For more details, see the <a
- * href="http://userguide.icu-project.org/transforms/general">ICU User
+ * For more details, see the <a href="http://userguide.icu-project.org/transforms/general">ICU User
  * Guide</a>.
  */
 public final class ICUTransformCharFilter extends BaseCharFilter {
@@ -82,7 +85,8 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
   private int charCount = 0;
   private int offsetDiffAdjust = 0;
 
-  private static final int HARD_MAX_ROLLBACK_BUFFER_CAPACITY = Integer.highestOneBit(Integer.MAX_VALUE);
+  private static final int HARD_MAX_ROLLBACK_BUFFER_CAPACITY =
+      Integer.highestOneBit(Integer.MAX_VALUE);
   static final int DEFAULT_MAX_ROLLBACK_BUFFER_CAPACITY = 8192;
   private final int maxRollbackBufferCapacity;
 
@@ -94,34 +98,49 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
   private final boolean failOnRollbackBufferOverflow;
 
   ICUTransformCharFilter(Reader in, Transliterator transform) {
-    this(in, transform, DEFAULT_MAX_ROLLBACK_BUFFER_CAPACITY, DEFAULT_FAIL_ON_ROLLBACK_BUFFER_OVERFLOW);
+    this(
+        in,
+        transform,
+        DEFAULT_MAX_ROLLBACK_BUFFER_CAPACITY,
+        DEFAULT_FAIL_ON_ROLLBACK_BUFFER_OVERFLOW);
   }
 
   /**
-   * Construct new {@link ICUTransformCharFilter} with the specified {@link Transliterator}, backed by
-   * the specified {@link Reader}.
+   * Construct new {@link ICUTransformCharFilter} with the specified {@link Transliterator}, backed
+   * by the specified {@link Reader}.
+   *
    * @param in input source
    * @param transform used to perform transliteration
-   * @param maxRollbackBufferCapacityHint used to control the maximum size to which this
-   * {@link ICUTransformCharFilter} will buffer and rollback partial transliteration of input sequences.
-   * The provided hint will be converted to an enforced limit of "the greatest power of 2 (excluding '1')
-   * less than or equal to the specified value". It is illegal to specify a negative value. There is no
-   * power of 2 greater than <code>Integer.highestOneBit(Integer.MAX_VALUE))</code>, so to prevent overflow, values
-   * in this range will resolve to an enforced limit of <code>Integer.highestOneBit(Integer.MAX_VALUE))</code>.
-   * Specifying "0" (or "1", in practice) disables rollback. Larger values can in some cases yield more accurate
-   * transliteration, at the cost of performance and resolution/accuracy of offset correction.
-   * This is intended primarily as a failsafe, with a relatively large default value of {@value ICUTransformCharFilter#DEFAULT_MAX_ROLLBACK_BUFFER_CAPACITY}.
-   * See comments "To understand the need for rollback" in private method:
-   * {@link Transliterator#filteredTransliterate(com.ibm.icu.text.Replaceable, Position, boolean, boolean)}
-   * @param failOnRollbackBufferOverflow if true, transliteration failing to complete within the specified rollbackBuffer
-   * window will fail with an exception. If false, transliteration forges ahead with possibly-inconsistent results.
+   * @param maxRollbackBufferCapacityHint used to control the maximum size to which this {@link
+   *     ICUTransformCharFilter} will buffer and rollback partial transliteration of input
+   *     sequences. The provided hint will be converted to an enforced limit of "the greatest power
+   *     of 2 (excluding '1') less than or equal to the specified value". It is illegal to specify a
+   *     negative value. There is no power of 2 greater than <code>
+   *     Integer.highestOneBit(Integer.MAX_VALUE))</code>, so to prevent overflow, values in this
+   *     range will resolve to an enforced limit of <code>Integer.highestOneBit(Integer.MAX_VALUE))
+   *     </code>. Specifying "0" (or "1", in practice) disables rollback. Larger values can in some
+   *     cases yield more accurate transliteration, at the cost of performance and
+   *     resolution/accuracy of offset correction. This is intended primarily as a failsafe, with a
+   *     relatively large default value of {@value
+   *     ICUTransformCharFilter#DEFAULT_MAX_ROLLBACK_BUFFER_CAPACITY}. See comments "To understand
+   *     the need for rollback" in private method: {@link
+   *     Transliterator#filteredTransliterate(com.ibm.icu.text.Replaceable, Position, boolean,
+   *     boolean)}
+   * @param failOnRollbackBufferOverflow if true, transliteration failing to complete within the
+   *     specified rollbackBuffer window will fail with an exception. If false, transliteration
+   *     forges ahead with possibly-inconsistent results.
    */
-  ICUTransformCharFilter(Reader in, Transliterator transform, int maxRollbackBufferCapacityHint, boolean failOnRollbackBufferOverflow) {
+  ICUTransformCharFilter(
+      Reader in,
+      Transliterator transform,
+      int maxRollbackBufferCapacityHint,
+      boolean failOnRollbackBufferOverflow) {
     super(in);
     this.transform = ICUTransformFilter.optimizeForCommonCase(transform);
     this.failOnRollbackBufferOverflow = failOnRollbackBufferOverflow;
     if (maxRollbackBufferCapacityHint < 0) {
-      throw new IllegalArgumentException("It is illegal to request negative rollback buffer max capacity");
+      throw new IllegalArgumentException(
+          "It is illegal to request negative rollback buffer max capacity");
     } else if (maxRollbackBufferCapacityHint >= HARD_MAX_ROLLBACK_BUFFER_CAPACITY) {
       // arg is positive, so user wants the largest possible buffer capacity limit
       // we know what that is (static), protecting for overflow.
@@ -129,7 +148,8 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       this.rollbackBuffer = new char[DEFAULT_INITIAL_ROLLBACK_BUFFER_CAPACITY];
     } else {
       // greatest power of 2 (excluding "1") less than or equal to the specified hint
-      this.maxRollbackBufferCapacity = Integer.highestOneBit(maxRollbackBufferCapacityHint - 1) << 1;
+      this.maxRollbackBufferCapacity =
+          Integer.highestOneBit(maxRollbackBufferCapacityHint - 1) << 1;
       if (this.maxRollbackBufferCapacity == 0) {
         this.rollbackBuffer = null;
       } else {
@@ -139,18 +159,14 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
   }
 
   /**
-   * Reads characters into a portion of an array. This method will block until some input is available, an I/O error
-   * occurs, or the end of the stream is reached.
+   * Reads characters into a portion of an array. This method will block until some input is
+   * available, an I/O error occurs, or the end of the stream is reached.
    *
-   * @param cbuf
-   *          Destination buffer
-   * @param off
-   *          Offset at which to start storing characters
-   * @param len
-   *          Maximum number of characters to read
+   * @param cbuf Destination buffer
+   * @param off Offset at which to start storing characters
+   * @param len Maximum number of characters to read
    * @return The number of characters read, or -1 if the end of the stream has been reached
-   * @throws IOException
-   *           If an I/O error occurs
+   * @throws IOException If an I/O error occurs
    */
   @Override
   public int read(char[] cbuf, int off, int len) throws IOException {
@@ -172,8 +188,9 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
         if (preStart < bufferLength) {
           if (UTF16.isLeadSurrogate(buffer.charAt(bufferLength - 1))) {
             // if last char is a lead surrogate, transform won't handle it properly
-            //preLimit = bufferLength - 1; // could simply pass the malformed input along
-            throw new RuntimeException("malformed input; final UTF16 character is a lead surrogate");
+            // preLimit = bufferLength - 1; // could simply pass the malformed input along
+            throw new RuntimeException(
+                "malformed input; final UTF16 character is a lead surrogate");
           } else {
             preLimit = bufferLength;
           }
@@ -202,10 +219,11 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
 
   /**
    * Grow rollback buffer if necessary, within constraints of {@link #maxRollbackBufferCapacity}.
-   * This imposes an arbitrary failsafe to prevent the possibility that the rollback buffer could grow
-   * indefinitely.
+   * This imposes an arbitrary failsafe to prevent the possibility that the rollback buffer could
+   * grow indefinitely.
    *
-   * @return true if upon return, rollback buffer has sufficient capacity for new input chars, otherwise false.
+   * @return true if upon return, rollback buffer has sufficient capacity for new input chars,
+   *     otherwise false.
    */
   private boolean ensureRollbackBufferCapacity() {
     // ensure space for at least 2 chars (surrogate pair, max possible space needed)
@@ -215,9 +233,11 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       } else {
         // hit threshold; not going to increase the buffer size
         if (failOnRollbackBufferOverflow) {
-          throw new RuntimeException("input could not be transliterated without overflowing maxRollbackBufferCapacity ("
-              + maxRollbackBufferCapacity + "); " +
-              "try increasing maxRollbackBufferCapacity, or setting failOnRollbackBufferOverflow=false");
+          throw new RuntimeException(
+              "input could not be transliterated without overflowing maxRollbackBufferCapacity ("
+                  + maxRollbackBufferCapacity
+                  + "); "
+                  + "try increasing maxRollbackBufferCapacity, or setting failOnRollbackBufferOverflow=false");
         }
         return false;
       }
@@ -258,6 +278,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
 
   /**
    * Transliterate as much of the contents of {@link #buffer} as possible.
+   *
    * @return number of output characters transliterated (possibly 0)
    */
   private int transliterateBufferContents() {
@@ -274,7 +295,9 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       position.contextLimit = preLimit;
       transform.filteredTransliterate(replaceable, position, true);
       boolean rollbackSizeWithinBounds = true;
-      if (rollbackBuffer != null && position.start < position.limit && (rollbackSizeWithinBounds = ensureRollbackBufferCapacity())) {
+      if (rollbackBuffer != null
+          && position.start < position.limit
+          && (rollbackSizeWithinBounds = ensureRollbackBufferCapacity())) {
         // complete pass not transliterated, and not yet at rollback buffer threshold cap.
         // N.b.: rollback buffer threshold cap is arbitrary, so we check here (somewhat
         // counterintuitively, *before* rolling back, as opposed to before pushing to
@@ -287,25 +310,30 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
           // cursor advanced
           cursorAdvanced(preStart, preLimit);
 
-          // N.b.: advancing contextStart precludes support for quantifiers, but is crucial for streaming,
+          // N.b.: advancing contextStart precludes support for quantifiers, but is crucial for
+          // streaming,
           // so we'll do it anyway.
           // See comments in Transliterator source code:
-               // TODO
-               // This doesn't work once we add quantifier support.  Need to rewrite
-               // this code to support quantifiers and 'use maximum backup <n>;'.
-               //
-               //         index.contextStart = Math.max(index.start - getMaximumContextLength(),
-               //                                       originalStart);
-          position.contextStart = Math.max(position.start - transform.getMaximumContextLength(), preStart);
+          // TODO
+          // This doesn't work once we add quantifier support.  Need to rewrite
+          // this code to support quantifiers and 'use maximum backup <n>;'.
+          //
+          //         index.contextStart = Math.max(index.start - getMaximumContextLength(),
+          //                                       originalStart);
+          position.contextStart =
+              Math.max(position.start - transform.getMaximumContextLength(), preStart);
           preStart = position.start;
           if (!rollbackSizeWithinBounds) {
             // prepopulate newly cleared rollback buffer with all top-level uncommitted characters
             rollbackBufferSize = position.limit - preStart;
             if (rollbackBuffer.length - rollbackBufferSize < 2) {
-              // even after flushing all committed text, there's not enough space in the rollback buffer.
-              // This is an edge case of an edge case, when the last char32 read into the rollback buffer
+              // even after flushing all committed text, there's not enough space in the rollback
+              // buffer.
+              // This is an edge case of an edge case, when the last char32 read into the rollback
+              // buffer
               // is a surrogate pair (completely filling the rollback buffer), *and* the last
-              // transliteration pass advanced position.start by exactly one char16 (not a surrogate pair).
+              // transliteration pass advanced position.start by exactly one char16 (not a surrogate
+              // pair).
               preStart = forceAdvance(preStart, preLimit);
               rollbackBufferSize = position.limit - preStart;
             }
@@ -314,10 +342,13 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
         } else if (preLimit != position.limit) {
           // cursor hasn't advanced; incoming characters have probably been deleted
           offsetDiffAdjust += preLimit - position.limit;
-          // edge case of !rollbackSizeWithinBounds needs no special handling here, since input characters *are* being
-          // processed (deleted) -- we *are* progressing through the input stream, although the output stream hasn't changed.
+          // edge case of !rollbackSizeWithinBounds needs no special handling here, since input
+          // characters *are* being
+          // processed (deleted) -- we *are* progressing through the input stream, although the
+          // output stream hasn't changed.
         } else if (!rollbackSizeWithinBounds) {
-          // cursor hasn't advanced, no incoming characters have been deleted, and the rollback buffer is full.
+          // cursor hasn't advanced, no incoming characters have been deleted, and the rollback
+          // buffer is full.
           preStart = forceAdvance(preStart, preLimit);
         }
       }
@@ -343,7 +374,8 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
     }
     position.start += shift; // mock transliterator advance
     cursorAdvanced(preStart, preLimit);
-    position.contextStart = Math.max(position.start - transform.getMaximumContextLength(), preStart);
+    position.contextStart =
+        Math.max(position.start - transform.getMaximumContextLength(), preStart);
     return position.start;
   }
 
@@ -408,9 +440,10 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
    * Strips off Unicode character normalization form rules from a Transliterator. Do this if, as is
    * typical, your analysis chain already includes another component that does normalization, like
    * {@link ICUNormalizer2CharFilter}.
+   *
    * @return a new Transliterator with no normalization, or the original Transliterator if it
-   * already did no normalization.
-  */
+   *     already did no normalization.
+   */
   public static Transliterator withoutUnicodeNormalization(Transliterator transliterator) {
     final String modifiedRules = modifyRules(false, transliterator);
     if (modifiedRules == null) {
@@ -422,19 +455,20 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
   }
 
   /**
-   * This is based on the {@link com.ibm.icu.text.CompoundTransliterator#toRules(boolean)}
-   * method, modified to return a version of rules with initial and trailing unicode
-   * normalization removed. If neither leading nor trailing unicode normalization is present,
-   * then no modifications are called for which this method indicates by returning null.
+   * This is based on the {@link com.ibm.icu.text.CompoundTransliterator#toRules(boolean)} method,
+   * modified to return a version of rules with initial and trailing unicode normalization removed.
+   * If neither leading nor trailing unicode normalization is present, then no modifications are
+   * called for which this method indicates by returning null.
    *
-   * Analogous to the contract for {@link com.ibm.icu.text.Transliterator#toRules(boolean)}, any
-   * modified rules String returned should be sufficient to recreate a Transliterator based
-   * on the specified input Transliterator, via {@link com.ibm.icu.text.Transliterator#createFromRules(String, String, int)}.
+   * <p>Analogous to the contract for {@link com.ibm.icu.text.Transliterator#toRules(boolean)}, any
+   * modified rules String returned should be sufficient to recreate a Transliterator based on the
+   * specified input Transliterator, via {@link
+   * com.ibm.icu.text.Transliterator#createFromRules(String, String, int)}.
    *
    * @param escapeUnprintable escape unprintable chars
    * @param t the Transliterator to base modified rules on.
-   * @return modified form of rules for input Transliterator, or null if no modification is
-   * called for.
+   * @return modified form of rules for input Transliterator, or null if no modification is called
+   *     for.
    */
   private static String modifyRules(boolean escapeUnprintable, Transliterator t) {
     final Transliterator[] trans = t.getElements();
@@ -448,8 +482,12 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       final int lastIndex;
       if (unicodeNormalizationType(trans[0].getID()) != null) {
         start = 1;
-        limit = unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()) != null ? lastIndex : trans.length;
-      } else if (warnNestedUnicodeNormalization(trans[0], topLevelId, true) && unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()) != null) {
+        limit =
+            unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()) != null
+                ? lastIndex
+                : trans.length;
+      } else if (warnNestedUnicodeNormalization(trans[0], topLevelId, true)
+          && unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()) != null) {
         start = 0;
         limit = lastIndex;
       } else {
@@ -481,8 +519,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       if (trans[i].getID().startsWith("%Pass")) {
         hasAnonymousRBTs = true;
         rule = trans[i].toRules(escapeUnprintable);
-        if (i > start && trans[i - 1].getID().startsWith("%Pass"))
-          rule = "::Null;" + rule;
+        if (i > start && trans[i - 1].getID().startsWith("%Pass")) rule = "::Null;" + rule;
 
         // we also use toRules() on CompoundTransliterators (which we
         // check for by looking for a semicolon in the ID)-- this gets
@@ -503,23 +540,26 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
   }
 
   /**
-   * It is possible that leading and trailing (or singleton) Transliterators might apply nested Unicode
-   * normalization, thus acting in the capacity of a Normalizer, without qualifying as a top-level
-   * Normalizer as currently defined in {@link #unicodeNormalizationType(String)}. For now, we will
-   * emit a warning if users request stripping of i/o unicode normalization in such a case (to
-   * facilitate reporting and more nuanced handling in the future, if necessary).
+   * It is possible that leading and trailing (or singleton) Transliterators might apply nested
+   * Unicode normalization, thus acting in the capacity of a Normalizer, without qualifying as a
+   * top-level Normalizer as currently defined in {@link #unicodeNormalizationType(String)}. For
+   * now, we will emit a warning if users request stripping of i/o unicode normalization in such a
+   * case (to facilitate reporting and more nuanced handling in the future, if necessary).
+   *
    * @param levelOne a level one component Transliterator to test for nested unicode normalization.
    * @param topLevelId top level Transliterator parent id.
    * @param leading true if leading component transliterator; false implies trailing component
    * @return always return true, for easy integration with control flow.
    */
-  private static boolean warnNestedUnicodeNormalization(Transliterator levelOne, String topLevelId, boolean leading) {
+  private static boolean warnNestedUnicodeNormalization(
+      Transliterator levelOne, String topLevelId, boolean leading) {
     Transliterator[] topLevelElements = levelOne.getElements();
     if (topLevelElements.length == 1 && levelOne == topLevelElements[0]) {
       // A leaf Transliterator; shortcircuit
       return true;
     }
-    ArrayDeque<Transliterator> elements = new ArrayDeque<>(topLevelElements.length << 2); // oversize
+    ArrayDeque<Transliterator> elements =
+        new ArrayDeque<>(topLevelElements.length << 2); // oversize
     elements.addAll(Arrays.asList(topLevelElements));
     boolean warn = false;
     do {
@@ -529,7 +569,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
         break;
       }
       Transliterator[] subElements = t.getElements();
-      if (subElements.length > 1 ||  t != subElements[0]) {
+      if (subElements.length > 1 || t != subElements[0]) {
         for (Transliterator sub : subElements) {
           elements.addFirst(sub);
         }
@@ -539,24 +579,33 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       if (leading) {
         if (!WARNED_LEADING.containsKey(topLevelId)) {
           WARNED_LEADING.put(topLevelId, null);
-          //TODO something other than System.err?
-          //System.err.println("WARN: nested normalization for leading component of transliterator id \""+topLevelId+"\" ("+levelOne.getID()+")!");
+          // TODO something other than System.err?
+          // System.err.println("WARN: nested normalization for leading component of transliterator
+          // id \""+topLevelId+"\" ("+levelOne.getID()+")!");
         }
       } else if (!WARNED_TRAILING.containsKey(topLevelId)) {
         WARNED_TRAILING.put(topLevelId, null);
-        //TODO something other than System.err?
-        //System.err.println("WARN: nested normalization for trailing component of transliterator id \""+topLevelId+"\" ("+levelOne.getID()+")!");
+        // TODO something other than System.err?
+        // System.err.println("WARN: nested normalization for trailing component of transliterator
+        // id \""+topLevelId+"\" ("+levelOne.getID()+")!");
       }
     }
     return true;
   }
 
-  private static final WeakHashMap<String,Void> WARNED_LEADING = new WeakHashMap<>();
-  private static final WeakHashMap<String,Void> WARNED_TRAILING = new WeakHashMap<>();
+  private static final WeakHashMap<String, Void> WARNED_LEADING = new WeakHashMap<>();
+  private static final WeakHashMap<String, Void> WARNED_TRAILING = new WeakHashMap<>();
 
   private static final char ID_DELIM = ';';
 
-  static enum NormType { NFC, NFD, NFKC, NFKD, FCC, FCD };
+  static enum NormType {
+    NFC,
+    NFD,
+    NFKC,
+    NFKD,
+    FCC,
+    FCD
+  };
 
   private static final NormType[] NORM_TYPE_VALUES;
   private static final String[] NORM_ID_PREFIXES;
@@ -571,7 +620,8 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
   }
 
   /**
-   * Return true if the specified String represents the id of a NormalizationTransliterator, otherwise false.
+   * Return true if the specified String represents the id of a NormalizationTransliterator,
+   * otherwise false.
    */
   static NormType unicodeNormalizationType(String id) {
     if (id.indexOf(';') >= 0) {
@@ -596,18 +646,19 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
   }
 
   /**
-   * Append c to buf, unless buf is empty or buf already ends in c.
-   * (convenience method copied from {@link com.ibm.icu.text.CompoundTransliterator})
+   * Append c to buf, unless buf is empty or buf already ends in c. (convenience method copied from
+   * {@link com.ibm.icu.text.CompoundTransliterator})
    */
   private static void _smartAppend(StringBuilder buf, char c) {
-    if (buf.length() != 0 &&
-        buf.charAt(buf.length() - 1) != c) {
+    if (buf.length() != 0 && buf.charAt(buf.length() - 1) != c) {
       buf.append(c);
     }
   }
 
   /**
-   * This method is essentially copied from {@link com.ibm.icu.text.Transliterator#baseToRules(boolean)}
+   * This method is essentially copied from {@link
+   * com.ibm.icu.text.Transliterator#baseToRules(boolean)}
+   *
    * @param escapeUnprintable escape unprintable chars
    * @param t the Transliterator to dump rules for
    * @return String representing rules for the specified Transliterator
@@ -619,7 +670,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
     if (escapeUnprintable) {
       StringBuffer rulesSource = new StringBuffer();
       String id = t.getID();
-      for (int i = 0; i < id.length();) {
+      for (int i = 0; i < id.length(); ) {
         int c = UTF16.charAt(id, i);
         if (!Utility.escapeUnprintable(rulesSource, c)) {
           UTF16.append(rulesSource, c);

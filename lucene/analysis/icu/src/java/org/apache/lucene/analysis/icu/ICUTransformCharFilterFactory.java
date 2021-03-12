@@ -16,22 +16,22 @@
  */
 package org.apache.lucene.analysis.icu;
 
+import com.ibm.icu.text.Transliterator;
+import java.io.Reader;
 import java.util.Arrays;
 import java.util.Map;
-import java.io.Reader;
 import org.apache.lucene.analysis.CharFilterFactory;
-
-import com.ibm.icu.text.Transliterator;
 
 /**
  * Factory for {@link ICUTransformCharFilter}.
- * <p>
- * Supports the following attributes:
+ *
+ * <p>Supports the following attributes:
+ *
  * <ul>
- * <li>id (mandatory): A Transliterator ID, one from {@link Transliterator#getAvailableIDs()}
- * <li>direction (optional): Either 'forward' or 'reverse'. Default is forward.
+ *   <li>id (mandatory): A Transliterator ID, one from {@link Transliterator#getAvailableIDs()}
+ *   <li>direction (optional): Either 'forward' or 'reverse'. Default is forward.
  * </ul>
- * 
+ *
  * @see Transliterator
  * @since 8.3.0
  * @lucene.spi {@value #NAME}
@@ -47,15 +47,25 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   // TODO: add support for custom rules
   /** Creates a new ICUTransformFilterFactory */
-  public ICUTransformCharFilterFactory(Map<String,String> args) {
+  public ICUTransformCharFilterFactory(Map<String, String> args) {
     super(args);
     String id = require(args, "id");
-    String direction = get(args, "direction", Arrays.asList("forward", "reverse"), "forward", false);
+    String direction =
+        get(args, "direction", Arrays.asList("forward", "reverse"), "forward", false);
     int dir = "forward".equals(direction) ? Transliterator.FORWARD : Transliterator.REVERSE;
-    int tmpCapacityHint = getInt(args, "maxRollbackBufferCapacity", ICUTransformCharFilter.DEFAULT_MAX_ROLLBACK_BUFFER_CAPACITY);
+    int tmpCapacityHint =
+        getInt(
+            args,
+            "maxRollbackBufferCapacity",
+            ICUTransformCharFilter.DEFAULT_MAX_ROLLBACK_BUFFER_CAPACITY);
     this.maxRollbackBufferCapacity = tmpCapacityHint == -1 ? Integer.MAX_VALUE : tmpCapacityHint;
-    this.failOnRollbackBufferOverflow = getBoolean(args, "failOnRollbackBufferOverflow", ICUTransformCharFilter.DEFAULT_FAIL_ON_ROLLBACK_BUFFER_OVERFLOW);
-    boolean assumeExternalUnicodeNormalization = getBoolean(args, "assumeExternalUnicodeNormalization", false);
+    this.failOnRollbackBufferOverflow =
+        getBoolean(
+            args,
+            "failOnRollbackBufferOverflow",
+            ICUTransformCharFilter.DEFAULT_FAIL_ON_ROLLBACK_BUFFER_OVERFLOW);
+    boolean assumeExternalUnicodeNormalization =
+        getBoolean(args, "assumeExternalUnicodeNormalization", false);
     Transliterator stockTransliterator = Transliterator.getInstance(id, dir);
     if (assumeExternalUnicodeNormalization) {
       this.transliterator = ICUTransformCharFilter.withoutUnicodeNormalization(stockTransliterator);
@@ -74,7 +84,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   @Override
   public Reader create(Reader input) {
-    return new ICUTransformCharFilter(input, transliterator, maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
+    return new ICUTransformCharFilter(
+        input, transliterator, maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
   }
-
 }
