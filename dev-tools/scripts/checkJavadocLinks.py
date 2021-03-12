@@ -41,7 +41,7 @@ class FindHyperlinks(HTMLParser):
   def handle_starttag(self, tag, attrs):
     # NOTE: I don't think 'a' should be in here. But try debugging 
     # NumericRangeQuery.html. (Could be javadocs bug, it's a generic type...)
-    if tag not in ('link', 'meta', 'frame', 'br', 'hr', 'p', 'li', 'img', 'col', 'a'):
+    if tag not in ('link', 'meta', 'frame', 'br', 'hr', 'p', 'li', 'img', 'col', 'a', 'dt', 'dd'):
       self.stack.append(tag)
     if tag == 'a':
       id = None
@@ -79,7 +79,7 @@ class FindHyperlinks(HTMLParser):
         raise RuntimeError('couldn\'t find an href nor name in link in %s: only got these attrs: %s' % (self.baseURL, attrs))
 
   def handle_endtag(self, tag):
-    if tag in ('link', 'meta', 'frame', 'br', 'hr', 'p', 'li', 'img', 'col', 'a'):
+    if tag in ('link', 'meta', 'frame', 'br', 'hr', 'p', 'li', 'img', 'col', 'a', 'dt', 'dd'):
       return
     
     if len(self.stack) == 0:
@@ -192,6 +192,9 @@ def checkAll(dirName):
           # OK
           pass
         elif link == 'http://lucene.apache.org/core/':
+          # OK
+          pass
+        elif re.match("^https?://lucene.apache.org/core/[^/]+/index.html", link):
           # OK
           pass
         elif link == 'http://lucene.apache.org/solr/':

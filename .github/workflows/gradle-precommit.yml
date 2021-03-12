@@ -32,7 +32,10 @@ jobs:
           ${{ runner.os }}-gradle-precommit-
           ${{ runner.os }}-gradle-
 
-    - name: Build with Gradle
-      run: ./gradlew precommit
+    - name: Initialize gradle settings
+      run: ./gradlew localSettings
+
+    - name: Run gradle check (without tests)
+      run: ./gradlew check -x test -Ptask.times=true
 
     - uses: gradle/wrapper-validation-action@v1

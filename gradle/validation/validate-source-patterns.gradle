@@ -88,17 +88,12 @@ subprojects {
   check.dependsOn validateSourcePatterns
 }
 
-configure(project(':lucene:benchmark')) {
-  project.tasks.withType(ValidateSourcePatternsTask) {
-    sourceFiles.exclude 'temp/**'
-    sourceFiles.exclude 'work/**'
-  }
-}
-
-configure(project(':solr:core')) {
-  project.tasks.withType(ValidateSourcePatternsTask) {
-    sourceFiles.exclude 'src/**/CheckLoggingConfiguration.java'
-    sourceFiles.exclude 'src/test/org/apache/hadoop/**'
+if (!skipLucene) {
+  configure(project(':lucene:benchmark')) {
+    project.tasks.withType(ValidateSourcePatternsTask) {
+      sourceFiles.exclude 'temp/**'
+      sourceFiles.exclude 'work/**'
+    }
   }
 }
 
@@ -122,6 +117,10 @@ configure(rootProject) {
       // Don't go into child projects (scanned separately).
       childProjects.keySet().each{
         exclude "${it}/**"
+      }
+
+      if (skipLucene) {
+        exclude "lucene/**"
       }
 
       // default excludes.

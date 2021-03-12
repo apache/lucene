@@ -113,7 +113,7 @@ configure(allprojects.findAll {project -> project.path.startsWith(":solr") }) {
       testOptions += [
           [propName: 'tests.luceneMatchVersion', value: baseVersion, description: "Base Lucene version."],
           [propName: 'common-solr.dir',
-           value: { -> file("${commonDir}/../solr").path },
+           value: project(":solr").projectDir,
            description: "Solr base dir.",
            includeInReproLine: false
           ],
@@ -189,10 +189,6 @@ allprojects {
           } else if (project.path.startsWith(":lucene")) {
             systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")
-          } else {
-            systemProperty 'common-solr.dir', commonSolrDir
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/solr-tests.policy")
           }
 
           systemProperty 'common.dir', commonDir

@@ -16,16 +16,18 @@
  */
 package org.apache.lucene.util;
 
-
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map.Entry;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,7 +36,7 @@ public class TestBytesRefHash extends LuceneTestCase {
 
   BytesRefHash hash;
   ByteBlockPool pool;
-  
+
   @Override
   @Before
   public void setUp() throws Exception {
@@ -42,27 +44,28 @@ public class TestBytesRefHash extends LuceneTestCase {
     pool = newPool();
     hash = newHash(pool);
   }
-  
-  private ByteBlockPool newPool(){
-    return  random().nextBoolean() && pool != null ? pool
-        : new ByteBlockPool(new RecyclingByteBlockAllocator(ByteBlockPool.BYTE_BLOCK_SIZE, random().nextInt(25)));
-  }
-  
-  private BytesRefHash newHash(ByteBlockPool blockPool) {
-    final int initSize = 2 << 1 + random().nextInt(5);
-    return random().nextBoolean() ? new BytesRefHash(blockPool) : new BytesRefHash(
-        blockPool, initSize, new BytesRefHash.DirectBytesStartArray(initSize));
+
+  private ByteBlockPool newPool() {
+    return random().nextBoolean() && pool != null
+        ? pool
+        : new ByteBlockPool(
+            new RecyclingByteBlockAllocator(ByteBlockPool.BYTE_BLOCK_SIZE, random().nextInt(25)));
   }
 
-  /**
-   * Test method for {@link org.apache.lucene.util.BytesRefHash#size()}.
-   */
+  private BytesRefHash newHash(ByteBlockPool blockPool) {
+    final int initSize = 2 << 1 + random().nextInt(5);
+    return random().nextBoolean()
+        ? new BytesRefHash(blockPool)
+        : new BytesRefHash(blockPool, initSize, new BytesRefHash.DirectBytesStartArray(initSize));
+  }
+
+  /** Test method for {@link org.apache.lucene.util.BytesRefHash#size()}. */
   @Test
   public void testSize() {
     BytesRefBuilder ref = new BytesRefBuilder();
     int num = atLeast(2);
     for (int j = 0; j < num; j++) {
-      final int mod = 1+random().nextInt(39);
+      final int mod = 1 + random().nextInt(39);
       for (int i = 0; i < 797; i++) {
         String str;
         do {
@@ -71,11 +74,9 @@ public class TestBytesRefHash extends LuceneTestCase {
         ref.copyChars(str);
         int count = hash.size();
         int key = hash.add(ref.get());
-        if (key < 0)
-          assertEquals(hash.size(), count);
-        else
-          assertEquals(hash.size(), count + 1);
-        if(i % mod == 0) {
+        if (key < 0) assertEquals(hash.size(), count);
+        else assertEquals(hash.size(), count + 1);
+        if (i % mod == 0) {
           hash.clear();
           assertEquals(0, hash.size());
           hash.reinit();
@@ -84,11 +85,7 @@ public class TestBytesRefHash extends LuceneTestCase {
     }
   }
 
-  /**
-   * Test method for
-   * {@link org.apache.lucene.util.BytesRefHash#get(int, BytesRef)}
-   * .
-   */
+  /** Test method for {@link org.apache.lucene.util.BytesRefHash#get(int, BytesRef)} . */
   @Test
   public void testGet() {
     BytesRefBuilder ref = new BytesRefBuilder();
@@ -111,7 +108,7 @@ public class TestBytesRefHash extends LuceneTestCase {
           uniqueCount++;
           assertEquals(hash.size(), count + 1);
         } else {
-          assertTrue((-key)-1 < count);
+          assertTrue((-key) - 1 < count);
           assertEquals(hash.size(), count);
         }
       }
@@ -125,9 +122,7 @@ public class TestBytesRefHash extends LuceneTestCase {
     }
   }
 
-  /**
-   * Test method for {@link org.apache.lucene.util.BytesRefHash#compact()}.
-   */
+  /** Test method for {@link org.apache.lucene.util.BytesRefHash#compact()}. */
   @Test
   public void testCompact() {
     BytesRefBuilder ref = new BytesRefBuilder();
@@ -144,7 +139,7 @@ public class TestBytesRefHash extends LuceneTestCase {
         ref.copyChars(str);
         final int key = hash.add(ref.get());
         if (key < 0) {
-          assertTrue(bits.get((-key)-1));
+          assertTrue(bits.get((-key) - 1));
         } else {
           assertFalse(bits.get(key));
           bits.set(key);
@@ -166,10 +161,7 @@ public class TestBytesRefHash extends LuceneTestCase {
     }
   }
 
-  /**
-   * Test method for
-   * {@link org.apache.lucene.util.BytesRefHash#sort()}.
-   */
+  /** Test method for {@link org.apache.lucene.util.BytesRefHash#sort()}. */
   @Test
   public void testSort() {
     BytesRefBuilder ref = new BytesRefBuilder();
@@ -198,14 +190,12 @@ public class TestBytesRefHash extends LuceneTestCase {
       hash.clear();
       assertEquals(0, hash.size());
       hash.reinit();
-
     }
   }
 
   /**
-   * Test method for
-   * {@link org.apache.lucene.util.BytesRefHash#add(org.apache.lucene.util.BytesRef)}
-   * .
+   * Test method for {@link
+   * org.apache.lucene.util.BytesRefHash#add(org.apache.lucene.util.BytesRef)} .
    */
   @Test
   public void testAdd() {
@@ -224,26 +214,26 @@ public class TestBytesRefHash extends LuceneTestCase {
         int count = hash.size();
         int key = hash.add(ref.get());
 
-        if (key >=0) {
+        if (key >= 0) {
           assertTrue(strings.add(str));
           assertEquals(uniqueCount, key);
           assertEquals(hash.size(), count + 1);
           uniqueCount++;
         } else {
           assertFalse(strings.add(str));
-          assertTrue((-key)-1 < count);
-          assertEquals(str, hash.get((-key)-1, scratch).utf8ToString());
+          assertTrue((-key) - 1 < count);
+          assertEquals(str, hash.get((-key) - 1, scratch).utf8ToString());
           assertEquals(count, hash.size());
         }
       }
-      
+
       assertAllIn(strings, hash);
       hash.clear();
       assertEquals(0, hash.size());
       hash.reinit();
     }
   }
-  
+
   @Test
   public void testFind() throws Exception {
     BytesRefBuilder ref = new BytesRefBuilder();
@@ -259,7 +249,7 @@ public class TestBytesRefHash extends LuceneTestCase {
         } while (str.length() == 0);
         ref.copyChars(str);
         int count = hash.size();
-        int key = hash.find(ref.get()); //hash.add(ref);
+        int key = hash.find(ref.get()); // hash.add(ref);
         if (key >= 0) { // string found in hash
           assertFalse(strings.add(str));
           assertTrue(key < count);
@@ -273,8 +263,71 @@ public class TestBytesRefHash extends LuceneTestCase {
           uniqueCount++;
         }
       }
-      
+
       assertAllIn(strings, hash);
+      hash.clear();
+      assertEquals(0, hash.size());
+      hash.reinit();
+    }
+  }
+
+  @Test
+  public void testConcurrentAccessToBytesRefHash() throws Exception {
+    int num = atLeast(2);
+    for (int j = 0; j < num; j++) {
+      int numStrings = 797;
+      List<String> strings = new ArrayList<>(numStrings);
+      for (int i = 0; i < numStrings; i++) {
+        final String str = TestUtil.randomRealisticUnicodeString(random(), 1, 1000);
+        hash.add(new BytesRef(str));
+        assertTrue(strings.add(str));
+      }
+      int hashSize = hash.size();
+
+      AtomicInteger notFound = new AtomicInteger();
+      AtomicInteger notEquals = new AtomicInteger();
+      AtomicInteger wrongSize = new AtomicInteger();
+      int numThreads = atLeast(3);
+      CountDownLatch latch = new CountDownLatch(numThreads);
+      Thread[] threads = new Thread[numThreads];
+      for (int i = 0; i < threads.length; i++) {
+        int loops = atLeast(100);
+        threads[i] =
+            new Thread(
+                () -> {
+                  BytesRef scratch = new BytesRef();
+                  latch.countDown();
+                  try {
+                    latch.await();
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                  }
+                  for (int k = 0; k < loops; k++) {
+                    BytesRef find = new BytesRef(strings.get(k % strings.size()));
+                    int id = hash.find(find);
+                    if (id < 0) {
+                      notFound.incrementAndGet();
+                    } else {
+                      BytesRef get = hash.get(id, scratch);
+                      if (!get.bytesEquals(find)) {
+                        notEquals.incrementAndGet();
+                      }
+                    }
+                    if (hash.size() != hashSize) {
+                      wrongSize.incrementAndGet();
+                    }
+                  }
+                },
+                "t" + i);
+      }
+
+      for (Thread t : threads) t.start();
+      for (Thread t : threads) t.join();
+
+      assertEquals(0, notFound.get());
+      assertEquals(0, notEquals.get());
+      assertEquals(0, wrongSize.get());
       hash.clear();
       assertEquals(0, hash.size());
       hash.reinit();
@@ -283,9 +336,12 @@ public class TestBytesRefHash extends LuceneTestCase {
 
   @Test(expected = MaxBytesLengthExceededException.class)
   public void testLargeValue() {
-    int[] sizes = new int[] { random().nextInt(5),
-        ByteBlockPool.BYTE_BLOCK_SIZE - 33 + random().nextInt(31),
-        ByteBlockPool.BYTE_BLOCK_SIZE - 1 + random().nextInt(37) };
+    int[] sizes =
+        new int[] {
+          random().nextInt(5),
+          ByteBlockPool.BYTE_BLOCK_SIZE - 33 + random().nextInt(31),
+          ByteBlockPool.BYTE_BLOCK_SIZE - 1 + random().nextInt(37)
+        };
     BytesRef ref = new BytesRef();
     for (int i = 0; i < sizes.length; i++) {
       ref.bytes = new byte[sizes[i]];
@@ -294,18 +350,13 @@ public class TestBytesRefHash extends LuceneTestCase {
       try {
         assertEquals(i, hash.add(ref));
       } catch (MaxBytesLengthExceededException e) {
-        if (i < sizes.length - 1)
-          fail("unexpected exception at size: " + sizes[i]);
+        if (i < sizes.length - 1) fail("unexpected exception at size: " + sizes[i]);
         throw e;
       }
     }
   }
-  
-  /**
-   * Test method for
-   * {@link org.apache.lucene.util.BytesRefHash#addByPoolOffset(int)}
-   * .
-   */
+
+  /** Test method for {@link org.apache.lucene.util.BytesRefHash#addByPoolOffset(int)} . */
   @Test
   public void testAddByPoolOffset() {
     BytesRefBuilder ref = new BytesRefBuilder();
@@ -334,21 +385,21 @@ public class TestBytesRefHash extends LuceneTestCase {
           uniqueCount++;
         } else {
           assertFalse(strings.add(str));
-          assertTrue((-key)-1 < count);
-          assertEquals(str, hash.get((-key)-1, scratch).utf8ToString());
+          assertTrue((-key) - 1 < count);
+          assertEquals(str, hash.get((-key) - 1, scratch).utf8ToString());
           assertEquals(count, hash.size());
-          int offsetKey = offsetHash.addByPoolOffset(hash.byteStart((-key)-1));
-          assertTrue((-offsetKey)-1 < count);
-          assertEquals(str, hash.get((-offsetKey)-1, scratch).utf8ToString());
+          int offsetKey = offsetHash.addByPoolOffset(hash.byteStart((-key) - 1));
+          assertTrue((-offsetKey) - 1 < count);
+          assertEquals(str, hash.get((-offsetKey) - 1, scratch).utf8ToString());
           assertEquals(count, hash.size());
         }
       }
-      
+
       assertAllIn(strings, hash);
       for (String string : strings) {
         ref.copyChars(string);
         int key = hash.add(ref.get());
-        BytesRef bytesRef = offsetHash.get((-key)-1, scratch);
+        BytesRef bytesRef = offsetHash.get((-key) - 1, scratch);
         assertEquals(ref.get(), bytesRef);
       }
 
@@ -360,20 +411,17 @@ public class TestBytesRefHash extends LuceneTestCase {
       offsetHash.reinit();
     }
   }
-  
+
   private void assertAllIn(Set<String> strings, BytesRefHash hash) {
     BytesRefBuilder ref = new BytesRefBuilder();
     BytesRef scratch = new BytesRef();
     int count = hash.size();
     for (String string : strings) {
       ref.copyChars(string);
-      int key  =  hash.add(ref.get()); // add again to check duplicates
-      assertEquals(string, hash.get((-key)-1, scratch).utf8ToString());
+      int key = hash.add(ref.get()); // add again to check duplicates
+      assertEquals(string, hash.get((-key) - 1, scratch).utf8ToString());
       assertEquals(count, hash.size());
-      assertTrue("key: " + key + " count: " + count + " string: " + string,
-          key < count);
+      assertTrue("key: " + key + " count: " + count + " string: " + string, key < count);
     }
   }
-
-
 }

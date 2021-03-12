@@ -27,9 +27,6 @@ configure(rootProject) {
     dependsOn ":versionsPropsAreSorted"
     dependsOn ":checkWorkingCopyClean"
 
-    // Solr validation tasks.
-    dependsOn ":solr:validateConfigFileSanity"
-
     // Attach all these tasks from all projects that have them.
     // This uses lazy collections as they may not yet be defined.
     dependsOn allprojects.collect { prj ->
@@ -39,8 +36,8 @@ configure(rootProject) {
           "javadoc",
           "rat",
           "ecjLint",
-          "validateLogCalls",
           "validateSourcePatterns",
+          "spotlessCheck"
       ]}
     }
   }

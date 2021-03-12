@@ -62,8 +62,10 @@ allprojects {
 
       testsCwd = file("${buildDir}/tmp/tests-cwd")
       testsTmpDir = file(resolvedTestOption("tests.workDir"))
-      commonDir = project(":lucene").projectDir
-      commonSolrDir = project(":solr").projectDir
+
+      if (!skipLucene) {
+        commonDir = project(":lucene").projectDir
+      }
     }
 
     def verboseMode = resolvedTestOption("tests.verbose").toBoolean()
@@ -105,6 +107,7 @@ allprojects {
       ignoreFailures = resolvedTestOption("tests.haltonfailure").toBoolean() == false
 
       jvmArgs Commandline.translateCommandline(resolvedTestOption("tests.jvmargs"))
+      jvmArgs '--illegal-access=deny'
 
       systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
       systemProperty 'java.awt.headless', 'true'
