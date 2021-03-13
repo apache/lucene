@@ -397,15 +397,53 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  @AwaitsFix(
-      bugUrl =
-          "https://issues.apache.org/jira/browse/LUCENE-9634: "
-              + "Highlighting of degenerate spans on fields with offsets doesn't work properly")
+  public void testDegenerateIntervalsWithStopwordsAndPositions() throws IOException {
+    testDegenerateIntervalsWithStopword(FLD_TEXT_POS);
+  }
+
+  @Test
   public void testDegenerateIntervalsWithOffsets() throws IOException {
     testDegenerateIntervals(FLD_TEXT_POS_OFFS);
   }
 
+  @Test
+  public void testDegenerateIntervalsWithStopwordsAndOffsets() throws IOException {
+    testDegenerateIntervalsWithStopword(FLD_TEXT_POS_OFFS);
+  }
+
   public void testDegenerateIntervals(String field) throws IOException {
+    new IndexBuilder(this::toField)
+        .doc(field, "foo bla bar wow")
+        .build(
+            analyzer,
+            reader -> {
+              assertThat(
+                  highlights(
+                      reader,
+                      new IntervalQuery(field, Intervals.extend(Intervals.term("wow"), 1, 3))),
+                  containsInAnyOrder(fmt("0: (%s: 'foo bla >bar wow<')", field)));
+
+              assertThat(
+                  highlights(
+                      reader,
+                      new IntervalQuery(field, Intervals.extend(Intervals.term("bar"), 1, 1))),
+                  containsInAnyOrder(fmt("0: (%s: 'foo >bla bar wow<')", field)));
+
+              assertThat(
+                  highlights(
+                      reader,
+                      new IntervalQuery(field, Intervals.extend(Intervals.term("bar"), 1, 0))),
+                  containsInAnyOrder(fmt("0: (%s: 'foo >bla bar< wow')", field)));
+
+              assertThat(
+                  highlights(
+                      reader,
+                      new IntervalQuery(field, Intervals.extend(Intervals.term("bar"), 5, 100))),
+                  containsInAnyOrder(fmt("0: (%s: '>foo bla bar wow<')", field)));
+            });
+  }
+
+  public void testDegenerateIntervalsWithStopword(String field) throws IOException {
     new IndexBuilder(this::toField)
         .doc(field, fmt("foo %s bar", STOPWORD1))
         .build(
