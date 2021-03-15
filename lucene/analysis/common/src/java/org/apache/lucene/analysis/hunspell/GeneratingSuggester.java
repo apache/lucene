@@ -74,6 +74,7 @@ class GeneratingSuggester {
         };
 
     dictionary.words.processAllWords(
+        Math.max(1, word.length() - 4),
         word.length() + 4,
         (rootChars, forms) -> {
           speller.checkCanceled.run();
