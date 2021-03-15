@@ -33,12 +33,15 @@ class TrigramAutomaton {
   private final CharacterRunAutomaton automaton;
   private final int[] state2Score;
   private final FixedBitSet countedSubstrings;
+  private final char minChar;
 
   TrigramAutomaton(String s1) {
     Map<String, Integer> substringCounts = new HashMap<>();
 
     Automaton.Builder builder = new Automaton.Builder(s1.length() * N, s1.length() * N);
     int initialState = builder.createState();
+
+    minChar = (char) s1.chars().min().orElseThrow();
 
     for (int start = 0; start < s1.length(); start++) {
       int limit = Math.min(s1.length(), start + N);
@@ -49,7 +52,7 @@ class TrigramAutomaton {
       int state = initialState;
       for (int i = start; i < limit; i++) {
         int next = builder.createState();
-        builder.addTransition(state, next, s1.charAt(i));
+        builder.addTransition(state, next, s1.charAt(i) - minChar);
         state = next;
       }
     }
@@ -70,7 +73,7 @@ class TrigramAutomaton {
   private int runAutomatonOnStringChars(String s) {
     int state = 0;
     for (int i = 0; i < s.length(); i++) {
-      state = automaton.step(state, s.charAt(i));
+      state = automaton.step(state, s.charAt(i) - minChar);
     }
     return state;
   }
@@ -86,6 +89,11 @@ class TrigramAutomaton {
     int limit = s2.length + s2.offset;
     for (int i = s2.offset; i < limit; i++) {
       char c = transformChar(s2.chars[i]);
+      if (c < minChar) {
+        state1 = state2 = -1;
+        continue;
+      }
+      c -= minChar;
 
       int state3 = state2 <= 0 ? 0 : automaton.step(state2, c);
       if (state3 > 0) {

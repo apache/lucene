@@ -94,10 +94,12 @@ class GeneratingSuggester {
             return;
           }
 
-          int sc =
-              automaton.ngramScore(rootChars)
-                  - longerWorsePenalty(word.length(), rootChars.length)
-                  + commonPrefix(word, rootChars);
+          int sc = automaton.ngramScore(rootChars);
+          if (sc == 0) {
+            return; // no common characters at all, don't suggest this root
+          }
+
+          sc += commonPrefix(word, rootChars) - longerWorsePenalty(word.length(), rootChars.length);
 
           if (roots.size() == MAX_ROOTS && sc < roots.peek().score) {
             return;
