@@ -66,6 +66,16 @@ public class TestPerformance extends LuceneTestCase {
   }
 
   @Test
+  public void ru() throws Exception {
+    checkAnalysisPerformance("ru", 400_000);
+  }
+
+  @Test
+  public void ru_suggest() throws Exception {
+    checkSuggestionPerformance("ru", 1000);
+  }
+
+  @Test
   public void de() throws Exception {
     checkAnalysisPerformance("de", 300_000);
   }
@@ -121,6 +131,7 @@ public class TestPerformance extends LuceneTestCase {
     Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, () -> {});
     List<String> words =
         loadWords(code, wordCount, dictionary).stream()
+            .distinct()
             .filter(w -> hasQuickSuggestions(speller, w))
             .collect(Collectors.toList());
     System.out.println("Checking " + words.size() + " misspelled words");
@@ -181,7 +192,8 @@ public class TestPerformance extends LuceneTestCase {
         String line = reader.readLine();
         if (line == null) break;
 
-        for (String token : line.split("[^a-zA-Z" + Pattern.quote(dictionary.wordChars) + "]+")) {
+        for (String token :
+            line.split("[^\\p{IsLetter}" + Pattern.quote(dictionary.wordChars) + "]+")) {
           String word = stripPunctuation(token);
           if (word != null) {
             words.add(word);
