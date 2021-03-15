@@ -28,7 +28,7 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * dictionary of unique values. A pointer to the dictionary value (ordinal) can be retrieved for
  * each document. Ordinals are dense and in increasing sorted order.
  */
-public abstract class SortedDocValues extends BinaryDocValues {
+public abstract class SortedDocValues extends DocValuesIterator {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected SortedDocValues() {}
@@ -51,18 +51,6 @@ public abstract class SortedDocValues extends BinaryDocValues {
    * @see #ordValue()
    */
   public abstract BytesRef lookupOrd(int ord) throws IOException;
-
-  private final BytesRef empty = new BytesRef();
-
-  @Override
-  public BytesRef binaryValue() throws IOException {
-    int ord = ordValue();
-    if (ord == -1) {
-      return empty;
-    } else {
-      return lookupOrd(ord);
-    }
-  }
 
   /**
    * Returns the number of unique values.

@@ -17,10 +17,10 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.SimpleCollector;
 
@@ -43,8 +43,8 @@ abstract class DocValuesTermsCollector<DV> extends SimpleCollector {
     docValues = docValuesCall.apply(context.reader());
   }
 
-  static Function<BinaryDocValues> binaryDocValues(String field) {
-    return (ctx) -> DocValues.getBinary(ctx, field);
+  static Function<SortedDocValues> sortedDocValues(String field) {
+    return (ctx) -> DocValues.getSorted(ctx, field);
   }
 
   static Function<SortedSetDocValues> sortedSetDocValues(String field) {

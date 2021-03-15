@@ -535,7 +535,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     assertEquals(controlSortedDocValues.getValueCount(), sortedDocValues.getValueCount());
     assertEquals(0, sortedDocValues.nextDoc());
     assertEquals(0, controlSortedDocValues.nextDoc());
-    assertEquals(controlSortedDocValues.binaryValue(), sortedDocValues.binaryValue());
     assertEquals(controlSortedDocValues.ordValue(), sortedDocValues.ordValue());
     assertEquals(controlSortedDocValues.lookupOrd(0), sortedDocValues.lookupOrd(0));
 

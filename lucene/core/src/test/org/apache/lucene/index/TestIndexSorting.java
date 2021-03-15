@@ -307,11 +307,11 @@ public class TestIndexSorting extends LuceneTestCase {
     assertEquals(3, leaf.maxDoc());
     SortedDocValues values = leaf.getSortedDocValues("foo");
     assertEquals(0, values.nextDoc());
-    assertEquals("aaa", values.binaryValue().utf8ToString());
+    assertEquals("aaa", values.lookupOrd(values.ordValue()).utf8ToString());
     assertEquals(1, values.nextDoc());
-    assertEquals("mmm", values.binaryValue().utf8ToString());
+    assertEquals("mmm", values.lookupOrd(values.ordValue()).utf8ToString());
     assertEquals(2, values.nextDoc());
-    assertEquals("zzz", values.binaryValue().utf8ToString());
+    assertEquals("zzz", values.lookupOrd(values.ordValue()).utf8ToString());
     r.close();
     w.close();
     dir.close();
@@ -392,15 +392,15 @@ public class TestIndexSorting extends LuceneTestCase {
       SortedDocValues values = leaf.getSortedDocValues("foo");
       if (reverse) {
         assertEquals(0, values.nextDoc());
-        assertEquals("zzz", values.binaryValue().utf8ToString());
+        assertEquals("zzz", values.lookupOrd(values.ordValue()).utf8ToString());
         assertEquals(1, values.nextDoc());
-        assertEquals("mmm", values.binaryValue().utf8ToString());
+        assertEquals("mmm", values.lookupOrd(values.ordValue()).utf8ToString());
       } else {
         // docID 0 is missing:
         assertEquals(1, values.nextDoc());
-        assertEquals("mmm", values.binaryValue().utf8ToString());
+        assertEquals("mmm", values.lookupOrd(values.ordValue()).utf8ToString());
         assertEquals(2, values.nextDoc());
-        assertEquals("zzz", values.binaryValue().utf8ToString());
+        assertEquals("zzz", values.lookupOrd(values.ordValue()).utf8ToString());
       }
       r.close();
       w.close();
@@ -496,14 +496,14 @@ public class TestIndexSorting extends LuceneTestCase {
       SortedDocValues values = leaf.getSortedDocValues("foo");
       if (reverse) {
         assertEquals(1, values.nextDoc());
-        assertEquals("zzz", values.binaryValue().utf8ToString());
+        assertEquals("zzz", values.lookupOrd(values.ordValue()).utf8ToString());
         assertEquals(2, values.nextDoc());
-        assertEquals("mmm", values.binaryValue().utf8ToString());
+        assertEquals("mmm", values.lookupOrd(values.ordValue()).utf8ToString());
       } else {
         assertEquals(0, values.nextDoc());
-        assertEquals("mmm", values.binaryValue().utf8ToString());
+        assertEquals("mmm", values.lookupOrd(values.ordValue()).utf8ToString());
         assertEquals(1, values.nextDoc());
-        assertEquals("zzz", values.binaryValue().utf8ToString());
+        assertEquals("zzz", values.lookupOrd(values.ordValue()).utf8ToString());
       }
       assertEquals(NO_MORE_DOCS, values.nextDoc());
       r.close();
