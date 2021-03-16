@@ -720,7 +720,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
                       new Term("id", "1"),
                       new BinaryDocValuesField("not_existing", new BytesRef())));
       assertEquals(
-          "cannot change field \"not_existing\" from doc values type=NUMERIC to inconsistent doc values type=BINARY",
+          "Can't update [BINARY] doc values; the field [not_existing] has inconsistent doc values' type of [NUMERIC].",
           iae.getMessage());
     }
   }
@@ -746,7 +746,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
               () ->
                   writer.updateDocValues(new Term("id", "1"), new NumericDocValuesField("id", 1)));
       assertEquals(
-          "cannot change field \"id\" from index options=DOCS to inconsistent index options=NONE",
+          "Can't update [NUMERIC] doc values; the field [id] has inconsistent doc values' type of [NONE].",
           exception.getMessage());
     }
   }

@@ -365,3 +365,10 @@ all documents within an index. Thus, for example, it is not allowed to have
 one document in a index where a certain field is indexed with doc values 
 and points, and another document where the same field is indexed only with 
 points.
+
+### Doc values updates are allowed only for doc values only fields
+
+Previously IndexWriter could update doc values for a binary or numeric docValue 
+field that was also indexed with other data structures (e.g. postings, vectors 
+etc). This is not allowed anymore. A field must be indexed with only doc values 
+to be allowed for doc values updates in IndexWriter.

@@ -1243,7 +1243,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
             IllegalArgumentException.class,
             () -> writer.updateNumericDocValue(new Term("id", "doc1"), "ndv2", 10L));
     String expectedErrMsg =
-        "can't update [ndv2], can only update existing numeric doc values only fields!";
+        "Can't update [NUMERIC] doc values; the field [ndv2] must be doc values only field, but is also indexed with postings.";
     assertEquals(expectedErrMsg, exception.getMessage());
     writer.close();
 
@@ -1279,7 +1279,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
             IllegalArgumentException.class,
             () -> writer.updateNumericDocValue(new Term("f", "mock-value"), "f", 17L));
     String expectedErrMsg =
-        "can't update [f], can only update existing numeric doc values only fields!";
+        "Can't update [NUMERIC] doc values; the field [f] must be doc values only field, but is also indexed with postings.";
     assertEquals(expectedErrMsg, exception.getMessage());
 
     writer.close();

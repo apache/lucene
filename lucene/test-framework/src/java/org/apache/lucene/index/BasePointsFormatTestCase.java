@@ -1158,28 +1158,22 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   // LUCENE-7491
-  public void testMixedSchema() throws Exception {
+  public void testMergeMissing() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
     iwc.setMaxBufferedDocs(2);
     for (int i = 0; i < 2; i++) {
       Document doc = new Document();
-      doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
       doc.add(new IntPoint("int", i));
       w.addDocument(doc);
     }
-    // index has 1 segment now (with 2 docs) and that segment does have points, but the "id" field
-    // in particular does NOT
+    // index has 1 segment now (with 2 docs) and that segment does have points
 
     Document doc = new Document();
     doc.add(new IntPoint("id", 0));
-    IllegalArgumentException ex =
-        expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
-    assertEquals(
-        "cannot change field \"id\" from index options=DOCS to inconsistent index options=NONE",
-        ex.getMessage());
-
+    w.addDocument(doc);
+    // now we write another segment where the id field does have points:
     w.forceMerge(1);
     IOUtils.close(w, dir);
   }

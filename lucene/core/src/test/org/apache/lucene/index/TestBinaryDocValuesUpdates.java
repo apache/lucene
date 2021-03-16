@@ -970,7 +970,8 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> writer.updateBinaryDocValue(new Term("id", "doc1"), "bdv", toBytes(5L)));
-    expectedErrMsg = "can't update [bdv], can only update existing binary doc values only fields!";
+    expectedErrMsg =
+        "Can't update [BINARY] doc values; the field [bdv] must be doc values only field, but is also indexed with postings.";
     assertEquals(expectedErrMsg, exception.getMessage());
 
     writer.commit();
@@ -1008,7 +1009,7 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
             IllegalArgumentException.class,
             () -> writer.updateBinaryDocValue(new Term("f", "mock-value"), "f", toBytes(17L)));
     String expectedErrMsg =
-        "can't update [f], can only update existing binary doc values only fields!";
+        "Can't update [BINARY] doc values; the field [f] must be doc values only field, but is also indexed with postings.";
     assertEquals(expectedErrMsg, exception.getMessage());
     writer.close();
 

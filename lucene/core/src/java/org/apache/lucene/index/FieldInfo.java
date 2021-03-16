@@ -111,7 +111,7 @@ public final class FieldInfo {
 
   /** Performs internal consistency checks. Always returns true (or throws IllegalStateException) */
   public boolean checkConsistency() {
-    return checkOptionsCorrectness(
+    return checkConsistency(
         name,
         storeTermVector,
         omitNorms,
@@ -132,7 +132,7 @@ public final class FieldInfo {
    * @throws IllegalStateException if some options are incorrect
    * @return {@code true} if all options are correct
    */
-  public static boolean checkOptionsCorrectness(
+  public static boolean checkConsistency(
       String name,
       boolean storeTermVector,
       boolean omitNorms,
@@ -241,7 +241,13 @@ public final class FieldInfo {
     return true;
   }
 
-  void verifySameSchema(FieldInfo o, long dvGen) {
+  /**
+   * Verify that the provided FieldInfo has the same schema as this FieldInfo
+   *
+   * @param o – other FieldInfo whose schema is verified against this FieldInfo's schema
+   * @throws IllegalArgumentException if the field schemas are not the same
+   */
+  void verifySameSchema(FieldInfo o) {
     String fieldName = this.name;
     verifySameIndexOptions(fieldName, this.indexOptions, o.getIndexOptions());
     if (this.indexOptions != IndexOptions.NONE) {
@@ -249,7 +255,6 @@ public final class FieldInfo {
       verifySameStoreTermVectors(fieldName, this.storeTermVector, o.storeTermVector);
     }
     verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType);
-    verifySameDVGen(fieldName, this.dvGen, dvGen);
     verifySamePointsOptions(
         fieldName,
         this.pointDimensionCount,
@@ -271,7 +276,7 @@ public final class FieldInfo {
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  public static void verifySameIndexOptions(
+  static void verifySameIndexOptions(
       String fieldName, IndexOptions indexOptions1, IndexOptions indexOptions2) {
     if (indexOptions1 != indexOptions2) {
       throw new IllegalArgumentException(
@@ -289,7 +294,7 @@ public final class FieldInfo {
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  public static void verifySameDocValuesType(
+  static void verifySameDocValuesType(
       String fieldName, DocValuesType docValuesType1, DocValuesType docValuesType2) {
     if (docValuesType1 != docValuesType2) {
       throw new IllegalArgumentException(
@@ -303,29 +308,11 @@ public final class FieldInfo {
   }
 
   /**
-   * Verify that the provided doc values generations are the same
-   *
-   * @throws IllegalArgumentException if they are not the same
-   */
-  // TODO: not sure if gen also must be the same
-  public static void verifySameDVGen(String fieldName, long docValuesGen1, long docValuesGen2) {
-    if (docValuesGen1 != docValuesGen2) {
-      throw new IllegalArgumentException(
-          "cannot change field \""
-              + fieldName
-              + "\" from doc values generation="
-              + docValuesGen1
-              + " to inconsistent doc values generation="
-              + docValuesGen2);
-    }
-  }
-
-  /**
    * Verify that the provided store term vectors options are the same
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  public static void verifySameStoreTermVectors(
+  static void verifySameStoreTermVectors(
       String fieldName, boolean storeTermVector1, boolean storeTermVector2) {
     if (storeTermVector1 != storeTermVector2) {
       throw new IllegalArgumentException(
@@ -343,7 +330,7 @@ public final class FieldInfo {
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  public static void verifySameOmitNorms(String fieldName, boolean omitNorms1, boolean omitNorms2) {
+  static void verifySameOmitNorms(String fieldName, boolean omitNorms1, boolean omitNorms2) {
     if (omitNorms1 != omitNorms2) {
       throw new IllegalArgumentException(
           "cannot change field \""
@@ -360,7 +347,7 @@ public final class FieldInfo {
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  public static void verifySamePointsOptions(
+  static void verifySamePointsOptions(
       String fieldName,
       int pointDimensionCount1,
       int indexDimensionCount1,
@@ -394,7 +381,7 @@ public final class FieldInfo {
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  public static void verifySameVectorOptions(
+  static void verifySameVectorOptions(
       String fieldName,
       int vd1,
       VectorValues.SearchStrategy vst1,

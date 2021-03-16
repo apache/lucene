@@ -108,53 +108,74 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   // Illegal schema change tests:
-
   public void testIllegalDimChangeTwoDocs() throws Exception {
+    // illegal change in the same segment
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
       w.addDocument(doc);
-      boolean rb = random().nextBoolean();
-      if (rb) {
-        // sometimes test with two segments
-        w.commit();
-      }
 
       Document doc2 = new Document();
       doc2.add(new VectorField("f", new float[3], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
-          rb
-              ? "cannot change field \"f\" from vector dimension=4, vector search strategy=DOT_PRODUCT_HNSW "
-                  + "to inconsistent vector dimension=3, vector search strategy=DOT_PRODUCT_HNSW"
-              : "Inconsistency of field data structures across documents for field [f] of doc [1].";
+          "Inconsistency of field data structures across documents for field [f] of doc [1].";
       assertEquals(errMsg, expected.getMessage());
     }
-  }
 
-  public void testIllegalSearchStrategyChange() throws Exception {
+    // illegal change in a different segment
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
       w.addDocument(doc);
-      boolean rb = random().nextBoolean();
-      if (rb) {
-        // sometimes test with two segments
-        w.commit();
-      }
+      w.commit();
+
+      Document doc2 = new Document();
+      doc2.add(new VectorField("f", new float[3], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+      IllegalArgumentException expected =
+          expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
+      String errMsg =
+          "cannot change field \"f\" from vector dimension=4, vector search strategy=DOT_PRODUCT_HNSW "
+              + "to inconsistent vector dimension=3, vector search strategy=DOT_PRODUCT_HNSW";
+      assertEquals(errMsg, expected.getMessage());
+    }
+  }
+
+  public void testIllegalSearchStrategyChange() throws Exception {
+    // illegal change in the same segment
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+      w.addDocument(doc);
 
       Document doc2 = new Document();
       doc2.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
-          rb
-              ? "cannot change field \"f\" from vector dimension=4, vector search strategy=DOT_PRODUCT_HNSW "
-                  + "to inconsistent vector dimension=4, vector search strategy=EUCLIDEAN_HNSW"
-              : "Inconsistency of field data structures across documents for field [f] of doc [1].";
+          "Inconsistency of field data structures across documents for field [f] of doc [1].";
+      assertEquals(errMsg, expected.getMessage());
+    }
+
+    // illegal change a different segment
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+      w.addDocument(doc);
+      w.commit();
+
+      Document doc2 = new Document();
+      doc2.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+      IllegalArgumentException expected =
+          expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
+      String errMsg =
+          "cannot change field \"f\" from vector dimension=4, vector search strategy=DOT_PRODUCT_HNSW "
+              + "to inconsistent vector dimension=4, vector search strategy=EUCLIDEAN_HNSW";
       assertEquals(errMsg, expected.getMessage());
     }
   }

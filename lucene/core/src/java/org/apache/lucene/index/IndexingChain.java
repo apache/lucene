@@ -79,7 +79,7 @@ final class IndexingChain implements Accountable {
 
   // Holds fields seen in each document
   private PerField[] fields = new PerField[1];
-  private PerField[] docFields = new PerField[10];
+  private PerField[] docFields = new PerField[2];
   private final InfoStream infoStream;
   private final ByteBlockPool.Allocator byteBlockAllocator;
   private final LiveIndexWriterConfig indexWriterConfig;
@@ -584,12 +584,18 @@ final class IndexingChain implements Accountable {
   }
 
   void processDocument(int docID, Iterable<? extends IndexableField> document) throws IOException {
-    int fieldCount =
-        0; // How many field names we've seen (collapses multiple field instances by the same name)
+    // number of unique fields by names (collapses multiple field instances by the same name)
+    int fieldCount = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings
     long fieldGen = nextFieldGen++;
     int docFieldIdx = 0;
 
+    // NOTE: we need two passes here, in case there are
+    // multi-valued fields, because we must process all
+    // instances of a given field at once, since the
+    // analyzer is free to reuse TokenStream across fields
+    // (i.e., we cannot have more than one TokenStream
+    // running "at once"):
     termsHash.startDocument();
     startStoredFields(docID);
     try {
