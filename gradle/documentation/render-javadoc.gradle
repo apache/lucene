@@ -401,7 +401,7 @@ class RenderJavadocTask extends DefaultTask {
           !project.file("$dir/element-list").exists()) {
         throw new GradleException("Expected pre-rendered package-list or element-list at ${dir}.")
       }
-      logger.lifecycle("Linking ${url} to ${dir}")
+      logger.info("Linking ${url} to ${dir}")
       opts << [ '-linkoffline', url, dir ]
     }
 
