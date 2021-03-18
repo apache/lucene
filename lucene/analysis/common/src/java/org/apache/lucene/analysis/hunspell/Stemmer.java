@@ -33,11 +33,6 @@ import org.apache.lucene.util.fst.FST;
  */
 final class Stemmer {
   private final Dictionary dictionary;
-  private final StringBuilder segment = new StringBuilder();
-
-  // used for normalization
-  private final StringBuilder scratchSegment = new StringBuilder();
-  private char[] scratchBuffer = new char[32];
 
   // it's '1' if we have no stem exceptions, otherwise every other form
   // is really an ID pointing to the exception table
@@ -50,16 +45,6 @@ final class Stemmer {
    */
   public Stemmer(Dictionary dictionary) {
     this.dictionary = dictionary;
-    prefixReader = dictionary.prefixes == null ? null : dictionary.prefixes.getBytesReader();
-    suffixReader = dictionary.suffixes == null ? null : dictionary.suffixes.getBytesReader();
-    for (int level = 0; level < 3; level++) {
-      if (dictionary.prefixes != null) {
-        prefixArcs[level] = new FST.Arc<>();
-      }
-      if (dictionary.suffixes != null) {
-        suffixArcs[level] = new FST.Arc<>();
-      }
-    }
     formStep = dictionary.formStep();
   }
 
@@ -82,11 +67,11 @@ final class Stemmer {
   public List<CharsRef> stem(char[] word, int length) {
 
     if (dictionary.mayNeedInputCleaning()) {
-      scratchSegment.setLength(0);
-      scratchSegment.append(word, 0, length);
+      CharsRef scratchSegment = new CharsRef(word, 0, length);
       if (dictionary.needsInputCleaning(scratchSegment)) {
-        CharSequence cleaned = dictionary.cleanInput(scratchSegment, segment);
-        scratchBuffer = ArrayUtil.grow(scratchBuffer, cleaned.length());
+        StringBuilder segment = new StringBuilder();
+        dictionary.cleanInput(scratchSegment, segment);
+        char[] scratchBuffer = new char[segment.length()];
         length = segment.length();
         segment.getChars(0, length, scratchBuffer, 0);
         word = scratchBuffer;
@@ -122,8 +107,8 @@ final class Stemmer {
   }
 
   boolean varyCase(char[] word, int length, WordCase wordCase, CaseVariationProcessor processor) {
+    char[] titleBuffer = wordCase == WordCase.UPPER ? caseFoldTitle(word, length) : null;
     if (wordCase == WordCase.UPPER) {
-      caseFoldTitle(word, length);
       char[] aposCase = capitalizeAfterApostrophe(titleBuffer, length);
       if (aposCase != null && !processor.process(aposCase, length, wordCase)) {
         return false;
@@ -140,7 +125,7 @@ final class Stemmer {
       return true;
     }
 
-    caseFoldLower(wordCase == WordCase.UPPER ? titleBuffer : word, length);
+    char[] lowerBuffer = caseFoldLower(titleBuffer != null ? titleBuffer : word, length);
     if (!processor.process(lowerBuffer, length, wordCase)) {
       return false;
     }
@@ -152,10 +137,6 @@ final class Stemmer {
     return true;
   }
 
-  // temporary buffers for case variants
-  private char[] lowerBuffer = new char[8];
-  private char[] titleBuffer = new char[8];
-
   /** returns EXACT_CASE,TITLE_CASE, or UPPER_CASE type for the word */
   WordCase caseOf(char[] word, int length) {
     if (dictionary.ignoreCase || length == 0 || Character.isLowerCase(word[0])) {
@@ -166,19 +147,21 @@ final class Stemmer {
   }
 
   /** folds titlecase variant of word to titleBuffer */
-  private void caseFoldTitle(char[] word, int length) {
-    titleBuffer = ArrayUtil.grow(titleBuffer, length);
+  private char[] caseFoldTitle(char[] word, int length) {
+    char[] titleBuffer = new char[length];
     System.arraycopy(word, 0, titleBuffer, 0, length);
     for (int i = 1; i < length; i++) {
       titleBuffer[i] = dictionary.caseFold(titleBuffer[i]);
     }
+    return titleBuffer;
   }
 
   /** folds lowercase variant of word (title cased) to lowerBuffer */
-  private void caseFoldLower(char[] word, int length) {
-    lowerBuffer = ArrayUtil.grow(lowerBuffer, length);
+  private char[] caseFoldLower(char[] word, int length) {
+    char[] lowerBuffer = new char[length];
     System.arraycopy(word, 0, lowerBuffer, 0, length);
     lowerBuffer[0] = dictionary.caseFold(lowerBuffer[0]);
+    return lowerBuffer;
   }
 
   // Special prefix handling for Catalan, French, Italian:
@@ -315,7 +298,7 @@ final class Stemmer {
     String exception = stemException(morphDataId);
 
     if (dictionary.oconv != null) {
-      scratchSegment.setLength(0);
+      StringBuilder scratchSegment = new StringBuilder();
       if (exception != null) {
         scratchSegment.append(exception);
       } else {
@@ -333,16 +316,6 @@ final class Stemmer {
       }
     }
   }
-
-  // some state for traversing FSTs
-  private final FST.BytesReader prefixReader;
-  private final FST.BytesReader suffixReader;
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private final FST.Arc<IntsRef>[] prefixArcs = new FST.Arc[3];
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private final FST.Arc<IntsRef>[] suffixArcs = new FST.Arc[3];
 
   /**
    * Generates a list of stems for the provided word
@@ -372,15 +345,16 @@ final class Stemmer {
       boolean doPrefix,
       boolean previousWasPrefix,
       RootProcessor processor) {
+    FST.Arc<IntsRef> arc = new FST.Arc<>();
     if (doPrefix && dictionary.prefixes != null) {
       FST<IntsRef> fst = dictionary.prefixes;
-      FST.Arc<IntsRef> arc = prefixArcs[recursionDepth];
+      FST.BytesReader reader = fst.getBytesReader();
       fst.getFirstArc(arc);
       IntsRef output = fst.outputs.getNoOutput();
       int limit = dictionary.fullStrip ? length + 1 : length;
       for (int i = 0; i < limit; i++) {
         if (i > 0) {
-          output = Dictionary.nextArc(fst, arc, prefixReader, output, word[offset + i - 1]);
+          output = Dictionary.nextArc(fst, arc, reader, output, word[offset + i - 1]);
           if (output == null) {
             break;
           }
@@ -423,13 +397,13 @@ final class Stemmer {
 
     if (dictionary.suffixes != null) {
       FST<IntsRef> fst = dictionary.suffixes;
-      FST.Arc<IntsRef> arc = suffixArcs[recursionDepth];
+      FST.BytesReader reader = fst.getBytesReader();
       fst.getFirstArc(arc);
       IntsRef output = fst.outputs.getNoOutput();
       int limit = dictionary.fullStrip ? 0 : 1;
       for (int i = length; i >= limit; i--) {
         if (i < length) {
-          output = Dictionary.nextArc(fst, arc, suffixReader, output, word[offset + i]);
+          output = Dictionary.nextArc(fst, arc, reader, output, word[offset + i]);
           if (output == null) {
             break;
           }
