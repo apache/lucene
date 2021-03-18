@@ -92,10 +92,13 @@ API Changes
 * LUCENE-9480: Make DataInput's skipBytes(long) abstract as the implementation was not performant.
   IndexInput's api is unaffected: skipBytes() is implemented via seek(). (Greg Miller)
 
-* LUCENE-9334:  Require consistency between data-structures on a per-field basis.
+* LUCENE-9334: Require consistency between data-structures on a per-field basis.
   A field across all documents within an index must be indexed with the same index
   options and data-structures. As a consequence of this, doc values updates are
-  only applicable for fields that are indexed with doc values only
+  only applicable for fields that are indexed with doc values only. Also,
+  field attributes for a certain field are set by the first document
+  containing this field, and not modifiable after that.(Mayya Sharipova,
+  Adrien Grand, Simon Willnauer)
 
 
 Improvements

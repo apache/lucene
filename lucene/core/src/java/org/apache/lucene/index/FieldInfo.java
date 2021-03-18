@@ -38,7 +38,7 @@ public final class FieldInfo {
 
   private boolean omitNorms; // omit norms associated with indexed fields
 
-  private IndexOptions indexOptions = IndexOptions.NONE;
+  private final IndexOptions indexOptions;
   private boolean storePayloads; // whether this field stores payloads together with term positions
 
   private final Map<String, String> attributes;
@@ -54,8 +54,9 @@ public final class FieldInfo {
   private int pointIndexDimensionCount;
   private int pointNumBytes;
 
-  private int vectorDimension; // if it is a positive value, it means this field indexes vectors
-  private VectorValues.SearchStrategy vectorSearchStrategy = VectorValues.SearchStrategy.NONE;
+  // if it is a positive value, it means this field indexes vectors
+  private final int vectorDimension;
+  private final VectorValues.SearchStrategy vectorSearchStrategy;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -109,76 +110,47 @@ public final class FieldInfo {
     this.checkConsistency();
   }
 
-  /** Performs internal consistency checks. Always returns true (or throws IllegalStateException) */
-  public boolean checkConsistency() {
-    return checkConsistency(
-        name,
-        storeTermVector,
-        omitNorms,
-        storePayloads,
-        indexOptions,
-        docValuesType,
-        dvGen,
-        pointDimensionCount,
-        pointIndexDimensionCount,
-        pointNumBytes,
-        vectorDimension,
-        vectorSearchStrategy);
-  }
-
   /**
-   * Check correctness of FieldInfo options
+   * Check correctness of the FieldInfo options
    *
-   * @throws IllegalStateException if some options are incorrect
-   * @return {@code true} if all options are correct
+   * @throws IllegalArgumentException if some options are incorrect
    */
-  public static boolean checkConsistency(
-      String name,
-      boolean storeTermVector,
-      boolean omitNorms,
-      boolean storePayloads,
-      IndexOptions indexOptions,
-      DocValuesType docValuesType,
-      long dvGen,
-      int pointDimensionCount,
-      int pointIndexDimensionCount,
-      int pointNumBytes,
-      int vectorDimension,
-      VectorValues.SearchStrategy vectorSearchStrategy) {
+  public void checkConsistency() {
     if (indexOptions == null) {
-      throw new IllegalStateException("IndexOptions must not be null (field: '" + name + "')");
+      throw new IllegalArgumentException("IndexOptions must not be null (field: '" + name + "')");
     }
     if (indexOptions != IndexOptions.NONE) {
       // Cannot store payloads unless positions are indexed:
       if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) < 0 && storePayloads) {
-        throw new IllegalStateException(
+        throw new IllegalArgumentException(
             "indexed field '" + name + "' cannot have payloads without positions");
       }
     } else {
       if (storeTermVector) {
-        throw new IllegalStateException(
+        throw new IllegalArgumentException(
             "non-indexed field '" + name + "' cannot store term vectors");
       }
       if (storePayloads) {
-        throw new IllegalStateException("non-indexed field '" + name + "' cannot store payloads");
+        throw new IllegalArgumentException(
+            "non-indexed field '" + name + "' cannot store payloads");
       }
       if (omitNorms) {
-        throw new IllegalStateException("non-indexed field '" + name + "' cannot omit norms");
+        throw new IllegalArgumentException("non-indexed field '" + name + "' cannot omit norms");
       }
     }
 
     if (docValuesType == null) {
-      throw new IllegalStateException("DocValuesType must not be null (field: '" + name + "')");
+      throw new IllegalArgumentException("DocValuesType must not be null (field: '" + name + "')");
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "field '"
               + name
               + "' cannot have a docvalues update generation without having docvalues");
     }
 
     if (pointDimensionCount < 0) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "pointDimensionCount must be >= 0; got "
               + pointDimensionCount
               + " (field: '"
@@ -186,7 +158,7 @@ public final class FieldInfo {
               + "')");
     }
     if (pointIndexDimensionCount < 0) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "pointIndexDimensionCount must be >= 0; got "
               + pointIndexDimensionCount
               + " (field: '"
@@ -194,12 +166,12 @@ public final class FieldInfo {
               + "')");
     }
     if (pointNumBytes < 0) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "pointNumBytes must be >= 0; got " + pointNumBytes + " (field: '" + name + "')");
     }
 
     if (pointDimensionCount != 0 && pointNumBytes == 0) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "pointNumBytes must be > 0 when pointDimensionCount="
               + pointDimensionCount
               + " (field: '"
@@ -207,14 +179,14 @@ public final class FieldInfo {
               + "')");
     }
     if (pointIndexDimensionCount != 0 && pointDimensionCount == 0) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "pointIndexDimensionCount must be 0 when pointDimensionCount=0"
               + " (field: '"
               + name
               + "')");
     }
     if (pointNumBytes != 0 && pointDimensionCount == 0) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "pointDimensionCount must be > 0 when pointNumBytes="
               + pointNumBytes
               + " (field: '"
@@ -223,22 +195,21 @@ public final class FieldInfo {
     }
 
     if (vectorSearchStrategy == null) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "Vector search strategy must not be null (field: '" + name + "')");
     }
     if (vectorDimension < 0) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
     if (vectorDimension == 0 && vectorSearchStrategy != VectorValues.SearchStrategy.NONE) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "vector search strategy must be NONE when dimension = 0; got "
               + vectorSearchStrategy
               + " (field: '"
               + name
               + "')");
     }
-    return true;
   }
 
   /**
@@ -502,55 +473,6 @@ public final class FieldInfo {
     return pointNumBytes;
   }
 
-  /**
-   * Record that this field is indexed with vectors, with the specified num of dimensions and
-   * distance function
-   */
-  public void setVectorDimensionAndSearchStrategy(
-      int dimension, VectorValues.SearchStrategy searchStrategy) {
-    if (dimension < 0) {
-      throw new IllegalArgumentException("vector dimension must be >= 0; got " + dimension);
-    }
-    if (dimension > VectorValues.MAX_DIMENSIONS) {
-      throw new IllegalArgumentException(
-          "vector dimension must be <= VectorValues.MAX_DIMENSIONS (="
-              + VectorValues.MAX_DIMENSIONS
-              + "); got "
-              + dimension);
-    }
-    if (dimension == 0 && searchStrategy != VectorValues.SearchStrategy.NONE) {
-      throw new IllegalArgumentException(
-          "vector search strategy must be NONE when the vector dimension = 0; got "
-              + searchStrategy);
-    }
-    if (vectorDimension != 0 && vectorDimension != dimension) {
-      throw new IllegalArgumentException(
-          "cannot change vector dimension from "
-              + vectorDimension
-              + " to "
-              + dimension
-              + " for field=\""
-              + name
-              + "\"");
-    }
-    if (vectorSearchStrategy != VectorValues.SearchStrategy.NONE
-        && vectorSearchStrategy != searchStrategy) {
-      throw new IllegalArgumentException(
-          "cannot change vector search strategy from "
-              + vectorSearchStrategy
-              + " to "
-              + searchStrategy
-              + " for field=\""
-              + name
-              + "\"");
-    }
-
-    this.vectorDimension = dimension;
-    this.vectorSearchStrategy = searchStrategy;
-
-    assert checkConsistency();
-  }
-
   /** Returns the number of dimensions of the vector value */
   public int getVectorDimension() {
     return vectorDimension;
@@ -587,28 +509,22 @@ public final class FieldInfo {
     return indexOptions;
   }
 
-  /** Record the {@link IndexOptions} to use with this field. */
-  public void setIndexOptions(IndexOptions newIndexOptions) {
-    if (indexOptions != newIndexOptions) {
-      if (indexOptions == IndexOptions.NONE) {
-        indexOptions = newIndexOptions;
-      } else if (newIndexOptions != IndexOptions.NONE) {
-        throw new IllegalArgumentException(
-            "cannot change field \""
-                + name
-                + "\" from index options="
-                + indexOptions
-                + " to inconsistent index options="
-                + newIndexOptions);
-      }
-    }
+  /**
+   * Returns name of this field
+   *
+   * @return name
+   */
+  public String getName() {
+    return name;
+  }
 
-    if (indexOptions == IndexOptions.NONE
-        || indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) < 0) {
-      // cannot store payloads if we don't store positions:
-      storePayloads = false;
-    }
-    this.checkConsistency();
+  /**
+   * Returns the field number
+   *
+   * @return field number
+   */
+  public int getFieldNumber() {
+    return number;
   }
 
   /**

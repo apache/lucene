@@ -176,7 +176,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
               .orElse(null);
       final Builder builder = new Builder(new FieldNumbers(softDeletesField));
       for (final LeafReaderContext ctx : leaves) {
-        builder.add(ctx.reader().getFieldInfos());
+        for (FieldInfo fieldInfo : ctx.reader().getFieldInfos()) {
+          builder.add(fieldInfo);
+        }
       }
       return builder.finish();
     }
@@ -346,23 +348,16 @@ public class FieldInfos implements Iterable<FieldInfo> {
      * tries to add it with the given preferred field number assigned if possible otherwise the
      * first unassigned field number is used as the field number.
      */
-    synchronized int addOrGet(
-        String fieldName,
-        int preferredFieldNumber,
-        IndexOptions indexOptions,
-        boolean storeTermVector,
-        boolean omitNorms,
-        DocValuesType dvType,
-        int dimensionCount,
-        int indexDimensionCount,
-        int dimensionNumBytes,
-        int vectorDimension,
-        VectorValues.SearchStrategy searchStrategy,
-        boolean isSoftDeletesField) {
+    synchronized int addOrGet(FieldInfo fi) {
+      String fieldName = fi.getName();
+      verifySoftDeletedFieldName(fieldName, fi.isSoftDeletesField());
       Integer fieldNumber = nameToNumber.get(fieldName);
-      if (fieldNumber == null) { // first time we see this field in this index
-        final Integer preferredBoxed = Integer.valueOf(preferredFieldNumber);
-        if (preferredFieldNumber != -1 && !numberToName.containsKey(preferredBoxed)) {
+
+      if (fieldNumber != null) {
+        verifySameSchema(fi);
+      } else { // first time we see this field in this index
+        final Integer preferredBoxed = Integer.valueOf(fi.number);
+        if (fi.number != -1 && !numberToName.containsKey(preferredBoxed)) {
           // cool - we can use this number globally
           fieldNumber = preferredBoxed;
         } else {
@@ -373,44 +368,28 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fieldNumber = lowestUnassignedFieldNumber;
         }
         assert fieldNumber >= 0;
-        FieldInfo.checkConsistency(
-            fieldName,
-            storeTermVector,
-            omitNorms,
-            false,
-            indexOptions,
-            dvType,
-            -1,
-            dimensionCount,
-            indexDimensionCount,
-            dimensionNumBytes,
-            vectorDimension,
-            searchStrategy);
         numberToName.put(fieldNumber, fieldName);
         nameToNumber.put(fieldName, fieldNumber);
-        this.indexOptions.put(fieldName, indexOptions);
-        if (indexOptions != IndexOptions.NONE) {
-          this.storeTermVectors.put(fieldName, storeTermVector);
-          this.omitNorms.put(fieldName, omitNorms);
+        this.indexOptions.put(fieldName, fi.getIndexOptions());
+        if (fi.getIndexOptions() != IndexOptions.NONE) {
+          this.storeTermVectors.put(fieldName, fi.hasVectors());
+          this.omitNorms.put(fieldName, fi.omitsNorms());
         }
-        docValuesType.put(fieldName, dvType);
+        docValuesType.put(fieldName, fi.getDocValuesType());
         dimensions.put(
-            fieldName, new FieldDimensions(dimensionCount, indexDimensionCount, dimensionNumBytes));
-        vectorProps.put(fieldName, new FieldVectorProperties(vectorDimension, searchStrategy));
-      } else {
-        verifySameSchema(
             fieldName,
-            indexOptions,
-            storeTermVector,
-            omitNorms,
-            dvType,
-            dimensionCount,
-            indexDimensionCount,
-            dimensionNumBytes,
-            vectorDimension,
-            searchStrategy);
+            new FieldDimensions(
+                fi.getPointDimensionCount(),
+                fi.getPointIndexDimensionCount(),
+                fi.getPointNumBytes()));
+        vectorProps.put(
+            fieldName,
+            new FieldVectorProperties(fi.getVectorDimension(), fi.getVectorSearchStrategy()));
       }
+      return fieldNumber.intValue();
+    }
 
+    private void verifySoftDeletedFieldName(String fieldName, boolean isSoftDeletesField) {
       if (isSoftDeletesField) {
         if (softDeletesFieldName == null) {
           throw new IllegalArgumentException(
@@ -433,32 +412,21 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 + fieldName
                 + "] as non-soft-deletes already");
       }
-      return fieldNumber.intValue();
     }
 
-    private void verifySameSchema(
-        String fieldName,
-        IndexOptions indexOptions,
-        boolean storeTermVector,
-        boolean omitNorms,
-        DocValuesType dvType,
-        int dimensionCount,
-        int indexDimensionCount,
-        int dimensionNumBytes,
-        int vectorDimension,
-        VectorValues.SearchStrategy searchStrategy) {
-
+    private void verifySameSchema(FieldInfo fi) {
+      String fieldName = fi.getName();
       IndexOptions currentOpts = this.indexOptions.get(fieldName);
-      verifySameIndexOptions(fieldName, currentOpts, indexOptions);
+      verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions());
       if (currentOpts != IndexOptions.NONE) {
         boolean curStoreTermVector = this.storeTermVectors.get(fieldName);
-        verifySameStoreTermVectors(fieldName, curStoreTermVector, storeTermVector);
+        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasVectors());
         boolean curOmitNorms = this.omitNorms.get(fieldName);
-        verifySameOmitNorms(fieldName, curOmitNorms, omitNorms);
+        verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms());
       }
 
       DocValuesType currentDVType = docValuesType.get(fieldName);
-      verifySameDocValuesType(fieldName, currentDVType, dvType);
+      verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType());
 
       FieldDimensions dims = dimensions.get(fieldName);
       verifySamePointsOptions(
@@ -466,18 +434,24 @@ public class FieldInfos implements Iterable<FieldInfo> {
           dims.dimensionCount,
           dims.indexDimensionCount,
           dims.dimensionNumBytes,
-          dimensionCount,
-          indexDimensionCount,
-          dimensionNumBytes);
+          fi.getPointDimensionCount(),
+          fi.getPointIndexDimensionCount(),
+          fi.getPointNumBytes());
 
       FieldVectorProperties props = vectorProps.get(fieldName);
       verifySameVectorOptions(
-          fieldName, props.numDimensions, props.searchStrategy, vectorDimension, searchStrategy);
+          fieldName,
+          props.numDimensions,
+          props.searchStrategy,
+          fi.getVectorDimension(),
+          fi.getVectorSearchStrategy());
     }
 
     /**
      * This function is called from {@code IndexWriter} to verify if doc values of the field can be
-     * updated
+     * updated. If the field with this name already exists, we verify that it is doc values only
+     * field. If the field doesn't exists and the parameter fieldMustExist is false, we create a new
+     * field in the global field numbers.
      *
      * @param fieldName - name of the field
      * @param dvType - expected doc values type
@@ -485,7 +459,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
      * @throws IllegalArgumentException if the field must exist, but it doesn't, or if the field
      *     exists, but it is not doc values only field with the provided doc values type.
      */
-    synchronized void verifyDvOnlyField(
+    synchronized void verifyOrCreateDvOnlyField(
         String fieldName, DocValuesType dvType, boolean fieldMustExist) {
       if (nameToNumber.containsKey(fieldName) == false) {
         if (fieldMustExist) {
@@ -497,19 +471,24 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + "] doesn't exist.");
         } else {
           // create dv only field
-          addOrGet(
-              fieldName,
-              -1,
-              IndexOptions.NONE,
-              false,
-              false,
-              dvType,
-              0,
-              0,
-              0,
-              0,
-              VectorValues.SearchStrategy.NONE,
-              (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
+          FieldInfo fi =
+              new FieldInfo(
+                  fieldName,
+                  -1,
+                  false,
+                  false,
+                  false,
+                  IndexOptions.NONE,
+                  dvType,
+                  -1,
+                  new HashMap<>(),
+                  0,
+                  0,
+                  0,
+                  0,
+                  VectorValues.SearchStrategy.NONE,
+                  (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
+          addOrGet(fi);
         }
       } else {
         // verify that field is doc values only field with the give doc values type
@@ -524,7 +503,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldDvType
                   + "].");
         }
-
         FieldDimensions fdimensions = dimensions.get(fieldName);
         if (fdimensions != null && fdimensions.dimensionCount != 0) {
           throw new IllegalArgumentException(
@@ -534,7 +512,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldName
                   + "] must be doc values only field, but is also indexed with points.");
         }
-
         IndexOptions ioptions = indexOptions.get(fieldName);
         if (ioptions != null && ioptions != IndexOptions.NONE) {
           throw new IllegalArgumentException(
@@ -544,7 +521,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldName
                   + "] must be doc values only field, but is also indexed with postings.");
         }
-
         FieldVectorProperties fvp = vectorProps.get(fieldName);
         if (fvp != null && fvp.numDimensions != 0) {
           throw new IllegalArgumentException(
@@ -620,64 +596,23 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.globalFieldNumbers = globalFieldNumbers;
     }
 
-    /**
-     * Adds the given FieldInfos to this Builder, if these fields don't exist in this Builder. Also
-     * adds new fields with theirs schema options to the global FieldNumbers if these fields don't
-     * exist globally in the index.
-     *
-     * <p>If any field already exists: 1) the provided FieldInfo's schema is checked against the
-     * existing field and 2) the provided FieldInfo's attributes are added to the existing
-     * FieldInfo's attributes.
-     *
-     * @param other – FieldInfos to add
-     * @throws IllegalArgumentException if there already exists field with this name in Builder but
-     *     with a different schema
-     * @throws IllegalArgumentException if there already exists field with this name globally but
-     *     with a different schema.
-     * @throws IllegalStateException if the Builder is already finished building and doesn't accept
-     *     new fields.
-     */
-    public void add(FieldInfos other) {
-      for (FieldInfo fieldInfo : other) {
-        add(fieldInfo);
-      }
-    }
-
-    /** Create a new field, or return existing one. */
-    public FieldInfo getOrAdd(String name) {
-      FieldInfo fi = fieldInfo(name);
-      if (fi != null) {
-        return fi;
-      } else {
-        return add(
-            name,
-            -1,
-            false,
-            false,
-            false,
-            IndexOptions.NONE,
-            DocValuesType.NONE,
-            -1,
-            new HashMap<>(),
-            0,
-            0,
-            0,
-            0,
-            VectorValues.SearchStrategy.NONE,
-            name.equals(globalFieldNumbers.softDeletesFieldName));
-      }
+    public String getSoftDeletesFieldName() {
+      return globalFieldNumbers.softDeletesFieldName;
     }
 
     /**
-     * Adds the given FieldInfo to this Builder if this field doesn't exist in this Builder. Also
+     * Adds the provided FieldInfo to this Builder if this field doesn't exist in this Builder. Also
      * adds a new field with its schema options to the global FieldNumbers if the field doesn't
-     * exist globally in the index.
+     * exist globally in the index. The field number is reused if possible for consistent field
+     * numbers across segments.
      *
-     * <p>If the field already exists: 1) the provided FieldInfo's schema is checked against the
-     * existing field and 2) the provided FieldInfo's attributes are added to the existing
-     * FieldInfo's attributes.
+     * <p>If the field already exists, the provided FieldInfo's schema is checked against the
+     * existing field.
      *
      * @param fi – FieldInfo to add
+     * @return The existing FieldInfo if the field with this name already exists in the builder, or
+     *     a new constructed FieldInfo with the same schema as provided and a consistent global
+     *     field number.
      * @throws IllegalArgumentException if there already exists field with this name in Builder but
      *     with a different schema
      * @throws IllegalArgumentException if there already exists field with this name globally but
@@ -685,122 +620,39 @@ public class FieldInfos implements Iterable<FieldInfo> {
      * @throws IllegalStateException if the Builder is already finished building and doesn't accept
      *     new fields.
      */
-    public void add(FieldInfo fi) {
-      add(fi, -1);
-    }
-
-    /**
-     * Adds the given FieldInfo with the given doc values generation to this Builder if this field
-     * doesn't exist in this Builder. Also adds a new field with its schema options to the global
-     * FieldNumbers if the field doesn't exist globally in the index.
-     *
-     * <p>If the field already exists: 1) the provided FieldInfo's schema is checked against the
-     * existing field and 2) the provided FieldInfo's attributes are added to the existing
-     * FieldInfo's attributes.
-     *
-     * @param fi – FieldInfo to add
-     * @param dvGen – doc values generation
-     * @throws IllegalArgumentException if there already exists field with this name in Builder but
-     *     with a different schema
-     * @throws IllegalArgumentException if there already exists field with this name globally but
-     *     with a different schema.
-     * @throws IllegalStateException if the Builder is already finished building and doesn't accept
-     *     new fields.
-     */
-    public void add(FieldInfo fi, long dvGen) {
-      // IMPORTANT - reuse the field number if possible for consistent field numbers across segments
-      if (fi.getDocValuesType() == null) {
-        throw new NullPointerException("DocValuesType must not be null");
-      }
-      final FieldInfo curFi = fieldInfo(fi.name);
-      if (curFi == null) {
-        // original attributes is UnmodifiableMap
-        Map<String, String> attributes =
-            fi.attributes() == null ? null : new HashMap<>(fi.attributes());
-        add(
-            fi.name,
-            fi.number,
-            fi.hasVectors(),
-            fi.omitsNorms(),
-            fi.hasPayloads(),
-            fi.getIndexOptions(),
-            fi.getDocValuesType(),
-            dvGen,
-            attributes,
-            fi.getPointDimensionCount(),
-            fi.getPointIndexDimensionCount(),
-            fi.getPointNumBytes(),
-            fi.getVectorDimension(),
-            fi.getVectorSearchStrategy(),
-            fi.isSoftDeletesField());
-      } else {
+    public FieldInfo add(FieldInfo fi) {
+      final FieldInfo curFi = fieldInfo(fi.getName());
+      if (curFi != null) {
         curFi.verifySameSchema(fi);
-        if (fi.attributes() != null) {
-          fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
-        }
+        return curFi;
       }
-    }
 
-    /**
-     * Adds a new FieldInfo with the provided schema options to this Builder if this field doesn't
-     * exist in this Builder. Also adds a new field with its schema options to the global
-     * FieldNumbers if the field doesn't exist globally in the index.
-     *
-     * <p>If the field already exists: 1) the provided FieldInfo's schema is checked against the
-     * existing field and 2) the provided FieldInfo's attributes are added to the existing
-     * FieldInfo's attributes.
-     *
-     * @param name – name of the field
-     * @param storeTermVector – if term vectors are stored
-     * @param omitNorms – if norms are not stored
-     * @param storePayloads – if payloads are stored
-     * @param indexOptions – index options
-     * @param docValuesType – type of doc values
-     * @param dvGen - doc values generation
-     * @param attributes – attributes
-     * @param dataDimensionCount – number of point data dimensions
-     * @param indexDimensionCount – number of point index dimensions
-     * @param dimensionNumBytes – number of bytes in a dimension
-     * @param vectorDimension – number of vector dimensions
-     * @param vectorSearchStrategy – vector strategy
-     * @return a created FieldInfo based on the provided schema options
-     * @throws IllegalArgumentException if there already exists field with this name in Builder but
-     *     with a different schema
-     * @throws IllegalArgumentException if there already exists field with this name globally but
-     *     with a different schema.
-     * @throws IllegalStateException if the Builder is already finished building and doesn't accept
-     *     new fields.
-     */
-    public FieldInfo add(
-        String name,
-        boolean storeTermVector,
-        boolean omitNorms,
-        boolean storePayloads,
-        IndexOptions indexOptions,
-        DocValuesType docValuesType,
-        long dvGen,
-        Map<String, String> attributes,
-        int dataDimensionCount,
-        int indexDimensionCount,
-        int dimensionNumBytes,
-        int vectorDimension,
-        VectorValues.SearchStrategy vectorSearchStrategy) {
-      return add(
-          name,
-          -1,
-          storeTermVector,
-          omitNorms,
-          storePayloads,
-          indexOptions,
-          docValuesType,
-          dvGen,
-          attributes,
-          dataDimensionCount,
-          indexDimensionCount,
-          dimensionNumBytes,
-          vectorDimension,
-          vectorSearchStrategy,
-          name.equals(globalFieldNumbers.softDeletesFieldName));
+      // This field wasn't yet added to this in-RAM segment's FieldInfo,
+      // so now we get a global number for this field.
+      // If the field was seen before then we'll get the same name and number,
+      // else we'll allocate a new one
+      assert assertNotFinished();
+      final int fieldNumber = globalFieldNumbers.addOrGet(fi);
+      FieldInfo fiNew =
+          new FieldInfo(
+              fi.getName(),
+              fieldNumber,
+              fi.hasVectors(),
+              fi.omitsNorms(),
+              fi.hasPayloads(),
+              fi.getIndexOptions(),
+              fi.getDocValuesType(),
+              fi.getDocValuesGen(),
+              // original attributes is UnmodifiableMap
+              new HashMap<>(fi.attributes()),
+              fi.getPointDimensionCount(),
+              fi.getPointIndexDimensionCount(),
+              fi.getPointNumBytes(),
+              fi.getVectorDimension(),
+              fi.getVectorSearchStrategy(),
+              fi.isSoftDeletesField());
+      byName.put(fiNew.getName(), fiNew);
+      return fiNew;
     }
 
     public FieldInfo fieldInfo(String fieldName) {
@@ -814,64 +666,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
             "FieldInfos.Builder was already finished; cannot add new fields");
       }
       return true;
-    }
-
-    private FieldInfo add(
-        String name,
-        int preferredFieldNumber,
-        boolean storeTermVector,
-        boolean omitNorms,
-        boolean storePayloads,
-        IndexOptions indexOptions,
-        DocValuesType docValues,
-        long dvGen,
-        Map<String, String> attributes,
-        int dataDimensionCount,
-        int indexDimensionCount,
-        int dimensionNumBytes,
-        int vectorDimension,
-        VectorValues.SearchStrategy vectorSearchStrategy,
-        boolean isSoftDeletesField) {
-      // This field wasn't yet added to this in-RAM
-      // segment's FieldInfo, so now we get a global
-      // number for this field.  If the field was seen
-      // before then we'll get the same name and number,
-      // else we'll allocate a new one:
-      assert assertNotFinished();
-      final int fieldNumber =
-          globalFieldNumbers.addOrGet(
-              name,
-              preferredFieldNumber,
-              indexOptions,
-              storeTermVector,
-              omitNorms,
-              docValues,
-              dataDimensionCount,
-              indexDimensionCount,
-              dimensionNumBytes,
-              vectorDimension,
-              vectorSearchStrategy,
-              isSoftDeletesField);
-      FieldInfo fi =
-          new FieldInfo(
-              name,
-              fieldNumber,
-              storeTermVector,
-              omitNorms,
-              storePayloads,
-              indexOptions,
-              docValues,
-              dvGen,
-              attributes,
-              dataDimensionCount,
-              indexDimensionCount,
-              dimensionNumBytes,
-              vectorDimension,
-              vectorSearchStrategy,
-              isSoftDeletesField);
-      assert byName.containsKey(fi.name) == false;
-      byName.put(fi.name, fi);
-      return fi;
     }
 
     FieldInfos finish() {

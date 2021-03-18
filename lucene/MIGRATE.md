@@ -360,11 +360,14 @@ used in multi level applications
 
 ### Require consistency between data-structures on a per-field basis
 
-A field must be indexed with the same index options and data-structures across 
-all documents within an index. Thus, for example, it is not allowed to have 
-one document in a index where a certain field is indexed with doc values 
-and points, and another document where the same field is indexed only with 
-points.
+The per field data-structures are implicitly defined by the first document 
+indexed that contains a certain field. Once defined, the per field 
+data-structures are not changeable for the whole index. For example, if you 
+first index a document where a certain field is indexed with doc values and 
+points, all subsequent documents containing this field must also have this
+field indexed with doc values and points.
+Field attributes for a certain field are also set by the first document 
+containing this field, and not modifiable after that.
 
 ### Doc values updates are allowed only for doc values only fields
 

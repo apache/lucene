@@ -607,7 +607,7 @@ final class ReadersAndUpdates {
           if (byName.containsKey(update.field)) {
             // the field already exists in this segment
             FieldInfo fi = byName.get(update.field);
-            fi.setDocValuesType(update.type);
+            assert fi.getDocValuesType() == update.type;
           } else {
             // the field is not present in this segment so we clone the global field
             // (which is guaranteed to exist) and remaps its field number locally.

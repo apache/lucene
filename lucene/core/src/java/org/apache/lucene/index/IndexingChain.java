@@ -613,11 +613,13 @@ final class IndexingChain implements Accountable {
         docFields[docFieldIdx++] = pf;
         updateDocFieldSchema(field.name(), pf.schema, fieldType);
       }
-      // for each field verify that its schema within the current doc matches its schema in the
-      // index
+      // For each field, if it the first time we see this field in this segment,
+      // initialize its FieldInfo.
+      // If we have already seen this field, verify that its schema
+      // within the current doc matches its schema in the index.
       for (int i = 0; i < fieldCount; i++) {
         PerField pf = fields[i];
-        if (pf.fieldInfo == null) { // the first time we see this field in this segment
+        if (pf.fieldInfo == null) {
           initializeFieldInfo(pf);
         } else {
           pf.schema.assertSameSchema(pf.fieldInfo);
@@ -667,8 +669,8 @@ final class IndexingChain implements Accountable {
     // During the creation of FieldInfo there is also verification of the correctness of all its
     // parameters.
 
-    // If the fieldInfo doesn't exist in globalFieldNumbers for the whole index, it will be added
-    // there.
+    // If the fieldInfo doesn't exist in globalFieldNumbers for the whole index,
+    // it will be added there.
     // If the field already exists in globalFieldNumbers (i.e. field present in other segments),
     // we check consistency of its schema with schema for the whole index.
     FieldSchema s = pf.schema;
@@ -676,22 +678,25 @@ final class IndexingChain implements Accountable {
       final Sort indexSort = indexWriterConfig.getIndexSort();
       validateIndexSortDVType(indexSort, pf.fieldName, s.docValuesType);
     }
-
     FieldInfo fi =
         fieldInfos.add(
-            pf.fieldName,
-            s.storeTermVector,
-            s.omitNorms,
-            false,
-            s.indexOptions,
-            s.docValuesType,
-            s.dvGen,
-            s.attributes,
-            s.pointDimensionCount,
-            s.pointIndexDimensionCount,
-            s.pointNumBytes,
-            s.vectorDimension,
-            s.vectorSearchStrategy);
+            new FieldInfo(
+                pf.fieldName,
+                -1,
+                s.storeTermVector,
+                s.omitNorms,
+                // storePayloads is set up during indexing, if payloads were seen
+                false,
+                s.indexOptions,
+                s.docValuesType,
+                s.dvGen,
+                s.attributes,
+                s.pointDimensionCount,
+                s.pointIndexDimensionCount,
+                s.pointNumBytes,
+                s.vectorDimension,
+                s.vectorSearchStrategy,
+                pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
     pf.setFieldInfo(fi);
     if (fi.getIndexOptions() != IndexOptions.NONE) {
       pf.setInvertState();
@@ -787,10 +792,6 @@ final class IndexingChain implements Accountable {
     if (pf == null) {
       // first time we encounter field with this name in this segment
       FieldSchema schema = new FieldSchema(fieldName);
-      Map<String, String> attributes = fieldType.getAttributes();
-      if (attributes != null) {
-        attributes.forEach((k, v) -> schema.putAttribute(k, v));
-      }
       pf =
           new PerField(
               fieldName,
@@ -838,6 +839,9 @@ final class IndexingChain implements Accountable {
     }
     if (fieldType.vectorDimension() != 0) {
       schema.setVectors(fieldType.vectorSearchStrategy(), fieldType.vectorDimension());
+    }
+    if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
+      schema.updateAttributes(fieldType.getAttributes());
     }
   }
 
@@ -1344,14 +1348,14 @@ final class IndexingChain implements Accountable {
       this.name = name;
     }
 
-    String putAttribute(String key, String value) {
-      return attributes.put(key, value);
-    }
-
     private void assertSame(boolean same) {
       if (same == false) {
         throw new IllegalArgumentException(errMsg + "[" + name + "] of doc [" + docID + "].");
       }
+    }
+
+    void updateAttributes(Map<String, String> attrs) {
+      attrs.forEach((k, v) -> this.attributes.put(k, v));
     }
 
     void setIndexOptions(

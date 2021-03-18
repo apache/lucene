@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
@@ -196,50 +197,62 @@ public class TestFieldInfos extends LuceneTestCase {
     FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes");
     for (int i = 0; i < 10; i++) {
       fieldNumbers.addOrGet(
-          "field" + i,
-          -1,
-          IndexOptions.NONE,
-          false,
-          false,
-          DocValuesType.NONE,
-          0,
-          0,
-          0,
-          0,
-          VectorValues.SearchStrategy.NONE,
-          false);
+          new FieldInfo(
+              "field" + i,
+              -1,
+              false,
+              false,
+              false,
+              IndexOptions.NONE,
+              DocValuesType.NONE,
+              -1,
+              new HashMap<>(),
+              0,
+              0,
+              0,
+              0,
+              VectorValues.SearchStrategy.NONE,
+              false));
     }
     int idx =
         fieldNumbers.addOrGet(
-            "EleventhField",
-            -1,
-            IndexOptions.NONE,
-            false,
-            false,
-            DocValuesType.NONE,
-            0,
-            0,
-            0,
-            0,
-            VectorValues.SearchStrategy.NONE,
-            false);
+            new FieldInfo(
+                "EleventhField",
+                -1,
+                false,
+                false,
+                false,
+                IndexOptions.NONE,
+                DocValuesType.NONE,
+                -1,
+                new HashMap<>(),
+                0,
+                0,
+                0,
+                0,
+                VectorValues.SearchStrategy.NONE,
+                false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
 
     fieldNumbers.clear();
     idx =
         fieldNumbers.addOrGet(
-            "PostClearField",
-            -1,
-            IndexOptions.NONE,
-            false,
-            false,
-            DocValuesType.NONE,
-            0,
-            0,
-            0,
-            0,
-            VectorValues.SearchStrategy.NONE,
-            false);
+            new FieldInfo(
+                "PostClearField",
+                -1,
+                false,
+                false,
+                false,
+                IndexOptions.NONE,
+                DocValuesType.NONE,
+                -1,
+                new HashMap<>(),
+                0,
+                0,
+                0,
+                0,
+                VectorValues.SearchStrategy.NONE,
+                false));
     assertEquals("Field numbers should reset after clear()", 0, idx);
   }
 }

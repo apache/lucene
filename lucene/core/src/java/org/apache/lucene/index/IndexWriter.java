@@ -1258,19 +1258,7 @@ public class IndexWriter
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
       for (FieldInfo fi : fis) {
-        map.addOrGet(
-            fi.name,
-            fi.number,
-            fi.getIndexOptions(),
-            fi.hasVectors(),
-            fi.omitsNorms(),
-            fi.getDocValuesType(),
-            fi.getPointDimensionCount(),
-            fi.getPointIndexDimensionCount(),
-            fi.getPointNumBytes(),
-            fi.getVectorDimension(),
-            fi.getVectorSearchStrategy(),
-            fi.isSoftDeletesField());
+        map.addOrGet(fi);
       }
     }
 
@@ -1865,7 +1853,7 @@ public class IndexWriter
    */
   public long updateNumericDocValue(Term term, String field, long value) throws IOException {
     ensureOpen();
-    globalFieldNumberMap.verifyDvOnlyField(field, DocValuesType.NUMERIC, true);
+    globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.NUMERIC, true);
     if (config.getIndexSortFields().contains(field)) {
       throw new IllegalArgumentException(
           "cannot update docvalues field involved in the index sort, field="
@@ -1902,7 +1890,7 @@ public class IndexWriter
     if (value == null) {
       throw new IllegalArgumentException("cannot update a field to a null value: " + field);
     }
-    globalFieldNumberMap.verifyDvOnlyField(field, DocValuesType.BINARY, true);
+    globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.BINARY, true);
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value)));
@@ -1950,7 +1938,7 @@ public class IndexWriter
       // if this field doesn't exists we try to add it.
       // if it exists and the DV type doesn't match or it is not DV only field,
       // we will get an error.
-      globalFieldNumberMap.verifyDvOnlyField(f.name(), dvType, false);
+      globalFieldNumberMap.verifyOrCreateDvOnlyField(f.name(), dvType, false);
       if (config.getIndexSortFields().contains(f.name())) {
         throw new IllegalArgumentException(
             "cannot update docvalues field involved in the index sort, field="
@@ -3006,21 +2994,9 @@ public class IndexWriter
 
             FieldInfos fis = readFieldInfos(info);
             for (FieldInfo fi : fis) {
-              // This will throw exceptions if any of the incoming fields have an illegal schema
-              // change:
-              globalFieldNumberMap.addOrGet(
-                  fi.name,
-                  fi.number,
-                  fi.getIndexOptions(),
-                  fi.hasVectors(),
-                  fi.omitsNorms(),
-                  fi.getDocValuesType(),
-                  fi.getPointDimensionCount(),
-                  fi.getPointIndexDimensionCount(),
-                  fi.getPointNumBytes(),
-                  fi.getVectorDimension(),
-                  fi.getVectorSearchStrategy(),
-                  fi.isSoftDeletesField());
+              // This will throw exceptions if any of the incoming fields
+              // has an illegal schema change
+              globalFieldNumberMap.addOrGet(fi);
             }
             infos.add(copySegmentAsIs(info, newSegName, context));
           }
