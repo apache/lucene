@@ -63,9 +63,7 @@ allprojects {
       testsCwd = file("${buildDir}/tmp/tests-cwd")
       testsTmpDir = file(resolvedTestOption("tests.workDir"))
 
-      if (!skipLucene) {
-        commonDir = project(":lucene").projectDir
-      }
+      commonDir = project(":lucene").projectDir
     }
 
     def verboseMode = resolvedTestOption("tests.verbose").toBoolean()

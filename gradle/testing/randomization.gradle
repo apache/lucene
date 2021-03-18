@@ -106,25 +106,6 @@ allprojects {
   }
 }
 
-// Add Solr-specific test configs settings.
-configure(allprojects.findAll {project -> project.path.startsWith(":solr") }) {
-  plugins.withType(JavaPlugin) {
-    ext {
-      testOptions += [
-          [propName: 'tests.luceneMatchVersion', value: baseVersion, description: "Base Lucene version."],
-          [propName: 'common-solr.dir',
-           value: project(":solr").projectDir,
-           description: "Solr base dir.",
-           includeInReproLine: false
-          ],
-          [propName: 'solr.directoryFactory', value: "org.apache.solr.core.MockDirectoryFactory", description: "Solr directory factory."],
-          [propName: 'tests.src.home', value: null, description: "See SOLR-14023."],
-          [propName: 'solr.tests.use.numeric.points', value: null, description: "Point implementation to use (true=numerics, false=trie)."],
-      ]
-    }
-  }
-}
-
 // Resolve test option values after all evaluation is complete.
 allprojects {
   plugins.withType(JavaPlugin) {
