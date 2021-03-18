@@ -49,9 +49,21 @@ import org.apache.lucene.util.fst.IntSequenceOutputs;
  * DataOutput#writeVInt} ()} VINT} format for compression.
  */
 class WordStorage {
+  private static final int OFFSET_BITS = 25;
+  private static final int OFFSET_MASK = (1 << OFFSET_BITS) - 1;
+  private static final int COLLISION_MASK = 0x40;
+  private static final int MAX_STORED_LENGTH = COLLISION_MASK - 1;
+
   /**
-   * A map from word's hash (modulo array's length) into the offset of the last entry in {@link
-   * #wordData} with this hash. Negated, if there's more than one entry with the same hash.
+   * A map from word's hash (modulo array's length) into an int containing:
+   *
+   * <ul>
+   *   <li>lower {@link #OFFSET_BITS}: the offset in {@link #wordData} of the last entry with this
+   *       hash
+   *   <li>the remaining highest bits: COLLISION+LENGTH info for that entry, i.e. one bit indicating
+   *       whether there are other entries with the same hash, and the length of the entry in chars,
+   *       or {@link #MAX_STORED_LENGTH} if the length exceeds that limit (next highest bits)
+   * </ul>
    */
   private final int[] hashTable;
 
@@ -63,17 +75,14 @@ class WordStorage {
    *   <li>VINT: a delta pointer to the entry for the same word without the last character.
    *       Precisely, it's the difference of this entry's start and the prefix's entry start. 0 for
    *       single-character entries
-   *   <li>Optional, for non-leaf entries only:
+   *   <li>(Optional, for hash-colliding entries only)
    *       <ul>
-   *         <li>VINT: the length of the word form data, returned from {@link #lookupWord}
-   *         <li>n * VINT: the word form data
-   *         <li>Optional, for hash-colliding entries only:
-   *             <ul>
-   *               <li>BYTE: 1 if the next collision entry has further collisions, 0 if it's the
-   *                   last of the entries with the same hash
-   *               <li>VINT: (delta) pointer to the previous entry with the same hash
-   *             </ul>
+   *         <li>BYTE: COLLISION+LENGTH info (see {@link #hashTable}) for the previous entry with
+   *             the same hash
+   *         <li>VINT: (delta) pointer to the previous entry
    *       </ul>
+   *   <li>(Optional, for non-leaf entries only) VINT+: word form data, returned from {@link
+   *       #lookupWord}, preceded by its length
    * </ul>
    */
   private final byte[] wordData;
@@ -87,13 +96,13 @@ class WordStorage {
     assert length > 0;
 
     int hash = Math.abs(CharsRef.stringHashCode(word, offset, length) % hashTable.length);
-    int pos = hashTable[hash];
-    if (pos == 0) {
+    int entryCode = hashTable[hash];
+    if (entryCode == 0) {
       return null;
     }
 
-    boolean collision = pos < 0;
-    pos = Math.abs(pos);
+    int pos = entryCode & OFFSET_MASK;
+    int mask = entryCode >>> OFFSET_BITS;
 
     char lastChar = word[offset + length - 1];
     ByteArrayDataInput in = new ByteArrayDataInput(wordData);
@@ -101,46 +110,49 @@ class WordStorage {
       in.setPosition(pos);
       char c = (char) in.readVInt();
       int prevPos = pos - in.readVInt();
-      int beforeForms = in.getPosition();
-      boolean found = c == lastChar && isSameString(word, offset, length - 1, prevPos, in);
-      if (!collision && !found) {
+
+      boolean last = !hasCollision(mask);
+      boolean mightMatch = c == lastChar && hasLength(mask, length);
+
+      if (!last) {
+        mask = in.readByte();
+        pos -= in.readVInt();
+      }
+
+      if (mightMatch) {
+        int beforeForms = in.getPosition();
+        if (isSameString(word, offset, length - 1, prevPos, in)) {
+          in.setPosition(beforeForms);
+          int formLength = in.readVInt();
+          IntsRef forms = new IntsRef(formLength);
+          readForms(forms, in, formLength);
+          return forms;
+        }
+      }
+
+      if (last) {
         return null;
       }
-
-      in.setPosition(beforeForms);
-      int formLength = in.readVInt();
-      if (found) {
-        IntsRef forms = new IntsRef(formLength);
-        readForms(forms, in, formLength);
-        return forms;
-      } else {
-        skipVInts(in, formLength);
-      }
-
-      collision = in.readByte() == 1;
-      pos -= in.readVInt();
     }
   }
 
-  private static void skipVInts(ByteArrayDataInput in, int count) {
-    for (int i = 0; i < count; ) {
-      if (in.readByte() >= 0) i++;
-    }
+  private static boolean hasCollision(int mask) {
+    return (mask & COLLISION_MASK) != 0;
   }
 
   /**
-   * @param maxLength the limit on the length of words to be processed, the callback won't be
-   *     invoked for the longer ones
-   * @param processor is invoked for each word. Note that the passed arguments (word and form) are
-   *     reused, so they can be modified in any way, but may not be saved for later by the processor
+   * Calls the processor for every dictionary entry with length between minLength and maxLength,
+   * both ends inclusive. Note that the callback arguments (word and forms) are reused, so they can
+   * be modified in any way, but may not be saved for later by the processor
    */
-  void processAllWords(int maxLength, BiConsumer<CharsRef, IntsRef> processor) {
+  void processAllWords(int minLength, int maxLength, BiConsumer<CharsRef, IntsRef> processor) {
+    assert minLength <= maxLength;
     CharsRef chars = new CharsRef(maxLength);
     IntsRef forms = new IntsRef();
     ByteArrayDataInput in = new ByteArrayDataInput(wordData);
-    for (int pos : hashTable) {
-      boolean collision = pos < 0;
-      pos = Math.abs(pos);
+    for (int entryCode : hashTable) {
+      int pos = entryCode & OFFSET_MASK;
+      int mask = entryCode >>> OFFSET_BITS;
 
       while (pos != 0) {
         int wordStart = maxLength - 1;
@@ -149,35 +161,51 @@ class WordStorage {
         chars.chars[wordStart] = (char) in.readVInt();
         int prevPos = pos - in.readVInt();
 
-        int dataLength = in.readVInt();
-        if (forms.ints.length < dataLength) {
-          forms.ints = new int[dataLength];
-        }
-        readForms(forms, in, dataLength);
+        boolean last = !hasCollision(mask);
+        boolean mightMatch = hasLengthInRange(mask, minLength, maxLength);
 
-        int afterForms = in.getPosition();
-
-        while (prevPos != 0 && wordStart > 0) {
-          in.setPosition(prevPos);
-          chars.chars[--wordStart] = (char) in.readVInt();
-          prevPos -= in.readVInt();
+        if (!last) {
+          mask = in.readByte();
+          pos -= in.readVInt();
         }
 
-        if (prevPos == 0) {
-          chars.offset = wordStart;
-          chars.length = maxLength - wordStart;
-          processor.accept(chars, forms);
+        if (mightMatch) {
+          int dataLength = in.readVInt();
+          if (forms.ints.length < dataLength) {
+            forms.ints = new int[dataLength];
+          }
+          readForms(forms, in, dataLength);
+          while (prevPos != 0 && wordStart > 0) {
+            in.setPosition(prevPos);
+            chars.chars[--wordStart] = (char) in.readVInt();
+            prevPos -= in.readVInt();
+          }
+
+          if (prevPos == 0) {
+            chars.offset = wordStart;
+            chars.length = maxLength - wordStart;
+            processor.accept(chars, forms);
+          }
         }
 
-        if (!collision) {
+        if (last) {
           break;
         }
-
-        in.setPosition(afterForms);
-        collision = in.readVInt() == 1;
-        pos -= in.readVInt();
       }
     }
+  }
+
+  private boolean hasLength(int mask, int length) {
+    int lenCode = mask & MAX_STORED_LENGTH;
+    return lenCode == MAX_STORED_LENGTH ? length >= MAX_STORED_LENGTH : lenCode == length;
+  }
+
+  private static boolean hasLengthInRange(int mask, int minLength, int maxLength) {
+    int lenCode = mask & MAX_STORED_LENGTH;
+    if (lenCode == MAX_STORED_LENGTH) {
+      return maxLength >= MAX_STORED_LENGTH;
+    }
+    return lenCode >= minLength && lenCode <= maxLength;
   }
 
   private boolean isSameString(
@@ -317,9 +345,16 @@ class WordStorage {
       }
 
       int pos = dataWriter.getPosition();
+      if (pos >= 1 << OFFSET_BITS) {
+        throw new RuntimeException(
+            "Too much word data, please report this to dev@lucene.apache.org");
+      }
       int hash = Math.abs(currentEntry.hashCode() % hashTable.length);
-      int collision = hashTable[hash];
-      hashTable[hash] = collision == 0 ? pos : -pos;
+      int prevCode = hashTable[hash];
+
+      int mask =
+          (prevCode == 0 ? 0 : COLLISION_MASK) | Math.min(currentEntry.length(), MAX_STORED_LENGTH);
+      hashTable[hash] = (mask << OFFSET_BITS) | pos;
 
       if (++chainLengths[hash] > 20) {
         throw new RuntimeException(
@@ -329,11 +364,11 @@ class WordStorage {
       // write the leaf entry for the last character
       dataWriter.writeVInt(currentEntry.charAt(currentEntry.length() - 1));
       dataWriter.writeVInt(pos - lastPos);
-      IntSequenceOutputs.getSingleton().write(currentOrds.get(), dataWriter);
-      if (collision != 0) {
-        dataWriter.writeByte(collision < 0 ? (byte) 1 : 0);
-        dataWriter.writeVInt(pos - Math.abs(collision));
+      if (prevCode != 0) {
+        dataWriter.writeByte((byte) (prevCode >>> OFFSET_BITS));
+        dataWriter.writeVInt(pos - (prevCode & OFFSET_MASK));
       }
+      IntSequenceOutputs.getSingleton().write(currentOrds.get(), dataWriter);
 
       group.clear();
       morphDataIDs.clear();

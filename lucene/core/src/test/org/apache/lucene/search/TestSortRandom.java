@@ -48,10 +48,6 @@ public class TestSortRandom extends LuceneTestCase {
     testRandomStringSort(SortField.Type.STRING);
   }
 
-  public void testRandomStringValSort() throws Exception {
-    testRandomStringSort(SortField.Type.STRING_VAL);
-  }
-
   private void testRandomStringSort(SortField.Type type) throws Exception {
     Random random = new Random(random().nextLong());
 

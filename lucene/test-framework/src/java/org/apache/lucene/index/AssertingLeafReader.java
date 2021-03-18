@@ -838,14 +838,6 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public BytesRef binaryValue() throws IOException {
-      assertThread("Sorted doc values", creationThread);
-      final BytesRef result = in.binaryValue();
-      assert result.isValid();
-      return result;
-    }
-
-    @Override
     public int lookupTerm(BytesRef key) throws IOException {
       assertThread("Sorted doc values", creationThread);
       assert key.isValid();

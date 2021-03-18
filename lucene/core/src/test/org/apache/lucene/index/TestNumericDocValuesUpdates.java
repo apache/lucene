@@ -456,7 +456,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       BytesRef term = bdv.binaryValue();
       assertEquals(new BytesRef(Integer.toString(i)), term);
       assertEquals(i, sdv.nextDoc());
-      term = sdv.binaryValue();
+      term = sdv.lookupOrd(sdv.ordValue());
       assertEquals(new BytesRef(Integer.toString(i)), term);
       assertEquals(i, ssdv.nextDoc());
 
@@ -615,7 +615,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       assertEquals(i, ndv.nextDoc());
       assertEquals(17, ndv.longValue());
       assertEquals(i, sdv.nextDoc());
-      final BytesRef term = sdv.binaryValue();
+      final BytesRef term = sdv.lookupOrd(sdv.ordValue());
       assertEquals(new BytesRef("value"), term);
     }
 

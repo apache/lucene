@@ -46,7 +46,7 @@ allprojects {
     }
 
     task renderJavadoc(type: RenderJavadocTask) {
-      description "Generates Javadoc API documentation for the main source code. This directly invokes javadoc tool."
+      description "Generates Javadoc API documentation for each module. This directly invokes javadoc tool."
       group "documentation"
 
       taskResources = resources
@@ -82,12 +82,14 @@ def javaJavadocPackages = rootProject.file("${resources}/java11/")
 def junitJavadocPackages = rootProject.file("${resources}/junit/")
 allprojects {
   project.tasks.withType(RenderJavadocTask) {
-    title = "${project.path.startsWith(':lucene') ? 'Lucene' : 'Solr'} ${project.version} ${project.name} API"
+    title = "Lucene ${project.version} ${project.name} API"
 
     offlineLinks += [
         "https://docs.oracle.com/en/java/javase/11/docs/api/": javaJavadocPackages,
         "https://junit.org/junit4/javadoc/4.12/": junitJavadocPackages
     ]
+
+    luceneDocUrl = provider({ rootProject.luceneDocUrl })
 
     // Set up custom doclet.
     dependsOn configurations.missingdoclet
@@ -96,125 +98,123 @@ allprojects {
 }
 
 // Configure project-specific tweaks and to-dos.
-if (!skipLucene) {
-  configure(project(":lucene:analysis:common")) {
-    project.tasks.withType(RenderJavadocTask) {
-      // TODO: fix missing javadocs
-      javadocMissingLevel = "class"
-    }
+configure(project(":lucene:analysis:common")) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing javadocs
+    javadocMissingLevel = "class"
   }
+}
 
-  configure([
-      project(":lucene:analysis:kuromoji"),
-      project(":lucene:analysis:nori"),
-      project(":lucene:analysis:opennlp"),
-      project(":lucene:analysis:smartcn"),
-      project(":lucene:benchmark"),
-      project(":lucene:codecs"),
-      project(":lucene:grouping"),
-      project(":lucene:highlighter"),
-      project(":lucene:luke"),
-      project(":lucene:monitor"),
-      project(":lucene:queries"),
-      project(":lucene:queryparser"),
-      project(":lucene:replicator"),
-      project(":lucene:spatial-extras"),
-  ]) {
-    project.tasks.withType(RenderJavadocTask) {
-      // TODO: fix missing javadocs
-      javadocMissingLevel = "class"
-    }
+configure([
+    project(":lucene:analysis:kuromoji"),
+    project(":lucene:analysis:nori"),
+    project(":lucene:analysis:opennlp"),
+    project(":lucene:analysis:smartcn"),
+    project(":lucene:benchmark"),
+    project(":lucene:codecs"),
+    project(":lucene:grouping"),
+    project(":lucene:highlighter"),
+    project(":lucene:luke"),
+    project(":lucene:monitor"),
+    project(":lucene:queries"),
+    project(":lucene:queryparser"),
+    project(":lucene:replicator"),
+    project(":lucene:spatial-extras"),
+]) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing javadocs
+    javadocMissingLevel = "class"
   }
+}
 
-  configure([
-      project(":lucene:analysis:icu"),
-      project(":lucene:analysis:morfologik"),
-      project(":lucene:analysis:phonetic"),
-      project(":lucene:analysis:stempel"),
-      project(":lucene:classification"),
-      project(":lucene:demo"),
-      project(":lucene:expressions"),
-      project(":lucene:facet"),
-      project(":lucene:join"),
-      project(":lucene:spatial3d"),
-      project(":lucene:suggest"),
-  ]) {
-    project.tasks.withType(RenderJavadocTask) {
-      // TODO: fix missing @param tags
-      javadocMissingLevel = "method"
-    }
+configure([
+    project(":lucene:analysis:icu"),
+    project(":lucene:analysis:morfologik"),
+    project(":lucene:analysis:phonetic"),
+    project(":lucene:analysis:stempel"),
+    project(":lucene:classification"),
+    project(":lucene:demo"),
+    project(":lucene:expressions"),
+    project(":lucene:facet"),
+    project(":lucene:join"),
+    project(":lucene:spatial3d"),
+    project(":lucene:suggest"),
+]) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing @param tags
+    javadocMissingLevel = "method"
   }
+}
 
-  configure(project(":lucene:backward-codecs")) {
-    project.tasks.withType(RenderJavadocTask) {
-      // TODO: fix missing @param tags
-      javadocMissingLevel = "method"
-    }
+configure(project(":lucene:backward-codecs")) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing @param tags
+    javadocMissingLevel = "method"
   }
+}
 
-  configure(project(":lucene:test-framework")) {
-    project.tasks.withType(RenderJavadocTask) {
-      // TODO: fix missing javadocs
-      javadocMissingLevel = "class"
-      // TODO: clean up split packages
-      javadocMissingIgnore = [
-          "org.apache.lucene.analysis",
-          "org.apache.lucene.analysis.standard",
-          "org.apache.lucene.codecs",
-          "org.apache.lucene.codecs.blockterms",
-          "org.apache.lucene.codecs.bloom",
-          "org.apache.lucene.codecs.compressing",
-          "org.apache.lucene.codecs.uniformsplit",
-          "org.apache.lucene.codecs.uniformsplit.sharedterms",
-          "org.apache.lucene.geo",
-          "org.apache.lucene.index",
-          "org.apache.lucene.search",
-          "org.apache.lucene.search.similarities",
-          "org.apache.lucene.search.spans",
-          "org.apache.lucene.store",
-          "org.apache.lucene.util",
-          "org.apache.lucene.util.automaton",
-          "org.apache.lucene.util.fst"
-      ]
-    }
+configure(project(":lucene:test-framework")) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing javadocs
+    javadocMissingLevel = "class"
+    // TODO: clean up split packages
+    javadocMissingIgnore = [
+        "org.apache.lucene.analysis",
+        "org.apache.lucene.analysis.standard",
+        "org.apache.lucene.codecs",
+        "org.apache.lucene.codecs.blockterms",
+        "org.apache.lucene.codecs.bloom",
+        "org.apache.lucene.codecs.compressing",
+        "org.apache.lucene.codecs.uniformsplit",
+        "org.apache.lucene.codecs.uniformsplit.sharedterms",
+        "org.apache.lucene.geo",
+        "org.apache.lucene.index",
+        "org.apache.lucene.search",
+        "org.apache.lucene.search.similarities",
+        "org.apache.lucene.search.spans",
+        "org.apache.lucene.store",
+        "org.apache.lucene.util",
+        "org.apache.lucene.util.automaton",
+        "org.apache.lucene.util.fst"
+    ]
   }
+}
 
-  configure(project(":lucene:sandbox")) {
-    project.tasks.withType(RenderJavadocTask) {
-      // TODO: fix missing javadocs
-      javadocMissingLevel = "class"
-    }
+configure(project(":lucene:sandbox")) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing javadocs
+    javadocMissingLevel = "class"
   }
+}
 
-  configure(project(":lucene:misc")) {
-    project.tasks.withType(RenderJavadocTask) {
-      // TODO: fix missing javadocs
-      javadocMissingLevel = "class"
-    }
+configure(project(":lucene:misc")) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing javadocs
+    javadocMissingLevel = "class"
   }
+}
 
-  configure(project(":lucene:core")) {
-    project.tasks.withType(RenderJavadocTask) {
-      // TODO: fix missing javadocs
-      javadocMissingLevel = "class"
-      // some packages are fixed already
-      javadocMissingMethod = [
-          "org.apache.lucene.util.automaton",
-          "org.apache.lucene.analysis.standard",
-          "org.apache.lucene.analysis.tokenattributes",
-          "org.apache.lucene.document",
-          "org.apache.lucene.search.similarities",
-          "org.apache.lucene.index",
-          "org.apache.lucene.codecs",
-          "org.apache.lucene.codecs.lucene50",
-          "org.apache.lucene.codecs.lucene60",
-          "org.apache.lucene.codecs.lucene80",
-          "org.apache.lucene.codecs.lucene84",
-          "org.apache.lucene.codecs.lucene86",
-          "org.apache.lucene.codecs.lucene87",
-          "org.apache.lucene.codecs.perfield"
-      ]
-    }
+configure(project(":lucene:core")) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing javadocs
+    javadocMissingLevel = "class"
+    // some packages are fixed already
+    javadocMissingMethod = [
+        "org.apache.lucene.util.automaton",
+        "org.apache.lucene.analysis.standard",
+        "org.apache.lucene.analysis.tokenattributes",
+        "org.apache.lucene.document",
+        "org.apache.lucene.search.similarities",
+        "org.apache.lucene.index",
+        "org.apache.lucene.codecs",
+        "org.apache.lucene.codecs.lucene50",
+        "org.apache.lucene.codecs.lucene60",
+        "org.apache.lucene.codecs.lucene80",
+        "org.apache.lucene.codecs.lucene84",
+        "org.apache.lucene.codecs.lucene86",
+        "org.apache.lucene.codecs.lucene87",
+        "org.apache.lucene.codecs.perfield"
+    ]
   }
 }
 
@@ -222,29 +222,27 @@ if (!skipLucene) {
 // (by removing all the packages which are part of lucene-core)
 // See: https://issues.apache.org/jira/browse/LUCENE-8738?focusedCommentId=16818106&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-16818106
 // LUCENE-9499: This workaround should be applied only to test-framework (we have no split package in other modules).
-if (!skipLucene) {
-  configure(project(":lucene:test-framework")) {
-    project.tasks.withType(RenderJavadocTask) {
-      doLast {
-        Set luceneCorePackages = file("${project(':lucene:core').tasks[name].outputDir}/element-list").readLines('UTF-8').toSet();
-        File elementFile = file("${outputDir}/element-list");
-        List elements = elementFile.readLines('UTF-8');
-        elements.removeAll(luceneCorePackages)
-        elementFile.write(elements.join('\n').concat('\n'), 'UTF-8');
-      }
-    }
-  }
-
-  configure(project(':lucene:demo')) {
-    project.tasks.withType(RenderJavadocTask) {
-      // For the demo, we link the example source in the javadocs, as it's ref'ed elsewhere
-      linksource = true
+configure(project(":lucene:test-framework")) {
+  project.tasks.withType(RenderJavadocTask) {
+    doLast {
+      Set luceneCorePackages = file("${project(':lucene:core').tasks[name].outputDir}/element-list").readLines('UTF-8').toSet();
+      File elementFile = file("${outputDir}/element-list");
+      List elements = elementFile.readLines('UTF-8');
+      elements.removeAll(luceneCorePackages)
+      elementFile.write(elements.join('\n').concat('\n'), 'UTF-8');
     }
   }
 }
 
+configure(project(':lucene:demo')) {
+  project.tasks.withType(RenderJavadocTask) {
+    // For the demo, we link the example source in the javadocs, as it's ref'ed elsewhere
+    linksource = true
+  }
+}
+
 // Add cross-project documentation task dependencies:
-// - each RenderJavaDocs task gets a dependency to all tasks with same name in its dependencies
+// - each RenderJavaDocs task gets a dependency to all tasks with the same name in its dependencies
 // - the dependency is using dependsOn with a closure to enable lazy evaluation
 configure(subprojects) {
   project.tasks.withType(RenderJavadocTask) { task ->
@@ -284,7 +282,8 @@ class RenderJavadocTask extends DefaultTask {
   def offlineLinks = [:]
 
   @Input
-  def luceneDocUrl = "${-> project.luceneDocUrl }"
+  @Optional
+  Property<String> luceneDocUrl = project.objects.property(String)
 
   // default is to require full javadocs
   @Input
@@ -297,7 +296,6 @@ class RenderJavadocTask extends DefaultTask {
   // default is not to ignore any elements, should only be used to workaround split packages
   @Input
   List<String> javadocMissingIgnore = []
-
 
   @Nullable
   @Optional
@@ -377,25 +375,25 @@ class RenderJavadocTask extends DefaultTask {
     // NOTE: explicitly exclude solr/test-framework, or attempting to link to lucene-test-framework because if we did javadoc would
     // attempt to link class refs in in org.apache.lucene, causing broken links. (either broken links to things like "Directory" if
     // lucene-test-framework was first, or broken links to things like LuceneTestCase if lucene-core was first)
-    if (project.path != ':solr:test-framework') {  //
-      findRenderTasksInDependencies()
-          .sort(false, Comparator.comparing { (it.project.name != 'core') as Boolean }.thenComparing(Comparator.comparing { it.path }))
-          .each { otherTask ->
-            def otherProject = otherTask.project
-            // For relative links we compute the actual relative link between projects.
-            def crossLuceneSolr = (otherProject.docroot != project.docroot)
-            if (relativeProjectLinks && !crossLuceneSolr) {
-              def pathTo = otherTask.outputDir.toPath().toAbsolutePath()
-              def pathFrom = outputDir.toPath().toAbsolutePath()
-              def relative = pathFrom.relativize(pathTo).toString().replace(File.separator, '/')
-              opts << ['-link', relative]
-            } else {
-              // For absolute links, we determine the target URL by assembling the full URL.
-              allOfflineLinks.put("${luceneDocUrl}/${otherProject.relativeDocPath}/".toString(), otherTask.outputDir)
+    findRenderTasksInDependencies()
+        .sort(false, Comparator.comparing { (it.project.name != 'core') as Boolean }.thenComparing(Comparator.comparing { it.path }))
+        .each { otherTask ->
+          def otherProject = otherTask.project
+          // For relative links we compute the actual relative link between projects.
+          if (relativeProjectLinks) {
+            def pathTo = otherTask.outputDir.toPath().toAbsolutePath()
+            def pathFrom = outputDir.toPath().toAbsolutePath()
+            def relative = pathFrom.relativize(pathTo).toString().replace(File.separator, '/')
+            opts << ['-link', relative]
+          } else {
+            // For absolute links, we determine the target URL by assembling the full URL (if base is available).
+            def value = luceneDocUrl.getOrElse(null)
+            if (value) {
+              allOfflineLinks.put("${value}/${otherProject.relativeDocPath}/".toString(), otherTask.outputDir)
             }
           }
-    }
-    
+        }
+
     // Add offline links.
     allOfflineLinks.each { url, dir ->
       // Some sanity check/ validation here to ensure dir/package-list or dir/element-list is present.
@@ -403,6 +401,7 @@ class RenderJavadocTask extends DefaultTask {
           !project.file("$dir/element-list").exists()) {
         throw new GradleException("Expected pre-rendered package-list or element-list at ${dir}.")
       }
+      logger.info("Linking ${url} to ${dir}")
       opts << [ '-linkoffline', url, dir ]
     }
 
@@ -471,6 +470,7 @@ class RenderJavadocTask extends DefaultTask {
       // Pipe the output to console. Intentionally skips any encoding conversion 
       // and pumps raw bytes.
       System.out.write(outputFile.bytes)
+      System.out.flush()
 
       def cause
       try {

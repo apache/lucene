@@ -2605,8 +2605,8 @@ public abstract class LuceneTestCase extends Assert {
           for (int docID = 0; docID < leftReader.maxDoc(); docID++) {
             assertEquals(docID, leftValues.nextDoc());
             assertEquals(docID, rightValues.nextDoc());
-            final BytesRef left = BytesRef.deepCopyOf(leftValues.binaryValue());
-            final BytesRef right = rightValues.binaryValue();
+            final BytesRef left = BytesRef.deepCopyOf(leftValues.lookupOrd(leftValues.ordValue()));
+            final BytesRef right = rightValues.lookupOrd(rightValues.ordValue());
             assertEquals(info, left, right);
           }
         } else {

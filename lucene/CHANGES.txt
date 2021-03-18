@@ -92,6 +92,9 @@ API Changes
 * LUCENE-9480: Make DataInput's skipBytes(long) abstract as the implementation was not performant.
   IndexInput's api is unaffected: skipBytes() is implemented via seek(). (Greg Miller)
 
+* LUCENE-9796: SortedDocValues no longer extends BinaryDocValues, as binaryValue() was not performant.
+  See MIGRATE.md for details. (Robert Muir)
+
 * LUCENE-9334: Require consistency between data-structures on a per-field basis.
   A field across all documents within an index must be indexed with the same index
   options and data-structures. As a consequence of this, doc values updates are
@@ -100,7 +103,7 @@ API Changes
   containing this field, and not modifiable after that.(Mayya Sharipova,
   Adrien Grand, Simon Willnauer)
 
-
+=======
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
@@ -200,10 +203,10 @@ Improvements
 * LUCENE-9674: Implement faster advance on VectorValues using binary search.
   (Anand Kotriwal, Mike Sokolov)
 
-* LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
-  (Jaison Bi via Bruno Roustant)
-
 * LUCENE-9794: Speed up implementations of DataInput.skipBytes(). (Greg Miller)
+
+* LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
+  (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
 
 Bug fixes
 
@@ -309,6 +312,9 @@ Improvements
 * LUCENE-9725: BM25FQuery was extended to handle similarities beyond BM25Similarity. It
   was renamed to CombinedFieldQuery to reflect its more general scope. (Julie Tibshirani)
 
+* LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
+  (Jaison Bi via Bruno Roustant)
+
 Optimizations
 ---------------------
 (No changes)
@@ -323,10 +329,23 @@ Bug Fixes
   throw an exception when the query implements TwoPhaseIterator and when the score is requested
   repeatedly. (David Smiley, hossman)
 
+* LUCENE-9791: BytesRefHash.equals/find is now thread safe, fixing a
+  Luwak/Monitor bug causing registered queries to sometimes fail to
+  match. (Paweł Bugalski)
+
 Other
 ---------------------
-(No changes)
 
+* LUCENE-9836: Removed the pure Maven build. It is no longer possible to build
+  artifacts using Maven (this feature was no longer working correctly). Due to
+  migration to Gradle for Lucene/Solr 9.0, the maintenance of the Maven build
+  was no longer reasonable. POM files are generated for deployment to Maven
+  Central only. Please use "ant generate-maven-artifacts" to produce and deploy
+  artifacts to any repository.  (Uwe Schindler, Dawid Weiss)
+
+* LUCENE-9836: Migrate Maven tasks to use "maven-resolver-ant-tasks"
+  instead of the no longer maintained "maven-ant-tasks".  (Uwe Schindler)
+  
 ======================= Lucene 8.8.1 =======================
 
 Bug Fixes

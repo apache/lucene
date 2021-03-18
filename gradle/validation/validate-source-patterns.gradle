@@ -88,12 +88,10 @@ subprojects {
   check.dependsOn validateSourcePatterns
 }
 
-if (!skipLucene) {
-  configure(project(':lucene:benchmark')) {
-    project.tasks.withType(ValidateSourcePatternsTask) {
-      sourceFiles.exclude 'temp/**'
-      sourceFiles.exclude 'work/**'
-    }
+configure(project(':lucene:benchmark')) {
+  project.tasks.withType(ValidateSourcePatternsTask) {
+    sourceFiles.exclude 'temp/**'
+    sourceFiles.exclude 'work/**'
   }
 }
 
@@ -117,10 +115,6 @@ configure(rootProject) {
       // Don't go into child projects (scanned separately).
       childProjects.keySet().each{
         exclude "${it}/**"
-      }
-
-      if (skipLucene) {
-        exclude "lucene/**"
       }
 
       // default excludes.
@@ -296,13 +290,6 @@ class ValidateSourcePatternsTask extends DefaultTask {
           checkMockitoAssume(f, text);
         }
 
-        if (project.path.startsWith(':solr:')
-            && f.name.equals("SolrTestCase.java") == false
-            && f.name.equals("TestXmlQParser.java") == false) {
-          if (extendsLuceneTestCasePattern.matcher(text).find()) {
-            reportViolation(f, "Solr test cases should extend SolrTestCase rather than LuceneTestCase");
-          }
-        }
         invalidJavaOnlyPatterns.each { pattern,name ->
           if (pattern.matcher(text).find()) {
             reportViolation(f, name);

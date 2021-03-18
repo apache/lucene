@@ -28,7 +28,6 @@ import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.LeafReader;
@@ -104,7 +103,7 @@ public final class JoinUtil {
           DocValuesTermsCollector.sortedSetDocValues(fromField);
       termsWithScoreCollector = GenericTermsCollector.createCollectorMV(mvFunction, scoreMode);
     } else {
-      Function<BinaryDocValues> svFunction = DocValuesTermsCollector.binaryDocValues(fromField);
+      Function<SortedDocValues> svFunction = DocValuesTermsCollector.sortedDocValues(fromField);
       termsWithScoreCollector = GenericTermsCollector.createCollectorSV(svFunction, scoreMode);
     }
 

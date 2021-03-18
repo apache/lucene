@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.hunspell;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
@@ -32,12 +33,15 @@ class TrigramAutomaton {
   private final CharacterRunAutomaton automaton;
   private final int[] state2Score;
   private final FixedBitSet countedSubstrings;
+  private final char minChar;
 
   TrigramAutomaton(String s1) {
     Map<String, Integer> substringCounts = new HashMap<>();
 
     Automaton.Builder builder = new Automaton.Builder(s1.length() * N, s1.length() * N);
     int initialState = builder.createState();
+
+    minChar = (char) s1.chars().min().orElseThrow();
 
     for (int start = 0; start < s1.length(); start++) {
       int limit = Math.min(s1.length(), start + N);
@@ -48,7 +52,7 @@ class TrigramAutomaton {
       int state = initialState;
       for (int i = start; i < limit; i++) {
         int next = builder.createState();
-        builder.addTransition(state, next, s1.charAt(i));
+        builder.addTransition(state, next, s1.charAt(i) - minChar);
         state = next;
       }
     }
@@ -69,12 +73,12 @@ class TrigramAutomaton {
   private int runAutomatonOnStringChars(String s) {
     int state = 0;
     for (int i = 0; i < s.length(); i++) {
-      state = automaton.step(state, s.charAt(i));
+      state = automaton.step(state, s.charAt(i) - minChar);
     }
     return state;
   }
 
-  int ngramScore(String s2) {
+  int ngramScore(CharsRef s2) {
     countedSubstrings.clear(0, countedSubstrings.length());
 
     int score1 = 0, score2 = 0, score3 = 0; // scores for substrings of length 1, 2 and 3
@@ -82,9 +86,14 @@ class TrigramAutomaton {
     // states of running the automaton on substrings [i-1, i) and [i-2, i)
     int state1 = -1, state2 = -1;
 
-    int length = s2.length();
-    for (int i = 0; i < length; i++) {
-      char c = s2.charAt(i);
+    int limit = s2.length + s2.offset;
+    for (int i = s2.offset; i < limit; i++) {
+      char c = transformChar(s2.chars[i]);
+      if (c < minChar) {
+        state1 = state2 = -1;
+        continue;
+      }
+      c -= minChar;
 
       int state3 = state2 <= 0 ? 0 : automaton.step(state2, c);
       if (state3 > 0) {
@@ -110,6 +119,10 @@ class TrigramAutomaton {
       }
     }
     return score;
+  }
+
+  char transformChar(char c) {
+    return c;
   }
 
   private int substringScore(int state, FixedBitSet countedSubstrings) {
