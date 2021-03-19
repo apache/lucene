@@ -28,7 +28,7 @@ import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
-import org.apache.lucene.analysis.icu.ICUTransformCharFilter.NormType;
+import org.apache.lucene.analysis.icu.ICUTransformCharFilterFactory.NormType;
 
 /** Test the ICUTransformCharFilter with some basic examples. */
 public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
@@ -292,14 +292,14 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       boolean failOnRollbackBufferOverflow) {
     if (externalUnicodeNormalization) {
       Transliterator noNormTransliterator =
-          ICUTransformCharFilter.withoutUnicodeNormalization(transliterator);
+          ICUTransformCharFilterFactory.withoutUnicodeNormalization(transliterator);
       if (noNormTransliterator == transliterator) {
         return new ICUTransformCharFilter(
             r, transliterator, maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
       }
       Transliterator[] originalElements = transliterator.getElements();
       NormType inputNormalization =
-          ICUTransformCharFilter.unicodeNormalizationType(originalElements[0].getID());
+          ICUTransformCharFilterFactory.unicodeNormalizationType(originalElements[0].getID());
       if (inputNormalization != null) {
         r = wrapWithNormalizer(r, inputNormalization);
       }
@@ -307,7 +307,7 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
           new ICUTransformCharFilter(
               r, transliterator, maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
       NormType outputNormalization =
-          ICUTransformCharFilter.unicodeNormalizationType(
+          ICUTransformCharFilterFactory.unicodeNormalizationType(
               originalElements[originalElements.length - 1].getID());
       if (outputNormalization != null) {
         ret = wrapWithNormalizer(ret, outputNormalization);
