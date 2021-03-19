@@ -20,7 +20,6 @@
 configure(rootProject) {
   def helpFiles = [
       ["Workflow", "help/workflow.txt", "Typical workflow commands."],
-      ["Ant", "help/ant.txt", "Ant-gradle migration help."],
       ["Tests", "help/tests.txt", "Tests, filtering, beasting, etc."],
       ["Formatting", "help/formatting.txt", "Code formatting conventions."],
       ["Jvms", "help/jvms.txt", "Using alternative or EA JVM toolchains."],
