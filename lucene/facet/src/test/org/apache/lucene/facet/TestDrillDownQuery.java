@@ -299,4 +299,125 @@ public class TestDrillDownQuery extends FacetTestCase {
     assertEquals(0, searcher.count(q));
     IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
   }
+
+  public void testSkipDrillDownTermsIndexing() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.KEYWORD, false)));
+    Directory taxoDir = newDirectory();
+    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
+    FacetsConfig config = new FacetsConfig();
+    config.disableDrillDown(true);
+
+    Document doc = new Document();
+    doc.add(new FacetField("a", "1"));
+    doc.add(new FacetField("b", "2"));
+    writer.addDocument(config.build(taxoWriter, doc));
+    taxoWriter.close();
+
+    IndexReader reader = writer.getReader();
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+    IndexSearcher searcher = newSearcher(reader);
+
+    DrillDownQuery q = new DrillDownQuery(config);
+    q.add("a");
+    // no hits because we disabled dimension drill down completely
+    assertEquals(0, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("a", "1");
+    assertEquals(1, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("b");
+    // no hits because we disabled dimension drill down completely
+    assertEquals(0, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("b", "2");
+    assertEquals(1, searcher.count(q));
+
+    IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
+  }
+
+  public void testSkipDrillDownTermsWithHierarchicalSetting() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.KEYWORD, false)));
+    Directory taxoDir = newDirectory();
+    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
+    FacetsConfig config = new FacetsConfig();
+    config.disableDrillDown(true);
+    config.setHierarchical("a", true);
+
+    Document doc = new Document();
+    doc.add(new FacetField("a", "1", "2", "3"));
+    doc.add(new FacetField("b", "4"));
+    writer.addDocument(config.build(taxoWriter, doc));
+    taxoWriter.close();
+
+    IndexReader reader = writer.getReader();
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+    IndexSearcher searcher = newSearcher(reader);
+
+    DrillDownQuery q = new DrillDownQuery(config);
+    q.add("a");
+    assertEquals(0, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("a", "1");
+    assertEquals(0, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("a", "1", "2");
+    assertEquals(0, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("a", "1", "2", "3");
+    assertEquals(1, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("b");
+    assertEquals(0, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("b", "4");
+    assertEquals(1, searcher.count(q));
+
+    IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
+  }
+
+  public void testDrillDownOptionsCrossChecking() {
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          FacetsConfig config = new FacetsConfig();
+
+          config.disableDrillDown(true);
+          config.setRequireDimensionDrillDown("a", true);
+        });
+
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          FacetsConfig config = new FacetsConfig();
+
+          config.setRequireDimensionDrillDown("a", true);
+          config.disableDrillDown(true);
+        });
+
+    FacetsConfig config = new FacetsConfig();
+    // config.disableDrillDown == false as default
+    config.setRequireDimensionDrillDown("a", true);
+
+    config = new FacetsConfig();
+    config.setRequireDimensionDrillDown("a", true);
+    config.disableDrillDown(false);
+  }
 }
