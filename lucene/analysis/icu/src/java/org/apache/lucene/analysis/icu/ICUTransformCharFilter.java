@@ -458,7 +458,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
    * This is based on the {@link com.ibm.icu.text.CompoundTransliterator#toRules(boolean)} method,
    * modified to return a version of rules with initial and trailing unicode normalization removed.
    * If neither leading nor trailing unicode normalization is present, then no modifications are
-   * called for which this method indicates by returning null.
+   * called for, which this method indicates by returning null.
    *
    * <p>Analogous to the contract for {@link com.ibm.icu.text.Transliterator#toRules(boolean)}, any
    * modified rules String returned should be sufficient to recreate a Transliterator based on the
