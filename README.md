@@ -110,7 +110,7 @@ If you want to build the documentation, type:
 
 - *IntelliJ* - IntelliJ idea can import the project out of the box. 
                Code formatting conventions should be manually adjusted. 
-- *Eclipse*  - Not tested.
+- *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
 - *Netbeans* - Not tested.
 
 ## Contributing
