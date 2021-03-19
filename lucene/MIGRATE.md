@@ -366,8 +366,6 @@ data-structures are not changeable for the whole index. For example, if you
 first index a document where a certain field is indexed with doc values and 
 points, all subsequent documents containing this field must also have this
 field indexed with doc values and points.
-Field attributes for a certain field are also set by the first document 
-containing this field, and not modifiable after that.
 
 ### Doc values updates are allowed only for doc values only fields
 
@@ -375,12 +373,6 @@ Previously IndexWriter could update doc values for a binary or numeric docValue
 field that was also indexed with other data structures (e.g. postings, vectors 
 etc). This is not allowed anymore. A field must be indexed with only doc values 
 to be allowed for doc values updates in IndexWriter.
-=======
-## Assumption of data consistency between different data-structures sharing the same field name
-
-Sorting on a numeric field that is indexed with both doc values and points may use an
-optimization to skip non-competitive documents. This optimization relies on the assumption
-that the same data is stored in these points and doc values.
 
 ## SortedDocValues no longer extends BinaryDocValues (LUCENE-9796)
 
@@ -394,4 +386,3 @@ better to use the ordinal alone (integer-based datastructures) for per-document 
 call lookupOrd() a few times at the end (e.g. for the hits you want to display). Otherwise, if you
 really don't want per-document ordinals, but instead a per-document `byte[]`, use a BinaryDocValues
 field.
->>>>>>> upstream/main

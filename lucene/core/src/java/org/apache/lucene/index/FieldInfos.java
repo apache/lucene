@@ -493,7 +493,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       } else {
         // verify that field is doc values only field with the give doc values type
         DocValuesType fieldDvType = docValuesType.get(fieldName);
-        if (dvType != docValuesType.get(fieldName)) {
+        if (dvType != fieldDvType) {
           throw new IllegalArgumentException(
               "Can't update ["
                   + dvType
@@ -606,8 +606,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
      * exist globally in the index. The field number is reused if possible for consistent field
      * numbers across segments.
      *
-     * <p>If the field already exists, the provided FieldInfo's schema is checked against the
-     * existing field.
+     * <p>If the field already exists: 1) the provided FieldInfo's schema is checked against the
+     * existing field and 2) the provided FieldInfo's attributes are added to the existing
+     * FieldInfo's attributes.
      *
      * @param fi – FieldInfo to add
      * @return The existing FieldInfo if the field with this name already exists in the builder, or
@@ -621,12 +622,40 @@ public class FieldInfos implements Iterable<FieldInfo> {
      *     new fields.
      */
     public FieldInfo add(FieldInfo fi) {
+      return add(fi, -1);
+    }
+
+    /**
+     * Adds the provided FieldInfo with the provided dvGen to this Builder if this field doesn't
+     * exist in this Builder. Also adds a new field with its schema options to the global
+     * FieldNumbers if the field doesn't exist globally in the index. The field number is reused if
+     * possible for consistent field numbers across segments.
+     *
+     * <p>If the field already exists: 1) the provided FieldInfo's schema is checked against the
+     * existing field and 2) the provided FieldInfo's attributes are added to the existing
+     * FieldInfo's attributes.
+     *
+     * @param fi – FieldInfo to add
+     * @param dvGen – doc values generation of the FieldInfo to add
+     * @return The existing FieldInfo if the field with this name already exists in the builder, or
+     *     a new constructed FieldInfo with the same schema as provided and a consistent global
+     *     field number.
+     * @throws IllegalArgumentException if there already exists field with this name in Builder but
+     *     with a different schema
+     * @throws IllegalArgumentException if there already exists field with this name globally but
+     *     with a different schema.
+     * @throws IllegalStateException if the Builder is already finished building and doesn't accept
+     *     new fields.
+     */
+    public FieldInfo add(FieldInfo fi, long dvGen) {
       final FieldInfo curFi = fieldInfo(fi.getName());
       if (curFi != null) {
         curFi.verifySameSchema(fi);
+        if (fi.attributes() != null) {
+          fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
+        }
         return curFi;
       }
-
       // This field wasn't yet added to this in-RAM segment's FieldInfo,
       // so now we get a global number for this field.
       // If the field was seen before then we'll get the same name and number,
@@ -642,7 +671,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.hasPayloads(),
               fi.getIndexOptions(),
               fi.getDocValuesType(),
-              fi.getDocValuesGen(),
+              dvGen,
               // original attributes is UnmodifiableMap
               new HashMap<>(fi.attributes()),
               fi.getPointDimensionCount(),
