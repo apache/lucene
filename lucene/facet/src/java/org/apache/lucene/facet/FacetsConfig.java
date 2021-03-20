@@ -65,7 +65,37 @@ public class FacetsConfig {
   // int/float/bytes in a single indexed field:
   private final Map<String, String> assocDimTypes = new ConcurrentHashMap<>();
 
-  private boolean disableDrillDown = false;
+  /**
+   * Drill down terms indexing option to control whether dimension and sub-path terms should be
+   * indexed.
+   */
+  public enum DrillDownTermsIndexing {
+    /**
+     * Index only full-path drill down terms. No dimension nor sub-path indexing. e.g. for
+     * FaceField("a", "foo/bar/baz"), we would only index value "a foo bar baz"
+     */
+    FULL_PATH_ONLY,
+
+    /**
+     * Index sub-path and full-path down terms. No dimension indexing. e.g. for FaceField("a",
+     * "foo/bar/baz"), we would only index values "a foo", "a foo bar", and "a foo baz"
+     */
+    SUB_PATH_AND_FULL_PATH,
+
+    /**
+     * Index dimension and full-path drill down terms. No sub-path indexing. e.g. for FaceField("a",
+     * "foo/bar/baz"), we would only index values "a" and "a foo baz" This is weird usage and
+     * currently not available.
+     */
+    // DIMENSION_AND_FULL_PATH,
+
+    /**
+     * Index dimension, sub-path and full-path drill down terms. e.g. for FaceField("a",
+     * "foo/bar/baz"), we would index all values "a", "a foo", "a foo bar", and "a foo baz" This is
+     * the default / existing behavior
+     */
+    ALL
+  }
 
   /**
    * Holds the configuration for one dimension
@@ -85,13 +115,8 @@ public class FacetsConfig {
      */
     public boolean requireDimCount;
 
-    /**
-     * True if drilling down by a whole dimension, to match all documents that had any value for
-     * this dimension, is necessary (default is true)
-     */
-    // nocommit should this (control for only label / dim name indexing) be deprecated to favor the
-    // new control?
-    public boolean requireDimensionDrillDown = true;
+    /** Default drill down terms indexing option that index all. */
+    public DrillDownTermsIndexing drillDownTermsIndexing = DrillDownTermsIndexing.ALL;
 
     /** Actual field where this dimension's facet labels should be indexed */
     public String indexFieldName = DEFAULT_INDEX_FIELD_NAME;
@@ -172,41 +197,34 @@ public class FacetsConfig {
     ft.indexFieldName = indexFieldName;
   }
 
-  /** Specify whether drill down on just the dimension is necessary. */
+  /**
+   * Specify whether drill down on the dimension is necessary.
+   *
+   * @deprecated Use {@link FacetsConfig#setDrillDownTermsIndexing(String, DrillDownTermsIndexing)}
+   *     instead
+   */
+  @Deprecated
   public synchronized void setRequireDimensionDrillDown(String dimName, boolean v) {
-    if (v && disableDrillDown) {
-      throw new IllegalStateException(
-          "Trying to disable drill down terms indexing completely while"
-              + " having field / dimension "
-              + dimName
-              + " requiring drill down");
-    }
-
     DimConfig ft = fieldTypes.get(dimName);
     if (ft == null) {
       ft = new DimConfig();
       fieldTypes.put(dimName, ft);
     }
-    ft.requireDimensionDrillDown = v;
+
+    ft.drillDownTermsIndexing =
+        v ? DrillDownTermsIndexing.ALL : DrillDownTermsIndexing.SUB_PATH_AND_FULL_PATH;
   }
 
-  /**
-   * Specify whether drill down functionality as a whole should be disabled. Default to false for
-   * backward compatibility.
-   */
-  public synchronized void disableDrillDown(boolean disableDrillDown) {
-    if (disableDrillDown) {
-      for (Map.Entry<String, DimConfig> entry : fieldTypes.entrySet()) {
-        if (entry.getValue().requireDimensionDrillDown == true) {
-          throw new IllegalStateException(
-              "Trying to disable drill down terms indexing completely while"
-                  + " having field / dimension "
-                  + entry.getKey()
-                  + " requiring drill down");
-        }
-      }
+  /** Specify drill down terms option on the field / dimension. */
+  public synchronized void setDrillDownTermsIndexing(
+      String dimName, DrillDownTermsIndexing drillDownTermsIndexing) {
+    DimConfig ft = fieldTypes.get(dimName);
+    if (ft == null) {
+      ft = new DimConfig();
+      fieldTypes.put(dimName, ft);
     }
-    this.disableDrillDown = disableDrillDown;
+
+    ft.drillDownTermsIndexing = drillDownTermsIndexing;
   }
 
   /** Returns map of field name to {@link DimConfig}. */
@@ -403,10 +421,10 @@ public class FacetsConfig {
 
         // Drill down:
         int start;
-        if (disableDrillDown) {
+        if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.FULL_PATH_ONLY) {
           // skip indexing all drill down terms
           start = cp.length;
-        } else if (ft.requireDimensionDrillDown) {
+        } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL) {
           start = 1;
         } else {
           start = 2;
@@ -442,7 +460,7 @@ public class FacetsConfig {
         doc.add(new StringField(indexFieldName, fullPath, Field.Store.NO));
 
         FacetsConfig.DimConfig ft = getDimConfig(facetField.dim);
-        if (disableDrillDown == false && ft.requireDimensionDrillDown) {
+        if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL) {
           doc.add(new StringField(indexFieldName, facetField.dim, Field.Store.NO));
         }
       }

@@ -310,7 +310,8 @@ public class TestDrillDownQuery extends FacetTestCase {
     Directory taxoDir = newDirectory();
     TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
     FacetsConfig config = new FacetsConfig();
-    config.disableDrillDown(true);
+    config.setDrillDownTermsIndexing("a", FacetsConfig.DrillDownTermsIndexing.FULL_PATH_ONLY);
+    config.setDrillDownTermsIndexing("b", FacetsConfig.DrillDownTermsIndexing.FULL_PATH_ONLY);
 
     Document doc = new Document();
     doc.add(new FacetField("a", "1"));
@@ -353,8 +354,9 @@ public class TestDrillDownQuery extends FacetTestCase {
     Directory taxoDir = newDirectory();
     TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
     FacetsConfig config = new FacetsConfig();
-    config.disableDrillDown(true);
     config.setHierarchical("a", true);
+    config.setDrillDownTermsIndexing("a", FacetsConfig.DrillDownTermsIndexing.FULL_PATH_ONLY);
+    config.setDrillDownTermsIndexing("b", FacetsConfig.DrillDownTermsIndexing.FULL_PATH_ONLY);
 
     Document doc = new Document();
     doc.add(new FacetField("a", "1", "2", "3"));
@@ -393,31 +395,52 @@ public class TestDrillDownQuery extends FacetTestCase {
     IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
   }
 
-  public void testDrillDownOptionsCrossChecking() {
-    expectThrows(
-        IllegalStateException.class,
-        () -> {
-          FacetsConfig config = new FacetsConfig();
-
-          config.disableDrillDown(true);
-          config.setRequireDimensionDrillDown("a", true);
-        });
-
-    expectThrows(
-        IllegalStateException.class,
-        () -> {
-          FacetsConfig config = new FacetsConfig();
-
-          config.setRequireDimensionDrillDown("a", true);
-          config.disableDrillDown(true);
-        });
-
+  public void testDrillDownTermsDefaultWithHierarchicalSetting() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.KEYWORD, false)));
+    Directory taxoDir = newDirectory();
+    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
     FacetsConfig config = new FacetsConfig();
-    // config.disableDrillDown == false as default
-    config.setRequireDimensionDrillDown("a", true);
+    config.setHierarchical("a", true);
 
-    config = new FacetsConfig();
-    config.setRequireDimensionDrillDown("a", true);
-    config.disableDrillDown(false);
+    Document doc = new Document();
+    doc.add(new FacetField("a", "1", "2", "3"));
+    doc.add(new FacetField("b", "4"));
+    writer.addDocument(config.build(taxoWriter, doc));
+    taxoWriter.close();
+
+    IndexReader reader = writer.getReader();
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+    IndexSearcher searcher = newSearcher(reader);
+
+    DrillDownQuery q = new DrillDownQuery(config);
+    q.add("a");
+    assertEquals(1, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("a", "1");
+    assertEquals(1, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("a", "1", "2");
+    assertEquals(1, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("a", "1", "2", "3");
+    assertEquals(1, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("b");
+    assertEquals(1, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("b", "4");
+    assertEquals(1, searcher.count(q));
+
+    IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
   }
 }
