@@ -72,27 +72,27 @@ public class FacetsConfig {
   public enum DrillDownTermsIndexing {
     /**
      * Index only full-path drill down terms. No dimension nor sub-path indexing. e.g. for
-     * FaceField("a", "foo/bar/baz"), we would only index value "a foo bar baz"
+     * FacetField("a", "foo/bar/baz"), we would only index value "a foo bar baz".
      */
     FULL_PATH_ONLY,
 
     /**
-     * Index sub-path and full-path down terms. No dimension indexing. e.g. for FaceField("a",
-     * "foo/bar/baz"), we would only index values "a foo", "a foo bar", and "a foo baz"
+     * Index sub-path and full-path down terms. No dimension indexing. e.g. for FacetField("a",
+     * "foo/bar/baz"), we would only index values "a foo", "a foo bar", and "a foo baz".
      */
     SUB_PATH_AND_FULL_PATH,
 
     /**
-     * Index dimension and full-path drill down terms. No sub-path indexing. e.g. for FaceField("a",
-     * "foo/bar/baz"), we would only index values "a" and "a foo baz" This is weird usage and
-     * currently not available.
+     * Index dimension and full-path drill down terms. No sub-path indexing. e.g. for
+     * FacetField("a", "foo/bar/baz"), we would only index values "a" and "a foo baz". This is weird
+     * usage and currently not available.
      */
     // DIMENSION_AND_FULL_PATH,
 
     /**
-     * Index dimension, sub-path and full-path drill down terms. e.g. for FaceField("a",
-     * "foo/bar/baz"), we would index all values "a", "a foo", "a foo bar", and "a foo baz" This is
-     * the default / existing behavior
+     * Index dimension, sub-path and full-path drill down terms. e.g. for FacetField("a",
+     * "foo/bar/baz"), we would index all values "a", "a foo", "a foo bar", and "a foo baz". This is
+     * the default / existing behavior.
      */
     ALL
   }
