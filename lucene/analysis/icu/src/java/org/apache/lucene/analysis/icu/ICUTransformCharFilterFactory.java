@@ -17,15 +17,15 @@
 package org.apache.lucene.analysis.icu;
 
 import com.ibm.icu.impl.Utility;
+import com.ibm.icu.text.Normalizer2;
 import com.ibm.icu.text.Transliterator;
+import com.ibm.icu.text.UTF16;
 import java.io.Reader;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
-
-import com.ibm.icu.text.UTF16;
 import org.apache.lucene.analysis.CharFilterFactory;
 
 /**
@@ -47,7 +47,13 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
   /** SPI name */
   public static final String NAME = "icuTransform";
 
+  static final String MAX_ROLLBACK_BUFFER_CAPACITY_ARGNAME = "maxRollbackBufferCapacity";
+  static final String FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME = "failOnRollbackBufferOverflow";
+  static final String SUPPRESS_UNICODE_NORMALIZATION_EXTERNALIZATION_ARGNAME =
+      "suppressUnicodeNormalizationExternalization";
+  private final NormType leading;
   private final Transliterator transliterator;
+  private final NormType trailing;
   private final int maxRollbackBufferCapacity;
   private final boolean failOnRollbackBufferOverflow;
 
@@ -62,24 +68,50 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     int tmpCapacityHint =
         getInt(
             args,
-            "maxRollbackBufferCapacity",
+            MAX_ROLLBACK_BUFFER_CAPACITY_ARGNAME,
             ICUTransformCharFilter.DEFAULT_MAX_ROLLBACK_BUFFER_CAPACITY);
     this.maxRollbackBufferCapacity = tmpCapacityHint == -1 ? Integer.MAX_VALUE : tmpCapacityHint;
     this.failOnRollbackBufferOverflow =
         getBoolean(
             args,
-            "failOnRollbackBufferOverflow",
+            FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME,
             ICUTransformCharFilter.DEFAULT_FAIL_ON_ROLLBACK_BUFFER_OVERFLOW);
-    boolean assumeExternalUnicodeNormalization =
-        getBoolean(args, "assumeExternalUnicodeNormalization", false);
+    boolean suppressUnicodeNormalizationExternalization =
+        getBoolean(args, SUPPRESS_UNICODE_NORMALIZATION_EXTERNALIZATION_ARGNAME, false);
     Transliterator stockTransliterator = Transliterator.getInstance(id, dir);
-    if (assumeExternalUnicodeNormalization) {
-      this.transliterator = withoutUnicodeNormalization(stockTransliterator);
-    } else {
+    if (suppressUnicodeNormalizationExternalization) {
+      this.leading = null;
       this.transliterator = stockTransliterator;
+      this.trailing = null;
+    } else {
+      ExternalNormalization ext = externalizeUnicodeNormalization(stockTransliterator);
+      this.leading = ext.leading;
+      this.transliterator = ext.t;
+      this.trailing = ext.trailing;
     }
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
+    }
+  }
+
+  private static final Reader wrapReader(NormType normType, Reader r) {
+    if (normType == null) {
+      return r;
+    }
+    switch (normType) {
+      case NFC:
+        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFCInstance());
+      case NFD:
+        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFDInstance());
+      case NFKC:
+        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKCInstance());
+      case NFKD:
+        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKDInstance());
+      default:
+        throw new UnsupportedOperationException(
+            "test not yet able to compensate externally for normalization type \""
+                + normType
+                + "\"");
     }
   }
 
@@ -90,67 +122,58 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   @Override
   public Reader create(Reader input) {
-    return new ICUTransformCharFilter(
-        input, transliterator, maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
+    input = wrapReader(leading, input);
+    input =
+        new ICUTransformCharFilter(
+            input, transliterator, maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
+    return wrapReader(trailing, input);
   }
 
-  /**
-   * Strips off Unicode character normalization form rules from a Transliterator. Do this if, as is
-   * typical, your analysis chain already includes another component that does normalization, like
-   * {@link ICUNormalizer2CharFilter}.
-   *
-   * @return a new Transliterator with no normalization, or the original Transliterator if it
-   *     already did no normalization.
-   */
-  public static Transliterator withoutUnicodeNormalization(Transliterator transliterator) {
-    final String modifiedRules = modifyRules(false, transliterator);
-    if (modifiedRules == null) {
-      return transliterator;
-    }
-    String baseId = transliterator.getID();
-    String modId = baseId.concat(baseId.lastIndexOf('/') < 0 ? "/X_NO_NORM_IO" : "_X_NO_NORM_IO");
-    return Transliterator.createFromRules(modId, modifiedRules, Transliterator.FORWARD);
-  }
+  private static final boolean ESCAPE_UNPRINTABLE = false;
 
   /**
-   * This is based on the {@link com.ibm.icu.text.CompoundTransliterator#toRules(boolean)} method,
-   * modified to return a version of rules with initial and trailing unicode normalization removed.
-   * If neither leading nor trailing unicode normalization is present, then no modifications are
-   * called for, which this method indicates by returning null.
+   * Attempts to detect and externalize any leading or trailing top-level Unicode normalization. In
+   * the event that such normalization is detected, a new "core" Transliterator (with any detected
+   * pre-/post-normalization removed) is created and returned.
    *
-   * <p>Analogous to the contract for {@link com.ibm.icu.text.Transliterator#toRules(boolean)}, any
-   * modified rules String returned should be sufficient to recreate a Transliterator based on the
-   * specified input Transliterator, via {@link
-   * com.ibm.icu.text.Transliterator#createFromRules(String, String, int)}.
+   * <p>The creation of any new "core" Transliterator (and much of the actual code in this method)
+   * is based on the {@link com.ibm.icu.text.CompoundTransliterator#toRules(boolean)} method (with
+   * the boolean arg replaced by {@link #ESCAPE_UNPRINTABLE} -- always <code>false</code> in this
+   * context).
    *
-   * @param escapeUnprintable escape unprintable chars
    * @param t the Transliterator to base modified rules on.
-   * @return modified form of rules for input Transliterator, or null if no modification is called
-   *     for.
+   * @return simple ExternalNormalization struct containing a non-null Transliterator, if possible
+   *     with any leading and trailing Unicode normalization externalized. The effect of applying
+   *     the resulting leading Unicode norm, Transliterator, and trailing Unicode norm, should be
+   *     equivalent to the effect of applying the input Transliterator t.
    */
-  private static String modifyRules(boolean escapeUnprintable, Transliterator t) {
+  private static ExternalNormalization externalizeUnicodeNormalization(Transliterator t) {
     final Transliterator[] trans = t.getElements();
     final String topLevelId = t.getID();
     final int start;
     final int limit;
+    final NormType leading;
+    final NormType trailing;
     if (trans.length == 1) {
       warnNestedUnicodeNormalization(trans[0], topLevelId, true);
-      return null;
+      return new ExternalNormalization(null, t, null);
     } else {
       final int lastIndex;
-      if (unicodeNormalizationType(trans[0].getID()) != null) {
+      if ((leading = unicodeNormalizationType(trans[0].getID())) != null) {
         start = 1;
         limit =
-                unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()) != null
-                        ? lastIndex
-                        : trans.length;
+            (trailing = unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()))
+                    != null
+                ? lastIndex
+                : trans.length;
       } else if (warnNestedUnicodeNormalization(trans[0], topLevelId, true)
-              && unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()) != null) {
+          && (trailing = unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()))
+              != null) {
         start = 0;
         limit = lastIndex;
       } else {
         warnNestedUnicodeNormalization(trans[trans.length - 1], topLevelId, false);
-        return null;
+        return new ExternalNormalization(null, t, null);
       }
     }
     // We do NOT call toRules() on our component transliterators, in
@@ -163,7 +186,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     if (t.getFilter() != null) {
       // We might be a compound RBT and if we have a global
       // filter, then emit it at the top.
-      rulesSource.append("::").append(t.getFilter().toPattern(escapeUnprintable)).append(ID_DELIM);
+      rulesSource.append("::").append(t.getFilter().toPattern(ESCAPE_UNPRINTABLE)).append(ID_DELIM);
     }
     final int globalFilterEnd = rulesSource.length();
     boolean hasAnonymousRBTs = false;
@@ -176,7 +199,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
       // (and insert "::Null;" if we have two in a row)
       if (trans[i].getID().startsWith("%Pass")) {
         hasAnonymousRBTs = true;
-        rule = trans[i].toRules(escapeUnprintable);
+        rule = trans[i].toRules(ESCAPE_UNPRINTABLE);
         if (i > start && trans[i - 1].getID().startsWith("%Pass")) rule = "::Null;" + rule;
 
         // we also use toRules() on CompoundTransliterators (which we
@@ -184,17 +207,39 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
         // the list of their child transliterators output in the right
         // format
       } else if (trans[i].getID().indexOf(';') >= 0) {
-        rule = trans[i].toRules(escapeUnprintable);
+        rule = trans[i].toRules(ESCAPE_UNPRINTABLE);
 
         // for everything else, use baseToRules()
       } else {
-        rule = baseToRules(escapeUnprintable, trans[i]);
+        rule = baseToRules(ESCAPE_UNPRINTABLE, trans[i]);
       }
       _smartAppend(rulesSource, '\n');
       rulesSource.append(rule);
       _smartAppend(rulesSource, ID_DELIM);
     }
-    return hasAnonymousRBTs ? rulesSource.toString() : rulesSource.substring(globalFilterEnd);
+    // Analogous to the contract for {@link com.ibm.icu.text.Transliterator#toRules(boolean)}, the
+    // modified rules String should be sufficient to recreate a Transliterator based on the
+    // specified input Transliterator, via {@link
+    // com.ibm.icu.text.Transliterator#createFromRules(String, String, int)}.
+    final String modifiedRules =
+        hasAnonymousRBTs ? rulesSource.toString() : rulesSource.substring(globalFilterEnd);
+    String baseId = t.getID();
+    String modId = baseId.concat(baseId.lastIndexOf('/') < 0 ? "/X_NO_NORM_IO" : "_X_NO_NORM_IO");
+    Transliterator replacement =
+        Transliterator.createFromRules(modId, modifiedRules, Transliterator.FORWARD);
+    return new ExternalNormalization(leading, replacement, trailing);
+  }
+
+  static class ExternalNormalization {
+    private final NormType leading;
+    private final Transliterator t;
+    private final NormType trailing;
+
+    private ExternalNormalization(NormType leading, Transliterator t, NormType trailing) {
+      this.leading = leading;
+      this.t = t;
+      this.trailing = trailing;
+    }
   }
 
   /**
@@ -210,14 +255,14 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
    * @return always return true, for easy integration with control flow.
    */
   private static boolean warnNestedUnicodeNormalization(
-          Transliterator levelOne, String topLevelId, boolean leading) {
+      Transliterator levelOne, String topLevelId, boolean leading) {
     Transliterator[] topLevelElements = levelOne.getElements();
     if (topLevelElements.length == 1 && levelOne == topLevelElements[0]) {
       // A leaf Transliterator; shortcircuit
       return true;
     }
     ArrayDeque<Transliterator> elements =
-            new ArrayDeque<>(topLevelElements.length << 2); // oversize
+        new ArrayDeque<>(topLevelElements.length << 2); // oversize
     elements.addAll(Arrays.asList(topLevelElements));
     boolean warn = false;
     do {
@@ -260,10 +305,12 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     NFC,
     NFD,
     NFKC,
+    NFKC_CF,
     NFKD,
     FCC,
-    FCD
-  };
+    FCD,
+    UNKNOWN
+  }
 
   private static final NormType[] NORM_TYPE_VALUES;
   private static final String[] NORM_ID_PREFIXES;
