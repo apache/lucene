@@ -17,7 +17,6 @@
 
 plugins {
   id "java"
-  id "de.undercouch.download"
 }
 
 description = 'System for benchmarking Lucene'
@@ -44,13 +43,6 @@ dependencies {
   testImplementation project(':lucene:test-framework')
 }
 
-ext {
-  dataDir = file("data")
-}
-
-def tempDir = file("temp")
-def workDir = file("work")
-
 task run(type: JavaExec) {
   description "Run a perf test (optional: -PtaskAlg=conf/your-algorithm-file -PmaxHeapSize=1G)"
   main 'org.apache.lucene.benchmark.byTask.Benchmark'
@@ -69,127 +61,5 @@ task run(type: JavaExec) {
     enabled = false
     port = 5005
     suspend = true
-  }
-}
-
-// The remaining tasks just get / extract / prepare data
-
-task getEnWiki(type: Download) {
-  ext {
-    name = "enwiki-20070527-pages-articles.xml"
-    src = "https://home.apache.org/~dsmiley/data/${name}.bz2"
-    intermediate = file("${dataDir}/${name}.bz2")
-    dst = file("${dataDir}/${name}")
-  }
-
-  outputs.file ext.dst
-
-  src ext.src
-  dest ext.intermediate
-  overwrite false
-  compress false
-
-  doLast {
-    logger.lifecycle("Decompressing ${ext.name}...")
-    ant.bunzip2(src: ext.intermediate, dest: ext.dst)
-  }
-}
-
-task getGeoNames(type: Download) {
-  // note: latest data is at: https://download.geonames.org/export/dump/allCountries.zip
-  //       and then randomize with: gsort -R -S 1500M file.txt > file_random.txt
-  //       and then compress with: bzip2 -9 -k file_random.txt
-  ext {
-    name = "geonames_20130921_randomOrder_allCountries.txt"
-    src = "https://home.apache.org/~dsmiley/data/${name}.bz2"
-    intermediate = file("${dataDir}/${name}.bz2")
-    dst = file("${dataDir}/${name}")
-  }
-
-  outputs.file ext.dst
-
-  src ext.src
-  dest ext.intermediate
-  overwrite false
-  compress false
-
-  doLast {
-    logger.lifecycle("Decompressing ${ext.name}...")
-    ant.bunzip2(src: ext.intermediate, dest: ext.dst)
-  }
-}
-
-task getTop100kWikiWordFiles(type: Download) {
-  ext {
-    name = "top.100k.words.de.en.fr.uk.wikipedia.2009-11"
-    src = "https://home.apache.org/~rmuir/wikipedia/${name}.tar.bz2"
-    intermediate = file("${dataDir}/${name}.bz2")
-    dst = file("${dataDir}/${name}")
-  }
-
-  outputs.file ext.dst
-
-  src ext.src
-  dest ext.intermediate
-  overwrite false
-  compress false
-
-  doLast {
-    logger.lifecycle("Decompressing ${ext.name}...")
-    project.sync {
-      from tarTree(ext.intermediate) // defined above. Will decompress on the fly
-      into ext.dst
-    }
-  }
-}
-
-task getReuters(type: Download) {
-  ext {
-    name = "reuters21578"
-    // note: there is no HTTPS url and we don't care because this is merely test/perf data
-    src = "http://www.daviddlewis.com/resources/testcollections/reuters21578/${name}.tar.gz"
-    intermediate = file("${dataDir}/${name}.tar.gz")
-    dst = file("${dataDir}/${name}")
-  }
-
-  outputs.dir ext.dst
-
-  src ext.src
-  dest ext.intermediate
-  overwrite false
-  compress false
-
-  dependsOn sourceSets.main.runtimeClasspath
-
-  doLast {
-    def untarPath = file("$temporaryDir/reuters-untar")
-
-    logger.lifecycle("Decompressing ${ext.name}...")
-    project.sync {
-      from(tarTree(intermediate)) {
-        exclude '*.txt'
-      }
-      into untarPath
-    }
-
-    logger.lifecycle("Extracting ${ext.name} into ${ext.dst}...")
-    ext.dst.deleteDir()
-
-    // TODO consider porting ExtractReuters to groovy?
-    project.javaexec {
-      main = 'org.apache.lucene.benchmark.utils.ExtractReuters'
-      classpath = sourceSets.main.runtimeClasspath
-      maxHeapSize = '1G'
-      args = [untarPath, ext.dst]
-    }
-  }
-}
-
-[getEnWiki, getGeoNames, getTop100kWikiWordFiles, getReuters].each { task ->
-  task.group "Data set download"
-  task.description "Download the ${task.ext.name} data set."
-
-  task.doFirst {
-    logger.lifecycle("Downloading data set ${task.ext.name} from ${task.ext.src} to ${task.ext.dst}...")
   }
 }
