@@ -155,3 +155,12 @@ Using these additional options will make the results more sparse, so it may be u
 to increase the top-N count:
 
 gradlew -p lucene/core test -Ptests.profile=true -Ptests.profile.count=100
+
+
+External data sets
+------------------
+
+Some tests may require external (and large) data sets. To see relevant tasks
+that download and extract these data files automatically, run the following:
+
+gradlew tasks --group "Data set download"
