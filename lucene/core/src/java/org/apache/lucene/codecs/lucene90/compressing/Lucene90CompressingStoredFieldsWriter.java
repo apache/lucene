@@ -489,10 +489,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   public void finish(FieldInfos fis, int numDocs) throws IOException {
     if (numBufferedDocs > 0) {
       numDirtyChunks++; // incomplete: we had to force this flush
-      final long expectedChunkDocs =
-          Math.min(
-              maxDocsPerChunk, (long) ((double) chunkSize / bufferedDocs.size() * numBufferedDocs));
-      numDirtyDocs += expectedChunkDocs - numBufferedDocs;
+      numDirtyDocs += numBufferedDocs;
       flush();
     } else {
       assert bufferedDocs.size() == 0;
@@ -711,7 +708,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   boolean tooDirty(Lucene90CompressingStoredFieldsReader candidate) {
     // more than 1% dirty, or more than hard limit of 1024 dirty chunks
     return candidate.getNumDirtyChunks() > 1024
-        || (candidate.getNumDirtyChunks() > 1
+        || (candidate.getNumDirtyDocs() > maxDocsPerChunk
             && candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs());
   }
 

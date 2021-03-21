@@ -60,9 +60,6 @@ import org.apache.lucene.util.packed.PackedInts;
  */
 public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWriter {
 
-  // hard limit on the maximum number of documents per chunk
-  static final int MAX_DOCUMENTS_PER_CHUNK = 128;
-
   static final String VECTORS_EXTENSION = "tvd";
   static final String VECTORS_INDEX_EXTENSION = "tvx";
   static final String VECTORS_META_EXTENSION = "tvm";
@@ -224,6 +221,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   private final ByteBuffersDataOutput termSuffixes; // buffered term suffixes
   private final ByteBuffersDataOutput payloadBytes; // buffered term payloads
   private final BlockPackedWriter writer;
+  private final int maxDocsPerChunk; // hard limit on number of docs per chunk
 
   /** Sole constructor. */
   Lucene90CompressingTermVectorsWriter(
@@ -234,6 +232,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       String formatName,
       CompressionMode compressionMode,
       int chunkSize,
+      int maxDocsPerChunk,
       int blockShift)
       throws IOException {
     assert directory != null;
@@ -241,6 +240,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     this.compressionMode = compressionMode;
     this.compressor = compressionMode.newCompressor();
     this.chunkSize = chunkSize;
+    this.maxDocsPerChunk = maxDocsPerChunk;
 
     numDocs = 0;
     pendingDocs = new ArrayDeque<>();
@@ -373,7 +373,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   private boolean triggerFlush() {
-    return termSuffixes.size() >= chunkSize || pendingDocs.size() >= MAX_DOCUMENTS_PER_CHUNK;
+    return termSuffixes.size() >= chunkSize || pendingDocs.size() >= maxDocsPerChunk;
   }
 
   private void flush() throws IOException {
@@ -712,11 +712,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   public void finish(FieldInfos fis, int numDocs) throws IOException {
     if (!pendingDocs.isEmpty()) {
       numDirtyChunks++; // incomplete: we had to force this flush
-      final long expectedChunkDocs =
-          Math.min(
-              MAX_DOCUMENTS_PER_CHUNK,
-              (long) ((double) chunkSize / termSuffixes.size() * pendingDocs.size()));
-      numDirtyDocs += expectedChunkDocs - pendingDocs.size();
+      numDirtyDocs += pendingDocs.size();
       flush();
     }
     if (numDocs != this.numDocs) {
@@ -939,7 +935,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   boolean tooDirty(Lucene90CompressingTermVectorsReader candidate) {
     // more than 1% dirty, or more than hard limit of 1024 dirty chunks
     return candidate.getNumDirtyChunks() > 1024
-        || (candidate.getNumDirtyChunks() > 1
+        || (candidate.getNumDirtyDocs() > maxDocsPerChunk
             && candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs());
   }
 
