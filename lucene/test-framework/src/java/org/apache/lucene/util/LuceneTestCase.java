@@ -387,10 +387,17 @@ public abstract class LuceneTestCase extends Assert {
 
   public static final boolean TEST_ASSERTS_ENABLED = systemPropertyAsBoolean("tests.asserts", true);
 
-  /** TODO: javadoc? */
+  /**
+   * The default (embedded resource) lines file.
+   *
+   * @see #TEST_LINE_DOCS_FILE
+   */
   public static final String DEFAULT_LINE_DOCS_FILE = "europarl.lines.txt.gz";
 
-  /** TODO: javadoc? */
+  /**
+   * Random sample from enwiki used in tests. See {@code help/tests.txt}. gradle task downloading
+   * this data set: {@code gradlew getEnWikiRandomLines}.
+   */
   public static final String JENKINS_LARGE_LINE_DOCS_FILE = "enwiki.random.lines.txt";
 
   /** Gets the codec to run tests with. */
@@ -407,7 +414,7 @@ public abstract class LuceneTestCase extends Assert {
   /** Gets the directory to run tests with */
   public static final String TEST_DIRECTORY = System.getProperty("tests.directory", "random");
 
-  /** the line file used by LineFileDocs */
+  /** The line file used in tests (by {@link LineFileDocs}). */
   public static final String TEST_LINE_DOCS_FILE =
       System.getProperty("tests.linedocsfile", DEFAULT_LINE_DOCS_FILE);
 
