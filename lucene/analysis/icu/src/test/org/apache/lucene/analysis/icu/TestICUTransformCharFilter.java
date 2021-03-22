@@ -97,34 +97,38 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
   }
 
   /**
-   * Sanity check all top-level prepackaged Transliterators to make sure that no trivial errors are thrown on
-   * instantiation. We're not really checking anything in particular here, but under the hood this will at least
-   * make a cursory check for consistency between the "stock" Transliterator, and any potential "optimized" version
-   * with externalized unicode normalization.
+   * Sanity check all top-level prepackaged Transliterators to make sure that no trivial errors are
+   * thrown on instantiation. We're not really checking anything in particular here, but under the
+   * hood this will at least make a cursory check for consistency between the "stock"
+   * Transliterator, and any potential "optimized" version with externalized unicode normalization.
    */
   public void testNormalizationOptimizationOnAvailableIDs() throws Exception {
     Enumeration<String> ids = Transliterator.getAvailableIDs();
     List<String> idsWithNestedNormalization = new ArrayList<>();
     while (ids.hasMoreElements()) {
       String id = ids.nextElement();
-      boolean hasNestedUnicodeNormalization = accumulateNestedUnicodeNormalization(id, idsWithNestedNormalization);
+      boolean hasNestedUnicodeNormalization =
+          accumulateNestedUnicodeNormalization(id, idsWithNestedNormalization);
       try {
-        // set `iterationsDefault=0` because in this test we simply want to ignore the non-optimized case.
-        // set `iterationsOptimized=1` because `testRandomStrings` can be slow; we want this as a sanity check, but
-        //  as a matter of course we should not need many iterations.
+        // set `iterationsDefault=0` because in this test we simply want to ignore the non-optimized
+        //  case.
+        // set `iterationsOptimized=1` because `testRandomStrings` can be slow; we want this as a
+        //  sanity check, but as a matter of course we should not need many iterations.
         boolean optimized = testRandomStrings(id, 0, 1);
 
-        // We can't really _do_ much with `hasNestedUnicodeNormalization` or `optimized`, in terms of validation.
-        // They are completely independent (i.e. not mutually exclusive). We leave these checks stubbed out here
-        // because we're initially optimizing normalization that can be easily detected at the top level, but we
-        // want some plumbing in place to be more transparent about what we're optimizing and what we're not (and
-        // to some extent _why_).
-        // TODO: We're aware that this is probably leaving "on the table" a bunch of potential optimization of the
-        //  "_nested_ unicode normalization" case. It may be worth optimizing these nested cases (and addressing
-        //  any additional complexity specific to that case) as a separate, follow-up issue.
+        // We can't really _do_ much with `hasNestedUnicodeNormalization` or `optimized`, in terms
+        // of validation.
+        // They are completely independent (i.e. not mutually exclusive). We leave these checks
+        // stubbed out here because we're initially optimizing normalization that can be easily
+        // detected at the top level, but we want some plumbing in place to be more transparent
+        // about what we're optimizing and what we're not (and to some extent _why_).
+        // TODO: We're aware that this is probably leaving "on the table" a bunch of potential
+        //  optimization of the "_nested_ unicode normalization" case. It may be worth optimizing
+        //  these nested cases (and addressing any additional complexity specific to that case)
+        //  as a separate, follow-up issue.
       } catch (Exception ex) {
         // wrap the exception so that we can report the offending `id`
-        throw new RuntimeException("problem for id: "+id, ex);
+        throw new RuntimeException("problem for id: " + id, ex);
       }
     }
   }
@@ -137,7 +141,8 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
    * cases (to facilitate more nuanced handling in the future, if necessary).
    *
    * @param topLevelId top level Transliterator parent id.
-   * @param ids list to which the topLevelId will be added if nested unicode normalization is detected
+   * @param ids list to which the topLevelId will be added if nested unicode normalization is
+   *     detected
    */
   private static boolean accumulateNestedUnicodeNormalization(String topLevelId, List<String> ids) {
     Transliterator levelOne = Transliterator.getInstance(topLevelId);
@@ -146,7 +151,8 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       // A leaf Transliterator; shortcircuit
       return false;
     }
-    ArrayDeque<Transliterator> elements = new ArrayDeque<>(topLevelElements.length << 2); // oversize
+    ArrayDeque<Transliterator> elements =
+        new ArrayDeque<>(topLevelElements.length << 2); // oversize
     elements.addAll(Arrays.asList(topLevelElements));
     do {
       final Transliterator t = elements.removeFirst();
@@ -312,9 +318,10 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
   }
 
   /** blast some random strings through the analyzer */
-  private boolean testRandomStrings(final String id, int iterationsDefault, int iterationsOptimized) throws Exception {
+  private boolean testRandomStrings(final String id, int iterationsDefault, int iterationsOptimized)
+      throws Exception {
     final boolean firstSuppressExternalize = random().nextBoolean();
-    boolean[] optimized = new boolean[] { false };
+    boolean[] optimized = new boolean[] {false};
     Analyzer a = getAnalyzer(id, firstSuppressExternalize, optimized);
     Analyzer b = getAnalyzer(id, !firstSuppressExternalize, optimized);
     final int iterations;
@@ -326,7 +333,8 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       b.close();
       b = null;
     }
-    assertTrue("implicitly expected optimized="+optimized[0]+"; requested iterations="+iterations,
+    assertTrue(
+        "implicitly expected optimized=" + optimized[0] + "; requested iterations=" + iterations,
         iterations >= 0);
     checkRandomData(random(), a, b, iterations * RANDOM_MULTIPLIER);
     a.close();
@@ -365,7 +373,10 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
   }
 
   private static CharFilter getTransliteratingFilter(
-      boolean[] optimized, String id, Reader r, boolean suppressUnicodeNormalizationExternalization) {
+      boolean[] optimized,
+      String id,
+      Reader r,
+      boolean suppressUnicodeNormalizationExternalization) {
     return getTransliteratingFilter(
         optimized,
         id,
@@ -378,7 +389,12 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
   private static CharFilter getTransliteratingFilter(
       String id, Reader r, int maxRollbackBufferCapacity, boolean failOnRollbackBufferOverflow) {
     return getTransliteratingFilter(
-        null, id, r, random().nextBoolean(), maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
+        null,
+        id,
+        r,
+        random().nextBoolean(),
+        maxRollbackBufferCapacity,
+        failOnRollbackBufferOverflow);
   }
 
   @SuppressWarnings("resource")
@@ -394,8 +410,8 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
     args.put(MAX_ROLLBACK_BUFFER_CAPACITY_ARGNAME, Integer.toString(maxRollbackBufferCapacity));
     args.put(
         FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME, Boolean.toString(failOnRollbackBufferOverflow));
-    ICUTransformCharFilterFactory factory = new ICUTransformCharFilterFactory(args,
-        suppressUnicodeNormalizationExternalization);
+    ICUTransformCharFilterFactory factory =
+        new ICUTransformCharFilterFactory(args, suppressUnicodeNormalizationExternalization);
     if (optimized != null) {
       optimized[0] |= factory.externalizedUnicodeNormalization();
     }

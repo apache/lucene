@@ -60,7 +60,8 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
   }
 
   /** package access, to allow tests to suppress unicode normalization externalization */
-  ICUTransformCharFilterFactory(Map<String, String> args, boolean suppressUnicodeNormalizationExternalization) {
+  ICUTransformCharFilterFactory(
+      Map<String, String> args, boolean suppressUnicodeNormalizationExternalization) {
     super(args);
     String id = require(args, "id");
     String direction =
@@ -93,7 +94,9 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     }
   }
 
-  /** for tests; check whether unicode normalization externalization optimization is actually applied */
+  /**
+   * for tests; check whether unicode normalization externalization optimization is actually applied
+   */
   boolean externalizedUnicodeNormalization() {
     return leading != null || trailing != null;
   }
@@ -170,7 +173,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
                 ? lastIndex
                 : trans.length;
       } else if ((trailing = unicodeNormalizationType(trans[lastIndex = trans.length - 1].getID()))
-              != null) {
+          != null) {
         start = 0;
         limit = lastIndex;
       } else {
