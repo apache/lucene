@@ -185,10 +185,9 @@ public final class IndexOrDocValuesQuery extends Query {
   }
 
   /**
-   * At equal costs, doc values tend to be worse than points since they
-   * still need to perform one comparison per document while points can
-   * do much better than that given how values are organized. So we give
-   * an arbitrary 8x penalty to doc values.
+   * At equal costs, doc values tend to be worse than points since they still need to perform one
+   * comparison per document while points can do much better than that given how values are
+   * organized. So we give an arbitrary 8x penalty to doc values.
    */
   boolean chooseIndexQuery(long leadCost, long cost) {
     final long threshold = cost >>> 3;
