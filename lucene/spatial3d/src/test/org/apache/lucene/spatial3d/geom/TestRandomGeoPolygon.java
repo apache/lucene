@@ -61,7 +61,7 @@ public class TestRandomGeoPolygon extends RandomGeo3dShapeGenerator {
     points.add(point3);
     points.add(point4);
     try {
-      GeoPolygon polygon = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
+      GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
     } catch (Exception e) {
       fail(points.toString());
     }

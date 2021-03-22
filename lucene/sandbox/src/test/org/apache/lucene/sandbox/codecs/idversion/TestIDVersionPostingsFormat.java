@@ -571,7 +571,6 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     payload.length = 8;
     IDVersionPostingsFormat.longToBytes(17, payload);
     ts.setValue("foo", payload);
-    Field field = new Field("id", ts, ft);
     doc.add(new Field("id", ts, ft));
     expectThrows(
         IllegalArgumentException.class,

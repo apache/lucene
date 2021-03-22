@@ -104,7 +104,7 @@ public class Lucene86SegmentInfoFormat extends SegmentInfoFormat {
       SegmentInfo si = null;
       try {
         CodecUtil.checkIndexHeader(
-                                   input, CODEC_NAME, VERSION_START, VERSION_CURRENT, segmentID, "");
+            input, CODEC_NAME, VERSION_START, VERSION_CURRENT, segmentID, "");
         si = parseSegmentInfo(dir, input, segment, segmentID);
       } catch (Throwable exception) {
         priorE = exception;

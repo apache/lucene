@@ -1440,11 +1440,8 @@ public class MemoryIndex {
 
       @Override
       public int size() {
-        int size = 0;
-        for (String fieldName : this) {
-          size++;
-        }
-        return size;
+        return Math.toIntExact(
+            fields.entrySet().stream().filter(e -> e.getValue().numTokens > 0).count());
       }
     }
 

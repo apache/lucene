@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.search.*;
 import org.apache.lucene.store.*;
 import org.apache.lucene.util.*;
 
@@ -103,7 +102,7 @@ public class TestStressIndexing extends LuceneTestCase {
     public void doWork() throws Throwable {
       for (int i = 0; i < 100; i++) {
         IndexReader ir = DirectoryReader.open(directory);
-        IndexSearcher is = newSearcher(ir);
+        newSearcher(ir);
         ir.close();
       }
       count += 100;

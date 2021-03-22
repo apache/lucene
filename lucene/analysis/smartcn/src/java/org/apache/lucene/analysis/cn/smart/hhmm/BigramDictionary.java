@@ -143,7 +143,7 @@ class BigramDictionary extends AbstractDictionary {
    */
   public void loadFromFile(String dctFilePath) throws IOException {
 
-    int i, cnt, length, total = 0;
+    int i, cnt, length;
     // The file only counted 6763 Chinese characters plus 5 reserved slots 3756~3760.
     // The 3756th is used (as a header) to store information.
     int[] buffer = new int[3];
@@ -163,7 +163,6 @@ class BigramDictionary extends AbstractDictionary {
       if (cnt <= 0) {
         continue;
       }
-      total += cnt;
       int j = 0;
       while (j < cnt) {
         dctFile.read(intBuffer);

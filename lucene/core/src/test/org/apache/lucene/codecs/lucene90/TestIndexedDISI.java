@@ -98,7 +98,6 @@ public class TestIndexedDISI extends LuceneTestCase {
   private void assertAdvanceBeyondEnd(BitSet set, Directory dir) throws IOException {
     final int cardinality = set.cardinality();
     final byte denseRankPower = 9; // Not tested here so fixed to isolate factors
-    long length;
     int jumpTableentryCount;
     try (IndexOutput out = dir.createOutput("bar", IOContext.DEFAULT)) {
       jumpTableentryCount =
@@ -435,9 +434,7 @@ public class TestIndexedDISI extends LuceneTestCase {
         length = out.getFilePointer();
       }
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
-        IndexedDISI disi =
-            new IndexedDISI(
-                in, 0L, length, jumpTableEntryCount, denseRankPowerRead, set.cardinality());
+        new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPowerRead, set.cardinality());
       }
       // This tests the legality of the denseRankPower only, so we don't do anything with the disi
     }

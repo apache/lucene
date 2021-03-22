@@ -294,7 +294,6 @@ public class TestFSTs extends LuceneTestCase {
       for (int inputMode = 0; inputMode < 2; inputMode++) {
         final int numWords = random.nextInt(maxNumWords + 1);
         Set<IntsRef> termsSet = new HashSet<>();
-        IntsRef[] terms = new IntsRef[numWords];
         while (termsSet.size() < numWords) {
           final String term = getRandomString(random);
           termsSet.add(toIntsRef(term, inputMode));

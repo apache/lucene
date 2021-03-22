@@ -24,7 +24,6 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.spatial.SpatialTestCase;
 import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
-import org.apache.lucene.spatial.query.SpatialArgsParser;
 import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Shape;
@@ -51,7 +50,7 @@ public class TestTermQueryPrefixGridStrategy extends SpatialTestCase {
     addDocumentsAndCommit(Arrays.asList(losAngeles));
 
     // This won't work with simple spatial context...
-    SpatialArgsParser spatialArgsParser = new SpatialArgsParser();
+    // SpatialArgsParser spatialArgsParser = new SpatialArgsParser();
     // TODO... use a non polygon query
     //    SpatialArgs spatialArgs = spatialArgsParser.parse(
     //        "Intersects(POLYGON((-127.00390625 39.8125,-112.765625 39.98828125,-111.53515625

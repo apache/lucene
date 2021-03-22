@@ -146,18 +146,16 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
   public void exactCircleLargeTest() {
     boolean success = true;
     try {
-      GeoCircle circle =
-          GeoCircleFactory.makeExactGeoCircle(
-              new PlanetModel(0.99, 1.05), 0.25 * Math.PI, 0, 0.35 * Math.PI, 1e-12);
+      GeoCircleFactory.makeExactGeoCircle(
+          new PlanetModel(0.99, 1.05), 0.25 * Math.PI, 0, 0.35 * Math.PI, 1e-12);
     } catch (IllegalArgumentException e) {
       success = false;
     }
     assertTrue(success);
     success = false;
     try {
-      GeoCircle circle =
-          GeoCircleFactory.makeExactGeoCircle(
-              PlanetModel.WGS84, 0.25 * Math.PI, 0, 0.9996 * Math.PI, 1e-12);
+      GeoCircleFactory.makeExactGeoCircle(
+          PlanetModel.WGS84, 0.25 * Math.PI, 0, 0.9996 * Math.PI, 1e-12);
     } catch (IllegalArgumentException e) {
       success = true;
     }
@@ -168,13 +166,8 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
   public void testExactCircleDoesNotFit() {
     boolean exception = false;
     try {
-      GeoCircle circle =
-          GeoCircleFactory.makeExactGeoCircle(
-              PlanetModel.WGS84,
-              1.5633796542562415,
-              -1.0387149580695152,
-              3.1409865861032844,
-              1e-12);
+      GeoCircleFactory.makeExactGeoCircle(
+          PlanetModel.WGS84, 1.5633796542562415, -1.0387149580695152, 3.1409865861032844, 1e-12);
     } catch (IllegalArgumentException e) {
       exception = true;
     }
@@ -315,9 +308,8 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
     PlanetModel planetModel = new PlanetModel(1.6304230055804751, 1.0199671157571204);
     boolean fail = false;
     try {
-      GeoCircle circle =
-          GeoCircleFactory.makeExactGeoCircle(
-              planetModel, 0.8853814403571284, 0.9784990176851283, 0.9071033527030907, 1e-11);
+      GeoCircleFactory.makeExactGeoCircle(
+          planetModel, 0.8853814403571284, 0.9784990176851283, 0.9071033527030907, 1e-11);
     } catch (IllegalArgumentException e) {
       fail = true;
     }

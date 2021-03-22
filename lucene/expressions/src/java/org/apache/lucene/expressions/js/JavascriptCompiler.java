@@ -166,7 +166,7 @@ public final class JavascriptCompiler {
   @SuppressWarnings({"unused", "null"})
   private static void unusedTestCompile() throws IOException {
     DoubleValues f = null;
-    double ret = f.doubleValue();
+    f.doubleValue();
   }
 
   /**

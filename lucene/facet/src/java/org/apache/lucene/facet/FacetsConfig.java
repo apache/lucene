@@ -441,15 +441,7 @@ public class FacetsConfig {
         System.arraycopy(field.assoc.bytes, field.assoc.offset, bytes, upto, field.assoc.length);
         upto += field.assoc.length;
 
-        FacetsConfig.DimConfig ft = getDimConfig(field.dim);
-
         // Drill down:
-        int start;
-        if (ft.requireDimensionDrillDown) {
-          start = 1;
-        } else {
-          start = 2;
-        }
         for (int i = 1; i <= label.length; i++) {
           doc.add(
               new StringField(indexFieldName, pathToString(label.components, i), Field.Store.NO));

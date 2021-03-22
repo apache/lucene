@@ -1723,7 +1723,6 @@ public class TestBKD extends LuceneTestCase {
   public void testTooManyPoints() throws Exception {
     Directory dir = newDirectory();
     final int numValues = 10;
-    final int numPointsAdded = 50; // exceeds totalPointCount
     final int numBytesPerDim = TestUtil.nextInt(random(), 1, 4);
     final byte[] pointValue = new byte[numBytesPerDim];
     BKDWriter w =
@@ -1755,7 +1754,6 @@ public class TestBKD extends LuceneTestCase {
   public void testTooManyPoints1D() throws Exception {
     Directory dir = newDirectory();
     final int numValues = 10;
-    final int numPointsAdded = 50; // exceeds totalPointCount
     final int numBytesPerDim = TestUtil.nextInt(random(), 1, 4);
     final byte[][] pointValue = new byte[11][numBytesPerDim];
     BKDWriter w =

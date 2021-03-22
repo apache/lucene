@@ -107,12 +107,12 @@ public class Lucene70SegmentInfoFormat extends SegmentInfoFormat {
       SegmentInfo si = null;
       try {
         CodecUtil.checkIndexHeader(
-                                   input,
-                                   Lucene70SegmentInfoFormat.CODEC_NAME,
-                                   Lucene70SegmentInfoFormat.VERSION_START,
-                                   Lucene70SegmentInfoFormat.VERSION_CURRENT,
-                                   segmentID,
-                                   "");
+            input,
+            Lucene70SegmentInfoFormat.CODEC_NAME,
+            Lucene70SegmentInfoFormat.VERSION_START,
+            Lucene70SegmentInfoFormat.VERSION_CURRENT,
+            segmentID,
+            "");
         si = parseSegmentInfo(dir, input, segment, segmentID);
       } catch (Throwable exception) {
         priorE = exception;

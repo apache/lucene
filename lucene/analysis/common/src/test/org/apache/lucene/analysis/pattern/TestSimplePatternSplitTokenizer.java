@@ -70,7 +70,7 @@ public class TestSimplePatternSplitTokenizer extends BaseTokenStreamTestCase {
 
   public void testNoTokens() throws Exception {
     Tokenizer t = new SimplePatternSplitTokenizer(".*");
-    CharTermAttribute termAtt = t.getAttribute(CharTermAttribute.class);
+    t.getAttribute(CharTermAttribute.class);
     String s;
     while (true) {
       s = TestUtil.randomUnicodeString(random());
@@ -95,7 +95,7 @@ public class TestSimplePatternSplitTokenizer extends BaseTokenStreamTestCase {
 
   public void testSplitSingleCharWhitespace() throws Exception {
     Tokenizer t = new SimplePatternSplitTokenizer("[ \t\r\n]");
-    CharTermAttribute termAtt = t.getAttribute(CharTermAttribute.class);
+    t.getAttribute(CharTermAttribute.class);
     t.setReader(new StringReader("a \tb   c"));
     assertTokenStreamContents(
         t, new String[] {"a", "b", "c"}, new int[] {0, 3, 7}, new int[] {1, 4, 8});
@@ -103,7 +103,7 @@ public class TestSimplePatternSplitTokenizer extends BaseTokenStreamTestCase {
 
   public void testSplitMultiCharWhitespace() throws Exception {
     Tokenizer t = new SimplePatternSplitTokenizer("[ \t\r\n]*");
-    CharTermAttribute termAtt = t.getAttribute(CharTermAttribute.class);
+    t.getAttribute(CharTermAttribute.class);
     t.setReader(new StringReader("a \tb   c"));
     assertTokenStreamContents(
         t, new String[] {"a", "b", "c"}, new int[] {0, 3, 7}, new int[] {1, 4, 8});
@@ -111,21 +111,21 @@ public class TestSimplePatternSplitTokenizer extends BaseTokenStreamTestCase {
 
   public void testLeadingNonToken() throws Exception {
     Tokenizer t = new SimplePatternSplitTokenizer("[ \t\r\n]*");
-    CharTermAttribute termAtt = t.getAttribute(CharTermAttribute.class);
+    t.getAttribute(CharTermAttribute.class);
     t.setReader(new StringReader("    a c"));
     assertTokenStreamContents(t, new String[] {"a", "c"}, new int[] {4, 6}, new int[] {5, 7});
   }
 
   public void testTrailingNonToken() throws Exception {
     Tokenizer t = new SimplePatternSplitTokenizer("[ \t\r\n]*");
-    CharTermAttribute termAtt = t.getAttribute(CharTermAttribute.class);
+    t.getAttribute(CharTermAttribute.class);
     t.setReader(new StringReader("a c   "));
     assertTokenStreamContents(t, new String[] {"a", "c"}, new int[] {0, 2}, new int[] {1, 3});
   }
 
   public void testEmptyStringPatternOneMatch() throws Exception {
     Tokenizer t = new SimplePatternSplitTokenizer("a*");
-    CharTermAttribute termAtt = t.getAttribute(CharTermAttribute.class);
+    t.getAttribute(CharTermAttribute.class);
     t.setReader(new StringReader("bbab"));
     assertTokenStreamContents(t, new String[] {"bb", "b"}, new int[] {0, 3}, new int[] {2, 4});
   }
