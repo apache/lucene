@@ -24,8 +24,12 @@ import com.ibm.icu.text.UnicodeSet;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
@@ -98,19 +102,66 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
    * make a cursory check for consistency between the "stock" Transliterator, and any potential "optimized" version
    * with externalized unicode normalization.
    */
-  public void testSanityCheckAvailableIDs() throws Exception {
+  public void testNormalizationOptimizationOnAvailableIDs() throws Exception {
     Enumeration<String> ids = Transliterator.getAvailableIDs();
+    List<String> idsWithNestedNormalization = new ArrayList<>();
     while (ids.hasMoreElements()) {
       String id = ids.nextElement();
+      boolean hasNestedUnicodeNormalization = accumulateNestedUnicodeNormalization(id, idsWithNestedNormalization);
       try {
-        testRandomStrings(id, 1);
+        // set `iterationsDefault=0` because in this test we simply want to ignore the non-optimized case.
+        // set `iterationsOptimized=1` because `testRandomStrings` can be slow; we want this as a sanity check, but
+        //  as a matter of course we should not need many iterations.
+        boolean optimized = testRandomStrings(id, 0, 1);
+
+        // We can't really _do_ much with `hasNestedUnicodeNormalization` or `optimized`, in terms of validation.
+        // They are completely independent (i.e. not mutually exclusive). We leave these checks stubbed out here
+        // because we're initially optimizing normalization that can be easily detected at the top level, but we
+        // want some plumbing in place to be more transparent about what we're optimizing and what we're not (and
+        // to some extent _why_).
+        // TODO: We're aware that this is probably leaving "on the table" a bunch of potential optimization of the
+        //  "_nested_ unicode normalization" case. It may be worth optimizing these nested cases (and addressing
+        //  any additional complexity specific to that case) as a separate, follow-up issue.
       } catch (Exception ex) {
-        // the below assertion will obviously always fail if we get to this point; but we know we want to re-throw
-        // the exception anyway, with the problematic "id" specified, so the semantics of `assertNull` are probably
-        // a good fit.
-        assertNull("problem for id: "+id, ex);
+        // wrap the exception so that we can report the offending `id`
+        throw new RuntimeException("problem for id: "+id, ex);
       }
     }
+  }
+
+  /**
+   * It is possible that leading and trailing (or singleton) Transliterators might apply nested
+   * Unicode normalization, thus acting in the capacity of a Normalizer, without qualifying as a
+   * top-level Normalizer as currently defined in {@link
+   * ICUTransformCharFilterFactory#unicodeNormalizationType(String)}. For now, simply detect these
+   * cases (to facilitate more nuanced handling in the future, if necessary).
+   *
+   * @param topLevelId top level Transliterator parent id.
+   * @param ids list to which the topLevelId will be added if nested unicode normalization is detected
+   */
+  private static boolean accumulateNestedUnicodeNormalization(String topLevelId, List<String> ids) {
+    Transliterator levelOne = Transliterator.getInstance(topLevelId);
+    Transliterator[] topLevelElements = levelOne.getElements();
+    if (topLevelElements.length == 1 && levelOne == topLevelElements[0]) {
+      // A leaf Transliterator; shortcircuit
+      return false;
+    }
+    ArrayDeque<Transliterator> elements = new ArrayDeque<>(topLevelElements.length << 2); // oversize
+    elements.addAll(Arrays.asList(topLevelElements));
+    do {
+      final Transliterator t = elements.removeFirst();
+      if (ICUTransformCharFilterFactory.unicodeNormalizationType(t.getID()) != null) {
+        ids.add(topLevelId);
+        return true;
+      }
+      Transliterator[] subElements = t.getElements();
+      if (subElements.length > 1 || t != subElements[0]) {
+        for (Transliterator sub : subElements) {
+          elements.addFirst(sub);
+        }
+      }
+    } while (!elements.isEmpty());
+    return false;
   }
 
   public void testCustomFunctionality() throws Exception {
@@ -202,6 +253,7 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       throws IOException {
     checkToken(
         getTransliteratingFilter(
+            null,
             id,
             new StringReader(input),
             suppressUnicodeNormalizationExternalization,
@@ -218,15 +270,26 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
 
   public void testRandomStringsLatinToKatakana() throws Exception {
     // this Transliterator often decreases character length wrt input
-    testRandomStrings("Latin-Katakana", 1000);
+    // we _don't_ expect unicode norm externalization optimization in practice
+    testRandomStrings("Latin-Katakana", 1000, -1);
   }
 
   public void testRandomStringsAnyToLatin() throws Exception {
     // this Transliterator often increases character length wrt input
-    testRandomStrings("Any-Latin", 1000);
+    // we _don't_ expect unicode norm externalization optimization in practice
+    testRandomStrings("Any-Latin", 1000, -1);
   }
 
-  private static Analyzer getAnalyzer(String id, boolean suppressExternalize) {
+  public void testRandomStringsKatakanaToHiragana() throws Exception {
+    // this Transliterator often increases character length wrt input
+    // we _do_ expect unicode norm externalization optimization in practice
+    testRandomStrings("Katakana-Hiragana", -1, 1000);
+  }
+
+  private static Analyzer getAnalyzer(String id, boolean suppressExternalize, boolean[] optimized) {
+    if (optimized != null && !suppressExternalize) {
+      getTransliteratingFilter(optimized, id, new StringReader("dummy"), suppressExternalize);
+    }
     return new Analyzer() {
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
@@ -237,25 +300,40 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       @Override
       protected Reader initReader(String fieldName, Reader reader) {
         return super.initReader(
-            fieldName, getTransliteratingFilter(id, reader, suppressExternalize));
+            fieldName, getTransliteratingFilter(null, id, reader, suppressExternalize));
       }
 
       @Override
       protected Reader initReaderForNormalization(String fieldName, Reader reader) {
         return super.initReaderForNormalization(
-            fieldName, getTransliteratingFilter(id, reader, suppressExternalize));
+            fieldName, getTransliteratingFilter(null, id, reader, suppressExternalize));
       }
     };
   }
 
   /** blast some random strings through the analyzer */
-  private void testRandomStrings(final String id, int iterations) throws Exception {
+  private boolean testRandomStrings(final String id, int iterationsDefault, int iterationsOptimized) throws Exception {
     final boolean firstSuppressExternalize = random().nextBoolean();
-    Analyzer a = getAnalyzer(id, firstSuppressExternalize);
-    Analyzer b = getAnalyzer(id, !firstSuppressExternalize);
+    boolean[] optimized = new boolean[] { false };
+    Analyzer a = getAnalyzer(id, firstSuppressExternalize, optimized);
+    Analyzer b = getAnalyzer(id, !firstSuppressExternalize, optimized);
+    final int iterations;
+    if (optimized[0]) {
+      iterations = iterationsOptimized;
+    } else {
+      iterations = iterationsDefault;
+      // there's no optimization; it doesn't matter which analyzer we use.
+      b.close();
+      b = null;
+    }
+    assertTrue("implicitly expected optimized="+optimized[0]+"; requested iterations="+iterations,
+        iterations >= 0);
     checkRandomData(random(), a, b, iterations * RANDOM_MULTIPLIER);
     a.close();
-    b.close();
+    if (b != null) {
+      b.close();
+    }
+    return optimized[0];
   }
 
   public void testEmptyTerm() throws IOException {
@@ -283,12 +361,13 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
   }
 
   private static CharFilter getTransliteratingFilter(String id, Reader input) {
-    return getTransliteratingFilter(id, input, random().nextBoolean());
+    return getTransliteratingFilter(null, id, input, random().nextBoolean());
   }
 
   private static CharFilter getTransliteratingFilter(
-      String id, Reader r, boolean suppressUnicodeNormalizationExternalization) {
+      boolean[] optimized, String id, Reader r, boolean suppressUnicodeNormalizationExternalization) {
     return getTransliteratingFilter(
+        optimized,
         id,
         r,
         suppressUnicodeNormalizationExternalization,
@@ -299,11 +378,12 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
   private static CharFilter getTransliteratingFilter(
       String id, Reader r, int maxRollbackBufferCapacity, boolean failOnRollbackBufferOverflow) {
     return getTransliteratingFilter(
-        id, r, random().nextBoolean(), maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
+        null, id, r, random().nextBoolean(), maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
   }
 
   @SuppressWarnings("resource")
   private static CharFilter getTransliteratingFilter(
+      boolean[] optimized,
       String id,
       Reader r,
       boolean suppressUnicodeNormalizationExternalization,
@@ -316,6 +396,9 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
         FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME, Boolean.toString(failOnRollbackBufferOverflow));
     ICUTransformCharFilterFactory factory = new ICUTransformCharFilterFactory(args,
         suppressUnicodeNormalizationExternalization);
+    if (optimized != null) {
+      optimized[0] |= factory.externalizedUnicodeNormalization();
+    }
     return (CharFilter) factory.create(r);
   }
 }
