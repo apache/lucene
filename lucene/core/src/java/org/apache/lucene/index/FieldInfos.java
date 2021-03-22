@@ -647,7 +647,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
      * @throws IllegalStateException if the Builder is already finished building and doesn't accept
      *     new fields.
      */
-    public FieldInfo add(FieldInfo fi, long dvGen) {
+    FieldInfo add(FieldInfo fi, long dvGen) {
       final FieldInfo curFi = fieldInfo(fi.getName());
       if (curFi != null) {
         curFi.verifySameSchema(fi);
