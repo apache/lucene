@@ -40,7 +40,7 @@ buildscript {
   }
 }
 
-configure(subprojects.findAll { it.path == ':lucene:documentation' || it.path == ':solr:documentation' }) {
+configure(project(':lucene:documentation')) {
   task markdownToHtml(type: Copy) {
     dependsOn copyDocumentationAssets
     
@@ -60,20 +60,20 @@ configure(project(':lucene:documentation')) {
       include 'SYSTEM_REQUIREMENTS.md'
     }
   }
-  
+
   task createDocumentationIndex(type: MarkdownTemplateTask) {
     dependsOn markdownToHtml
 
     outputFile = file("${project.docroot}/index.html")
     templateFile = file("${project.markdownSrc}/index.template.md")
-    
+
     def defaultCodecFile = project(':lucene:core').file('src/java/org/apache/lucene/codecs/Codec.java')
     inputs.file(defaultCodecFile)
-    
+
     // list all properties used by the template here to allow uptodate checks to be correct:
     inputs.property('version', project.version)
 
-    binding.put('defaultCodecPackage', providers.provider{
+    binding.put('defaultCodecPackage', providers.provider {
       // static Codec defaultCodec   =   LOADER    .   lookup    (   "LuceneXXX"  )   ;
       def regex = ~/\bdefaultCodec\s*=\s*LOADER\s*\.\s*lookup\s*\(\s*"([^"]+)"\s*\)\s*;/
       def matcher = regex.matcher(defaultCodecFile.getText('UTF-8'))
@@ -82,40 +82,8 @@ configure(project(':lucene:documentation')) {
       }
       return matcher.group(1).toLowerCase(Locale.ROOT)
     })
-    
-    withProjectList()
-  }
-}
 
-configure(project(':solr:documentation')) {
-  markdownToHtml {
-    from(project.markdownSrc) {
-      include '**/*.md'
-      exclude '**/*.template.md'
-    }
-  }
-  
-  task createDocumentationIndex(type: MarkdownTemplateTask) {
-    dependsOn markdownToHtml
-  
-    outputFile = file("${project.docroot}/index.html")
-    templateFile = file("${project.markdownSrc}/index.template.md")
-    
-    // list all properties used by the template here to allow uptodate checks to be correct:
-    inputs.property('version', project.version)
-    inputs.property('solrRefguideUrl', project.solrRefguideUrl)
-    inputs.property('luceneDocUrl', project.luceneDocUrl)
-    
     withProjectList()
-  }
-  
-  task createMiniDocumentationIndex(type: MarkdownTemplateTask) {
-    outputFile = file("${project.docrootMinimal}/index.html")
-    templateFile = file("${project.markdownSrc}/online-link.template.md")
-
-    // list all properties used by the template here to allow uptodate checks to be correct:
-    inputs.property('version', project.version)
-    inputs.property('solrDocUrl', project.solrDocUrl)
   }
 }
 

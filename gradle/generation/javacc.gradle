@@ -169,42 +169,42 @@ configure(project(":lucene:queryparser")) {
           // Modify imports.
           text = text.replace(
               "package org.apache.lucene.queryparser.flexible.standard.parser;", '''\
-          package org.apache.lucene.queryparser.flexible.standard.parser;
-
-          import org.apache.lucene.queryparser.flexible.messages.*;
-          import org.apache.lucene.queryparser.flexible.core.*;
-          import org.apache.lucene.queryparser.flexible.core.messages.*;
-          ''')
+            package org.apache.lucene.queryparser.flexible.standard.parser;
+  
+            import org.apache.lucene.queryparser.flexible.messages.*;
+            import org.apache.lucene.queryparser.flexible.core.*;
+            import org.apache.lucene.queryparser.flexible.core.messages.*;
+            ''')
 
           // Modify constructors and code bits
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(Token currentTokenVal[^}]+[}]/, '''\
-          public ParseException(Token currentTokenVal,
-            int[][] expectedTokenSequencesVal, String[] tokenImageVal) 
-          {
-            super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, initialise(
-            currentTokenVal, expectedTokenSequencesVal, tokenImageVal)));
-            this.currentToken = currentTokenVal;
-            this.expectedTokenSequences = expectedTokenSequencesVal;
-            this.tokenImage = tokenImageVal;
-          }
-          ''')
+            public ParseException(Token currentTokenVal,
+              int[][] expectedTokenSequencesVal, String[] tokenImageVal) 
+            {
+              super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, initialise(
+              currentTokenVal, expectedTokenSequencesVal, tokenImageVal)));
+              this.currentToken = currentTokenVal;
+              this.expectedTokenSequences = expectedTokenSequencesVal;
+              this.tokenImage = tokenImageVal;
+            }
+            ''')
 
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(String message\)[^}]+[}]/, '''\
-          public ParseException(Message message) 
-          {
-            super(message);
-          }
-          ''')
+            public ParseException(Message message) 
+            {
+              super(message);
+            }
+            ''')
 
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(\)[^}]+[}]/, '''\
-          public ParseException() 
-          {
-            super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, "Error"));
-          }
-          ''')
+            public ParseException() 
+            {
+              super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, "Error"));
+            }
+            ''')
           return text
         })
       }
@@ -252,35 +252,6 @@ configure(project(":lucene:queryparser")) {
     dependsOn javaccParserFlexible
   }
 }
-
-configure(project(":solr:core")) {
-  task javacc(type: JavaCCTask) {
-    description "Regenerate Solr query parser"
-    group "generation"
-
-    javaccFile = file('src/java/org/apache/solr/parser/QueryParser.jj')
-
-    afterGenerate << commonCleanups
-    afterGenerate << { FileTree generatedFiles ->
-      generatedFiles.matching { include "QueryParser.java" }.each { file ->
-        modifyFile(file, { text ->
-          text = text.replace(
-              "public QueryParser(CharStream ",
-              "protected QueryParser(CharStream ")
-          text = text.replace(
-              "public QueryParser(QueryParserTokenManager ",
-              "protected QueryParser(QueryParserTokenManager ")
-          text = text.replace(
-              "final private LookaheadSuccess jj_ls =",
-              "static final private LookaheadSuccess jj_ls =")
-          return text
-        })
-      }
-    }
-  }
-}
-
-
 
 // We always regenerate, no need to declare outputs.
 class JavaCCTask extends DefaultTask {

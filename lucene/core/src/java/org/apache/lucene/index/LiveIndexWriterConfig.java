@@ -110,6 +110,9 @@ public class LiveIndexWriterConfig {
   /** Amount of time to wait for merges returned by MergePolicy.findFullFlushMerges(...) */
   protected volatile long maxFullFlushMergeWaitMillis;
 
+  /** The IndexWriter event listener to record key events * */
+  protected IndexWriterEventListener eventListener;
+
   // used by IndexWriterConfig
   LiveIndexWriterConfig(Analyzer analyzer) {
     this.analyzer = analyzer;
@@ -132,6 +135,7 @@ public class LiveIndexWriterConfig {
     readerPooling = IndexWriterConfig.DEFAULT_READER_POOLING;
     perThreadHardLimitMB = IndexWriterConfig.DEFAULT_RAM_PER_THREAD_HARD_LIMIT_MB;
     maxFullFlushMergeWaitMillis = IndexWriterConfig.DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS;
+    eventListener = IndexWriterEventListener.NO_OP_LISTENER;
   }
 
   /** Returns the default analyzer to use for indexing documents. */
@@ -447,6 +451,11 @@ public class LiveIndexWriterConfig {
     return maxFullFlushMergeWaitMillis;
   }
 
+  /** Returns the IndexWriterEventListener callback that tracks the key IndexWriter operations. */
+  public IndexWriterEventListener getIndexWriterEventListener() {
+    return eventListener;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
@@ -474,6 +483,7 @@ public class LiveIndexWriterConfig {
     sb.append("softDeletesField=").append(getSoftDeletesField()).append("\n");
     sb.append("maxFullFlushMergeWaitMillis=").append(getMaxFullFlushMergeWaitMillis()).append("\n");
     sb.append("leafSorter=").append(getLeafSorter()).append("\n");
+    sb.append("eventListener=").append(getIndexWriterEventListener()).append("\n");
     return sb.toString();
   }
 }

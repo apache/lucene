@@ -43,5 +43,3 @@ configure(project(":lucene:benchmark")) {
     processTestResources.dependsOn syncConf
   }
 }
-
-

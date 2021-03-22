@@ -193,62 +193,6 @@ public class TestSort extends LuceneTestCase {
     dir.close();
   }
 
-  /** Tests sorting on type string_val, but with a SortedDocValuesField */
-  public void testStringValSorted() throws IOException {
-    Directory dir = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
-    Document doc = new Document();
-    doc.add(new SortedDocValuesField("value", new BytesRef("foo")));
-    doc.add(newStringField("value", "foo", Field.Store.YES));
-    writer.addDocument(doc);
-    doc = new Document();
-    doc.add(new SortedDocValuesField("value", new BytesRef("bar")));
-    doc.add(newStringField("value", "bar", Field.Store.YES));
-    writer.addDocument(doc);
-    IndexReader ir = writer.getReader();
-    writer.close();
-
-    IndexSearcher searcher = newSearcher(ir);
-    Sort sort = new Sort(new SortField("value", SortField.Type.STRING_VAL));
-
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
-    // 'bar' comes before 'foo'
-    assertEquals("bar", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("foo", searcher.doc(td.scoreDocs[1].doc).get("value"));
-
-    ir.close();
-    dir.close();
-  }
-
-  /** Tests reverse sorting on type string_val, but with a SortedDocValuesField */
-  public void testStringValReverseSorted() throws IOException {
-    Directory dir = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
-    Document doc = new Document();
-    doc.add(new SortedDocValuesField("value", new BytesRef("bar")));
-    doc.add(newStringField("value", "bar", Field.Store.YES));
-    writer.addDocument(doc);
-    doc = new Document();
-    doc.add(new SortedDocValuesField("value", new BytesRef("foo")));
-    doc.add(newStringField("value", "foo", Field.Store.YES));
-    writer.addDocument(doc);
-    IndexReader ir = writer.getReader();
-    writer.close();
-
-    IndexSearcher searcher = newSearcher(ir);
-    Sort sort = new Sort(new SortField("value", SortField.Type.STRING_VAL, true));
-
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
-    // 'foo' comes after 'bar' in reverse order
-    assertEquals("foo", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("bar", searcher.doc(td.scoreDocs[1].doc).get("value"));
-
-    ir.close();
-    dir.close();
-  }
-
   /** Tests sorting on type int */
   public void testInt() throws IOException {
     Directory dir = newDirectory();

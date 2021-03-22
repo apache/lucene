@@ -433,8 +433,8 @@ class QueryIndex implements Closeable {
     @Override
     public void collect(int doc) throws IOException {
       dataValues.advanceTo(doc);
-      BytesRef cache_id = dataValues.cacheId.binaryValue();
-      BytesRef query_id = dataValues.queryId.binaryValue();
+      BytesRef cache_id = dataValues.cacheId.lookupOrd(dataValues.cacheId.ordValue());
+      BytesRef query_id = dataValues.queryId.lookupOrd(dataValues.queryId.ordValue());
       QueryCacheEntry query = queries.get(cache_id.utf8ToString());
       matcher.matchQuery(query_id.utf8ToString(), query, dataValues);
     }

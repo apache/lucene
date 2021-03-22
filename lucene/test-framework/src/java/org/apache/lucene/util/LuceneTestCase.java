@@ -95,6 +95,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
@@ -612,6 +613,9 @@ public abstract class LuceneTestCase extends Assert {
         RuleChain.outerRule(new TestRuleIgnoreTestSuites())
             .around(ignoreAfterMaxFailures)
             .around(suiteFailureMarker = new TestRuleMarkFailure())
+            .around(
+                new VerifyTestClassNamingConvention(
+                    "org.apache.lucene", Pattern.compile("(.+\\.)(Test)([^.]+)")))
             .around(new TestRuleAssertionsRequired())
             .around(new TestRuleLimitSysouts(suiteFailureMarker))
             .around(tempFilesCleanupRule = new TestRuleTemporaryFilesCleanup(suiteFailureMarker));
@@ -1007,6 +1011,11 @@ public abstract class LuceneTestCase extends Assert {
     if (rarely(r)) {
       c.setCheckPendingFlushUpdate(false);
     }
+
+    if (rarely(r)) {
+      c.setIndexWriterEventListener(new MockIndexWriterEventListener());
+    }
+
     c.setMaxFullFlushMergeWaitMillis(rarely() ? atLeast(r, 1000) : atLeast(r, 200));
     return c;
   }
@@ -2622,8 +2631,8 @@ public abstract class LuceneTestCase extends Assert {
           for (int docID = 0; docID < leftReader.maxDoc(); docID++) {
             assertEquals(docID, leftValues.nextDoc());
             assertEquals(docID, rightValues.nextDoc());
-            final BytesRef left = BytesRef.deepCopyOf(leftValues.binaryValue());
-            final BytesRef right = rightValues.binaryValue();
+            final BytesRef left = BytesRef.deepCopyOf(leftValues.lookupOrd(leftValues.ordValue()));
+            final BytesRef right = rightValues.lookupOrd(rightValues.ordValue());
             assertEquals(info, left, right);
           }
         } else {

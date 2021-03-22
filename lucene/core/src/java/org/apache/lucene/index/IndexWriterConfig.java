@@ -533,4 +533,11 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
     this.softDeletesField = softDeletesField;
     return this;
   }
+
+  /** Set event listener to record key events in IndexWriter */
+  public IndexWriterConfig setIndexWriterEventListener(
+      final IndexWriterEventListener eventListener) {
+    this.eventListener = eventListener;
+    return this;
+  }
 }

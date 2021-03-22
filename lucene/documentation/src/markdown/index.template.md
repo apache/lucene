@@ -1,4 +1,4 @@
-![Apache Lucene Logo](lucene_green_300.gif)
+![Apache Lucene Logo](lucene_green_300.png)
 
 # Apache Lucene™ ${project.version} Documentation
 

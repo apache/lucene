@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90VectorReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.VectorField;
@@ -58,8 +59,7 @@ public class TestKnnGraph extends LuceneTestCase {
   public void setup() {
     randSeed = random().nextLong();
     if (random().nextBoolean()) {
-      maxConn = HnswGraphBuilder.DEFAULT_MAX_CONN;
-      HnswGraphBuilder.DEFAULT_MAX_CONN = random().nextInt(256) + 1;
+      maxConn = random().nextInt(256) + 3;
     }
     int strategy = random().nextInt(SearchStrategy.values().length - 1) + 1;
     searchStrategy = SearchStrategy.values()[strategy];
@@ -67,7 +67,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   @After
   public void cleanup() {
-    HnswGraphBuilder.DEFAULT_MAX_CONN = maxConn;
+    maxConn = HnswGraphBuilder.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */
@@ -196,7 +196,7 @@ public class TestKnnGraph extends LuceneTestCase {
   int[][] copyGraph(KnnGraphValues values) throws IOException {
     int size = values.size();
     int[][] graph = new int[size][];
-    int[] scratch = new int[HnswGraphBuilder.DEFAULT_MAX_CONN];
+    int[] scratch = new int[maxConn];
     for (int node = 0; node < size; node++) {
       int n, count = 0;
       values.seek(node);
@@ -213,9 +213,11 @@ public class TestKnnGraph extends LuceneTestCase {
   public void testSearch() throws Exception {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
     searchStrategy = SearchStrategy.EUCLIDEAN_HNSW;
+    IndexWriterConfig config = newIndexWriterConfig();
+    config.setCodec(Codec.forName("Lucene90")); // test is not compatible with simpletext
     try (Directory dir = newDirectory();
-        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
-      // Add a document for every cartesian point  in an NxN square so we can
+        IndexWriter iw = new IndexWriter(dir, config)) {
+      // Add a document for every cartesian point in an NxN square so we can
       // easily know which are the nearest neighbors to every point. Insert by iterating
       // using a prime number that is not a divisor of N*N so that we will hit each point once,
       // and chosen so that points will be inserted in a deterministic
@@ -225,7 +227,8 @@ public class TestKnnGraph extends LuceneTestCase {
       int index = 0;
       for (int i = 0; i < values.length; i++) {
         // System.out.printf("%d: (%d, %d)\n", i, index % n, index / n);
-        values[i] = new float[] {index % n, index / n};
+        int x = index % n, y = index / n;
+        values[i] = new float[] {x, y};
         index = (index + stepSize) % (n * n);
         add(iw, i, values[i]);
         if (i == 13) {
@@ -249,10 +252,10 @@ public class TestKnnGraph extends LuceneTestCase {
         //  9 24 14  4 19
         // 12  2 17  7 22
 
-        // For this small graph the "search" is exhaustive, so this mostly tests the APIs, the
-        // orientation of the
-        // various priority queues, the scoring function, but not so much the approximate KNN search
-        // algo
+        /* For this small graph the "search" is exhaustive, so this mostly tests the APIs, the
+         * orientation of the various priority queues, the scoring function, but not so much the
+         * approximate KNN search algorithm
+         */
         assertGraphSearch(new int[] {0, 15, 3, 18, 5}, new float[] {0f, 0.1f}, dr);
         // Tiebreaking by docid must be done after VectorValues.search.
         // assertGraphSearch(new int[]{11, 1, 8, 14, 21}, new float[]{2, 2}, dr);
@@ -266,8 +269,7 @@ public class TestKnnGraph extends LuceneTestCase {
     TopDocs results = doKnnSearch(reader, vector, 5);
     for (ScoreDoc doc : results.scoreDocs) {
       // map docId to insertion id
-      int id = Integer.parseInt(reader.document(doc.doc).get("id"));
-      doc.doc = id;
+      doc.doc = Integer.parseInt(reader.document(doc.doc).get("id"));
     }
     assertResults(expected, results);
   }
@@ -313,7 +315,7 @@ public class TestKnnGraph extends LuceneTestCase {
           continue;
         }
         KnnGraphValues graphValues = vectorReader.getGraphValues(KNN_GRAPH_FIELD);
-        assertTrue((vectorValues == null) == (graphValues == null));
+        assertEquals((vectorValues == null), (graphValues == null));
         if (vectorValues == null) {
           continue;
         }
@@ -368,12 +370,12 @@ public class TestKnnGraph extends LuceneTestCase {
           assertTrue(
               "Graph has " + graphSize + " nodes, but one of them has no neighbors", graphSize > 1);
         }
-        if (HnswGraphBuilder.DEFAULT_MAX_CONN > graphSize) {
+        if (maxConn > graphSize) {
           // assert that the graph in each leaf is connected
           assertConnected(graph);
         } else {
           // assert that max-connections was respected
-          assertMaxConn(graph, HnswGraphBuilder.DEFAULT_MAX_CONN);
+          assertMaxConn(graph, maxConn);
         }
         totalGraphDocs += graphSize;
       }
@@ -388,11 +390,10 @@ public class TestKnnGraph extends LuceneTestCase {
   }
 
   private void assertMaxConn(int[][] graph, int maxConn) {
-    for (int i = 0; i < graph.length; i++) {
-      if (graph[i] != null) {
-        assert (graph[i].length <= maxConn);
-        for (int j = 0; j < graph[i].length; j++) {
-          int k = graph[i][j];
+    for (int[] ints : graph) {
+      if (ints != null) {
+        assert (ints.length <= maxConn);
+        for (int k : ints) {
           assertNotNull(graph[k]);
         }
       }
@@ -440,7 +441,10 @@ public class TestKnnGraph extends LuceneTestCase {
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      doc.add(new VectorField(KNN_GRAPH_FIELD, vector, searchStrategy));
+      FieldType fieldType =
+          VectorField.createHnswType(
+              vector.length, searchStrategy, maxConn, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+      doc.add(new VectorField(KNN_GRAPH_FIELD, vector, fieldType));
     }
     String idString = Integer.toString(id);
     doc.add(new StringField("id", idString, Field.Store.YES));

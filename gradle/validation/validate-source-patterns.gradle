@@ -95,13 +95,6 @@ configure(project(':lucene:benchmark')) {
   }
 }
 
-configure(project(':solr:core')) {
-  project.tasks.withType(ValidateSourcePatternsTask) {
-    sourceFiles.exclude 'src/**/CheckLoggingConfiguration.java'
-    sourceFiles.exclude 'src/test/org/apache/hadoop/**'
-  }
-}
-
 configure(rootProject) {
   task validateSourcePatterns(type: ValidateSourcePatternsTask) { task ->
     group = 'Verification'
@@ -297,13 +290,6 @@ class ValidateSourcePatternsTask extends DefaultTask {
           checkMockitoAssume(f, text);
         }
 
-        if (project.path.startsWith(':solr:')
-            && f.name.equals("SolrTestCase.java") == false
-            && f.name.equals("TestXmlQParser.java") == false) {
-          if (extendsLuceneTestCasePattern.matcher(text).find()) {
-            reportViolation(f, "Solr test cases should extend SolrTestCase rather than LuceneTestCase");
-          }
-        }
         invalidJavaOnlyPatterns.each { pattern,name ->
           if (pattern.matcher(text).find()) {
             reportViolation(f, name);

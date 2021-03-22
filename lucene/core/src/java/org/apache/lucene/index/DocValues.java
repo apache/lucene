@@ -333,17 +333,14 @@ public final class DocValues {
    *     reader.
    * @throws IllegalStateException if {@code field} exists, but was not indexed with docvalues.
    * @throws IllegalStateException if {@code field} has docvalues, but the type is not {@link
-   *     DocValuesType#BINARY} or {@link DocValuesType#SORTED}.
+   *     DocValuesType#BINARY}.
    * @throws IOException if an I/O error occurs.
    */
   public static BinaryDocValues getBinary(LeafReader reader, String field) throws IOException {
     BinaryDocValues dv = reader.getBinaryDocValues(field);
     if (dv == null) {
-      dv = reader.getSortedDocValues(field);
-      if (dv == null) {
-        checkField(reader, field, DocValuesType.BINARY, DocValuesType.SORTED);
-        return emptyBinary();
-      }
+      checkField(reader, field, DocValuesType.BINARY);
+      return emptyBinary();
     }
     return dv;
   }

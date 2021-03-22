@@ -290,7 +290,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, binaryDocValues.nextDoc());
     SortedDocValues sortedDocValues = leafReader.getSortedDocValues("sorted");
     assertEquals(0, sortedDocValues.nextDoc());
-    assertEquals("b", sortedDocValues.binaryValue().utf8ToString());
+    assertEquals("b", sortedDocValues.lookupOrd(sortedDocValues.ordValue()).utf8ToString());
     assertEquals(0, sortedDocValues.ordValue());
     assertEquals("b", sortedDocValues.lookupOrd(0).utf8ToString());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, sortedDocValues.nextDoc());
