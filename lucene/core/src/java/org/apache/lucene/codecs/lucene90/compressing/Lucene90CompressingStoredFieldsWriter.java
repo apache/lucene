@@ -612,8 +612,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
         // flush any pending chunks
         if (numBufferedDocs > 0) {
-          flush();
           numDirtyChunks++; // incomplete: we had to force this flush
+          numDirtyDocs += numBufferedDocs;
+          flush();
         }
 
         // iterate over each chunk. we use the stored fields index to find chunk boundaries,

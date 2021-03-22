@@ -841,8 +841,9 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
 
         // flush any pending chunks
         if (!pendingDocs.isEmpty()) {
-          flush();
           numDirtyChunks++; // incomplete: we had to force this flush
+          numDirtyDocs += pendingDocs.size();
+          flush();
         }
 
         // iterate over each chunk. we use the vectors index to find chunk boundaries,
