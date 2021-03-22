@@ -49,8 +49,6 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   static final String MAX_ROLLBACK_BUFFER_CAPACITY_ARGNAME = "maxRollbackBufferCapacity";
   static final String FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME = "failOnRollbackBufferOverflow";
-  static final String SUPPRESS_UNICODE_NORMALIZATION_EXTERNALIZATION_ARGNAME =
-      "suppressUnicodeNormalizationExternalization";
   private final NormType leading;
   private final Transliterator transliterator;
   private final NormType trailing;
@@ -60,6 +58,11 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
   // TODO: add support for custom rules
   /** Creates a new ICUTransformFilterFactory */
   public ICUTransformCharFilterFactory(Map<String, String> args) {
+    this(args, false);
+  }
+
+  /** package access, to allow tests to suppress unicode normalization externalization */
+  ICUTransformCharFilterFactory(Map<String, String> args, boolean suppressUnicodeNormalizationExternalization) {
     super(args);
     String id = require(args, "id");
     String direction =
@@ -76,8 +79,6 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
             args,
             FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME,
             ICUTransformCharFilter.DEFAULT_FAIL_ON_ROLLBACK_BUFFER_OVERFLOW);
-    boolean suppressUnicodeNormalizationExternalization =
-        getBoolean(args, SUPPRESS_UNICODE_NORMALIZATION_EXTERNALIZATION_ARGNAME, false);
     Transliterator stockTransliterator = Transliterator.getInstance(id, dir);
     if (suppressUnicodeNormalizationExternalization) {
       this.leading = null;

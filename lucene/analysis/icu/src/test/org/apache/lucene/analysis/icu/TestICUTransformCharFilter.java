@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.icu;
 
 import static org.apache.lucene.analysis.icu.ICUTransformCharFilterFactory.FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME;
 import static org.apache.lucene.analysis.icu.ICUTransformCharFilterFactory.MAX_ROLLBACK_BUFFER_CAPACITY_ARGNAME;
-import static org.apache.lucene.analysis.icu.ICUTransformCharFilterFactory.SUPPRESS_UNICODE_NORMALIZATION_EXTERNALIZATION_ARGNAME;
 
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.UnicodeSet;
@@ -315,9 +314,8 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
     args.put(MAX_ROLLBACK_BUFFER_CAPACITY_ARGNAME, Integer.toString(maxRollbackBufferCapacity));
     args.put(
         FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME, Boolean.toString(failOnRollbackBufferOverflow));
-    args.put(
-        SUPPRESS_UNICODE_NORMALIZATION_EXTERNALIZATION_ARGNAME,
-        Boolean.toString(suppressUnicodeNormalizationExternalization));
-    return (CharFilter) (new ICUTransformCharFilterFactory(args)).create(r);
+    ICUTransformCharFilterFactory factory = new ICUTransformCharFilterFactory(args,
+        suppressUnicodeNormalizationExternalization);
+    return (CharFilter) factory.create(r);
   }
 }
