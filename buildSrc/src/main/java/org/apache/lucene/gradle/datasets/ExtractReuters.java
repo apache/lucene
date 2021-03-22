@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.benchmark.utils;
+package org.apache.lucene.gradle.datasets;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -27,10 +27,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.lucene.util.IOUtils;
 
 /**
- * Split the Reuters SGML documents into Simple Text files containing: Title, Date, Dateline, Body
+ * Split the Reuters SGML documents into Simple Text files containing:
+ * Title, Date, Dateline, Body
  */
 public class ExtractReuters {
   private Path reutersDir;
@@ -39,13 +39,16 @@ public class ExtractReuters {
   public ExtractReuters(Path reutersDir, Path outputDir) throws IOException {
     this.reutersDir = reutersDir;
     this.outputDir = outputDir;
-    System.out.println("Deleting all files in " + outputDir);
-    IOUtils.rm(outputDir);
   }
 
   public void extract() throws IOException {
     long count = 0;
     Files.createDirectories(outputDir);
+
+    if (Files.list(outputDir).count() > 0) {
+      throw new IOException("The output directory must be empty: " + outputDir);
+    }
+
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(reutersDir, "*.sgm")) {
       for (Path sgmFile : stream) {
         extractFile(sgmFile);
@@ -53,7 +56,7 @@ public class ExtractReuters {
       }
     }
     if (count == 0) {
-      System.err.println("No .sgm files in " + reutersDir);
+      throw new IOException("No .sgm files in " + reutersDir);
     }
   }
 
@@ -65,7 +68,7 @@ public class ExtractReuters {
   private static String[] META_CHARS_SERIALIZATIONS = {"&amp;", "&lt;", "&gt;", "&quot;", "&apos;"};
 
   /** Override if you wish to change what is extracted */
-  protected void extractFile(Path sgmFile) {
+  protected void extractFile(Path sgmFile) throws IOException {
     try (BufferedReader reader = Files.newBufferedReader(sgmFile, StandardCharsets.ISO_8859_1)) {
       StringBuilder buffer = new StringBuilder(1024);
       StringBuilder outBuffer = new StringBuilder(1024);
@@ -105,8 +108,6 @@ public class ExtractReuters {
           buffer.setLength(0);
         }
       }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -135,6 +136,8 @@ public class ExtractReuters {
     System.err.println(
         "Usage: "
             + msg
-            + " :: java -cp <...> org.apache.lucene.benchmark.utils.ExtractReuters <Path to Reuters SGM files> <Output Path>");
+            + " :: java -cp <...> "
+            + ExtractReuters.class.getName()
+            + " <Path to Reuters SGM files> <Output Path>");
   }
 }

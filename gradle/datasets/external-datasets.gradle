@@ -1,3 +1,5 @@
+import org.apache.lucene.gradle.datasets.ExtractReuters
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -29,6 +31,27 @@ configure(project(":lucene:benchmark")) {
     ext {
       name = "enwiki-20070527-pages-articles.xml"
       src = "https://home.apache.org/~dsmiley/data/${name}.bz2"
+      intermediate = file("${dataDir}/${name}.bz2")
+      dst = file("${dataDir}/${name}")
+    }
+
+    outputs.file ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      ant.bunzip2(src: ext.intermediate, dest: ext.dst)
+    }
+  }
+
+  task getEnWikiRandomLines(type: Download) {
+    ext {
+      name = "enwiki.random.lines.txt"
+      src = "https://home.apache.org/~mikemccand/${name}.bz2"
       intermediate = file("${dataDir}/${name}.bz2")
       dst = file("${dataDir}/${name}")
     }
@@ -78,7 +101,7 @@ configure(project(":lucene:benchmark")) {
       dst = file("${dataDir}/${name}")
     }
 
-    outputs.file ext.dst
+    outputs.dir ext.dst
 
     src ext.src
     dest ext.intermediate
@@ -110,8 +133,6 @@ configure(project(":lucene:benchmark")) {
     overwrite false
     compress false
 
-    dependsOn sourceSets.main.runtimeClasspath
-
     doLast {
       def untarPath = file("$temporaryDir/reuters-untar")
 
@@ -125,24 +146,29 @@ configure(project(":lucene:benchmark")) {
 
       logger.lifecycle("Extracting ${ext.name} into ${ext.dst}...")
       ext.dst.deleteDir()
-
-      // TODO consider porting ExtractReuters to groovy?
-      project.javaexec {
-        main = 'org.apache.lucene.benchmark.utils.ExtractReuters'
-        classpath = sourceSets.main.runtimeClasspath
-        maxHeapSize = '1G'
-        args = [untarPath, ext.dst]
-      }
+      ExtractReuters.main(untarPath.toString(), ext.dst.toString())
     }
   }
 
-  [getEnWiki, getGeoNames, getTop100kWikiWordFiles, getReuters].each { task ->
+  task downloadDatasets() {
+    group "Data set download"
+    description "Download all data sets."
+  }
+
+  [
+      getEnWiki,
+      getGeoNames,
+      getTop100kWikiWordFiles,
+      getReuters,
+      getEnWikiRandomLines
+  ].each { task ->
     task.group "Data set download"
     task.description "Download the ${task.ext.name} data set."
+
+    downloadDatasets.dependsOn(task)
 
     task.doFirst {
       logger.lifecycle("Downloading data set ${task.ext.name} from ${task.ext.src} to ${task.ext.dst}...")
     }
   }
-
 }

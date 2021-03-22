@@ -151,8 +151,10 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
     }
     if (TEST_LINE_DOCS_FILE.endsWith(JENKINS_LARGE_LINE_DOCS_FILE)) {
       System.err.println(
-          "NOTE: download the large Jenkins line-docs file by running "
-              + "'ant get-jenkins-line-docs' in the lucene directory.");
+          "NOTE: large line-docs file was used in this run. You have to download "
+              + "it manually ('gradlew getEnWikiRandomLines') and use -P"
+              + TEST_LINE_DOCS_FILE
+              + "=... property to point to it.");
     }
 
     final StringBuilder b = new StringBuilder();

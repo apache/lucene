@@ -90,8 +90,7 @@ subprojects {
 
 configure(project(':lucene:benchmark')) {
   project.tasks.withType(ValidateSourcePatternsTask) {
-    sourceFiles.exclude 'temp/**'
-    sourceFiles.exclude 'work/**'
+    sourceFiles.exclude 'data/**'
   }
 }
 
