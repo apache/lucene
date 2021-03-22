@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLongBetween;
 import static java.util.stream.Collectors.toList;
-import static org.apache.lucene.index.DirectoryReader.open;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -176,7 +175,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     // writer.close wrote a new commit
     assertFalse(r2.isCurrent());
 
-    DirectoryReader r3 = open(dir1);
+    DirectoryReader r3 = DirectoryReader.open(dir1);
     assertTrue(r3.isCurrent());
     assertFalse(r2.isCurrent());
     assertEquals(0, count(new Term("id", id10), r3));
@@ -222,7 +221,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     assertFalse(nrtReader.isCurrent());
     nrtReader.close();
 
-    DirectoryReader dirReader = open(dir);
+    DirectoryReader dirReader = DirectoryReader.open(dir);
     nrtReader = writer.getReader();
 
     assertTrue(dirReader.isCurrent());
@@ -413,7 +412,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
 
     TestUtil.checkIndex(mainDir);
 
-    IndexReader reader = open(mainDir);
+    IndexReader reader = DirectoryReader.open(mainDir);
     assertEquals(addDirThreads.count.intValue(), reader.numDocs());
     // assertEquals(100 + numDirs * (3 * numIter / 4) * addDirThreads.numThreads
     //    * addDirThreads.NUM_INIT_DOCS, reader.numDocs());
@@ -454,7 +453,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
       writer.close();
 
       readers = new DirectoryReader[numDirs];
-      for (int i = 0; i < numDirs; i++) readers[i] = open(addDir);
+      for (int i = 0; i < numDirs; i++) readers[i] = DirectoryReader.open(addDir);
     }
 
     void joinThreads() {
@@ -955,7 +954,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     w.forceMergeDeletes();
     w.close();
     r.close();
-    r = open(dir);
+    r = DirectoryReader.open(dir);
     assertEquals(1, r.numDocs());
     assertFalse(r.hasDeletions());
     r.close();
@@ -1173,7 +1172,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
       Document doc = new Document();
       doc.add(newStringField("id", "" + i, Field.Store.NO));
       w.addDocument(doc);
-      IndexReader r = open(w);
+      IndexReader r = DirectoryReader.open(w);
       // Make sure segment count never exceeds 100:
       assertTrue(r.leaves().size() < 100);
       r.close();
@@ -1191,7 +1190,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     w.addDocument(new Document());
 
     // Pull NRT reader; it has 1 segment:
-    DirectoryReader r1 = open(w);
+    DirectoryReader r1 = DirectoryReader.open(w);
     assertEquals(1, r1.leaves().size());
     w.addDocument(new Document());
     w.commit();

@@ -69,7 +69,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    *     time-based indices this is usually a descending sort on timestamp). In this case {@code
    *     leafSorter} should sort leaves according to this sort criteria. Providing leafSorter allows
    *     to speed up this particular type of sort queries by early terminating while iterating
-   *     though segments and segments' documents.
+   *     through segments and segments' documents.
    * @throws IOException if there is a low-level IO error
    */
   public static DirectoryReader open(final Directory directory, Comparator<LeafReader> leafSorter)
@@ -336,9 +336,13 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    *     methods. <b>Please note:</b> This array is <b>not</b> cloned and not protected for
    *     modification outside of this reader. Subclasses of {@code DirectoryReader} should take care
    *     to not allow modification of this internal array, e.g. {@link #doOpenIfChanged()}.
+   * @param leafSorter – a comparator for sorting leaf readers. If not {@code null}, this comparator
+   *     is used for sorting leaf readers.
    */
-  protected DirectoryReader(Directory directory, LeafReader[] segmentReaders) throws IOException {
-    super(segmentReaders);
+  protected DirectoryReader(
+      Directory directory, LeafReader[] segmentReaders, Comparator<LeafReader> leafSorter)
+      throws IOException {
+    super(segmentReaders, leafSorter);
     this.directory = directory;
   }
 

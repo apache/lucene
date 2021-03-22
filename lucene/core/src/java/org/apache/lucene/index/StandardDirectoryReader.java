@@ -40,7 +40,6 @@ public final class StandardDirectoryReader extends DirectoryReader {
 
   final IndexWriter writer;
   final SegmentInfos segmentInfos;
-  private final Comparator<LeafReader> leafSorter;
   private final boolean applyAllDeletes;
   private final boolean writeAllDeletes;
 
@@ -54,19 +53,11 @@ public final class StandardDirectoryReader extends DirectoryReader {
       boolean applyAllDeletes,
       boolean writeAllDeletes)
       throws IOException {
-    super(directory, sortLeaves(readers, leafSorter));
+    super(directory, readers, leafSorter);
     this.writer = writer;
     this.segmentInfos = sis;
-    this.leafSorter = leafSorter;
     this.applyAllDeletes = applyAllDeletes;
     this.writeAllDeletes = writeAllDeletes;
-  }
-
-  private static LeafReader[] sortLeaves(LeafReader[] readers, Comparator<LeafReader> leafSorter) {
-    if (leafSorter != null) {
-      Arrays.sort(readers, leafSorter);
-    }
-    return readers;
   }
 
   static DirectoryReader open(
@@ -425,7 +416,8 @@ public final class StandardDirectoryReader extends DirectoryReader {
   }
 
   DirectoryReader doOpenIfChanged(SegmentInfos infos) throws IOException {
-    return StandardDirectoryReader.open(directory, infos, getSequentialSubReaders(), leafSorter);
+    return StandardDirectoryReader.open(
+        directory, infos, getSequentialSubReaders(), subReadersSorter);
   }
 
   @Override
