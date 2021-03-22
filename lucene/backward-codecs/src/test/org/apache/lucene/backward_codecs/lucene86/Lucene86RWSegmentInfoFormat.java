@@ -22,63 +22,17 @@ import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexSorter;
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SortFieldProvider;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Version;
 
-/**
- * Lucene 8.6 Segment info format.
- *
- * <p>Files:
- *
- * <ul>
- *   <li><code>.si</code>: Header, SegVersion, SegSize, IsCompoundFile, Diagnostics, Files,
- *       Attributes, IndexSort, Footer
- * </ul>
- *
- * Data types:
- *
- * <ul>
- *   <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
- *   <li>SegSize --&gt; {@link DataOutput#writeInt Int32}
- *   <li>SegVersion --&gt; {@link DataOutput#writeString String}
- *   <li>SegMinVersion --&gt; {@link DataOutput#writeString String}
- *   <li>Files --&gt; {@link DataOutput#writeSetOfStrings Set&lt;String&gt;}
- *   <li>Diagnostics,Attributes --&gt; {@link DataOutput#writeMapOfStrings Map&lt;String,String&gt;}
- *   <li>IsCompoundFile --&gt; {@link DataOutput#writeByte Int8}
- *   <li>IndexSort --&gt; {@link DataOutput#writeVInt Int32} count, followed by {@code count}
- *       SortField
- *   <li>SortField --&gt; {@link DataOutput#writeString String} sort class, followed by a per-sort
- *       bytestream (see {@link SortFieldProvider#readSortField(DataInput)})
- *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
- * </ul>
- *
- * Field Descriptions:
- *
- * <ul>
- *   <li>SegVersion is the code version that created the segment.
- *   <li>SegMinVersion is the minimum code version that contributed documents to the segment.
- *   <li>SegSize is the number of documents contained in the segment index.
- *   <li>IsCompoundFile records whether the segment is written as a compound file or not. If this is
- *       -1, the segment is not a compound file. If it is 1, the segment is a compound file.
- *   <li>The Diagnostics Map is privately written by {@link IndexWriter}, as a debugging aid, for
- *       each segment it creates. It includes metadata like the current Lucene version, OS, Java
- *       version, why the segment was created (merge, flush, addIndexes), etc.
- *   <li>Files is a list of files referred to by this segment.
- * </ul>
- *
- * @see SegmentInfos
- * @lucene.experimental
- */
+/** Writable version of Lucene86SegmentInfoFormat for testing */
 public class Lucene86RWSegmentInfoFormat extends Lucene86SegmentInfoFormat {
 
   /** Sole constructor. */
