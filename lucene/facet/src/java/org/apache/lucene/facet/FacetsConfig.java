@@ -71,28 +71,34 @@ public class FacetsConfig {
    */
   public enum DrillDownTermsIndexing {
     /**
+     * Index no drill down terms. e.g. for FacetField("a", "foo/bar/baz"), we would index no drill
+     * down terms at all (not even full-path drill down term).
+     */
+    NONE,
+
+    /**
      * Index only full-path drill down terms. No dimension nor sub-path indexing. e.g. for
-     * FacetField("a", "foo/bar/baz"), we would only index value "a foo bar baz".
+     * FacetField("a", "foo/bar/baz"), we would only index value "a/foo/bar/baz".
      */
     FULL_PATH_ONLY,
 
     /**
-     * Index sub-path and full-path down terms. No dimension indexing. e.g. for FacetField("a",
-     * "foo/bar/baz"), we would only index values "a foo", "a foo bar", and "a foo baz".
+     * Index sub-path and full-path drill down terms. No dimension indexing. e.g. for
+     * FacetField("a", "foo/bar/baz"), we would only index values "a/foo", "a/foo/bar", and
+     * "a/foo/bar/baz".
      */
-    SUB_PATH_AND_FULL_PATH,
+    ALL_PATHS_NO_DIM,
 
     /**
      * Index dimension and full-path drill down terms. No sub-path indexing. e.g. for
-     * FacetField("a", "foo/bar/baz"), we would only index values "a" and "a foo baz". This is weird
-     * usage and currently not available.
+     * FacetField("a", "foo/bar/baz"), we would only index values "a" and "a/foo/bar/baz".
      */
-    // DIMENSION_AND_FULL_PATH,
+    DIMENSION_AND_FULL_PATH,
 
     /**
      * Index dimension, sub-path and full-path drill down terms. e.g. for FacetField("a",
-     * "foo/bar/baz"), we would index all values "a", "a foo", "a foo bar", and "a foo baz". This is
-     * the default / existing behavior.
+     * "foo/bar/baz"), we would index all values "a", "a/foo", "a/foo/bar", and "a/foo/bar/baz".
+     * This is the default / existing behavior.
      */
     ALL
   }
@@ -212,7 +218,7 @@ public class FacetsConfig {
     }
 
     ft.drillDownTermsIndexing =
-        v ? DrillDownTermsIndexing.ALL : DrillDownTermsIndexing.SUB_PATH_AND_FULL_PATH;
+        v ? DrillDownTermsIndexing.ALL : DrillDownTermsIndexing.ALL_PATHS_NO_DIM;
   }
 
   /** Specify drill down terms option on the field / dimension. */
@@ -420,17 +426,26 @@ public class FacetsConfig {
         }
 
         // Drill down:
-        int start;
-        if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.FULL_PATH_ONLY) {
-          // skip indexing all drill down terms
-          start = cp.length;
-        } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL) {
-          start = 1;
-        } else {
-          start = 2;
-        }
-        for (int i = start; i <= cp.length; i++) {
-          doc.add(new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
+        if (ft.drillDownTermsIndexing != DrillDownTermsIndexing.NONE) {
+          StringField fullPathField =
+              new StringField(
+                  indexFieldName, pathToString(cp.components, cp.length), Field.Store.NO);
+          doc.add(fullPathField);
+
+          if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH) {
+            doc.add(
+                new StringField(indexFieldName, pathToString(cp.components, 1), Field.Store.NO));
+          } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL_PATHS_NO_DIM) {
+            for (int i = 2; i < cp.length; i++) {
+              doc.add(
+                  new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
+            }
+          } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL) {
+            for (int i = 1; i < cp.length; i++) {
+              doc.add(
+                  new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
+            }
+          }
         }
       }
 
