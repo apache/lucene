@@ -47,6 +47,22 @@ allprojects {
         // The inputs are all source files from the sourceSet.
         inputs.files sourceSet.allSource.asFileTree
 
+        // ECJ preferences
+        Properties properties = new Properties()
+        properties.load(file("${resources}/ecj.javadocs.prefs").newDataInputStream())
+        inputs.properties(properties);
+
+        // module-specific overrides
+        // sorry Dawid :)
+        switch(project.name) {
+          case "queryparser":
+            // TODO: fix/exclude generated code?
+            properties.put("org.eclipse.jdt.core.compiler.problem.unusedLocal", "ignore");
+          case "expressions":
+            // TODO: fix/exclude generated code?
+            properties.put("org.eclipse.jdt.core.compiler.problem.unusedLocal", "ignore");
+        }
+
         // This task has no proper outputs.
         setupDummyOutputs(task)
 
@@ -65,6 +81,10 @@ allprojects {
 
         args += [ "-d", "none" ]
 
+        // write final ECJ properties file
+        def prefsFile = project.file("${getTemporaryDir()}/ecj.prefs")
+        properties.store(prefsFile.newDataOutputStream(), "ecj prefs")
+
         // Compilation environment.
         args += [ "-source", project.java.sourceCompatibility ]
         args += [ "-target", project.java.targetCompatibility ]
@@ -72,7 +92,7 @@ allprojects {
         args += [ "-proc:none" ]
         args += [ "-nowarn" ]
         args += [ "-enableJavadoc" ]
-        args += [ "-properties", file("${resources}/ecj.javadocs.prefs").absolutePath ]
+        args += [ "-properties", prefsFile.absolutePath ]
 
         // disable for now because individual file excludes cannot be applied to ecj.
         // enabled = false
