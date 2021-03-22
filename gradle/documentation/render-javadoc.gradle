@@ -297,6 +297,10 @@ class RenderJavadocTask extends DefaultTask {
   @Input
   List<String> javadocMissingIgnore = []
 
+  @Input
+  @Optional
+  ListProperty<String> extraOpts = project.objects.listProperty(String)
+
   @Nullable
   @Optional
   @Input
@@ -365,6 +369,9 @@ class RenderJavadocTask extends DefaultTask {
 
     opts << [ '-quiet' ]
 
+    // Add all extra options, if any.
+    opts.addAll(extraOpts.orElse([]).get())
+
     def allOfflineLinks = [:]
     allOfflineLinks.putAll(offlineLinks)
 
@@ -408,7 +415,16 @@ class RenderJavadocTask extends DefaultTask {
     opts << [ '--release', 11 ]
     opts << '-Xdoclint:all,-missing'
 
-    // Temporary file that holds all javadoc options for the current task.
+    // Increase Javadoc's heap.
+    opts += [ "-J-Xmx512m" ]
+    // Force locale to be "en_US" (fix for: https://bugs.openjdk.java.net/browse/JDK-8222793)
+    opts += [ "-J-Duser.language=en", "-J-Duser.country=US" ]
+
+    // -J options have to be passed on command line, they are not interpreted if passed via args file.
+    def jOpts = opts.findAll { opt -> opt instanceof String && opt.startsWith("-J") }
+    opts.removeAll(jOpts)
+
+    // Temporary file that holds all javadoc options for the current task (except jOpts)
     optionsFile.withWriter("UTF-8", { writer ->
       // escapes an option with single quotes or whitespace to be passed in the options.txt file for
       def escapeJavadocOption = { String s -> (s =~ /[ '"]/) ? ("'" + s.replaceAll(/[\\'"]/, /\\$0/) + "'") : s }
@@ -456,11 +472,7 @@ class RenderJavadocTask extends DefaultTask {
         errorOutput = wrapped
 
         args += [ "@${optionsFile}" ]
-
-        // -J flags can't be passed via options file... (an error "javadoc: error - invalid flag: -J-Xmx512m" occurs.)
-        args += [ "-J-Xmx512m" ]
-        // force locale to be "en_US" (fix for: https://bugs.openjdk.java.net/browse/JDK-8222793)
-        args += [ "-J-Duser.language=en", "-J-Duser.country=US" ]
+        args += jOpts
 
         ignoreExitValue true
       }
