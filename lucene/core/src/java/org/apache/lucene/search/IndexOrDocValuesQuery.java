@@ -152,12 +152,7 @@ public final class IndexOrDocValuesQuery extends Query {
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
-            // At equal costs, doc values tend to be worse than points since they
-            // still need to perform one comparison per document while points can
-            // do much better than that given how values are organized. So we give
-            // an arbitrary 8x penalty to doc values.
-            final long threshold = cost() >>> 3;
-            if (threshold <= leadCost) {
+            if (chooseIndexQuery(leadCost, cost())) {
               return indexScorerSupplier.get(leadCost);
             } else {
               return dvScorerSupplier.get(leadCost);
@@ -187,5 +182,16 @@ public final class IndexOrDocValuesQuery extends Query {
         return indexWeight.isCacheable(ctx);
       }
     };
+  }
+
+  /**
+   * At equal costs, doc values tend to be worse than points since they
+   * still need to perform one comparison per document while points can
+   * do much better than that given how values are organized. So we give
+   * an arbitrary 8x penalty to doc values.
+   */
+  boolean chooseIndexQuery(long leadCost, long cost) {
+    final long threshold = cost >>> 3;
+    return threshold <= leadCost;
   }
 }

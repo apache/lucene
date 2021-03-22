@@ -762,7 +762,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
             @Override
             public Scorer get(long leadCost) throws IOException {
               // skip cache operation which would slow query down too much
-              if (cost / skipCacheFactor > leadCost) {
+              if (skipCache(leadCost)) {
                 return supplier.get(leadCost);
               }
 
@@ -779,6 +779,19 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
               return new ConstantScoreScorer(
                   CachingWrapperWeight.this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi);
+            }
+
+            private boolean skipCache(long leadCost) {
+              // skip cache operation which would slow query down too much
+              if (cost / skipCacheFactor > leadCost) {
+                return true;
+              }
+              // skip cache for dv scorers
+              if (in.getQuery() instanceof IndexOrDocValuesQuery) {
+                IndexOrDocValuesQuery indexOrDocValuesQuery = (IndexOrDocValuesQuery) in.getQuery();
+                return indexOrDocValuesQuery.chooseIndexQuery(leadCost, cost) == false;
+              }
+              return false;
             }
 
             @Override
