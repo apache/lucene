@@ -25,6 +25,7 @@ import org.apache.lucene.backward_codecs.lucene84.Lucene84RWPostingsFormat;
 import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -50,6 +51,11 @@ public class Lucene86RWCodec extends Lucene86Codec {
   /** Constructor that takes a mode. */
   public Lucene86RWCodec(Lucene50StoredFieldsFormat.Mode mode) {
     storedFieldsFormat = new Lucene50RWStoredFieldsFormat(mode);
+  }
+
+  @Override
+  public SegmentInfoFormat segmentInfoFormat() {
+    return new Lucene86RWSegmentInfoFormat();
   }
 
   @Override

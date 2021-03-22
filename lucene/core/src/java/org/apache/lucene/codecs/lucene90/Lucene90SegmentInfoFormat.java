@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene86;
+package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Map;
@@ -40,7 +40,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Version;
 
 /**
- * Lucene 8.6 Segment info format.
+ * Lucene 9.0 Segment info format.
  *
  * <p>Files:
  *
@@ -83,17 +83,17 @@ import org.apache.lucene.util.Version;
  * @see SegmentInfos
  * @lucene.experimental
  */
-public class Lucene86SegmentInfoFormat extends SegmentInfoFormat {
+public class Lucene90SegmentInfoFormat extends SegmentInfoFormat {
 
   /** File extension used to store {@link SegmentInfo}. */
   public static final String SI_EXTENSION = "si";
 
-  static final String CODEC_NAME = "Lucene86SegmentInfo";
+  static final String CODEC_NAME = "Lucene90SegmentInfo";
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Sole constructor. */
-  public Lucene86SegmentInfoFormat() {}
+  public Lucene90SegmentInfoFormat() {}
 
   @Override
   public SegmentInfo read(Directory dir, String segment, byte[] segmentID, IOContext context)
