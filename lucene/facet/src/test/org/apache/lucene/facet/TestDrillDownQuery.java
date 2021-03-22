@@ -428,6 +428,7 @@ public class TestDrillDownQuery extends FacetTestCase {
 
     q = new DrillDownQuery(config);
     q.add("c", "c1", "c2", "c3");
+    assertEquals(1, searcher.count(q));
 
     // Verifies for FacetsConfig.DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH option
     q = new DrillDownQuery(config);
