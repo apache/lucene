@@ -25,6 +25,7 @@ import com.ibm.icu.text.UnicodeSet;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
@@ -89,6 +90,27 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       fail("with failOnRollbackBufferOverflow=true, we expect to throw a RuntimeException");
     } catch (RuntimeException ex) {
       // this is expected.
+    }
+  }
+
+  /**
+   * Sanity check all top-level prepackaged Transliterators to make sure that no trivial errors are thrown on
+   * instantiation. We're not really checking anything in particular here, but under the hood this will at least
+   * make a cursory check for consistency between the "stock" Transliterator, and any potential "optimized" version
+   * with externalized unicode normalization.
+   */
+  public void testSanityCheckAvailableIDs() throws Exception {
+    Enumeration<String> ids = Transliterator.getAvailableIDs();
+    while (ids.hasMoreElements()) {
+      String id = ids.nextElement();
+      try {
+        testRandomStrings(id, 1);
+      } catch (Exception ex) {
+        // the below assertion will obviously always fail if we get to this point; but we know we want to re-throw
+        // the exception anyway, with the problematic "id" specified, so the semantics of `assertNull` are probably
+        // a good fit.
+        assertNull("problem for id: "+id, ex);
+      }
     }
   }
 
@@ -197,12 +219,12 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
 
   public void testRandomStringsLatinToKatakana() throws Exception {
     // this Transliterator often decreases character length wrt input
-    testRandomStrings("Latin-Katakana");
+    testRandomStrings("Latin-Katakana", 1000);
   }
 
   public void testRandomStringsAnyToLatin() throws Exception {
     // this Transliterator often increases character length wrt input
-    testRandomStrings("Any-Latin");
+    testRandomStrings("Any-Latin", 1000);
   }
 
   private static Analyzer getAnalyzer(String id, boolean suppressExternalize) {
@@ -228,11 +250,11 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
   }
 
   /** blast some random strings through the analyzer */
-  private void testRandomStrings(final String id) throws Exception {
+  private void testRandomStrings(final String id, int iterations) throws Exception {
     final boolean firstSuppressExternalize = random().nextBoolean();
     Analyzer a = getAnalyzer(id, firstSuppressExternalize);
     Analyzer b = getAnalyzer(id, !firstSuppressExternalize);
-    checkRandomData(random(), a, b, 1000 * RANDOM_MULTIPLIER);
+    checkRandomData(random(), a, b, iterations * RANDOM_MULTIPLIER);
     a.close();
     b.close();
   }

@@ -129,7 +129,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     return wrapReader(trailing, input);
   }
 
-  private static final boolean ESCAPE_UNPRINTABLE = false;
+  private static final boolean ESCAPE_UNPRINTABLE = true;
 
   /**
    * Attempts to detect and externalize any leading or trailing top-level Unicode normalization. In
@@ -138,7 +138,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
    *
    * <p>The creation of any new "core" Transliterator (and much of the actual code in this method)
    * is based on the {@link com.ibm.icu.text.CompoundTransliterator#toRules(boolean)} method (with
-   * the boolean arg replaced by {@link #ESCAPE_UNPRINTABLE} -- always <code>false</code> in this
+   * the boolean arg replaced by {@link #ESCAPE_UNPRINTABLE} -- always <code>true</code> in this
    * context).
    *
    * @param t the Transliterator to base modified rules on.
