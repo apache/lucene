@@ -648,7 +648,7 @@ q = handleQuotedTerm(field, term, fuzzySlop);
 }
 
 /** Returns the first query if splitOnWhitespace=true or otherwise the entire produced query */
-  final public Query MultiTerm(String field, List<BooleanClause> clauses) throws ParseException {Token text, whitespace, followingText;
+  @SuppressWarnings("unused") final public Query MultiTerm(String field, List<BooleanClause> clauses) throws ParseException {Token text, whitespace, followingText;
   Query firstQuery = null;
     text = jj_consume_token(TERM);
 if (splitOnWhitespace) {
