@@ -90,19 +90,22 @@ configure(project(":lucene:analysis:common")) {
     description "Regenerates snowball stemmers."
     group "generation"
 
-    dependsOn downloadSnowballStemmers
-    dependsOn downloadSnowballWebsite
-    dependsOn downloadSnowballData
-
-    doFirst {
-      if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-        logger.warn("Snowball generation does not work on Windows, use a platform where bash is available.")
-        return
+    // Don't even bother adding dependencies.
+    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+      doFirst {
+        // Just emit a big fat error message but don't fail the build.
+        logger.error("Snowball generation does not work on Windows, use a platform where bash is available.")
       }
+    } else {
+      dependsOn downloadSnowballStemmers
+      dependsOn downloadSnowballWebsite
+      dependsOn downloadSnowballData
 
-      project.exec {
-        executable "bash"
-        args = [snowballScript, snowballStemmerDir, snowballWebsiteDir, snowballDataDir, projectDir]
+      doFirst {
+        project.exec {
+          executable "bash"
+          args = [snowballScript, snowballStemmerDir, snowballWebsiteDir, snowballDataDir, projectDir]
+        }
       }
     }
   }

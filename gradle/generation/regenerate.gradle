@@ -35,7 +35,7 @@ configure([
       Set<Task> deps = regenerate.getTaskDependencies().getDependencies(regenerate)
       def tidy = deps.find { it.name == "tidy" }
       if (tidy) {
-          tidy.dependsOn (deps - [tidy])
+          tidy.mustRunAfter (deps - [tidy])
       }
     }
 }
