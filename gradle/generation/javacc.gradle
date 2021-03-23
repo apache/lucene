@@ -98,6 +98,9 @@ def commonCleanups = { FileTree generatedFiles ->
       text = text.replace(
           "public class QueryParserTokenManager ",
           "@SuppressWarnings(\"unused\") public class QueryParserTokenManager ")
+      text = text.replace(
+          "public class StandardSyntaxParserTokenManager ",
+          "@SuppressWarnings(\"unused\") public class StandardSyntaxParserTokenManager ")
       return text
     })
   }
@@ -127,8 +130,8 @@ configure(project(":lucene:queryparser")) {
               "final private LookaheadSuccess jj_ls =",
               "static final private LookaheadSuccess jj_ls =")
           text = text.replace(
-              "final public Query MultiTerm(",
-              "@SuppressWarnings(\"unused\") final public Query MultiTerm(")
+              "public class QueryParser ",
+              "@SuppressWarnings(\"unused\") public class QueryParser ")
           return text
         })
       }
@@ -151,6 +154,9 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "new java.util.ArrayList<int[]>",
               "new java.util.ArrayList<>")
+          text = text.replace(
+              "public class QueryParser ",
+              "@SuppressWarnings(\"unused\") public class QueryParser ")
           return text
         })
       }

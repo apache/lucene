@@ -81,7 +81,7 @@ import org.apache.lucene.queryparser.charstream.FastCharStream;
  * the same syntax as this class, but is more modular,
  * enabling substantial customization to how a query is created.
  */
-public class QueryParser extends QueryParserBase implements QueryParserConstants {
+@SuppressWarnings("unused") public class QueryParser extends QueryParserBase implements QueryParserConstants {
   /** The default operator for parsing queries.
    * Use {@link QueryParserBase#setDefaultOperator} to change it.
    */
@@ -648,7 +648,7 @@ q = handleQuotedTerm(field, term, fuzzySlop);
 }
 
 /** Returns the first query if splitOnWhitespace=true or otherwise the entire produced query */
-  @SuppressWarnings("unused") final public Query MultiTerm(String field, List<BooleanClause> clauses) throws ParseException {Token text, whitespace, followingText;
+  final public Query MultiTerm(String field, List<BooleanClause> clauses) throws ParseException {Token text, whitespace, followingText;
   Query firstQuery = null;
     text = jj_consume_token(TERM);
 if (splitOnWhitespace) {
