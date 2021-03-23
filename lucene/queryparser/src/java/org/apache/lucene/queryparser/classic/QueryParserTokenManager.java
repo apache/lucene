@@ -18,7 +18,7 @@ package org.apache.lucene.queryparser.classic;
 
 
 /** Token Manager. */
-public class QueryParserTokenManager implements QueryParserConstants {
+@SuppressWarnings("unused") public class QueryParserTokenManager implements QueryParserConstants {
 
   /** Debug output. */
   // (debugStream omitted).

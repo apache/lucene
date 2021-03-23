@@ -178,6 +178,7 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
     void withTopDocs(IndexSearcher searcher, Query q, TopDocs hits) throws Exception;
   }
 
+  @SuppressWarnings("unused")
   private volatile int preventOptimizeAway = 0;
 
   private class StandardHLImpl implements HLImpl {

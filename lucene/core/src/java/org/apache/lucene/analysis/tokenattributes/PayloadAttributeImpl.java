@@ -21,7 +21,7 @@ import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
 
 /** Default implementation of {@link PayloadAttribute}. */
-public class PayloadAttributeImpl extends AttributeImpl implements PayloadAttribute, Cloneable {
+public class PayloadAttributeImpl extends AttributeImpl implements PayloadAttribute {
   private BytesRef payload;
 
   /** Initialize this attribute with no payload. */

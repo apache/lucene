@@ -55,12 +55,11 @@ public class TestExpectThrows extends LuceneTestCase {
     final AtomicBoolean ran = new AtomicBoolean(false);
     AssertionError caught = null;
     try {
-      final IOException returned =
-          expectThrows(
-              IOException.class,
-              () -> {
-                ran.getAndSet(true);
-              });
+      expectThrows(
+          IOException.class,
+          () -> {
+            ran.getAndSet(true);
+          });
       fail("must not complete"); // NOTE: we don't use expectThrows to test expectThrows
     } catch (AssertionError ae) {
       caught = ae;
@@ -78,13 +77,12 @@ public class TestExpectThrows extends LuceneTestCase {
     final AtomicBoolean ran = new AtomicBoolean(false);
     AssertionError caught = null;
     try {
-      final IOException returned =
-          expectThrows(
-              IOException.class,
-              () -> {
-                ran.getAndSet(true);
-                fail("this failure should propogate");
-              });
+      expectThrows(
+          IOException.class,
+          () -> {
+            ran.getAndSet(true);
+            fail("this failure should propogate");
+          });
       fail("must not complete"); // NOTE: we don't use expectThrows to test expectThrows
     } catch (AssertionError ae) {
       caught = ae;
@@ -103,13 +101,12 @@ public class TestExpectThrows extends LuceneTestCase {
     final AtomicBoolean ran = new AtomicBoolean(false);
     AssumptionViolatedException caught = null;
     try {
-      final IOException returned =
-          expectThrows(
-              IOException.class,
-              () -> {
-                ran.getAndSet(true);
-                assumeTrue("this assumption should propogate", false);
-              });
+      expectThrows(
+          IOException.class,
+          () -> {
+            ran.getAndSet(true);
+            assumeTrue("this assumption should propogate", false);
+          });
       fail("must not complete"); // NOTE: we don't use expectThrows to test expectThrows
     } catch (AssumptionViolatedException ave) {
       caught = ave;

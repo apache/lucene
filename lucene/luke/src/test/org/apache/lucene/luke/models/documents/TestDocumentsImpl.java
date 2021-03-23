@@ -150,7 +150,7 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals("adventures", term.text());
 
     while (documents.nextTerm().isPresent()) {
-      Integer freq = documents.getDocFreq().orElseThrow(IllegalStateException::new);
+      documents.getDocFreq().orElseThrow(IllegalStateException::new);
     }
   }
 
@@ -208,16 +208,16 @@ public class TestDocumentsImpl extends DocumentsTestBase {
   @Test
   public void testNextTermDoc_unPositioned() {
     DocumentsImpl documents = new DocumentsImpl(reader);
-    Term term = documents.firstTerm("title").orElseThrow(IllegalStateException::new);
+    documents.firstTerm("title").orElseThrow(IllegalStateException::new);
     assertFalse(documents.nextTermDoc().isPresent());
   }
 
   @Test
   public void testTermPositions() {
     DocumentsImpl documents = new DocumentsImpl(reader);
-    Term term = documents.firstTerm("author").orElseThrow(IllegalStateException::new);
-    term = documents.seekTerm("carroll").orElseThrow(IllegalStateException::new);
-    int docid = documents.firstTermDoc().orElseThrow(IllegalStateException::new);
+    documents.firstTerm("author").orElseThrow(IllegalStateException::new);
+    documents.seekTerm("carroll").orElseThrow(IllegalStateException::new);
+    documents.firstTermDoc().orElseThrow(IllegalStateException::new);
     List<TermPosting> postings = documents.getTermPositions();
     assertEquals(1, postings.size());
     assertEquals(1, postings.get(0).getPosition());
@@ -228,21 +228,21 @@ public class TestDocumentsImpl extends DocumentsTestBase {
   @Test
   public void testTermPositions_unPositioned() {
     DocumentsImpl documents = new DocumentsImpl(reader);
-    Term term = documents.firstTerm("author").orElseThrow(IllegalStateException::new);
+    documents.firstTerm("author").orElseThrow(IllegalStateException::new);
     assertEquals(0, documents.getTermPositions().size());
   }
 
   @Test
   public void testTermPositions_noPositions() {
     DocumentsImpl documents = new DocumentsImpl(reader);
-    Term term = documents.firstTerm("title").orElseThrow(IllegalStateException::new);
-    int docid = documents.firstTermDoc().orElseThrow(IllegalStateException::new);
+    documents.firstTerm("title").orElseThrow(IllegalStateException::new);
+    documents.firstTermDoc().orElseThrow(IllegalStateException::new);
     assertEquals(0, documents.getTermPositions().size());
   }
 
   @Test(expected = AlreadyClosedException.class)
   public void testClose() throws Exception {
-    DocumentsImpl documents = new DocumentsImpl(reader);
+    new DocumentsImpl(reader);
     reader.close();
     IndexUtils.getFieldNames(reader);
   }

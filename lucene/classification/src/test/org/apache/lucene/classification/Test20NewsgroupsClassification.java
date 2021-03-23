@@ -437,7 +437,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
           }
         }
       }
-      return new NewsPost(body.toString(), subject, groupName, number);
+      return new NewsPost(body.toString(), subject, groupName);
     } catch (Throwable e) {
       return null;
     }
@@ -447,13 +447,11 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     private final String body;
     private final String subject;
     private final String group;
-    private final String number;
 
-    private NewsPost(String body, String subject, String group, String number) {
+    private NewsPost(String body, String subject, String group) {
       this.body = body;
       this.subject = subject;
       this.group = group;
-      this.number = number;
     }
 
     public String getBody() {
@@ -466,10 +464,6 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
 
     public String getGroup() {
       return group;
-    }
-
-    public String getNumber() {
-      return number;
     }
   }
 }

@@ -446,7 +446,6 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
 
   private void appendPadded(StringBuilder builder, int integer, short positions) {
     assert integer >= 0 && positions >= 1 && positions <= 4;
-    int preBuilderLen = builder.length();
     int intStrLen;
     if (integer > 999) {
       intStrLen = 4;

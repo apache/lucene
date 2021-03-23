@@ -112,8 +112,6 @@ public class TestGeo3dShapeWGS84ModelRectRelation extends ShapeRectRelationTestC
             16 * RADIANS_PER_DEGREE,
             4 * RADIANS_PER_DEGREE,
             36 * RADIANS_PER_DEGREE);
-    final GeoPoint pt =
-        new GeoPoint(planetModel, 16 * RADIANS_PER_DEGREE, 23.81626064835212 * RADIANS_PER_DEGREE);
     final GeoPoint[] pathPoints =
         new GeoPoint[] {
           new GeoPoint(

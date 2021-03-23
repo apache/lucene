@@ -46,8 +46,7 @@ import org.apache.lucene.util.DocIdSetBuilder;
  * instantiate one of the {@link Facets} subclasses to do the facet counting. Use the {@code search}
  * utility methods to perform an "ordinary" search but also collect into a {@link Collector}.
  */
-// redundant 'implements Collector' to workaround javadocs bugs
-public class FacetsCollector extends SimpleCollector implements Collector {
+public class FacetsCollector extends SimpleCollector {
 
   private LeafReaderContext context;
   private Scorable scorer;

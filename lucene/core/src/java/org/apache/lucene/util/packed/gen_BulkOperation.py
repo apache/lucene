@@ -15,7 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fractions import gcd
+try:
+  # python 3.9+
+  from math import gcd
+except ImportError:
+  # old python
+  from fractions import gcd
 
 """Code generation for bulk operations"""
 

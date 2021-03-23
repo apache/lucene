@@ -81,7 +81,7 @@ import org.apache.lucene.queryparser.charstream.FastCharStream;
  * the same syntax as this class, but is more modular,
  * enabling substantial customization to how a query is created.
  */
-public class QueryParser extends QueryParserBase implements QueryParserConstants {
+@SuppressWarnings("unused") public class QueryParser extends QueryParserBase implements QueryParserConstants {
   /** The default operator for parsing queries.
    * Use {@link QueryParserBase#setDefaultOperator} to change it.
    */

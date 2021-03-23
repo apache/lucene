@@ -17,14 +17,12 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
-import java.util.Map;
 import org.apache.lucene.sandbox.search.TermAutomatonQuery.EnumAndScorer;
 import org.apache.lucene.sandbox.search.TermAutomatonQuery.TermAutomatonWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automaton;
@@ -32,12 +30,10 @@ import org.apache.lucene.util.automaton.RunAutomaton;
 
 // TODO: add two-phase and needsScores support. maybe use conjunctionDISI internally?
 class TermAutomatonScorer extends Scorer {
-  private final EnumAndScorer[] subs;
   private final EnumAndScorer[] subsOnDoc;
   private final PriorityQueue<EnumAndScorer> docIDQueue;
   private final PriorityQueue<EnumAndScorer> posQueue;
   private final RunAutomaton runAutomaton;
-  private final Map<Integer, BytesRef> idToTerm;
 
   // We reuse this array to check for matches starting from an initial
   // position; we increase posShift every time we move to a new possible
@@ -58,18 +54,12 @@ class TermAutomatonScorer extends Scorer {
   private int freq;
 
   public TermAutomatonScorer(
-      TermAutomatonWeight weight,
-      EnumAndScorer[] subs,
-      int anyTermID,
-      Map<Integer, BytesRef> idToTerm,
-      LeafSimScorer docScorer)
+      TermAutomatonWeight weight, EnumAndScorer[] subs, int anyTermID, LeafSimScorer docScorer)
       throws IOException {
     super(weight);
     // System.out.println("  automaton:\n" + weight.automaton.toDot());
     this.runAutomaton = new TermRunAutomaton(weight.automaton, subs.length);
     this.docScorer = docScorer;
-    this.idToTerm = idToTerm;
-    this.subs = subs;
     this.docIDQueue = new DocIDQueue(subs.length);
     this.posQueue = new PositionQueue(subs.length);
     this.anyTermID = anyTermID;

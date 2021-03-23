@@ -95,7 +95,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     public final ReaderManager mgr;
 
     private final Directory indexDir;
-    private final Path root;
     private final Path segsPath;
 
     /** Which segments have been closed, but their parallel index is not yet not removed. */
@@ -119,8 +118,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     }
 
     public ReindexingReader(Path root) throws IOException {
-      this.root = root;
-
       // Normal index is stored under "index":
       indexDir = openDirectory(root.resolve("index"));
 
@@ -869,7 +866,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
           for (int i = 0; i < maxDoc; i++) {
             // TODO: is this still O(blockSize^2)?
             assertEquals(i, oldValues.nextDoc());
-            Document oldDoc = reader.document(i);
+            reader.document(i);
             Document newDoc = new Document();
             newDoc.add(new NumericDocValuesField("number_" + newSchemaGen, oldValues.longValue()));
             w.addDocument(newDoc);
@@ -996,7 +993,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
           assertNotNull("oldSchemaGen=" + oldSchemaGen, oldValues);
           for (int i = 0; i < maxDoc; i++) {
             // TODO: is this still O(blockSize^2)?
-            Document oldDoc = reader.document(i);
+            reader.document(i);
             Document newDoc = new Document();
             assertEquals(i, oldValues.nextDoc());
             newDoc.add(
@@ -1518,7 +1515,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     NumericDocValues numbers = MultiDocValues.getNumericValues(r, fieldName);
     int maxDoc = r.maxDoc();
     boolean failed = false;
-    long t0 = System.currentTimeMillis();
     for (int i = 0; i < maxDoc; i++) {
       Document oldDoc = r.document(i);
       long value = multiplier * Long.parseLong(oldDoc.get("text").split(" ")[1]);
