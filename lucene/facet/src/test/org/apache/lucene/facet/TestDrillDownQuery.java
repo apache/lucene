@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.facet.taxonomy.IntAssociationFacetField;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -365,6 +366,8 @@ public class TestDrillDownQuery extends FacetTestCase {
     config.setDrillDownTermsIndexing(
         "d", FacetsConfig.DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH);
     config.setDrillDownTermsIndexing("e", FacetsConfig.DrillDownTermsIndexing.ALL);
+    config.setDrillDownTermsIndexing("f", FacetsConfig.DrillDownTermsIndexing.NONE);
+    config.setIndexFieldName("f", "facet-for-f");
 
     Document doc = new Document();
     doc.add(new FacetField("a", "a1", "a2", "a3"));
@@ -372,6 +375,7 @@ public class TestDrillDownQuery extends FacetTestCase {
     doc.add(new FacetField("c", "c1", "c2", "c3"));
     doc.add(new FacetField("d", "d1", "d2", "d3"));
     doc.add(new FacetField("e", "e1", "e2", "e3"));
+    doc.add(new IntAssociationFacetField(5, "f", "f1"));
     writer.addDocument(config.build(taxoWriter, doc));
     taxoWriter.close();
 
@@ -463,6 +467,16 @@ public class TestDrillDownQuery extends FacetTestCase {
     q = new DrillDownQuery(config);
     q.add("e", "e1", "e2", "e3");
     assertEquals(1, searcher.count(q));
+
+    // Verifies for FacetsConfig.DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH option with
+    // IntAssociationFacetField
+    q = new DrillDownQuery(config);
+    q.add("f");
+    assertEquals(0, searcher.count(q));
+
+    q = new DrillDownQuery(config);
+    q.add("f", "f1");
+    assertEquals(0, searcher.count(q));
 
     IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
   }

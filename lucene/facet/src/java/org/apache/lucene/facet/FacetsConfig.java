@@ -425,33 +425,32 @@ public class FacetsConfig {
           }
         }
 
-        // Drill down:
-        if (ft.drillDownTermsIndexing != DrillDownTermsIndexing.NONE) {
-          StringField fullPathField =
-              new StringField(
-                  indexFieldName, pathToString(cp.components, cp.length), Field.Store.NO);
-          doc.add(fullPathField);
-
-          if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH) {
-            doc.add(
-                new StringField(indexFieldName, pathToString(cp.components, 1), Field.Store.NO));
-          } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL_PATHS_NO_DIM) {
-            for (int i = 2; i < cp.length; i++) {
-              doc.add(
-                  new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
-            }
-          } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL) {
-            for (int i = 1; i < cp.length; i++) {
-              doc.add(
-                  new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
-            }
-          }
-        }
+        indexDrillDownTerms(doc, indexFieldName, ft, cp);
       }
 
       // Facet counts:
       // DocValues are considered stored fields:
       doc.add(new BinaryDocValuesField(indexFieldName, dedupAndEncode(ordinals.get())));
+    }
+  }
+
+  private void indexDrillDownTerms(
+      Document doc, String indexFieldName, DimConfig ft, FacetLabel cp) {
+    if (ft.drillDownTermsIndexing != DrillDownTermsIndexing.NONE) {
+      doc.add(
+          new StringField(indexFieldName, pathToString(cp.components, cp.length), Field.Store.NO));
+
+      if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH) {
+        doc.add(new StringField(indexFieldName, pathToString(cp.components, 1), Field.Store.NO));
+      } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL_PATHS_NO_DIM) {
+        for (int i = 2; i < cp.length; i++) {
+          doc.add(new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
+        }
+      } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL) {
+        for (int i = 1; i < cp.length; i++) {
+          doc.add(new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
+        }
+      }
     }
   }
 
@@ -510,11 +509,7 @@ public class FacetsConfig {
 
         FacetsConfig.DimConfig ft = getDimConfig(field.dim);
 
-        // Drill down:
-        for (int i = 1; i <= label.length; i++) {
-          doc.add(
-              new StringField(indexFieldName, pathToString(label.components, i), Field.Store.NO));
-        }
+        indexDrillDownTerms(doc, indexFieldName, ft, label);
       }
       doc.add(new BinaryDocValuesField(indexFieldName, new BytesRef(bytes, 0, upto)));
     }
