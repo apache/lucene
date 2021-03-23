@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene86;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +39,7 @@ import org.apache.lucene.util.bkd.BKDReader;
 import org.apache.lucene.util.bkd.BKDWriter;
 
 /** Writes dimensional values */
-public class Lucene86PointsWriter extends PointsWriter {
+public class Lucene86PointsWriter extends PointsWriter implements Closeable {
 
   /** Outputs used to write the BKD tree data files. */
   protected final IndexOutput metaOut, indexOut, dataOut;

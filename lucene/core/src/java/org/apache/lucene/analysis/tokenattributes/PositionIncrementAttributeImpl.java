@@ -21,7 +21,7 @@ import org.apache.lucene.util.AttributeReflector;
 
 /** Default implementation of {@link PositionIncrementAttribute}. */
 public class PositionIncrementAttributeImpl extends AttributeImpl
-    implements PositionIncrementAttribute {
+    implements PositionIncrementAttribute, Cloneable {
   private int positionIncrement = 1;
 
   /** Initialize this attribute with position increment of 1 */

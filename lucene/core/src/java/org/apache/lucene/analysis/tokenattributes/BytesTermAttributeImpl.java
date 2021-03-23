@@ -26,7 +26,8 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.internal
  */
-public class BytesTermAttributeImpl extends AttributeImpl implements BytesTermAttribute {
+public class BytesTermAttributeImpl extends AttributeImpl
+    implements BytesTermAttribute, TermToBytesRefAttribute {
   private BytesRef bytes;
 
   /** Initialize this attribute with no bytes. */

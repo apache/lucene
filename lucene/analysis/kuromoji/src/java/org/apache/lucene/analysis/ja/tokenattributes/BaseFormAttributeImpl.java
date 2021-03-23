@@ -21,7 +21,7 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
 /** Attribute for {@link Token#getBaseForm()}. */
-public class BaseFormAttributeImpl extends AttributeImpl implements BaseFormAttribute {
+public class BaseFormAttributeImpl extends AttributeImpl implements BaseFormAttribute, Cloneable {
   private Token token;
 
   @Override

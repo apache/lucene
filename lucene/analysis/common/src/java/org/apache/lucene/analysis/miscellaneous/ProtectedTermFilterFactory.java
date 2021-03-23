@@ -31,6 +31,7 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.util.ResourceLoader;
+import org.apache.lucene.util.ResourceLoaderAware;
 
 /**
  * Factory for a {@link ProtectedTermFilter}
@@ -81,7 +82,8 @@ import org.apache.lucene.util.ResourceLoader;
  * @since 7.4.0
  * @lucene.spi {@value #NAME}
  */
-public class ProtectedTermFilterFactory extends ConditionalTokenFilterFactory {
+public class ProtectedTermFilterFactory extends ConditionalTokenFilterFactory
+    implements ResourceLoaderAware {
 
   public static final String NAME = "protectedTerm";
 
