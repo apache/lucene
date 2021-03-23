@@ -911,7 +911,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     BooleanQuery query = queryBuilder.build();
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     try {
-      highlighter.highlight("body", query, topDocs, 2);
+      String snippets[] = highlighter.highlight("body", query, topDocs, 2);
       // don't even care what the results are; just want to test exception behavior
       if (fieldType == UHTestHelper.reanalysisType) {
         fail("Expecting EXPECTED IOException");

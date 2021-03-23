@@ -125,13 +125,14 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
       Throwable priorE = null;
       FieldInfo infos[] = null;
       try {
-        CodecUtil.checkIndexHeader(
-            input,
-            Lucene90FieldInfosFormat.CODEC_NAME,
-            Lucene90FieldInfosFormat.FORMAT_START,
-            Lucene90FieldInfosFormat.FORMAT_CURRENT,
-            segmentInfo.getId(),
-            segmentSuffix);
+        int version =
+            CodecUtil.checkIndexHeader(
+                input,
+                Lucene90FieldInfosFormat.CODEC_NAME,
+                Lucene90FieldInfosFormat.FORMAT_START,
+                Lucene90FieldInfosFormat.FORMAT_CURRENT,
+                segmentInfo.getId(),
+                segmentSuffix);
 
         final int size = input.readVInt(); // read in the size
         infos = new FieldInfo[size];

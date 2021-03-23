@@ -157,6 +157,14 @@ class SimpleTextPointsWriter extends PointsWriter {
     SimpleTextUtil.write(out, s, scratch);
   }
 
+  private void writeInt(IndexOutput out, int x) throws IOException {
+    SimpleTextUtil.write(out, Integer.toString(x), scratch);
+  }
+
+  private void writeLong(IndexOutput out, long x) throws IOException {
+    SimpleTextUtil.write(out, Long.toString(x), scratch);
+  }
+
   private void write(IndexOutput out, BytesRef b) throws IOException {
     SimpleTextUtil.write(out, b);
   }

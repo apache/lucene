@@ -61,7 +61,7 @@ public class TestRandomGeoPolygon extends RandomGeo3dShapeGenerator {
     points.add(point3);
     points.add(point4);
     try {
-      GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
+      GeoPolygon polygon = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
     } catch (Exception e) {
       fail(points.toString());
     }
@@ -287,5 +287,19 @@ public class TestRandomGeoPolygon extends RandomGeo3dShapeGenerator {
       }
     }
     return false;
+  }
+
+  private GeoPoint getCenterOfMass(final PlanetModel planetModel, final List<GeoPoint> points) {
+    double x = 0;
+    double y = 0;
+    double z = 0;
+    // get center of mass
+    for (final GeoPoint point : points) {
+      x += point.x;
+      y += point.y;
+      z += point.z;
+    }
+    // Normalization is not needed because createSurfacePoint does the scaling anyway.
+    return planetModel.createSurfacePoint(x, y, z);
   }
 }

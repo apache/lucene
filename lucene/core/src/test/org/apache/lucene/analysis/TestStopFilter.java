@@ -191,7 +191,8 @@ public class TestStopFilter extends BaseTokenStreamTestCase {
       StopFilter stopfilter, List<Integer> stopwordPositions, final int numberOfTokens)
       throws IOException {
     CharTermAttribute termAtt = stopfilter.getAttribute(CharTermAttribute.class);
-    stopfilter.getAttribute(PositionIncrementAttribute.class);
+    PositionIncrementAttribute posIncrAtt =
+        stopfilter.getAttribute(PositionIncrementAttribute.class);
     stopfilter.reset();
     log("Test stopwords positions:");
     for (int i = 0; i < numberOfTokens; i++) {

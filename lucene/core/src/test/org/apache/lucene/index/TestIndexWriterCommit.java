@@ -182,6 +182,8 @@ public class TestIndexWriterCommit extends LuceneTestCase {
     // sum because the merged FST may use array encoding for
     // some arcs (which uses more space):
 
+    final String idFormat = TestUtil.getPostingsFormat("id");
+    final String contentFormat = TestUtil.getPostingsFormat("content");
     MockDirectoryWrapper dir = newMockDirectory();
     Analyzer analyzer;
     if (random().nextBoolean()) {

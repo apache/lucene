@@ -30,6 +30,7 @@ import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LineFileDocs;
 import org.apache.lucene.util.TestUtil;
@@ -81,7 +82,7 @@ public class TestNRTCachingDirectory extends BaseDirectoryTestCase {
         final IndexSearcher s = newSearcher(r);
         // Just make sure search can run; we can't assert
         // totHits since it could be 0
-        s.search(new TermQuery(new Term("body", "the")), 10);
+        TopDocs hits = s.search(new TermQuery(new Term("body", "the")), 10);
         // System.out.println("tot hits " + hits.totalHits);
       }
     }

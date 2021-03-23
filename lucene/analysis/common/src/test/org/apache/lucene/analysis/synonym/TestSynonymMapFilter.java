@@ -62,6 +62,14 @@ public class TestSynonymMapFilter extends BaseTokenStreamTestCase {
     b.add(inputCharsRef.get(), outputCharsRef.get(), keepOrig);
   }
 
+  private void assertEquals(CharTermAttribute term, String expected) {
+    assertEquals(expected.length(), term.length());
+    final char[] buffer = term.buffer();
+    for (int chIDX = 0; chIDX < expected.length(); chIDX++) {
+      assertEquals(expected.charAt(chIDX), buffer[chIDX]);
+    }
+  }
+
   // For the output string: separate positions with a space,
   // and separate multiple tokens at each position with a
   // /.  If a token should have end offset != the input

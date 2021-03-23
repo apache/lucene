@@ -32,7 +32,7 @@ import org.apache.lucene.analysis.util.OpenStringBuilder;
 /**
  * A CharFilter that wraps another Reader and attempts to strip out HTML constructs.
  */
-@SuppressWarnings({"unused","fallthrough"})
+@SuppressWarnings("fallthrough")
 
 public final class HTMLStripCharFilter extends BaseCharFilter {
 

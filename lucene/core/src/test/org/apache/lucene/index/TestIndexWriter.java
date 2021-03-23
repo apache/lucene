@@ -2967,6 +2967,7 @@ public class TestIndexWriter extends LuceneTestCase {
     // Use WindowsFS to prevent open files from being deleted:
     FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
     Path root = new FilterPath(path, fs);
+    DirectoryReader reader;
     // MMapDirectory doesn't work because it closes its file handles after mapping!
     try (FSDirectory dir = new NIOFSDirectory(root)) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));

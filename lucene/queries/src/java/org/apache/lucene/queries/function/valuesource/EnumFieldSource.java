@@ -102,6 +102,8 @@ public class EnumFieldSource extends FieldCacheSource {
     final NumericDocValues arr = DocValues.getNumeric(readerContext.reader(), field);
 
     return new IntDocValues(this) {
+      final MutableValueInt val = new MutableValueInt();
+
       int lastDocID;
 
       private int getValueForDoc(int doc) throws IOException {

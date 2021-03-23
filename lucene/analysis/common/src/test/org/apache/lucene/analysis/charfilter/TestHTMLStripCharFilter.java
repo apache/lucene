@@ -358,8 +358,9 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
   static void assertLegalOffsets(String in) throws Exception {
     int length = in.length();
     HTMLStripCharFilter reader = new HTMLStripCharFilter(new BufferedReader(new StringReader(in)));
+    int ch = 0;
     int off = 0;
-    while (reader.read() != -1) {
+    while ((ch = reader.read()) != -1) {
       int correction = reader.correctOffset(off);
       assertTrue(
           "invalid offset correction: " + off + "->" + correction + " for doc of length: " + length,

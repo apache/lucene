@@ -22,7 +22,8 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
 /** Attribute for Kuromoji inflection data. */
-public class InflectionAttributeImpl extends AttributeImpl implements InflectionAttribute {
+public class InflectionAttributeImpl extends AttributeImpl
+    implements InflectionAttribute, Cloneable {
   private Token token;
 
   @Override

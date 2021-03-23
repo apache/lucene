@@ -65,6 +65,7 @@ public class TokenStreamToTermAutomatonQuery {
     TermAutomatonQuery query = new TermAutomatonQuery(field);
 
     int pos = -1;
+    int lastPos = 0;
     int maxOffset = 0;
     int maxPos = -1;
     int state = -1;

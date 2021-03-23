@@ -271,6 +271,13 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
     return bytes;
   }
 
+  /** Seek {@code input} to the directory offset. */
+  private static void seekDir(IndexInput input) throws IOException {
+    input.seek(input.length() - CodecUtil.footerLength() - 8);
+    long offset = input.readLong();
+    input.seek(offset);
+  }
+
   // for debugging
   // private static String toHex(int v) {
   //   return "0x" + Integer.toHexString(v);

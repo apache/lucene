@@ -29,6 +29,7 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingT
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VERSION_START;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
@@ -70,7 +71,8 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * @lucene.experimental
  */
-public final class Lucene90CompressingTermVectorsReader extends TermVectorsReader {
+public final class Lucene90CompressingTermVectorsReader extends TermVectorsReader
+    implements Closeable {
 
   private final FieldInfos fieldInfos;
   final FieldsIndex indexReader;

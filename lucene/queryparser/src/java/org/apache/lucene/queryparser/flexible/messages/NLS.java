@@ -143,7 +143,10 @@ public class NLS {
       ResourceBundle resourceBundle =
           ResourceBundle.getBundle(clazz.getName(), Locale.getDefault());
       if (resourceBundle != null) {
-        resourceBundle.getObject(key);
+        Object obj = resourceBundle.getObject(key);
+        // if (obj == null)
+        //  System.err.println("WARN: Message with key:" + key + " and locale: "
+        //      + Locale.getDefault() + " not found.");
       }
     } catch (MissingResourceException e) {
       // System.err.println("WARN: Message with key:" + key + " and locale: "

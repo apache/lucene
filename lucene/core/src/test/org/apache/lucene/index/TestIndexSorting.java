@@ -1720,6 +1720,7 @@ public class TestIndexSorting extends LuceneTestCase {
   }
 
   public void testRandom1() throws IOException {
+    boolean withDeletes = random().nextBoolean();
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     Sort indexSort = new Sort(new SortField("foo", SortField.Type.LONG));
@@ -1790,6 +1791,7 @@ public class TestIndexSorting extends LuceneTestCase {
   }
 
   public void testMultiValuedRandom1() throws IOException {
+    boolean withDeletes = random().nextBoolean();
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     Sort indexSort = new Sort(new SortedNumericSortField("foo", SortField.Type.LONG));
@@ -2410,6 +2412,7 @@ public class TestIndexSorting extends LuceneTestCase {
   }
 
   private static final class RandomDoc {
+    public final int id;
     public final int intValue;
     public final int[] intValues;
     public final long longValue;
@@ -2422,6 +2425,7 @@ public class TestIndexSorting extends LuceneTestCase {
     public final byte[][] bytesValues;
 
     public RandomDoc(int id) {
+      this.id = id;
       intValue = random().nextInt();
       longValue = random().nextLong();
       floatValue = random().nextFloat();

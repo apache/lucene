@@ -74,8 +74,8 @@ public class SimpleTextVectorWriter extends VectorWriter {
   public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    int docV;
-    for (docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
+    int docV, ord = 0;
+    for (docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), ord++) {
       writeVectorValue(vectors);
       docIds.add(docV);
     }

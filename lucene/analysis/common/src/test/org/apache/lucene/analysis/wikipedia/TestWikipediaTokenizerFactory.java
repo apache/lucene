@@ -156,7 +156,8 @@ public class TestWikipediaTokenizerFactory extends BaseTokenStreamFactoryTestCas
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              tokenizerFactory(WIKIPEDIA, TOKEN_OUTPUT, "-1").create(newAttributeFactory());
+              Tokenizer tf =
+                  tokenizerFactory(WIKIPEDIA, TOKEN_OUTPUT, "-1").create(newAttributeFactory());
             });
     assertTrue(
         expected

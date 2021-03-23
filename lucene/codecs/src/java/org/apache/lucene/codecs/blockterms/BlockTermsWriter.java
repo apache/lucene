@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.blockterms;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +52,7 @@ import org.apache.lucene.util.IOUtils;
  *
  * @lucene.experimental
  */
-public class BlockTermsWriter extends FieldsConsumer {
+public class BlockTermsWriter extends FieldsConsumer implements Closeable {
 
   static final String CODEC_NAME = "BlockTermsWriter";
 

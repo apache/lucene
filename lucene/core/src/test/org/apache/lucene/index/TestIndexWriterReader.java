@@ -424,6 +424,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     IndexWriter mainWriter;
     final List<Throwable> failures = new ArrayList<>();
     DirectoryReader[] readers;
+    boolean didClose = false;
     AtomicInteger count = new AtomicInteger(0);
     AtomicInteger numaddIndexes = new AtomicInteger(0);
 
@@ -459,6 +460,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     }
 
     void close(boolean doWait) throws Throwable {
+      didClose = true;
       if (doWait) {
         mainWriter.close();
       } else {

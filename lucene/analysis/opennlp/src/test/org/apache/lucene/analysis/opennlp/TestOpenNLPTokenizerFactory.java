@@ -82,9 +82,10 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
-                  .withTokenizer("opennlp", "tokenizerModel", "en-test-tokenizer.bin")
-                  .build();
+              CustomAnalyzer analyzer =
+                  CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+                      .withTokenizer("opennlp", "tokenizerModel", "en-test-tokenizer.bin")
+                      .build();
             });
     assertTrue(
         expected.getMessage().contains("Configuration Error: missing parameter 'sentenceModel'"));
@@ -96,9 +97,10 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
-                  .withTokenizer("opennlp", "sentenceModel", "en-test-sent.bin")
-                  .build();
+              CustomAnalyzer analyzer =
+                  CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+                      .withTokenizer("opennlp", "sentenceModel", "en-test-sent.bin")
+                      .build();
             });
     assertTrue(
         expected.getMessage().contains("Configuration Error: missing parameter 'tokenizerModel'"));

@@ -94,12 +94,14 @@ final class SegmentTermsEnumFrame {
   final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
 
   private final SegmentTermsEnum ste;
+  private final int version;
 
   public SegmentTermsEnumFrame(SegmentTermsEnum ste, int ord) throws IOException {
     this.ste = ste;
     this.ord = ord;
     this.state = ste.fr.parent.postingsReader.newTermState();
     this.state.totalTermFreq = -1;
+    this.version = ste.fr.parent.version;
     suffixLengthBytes = new byte[32];
     suffixLengthsReader = new ByteArrayDataInput();
   }

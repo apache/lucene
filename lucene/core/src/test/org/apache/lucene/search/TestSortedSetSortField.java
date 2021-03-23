@@ -47,7 +47,6 @@ public class TestSortedSetSortField extends LuceneTestCase {
     }
   }
 
-  @SuppressWarnings("unlikely-arg-type")
   public void testEquals() throws Exception {
     SortField sf = new SortedSetSortField("a", false);
     assertFalse(sf.equals(null));

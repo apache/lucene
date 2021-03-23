@@ -113,10 +113,12 @@ class GeoComplexPolygon extends GeoBasePolygon {
         }
         if (lastEdge != null) {
           lastEdge.next = edge;
+          edge.previous = lastEdge;
         }
         lastEdge = edge;
         lastGeoPoint = thisGeoPoint;
       }
+      firstEdge.previous = lastEdge;
       lastEdge.next = firstEdge;
       shapeStartEdges[edgePointIndex] = firstEdge;
       edgePointIndex++;
@@ -918,6 +920,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
     public final SidedPlane backingPlane;
     public final Plane plane;
     public final XYZBounds planeBounds;
+    public Edge previous = null;
     public Edge next = null;
 
     public Edge(final PlanetModel pm, final GeoPoint startPoint, final GeoPoint endPoint) {
@@ -1187,6 +1190,8 @@ class GeoComplexPolygon extends GeoBasePolygon {
   private abstract static class Tree {
     private final Node rootNode;
 
+    protected static final Edge[] EMPTY_ARRAY = new Edge[0];
+
     /**
      * Constructor.
      *
@@ -1278,6 +1283,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
 
   /** This is the z-tree. */
   private static class ZTree extends Tree {
+    public Node rootNode = null;
 
     public ZTree(final List<Edge> allEdges) {
       super(allEdges);
@@ -1438,6 +1444,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
   /** Count the number of verifiable edge crossings for a full 1/2 a world. */
   private class FullLinearCrossingEdgeIterator implements CountingEdgeIterator {
 
+    private final GeoPoint testPoint;
     private final Plane plane;
     private final Plane abovePlane;
     private final Plane belowPlane;
@@ -1461,6 +1468,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
       assert plane.evaluateIsZero(thePointX, thePointY, thePointZ)
           : "Check point is not on travel plane";
       assert plane.evaluateIsZero(testPoint) : "Test point is not on travel plane";
+      this.testPoint = testPoint;
       this.plane = plane;
       this.abovePlane = abovePlane;
       this.belowPlane = belowPlane;
@@ -1565,6 +1573,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
   /** Count the number of verifiable edge crossings for less than 1/2 a world. */
   private class SectorLinearCrossingEdgeIterator implements CountingEdgeIterator {
 
+    private final GeoPoint testPoint;
     private final Plane plane;
     private final Plane abovePlane;
     private final Plane belowPlane;
@@ -1589,6 +1598,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
       assert plane.evaluateIsZero(thePointX, thePointY, thePointZ)
           : "Check point is not on travel plane";
       assert plane.evaluateIsZero(testPoint) : "Test point is not on travel plane";
+      this.testPoint = testPoint;
       this.plane = plane;
       this.abovePlane = abovePlane;
       this.belowPlane = belowPlane;

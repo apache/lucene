@@ -62,7 +62,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
 import org.apache.lucene.util.packed.DirectWriter;
 
 /** writer for {@link Lucene80DocValuesFormat} */
-final class Lucene80DocValuesConsumer extends DocValuesConsumer {
+final class Lucene80DocValuesConsumer extends DocValuesConsumer implements Closeable {
 
   final Lucene80DocValuesFormat.Mode mode;
   IndexOutput data, meta;

@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  *   <li>&lt;EMOJI&gt;: A sequence of Emoji characters</li>
  * </ul>
  */
-@SuppressWarnings({"unused","fallthrough"})
+@SuppressWarnings("fallthrough")
 %%
 
 %unicode 9.0

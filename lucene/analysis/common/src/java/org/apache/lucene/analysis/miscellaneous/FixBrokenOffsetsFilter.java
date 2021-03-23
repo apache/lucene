@@ -31,6 +31,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 public final class FixBrokenOffsetsFilter extends TokenFilter {
 
   private int lastStartOffset;
+  private int lastEndOffset;
 
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
 
@@ -57,6 +58,7 @@ public final class FixBrokenOffsetsFilter extends TokenFilter {
   public void reset() throws IOException {
     super.reset();
     lastStartOffset = 0;
+    lastEndOffset = 0;
   }
 
   private void fixOffsets() {
@@ -70,5 +72,6 @@ public final class FixBrokenOffsetsFilter extends TokenFilter {
     }
     offsetAtt.setOffset(startOffset, endOffset);
     lastStartOffset = startOffset;
+    lastEndOffset = endOffset;
   }
 }

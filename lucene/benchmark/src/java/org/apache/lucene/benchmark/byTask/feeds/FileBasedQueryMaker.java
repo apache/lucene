@@ -43,7 +43,7 @@ import org.apache.lucene.util.IOUtils;
  * <pre>file.query.maker.file=c:/myqueries.txt
  * file.query.maker.default.field=body</pre>
  */
-public class FileBasedQueryMaker extends AbstractQueryMaker {
+public class FileBasedQueryMaker extends AbstractQueryMaker implements QueryMaker {
 
   @Override
   protected Query[] prepareQueries() throws Exception {

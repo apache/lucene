@@ -20,7 +20,8 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
 /** Default implementation of {@link TermFrequencyAttribute}. */
-public class TermFrequencyAttributeImpl extends AttributeImpl implements TermFrequencyAttribute {
+public class TermFrequencyAttributeImpl extends AttributeImpl
+    implements TermFrequencyAttribute, Cloneable {
   private int termFrequency = 1;
 
   /** Initialize this attribute with term frequency of 1 */

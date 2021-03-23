@@ -31,6 +31,7 @@ public class TestGeoBBox {
   @Test
   public void testBBoxDegenerate() {
     GeoBBox box;
+    GeoConvexPolygon cp;
     int relationship;
     List<GeoPoint> points = new ArrayList<GeoPoint>();
     points.add(

@@ -364,7 +364,7 @@ public final class NRTSuggester implements Accountable {
      * Label used to denote the end of an input in the FST and
      * the beginning of dedup bytes
      */
-    input.readVInt(); // endByte
+    int endByte = input.readVInt();
     int payloadSep = input.readVInt();
     return new NRTSuggester(fst, maxAnalyzedPathsPerOutput, payloadSep);
   }

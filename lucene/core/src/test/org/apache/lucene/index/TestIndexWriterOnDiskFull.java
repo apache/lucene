@@ -159,6 +159,9 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
     // sum because the merged FST may use array encoding for
     // some arcs (which uses more space):
 
+    final String idFormat = TestUtil.getPostingsFormat("id");
+    final String contentFormat = TestUtil.getPostingsFormat("content");
+
     int START_COUNT = 57;
     int NUM_DIR = TEST_NIGHTLY ? 50 : 5;
     int END_COUNT = START_COUNT + NUM_DIR * (TEST_NIGHTLY ? 25 : 5);

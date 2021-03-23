@@ -385,6 +385,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     }
 
     long[][] values = new long[valueCount][];
+    int missingCount = 0;
     for (int i = 0; i < valueCount; i++) {
       Document doc = new Document();
       doc.add(new IntPoint("id", i));
@@ -406,6 +407,8 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
         }
 
       } else {
+        missingCount++;
+
         if (VERBOSE) {
           System.out.println("  doc=" + i + " missing values");
         }

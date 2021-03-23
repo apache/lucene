@@ -141,6 +141,8 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
         }
         ids =
             new IDSource() {
+              final int radix =
+                  TestUtil.nextInt(random(), Character.MIN_RADIX, Character.MAX_RADIX);
               final String zeroPad =
                   String.format(Locale.ROOT, "%0" + TestUtil.nextInt(random(), 5, 20) + "d", 0);
               int upto;
@@ -161,6 +163,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
             new IDSource() {
               final int radix =
                   TestUtil.nextInt(random(), Character.MIN_RADIX, Character.MAX_RADIX);
+              int upto;
 
               @Override
               public String next() {
@@ -177,6 +180,8 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
             new IDSource() {
               final int radix =
                   TestUtil.nextInt(random(), Character.MIN_RADIX, Character.MAX_RADIX);
+              final String zeroPad = String.format(Locale.ROOT, "%015d", 0);
+              int upto;
 
               @Override
               public String next() {
@@ -566,6 +571,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     payload.length = 8;
     IDVersionPostingsFormat.longToBytes(17, payload);
     ts.setValue("foo", payload);
+    Field field = new Field("id", ts, ft);
     doc.add(new Field("id", ts, ft));
     expectThrows(
         IllegalArgumentException.class,

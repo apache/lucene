@@ -25,6 +25,7 @@ import org.apache.lucene.search.suggest.Lookup;
 import org.apache.lucene.search.suggest.jaspell.JaspellTernarySearchTrie.TSTNode;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
@@ -36,7 +37,7 @@ import org.apache.lucene.util.CharsRefBuilder;
  * @deprecated Migrate to one of the newer suggesters which are much more RAM efficient.
  */
 @Deprecated
-public class JaspellLookup extends Lookup {
+public class JaspellLookup extends Lookup implements Accountable {
   JaspellTernarySearchTrie trie = new JaspellTernarySearchTrie();
   private boolean usePrefix = true;
   private int editDistance = 2;

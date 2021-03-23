@@ -65,6 +65,7 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
 public class RandomPostingsTester {
 
   private static final IntToLongFunction DOC_TO_NORM = doc -> 1 + (doc & 0x0f);
+  private static final long MAX_NORM = 0x10;
 
   /** Which features to test. */
   public enum Option {

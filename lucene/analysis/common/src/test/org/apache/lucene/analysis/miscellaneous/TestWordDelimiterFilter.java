@@ -673,4 +673,16 @@ public class TestWordDelimiterFilter extends BaseTokenStreamTestCase {
         null,
         false);
   }
+
+  private Analyzer getAnalyzer(final int flags) {
+    return new Analyzer() {
+
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+        return new TokenStreamComponents(
+            tokenizer, new WordDelimiterFilter(tokenizer, flags, null));
+      }
+    };
+  }
 }

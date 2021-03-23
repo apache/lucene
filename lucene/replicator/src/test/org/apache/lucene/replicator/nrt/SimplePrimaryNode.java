@@ -196,6 +196,9 @@ class SimplePrimaryNode extends PrimaryNode {
     warmingSegments.add(preCopy);
 
     try {
+
+      Set<String> fileNames = files.keySet();
+
       // Ask all currently known replicas to pre-copy this newly merged segment's files:
       for (int replicaTCPPort : replicaTCPPorts) {
         try {

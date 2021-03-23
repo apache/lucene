@@ -800,6 +800,16 @@ public class TestWordDelimiterGraphFilter extends BaseTokenStreamTestCase {
     return (flags & flag) != 0;
   }
 
+  private static boolean isEnglishPossessive(String text, int pos) {
+    if (pos > 2) {
+      if ((text.charAt(pos - 1) == 's' || text.charAt(pos - 1) == 'S')
+          && (pos == text.length() || text.charAt(pos) != '-')) {
+        text = text.substring(0, text.length() - 2);
+      }
+    }
+    return true;
+  }
+
   private static class WordPart {
     final String part;
     final int startOffset;

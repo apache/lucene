@@ -1371,6 +1371,7 @@ public class TestGrouping extends LuceneTestCase {
     final List<Collection<SearchGroup<BytesRef>>> shardGroups = new ArrayList<>();
     List<FirstPassGroupingCollector<?>> firstPassGroupingCollectors = new ArrayList<>();
     FirstPassGroupingCollector<?> firstPassCollector = null;
+    boolean shardsCanUseIDV = canUseIDV;
 
     String groupField = "group";
 

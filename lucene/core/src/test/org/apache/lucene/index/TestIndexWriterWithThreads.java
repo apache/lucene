@@ -54,6 +54,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
   private static class IndexerThread extends Thread {
 
     private final CyclicBarrier syncStart;
+    boolean diskFull;
     Throwable error;
     IndexWriter writer;
     boolean noErrors;
@@ -99,6 +100,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
           // ioe.printStackTrace(System.out);
           if (ioe.getMessage().startsWith("fake disk full at")
               || ioe.getMessage().equals("now failing on purpose")) {
+            diskFull = true;
             try {
               Thread.sleep(1);
             } catch (InterruptedException ie) {

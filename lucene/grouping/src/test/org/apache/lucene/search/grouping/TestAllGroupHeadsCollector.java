@@ -228,6 +228,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
       Directory dir = newDirectory();
       RandomIndexWriter w =
           new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+      DocValuesType valueType = DocValuesType.SORTED;
 
       Document doc = new Document();
       Document docNoGroup = new Document();

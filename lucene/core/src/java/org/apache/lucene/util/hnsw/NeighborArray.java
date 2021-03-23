@@ -28,6 +28,7 @@ import org.apache.lucene.util.ArrayUtil;
 public class NeighborArray {
 
   private int size;
+  private int upto;
 
   float[] score;
   int[] node;

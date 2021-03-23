@@ -365,6 +365,11 @@ public class TestPayloads extends LuceneTestCase {
       super(PER_FIELD_REUSE_STRATEGY);
     }
 
+    public PayloadAnalyzer(String field, byte[] data, int offset, int length) {
+      super(PER_FIELD_REUSE_STRATEGY);
+      setPayloadData(field, data, offset, length);
+    }
+
     void setPayloadData(String field, byte[] data, int offset, int length) {
       fieldToData.put(field, new PayloadData(data, offset, length));
     }

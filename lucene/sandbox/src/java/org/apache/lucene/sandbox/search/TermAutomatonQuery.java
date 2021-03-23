@@ -429,7 +429,11 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
       if (any) {
         return new TermAutomatonScorer(
-            this, enums, anyTermID, new LeafSimScorer(stats, context.reader(), field, true));
+            this,
+            enums,
+            anyTermID,
+            idToTerm,
+            new LeafSimScorer(stats, context.reader(), field, true));
       } else {
         return null;
       }

@@ -341,11 +341,13 @@ public class TestCodecs extends LuceneTestCase {
   private static class Verify extends Thread {
     final Fields termsDict;
     final FieldData[] fields;
+    final SegmentInfo si;
     volatile boolean failed;
 
     Verify(final SegmentInfo si, final FieldData[] fields, final Fields termsDict) {
       this.fields = fields;
       this.termsDict = termsDict;
+      this.si = si;
     }
 
     @Override
@@ -374,6 +376,8 @@ public class TestCodecs extends LuceneTestCase {
       }
       assertEquals(DocIdSetIterator.NO_MORE_DOCS, postingsEnum.nextDoc());
     }
+
+    byte[] data = new byte[10];
 
     private void verifyPositions(final PositionData[] positions, final PostingsEnum posEnum)
         throws Throwable {

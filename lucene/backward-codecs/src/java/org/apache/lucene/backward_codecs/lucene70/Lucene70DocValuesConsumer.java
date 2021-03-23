@@ -20,6 +20,7 @@ import static org.apache.lucene.backward_codecs.lucene70.Lucene70DocValuesFormat
 import static org.apache.lucene.backward_codecs.lucene70.Lucene70DocValuesFormat.NUMERIC_BLOCK_SHIFT;
 import static org.apache.lucene.backward_codecs.lucene70.Lucene70DocValuesFormat.NUMERIC_BLOCK_SIZE;
 
+import java.io.Closeable; // javadocs
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,7 +54,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
 import org.apache.lucene.util.packed.DirectWriter;
 
 /** writer for {@link Lucene70DocValuesFormat} */
-final class Lucene70DocValuesConsumer extends DocValuesConsumer {
+final class Lucene70DocValuesConsumer extends DocValuesConsumer implements Closeable {
 
   IndexOutput data, meta;
   final int maxDoc;

@@ -130,6 +130,9 @@ public class TestGeoPath extends LuceneTestCase {
     GeoStandardPath p;
     GeoStandardPath c;
     GeoPoint point;
+    GeoPoint pointApprox;
+    int relationship;
+    GeoArea area;
     PlanetModel planetModel;
 
     planetModel = new PlanetModel(1.151145876105594, 0.8488541238944061);
@@ -138,14 +141,16 @@ public class TestGeoPath extends LuceneTestCase {
     c.addPoint(0.27828548161836364, 0.6785795524104564);
     c.done();
     point = new GeoPoint(planetModel, -0.49298555067758226, 0.9892440995026406);
-    GeoAreaFactory.makeGeoArea(
-        planetModel,
-        0.49937141144985997,
-        0.5161765426256085,
-        0.3337218719537796,
-        0.8544419570901649,
-        -0.6347692823688085,
-        0.3069696588119369);
+    pointApprox = new GeoPoint(0.5110940362119821, 0.7774603209946239, -0.49984312299556544);
+    area =
+        GeoAreaFactory.makeGeoArea(
+            planetModel,
+            0.49937141144985997,
+            0.5161765426256085,
+            0.3337218719537796,
+            0.8544419570901649,
+            -0.6347692823688085,
+            0.3069696588119369);
     assertTrue(!c.isWithin(point));
 
     // Start by testing the basic kinds of relationship, increasing in order of difficulty.

@@ -332,7 +332,7 @@ class SimpleReplicaNode extends ReplicaNode {
           Map<String, FileMetaData> files = SimpleServer.readFilesMetaData(in);
           message("done reading files to copy files=" + files.keySet());
           AtomicBoolean finished = new AtomicBoolean();
-          launchPreCopyMerge(finished, newPrimaryGen, files);
+          CopyJob job = launchPreCopyMerge(finished, newPrimaryGen, files);
           message("done launching copy job files=" + files.keySet());
 
           // Silly keep alive mechanism, else if e.g. we (replica node) crash, the primary

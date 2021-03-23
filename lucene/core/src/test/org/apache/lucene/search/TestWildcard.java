@@ -32,7 +32,6 @@ import org.apache.lucene.util.LuceneTestCase;
 /** TestWildcard tests the '*' and '?' wildcard characters. */
 public class TestWildcard extends LuceneTestCase {
 
-  @SuppressWarnings("unlikely-arg-type")
   public void testEquals() {
     WildcardQuery wq1 = new WildcardQuery(new Term("field", "b*a"));
     WildcardQuery wq2 = new WildcardQuery(new Term("field", "b*a"));

@@ -294,6 +294,7 @@ public class TestFSTs extends LuceneTestCase {
       for (int inputMode = 0; inputMode < 2; inputMode++) {
         final int numWords = random.nextInt(maxNumWords + 1);
         Set<IntsRef> termsSet = new HashSet<>();
+        IntsRef[] terms = new IntsRef[numWords];
         while (termsSet.size() < numWords) {
           final String term = getRandomString(random);
           termsSet.add(toIntsRef(term, inputMode));
@@ -526,7 +527,7 @@ public class TestFSTs extends LuceneTestCase {
 
       BufferedReader is = Files.newBufferedReader(wordsFileIn, StandardCharsets.UTF_8);
       try {
-        final IntsRefBuilder intsRefBuilder = new IntsRefBuilder();
+        final IntsRefBuilder intsRef = new IntsRefBuilder();
         long tStart = System.currentTimeMillis();
         int ord = 0;
         while (true) {
@@ -534,8 +535,8 @@ public class TestFSTs extends LuceneTestCase {
           if (w == null) {
             break;
           }
-          toIntsRef(w, inputMode, intsRefBuilder);
-          fstCompiler.add(intsRefBuilder.get(), getOutput(intsRefBuilder.get(), ord));
+          toIntsRef(w, inputMode, intsRef);
+          fstCompiler.add(intsRef.get(), getOutput(intsRef.get(), ord));
 
           ord++;
           if (ord % 500000 == 0) {
@@ -612,10 +613,10 @@ public class TestFSTs extends LuceneTestCase {
               if (w == null) {
                 break;
               }
-              toIntsRef(w, inputMode, intsRefBuilder);
+              toIntsRef(w, inputMode, intsRef);
               if (iter == 0) {
-                T expected = getOutput(intsRefBuilder.get(), ord);
-                T actual = Util.get(fst, intsRefBuilder.get());
+                T expected = getOutput(intsRef.get(), ord);
+                T actual = Util.get(fst, intsRef.get());
                 if (actual == null) {
                   throw new RuntimeException("unexpected null output on input=" + w);
                 }
@@ -630,18 +631,18 @@ public class TestFSTs extends LuceneTestCase {
                 }
               } else {
                 // Get by output
-                final Long output = (Long) getOutput(intsRefBuilder.get(), ord);
+                final Long output = (Long) getOutput(intsRef.get(), ord);
                 @SuppressWarnings({"unchecked", "deprecation"})
                 final IntsRef actual = Util.getByOutput((FST<Long>) fst, output.longValue());
                 if (actual == null) {
                   throw new RuntimeException("unexpected null input from output=" + output);
                 }
-                if (!actual.equals(intsRefBuilder.get())) {
+                if (!actual.equals(intsRef)) {
                   throw new RuntimeException(
                       "wrong input (got "
                           + actual
                           + " but expected "
-                          + intsRefBuilder
+                          + intsRef
                           + " from output="
                           + output);
                 }

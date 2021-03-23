@@ -92,7 +92,6 @@ public class TestFacetLabel extends FacetTestCase {
     }
   }
 
-  @SuppressWarnings("unlikely-arg-type")
   @Test
   public void testEquals() {
     assertEquals(new FacetLabel(), new FacetLabel());

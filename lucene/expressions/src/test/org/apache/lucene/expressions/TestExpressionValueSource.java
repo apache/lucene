@@ -94,7 +94,6 @@ public class TestExpressionValueSource extends LuceneTestCase {
     assertEquals(4, values.doubleValue(), 0);
   }
 
-  @SuppressWarnings("unlikely-arg-type")
   public void testDoubleValuesSourceEquals() throws Exception {
     Expression expr = JavascriptCompiler.compile("sqrt(a) + ln(b)");
 

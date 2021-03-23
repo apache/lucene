@@ -34,7 +34,7 @@ import org.apache.lucene.search.spans.SpanTermQuery;
  * A QueryMaker that makes queries devised manually (by Grant Ingersoll) for searching in the
  * Reuters collection.
  */
-public class ReutersQueryMaker extends AbstractQueryMaker {
+public class ReutersQueryMaker extends AbstractQueryMaker implements QueryMaker {
 
   private static String[] STANDARD_QUERIES = {
     // Start with some short queries

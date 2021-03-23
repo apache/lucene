@@ -24,8 +24,8 @@ import java.io.InputStream;
  *
  * @lucene.experimental
  */
-public class GeoCompositeMembershipShape
-    extends GeoBaseCompositeMembershipShape<GeoMembershipShape> {
+public class GeoCompositeMembershipShape extends GeoBaseCompositeMembershipShape<GeoMembershipShape>
+    implements GeoMembershipShape {
 
   /** Constructor. */
   public GeoCompositeMembershipShape(PlanetModel planetModel) {

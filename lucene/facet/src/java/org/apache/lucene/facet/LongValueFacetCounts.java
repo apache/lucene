@@ -218,7 +218,8 @@ public class LongValueFacetCounts extends Facets {
   }
 
   private void countAllOneSegment(NumericDocValues values) throws IOException {
-    while (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+    int doc;
+    while ((doc = values.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       totCount++;
       increment(values.longValue());
     }
@@ -254,7 +255,8 @@ public class LongValueFacetCounts extends Facets {
       if (singleValues != null) {
         countAllOneSegment(singleValues);
       } else {
-        while (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        int doc;
+        while ((doc = values.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           int limit = values.docValueCount();
           totCount += limit;
           for (int i = 0; i < limit; i++) {

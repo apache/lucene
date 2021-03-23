@@ -646,6 +646,8 @@ public class TestMatchesIterator extends LuceneTestCase {
   // "a phrase sentence with many phrase sentence iterations of a phrase sentence",
 
   public void testSloppyPhraseQueryWithRepeats() throws IOException {
+    Term p = new Term(FIELD_WITH_OFFSETS, "phrase");
+    Term s = new Term(FIELD_WITH_OFFSETS, "sentence");
     PhraseQuery pq = new PhraseQuery(10, FIELD_WITH_OFFSETS, "phrase", "sentence", "sentence");
     checkMatches(
         pq,

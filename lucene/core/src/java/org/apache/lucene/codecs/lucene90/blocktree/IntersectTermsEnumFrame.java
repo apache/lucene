@@ -97,12 +97,14 @@ final class IntersectTermsEnumFrame {
   int suffix;
 
   private final IntersectTermsEnum ite;
+  private final int version;
 
   public IntersectTermsEnumFrame(IntersectTermsEnum ite, int ord) throws IOException {
     this.ite = ite;
     this.ord = ord;
     this.termState = ite.fr.parent.postingsReader.newTermState();
     this.termState.totalTermFreq = -1;
+    this.version = ite.fr.parent.version;
     suffixLengthBytes = new byte[32];
     suffixLengthsReader = new ByteArrayDataInput();
   }

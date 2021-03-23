@@ -44,6 +44,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LineFileDocs;
@@ -441,6 +444,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
       return;
     }
 
+    int id = replicaToPromote.id;
     message("top: now startPrimary " + replicaToPromote);
     startPrimary(replicaToPromote.id);
   }
@@ -1001,6 +1005,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
     @Override
     public void run() {
+      // Maps version to number of hits for silly 'the' TermQuery:
+      Query theQuery = new TermQuery(new Term("body", "the"));
+
       // Persists connections
       Map<Integer, Connection> connections = new HashMap<>();
 
@@ -1213,6 +1220,8 @@ public class TestStressNRTReplication extends LuceneTestCase {
         int sleepChance = TestUtil.nextInt(random(), 4, 100);
 
         message("top: indexer: updatePct=" + updatePct + " sleepChance=" + sleepChance);
+
+        long lastTransLogLoc = transLog.getNextLocation();
 
         NodeProcess curPrimary = null;
         Connection c = null;

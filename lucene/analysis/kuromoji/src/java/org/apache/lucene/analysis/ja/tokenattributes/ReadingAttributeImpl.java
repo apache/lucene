@@ -22,7 +22,7 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
 /** Attribute for Kuromoji reading data */
-public class ReadingAttributeImpl extends AttributeImpl implements ReadingAttribute {
+public class ReadingAttributeImpl extends AttributeImpl implements ReadingAttribute, Cloneable {
   private Token token;
 
   @Override

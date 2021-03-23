@@ -35,6 +35,8 @@ public class SpanScorer extends Scorer {
 
   /** accumulated sloppy freq (computed in setFreqCurrentDoc) */
   private float freq;
+  /** number of matches (computed in setFreqCurrentDoc) */
+  private int numMatches;
 
   private int lastScoredDoc = -1; // last doc we called setFreqCurrentDoc() for
 
@@ -75,12 +77,13 @@ public class SpanScorer extends Scorer {
   }
 
   /**
-   * Sets {@link #freq} for the current document.
+   * Sets {@link #freq} and {@link #numMatches} for the current document.
    *
    * <p>This will be called at most once per document.
    */
   protected final void setFreqCurrentDoc() throws IOException {
     freq = 0.0f;
+    numMatches = 0;
 
     spans.doStartCurrentDoc();
 
@@ -99,6 +102,7 @@ public class SpanScorer extends Scorer {
       // assert (startPos != prevStartPos) || (endPos > prevEndPos) : "non increased
       // endPos="+endPos;
       assert (startPos != prevStartPos) || (endPos >= prevEndPos) : "decreased endPos=" + endPos;
+      numMatches++;
       if (docScorer == null) { // scores not required, break out here
         freq = 1;
         return;

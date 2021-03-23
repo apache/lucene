@@ -559,7 +559,7 @@ public class FSTTermsReader extends FieldsProducer {
         if (term == null) {
           return SeekStatus.END;
         } else {
-          return term.get().equals(target) ? SeekStatus.FOUND : SeekStatus.NOT_FOUND;
+          return term.equals(target) ? SeekStatus.FOUND : SeekStatus.NOT_FOUND;
         }
       }
 

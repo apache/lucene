@@ -69,7 +69,7 @@ public class AssertingNormsFormat extends NormsFormat {
         assert docID >= 0 && docID < maxDoc;
         assert docID > lastDocID;
         lastDocID = docID;
-        values.longValue();
+        long value = values.longValue();
       }
 
       in.addNormsField(field, valuesProducer);

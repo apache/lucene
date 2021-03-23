@@ -26,7 +26,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 
 /** Default implementation of {@link CharTermAttribute}. */
 public class CharTermAttributeImpl extends AttributeImpl
-    implements CharTermAttribute, TermToBytesRefAttribute {
+    implements CharTermAttribute, TermToBytesRefAttribute, Cloneable {
   private static int MIN_BUFFER_SIZE = 10;
 
   private char[] termBuffer = new char[ArrayUtil.oversize(MIN_BUFFER_SIZE, Character.BYTES)];

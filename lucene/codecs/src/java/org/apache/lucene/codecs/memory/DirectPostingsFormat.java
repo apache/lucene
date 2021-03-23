@@ -1920,6 +1920,14 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
     public HighFreqDocsEnum() {}
 
+    public int[] getDocIDs() {
+      return docIDs;
+    }
+
+    public int[] getFreqs() {
+      return freqs;
+    }
+
     public PostingsEnum reset(int[] docIDs, int[] freqs) {
       this.docIDs = docIDs;
       this.freqs = freqs;
@@ -2096,6 +2104,18 @@ public final class DirectPostingsFormat extends PostingsFormat {
     public HighFreqPostingsEnum(boolean hasOffsets) {
       this.hasOffsets = hasOffsets;
       posJump = hasOffsets ? 3 : 1;
+    }
+
+    public int[] getDocIDs() {
+      return docIDs;
+    }
+
+    public int[][] getPositions() {
+      return positions;
+    }
+
+    public int getPosJump() {
+      return posJump;
     }
 
     public PostingsEnum reset(int[] docIDs, int[] freqs, int[][] positions, byte[][][] payloads) {

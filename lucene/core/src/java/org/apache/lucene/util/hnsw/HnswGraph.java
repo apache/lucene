@@ -59,6 +59,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
 public final class HnswGraph extends KnnGraphValues {
 
   private final int maxConn;
+  private final VectorValues.SearchStrategy searchStrategy;
 
   // Each entry lists the top maxConn neighbors of a node. The nodes correspond to vectors added to
   // HnswBuilder, and the
@@ -69,12 +70,13 @@ public final class HnswGraph extends KnnGraphValues {
   private int upto;
   private NeighborArray cur;
 
-  HnswGraph(int maxConn) {
+  HnswGraph(int maxConn, VectorValues.SearchStrategy searchStrategy) {
     graph = new ArrayList<>();
     // Typically with diversity criteria we see nodes not fully occupied; average fanout seems to be
     // about 1/2 maxConn. There is some indexing time penalty for under-allocating, but saves RAM
     graph.add(new NeighborArray(Math.max(32, maxConn / 4)));
     this.maxConn = maxConn;
+    this.searchStrategy = searchStrategy;
   }
 
   /**

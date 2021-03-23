@@ -22,7 +22,6 @@ import org.apache.lucene.util.LuceneTestCase;
 
 public class TestTotalHits extends LuceneTestCase {
 
-  @SuppressWarnings("unlikely-arg-type")
   public void testEqualsAndHashcode() {
     TotalHits totalHits1 = randomTotalHits();
     assertFalse(totalHits1.equals(null));

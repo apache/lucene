@@ -292,6 +292,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
     Map<String, Shape> indexedShapes = new LinkedHashMap<>();
     Map<String, Shape> indexedShapesGS = new LinkedHashMap<>(); // grid snapped
     final int numIndexedShapes = randomIntBetween(1, 6);
+    boolean indexedAtLeastOneShapePair = false;
     final boolean pointsOnly = ((PrefixTreeStrategy) strategy).isPointsOnly();
     for (int i = 0; i < numIndexedShapes; i++) {
       String id = "" + i;
@@ -304,6 +305,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
       } else if (R <= 4) { // 3 in 12
         // comprised of more than one shape
         indexedShape = randomShapePairRect(biasContains);
+        indexedAtLeastOneShapePair = true;
       } else {
         indexedShape = randomRectangle(); // just one rect
       }

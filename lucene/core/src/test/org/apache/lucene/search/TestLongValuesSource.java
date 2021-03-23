@@ -46,6 +46,7 @@ public class TestLongValuesSource extends LuceneTestCase {
     dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     int numDocs = TestUtil.nextInt(random(), 2049, 4000);
+    int leastValue = 45;
     for (int i = 0; i < numDocs; i++) {
       Document document = new Document();
       document.add(newTextField("english", English.intToEnglish(i), Field.Store.NO));

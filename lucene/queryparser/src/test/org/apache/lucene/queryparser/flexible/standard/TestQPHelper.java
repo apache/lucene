@@ -70,6 +70,7 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
@@ -1252,6 +1253,17 @@ public class TestQPHelper extends LuceneTestCase {
     for (BooleanClause c : bq) {
       assertTrue(c.getQuery().getClass() == MatchAllDocsQuery.class);
     }
+  }
+
+  private void assertHits(int expected, String query, IndexSearcher is)
+      throws IOException, QueryNodeException {
+    StandardQueryParser qp = new StandardQueryParser();
+    qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
+    qp.setLocale(Locale.ENGLISH);
+
+    Query q = qp.parse(query, "date");
+    ScoreDoc[] hits = is.search(q, 1000).scoreDocs;
+    assertEquals(expected, hits.length);
   }
 
   @Override

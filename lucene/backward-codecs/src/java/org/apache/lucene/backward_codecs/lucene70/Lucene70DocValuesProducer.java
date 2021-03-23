@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_codecs.lucene70;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,7 +49,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectReader;
 
 /** reader for {@link Lucene70DocValuesFormat} */
-final class Lucene70DocValuesProducer extends DocValuesProducer {
+final class Lucene70DocValuesProducer extends DocValuesProducer implements Closeable {
   private final Map<String, NumericEntry> numerics = new HashMap<>();
   private final Map<String, BinaryEntry> binaries = new HashMap<>();
   private final Map<String, SortedEntry> sorted = new HashMap<>();

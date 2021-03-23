@@ -121,7 +121,7 @@ public final class IntervalQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    return new IntervalWeight(this, boost);
+    return new IntervalWeight(this, boost, scoreMode);
   }
 
   @Override
@@ -147,10 +147,12 @@ public final class IntervalQuery extends Query {
 
   private class IntervalWeight extends Weight {
 
+    final ScoreMode scoreMode;
     final float boost;
 
-    public IntervalWeight(Query query, float boost) {
+    public IntervalWeight(Query query, float boost, ScoreMode scoreMode) {
       super(query);
+      this.scoreMode = scoreMode;
       this.boost = boost;
     }
 

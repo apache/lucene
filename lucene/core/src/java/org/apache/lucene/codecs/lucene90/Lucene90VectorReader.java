@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -323,6 +324,7 @@ public final class Lucene90VectorReader extends VectorReader {
 
     final BytesRef binaryValue;
     final ByteBuffer byteBuffer;
+    final FloatBuffer floatBuffer;
     final int byteSize;
     final float[] value;
 
@@ -334,6 +336,7 @@ public final class Lucene90VectorReader extends VectorReader {
       this.dataIn = dataIn;
       byteSize = Float.BYTES * fieldEntry.dimension;
       byteBuffer = ByteBuffer.allocate(byteSize);
+      floatBuffer = byteBuffer.asFloatBuffer();
       value = new float[fieldEntry.dimension];
       binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
     }

@@ -45,6 +45,13 @@ public class XYZBounds implements Bounds {
   /** Maximum z */
   private Double maxZ = null;
 
+  /** Set to true if no longitude bounds can be stated */
+  private boolean noLongitudeBound = false;
+  /** Set to true if no top latitude bound can be stated */
+  private boolean noTopLatitudeBound = false;
+  /** Set to true if no bottom latitude bound can be stated */
+  private boolean noBottomLatitudeBound = false;
+
   /** Construct an empty bounds object */
   public XYZBounds() {}
 

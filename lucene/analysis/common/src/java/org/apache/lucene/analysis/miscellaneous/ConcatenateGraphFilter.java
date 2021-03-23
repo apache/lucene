@@ -348,7 +348,7 @@ public final class ConcatenateGraphFilter extends TokenStream {
    * @lucene.internal
    */
   public static final class BytesRefBuilderTermAttributeImpl extends AttributeImpl
-      implements BytesRefBuilderTermAttribute {
+      implements BytesRefBuilderTermAttribute, TermToBytesRefAttribute {
     private final BytesRefBuilder bytes = new BytesRefBuilder();
     private transient CharsRefBuilder charsRef;
 

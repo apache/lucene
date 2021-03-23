@@ -745,6 +745,14 @@ class GeoStandardPath extends GeoBasePath {
     }
   }
 
+  /** Simplest possible implementation of segment endpoint: a single point. */
+  private static class DegenerateSegmentEndpoint extends BaseSegmentEndpoint {
+
+    public DegenerateSegmentEndpoint(final GeoPoint point) {
+      super(point);
+    }
+  }
+
   /** Endpoint that's a simple circle. */
   private static class CircleSegmentEndpoint extends BaseSegmentEndpoint {
     /** A plane describing the circle */
@@ -1096,6 +1104,10 @@ class GeoStandardPath extends GeoBasePath {
     public final GeoPoint[] upperConnectingPlanePoints;
     /** Notable points for the lower connecting plane */
     public final GeoPoint[] lowerConnectingPlanePoints;
+    /** Notable points for the start cutoff plane */
+    public final GeoPoint[] startCutoffPlanePoints;
+    /** Notable points for the end cutoff plane */
+    public final GeoPoint[] endCutoffPlanePoints;
 
     /**
      * Construct a path segment.
@@ -1169,6 +1181,8 @@ class GeoStandardPath extends GeoBasePath {
       this.LRHC = points[0];
       upperConnectingPlanePoints = new GeoPoint[] {ULHC, URHC};
       lowerConnectingPlanePoints = new GeoPoint[] {LLHC, LRHC};
+      startCutoffPlanePoints = new GeoPoint[] {ULHC, LLHC};
+      endCutoffPlanePoints = new GeoPoint[] {URHC, LRHC};
     }
 
     /**
@@ -1188,6 +1202,19 @@ class GeoStandardPath extends GeoBasePath {
         }
         return dist.doubleValue();
       }
+    }
+
+    /**
+     * Check if point is within this segment.
+     *
+     * @param point is the point.
+     * @return true of within.
+     */
+    public boolean isWithin(final Vector point) {
+      return startCutoffPlane.isWithin(point)
+          && endCutoffPlane.isWithin(point)
+          && upperConnectingPlane.isWithin(point)
+          && lowerConnectingPlane.isWithin(point);
     }
 
     /**

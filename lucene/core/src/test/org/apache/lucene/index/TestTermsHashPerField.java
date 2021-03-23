@@ -263,7 +263,7 @@ public class TestTermsHashPerField extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       int numTerms = 1 + random().nextInt(200);
       int doc = i;
-      for (int j = 0; j < numTerms; j++) {
+      for (int j = 0; i < numTerms; i++) {
         BytesRef ref = RandomPicks.randomFrom(random(), bytesRefs);
         Posting posting = postingMap.get(ref);
         if (posting.termId == -1) {

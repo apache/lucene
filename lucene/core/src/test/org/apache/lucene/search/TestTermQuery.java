@@ -126,6 +126,9 @@ public class TestTermQuery extends LuceneTestCase {
     w.addDocument(new Document());
 
     DirectoryReader reader = w.getReader();
+    FilterDirectoryReader noSeekReader = new NoSeekDirectoryReader(reader);
+    IndexSearcher noSeekSearcher = new IndexSearcher(noSeekReader);
+    Query query = new TermQuery(new Term("foo", "bar"));
     TermQuery queryWithContext =
         new TermQuery(
             new Term("foo", "bar"),
