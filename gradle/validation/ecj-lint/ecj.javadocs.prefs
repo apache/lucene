@@ -116,7 +116,7 @@ org.eclipse.jdt.core.compiler.problem.unusedDeclaredThrownExceptionIncludeDocCom
 org.eclipse.jdt.core.compiler.problem.unusedDeclaredThrownExceptionWhenOverriding=disabled
 org.eclipse.jdt.core.compiler.problem.unusedExceptionParameter=ignore
 org.eclipse.jdt.core.compiler.problem.unusedImport=error
-org.eclipse.jdt.core.compiler.problem.unusedLabel=ignore
+org.eclipse.jdt.core.compiler.problem.unusedLabel=error
 org.eclipse.jdt.core.compiler.problem.unusedLocal=error
 org.eclipse.jdt.core.compiler.problem.unusedObjectAllocation=ignore
 org.eclipse.jdt.core.compiler.problem.unusedParameter=ignore
