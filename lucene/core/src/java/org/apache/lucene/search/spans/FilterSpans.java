@@ -209,7 +209,7 @@ public abstract class FilterSpans extends Spans {
    * Status returned from {@link FilterSpans#accept(Spans)} that indicates whether a candidate match
    * should be accepted, rejected, or rejected and move on to the next document.
    */
-  public static enum AcceptStatus {
+  public enum AcceptStatus {
     /** Indicates the match should be accepted */
     YES,
 

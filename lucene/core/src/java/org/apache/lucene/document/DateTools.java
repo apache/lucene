@@ -169,7 +169,7 @@ public class DateTools {
   }
 
   /** Specifies the time granularity. */
-  public static enum Resolution {
+  public enum Resolution {
 
     /** Limit a date's resolution to year granularity. */
     YEAR(4),

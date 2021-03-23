@@ -34,7 +34,7 @@ public final class CharacterDefinition {
   public static final int CLASS_COUNT = CharacterClass.values().length;
 
   // only used internally for lookup:
-  private static enum CharacterClass {
+  private enum CharacterClass {
     NGRAM,
     DEFAULT,
     SPACE,

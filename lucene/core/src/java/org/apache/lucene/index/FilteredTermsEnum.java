@@ -47,7 +47,7 @@ public abstract class FilteredTermsEnum extends TermsEnum {
    *
    * @see #accept(BytesRef)
    */
-  protected static enum AcceptStatus {
+  protected enum AcceptStatus {
     /** Accept the term and position the enum at the next term. */
     YES,
     /**
