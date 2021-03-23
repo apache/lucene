@@ -109,9 +109,7 @@ public class TestAnalyzers extends BaseTokenStreamTestCase {
     x = StandardTokenizer.HIRAGANA;
     x = StandardTokenizer.KATAKANA;
     x = StandardTokenizer.HANGUL;
-    assert x >= 0;
     String[] y = StandardTokenizer.TOKEN_TYPES;
-    assert y != null;
   }
 
   private static class LowerCaseWhitespaceAnalyzer extends Analyzer {
