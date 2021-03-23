@@ -26,7 +26,6 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.swing.BorderFactory;
@@ -42,7 +41,6 @@ import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.luke.app.IndexHandler;
 import org.apache.lucene.luke.app.IndexObserver;
 import org.apache.lucene.luke.app.LukeState;
@@ -56,13 +54,10 @@ import org.apache.lucene.luke.app.desktop.util.StyleConstants;
 import org.apache.lucene.luke.app.desktop.util.TextAreaPrintStream;
 import org.apache.lucene.luke.models.tools.IndexTools;
 import org.apache.lucene.luke.models.tools.IndexToolsFactory;
-import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.util.NamedThreadFactory;
 
 /** Factory of optimize index dialog */
 public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFactory {
-
-  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static OptimizeIndexDialogFactory instance;
 

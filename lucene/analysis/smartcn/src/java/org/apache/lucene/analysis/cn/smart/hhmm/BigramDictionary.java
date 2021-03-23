@@ -53,8 +53,6 @@ class BigramDictionary extends AbstractDictionary {
 
   private int max = 0;
 
-  private int repeat = 0;
-
   // static Logger log = Logger.getLogger(BigramDictionary.class);
 
   public static synchronized BigramDictionary getInstance() {
@@ -231,13 +229,11 @@ class BigramDictionary extends AbstractDictionary {
     if (hash2 < 0) hash2 = PRIME_BIGRAM_LENGTH + hash2;
     int index = hash1;
     int i = 1;
-    repeat++;
     while (bigramHashTable[index] != 0
         && bigramHashTable[index] != hashId
         && i < PRIME_BIGRAM_LENGTH) {
       index = (hash1 + i * hash2) % PRIME_BIGRAM_LENGTH;
       i++;
-      repeat++;
       if (i > max) max = i;
     }
     // System.out.println(i - 1);

@@ -1570,7 +1570,6 @@ public class MemoryIndex {
       private boolean hasNext;
       private int doc = -1;
       private int freq;
-      private int pos;
       private int startOffset;
       private int endOffset;
       private int payloadIndex;
@@ -1597,7 +1596,6 @@ public class MemoryIndex {
 
       @Override
       public int nextDoc() {
-        pos = -1;
         if (hasNext) {
           hasNext = false;
           return doc = 0;

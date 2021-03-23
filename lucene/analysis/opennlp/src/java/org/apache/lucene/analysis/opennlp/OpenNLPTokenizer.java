@@ -43,7 +43,6 @@ public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
   private int termNum = 0;
   private int sentenceStart = 0;
 
-  private NLPSentenceDetectorOp sentenceOp = null;
   private NLPTokenizerOp tokenizerOp = null;
 
   public OpenNLPTokenizer(
@@ -54,7 +53,6 @@ public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
       throw new IllegalArgumentException(
           "OpenNLPTokenizer: both a Sentence Detector and a Tokenizer are required");
     }
-    this.sentenceOp = sentenceOp;
     this.tokenizerOp = tokenizerOp;
   }
 

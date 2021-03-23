@@ -95,7 +95,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     public final ReaderManager mgr;
 
     private final Directory indexDir;
-    private final Path root;
     private final Path segsPath;
 
     /** Which segments have been closed, but their parallel index is not yet not removed. */
@@ -119,8 +118,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     }
 
     public ReindexingReader(Path root) throws IOException {
-      this.root = root;
-
       // Normal index is stored under "index":
       indexDir = openDirectory(root.resolve("index"));
 

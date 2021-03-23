@@ -67,12 +67,9 @@ import org.apache.lucene.search.spans.SpanOrQuery;
 import org.apache.lucene.search.spans.SpanQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.ByteBlockPool;
-import org.apache.lucene.util.ByteBlockPool.Allocator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.RecyclingByteBlockAllocator;
 import org.apache.lucene.util.TestUtil;
 
 /**
@@ -353,14 +350,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     assertEquals(-1, docid);
     assertTrue(disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
     reader.close();
-  }
-
-  private Allocator randomByteBlockAllocator() {
-    if (random().nextBoolean()) {
-      return new RecyclingByteBlockAllocator();
-    } else {
-      return new ByteBlockPool.DirectAllocator();
-    }
   }
 
   private MemoryIndex randomMemoryIndex() {

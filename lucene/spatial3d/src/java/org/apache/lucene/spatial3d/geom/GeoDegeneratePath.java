@@ -404,10 +404,6 @@ class GeoDegeneratePath extends GeoBasePath {
     public final GeoPoint point;
     /** Pertinent cutoff planes from adjoining segments */
     public final Membership[] cutoffPlanes;
-    /** Notable points for this segment endpoint */
-    public final GeoPoint[] notablePoints;
-    /** No notable points from the circle itself */
-    public static final GeoPoint[] circlePoints = new GeoPoint[0];
     /** Null membership */
     public static final Membership[] NO_MEMBERSHIP = new Membership[0];
 
@@ -419,7 +415,6 @@ class GeoDegeneratePath extends GeoBasePath {
     public SegmentEndpoint(final GeoPoint point) {
       this.point = point;
       this.cutoffPlanes = NO_MEMBERSHIP;
-      this.notablePoints = circlePoints;
     }
 
     /**
@@ -433,7 +428,6 @@ class GeoDegeneratePath extends GeoBasePath {
     public SegmentEndpoint(final GeoPoint point, final SidedPlane cutoffPlane) {
       this.point = point;
       this.cutoffPlanes = new Membership[] {new SidedPlane(cutoffPlane)};
-      this.notablePoints = new GeoPoint[] {point};
     }
 
     /**
@@ -448,17 +442,6 @@ class GeoDegeneratePath extends GeoBasePath {
       this.point = point;
       this.cutoffPlanes =
           new Membership[] {new SidedPlane(cutoffPlane1), new SidedPlane(cutoffPlane2)};
-      this.notablePoints = new GeoPoint[] {point};
-    }
-
-    /**
-     * Check if point is within this endpoint.
-     *
-     * @param point is the point.
-     * @return true of within.
-     */
-    public boolean isWithin(final Vector point) {
-      return this.point.isIdentical(point.x, point.y, point.z);
     }
 
     /**
@@ -488,26 +471,6 @@ class GeoDegeneratePath extends GeoBasePath {
         return Double.POSITIVE_INFINITY;
       }
       return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
-    }
-
-    /**
-     * Compute nearest path distance.
-     *
-     * @param distanceStyle is the distance style.
-     * @param x is the point x.
-     * @param y is the point y.
-     * @param z is the point z.
-     * @return the distance metric (always value zero), in aggregation form, or POSITIVE_INFINITY if
-     *     the point is not within the bounds of the endpoint.
-     */
-    public double nearestPathDistance(
-        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      for (final Membership m : cutoffPlanes) {
-        if (!m.isWithin(x, y, z)) {
-          return Double.POSITIVE_INFINITY;
-        }
-      }
-      return distanceStyle.toAggregationForm(0.0);
     }
 
     /**
@@ -668,18 +631,6 @@ class GeoDegeneratePath extends GeoBasePath {
         }
         return dist.doubleValue();
       }
-    }
-
-    /**
-     * Check if point is within this segment.
-     *
-     * @param point is the point.
-     * @return true of within.
-     */
-    public boolean isWithin(final Vector point) {
-      return startCutoffPlane.isWithin(point)
-          && endCutoffPlane.isWithin(point)
-          && normalizedConnectingPlane.evaluateIsZero(point);
     }
 
     /**

@@ -659,12 +659,12 @@ public final class MoreLikeThis {
 
         if (queue.size() < limit) {
           // there is still space in the queue
-          queue.add(new ScoreTerm(word, fieldName, score, idf, docFreq, tf));
+          queue.add(new ScoreTerm(word, fieldName, score));
         } else {
           ScoreTerm term = queue.top();
           // update the smallest in the queue in place and update the queue.
           if (term.score < score) {
-            term.update(word, fieldName, score, idf, docFreq, tf);
+            term.update(word, fieldName, score);
             queue.updateTop();
           }
         }
@@ -935,26 +935,17 @@ public final class MoreLikeThis {
     String word;
     String topField;
     float score;
-    float idf;
-    int docFreq;
-    int tf;
 
-    ScoreTerm(String word, String topField, float score, float idf, int docFreq, int tf) {
+    ScoreTerm(String word, String topField, float score) {
       this.word = word;
       this.topField = topField;
       this.score = score;
-      this.idf = idf;
-      this.docFreq = docFreq;
-      this.tf = tf;
     }
 
-    void update(String word, String topField, float score, float idf, int docFreq, int tf) {
+    void update(String word, String topField, float score) {
       this.word = word;
       this.topField = topField;
       this.score = score;
-      this.idf = idf;
-      this.docFreq = docFreq;
-      this.tf = tf;
     }
   }
 

@@ -31,9 +31,6 @@ import org.apache.lucene.util.IntsRef;
  */
 public class TaxonomyFacetLabels {
 
-  /** Index field name provided to the constructor */
-  private final String indexFieldName;
-
   /** {@code TaxonomyReader} provided to the constructor */
   private final TaxonomyReader taxoReader;
 
@@ -49,7 +46,6 @@ public class TaxonomyFacetLabels {
    */
   public TaxonomyFacetLabels(TaxonomyReader taxoReader, String indexFieldName) throws IOException {
     this.taxoReader = taxoReader;
-    this.indexFieldName = indexFieldName;
     this.ordsReader = new DocValuesOrdinalsReader(indexFieldName);
   }
 

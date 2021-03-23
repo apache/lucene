@@ -2410,7 +2410,6 @@ public class TestIndexSorting extends LuceneTestCase {
   }
 
   private static final class RandomDoc {
-    public final int id;
     public final int intValue;
     public final int[] intValues;
     public final long longValue;
@@ -2423,7 +2422,6 @@ public class TestIndexSorting extends LuceneTestCase {
     public final byte[][] bytesValues;
 
     public RandomDoc(int id) {
-      this.id = id;
       intValue = random().nextInt();
       longValue = random().nextLong();
       floatValue = random().nextFloat();
