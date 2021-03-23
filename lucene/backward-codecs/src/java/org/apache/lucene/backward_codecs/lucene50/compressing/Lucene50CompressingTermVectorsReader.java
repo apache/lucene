@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.backward_codecs.lucene50.compressing;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
@@ -58,8 +57,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * @lucene.experimental
  */
-public final class Lucene50CompressingTermVectorsReader extends TermVectorsReader
-    implements Closeable {
+public final class Lucene50CompressingTermVectorsReader extends TermVectorsReader {
 
   // hard limit on the maximum number of documents per chunk
   static final int MAX_DOCUMENTS_PER_CHUNK = 128;
