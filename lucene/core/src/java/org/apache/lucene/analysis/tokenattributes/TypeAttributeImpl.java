@@ -20,7 +20,7 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
 /** Default implementation of {@link TypeAttribute}. */
-public class TypeAttributeImpl extends AttributeImpl implements TypeAttribute, Cloneable {
+public class TypeAttributeImpl extends AttributeImpl implements TypeAttribute {
   private String type;
 
   /** Initialize this attribute with {@link TypeAttribute#DEFAULT_TYPE} */

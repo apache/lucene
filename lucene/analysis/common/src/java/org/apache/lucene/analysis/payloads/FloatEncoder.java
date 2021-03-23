@@ -23,7 +23,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @see org.apache.lucene.analysis.payloads.PayloadHelper#encodeFloat(float, byte[], int)
  */
-public class FloatEncoder extends AbstractEncoder implements PayloadEncoder {
+public class FloatEncoder extends AbstractEncoder {
 
   @Override
   public BytesRef encode(char[] buffer, int offset, int length) {

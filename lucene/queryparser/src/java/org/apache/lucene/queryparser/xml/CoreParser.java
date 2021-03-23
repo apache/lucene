@@ -34,7 +34,7 @@ import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
 
 /** Assembles a QueryBuilder which uses only core Lucene Query objects */
-public class CoreParser implements QueryBuilder, SpanQueryBuilder {
+public class CoreParser implements SpanQueryBuilder {
 
   protected String defaultField;
   protected Analyzer analyzer;

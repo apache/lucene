@@ -347,8 +347,9 @@ public final class ConcatenateGraphFilter extends TokenStream {
    *
    * @lucene.internal
    */
+  @SuppressWarnings("unused") // do not warn/error on redundant interface
   public static final class BytesRefBuilderTermAttributeImpl extends AttributeImpl
-      implements BytesRefBuilderTermAttribute, TermToBytesRefAttribute {
+      implements BytesRefBuilderTermAttribute, TermToBytesRefAttribute /*required*/ {
     private final BytesRefBuilder bytes = new BytesRefBuilder();
     private transient CharsRefBuilder charsRef;
 

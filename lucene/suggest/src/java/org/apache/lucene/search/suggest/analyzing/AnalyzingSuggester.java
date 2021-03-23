@@ -97,8 +97,7 @@ import org.apache.lucene.util.fst.Util.TopResults;
  *
  * @lucene.experimental
  */
-// redundant 'implements Accountable' to workaround javadocs bugs
-public class AnalyzingSuggester extends Lookup implements Accountable {
+public class AnalyzingSuggester extends Lookup {
 
   /**
    * FST&lt;Weight,Surface&gt;: input is the analyzed form, with a null byte between terms weights

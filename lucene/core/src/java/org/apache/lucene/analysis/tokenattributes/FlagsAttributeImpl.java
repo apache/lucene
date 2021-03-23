@@ -20,7 +20,7 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
 /** Default implementation of {@link FlagsAttribute}. */
-public class FlagsAttributeImpl extends AttributeImpl implements FlagsAttribute, Cloneable {
+public class FlagsAttributeImpl extends AttributeImpl implements FlagsAttribute {
   private int flags = 0;
 
   /** Initialize this attribute with no bits set */
