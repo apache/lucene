@@ -1665,7 +1665,7 @@ public class TestJoinUtil extends LuceneTestCase {
           multipleValuesPerDocument
               ? Math.min(2 + random.nextInt(10), context.randomUniqueValues.length)
               : 1;
-      docs[i] = new RandomDoc(id, numberOfLinkValues, value, from);
+      docs[i] = new RandomDoc(id, numberOfLinkValues);
       if (globalOrdinalJoin) {
         document.add(newStringField("type", from ? "from" : "to", Field.Store.NO));
       }
@@ -2061,14 +2061,10 @@ public class TestJoinUtil extends LuceneTestCase {
 
     final String id;
     final List<String> linkValues;
-    final String value;
-    final boolean from;
 
-    private RandomDoc(String id, int numberOfLinkValues, String value, boolean from) {
+    private RandomDoc(String id, int numberOfLinkValues) {
       this.id = id;
-      this.from = from;
       linkValues = new ArrayList<>(numberOfLinkValues);
-      this.value = value;
     }
   }
 

@@ -118,7 +118,6 @@ public abstract class VectorWriter implements Closeable {
   /** Tracks state of one sub-reader that we are merging */
   private static class VectorValuesSub extends DocIDMerger.Sub {
 
-    final MergeState.DocMap docMap;
     final VectorValues values;
     final int segmentIndex;
     int count;
@@ -127,7 +126,6 @@ public abstract class VectorWriter implements Closeable {
       super(docMap);
       this.values = values;
       this.segmentIndex = segmentIndex;
-      this.docMap = docMap;
       assert values.docID() == -1;
     }
 

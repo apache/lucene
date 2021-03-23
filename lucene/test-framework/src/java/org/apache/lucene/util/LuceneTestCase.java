@@ -2172,29 +2172,6 @@ public abstract class LuceneTestCase extends Assert {
     }
   }
 
-  private static class RandomBits implements Bits {
-    FixedBitSet bits;
-
-    RandomBits(int maxDoc, double pctLive, Random random) {
-      bits = new FixedBitSet(maxDoc);
-      for (int i = 0; i < maxDoc; i++) {
-        if (random.nextDouble() <= pctLive) {
-          bits.set(i);
-        }
-      }
-    }
-
-    @Override
-    public boolean get(int index) {
-      return bits.get(index);
-    }
-
-    @Override
-    public int length() {
-      return bits.length();
-    }
-  }
-
   /**
    * checks the terms enum sequentially if deep is false, it does a 'shallow' test that doesnt go
    * down to the docsenums

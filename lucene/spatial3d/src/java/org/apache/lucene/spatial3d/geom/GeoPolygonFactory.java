@@ -2022,8 +2022,6 @@ public class GeoPolygonFactory {
    */
   private static class SafePath {
     public final GeoPoint lastPoint;
-    public final int lastPointIndex;
-    public final Plane lastPlane;
     public final SafePath previous;
 
     /** Create a new safe end point. */
@@ -2033,8 +2031,6 @@ public class GeoPolygonFactory {
         final int lastPointIndex,
         final Plane lastPlane) {
       this.lastPoint = lastPoint;
-      this.lastPointIndex = lastPointIndex;
-      this.lastPlane = lastPlane;
       this.previous = previous;
     }
 

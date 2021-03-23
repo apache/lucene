@@ -31,7 +31,6 @@ import org.apache.lucene.util.LuceneTestCase;
 public class TestBooleanTermExtractor extends LuceneTestCase {
 
   private static final QueryAnalyzer treeBuilder = new QueryAnalyzer();
-  private static final TermWeightor WEIGHTOR = TermWeightor.DEFAULT;
 
   private Set<Term> collectTerms(Query query) {
     Set<Term> terms = new HashSet<>();

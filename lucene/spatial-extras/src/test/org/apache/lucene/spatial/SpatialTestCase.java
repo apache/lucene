@@ -161,11 +161,6 @@ public abstract class SpatialTestCase extends LuceneTestCase {
     }
   }
 
-  private double randomGaussianMinMeanMax(double min, double mean, double max) {
-    assert mean > min;
-    return randomGaussianMeanMax(mean - min, max - min) + min;
-  }
-
   /**
    * Within one standard deviation (68% of the time) the result is "close" to mean. By "close": when
    * greater than mean, it's the lesser of 2*mean or half way to max, when lesser than mean, it's

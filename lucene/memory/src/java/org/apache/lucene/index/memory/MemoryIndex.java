@@ -1440,11 +1440,8 @@ public class MemoryIndex {
 
       @Override
       public int size() {
-        int size = 0;
-        for (String fieldName : this) {
-          size++;
-        }
-        return size;
+        return Math.toIntExact(
+            fields.entrySet().stream().filter(e -> e.getValue().numTokens > 0).count());
       }
     }
 
@@ -1573,7 +1570,6 @@ public class MemoryIndex {
       private boolean hasNext;
       private int doc = -1;
       private int freq;
-      private int pos;
       private int startOffset;
       private int endOffset;
       private int payloadIndex;
@@ -1600,7 +1596,6 @@ public class MemoryIndex {
 
       @Override
       public int nextDoc() {
-        pos = -1;
         if (hasNext) {
           hasNext = false;
           return doc = 0;
