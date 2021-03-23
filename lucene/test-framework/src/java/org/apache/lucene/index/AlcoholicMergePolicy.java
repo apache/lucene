@@ -63,7 +63,7 @@ public class AlcoholicMergePolicy extends LogMergePolicy {
     return info.sizeInBytes();
   }
 
-  private static enum Drink {
+  private enum Drink {
     Beer(15),
     Wine(17),
     Champagne(21),

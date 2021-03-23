@@ -183,7 +183,7 @@ public class StandardQueryConfigHandler extends QueryConfigHandler {
   }
 
   /** Boolean Operator: AND or OR */
-  public static enum Operator {
+  public enum Operator {
     AND,
     OR;
   }

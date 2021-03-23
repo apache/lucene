@@ -53,7 +53,7 @@ import org.apache.lucene.util.Version;
 public final class IndexWriterConfig extends LiveIndexWriterConfig {
 
   /** Specifies the open mode for {@link IndexWriter}. */
-  public static enum OpenMode {
+  public enum OpenMode {
     /** Creates a new index or overwrites an existing one. */
     CREATE,
 

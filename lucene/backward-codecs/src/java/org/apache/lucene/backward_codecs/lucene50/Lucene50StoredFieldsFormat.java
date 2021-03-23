@@ -105,7 +105,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
 public class Lucene50StoredFieldsFormat extends StoredFieldsFormat {
 
   /** Configuration option for stored fields. */
-  public static enum Mode {
+  public enum Mode {
     /** Trade compression ratio for retrieval speed. */
     BEST_SPEED,
     /** Trade retrieval speed for compression ratio. */

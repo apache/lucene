@@ -24,7 +24,7 @@ import java.util.Random;
 /** Wraps a Scorer with additional checks */
 public class AssertingScorer extends Scorer {
 
-  static enum IteratorState {
+  enum IteratorState {
     APPROXIMATING,
     ITERATING,
     SHALLOW_ADVANCING,

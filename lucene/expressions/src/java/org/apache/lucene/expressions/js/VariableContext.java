@@ -26,7 +26,7 @@ import java.util.List;
 public class VariableContext {
 
   /** Represents what a piece of a variable does. */
-  public static enum Type {
+  public enum Type {
     /** A member of the previous context (ie "dot" access). */
     MEMBER,
 

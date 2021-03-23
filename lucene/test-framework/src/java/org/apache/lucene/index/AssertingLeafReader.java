@@ -349,7 +349,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
   }
 
-  static enum DocsEnumState {
+  enum DocsEnumState {
     START,
     ITERATING,
     FINISHED
