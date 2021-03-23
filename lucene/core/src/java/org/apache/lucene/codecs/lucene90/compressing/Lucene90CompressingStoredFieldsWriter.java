@@ -94,6 +94,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private int docBase; // doc ID at the beginning of the chunk
   private int numBufferedDocs; // docBase + numBufferedDocs == current doc ID
 
+  private long numChunks;
   private long numDirtyChunks; // number of incomplete compressed blocks written
   private long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
 
@@ -249,6 +250,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   private void flush() throws IOException {
+    numChunks++;
     indexWriter.writeIndex(numBufferedDocs, fieldsStream.getFilePointer());
 
     // transform end offsets into lengths
@@ -499,6 +501,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
           "Wrote " + docBase + " docs, finish called with numDocs=" + numDocs);
     }
     indexWriter.finish(numDocs, fieldsStream.getFilePointer(), metaStream);
+    metaStream.writeVLong(numChunks);
     metaStream.writeVLong(numDirtyChunks);
     metaStream.writeVLong(numDirtyDocs);
     CodecUtil.writeFooter(metaStream);
@@ -707,10 +710,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
    * ratio can degrade. This is a safety switch.
    */
   boolean tooDirty(Lucene90CompressingStoredFieldsReader candidate) {
-    // more than 1% dirty, or more than hard limit of 1024 dirty chunks
-    return candidate.getNumDirtyChunks() > 1024
-        || (candidate.getNumDirtyDocs() > maxDocsPerChunk
-            && candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs());
+    // A segment is considered dirty only if it has enough dirty docs to make a full block
+    // AND more than 1% blocks are dirty.
+    return candidate.getNumDirtyDocs() > maxDocsPerChunk
+        && candidate.getNumDirtyChunks() * 100 > candidate.getNumChunks();
   }
 
   private static class CompressingStoredFieldsMergeSub extends DocIDMerger.Sub {

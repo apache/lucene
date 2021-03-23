@@ -84,8 +84,9 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   private final Compressor compressor;
   private final int chunkSize;
 
+  private long numChunks; // number of chunks
   private long numDirtyChunks; // number of incomplete compressed blocks written
-  private long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
+  private long numDirtyDocs; // cumulative number of docs in incomplete chunks
 
   /** a pending doc */
   private class DocData {
@@ -377,6 +378,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   private void flush() throws IOException {
+    numChunks++;
     final int chunkDocs = pendingDocs.size();
     assert chunkDocs > 0 : chunkDocs;
 
@@ -720,6 +722,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
           "Wrote " + this.numDocs + " docs, finish called with numDocs=" + numDocs);
     }
     indexWriter.finish(numDocs, vectorsStream.getFilePointer(), metaStream);
+    metaStream.writeVLong(numChunks);
     metaStream.writeVLong(numDirtyChunks);
     metaStream.writeVLong(numDirtyDocs);
     CodecUtil.writeFooter(metaStream);
@@ -934,10 +937,10 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
    * ratio can degrade. This is a safety switch.
    */
   boolean tooDirty(Lucene90CompressingTermVectorsReader candidate) {
-    // more than 1% dirty, or more than hard limit of 1024 dirty chunks
-    return candidate.getNumDirtyChunks() > 1024
-        || (candidate.getNumDirtyDocs() > maxDocsPerChunk
-            && candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs());
+    // A segment is considered dirty only if it has enough dirty docs to make a full block
+    // AND more than 1% blocks are dirty.
+    return candidate.getNumDirtyDocs() > maxDocsPerChunk
+        && candidate.getNumDirtyChunks() * 100 > candidate.getNumChunks();
   }
 
   @Override
