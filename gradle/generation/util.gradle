@@ -14,20 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 apply plugin: "de.undercouch.download"
 
-configure(rootProject) {
+configure(project(":lucene:core")) {
   ext {
     momanDir = file("${buildDir}/moman")
-  }
-
-  task moman()  {
-    description "Regenerate Moman-based sources for ...lucene/util/automaton and ...lucene/util/packed."
-    group "generation"
-
-    dependsOn ":lucene:core:utilGenPacked"
-    dependsOn ":lucene:core:utilGenLev"
   }
 
   task installMoman(type: Download) {
@@ -43,10 +34,8 @@ configure(rootProject) {
       }
     }
   }
-}
 
-configure(project(":lucene:core")) {
-  task utilGenPacked(dependsOn: rootProject.installMoman) {
+  task utilGenPacked(dependsOn: installMoman) {
     description "Regenerate util/PackedBulkOperationsPacked*.java and Packed64SingleBlock.java"
     group "generation"
 
@@ -71,7 +60,7 @@ configure(project(":lucene:core")) {
     }
   }
 
-  task utilGenLev(dependsOn: rootProject.installMoman) {
+  task utilGenLev(dependsOn: installMoman) {
     description "Regenerate util/automaton Lev*ParametricDescription.java"
     group "generation"
 
@@ -96,20 +85,12 @@ configure(project(":lucene:core")) {
     }
   }
 
-  task regenerate() {
-    description "Regenerate any generated sources"
+  task moman()  {
+    description "Regenerate Moman-based sources."
     group "generation"
 
-    // Run regeneration tasks.
-    dependsOn utilGenPacked
-    dependsOn utilGenLev
-
-    // Clean up and reformat the generated sources after generation.
-    dependsOn "tidy"
+    dependsOn utilGenLev, utilGenPacked
   }
 
-  // Make sure tidy runs after generation, if they're defined.
-  tasks.matching { it.name == "tidy" }.configureEach {
-    mustRunAfter utilGenPacked, utilGenLev
-  }
+  regenerate.dependsOn moman, "tidy"
 }

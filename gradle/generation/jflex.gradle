@@ -103,6 +103,8 @@ configure(project(":lucene:core")) {
       )
     }
   }
+
+  regenerate.dependsOn jflexStandardTokenizerImpl, "tidy"
 }
 
 configure(project(":lucene:analysis:common")) {
@@ -175,25 +177,9 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  task regenerate() {
-    description "Regenerate any generated sources"
-    group "generation"
-
-    // Run regeneration tasks.
-    dependsOn jflexUAX29URLEmailTokenizerImpl
-    dependsOn jflexHTMLStripCharFilter
-    dependsOn jflexClassicTokenizerImpl
-    dependsOn jflexWikipediaTokenizerImpl
-
-    // Clean up and reformat the generated sources after generation.
-    dependsOn "tidy"
-  }
-
-  // Make sure tidy runs after generation, if they're defined.
-  tasks.matching { it.name == "tidy" }.configureEach {
-    mustRunAfter jflexUAX29URLEmailTokenizerImpl,
-        jflexHTMLStripCharFilter,
-        jflexClassicTokenizerImpl,
-        jflexWikipediaTokenizerImpl
-  }
+  regenerate.dependsOn jflexUAX29URLEmailTokenizerImpl,
+          jflexHTMLStripCharFilter,
+          jflexClassicTokenizerImpl,
+          jflexWikipediaTokenizerImpl,
+          "tidy"
 }

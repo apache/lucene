@@ -148,6 +148,7 @@ apply from: file('gradle/validation/check-broken-links.gradle')
 apply from: file('gradle/validation/spotless.gradle')
 
 // Source or data regeneration tasks
+apply from: file('gradle/generation/regenerate.gradle')
 apply from: file('gradle/generation/jflex.gradle')
 apply from: file('gradle/generation/util.gradle')
 apply from: file('gradle/generation/snowball.gradle')

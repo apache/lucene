@@ -19,15 +19,6 @@ import org.apache.tools.ant.taskdefs.condition.Os
 
 apply plugin: "de.undercouch.download"
 
-configure(rootProject) {
-  task snowball()  {
-    description "Regenerate snowball-based sources, stopwords, and tests for ...lucene/analysis."
-    group "generation"
-
-    dependsOn ":lucene:analysis:common:snowballGen"
-  }
-}
-
 configure(project(":lucene:analysis:common")) {
   ext {
     // git commit hash of source code https://github.com/snowballstem/snowball/
@@ -60,7 +51,7 @@ configure(project(":lucene:analysis:common")) {
       ant.unzip(src: snowballStemmerZip, dest: snowballStemmerDir, overwrite: "true") {
         ant.cutdirsmapper(dirs: "1")
       }
-      ant.patch(patchfile: snowballPatchFile, dir: snowballStemmerDir, strip: "1")
+      ant.patch(patchfile: snowballPatchFile, dir: snowballStemmerDir, strip: "1", failonerror: true)
     }
   }
 
@@ -95,14 +86,18 @@ configure(project(":lucene:analysis:common")) {
   }
 
   // runs shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
-  task snowballGen() {
+  task snowball() {
+    description "Regenerates snowball stemmers."
+    group "generation"
+
     dependsOn downloadSnowballStemmers
     dependsOn downloadSnowballWebsite
     dependsOn downloadSnowballData
 
-    doLast {
+    doFirst {
       if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-        throw GradleException("Snowball generation does not work on Windows, use a platform where bash is available.")
+        logger.warn("Snowball generation does not work on Windows, use a platform where bash is available.")
+        return
       }
 
       project.exec {
@@ -111,4 +106,6 @@ configure(project(":lucene:analysis:common")) {
       }
     }
   }
+
+  regenerate.dependsOn snowball, "tidy"
 }
