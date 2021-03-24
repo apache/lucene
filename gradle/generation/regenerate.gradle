@@ -47,9 +47,12 @@ configure([
             queue.addAll(dep.getDependencies(t))
           }
         }
+        
+        def intersection = visited.intersect(deps)
+        def tidyDeps = visited - intersection + [tidy]
+        def genDeps = deps - intersection
 
-        def otherDeps = deps - [tidy]
-        visited.each { Task t -> t.mustRunAfter(otherDeps) }
+        tidyDeps.each { Task t -> t.mustRunAfter(genDeps) }
       }
     }
 }
