@@ -36,16 +36,15 @@ comprehensive documentation, visit:
 ### Basic steps:
   
   0. Install OpenJDK 11 (or greater)
-  1. Download Lucene from Apache and unpack it
-  2. Connect to the top-level of your installation (parent of the lucene top-level directory)
-  3. Run gradle
+  1. Download Lucene from Apache and unpack it (or clone the git repository).
+  2. Run gradle launcher script (`gradlew`).
 
 ### Step 0) Set up your development environment (OpenJDK 11 or greater)
 
 We'll assume that you know how to get and set up the JDK - if you
 don't, then we suggest starting at https://www.oracle.com/java/ and learning
 more about Java, before returning to this README. Lucene runs with
-Java 11 and later.
+Java 11 or later.
 
 Lucene uses [Gradle](https://gradle.org/) for build control.
 
@@ -54,31 +53,21 @@ still use Ant.
 
 ### Step 1) Checkout/Download Lucene source code
 
-We'll assume you already did this, or you wouldn't be reading this
-file. However, you might have received this file by some alternate
-route, or you might have an incomplete copy of the Lucene, so: you 
-can directly checkout the source code from GitHub:
+You can clone the source code from GitHub:
 
   https://github.com/apache/lucene
   
-Or Lucene source archives at particlar releases are available as part of Lucene downloads:
+or get Lucene source archives for a particular release from:
 
   https://lucene.apache.org/core/downloads.html
 
 Download either a zip or a tarred/gzipped version of the archive, and
 uncompress it into a directory of your choice.
 
-### Step 2) Change directory (cd) into the top-level directory of the source tree
+### Step 2) Run Gradle
 
-The parent directory for Lucene contains the base configuration file for the build.
-By default, you do not need to change any of the settings in this file, but you do
-need to run Gradle from this location so it knows where to find the necessary
-configurations.
-
-### Step 3) Run Gradle
-
-Assuming you can exectue "./gradlew help" should show you the main tasks that
-can be executed to show help sub-topics.
+Run "./gradlew help", this will show the main tasks that can be executed to 
+show help sub-topics.
 
 If you want to build Lucene, type:
 
@@ -94,11 +83,10 @@ contains machine-specific settings. Normally you can use this file as-is, but it
 can be modified if necessary.
 
 `./gradlew check` will assemble Lucene and run all validation
-  tasks unit tests.
+  tasks (including unit tests).
 
-`./gradlew help` will print a list of help commands for high-level tasks. One
-  of these is `helpAnt` that shows the gradle tasks corresponding to ant
-  targets you may be familiar with.
+`./gradlew help` will print a list of help guides that help understand how
+  the build and typical workflow works.
 
 If you want to build the documentation, type:
 
@@ -108,8 +96,7 @@ If you want to build the documentation, type:
 
 ### Gradle build and IDE support
 
-- *IntelliJ* - IntelliJ idea can import the project out of the box. 
-               Code formatting conventions should be manually adjusted. 
+- *IntelliJ* - IntelliJ idea can import the project out of the box.
 - *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
 - *Netbeans* - Not tested.
 
