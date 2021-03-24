@@ -24,7 +24,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * <p>See {@link org.apache.lucene.analysis.payloads.PayloadHelper#encodeInt(int, byte[], int)}.
  */
-public class IntegerEncoder extends AbstractEncoder implements PayloadEncoder {
+public class IntegerEncoder extends AbstractEncoder {
 
   @Override
   public BytesRef encode(char[] buffer, int offset, int length) {

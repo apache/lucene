@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.backward_codecs.lucene60;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,7 +31,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDReader;
 
 /** Reads point values previously written with Lucene60PointsWriter */
-public class Lucene60PointsReader extends PointsReader implements Closeable {
+public class Lucene60PointsReader extends PointsReader {
   final IndexInput dataIn;
   final SegmentReadState readState;
   final Map<Integer, BKDReader> readers = new HashMap<>();

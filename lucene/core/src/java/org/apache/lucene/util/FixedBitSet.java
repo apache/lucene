@@ -28,7 +28,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * @lucene.internal
  */
-public final class FixedBitSet extends BitSet implements Bits, Accountable {
+public final class FixedBitSet extends BitSet {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(FixedBitSet.class);

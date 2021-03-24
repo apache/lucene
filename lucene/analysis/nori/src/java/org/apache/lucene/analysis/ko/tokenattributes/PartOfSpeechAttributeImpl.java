@@ -28,8 +28,7 @@ import org.apache.lucene.util.AttributeReflector;
  *
  * @lucene.experimental
  */
-public class PartOfSpeechAttributeImpl extends AttributeImpl
-    implements PartOfSpeechAttribute, Cloneable {
+public class PartOfSpeechAttributeImpl extends AttributeImpl implements PartOfSpeechAttribute {
   private Token token;
 
   @Override
