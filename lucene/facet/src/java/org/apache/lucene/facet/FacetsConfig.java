@@ -487,8 +487,7 @@ public class FacetsConfig {
         doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
 
         // For drill-down:
-        FacetsConfig.DimConfig ft = getDimConfig(facetField.dim);
-        indexDrillDownTerms(doc, indexFieldName, ft, cp);
+        indexDrillDownTerms(doc, indexFieldName, getDimConfig(facetField.dim), cp);
       }
     }
   }
@@ -519,9 +518,7 @@ public class FacetsConfig {
         System.arraycopy(field.assoc.bytes, field.assoc.offset, bytes, upto, field.assoc.length);
         upto += field.assoc.length;
 
-        FacetsConfig.DimConfig ft = getDimConfig(field.dim);
-
-        indexDrillDownTerms(doc, indexFieldName, ft, label);
+        indexDrillDownTerms(doc, indexFieldName, getDimConfig(field.dim), label);
       }
       doc.add(new BinaryDocValuesField(indexFieldName, new BytesRef(bytes, 0, upto)));
     }
