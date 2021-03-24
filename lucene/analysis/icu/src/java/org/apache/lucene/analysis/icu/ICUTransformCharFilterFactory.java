@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.icu;
 
+import com.ibm.icu.impl.Norm2AllModes;
 import com.ibm.icu.impl.Utility;
 import com.ibm.icu.text.Normalizer2;
 import com.ibm.icu.text.Transliterator;
@@ -114,11 +115,14 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
         return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKCInstance());
       case NFKD:
         return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKDInstance());
+      case NFKC_CF:
+        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKCCasefoldInstance());
+      case FCC:
+        return new ICUNormalizer2CharFilter(r, Norm2AllModes.getFCDNormalizer2());
+      case FCD:
+        return new ICUNormalizer2CharFilter(r, Norm2AllModes.getNFCInstance().fcc);
       default:
-        throw new UnsupportedOperationException(
-            "test not yet able to compensate externally for normalization type \""
-                + normType
-                + "\"");
+        throw new UnsupportedOperationException("normType \"" + normType + "\" not supported");
     }
   }
 
@@ -254,8 +258,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     NFKC_CF,
     NFKD,
     FCC,
-    FCD,
-    UNKNOWN
+    FCD
   }
 
   private static final NormType[] NORM_TYPE_VALUES;
