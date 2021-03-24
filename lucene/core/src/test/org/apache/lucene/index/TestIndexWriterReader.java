@@ -1314,6 +1314,42 @@ public class TestIndexWriterReader extends LuceneTestCase {
       }
     }
 
+    // Test3: test that FilterDirectoryReader sorts leaves according
+    // to leafSorter of its wrapped reader
+    {
+      try (DirectoryReader reader =
+          new AssertingDirectoryReader(DirectoryReader.open(dir, leafSorter))) {
+        List<LeafReader> lrs =
+            reader.leaves().stream().map(LeafReaderContext::reader).collect(toList());
+        List<LeafReader> expectedSortedlrs =
+            reader.leaves().stream()
+                .map(LeafReaderContext::reader)
+                .sorted(leafSorter)
+                .collect(toList());
+        assertEquals(expectedSortedlrs, lrs);
+
+        // add more documents that should be sorted first
+        final long FIRST_VALUE = ASC_SORT ? 0 : 100;
+        for (int i = 0; i < 10; ++i) {
+          final Document doc = new Document();
+          doc.add(new LongPoint(FIELD_NAME, FIRST_VALUE));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+
+        // and open again
+        try (DirectoryReader reader2 = DirectoryReader.openIfChanged(reader)) {
+          lrs = reader2.leaves().stream().map(LeafReaderContext::reader).collect(toList());
+          expectedSortedlrs =
+              reader2.leaves().stream()
+                  .map(LeafReaderContext::reader)
+                  .sorted(leafSorter)
+                  .collect(toList());
+          assertEquals(expectedSortedlrs, lrs);
+        }
+      }
+    }
+
     writer.close();
     dir.close();
   }

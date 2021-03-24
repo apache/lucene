@@ -239,13 +239,4 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   protected final List<? extends R> getSequentialSubReaders() {
     return subReadersList;
   }
-
-  /**
-   * Returns a comparator for sorting sub readers.
-   *
-   * @return a comparator for sorting sub readers, or {@code null} if a comparator was not set.
-   */
-  protected Comparator<R> getSubReadersSorter() {
-    return subReadersSorter;
-  }
 }

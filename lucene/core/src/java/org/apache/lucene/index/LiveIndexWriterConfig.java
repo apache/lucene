@@ -93,7 +93,7 @@ public class LiveIndexWriterConfig {
   protected Sort indexSort = null;
 
   /** The comparator for sorting leaf readers. */
-  protected Comparator<LeafReader> leafSorter = null;
+  protected Comparator<LeafReader> leafSorter;
 
   /** The field names involved in the index sort */
   protected Set<String> indexSortFields = Collections.emptySet();
