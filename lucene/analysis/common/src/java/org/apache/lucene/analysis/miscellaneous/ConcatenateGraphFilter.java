@@ -147,7 +147,8 @@ public final class ConcatenateGraphFilter extends TokenStream {
     super.reset();
     // we only capture this if we really need it to save the UTF-8 to UTF-16 conversion
     charTermAttribute = getAttribute(CharTermAttribute.class); // may return null
-    // make sure the TermToBytesRefAttribute attribute is implemented by our class, not via CharTermAttribute's
+    // make sure the TermToBytesRefAttribute attribute is implemented by our class, not via
+    // CharTermAttribute's
     assert getAttribute(TermToBytesRefAttribute.class) instanceof BytesRefBuilderTermAttributeImpl;
     wasReset = true;
   }
