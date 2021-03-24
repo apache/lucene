@@ -67,12 +67,9 @@ import org.apache.lucene.search.spans.SpanOrQuery;
 import org.apache.lucene.search.spans.SpanQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.ByteBlockPool;
-import org.apache.lucene.util.ByteBlockPool.Allocator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.RecyclingByteBlockAllocator;
 import org.apache.lucene.util.TestUtil;
 
 /**
@@ -355,14 +352,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     reader.close();
   }
 
-  private Allocator randomByteBlockAllocator() {
-    if (random().nextBoolean()) {
-      return new RecyclingByteBlockAllocator();
-    } else {
-      return new ByteBlockPool.DirectAllocator();
-    }
-  }
-
   private MemoryIndex randomMemoryIndex() {
     return new MemoryIndex(
         random().nextBoolean(), random().nextBoolean(), random().nextInt(50) * 1024 * 1024);
@@ -535,7 +524,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     assertEquals(controlSortedDocValues.getValueCount(), sortedDocValues.getValueCount());
     assertEquals(0, sortedDocValues.nextDoc());
     assertEquals(0, controlSortedDocValues.nextDoc());
-    assertEquals(controlSortedDocValues.binaryValue(), sortedDocValues.binaryValue());
     assertEquals(controlSortedDocValues.ordValue(), sortedDocValues.ordValue());
     assertEquals(controlSortedDocValues.lookupOrd(0), sortedDocValues.lookupOrd(0));
 

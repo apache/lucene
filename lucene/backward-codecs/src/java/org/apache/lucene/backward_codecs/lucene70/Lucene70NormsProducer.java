@@ -327,20 +327,6 @@ final class Lucene70NormsProducer extends NormsProducer implements Cloneable {
     };
   }
 
-  private IndexInput getDisiInput2(FieldInfo field, NormsEntry entry) throws IOException {
-    IndexInput slice = null;
-    if (merging) {
-      slice = disiInputs.get(field.number);
-    }
-    if (slice == null) {
-      slice = data.slice("docs", entry.docsWithFieldOffset, entry.docsWithFieldLength);
-      if (merging) {
-        disiInputs.put(field.number, slice);
-      }
-    }
-    return slice;
-  }
-
   @Override
   public NumericDocValues getNorms(FieldInfo field) throws IOException {
     final NormsEntry entry = norms.get(field.number);

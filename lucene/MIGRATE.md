@@ -363,3 +363,16 @@ used in multi level applications
 Sorting on a numeric field that is indexed with both doc values and points may use an
 optimization to skip non-competitive documents. This optimization relies on the assumption
 that the same data is stored in these points and doc values.
+
+## SortedDocValues no longer extends BinaryDocValues (LUCENE-9796)
+
+SortedDocValues no longer extends BinaryDocValues: SortedDocValues do not have a per-document
+binary value, they have a per-document numeric `ordValue()`. The ordinal can then be dereferenced
+to its binary form with `lookupOrd()`, but it was a performance trap to implement a `binaryValue()`
+on the SortedDocValues api that does this behind-the-scenes on every document.
+
+You can replace calls of `binaryValue()` with `lookupOrd(ordValue())` as a "quick fix", but it is
+better to use the ordinal alone (integer-based datastructures) for per-document access, and only
+call lookupOrd() a few times at the end (e.g. for the hits you want to display). Otherwise, if you
+really don't want per-document ordinals, but instead a per-document `byte[]`, use a BinaryDocValues
+field.

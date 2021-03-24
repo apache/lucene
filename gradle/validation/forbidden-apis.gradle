@@ -110,36 +110,19 @@ allprojects { prj ->
     if (prj.path in [
         ":lucene:demo",
         ":lucene:benchmark",
-        ":lucene:test-framework",
-        ":solr:solr-ref-guide",
-        ":solr:test-framework"
+        ":lucene:test-framework"
     ]) {
       forbiddenApisMain.bundledSignatures -= [
           'jdk-system-out'
       ]
     }
 
-    // Configure lucene-specific rules.
-    if (prj.path.startsWith(":lucene")) {
-      forbiddenApisMain {
-        doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
-      }
-
-      forbiddenApisTest {
-        doFirst dynamicSignatures.curry(configurations.testCompileClasspath, "lucene")
-      }
+    forbiddenApisMain {
+      doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
     }
 
-    // Configure solr-specific rules.
-    if (prj.path.startsWith(":solr")) {
-      forbiddenApisMain {
-        doFirst dynamicSignatures.curry(configurations.compileClasspath, "solr")
-        signaturesFiles += files(file("${resources}/java.solr.txt"))
-      }
-
-      forbiddenApisTest {
-        doFirst dynamicSignatures.curry(configurations.testCompileClasspath, "solr")
-      }
+    forbiddenApisTest {
+      doFirst dynamicSignatures.curry(configurations.testCompileClasspath, "lucene")
     }
 
     // We rely on resolved configurations to compute the relevant set of rule

@@ -1180,12 +1180,12 @@ public class TestGeo3DPoint extends LuceneTestCase {
     int iters = atLeast(100);
     for (int i = 0; i < iters; i++) {
       // Create a polygon that's less than 180 degrees
-      final Polygon clockWise = makePoly(pm, randomPole, true, true);
+      makePoly(pm, randomPole, true, true);
     }
     iters = atLeast(100);
     for (int i = 0; i < iters; i++) {
       // Create a polygon that's greater than 180 degrees
-      final Polygon counterClockWise = makePoly(pm, randomPole, false, true);
+      makePoly(pm, randomPole, false, true);
     }
   }
 
@@ -1260,11 +1260,11 @@ public class TestGeo3DPoint extends LuceneTestCase {
       // the polygon, so we're going to use Geo3D to help us select those given the points we just
       // made.
 
-      final int holeCount = createHoles ? TestUtil.nextInt(random(), 0, 2) : 0;
-
       final List<Polygon> holeList = new ArrayList<>();
 
       /* Hole logic is broken and needs rethinking
+
+      final int holeCount = createHoles ? TestUtil.nextInt(random(), 0, 2) : 0;
 
       // Create the geo3d polygon, so we can test out our poles.
       final GeoPolygon poly;

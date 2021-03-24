@@ -802,7 +802,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     SortedDocValues dv = ireader.leaves().get(0).reader().getSortedDocValues("dv");
     assertEquals(2, dv.getValueCount()); // 2 ords
     assertEquals(0, dv.nextDoc());
-    BytesRef scratch = dv.binaryValue();
+    BytesRef scratch = dv.lookupOrd(dv.ordValue());
     assertEquals(new BytesRef("hello world 1"), scratch);
     scratch = dv.lookupOrd(1);
     assertEquals(new BytesRef("hello world 2"), scratch);
@@ -1094,9 +1094,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     // Now search the index:
     IndexReader ireader = DirectoryReader.open(directory); // read-only=true
     assert ireader.leaves().size() == 1;
-    BinaryDocValues dv = DocValues.getBinary(ireader.leaves().get(0).reader(), "dv");
+    SortedDocValues dv = DocValues.getSorted(ireader.leaves().get(0).reader(), "dv");
     assertEquals(0, dv.nextDoc());
-    assertEquals(new BytesRef(bytes), dv.binaryValue());
+    assertEquals(new BytesRef(bytes), dv.lookupOrd(dv.ordValue()));
     ireader.close();
     directory.close();
   }
@@ -1139,11 +1139,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     // Now search the index:
     IndexReader ireader = DirectoryReader.open(directory); // read-only=true
     assert ireader.leaves().size() == 1;
-    BinaryDocValues dv = DocValues.getBinary(ireader.leaves().get(0).reader(), "dv");
+    SortedDocValues dv = DocValues.getSorted(ireader.leaves().get(0).reader(), "dv");
     byte mybytes[] = new byte[20];
     assertEquals(0, dv.nextDoc());
-    assertEquals("boo!", dv.binaryValue().utf8ToString());
-    assertFalse(dv.binaryValue().bytes == mybytes);
+    assertEquals("boo!", dv.lookupOrd(dv.ordValue()).utf8ToString());
+    assertFalse(dv.lookupOrd(dv.ordValue()).bytes == mybytes);
 
     ireader.close();
     directory.close();
@@ -1258,7 +1258,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
       expected = new BytesRef(entry.getValue());
       docValues = MultiDocValues.getSortedValues(reader, "field");
       assertEquals(docId, docValues.advance(docId));
-      final BytesRef actual = docValues.binaryValue();
+      final BytesRef actual = docValues.lookupOrd(docValues.ordValue());
       assertEquals(expected, actual);
     }
 
@@ -1657,7 +1657,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
-      BinaryDocValues docValues = DocValues.getBinary(r, "dv");
+      SortedDocValues docValues = DocValues.getSorted(r, "dv");
       docValues.nextDoc();
       for (int i = 0; i < r.maxDoc(); i++) {
         BytesRef binaryValue = r.document(i).getBinaryValue("stored");
@@ -1665,7 +1665,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           assertTrue(docValues.docID() > i);
         } else {
           assertEquals(i, docValues.docID());
-          assertEquals(binaryValue, docValues.binaryValue());
+          assertEquals(binaryValue, docValues.lookupOrd(docValues.ordValue()));
           docValues.nextDoc();
         }
       }
@@ -1679,7 +1679,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
-      BinaryDocValues docValues = DocValues.getBinary(r, "dv");
+      SortedDocValues docValues = DocValues.getSorted(r, "dv");
       docValues.nextDoc();
       for (int i = 0; i < r.maxDoc(); i++) {
         BytesRef binaryValue = r.document(i).getBinaryValue("stored");
@@ -1687,7 +1687,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           assertTrue(docValues.docID() > i);
         } else {
           assertEquals(i, docValues.docID());
-          assertEquals(binaryValue, docValues.binaryValue());
+          assertEquals(binaryValue, docValues.lookupOrd(docValues.ordValue()));
           docValues.nextDoc();
         }
       }
@@ -2689,7 +2689,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
                     BytesRef scratch = binaries.binaryValue();
                     assertEquals(binaryValue, scratch);
                     assertEquals(j, sorted.nextDoc());
-                    scratch = sorted.binaryValue();
+                    scratch = sorted.lookupOrd(sorted.ordValue());
                     assertEquals(binaryValue, scratch);
                     String expected = r.document(j).get("storedNum");
                     assertEquals(j, numerics.nextDoc());
@@ -2810,7 +2810,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
                         BytesRef scratch = binaries.binaryValue();
                         assertEquals(binaryValue, scratch);
                         assertEquals(j, sorted.nextDoc());
-                        scratch = sorted.binaryValue();
+                        scratch = sorted.lookupOrd(sorted.ordValue());
                         assertEquals(binaryValue, scratch);
                       }
                     }

@@ -20,6 +20,7 @@ import org.apache.lucene.analysis.tokenattributes.BytesTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.util.BytesRef;
 
 /** TokenStream from a canned list of binary (BytesRef-based) tokens. */
@@ -57,6 +58,7 @@ public final class CannedBinaryTokenStream extends TokenStream {
   public CannedBinaryTokenStream(BinaryToken... tokens) {
     super(Token.TOKEN_ATTRIBUTE_FACTORY);
     this.tokens = tokens;
+    assert termAtt == getAttribute(TermToBytesRefAttribute.class);
   }
 
   @Override

@@ -26,8 +26,9 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.internal
  */
+@SuppressWarnings("unused") // do not warn/error on redundant interface
 public class BytesTermAttributeImpl extends AttributeImpl
-    implements BytesTermAttribute, TermToBytesRefAttribute {
+    implements BytesTermAttribute, TermToBytesRefAttribute /*required*/ {
   private BytesRef bytes;
 
   /** Initialize this attribute with no bytes. */

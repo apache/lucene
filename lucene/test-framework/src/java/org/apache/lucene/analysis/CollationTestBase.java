@@ -28,14 +28,12 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.store.Directory;
@@ -156,23 +154,6 @@ public abstract class CollationTestBase extends LuceneTestCase {
     assertEquals("The index Term should be included.", 1, result.length);
     reader.close();
     farsiIndex.close();
-  }
-
-  // Make sure the documents returned by the search match the expected list
-  // Copied from TestSort.java
-  private void assertMatches(IndexSearcher searcher, Query query, Sort sort, String expectedResult)
-      throws IOException {
-    ScoreDoc[] result = searcher.search(query, 1000, sort).scoreDocs;
-    StringBuilder buff = new StringBuilder(10);
-    int n = result.length;
-    for (int i = 0; i < n; ++i) {
-      Document doc = searcher.doc(result[i].doc);
-      IndexableField[] v = doc.getFields("tracer");
-      for (int j = 0; j < v.length; ++j) {
-        buff.append(v[j].stringValue());
-      }
-    }
-    assertEquals(expectedResult, buff.toString());
   }
 
   public void assertThreadSafe(final Analyzer analyzer) throws Exception {

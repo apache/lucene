@@ -545,7 +545,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(dir);
     int numCategories = atLeast(10);
-    int numA = 0, numB = 0;
     Random random = random();
     // add the two categories for which we'll also add children (so asserts are simpler)
     taxoWriter.addCategory(new FacetLabel("a"));
@@ -553,10 +552,8 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     for (int i = 0; i < numCategories; i++) {
       if (random.nextBoolean()) {
         taxoWriter.addCategory(new FacetLabel("a", Integer.toString(i)));
-        ++numA;
       } else {
         taxoWriter.addCategory(new FacetLabel("b", Integer.toString(i)));
-        ++numB;
       }
     }
     // add category with no children

@@ -249,7 +249,6 @@ public class TestTermVectorsReader extends LuceneTestCase {
         Codec.getDefault()
             .termVectorsFormat()
             .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));
-    BytesRef[] terms;
     Terms vector = reader.get(0).terms(testFields[0]);
     assertNotNull(vector);
     assertEquals(testTerms.length, vector.size());

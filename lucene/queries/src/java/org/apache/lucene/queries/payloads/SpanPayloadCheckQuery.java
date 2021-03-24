@@ -49,7 +49,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
   protected final MatchOperation operation;
   protected final PayloadType payloadType;
   /** The payload type. This specifies the decoding of the ByteRef for the payload. */
-  public static enum PayloadType {
+  public enum PayloadType {
     /** INT is for a 4 byte payload that is a packed integer */
     INT,
     /** FLOAT is a 4 byte payload decoded to a float(32bit). */
@@ -59,7 +59,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
   };
 
   /** The payload type. This specifies the decoding of the ByteRef for the payload. */
-  public static enum MatchOperation {
+  public enum MatchOperation {
     /** Checks for binary equality of the byte array (default) */
     EQ,
     /** GT Matches if the payload value is greater than the reference */

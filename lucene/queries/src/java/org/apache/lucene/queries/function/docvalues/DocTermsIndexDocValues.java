@@ -92,7 +92,7 @@ public abstract class DocTermsIndexDocValues extends FunctionValues {
     if (getOrdForDoc(doc) == -1) {
       return false;
     } else {
-      target.copyBytes(termsIndex.binaryValue());
+      target.copyBytes(termsIndex.lookupOrd(termsIndex.ordValue()));
       return true;
     }
   }
@@ -102,7 +102,7 @@ public abstract class DocTermsIndexDocValues extends FunctionValues {
     if (getOrdForDoc(doc) == -1) {
       return null;
     }
-    final BytesRef term = termsIndex.binaryValue();
+    final BytesRef term = termsIndex.lookupOrd(termsIndex.ordValue());
     spareChars.copyUTF8Bytes(term);
     return spareChars.toString();
   }

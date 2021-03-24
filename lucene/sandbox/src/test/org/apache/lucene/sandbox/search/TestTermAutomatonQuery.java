@@ -775,7 +775,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
   public void testRewriteNoMatch() throws Exception {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
-    int initState = q.createState();
+    q.createState(); // initState
     q.finish();
 
     Directory dir = newDirectory();

@@ -428,7 +428,6 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
 
   // to test reuse
   private final ThreadLocal<PostingsEnum> docsEnum = new ThreadLocal<>();
-  private final ThreadLocal<PostingsEnum> docsAndPositionsEnum = new ThreadLocal<>();
 
   protected void assertEquals(RandomTokenStream tk, FieldType ft, Terms terms) throws IOException {
     assertEquals(1, terms.getDocCount());

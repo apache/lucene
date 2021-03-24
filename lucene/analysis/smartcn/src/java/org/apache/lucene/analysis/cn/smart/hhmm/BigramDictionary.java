@@ -53,8 +53,6 @@ class BigramDictionary extends AbstractDictionary {
 
   private int max = 0;
 
-  private int repeat = 0;
-
   // static Logger log = Logger.getLogger(BigramDictionary.class);
 
   public static synchronized BigramDictionary getInstance() {
@@ -143,7 +141,7 @@ class BigramDictionary extends AbstractDictionary {
    */
   public void loadFromFile(String dctFilePath) throws IOException {
 
-    int i, cnt, length, total = 0;
+    int i, cnt, length;
     // The file only counted 6763 Chinese characters plus 5 reserved slots 3756~3760.
     // The 3756th is used (as a header) to store information.
     int[] buffer = new int[3];
@@ -163,7 +161,6 @@ class BigramDictionary extends AbstractDictionary {
       if (cnt <= 0) {
         continue;
       }
-      total += cnt;
       int j = 0;
       while (j < cnt) {
         dctFile.read(intBuffer);
@@ -232,13 +229,11 @@ class BigramDictionary extends AbstractDictionary {
     if (hash2 < 0) hash2 = PRIME_BIGRAM_LENGTH + hash2;
     int index = hash1;
     int i = 1;
-    repeat++;
     while (bigramHashTable[index] != 0
         && bigramHashTable[index] != hashId
         && i < PRIME_BIGRAM_LENGTH) {
       index = (hash1 + i * hash2) % PRIME_BIGRAM_LENGTH;
       i++;
-      repeat++;
       if (i > max) max = i;
     }
     // System.out.println(i - 1);

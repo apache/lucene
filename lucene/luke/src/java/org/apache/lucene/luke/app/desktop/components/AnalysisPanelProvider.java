@@ -407,7 +407,5 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
         AnalysisPanelProvider.this.executeAnalysis();
       }
     }
-
-    void executeAnalysisStepByStep(ActionEvent e) {}
   }
 }

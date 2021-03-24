@@ -374,7 +374,6 @@ public class OfflineSorter {
 
   /** Merge the most recent {@code maxTempFile} partitions into a new partition. */
   void mergePartitions(Directory trackingDir, List<Future<Partition>> segments) throws IOException {
-    long start = System.currentTimeMillis();
     List<Future<Partition>> segmentsToMerge;
     if (segments.size() > maxTempFiles) {
       segmentsToMerge = segments.subList(segments.size() - maxTempFiles, segments.size());
@@ -429,7 +428,6 @@ public class OfflineSorter {
       long start = System.currentTimeMillis();
       SortableBytesRefArray buffer;
       boolean exhausted = false;
-      int count;
       if (valueLength != -1) {
         // fixed length case
         buffer = new FixedLengthBytesRefArray(valueLength);

@@ -143,6 +143,18 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     if (output.length > 0) {
       assertTrue("has no CharTermAttribute", ts.hasAttribute(CharTermAttribute.class));
       termAtt = ts.getAttribute(CharTermAttribute.class);
+
+      // every UTF-16 character-based TokenStream MUST provide a TermToBytesRefAttribute,
+      // implemented by same instance like the CharTermAttribute:
+      assertTrue("has no TermToBytesRefAttribute", ts.hasAttribute(TermToBytesRefAttribute.class));
+      TermToBytesRefAttribute bytesAtt = ts.getAttribute(TermToBytesRefAttribute.class);
+
+      // ConcatenateGraphFilter has some tricky logic violating this. We have an extra assert there:
+      if (!Objects.equals(
+          bytesAtt.getClass().getSimpleName(), "BytesRefBuilderTermAttributeImpl")) {
+        assertSame(
+            "TermToBytesRefAttribute must be implemented by same instance", termAtt, bytesAtt);
+      }
     }
 
     OffsetAttribute offsetAtt = null;

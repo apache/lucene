@@ -21,4 +21,4 @@ package org.apache.lucene.spatial3d.geom;
  *
  * @lucene.experimental
  */
-public interface GeoMembershipShape extends GeoShape, GeoOutsideDistance, Membership {}
+public interface GeoMembershipShape extends GeoShape, GeoOutsideDistance {}

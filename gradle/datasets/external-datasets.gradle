@@ -1,0 +1,174 @@
+import org.apache.lucene.gradle.datasets.ExtractReuters
+
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// TODO: not sure whether this should live in benchmarks, but for now
+// let it be.
+configure(project(":lucene:benchmark")) {
+  apply plugin: "java"
+  apply plugin: "de.undercouch.download"
+
+  ext {
+    dataDir = file("data")
+  }
+
+  task getEnWiki(type: Download) {
+    ext {
+      name = "enwiki-20070527-pages-articles.xml"
+      src = "https://home.apache.org/~dsmiley/data/${name}.bz2"
+      intermediate = file("${dataDir}/${name}.bz2")
+      dst = file("${dataDir}/${name}")
+    }
+
+    outputs.file ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      ant.bunzip2(src: ext.intermediate, dest: ext.dst)
+    }
+  }
+
+  task getEnWikiRandomLines(type: Download) {
+    ext {
+      name = "enwiki.random.lines.txt"
+      src = "https://home.apache.org/~mikemccand/${name}.bz2"
+      intermediate = file("${dataDir}/${name}.bz2")
+      dst = file("${dataDir}/${name}")
+    }
+
+    outputs.file ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      ant.bunzip2(src: ext.intermediate, dest: ext.dst)
+    }
+  }
+
+  task getGeoNames(type: Download) {
+    // note: latest data is at: https://download.geonames.org/export/dump/allCountries.zip
+    //       and then randomize with: gsort -R -S 1500M file.txt > file_random.txt
+    //       and then compress with: bzip2 -9 -k file_random.txt
+    ext {
+      name = "geonames_20130921_randomOrder_allCountries.txt"
+      src = "https://home.apache.org/~dsmiley/data/${name}.bz2"
+      intermediate = file("${dataDir}/${name}.bz2")
+      dst = file("${dataDir}/${name}")
+    }
+
+    outputs.file ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      ant.bunzip2(src: ext.intermediate, dest: ext.dst)
+    }
+  }
+
+  task getTop100kWikiWordFiles(type: Download) {
+    ext {
+      name = "top.100k.words.de.en.fr.uk.wikipedia.2009-11"
+      src = "https://home.apache.org/~rmuir/wikipedia/${name}.tar.bz2"
+      intermediate = file("${dataDir}/${name}.bz2")
+      dst = file("${dataDir}/${name}")
+    }
+
+    outputs.dir ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      project.sync {
+        from tarTree(ext.intermediate) // defined above. Will decompress on the fly
+        into ext.dst
+      }
+    }
+  }
+
+  task getReuters(type: Download) {
+    ext {
+      name = "reuters21578"
+      // note: there is no HTTPS url and we don't care because this is merely test/perf data
+      src = "http://www.daviddlewis.com/resources/testcollections/reuters21578/${name}.tar.gz"
+      intermediate = file("${dataDir}/${name}.tar.gz")
+      dst = file("${dataDir}/${name}")
+    }
+
+    outputs.dir ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      def untarPath = file("$temporaryDir/reuters-untar")
+
+      logger.lifecycle("Decompressing ${ext.name}...")
+      project.sync {
+        from(tarTree(intermediate)) {
+          exclude '*.txt'
+        }
+        into untarPath
+      }
+
+      logger.lifecycle("Extracting ${ext.name} into ${ext.dst}...")
+      ext.dst.deleteDir()
+      ExtractReuters.main(untarPath.toString(), ext.dst.toString())
+    }
+  }
+
+  task downloadDatasets() {
+    group "Data set download"
+    description "Download all data sets."
+  }
+
+  [
+      getEnWiki,
+      getGeoNames,
+      getTop100kWikiWordFiles,
+      getReuters,
+      getEnWikiRandomLines
+  ].each { task ->
+    task.group "Data set download"
+    task.description "Download the ${task.ext.name} data set."
+
+    downloadDatasets.dependsOn(task)
+
+    task.doFirst {
+      logger.lifecycle("Downloading data set ${task.ext.name} from ${task.ext.src} to ${task.ext.dst}...")
+    }
+  }
+}

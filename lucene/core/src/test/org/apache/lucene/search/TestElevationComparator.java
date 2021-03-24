@@ -174,7 +174,7 @@ class ElevationComparatorSource extends FieldComparatorSource {
           private int docVal(int doc) throws IOException {
             SortedDocValues idIndex = DocValues.getSorted(context.reader(), fieldname);
             if (idIndex.advance(doc) == doc) {
-              final BytesRef term = idIndex.binaryValue();
+              final BytesRef term = idIndex.lookupOrd(idIndex.ordValue());
               Integer prio = priority.get(term);
               return prio == null ? 0 : prio.intValue();
             } else {
