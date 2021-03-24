@@ -108,6 +108,7 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
     List<String> idsWithNestedNormalization = new ArrayList<>();
     while (ids.hasMoreElements()) {
       String id = ids.nextElement();
+      @SuppressWarnings("unused")
       boolean hasNestedUnicodeNormalization =
           accumulateNestedUnicodeNormalization(id, idsWithNestedNormalization);
       try {
@@ -115,6 +116,7 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
         //  case.
         // set `iterationsOptimized=1` because `testRandomStrings` can be slow; we want this as a
         //  sanity check, but as a matter of course we should not need many iterations.
+        @SuppressWarnings("unused")
         boolean optimized = testRandomStrings(id, 0, 1);
 
         // We can't really _do_ much with `hasNestedUnicodeNormalization` or `optimized`, in terms
