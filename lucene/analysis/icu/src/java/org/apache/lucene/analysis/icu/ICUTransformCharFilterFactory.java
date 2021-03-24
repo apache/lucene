@@ -156,7 +156,6 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
    */
   private static ExternalNormalization externalizeUnicodeNormalization(Transliterator t) {
     final Transliterator[] trans = t.getElements();
-    final String topLevelId = t.getID();
     final int start;
     final int limit;
     final NormType leading;
@@ -248,7 +247,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   private static final char ID_DELIM = ';';
 
-  static enum NormType {
+  enum NormType {
     NFC,
     NFD,
     NFKC,

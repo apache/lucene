@@ -102,6 +102,7 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
    * hood this will at least make a cursory check for consistency between the "stock"
    * Transliterator, and any potential "optimized" version with externalized unicode normalization.
    */
+  @Nightly
   public void testNormalizationOptimizationOnAvailableIDs() throws Exception {
     Enumeration<String> ids = Transliterator.getAvailableIDs();
     List<String> idsWithNestedNormalization = new ArrayList<>();

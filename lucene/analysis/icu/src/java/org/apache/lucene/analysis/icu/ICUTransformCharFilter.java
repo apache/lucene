@@ -131,7 +131,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       int maxRollbackBufferCapacityHint,
       boolean failOnRollbackBufferOverflow) {
     super(in);
-    this.transform = ICUTransformFilter.optimizeForCommonCase(transform);
+    this.transform = ICUTransformFilter.hoistFilter(transform);
     this.failOnRollbackBufferOverflow = failOnRollbackBufferOverflow;
     if (maxRollbackBufferCapacityHint < 0) {
       throw new IllegalArgumentException(

@@ -77,7 +77,7 @@ public final class ICUTransformFilter extends TokenFilter {
   @SuppressWarnings("deprecation")
   public ICUTransformFilter(TokenStream input, Transliterator transform) {
     super(input);
-    this.transform = optimizeForCommonCase(transform);
+    this.transform = hoistFilter(transform);
   }
 
   /**
@@ -90,7 +90,7 @@ public final class ICUTransformFilter extends TokenFilter {
    * @param transform {@link Transliterator} to be optimized
    * @return the input argument, optionally configured to optimize common case.
    */
-  static Transliterator optimizeForCommonCase(Transliterator transform) {
+  static Transliterator hoistFilter(Transliterator transform) {
     if (transform.getFilter() == null
         && transform instanceof com.ibm.icu.text.RuleBasedTransliterator) {
       final UnicodeSet sourceSet = transform.getSourceSet();
