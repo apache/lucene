@@ -437,19 +437,35 @@ public class FacetsConfig {
   private void indexDrillDownTerms(
       Document doc, String indexFieldName, DimConfig ft, FacetLabel cp) {
     if (ft.drillDownTermsIndexing != DrillDownTermsIndexing.NONE) {
+      // index full-path drill down term
       doc.add(
           new StringField(indexFieldName, pathToString(cp.components, cp.length), Field.Store.NO));
 
-      if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH) {
-        doc.add(new StringField(indexFieldName, pathToString(cp.components, 1), Field.Store.NO));
-      } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL_PATHS_NO_DIM) {
-        for (int i = 2; i < cp.length; i++) {
-          doc.add(new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
-        }
-      } else if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL) {
-        for (int i = 1; i < cp.length; i++) {
-          doc.add(new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
-        }
+      switch (ft.drillDownTermsIndexing) {
+        case NONE:
+        case FULL_PATH_ONLY:
+          // these two cases are already handled above
+          break;
+        case DIMENSION_AND_FULL_PATH:
+          doc.add(new StringField(indexFieldName, pathToString(cp.components, 1), Field.Store.NO));
+          break;
+        case ALL_PATHS_NO_DIM:
+          for (int i = 2; i < cp.length; i++) {
+            doc.add(
+                new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
+          }
+          break;
+        case ALL:
+          for (int i = 1; i < cp.length; i++) {
+            doc.add(
+                new StringField(indexFieldName, pathToString(cp.components, i), Field.Store.NO));
+          }
+          break;
+        default:
+          throw new AssertionError(
+              "Drill down term indexing option "
+                  + ft.drillDownTermsIndexing
+                  + " is not supported.");
       }
     }
   }
@@ -471,12 +487,8 @@ public class FacetsConfig {
         doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
 
         // For drill-down:
-        doc.add(new StringField(indexFieldName, fullPath, Field.Store.NO));
-
         FacetsConfig.DimConfig ft = getDimConfig(facetField.dim);
-        if (ft.drillDownTermsIndexing == DrillDownTermsIndexing.ALL) {
-          doc.add(new StringField(indexFieldName, facetField.dim, Field.Store.NO));
-        }
+        indexDrillDownTerms(doc, indexFieldName, ft, cp);
       }
     }
   }
