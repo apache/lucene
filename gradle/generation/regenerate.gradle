@@ -1,0 +1,58 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Create common 'regenerate' task sub-tasks can hook into.
+
+configure([
+        project(":lucene:analysis:common"),
+        project(":lucene:core"),
+        project(":lucene:analysis:icu"),
+        project(":lucene:queryparser"),
+        project(":lucene:analysis:kuromoji"),
+        project(":lucene:analysis:nori")
+]) {
+    task regenerate() {
+      description "Rerun any code or static data generation tasks."
+      group "generation"
+    }
+
+    // Make sure 'tidy' and its dependencies run after any other task in the dependencies
+    // of 'regenerate'. This ensures proper execution ordering so that tidy tasks run
+    // after whatever has been generated is complete.
+    afterEvaluate {
+      Set<Task> deps = regenerate.getTaskDependencies().getDependencies(regenerate)
+      def tidy = deps.find { it.name == "tidy" }
+      if (tidy) {
+        TaskDependency dep = tidy.taskDependencies
+        Set<Task> visited = new HashSet<>()
+        Queue<Task> queue = new ArrayDeque<>()
+        queue.add(tidy)
+        while (!queue.isEmpty()) {
+          Task t = queue.removeFirst()
+          if (visited.add(t)) {
+            queue.addAll(dep.getDependencies(t))
+          }
+        }
+        
+        def intersection = visited.intersect(deps)
+        def tidyDeps = visited - intersection + [tidy]
+        def genDeps = deps - intersection
+
+        tidyDeps.each { Task t -> t.mustRunAfter(genDeps) }
+      }
+    }
+}

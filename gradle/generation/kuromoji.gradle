@@ -128,5 +128,8 @@ configure(project(":lucene:analysis:kuromoji")) {
         })
       }
     }
+
+    // TODO: should we include this in default regeneration?
+    // regenerate.dependsOn compileMecab
   }
 }
