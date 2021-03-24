@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.analysis.icu;
 
-import com.ibm.icu.impl.Norm2AllModes;
 import com.ibm.icu.impl.Utility;
 import com.ibm.icu.text.Normalizer2;
 import com.ibm.icu.text.Transliterator;
@@ -115,12 +114,6 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
         return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKCInstance());
       case NFKD:
         return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKDInstance());
-      case NFKC_CF:
-        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKCCasefoldInstance());
-      case FCC:
-        return new ICUNormalizer2CharFilter(r, Norm2AllModes.getFCDNormalizer2());
-      case FCD:
-        return new ICUNormalizer2CharFilter(r, Norm2AllModes.getNFCInstance().fcc);
       default:
         throw new UnsupportedOperationException("normType \"" + normType + "\" not supported");
     }
@@ -251,14 +244,17 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   private static final char ID_DELIM = ';';
 
+  /**
+   * These are the leading/trailing NormTypes that we expect to see manipulating i/o for
+   * Transliterators. Other norm types (e.g., FCC, FCD, NFKC_CF) are _not_ expected in this context,
+   * so they are not included here (i.e., in the unlikely event that they are encountered, they will
+   * not be optimized)
+   */
   enum NormType {
     NFC,
     NFD,
     NFKC,
-    NFKC_CF,
-    NFKD,
-    FCC,
-    FCD
+    NFKD
   }
 
   private static final NormType[] NORM_TYPE_VALUES;
