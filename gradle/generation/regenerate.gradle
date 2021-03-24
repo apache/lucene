@@ -30,12 +30,26 @@ configure([
       group "generation"
     }
 
-    // Make sure tidy dependency runs after any other generation task.
+    // Make sure 'tidy' and its dependencies run after any other task in the dependencies
+    // of 'regenerate'. This ensures proper execution ordering so that tidy tasks run
+    // after whatever has been generated is complete.
     afterEvaluate {
       Set<Task> deps = regenerate.getTaskDependencies().getDependencies(regenerate)
       def tidy = deps.find { it.name == "tidy" }
       if (tidy) {
-          tidy.mustRunAfter (deps - [tidy])
+        TaskDependency dep = tidy.taskDependencies
+        Set<Task> visited = new HashSet<>()
+        Queue<Task> queue = new ArrayDeque<>()
+        queue.add(tidy)
+        while (!queue.isEmpty()) {
+          Task t = queue.removeFirst()
+          if (visited.add(t)) {
+            queue.addAll(dep.getDependencies(t))
+          }
+        }
+
+        def otherDeps = deps - [tidy]
+        visited.each { Task t -> t.mustRunAfter(otherDeps) }
       }
     }
 }

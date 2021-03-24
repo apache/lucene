@@ -134,7 +134,7 @@ configure(project(":lucene:analysis:common")) {
     heapSize = "12g"
 
     doFirst {
-      logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires tons of memory).")
+      logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
     }
 
     doLast {
