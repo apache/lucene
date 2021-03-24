@@ -127,7 +127,7 @@ final class DocValuesAdapter {
       DocValues dv =
           DocValues.of(
               dvType,
-              Collections.singletonList(BytesRef.deepCopyOf(svalues.binaryValue())),
+              Collections.singletonList(BytesRef.deepCopyOf(svalues.lookupOrd(svalues.ordValue()))),
               Collections.emptyList());
       return Optional.of(dv);
     }

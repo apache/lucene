@@ -48,8 +48,7 @@ import org.apache.lucene.util.IntsRef;
  *   <li>PHONE affix file option for suggestions
  * </ul>
  *
- * <p>The objects of this class are not thread-safe (but a single underlying Dictionary can be
- * shared by multiple spell-checkers in different threads).
+ * <p>The objects of this class are thread-safe.
  */
 public class Hunspell {
   static final long SUGGEST_TIME_LIMIT = 250;

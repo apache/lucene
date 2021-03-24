@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.hunspell;
 
 import java.util.stream.Collectors;
+import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.LuceneTestCase;
 
 public class TestTrigramAutomaton extends LuceneTestCase {
@@ -58,10 +59,10 @@ public class TestTrigramAutomaton extends LuceneTestCase {
     assertEquals(
         message,
         GeneratingSuggester.ngramScore(3, s1, s2, false),
-        new TrigramAutomaton(s1).ngramScore(s2));
+        new TrigramAutomaton(s1).ngramScore(new CharsRef(s2)));
     assertEquals(
         message,
         GeneratingSuggester.ngramScore(3, s2, s1, false),
-        new TrigramAutomaton(s2).ngramScore(s1));
+        new TrigramAutomaton(s2).ngramScore(new CharsRef(s1)));
   }
 }

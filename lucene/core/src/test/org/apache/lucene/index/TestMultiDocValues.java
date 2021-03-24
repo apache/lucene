@@ -163,8 +163,8 @@ public class TestMultiDocValues extends LuceneTestCase {
       }
 
       // check value
-      final BytesRef expected = BytesRef.deepCopyOf(single.binaryValue());
-      final BytesRef actual = multi.binaryValue();
+      final BytesRef expected = BytesRef.deepCopyOf(single.lookupOrd(single.ordValue()));
+      final BytesRef actual = multi.lookupOrd(multi.ordValue());
       assertEquals(expected, actual);
 
       // check ord
@@ -216,8 +216,8 @@ public class TestMultiDocValues extends LuceneTestCase {
       // check ord
       assertEquals(single.ordValue(), multi.ordValue());
       // check ord value
-      final BytesRef expected = BytesRef.deepCopyOf(single.binaryValue());
-      final BytesRef actual = multi.binaryValue();
+      final BytesRef expected = BytesRef.deepCopyOf(single.lookupOrd(single.ordValue()));
+      final BytesRef actual = multi.lookupOrd(multi.ordValue());
       assertEquals(expected, actual);
     }
     testRandomAdvance(

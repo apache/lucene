@@ -71,8 +71,6 @@ public final class FST<T> implements Accountable {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(FST.class);
-  private static final long ARC_SHALLOW_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(Arc.class);
 
   private static final int BIT_FINAL_ARC = 1 << 0;
   static final int BIT_LAST_ARC = 1 << 1;

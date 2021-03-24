@@ -17,51 +17,31 @@
 
 configure(rootProject) {
   def urlVersion = project.baseVersion.replace('.', '_')
-  def refguideUrlVersion = project.baseVersion.replaceFirst(/^(\d+)\.(\d+).*$/, '$1_$2')
 
   ext {
-    if (!skipLucene) {
-      luceneDocUrl = project.propertyOrDefault('lucene.javadoc.url', {
-        if (project.version != project.baseVersion) {
-          // non-release build
-          new File(project('lucene:documentation').buildDir, 'site').toURI().toASCIIString().minus(~'/$')
-        } else {
-          // release build
-          "https://lucene.apache.org/core/${urlVersion}"
-        }
-      }())
-    } else {
-      // TODO: The url should be constructed from actual dependency version... but this isn't available
-      // at evaluation time. it'd have to be a lazy property provider.
-      //
-      // There are actually two questions -
-      //   1) what to do about links to yet-unreleased Lucene versions and
-      //   2) forgot what the second question was...
-      //
-      // For now, just hardcode the latest released version.
-      // We could download Lucene javadoc artifacts for the actual dependency and just
-      // link it locally (and publish it on Solr site). This would ensure the docs are always up-to-date,
-      // even for Lucene snapshots.
-      luceneDocVersion = "9_0_0-SNAPSHOT"
-      luceneDocUrl = project.propertyOrDefault('lucene.javadoc.url', "https://lucene.apache.org/core/${luceneDocVersion}")
-    }
+    luceneDocUrl = project.propertyOrDefault('lucene.javadoc.url', {
+      if (project.version != project.baseVersion) {
+        // non-release build does not cross-link between modules.
+        return null
+      } else {
+        // release build
+        "https://lucene.apache.org/core/${urlVersion}"
+      }
+    }())
   }
 
   task documentation() {
     group = 'documentation'
     description = 'Generate all documentation'
 
-    if (!skipLucene) {
-      dependsOn ':lucene:documentation:assemble'
-    }
+    dependsOn ':lucene:documentation:assemble'
   }
 
   assemble.dependsOn documentation
 }
 
 // docroot will point to Lucene and Solr relative directory for each sub-project.
-configure(subprojects.findAll { it.path == ':lucene:documentation' || it.path == ':solr:documentation' }) {
-
+configure(project(':lucene:documentation')) {
   ext {
     docroot = file("${buildDir}/site")
     docrootMinimal = file("${buildDir}/minimalSite")
@@ -102,7 +82,7 @@ configure(subprojects.findAll { it.path == ':lucene:documentation' || it.path ==
   }
 }
 
-configure(subprojects.findAll { it.path == ':lucene' || it.path == ':solr' }) {
+configure(project(":lucene")) {
   ext {
     docroot = project('documentation').docroot
     docrootMinimal = project('documentation').docrootMinimal

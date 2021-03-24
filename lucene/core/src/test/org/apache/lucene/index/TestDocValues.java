@@ -185,11 +185,15 @@ public class TestDocValues extends LuceneTestCase {
     LeafReader r = getOnlyLeafReader(dr);
 
     // ok
-    assertNotNull(DocValues.getBinary(r, "foo"));
     assertNotNull(DocValues.getSorted(r, "foo"));
     assertNotNull(DocValues.getSortedSet(r, "foo"));
 
     // errors
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          DocValues.getBinary(r, "foo");
+        });
     expectThrows(
         IllegalStateException.class,
         () -> {

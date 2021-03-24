@@ -15,21 +15,37 @@
  * limitations under the License.
  */
 
-def includeErrorProne = rootProject.runtimeJavaVersion <= JavaVersion.VERSION_15;
-if (!includeErrorProne) {
-  logger.warn("WARNING: errorprone disabled (won't work with JDK ${rootProject.runtimeJavaVersion})")
+def skipErrorProne = rootProject.runtimeJavaVersion > JavaVersion.VERSION_15;
+if (skipErrorProne) {
+  configure(rootProject) {
+    task errorProneSkipped() {
+      doFirst {
+        logger.warn("WARNING: errorprone disabled (won't work with JDK ${rootProject.runtimeJavaVersion})")
+      }
+    }
+  }
 }
 
 allprojects { prj ->
   plugins.withType(JavaPlugin) {
-    prj.apply plugin: 'net.ltgt.errorprone'
+    // LUCENE-9650: Errorprone on master/gradle does not work with JDK-16+
+    // this is a hack to keep the dependency (so that palantir's version check doesn't complain)
+    // but don't include the plugin (which fails on JDK16+).
+    if (skipErrorProne) {
+      tasks.withType(JavaCompile) { task -> task.dependsOn ":errorProneSkipped" }
+      configurations {
+        errorprone
+      }
+      dependencies {
+        errorprone("com.google.errorprone:error_prone_core")
+      }
+    } else {
+      prj.apply plugin: 'net.ltgt.errorprone'
 
-    dependencies {
-      errorprone("com.google.errorprone:error_prone_core")
-    }
+      dependencies {
+        errorprone("com.google.errorprone:error_prone_core")
+      }
 
-    // LUCENE-9650: Errorprone on master/gradle no longer works with JDK-16
-    if (includeErrorProne) {
       tasks.withType(JavaCompile) { task ->
         options.errorprone.disableWarningsInGeneratedCode = true
         options.errorprone.errorproneArgs = [

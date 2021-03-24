@@ -27,7 +27,7 @@ configure(rootProject) {
 
   eclipse {
     project {
-      name = "Apache Lucene Solr ${version}"
+      name = "Apache Lucene ${version}"
     }
 
     classpath {
@@ -38,8 +38,7 @@ configure(rootProject) {
 
         whenMerged { classpath ->
           def projects = allprojects.findAll { prj ->
-            return prj.plugins.hasPlugin(JavaPlugin) &&
-                   prj.path != ":solr:solr-ref-guide"
+            return prj.plugins.hasPlugin(JavaPlugin)
           }
 
           Set<String> sources = []

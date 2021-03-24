@@ -1146,10 +1146,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       term = dvBytesDerefVar.binaryValue();
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesSortedFixed.nextDoc());
-      term = dvBytesSortedFixed.binaryValue();
+      term = dvBytesSortedFixed.lookupOrd(dvBytesSortedFixed.ordValue());
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesSortedVar.nextDoc());
-      term = dvBytesSortedVar.binaryValue();
+      term = dvBytesSortedVar.lookupOrd(dvBytesSortedVar.ordValue());
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesStraightFixed.nextDoc());
       term = dvBytesStraightFixed.binaryValue();

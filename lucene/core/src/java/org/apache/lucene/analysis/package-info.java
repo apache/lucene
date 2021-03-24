@@ -782,7 +782,7 @@
  *
  * <pre class="prettyprint">
  *   public interface PartOfSpeechAttribute extends Attribute {
- *     public static enum PartOfSpeech {
+ *     public enum PartOfSpeech {
  *       Noun, Verb, Adjective, Adverb, Pronoun, Preposition, Conjunction, Article, Unknown
  *     }
  *

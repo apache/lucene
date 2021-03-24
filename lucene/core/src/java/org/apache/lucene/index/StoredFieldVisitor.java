@@ -69,7 +69,7 @@ public abstract class StoredFieldVisitor {
   public abstract Status needsField(FieldInfo fieldInfo) throws IOException;
 
   /** Enumeration of possible return values for {@link #needsField}. */
-  public static enum Status {
+  public enum Status {
     /** YES: the field should be visited. */
     YES,
     /** NO: don't visit this field, but continue processing fields for this document. */

@@ -28,11 +28,15 @@ import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Assume;
 import org.junit.AssumptionViolatedException;
 import org.junit.BeforeClass;
@@ -66,6 +70,16 @@ public class TestPerformance extends LuceneTestCase {
   }
 
   @Test
+  public void ru() throws Exception {
+    checkAnalysisPerformance("ru", 400_000);
+  }
+
+  @Test
+  public void ru_suggest() throws Exception {
+    checkSuggestionPerformance("ru", 1000);
+  }
+
+  @Test
   public void de() throws Exception {
     checkAnalysisPerformance("de", 300_000);
   }
@@ -96,24 +110,53 @@ public class TestPerformance extends LuceneTestCase {
     Dictionary dictionary = loadDictionary(code);
 
     List<String> words = loadWords(code, wordCount, dictionary);
+    List<String> halfWords = words.subList(0, words.size() / 2);
 
     Stemmer stemmer = new Stemmer(dictionary);
     Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
-    measure(
-        "Stemming " + code,
-        blackHole -> {
-          for (String word : words) {
-            blackHole.accept(stemmer.stem(word));
-          }
-        });
-    measure(
-        "Spellchecking " + code,
-        blackHole -> {
-          for (String word : words) {
-            blackHole.accept(speller.spell(word));
-          }
-        });
+    int cpus = Runtime.getRuntime().availableProcessors();
+    ExecutorService executor =
+        Executors.newFixedThreadPool(cpus, new NamedThreadFactory("hunspellStemming-"));
+
+    try {
+      measure("Stemming " + code, blackHole -> stemWords(words, stemmer, blackHole));
+
+      measure(
+          "Multi-threaded stemming " + code,
+          blackHole -> {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int i = 0; i < cpus; i++) {
+              Stemmer localStemmer = new Stemmer(dictionary);
+              futures.add(executor.submit(() -> stemWords(halfWords, localStemmer, blackHole)));
+            }
+            try {
+              for (Future<?> future : futures) {
+                future.get();
+              }
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          });
+
+      measure(
+          "Spellchecking " + code,
+          blackHole -> {
+            for (String word : words) {
+              blackHole.accept(speller.spell(word));
+            }
+          });
+    } finally {
+      executor.shutdown();
+      assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+    }
+
     System.out.println();
+  }
+
+  private void stemWords(List<String> words, Stemmer stemmer, Consumer<Object> blackHole) {
+    for (String word : words) {
+      blackHole.accept(stemmer.stem(word));
+    }
   }
 
   private void checkSuggestionPerformance(String code, int wordCount) throws Exception {
@@ -121,6 +164,7 @@ public class TestPerformance extends LuceneTestCase {
     Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, () -> {});
     List<String> words =
         loadWords(code, wordCount, dictionary).stream()
+            .distinct()
             .filter(w -> hasQuickSuggestions(speller, w))
             .collect(Collectors.toList());
     System.out.println("Checking " + words.size() + " misspelled words");
@@ -181,7 +225,8 @@ public class TestPerformance extends LuceneTestCase {
         String line = reader.readLine();
         if (line == null) break;
 
-        for (String token : line.split("[^a-zA-Z" + Pattern.quote(dictionary.wordChars) + "]+")) {
+        for (String token :
+            line.split("[^\\p{IsLetter}" + Pattern.quote(dictionary.wordChars) + "]+")) {
           String word = stripPunctuation(token);
           if (word != null) {
             words.add(word);

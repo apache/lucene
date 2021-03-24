@@ -349,7 +349,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
   }
 
-  static enum DocsEnumState {
+  enum DocsEnumState {
     START,
     ITERATING,
     FINISHED
@@ -835,14 +835,6 @@ public class AssertingLeafReader extends FilterLeafReader {
       int valueCount = in.getValueCount();
       assert valueCount == this.valueCount; // should not change
       return valueCount;
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      assertThread("Sorted doc values", creationThread);
-      final BytesRef result = in.binaryValue();
-      assert result.isValid();
-      return result;
     }
 
     @Override

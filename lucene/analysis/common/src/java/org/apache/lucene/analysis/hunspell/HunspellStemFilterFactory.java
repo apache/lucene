@@ -59,8 +59,6 @@ public class HunspellStemFilterFactory extends TokenFilterFactory implements Res
 
   private static final String PARAM_DICTIONARY = "dictionary";
   private static final String PARAM_AFFIX = "affix";
-  // NOTE: this one is currently unused?:
-  private static final String PARAM_RECURSION_CAP = "recursionCap";
   private static final String PARAM_IGNORE_CASE = "ignoreCase";
   private static final String PARAM_LONGEST_ONLY = "longestOnly";
 

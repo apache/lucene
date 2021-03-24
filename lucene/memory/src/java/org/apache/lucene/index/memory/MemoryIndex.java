@@ -1268,7 +1268,42 @@ public class MemoryIndex {
 
     @Override
     public BinaryDocValues getBinaryDocValues(String field) {
-      return getSortedDocValues(field, DocValuesType.BINARY);
+      final SortedDocValues in = getSortedDocValues(field, DocValuesType.BINARY);
+      if (in == null) {
+        return null;
+      }
+      // wraps a SortedDocValues and makes it look like its binary
+      return new BinaryDocValues() {
+        @Override
+        public BytesRef binaryValue() throws IOException {
+          return in.lookupOrd(in.ordValue());
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          return in.advanceExact(target);
+        }
+
+        @Override
+        public int docID() {
+          return in.docID();
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          return in.nextDoc();
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          return in.advance(target);
+        }
+
+        @Override
+        public long cost() {
+          return in.cost();
+        }
+      };
     }
 
     @Override
@@ -1405,11 +1440,8 @@ public class MemoryIndex {
 
       @Override
       public int size() {
-        int size = 0;
-        for (String fieldName : this) {
-          size++;
-        }
-        return size;
+        return Math.toIntExact(
+            fields.entrySet().stream().filter(e -> e.getValue().numTokens > 0).count());
       }
     }
 
@@ -1538,7 +1570,6 @@ public class MemoryIndex {
       private boolean hasNext;
       private int doc = -1;
       private int freq;
-      private int pos;
       private int startOffset;
       private int endOffset;
       private int payloadIndex;
@@ -1565,7 +1596,6 @@ public class MemoryIndex {
 
       @Override
       public int nextDoc() {
-        pos = -1;
         if (hasNext) {
           hasNext = false;
           return doc = 0;

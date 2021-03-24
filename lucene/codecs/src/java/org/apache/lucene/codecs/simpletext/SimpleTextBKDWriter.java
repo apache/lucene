@@ -816,40 +816,6 @@ final class SimpleTextBKDWriter implements Closeable {
     }
   }
 
-  private void writeLeafBlockPackedValuesRange(
-      IndexOutput out,
-      int[] commonPrefixLengths,
-      int start,
-      int end,
-      IntFunction<BytesRef> packedValues)
-      throws IOException {
-    for (int i = start; i < end; ++i) {
-      BytesRef ref = packedValues.apply(i);
-      assert ref.length == config.packedBytesLength;
-
-      for (int dim = 0; dim < config.numDims; dim++) {
-        int prefix = commonPrefixLengths[dim];
-        out.writeBytes(
-            ref.bytes, ref.offset + dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
-      }
-    }
-  }
-
-  private static int runLen(
-      IntFunction<BytesRef> packedValues, int start, int end, int byteOffset) {
-    BytesRef first = packedValues.apply(start);
-    byte b = first.bytes[first.offset + byteOffset];
-    for (int i = start + 1; i < end; ++i) {
-      BytesRef ref = packedValues.apply(i);
-      byte b2 = ref.bytes[ref.offset + byteOffset];
-      assert Byte.toUnsignedInt(b2) >= Byte.toUnsignedInt(b);
-      if (b != b2) {
-        return i - start;
-      }
-    }
-    return end - start;
-  }
-
   @Override
   public void close() throws IOException {
     if (tempInput != null) {

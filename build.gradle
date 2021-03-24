@@ -23,7 +23,7 @@ plugins {
   id "com.palantir.consistent-versions" version "1.14.0"
   id "org.owasp.dependencycheck" version "5.3.0"
   id 'de.thetaphi.forbiddenapis' version '3.1' apply false
-  id "de.undercouch.download" version "4.0.2" apply false
+  id "de.undercouch.download" version "4.1.1" apply false
   id "net.ltgt.errorprone" version "1.2.1" apply false
   id 'com.diffplug.spotless' version "5.8.2" apply false
 }
@@ -54,9 +54,6 @@ allprojects {
 }
 
 ext {
-  skipSolr = (System.getProperty("skip.solr") as Boolean)
-  skipLucene = (System.getProperty("skip.lucene") as Boolean)
-
   // "base" version is stripped of the qualifier. Compute it.
   baseVersion = {
     def m = (version =~ /^(\d+\.\d+\.\d+)(-(.+))?/)
@@ -89,7 +86,7 @@ ext {
   scriptDepVersions = [
       "apache-rat": "0.11",
       "commons-codec": "1.13",
-      "ecj": "3.19.0",
+      "ecj": "3.25.0",
       "javacc": "7.0.4",
       "jflex": "1.7.0",
       "jgit": "5.9.0.202009080501-r",
@@ -148,20 +145,18 @@ apply from: file('gradle/validation/ecj-lint.gradle')
 apply from: file('gradle/validation/gradlew-scripts-tweaked.gradle')
 apply from: file('gradle/validation/check-broken-links.gradle')
 
-if (!skipLucene) {
-  apply from: file('gradle/validation/spotless.gradle')
-}
+apply from: file('gradle/validation/spotless.gradle')
 
 // Source or data regeneration tasks
-if (!skipLucene) {
-  apply from: file('gradle/generation/jflex.gradle')
-  apply from: file('gradle/generation/util.gradle')
-  apply from: file('gradle/generation/snowball.gradle')
-  apply from: file('gradle/generation/kuromoji.gradle')
-  apply from: file('gradle/generation/nori.gradle')
-  apply from: file('gradle/generation/icu.gradle')
-}
+apply from: file('gradle/generation/jflex.gradle')
+apply from: file('gradle/generation/util.gradle')
+apply from: file('gradle/generation/snowball.gradle')
+apply from: file('gradle/generation/kuromoji.gradle')
+apply from: file('gradle/generation/nori.gradle')
+apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
+
+apply from: file('gradle/datasets/external-datasets.gradle')
 
 // Shared configuration of subprojects containing native code.
 apply from: file('gradle/native/disable-native.gradle')
@@ -179,10 +174,7 @@ apply from: file('gradle/help.gradle')
 // here so that we can coexist with current ant build but they are indicative
 // of potential problems with the build conventions, dependencies, etc.
 apply from: file('gradle/ant-compat/misc.gradle')
-
-if (!skipLucene) {
-  apply from: file('gradle/ant-compat/test-classes-cross-deps.gradle')
-}
+apply from: file('gradle/ant-compat/test-classes-cross-deps.gradle')
 
 apply from: file('gradle/documentation/documentation.gradle')
 apply from: file('gradle/documentation/changes-to-html.gradle')
@@ -192,7 +184,4 @@ apply from: file('gradle/documentation/render-javadoc.gradle')
 apply from: file('gradle/hacks/gradle-archives.gradle')
 apply from: file('gradle/hacks/gradle.gradle')
 apply from: file('gradle/hacks/hashmapAssertions.gradle')
-
-if (skipLucene) {
-  apply from: file('gradle/solr-tlp-migration/inaccessible-test-sources.gradle')
-}
+apply from: file('gradle/hacks/turbocharge-jvm-opts.gradle')

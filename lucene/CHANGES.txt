@@ -1,4 +1,4 @@
-KLucene Change Log
+Lucene Change Log
 
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
@@ -91,6 +91,9 @@ API Changes
 
 * LUCENE-9480: Make DataInput's skipBytes(long) abstract as the implementation was not performant.
   IndexInput's api is unaffected: skipBytes() is implemented via seek(). (Greg Miller)
+
+* LUCENE-9796: SortedDocValues no longer extends BinaryDocValues, as binaryValue() was not performant.
+  See MIGRATE.md for details. (Robert Muir)
 
 Improvements
 
@@ -190,9 +193,6 @@ Improvements
 
 * LUCENE-9674: Implement faster advance on VectorValues using binary search.
   (Anand Kotriwal, Mike Sokolov)
-
-* LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
-  (Jaison Bi via Bruno Roustant)
 
 * LUCENE-9794: Speed up implementations of DataInput.skipBytes(). (Greg Miller)
 
@@ -303,6 +303,9 @@ Improvements
 * LUCENE-9725: BM25FQuery was extended to handle similarities beyond BM25Similarity. It
   was renamed to CombinedFieldQuery to reflect its more general scope. (Julie Tibshirani)
 
+* LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
+  (Jaison Bi via Bruno Roustant)
+
 Optimizations
 ---------------------
 (No changes)
@@ -323,8 +326,17 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
 
+* LUCENE-9836: Removed the pure Maven build. It is no longer possible to build
+  artifacts using Maven (this feature was no longer working correctly). Due to
+  migration to Gradle for Lucene/Solr 9.0, the maintenance of the Maven build
+  was no longer reasonable. POM files are generated for deployment to Maven
+  Central only. Please use "ant generate-maven-artifacts" to produce and deploy
+  artifacts to any repository.  (Uwe Schindler, Dawid Weiss)
+
+* LUCENE-9836: Migrate Maven tasks to use "maven-resolver-ant-tasks"
+  instead of the no longer maintained "maven-ant-tasks".  (Uwe Schindler)
+  
 ======================= Lucene 8.8.1 =======================
 
 Bug Fixes
@@ -1335,8 +1347,6 @@ Other
 * LUCENE-8886: Fix TestMutablePointsReaderUtils tests. (Ignacio Vera)
 
 ======================= Lucene 8.1.1 =======================
-(No Changes)
-
 Improvements
 
 * LUCENE-8781: FST lookup performance has been improved in many cases by
@@ -10291,7 +10301,7 @@ Changes in backwards compatibility policy
     To prevent this slowdown, use oal.index.IndexUpgrader
     to upgrade your indexes to latest file format (LUCENE-3082).
 
-    Mixed flex/pre-flex indexes are perfectly fine -- the two
+  - Mixed flex/pre-flex indexes are perfectly fine -- the two
     emulation layers (flex API on pre-flex index, and pre-flex API on
     flex index) will remap the access as required.  So on upgrading to
     4.0 you can start indexing new documents into an existing index.
