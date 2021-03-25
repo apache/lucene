@@ -53,8 +53,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             null,
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
 
     // Senior software engineer:
     assertAnalyzesToPositions(
@@ -110,8 +109,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             null,
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     checkRandomData(random, a, atLeast(100));
     a.close();
   }
@@ -124,8 +122,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             null,
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     checkRandomData(random, a, 2 * RANDOM_MULTIPLIER, 8192);
     a.close();
   }
@@ -139,8 +136,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             TestJapaneseTokenizer.readDict(),
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     assertTokenStreamContents(
         a.tokenStream("foo", "abcd"),
         new String[] {"a", "b", "cd"},
@@ -151,38 +147,19 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
   }
 
   public void testCharWidthNormalization() throws Exception {
-    // See LUCENE-9853
-    // with CJKWidthCharFilter (normalize half-width / full-width chars before tokenization)
-    final Analyzer a1 =
+    final Analyzer a =
         new JapaneseAnalyzer(
             TestJapaneseTokenizer.readDict(),
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     assertTokenStreamContents(
-        a1.tokenStream("foo", "新橋６－２０－１"),
+        a.tokenStream("foo", "新橋６－２０－１"),
         new String[] {"新橋", "6", "20", "1"},
         new int[] {0, 2, 4, 7},
         new int[] {2, 3, 6, 8},
         8);
-    a1.close();
-
-    // with CJKWidthFilter (normalize half-width / full-width chars after tokenization)
-    final Analyzer a2 =
-        new JapaneseAnalyzer(
-            TestJapaneseTokenizer.readDict(),
-            Mode.SEARCH,
-            JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            false);
-    assertTokenStreamContents(
-        a2.tokenStream("foo", "新橋６－２０－１"),
-        new String[] {"新橋", "6", "2", "0", "1"},
-        new int[] {0, 2, 4, 5, 7},
-        new int[] {2, 3, 5, 6, 8},
-        8);
-    a2.close();
+    a.close();
   }
 
   // LUCENE-3897: this string (found by running all jawiki
@@ -196,8 +173,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             null,
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     checkAnalysisConsistency(random, a, random.nextBoolean(), s);
     a.close();
   }
@@ -213,8 +189,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             null,
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     checkAnalysisConsistency(random, a, random.nextBoolean(), s);
     a.close();
   }
@@ -230,8 +205,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             null,
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     checkAnalysisConsistency(random, a, random.nextBoolean(), s);
     a.close();
   }
@@ -244,8 +218,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             null,
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     checkAnalysisConsistency(random(), a, true, s);
     a.close();
   }
@@ -258,8 +231,7 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
             null,
             Mode.SEARCH,
             JapaneseAnalyzer.getDefaultStopSet(),
-            JapaneseAnalyzer.getDefaultStopTags(),
-            true);
+            JapaneseAnalyzer.getDefaultStopTags());
     checkAnalysisConsistency(random(), a, false, s);
     a.close();
   }

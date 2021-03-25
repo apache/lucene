@@ -27,7 +27,6 @@ import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.cjk.CJKWidthCharFilter;
-import org.apache.lucene.analysis.cjk.CJKWidthFilter;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 
@@ -41,28 +40,21 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
   private final Mode mode;
   private final Set<String> stoptags;
   private final UserDictionary userDict;
-  private final boolean charNormalization;
 
   public JapaneseAnalyzer() {
     this(
         null,
         JapaneseTokenizer.DEFAULT_MODE,
         DefaultSetHolder.DEFAULT_STOP_SET,
-        DefaultSetHolder.DEFAULT_STOP_TAGS,
-        true);
+        DefaultSetHolder.DEFAULT_STOP_TAGS);
   }
 
   public JapaneseAnalyzer(
-      UserDictionary userDict,
-      Mode mode,
-      CharArraySet stopwords,
-      Set<String> stoptags,
-      boolean charNormalization) {
+      UserDictionary userDict, Mode mode, CharArraySet stopwords, Set<String> stoptags) {
     super(stopwords);
     this.userDict = userDict;
     this.mode = mode;
     this.stoptags = stoptags;
-    this.charNormalization = charNormalization;
   }
 
   public static CharArraySet getDefaultStopSet() {
@@ -104,10 +96,6 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
     Tokenizer tokenizer = new JapaneseTokenizer(userDict, true, true, mode);
     TokenStream stream = new JapaneseBaseFormFilter(tokenizer);
     stream = new JapanesePartOfSpeechStopFilter(stream, stoptags);
-    if (!charNormalization) {
-      // apply width normalization only when character level normalization is not applied.
-      stream = new CJKWidthFilter(stream);
-    }
     stream = new StopFilter(stream, stopwords);
     stream = new JapaneseKatakanaStemFilter(stream);
     stream = new LowerCaseFilter(stream);
@@ -116,27 +104,17 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
 
   @Override
   protected TokenStream normalize(String fieldName, TokenStream in) {
-    TokenStream result = charNormalization ? in : new CJKWidthFilter(in);
-    result = new LowerCaseFilter(result);
+    TokenStream result = new LowerCaseFilter(in);
     return result;
   }
 
   @Override
   protected Reader initReader(String fieldName, Reader reader) {
-    if (charNormalization) {
-      // apply character level width normalizetion (LUCENE-9853)
-      return new CJKWidthCharFilter(reader);
-    } else {
-      return reader;
-    }
+    return new CJKWidthCharFilter(reader);
   }
 
   @Override
   protected Reader initReaderForNormalization(String fieldName, Reader reader) {
-    if (charNormalization) {
-      return new CJKWidthCharFilter(reader);
-    } else {
-      return reader;
-    }
+    return new CJKWidthCharFilter(reader);
   }
 }
