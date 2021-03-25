@@ -17,20 +17,20 @@
 
 package org.apache.lucene.document;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomDouble;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomInt;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLong;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
+import java.io.IOException;
+import java.util.Random;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
@@ -39,12 +39,13 @@ import org.apache.lucene.util.LuceneTestCase;
 
 public class TestPerFieldConsistency extends LuceneTestCase {
 
-  private static IndexableFieldType randomIndexedField(Random random) {
+  private static Field randomIndexedField(Random random, String fieldName) {
     FieldType fieldType = new FieldType();
     IndexOptions indexOptions = RandomPicks.randomFrom(random, IndexOptions.values());
     while (indexOptions == IndexOptions.NONE) {
       indexOptions = RandomPicks.randomFrom(random, IndexOptions.values());
     }
+    fieldType.setIndexOptions(indexOptions);
     fieldType.setStoreTermVectors(random.nextBoolean());
     if (fieldType.storeTermVectors()) {
       fieldType.setStoreTermVectorPositions(random.nextBoolean());
@@ -55,43 +56,62 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     }
     fieldType.setOmitNorms(random.nextBoolean());
     fieldType.setStored(random.nextBoolean());
-
     fieldType.freeze();
-    return fieldType;
+
+    return new Field(fieldName, "randomValue", fieldType);
   }
 
-  private static IndexableFieldType randomVectorFieldType(Random random) {
-    FieldType fieldType = new FieldType();
-    VectorValues.SearchStrategy searchStrategy = RandomPicks.randomFrom(random, VectorValues.SearchStrategy.values());
+  private static Field randomPointField(Random random, String fieldName) {
+    switch (random.nextInt(4)) {
+      case 0:
+        return new LongPoint(fieldName, randomLong());
+      case 1:
+        return new IntPoint(fieldName, randomInt());
+      case 2:
+        return new DoublePoint(fieldName, randomDouble());
+      default:
+        return new FloatPoint(fieldName, randomFloat());
+    }
+  }
+
+  private static Field randomDocValuesField(Random random, String fieldName) {
+    switch (random.nextInt(4)) {
+      case 0:
+        return new BinaryDocValuesField(fieldName, new BytesRef("randomValue"));
+      case 1:
+        return new NumericDocValuesField(fieldName, randomLong());
+      case 2:
+        return new DoubleDocValuesField(fieldName, randomDouble());
+      default:
+        return new SortedSetDocValuesField(fieldName, new BytesRef("randomValue"));
+    }
+  }
+
+  private static Field randomVectorField(Random random, String fieldName) {
+    VectorValues.SearchStrategy searchStrategy =
+        RandomPicks.randomFrom(random, VectorValues.SearchStrategy.values());
     while (searchStrategy == VectorValues.SearchStrategy.NONE) {
       searchStrategy = RandomPicks.randomFrom(random, VectorValues.SearchStrategy.values());
     }
-    fieldType.setVectorDimensionsAndSearchStrategy(randomIntBetween(1, 10), searchStrategy);
-    return fieldType;
+    float[] values = new float[randomIntBetween(1, 10)];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = randomFloat();
+    }
+    return new VectorField(fieldName, values, searchStrategy);
   }
 
-  private static Field[] randomFields() {
-    Random random = random();
-    int fieldsCount = randomIntBetween(2, 4);
-    fieldsCount = 2;
-
-
-    return null;
+  private static Field[] randomFieldsWithTheSameName(String fieldName) {
+    final Field textField = randomIndexedField(random(), fieldName);
+    final Field docValuesField = randomDocValuesField(random(), fieldName);
+    final Field pointField = randomPointField(random(), fieldName);
+    final Field vectorField = randomVectorField(random(), fieldName);
+    return new Field[] {textField, docValuesField, pointField, vectorField};
   }
 
   public void testDocWithMissingSchemaOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig()); ) {
-      final String FIELD_NAME = "myfield";
-      final Field textField = new Field(FIELD_NAME, "myvalue", TextField.TYPE_NOT_STORED);
-      final Field docValuesField = new BinaryDocValuesField(FIELD_NAME, new BytesRef("myvalue"));
-      final Field pointField = new LongPoint(FIELD_NAME, 1);
-      final Field vectorField =
-          new VectorField(
-              FIELD_NAME, new float[] {.1f, .2f, .3f}, VectorValues.SearchStrategy.EUCLIDEAN_HNSW);
-      final Field[] fields = new Field[] {textField, docValuesField, pointField, vectorField};
-      final String[] errorMsgs = new String[] {"index options", "doc values", "points", "vector"};
-
+      final Field[] fields = randomFieldsWithTheSameName("myfield");
       final Document doc0 = new Document();
       for (Field field : fields) {
         doc0.add(field);
@@ -121,10 +141,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
 
       // diff segment, same index: indexing a doc with a missing field throws error
       exception = expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
-      assertTrue(
-          exception
-              .getMessage()
-              .contains("cannot change field \"myfield\" from " + errorMsgs[missingFieldIdx]));
+      assertTrue(exception.getMessage().contains("cannot change field \"myfield\" from "));
 
       writer.addDocument(doc0); // add document with correct data structures
 
@@ -139,17 +156,8 @@ public class TestPerFieldConsistency extends LuceneTestCase {
 
   public void testDocWithExtraIndexingOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig()); ) {
-      final String FIELD_NAME = "myfield";
-      final Field textField = new Field(FIELD_NAME, "myvalue", TextField.TYPE_NOT_STORED);
-      final Field docValuesField = new BinaryDocValuesField(FIELD_NAME, new BytesRef("myvalue"));
-      final Field pointField = new LongPoint(FIELD_NAME, 1);
-      final Field vectorField =
-          new VectorField(
-              FIELD_NAME, new float[] {.1f, .2f, .3f}, VectorValues.SearchStrategy.EUCLIDEAN_HNSW);
-      final Field[] fields = new Field[] {textField, docValuesField, pointField, vectorField};
-      final String[] errorMsgs = new String[] {"index options", "doc values", "points", "vector"};
-
+        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+      final Field[] fields = randomFieldsWithTheSameName("myfield");
       final Document doc0 = new Document();
       int existingFieldIdx = randomIntBetween(0, fields.length - 1);
       doc0.add(fields[existingFieldIdx]);
@@ -179,10 +187,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
 
       // diff segment, same index: indexing a field with extra field indexing options returns error
       exception = expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
-      assertTrue(
-          exception
-              .getMessage()
-              .contains("cannot change field \"myfield\" from " + errorMsgs[extraFieldIndex]));
+      assertTrue(exception.getMessage().contains("cannot change field \"myfield\" from "));
 
       writer.addDocument(doc0); // add document with correct data structures
 
