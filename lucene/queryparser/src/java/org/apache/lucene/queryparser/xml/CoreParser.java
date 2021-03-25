@@ -185,6 +185,7 @@ public class CoreParser implements SpanQueryBuilder {
     }
   }
 
+  @Override
   public Query getQuery(Element e) throws ParserException {
     return queryFactory.getQuery(e);
   }

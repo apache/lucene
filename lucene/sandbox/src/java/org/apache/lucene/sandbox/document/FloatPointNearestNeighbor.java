@@ -61,6 +61,7 @@ public class FloatPointNearestNeighbor {
       this.distanceSquared = distanceSquared;
     }
 
+    @Override
     public int compareTo(Cell other) {
       return Double.compare(distanceSquared, other.distanceSquared);
     }

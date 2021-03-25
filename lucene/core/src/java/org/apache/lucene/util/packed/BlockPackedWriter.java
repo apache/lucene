@@ -64,6 +64,7 @@ public final class BlockPackedWriter extends AbstractBlockPackedWriter {
     super(out, blockSize);
   }
 
+  @Override
   protected void flush() throws IOException {
     assert off > 0;
     long min = Long.MAX_VALUE, max = Long.MIN_VALUE;

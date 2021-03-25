@@ -47,6 +47,7 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
     this.root = root;
   }
 
+  @Override
   public FileVisitResult visitFile(Path file, BasicFileAttributes attr) {
     try {
       if (attr.isRegularFile()) {

@@ -92,21 +92,20 @@ public class AxiomaticF3EXP extends Axiomatic {
         "tf, term frequency computed as 1 + log(1 + log(freq)) from:",
         Explanation.match((float) freq, "freq, number of occurrences of term in the document"));
   }
-  ;
 
   @Override
   protected Explanation lnExplain(BasicStats stats, double freq, double docLen) {
     return Explanation.match((float) ln(stats, freq, docLen), "ln, document length, equals to 1");
   }
-  ;
 
+  @Override
   protected Explanation tflnExplain(BasicStats stats, double freq, double docLen) {
     return Explanation.match(
         (float) tfln(stats, freq, docLen),
         "tfln, mixed term frequency and document length, equals to 1");
   }
-  ;
 
+  @Override
   protected Explanation idfExplain(BasicStats stats, double freq, double docLen) {
     return Explanation.match(
         (float) idf(stats, freq, docLen),
@@ -115,5 +114,4 @@ public class AxiomaticF3EXP extends Axiomatic {
             (float) stats.getNumberOfDocuments(), "N, total number of documents with field"),
         Explanation.match((float) stats.getDocFreq(), "n, number of documents containing term"));
   }
-  ;
 }

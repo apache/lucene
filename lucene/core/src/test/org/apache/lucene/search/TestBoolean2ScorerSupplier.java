@@ -76,6 +76,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
       return 1;
     }
 
+    @Override
     public DocIdSetIterator iterator() {
       return it;
     }

@@ -51,6 +51,7 @@ public class TestNumberRangeFacets extends StrategyTestCase {
   long randomCalWindowMs;
 
   @Before
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     tree = new DateRangePrefixTree(DateRangePrefixTree.DEFAULT_CAL);

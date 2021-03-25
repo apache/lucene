@@ -196,6 +196,7 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
     }
   }
 
+  @Override
   public String exportTerms(String destDir, String field, String delimiter) {
     String filename = "terms_" + field + "_" + System.currentTimeMillis() + ".out";
     Path path = Paths.get(destDir, filename);

@@ -1503,6 +1503,7 @@ private boolean r_respell() {
   return true;
 }
 
+@Override
 public boolean stem() {
   limit_backward = cursor;
   cursor = limit;

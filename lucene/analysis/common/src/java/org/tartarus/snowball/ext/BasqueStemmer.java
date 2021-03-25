@@ -769,6 +769,7 @@ private boolean r_adjetiboak() {
   return true;
 }
 
+@Override
 public boolean stem() {
   r_mark_regions();
   limit_backward = cursor;

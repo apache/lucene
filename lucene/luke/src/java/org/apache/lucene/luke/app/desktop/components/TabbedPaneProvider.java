@@ -79,6 +79,7 @@ public final class TabbedPaneProvider implements TabSwitcherProxy.TabSwitcher {
     return tabbedPane;
   }
 
+  @Override
   public void switchTab(Tab tab) {
     tabbedPane.setSelectedIndex(tab.index());
     tabbedPane.setVisible(false);

@@ -447,6 +447,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
     }
   }
 
+  @Override
   public Query rewrite(IndexReader reader) throws IOException {
     if (Operations.isEmpty(det)) {
       return new MatchNoDocsQuery();

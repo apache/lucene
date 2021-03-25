@@ -83,6 +83,7 @@ public abstract class CachingCollector extends FilterCollector {
     // doesn't mean the
     //   wrapped collector doesn't need it to do its job.
 
+    @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       postCollection();
       final LeafCollector in = this.in.getLeafCollector(context);
@@ -126,6 +127,7 @@ public abstract class CachingCollector extends FilterCollector {
       }
     }
 
+    @Override
     public void replay(Collector other) throws IOException {
       postCollection();
       if (!isCached()) {
@@ -150,6 +152,7 @@ public abstract class CachingCollector extends FilterCollector {
       scores = new ArrayList<>();
     }
 
+    @Override
     protected NoScoreCachingLeafCollector wrap(LeafCollector in, int maxDocsToCache) {
       return new ScoreCachingLeafCollector(in, maxDocsToCache);
     }

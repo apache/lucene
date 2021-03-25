@@ -62,6 +62,7 @@ public final class PreferencesImpl implements Preferences {
     }
   }
 
+  @Override
   public List<String> getHistory() {
     return history;
   }

@@ -22,6 +22,7 @@ import org.apache.lucene.util.TestUtil;
 
 public class TestUpgradeIndexMergePolicy extends BaseMergePolicyTestCase {
 
+  @Override
   public MergePolicy mergePolicy() {
     MergePolicy in = newMergePolicy(random());
     if (in instanceof TieredMergePolicy) {

@@ -3658,6 +3658,7 @@ private boolean r_Step_3() {
   return true;
 }
 
+@Override
 public boolean stem() {
   r_cyr_to_lat();
   r_prelude();

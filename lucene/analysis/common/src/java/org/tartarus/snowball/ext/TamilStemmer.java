@@ -1904,6 +1904,7 @@ private boolean r_remove_tense_suffix() {
   return true;
 }
 
+@Override
 public boolean stem() {
   B_found_vetrumai_urupu = false;
   int v_1 = cursor;

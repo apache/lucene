@@ -262,6 +262,7 @@ private boolean r_remove_category_3() {
   return true;
 }
 
+@Override
 public boolean stem() {
   limit_backward = cursor;
   cursor = limit;

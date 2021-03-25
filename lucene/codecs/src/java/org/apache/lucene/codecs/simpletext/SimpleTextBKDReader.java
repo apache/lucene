@@ -108,6 +108,7 @@ final class SimpleTextBKDReader extends PointValues implements Accountable {
     }
   }
 
+  @Override
   public void intersect(IntersectVisitor visitor) throws IOException {
     intersect(getIntersectState(visitor), 1, minPackedValue, maxPackedValue);
   }

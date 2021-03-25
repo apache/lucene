@@ -464,6 +464,7 @@ private boolean r_Step_5b() {
   return true;
 }
 
+@Override
 public boolean stem() {
   B_Y_found = false;
   int v_1 = cursor;

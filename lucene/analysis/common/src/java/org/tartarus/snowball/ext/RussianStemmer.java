@@ -459,6 +459,7 @@ private boolean r_tidy_up() {
   return true;
 }
 
+@Override
 public boolean stem() {
   int v_1 = cursor;
   lab0: {

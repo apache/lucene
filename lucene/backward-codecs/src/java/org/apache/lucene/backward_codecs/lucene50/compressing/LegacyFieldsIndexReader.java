@@ -162,6 +162,7 @@ final class LegacyFieldsIndexReader extends FieldsIndex {
     return hi;
   }
 
+  @Override
   long getStartPointer(int docID) {
     if (docID < 0 || docID >= maxDoc) {
       throw new IllegalArgumentException("docID out of range [0-" + maxDoc + "]: " + docID);

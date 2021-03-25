@@ -116,6 +116,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
       this.root = root;
     }
 
+    @Override
     public long accumulateObject(
         Object o,
         long shallowSize,
@@ -185,6 +186,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
   private Codec savedCodec;
 
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     // set the default codec, so adding test cases to this isn't fragile
@@ -192,6 +194,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     Codec.setDefault(getCodec());
   }
 
+  @Override
   public void tearDown() throws Exception {
     Codec.setDefault(savedCodec); // restore
     super.tearDown();

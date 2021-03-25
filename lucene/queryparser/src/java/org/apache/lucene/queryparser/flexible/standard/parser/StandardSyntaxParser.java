@@ -60,6 +60,7 @@ import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuery
    * @param query  the query string to be parsed.
    * @throws ParseException if the parsing fails
    */
+  @Override
   public QueryNode parse(CharSequence query, CharSequence field) throws QueryNodeParseException {
     ReInit(new FastCharStream(new StringReader(query.toString())));
     try {

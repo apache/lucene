@@ -596,6 +596,7 @@ private boolean r_plur_owner() {
   return true;
 }
 
+@Override
 public boolean stem() {
   int v_1 = cursor;
   r_mark_regions();

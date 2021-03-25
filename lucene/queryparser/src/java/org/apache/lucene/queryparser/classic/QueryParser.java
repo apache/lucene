@@ -219,6 +219,7 @@ ret = MOD_NOT;
 }
 
 // This makes sure that there is no garbage after the query string
+  @Override
   final public Query TopLevelQuery(String field) throws ParseException {Query q;
     q = Query(field);
     jj_consume_token(0);
@@ -813,6 +814,7 @@ if (splitOnWhitespace == false) {
   }
 
   /** Reinitialise. */
+  @Override
   public void ReInit(CharStream stream) {
      token_source.ReInit(stream);
      token = new Token();

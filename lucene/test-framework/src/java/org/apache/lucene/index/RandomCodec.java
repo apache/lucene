@@ -131,6 +131,7 @@ public class RandomCodec extends AssertingCodec {
                           throw new IllegalStateException();
                         }
 
+                        @Override
                         public void visit(int docID, byte[] packedValue) throws IOException {
                           writer.add(packedValue, docID);
                         }

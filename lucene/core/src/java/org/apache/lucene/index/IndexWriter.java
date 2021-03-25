@@ -2368,6 +2368,7 @@ public class IndexWriter
    *
    * <p>The Set is unmodifiable.
    */
+  @Override
   public synchronized Set<SegmentCommitInfo> getMergingSegments() {
     return Collections.unmodifiableSet(mergingSegments);
   }
@@ -6271,6 +6272,7 @@ public class IndexWriter
       writer.merge(merge);
     }
 
+    @Override
     public String toString() {
       return writer.segString();
     }

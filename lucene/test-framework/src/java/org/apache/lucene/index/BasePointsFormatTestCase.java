@@ -89,10 +89,12 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
             return Relation.CELL_CROSSES_QUERY;
           }
 
+          @Override
           public void visit(int docID) {
             throw new IllegalStateException();
           }
 
+          @Override
           public void visit(int docID, byte[] packedValue) {
             seen.set(docID);
             assertEquals(docID, NumericUtils.sortableBytesToInt(packedValue, 0));
@@ -133,10 +135,12 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
             return Relation.CELL_CROSSES_QUERY;
           }
 
+          @Override
           public void visit(int docID) {
             throw new IllegalStateException();
           }
 
+          @Override
           public void visit(int docID, byte[] packedValue) {
             seen.set(docID);
             assertEquals(docID, NumericUtils.sortableBytesToInt(packedValue, 0));
@@ -195,10 +199,12 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
                 return Relation.CELL_CROSSES_QUERY;
               }
 
+              @Override
               public void visit(int docID) {
                 throw new IllegalStateException();
               }
 
+              @Override
               public void visit(int docID, byte[] packedValue) {
                 if (liveDocs.get(docID)) {
                   seen.set(docID);

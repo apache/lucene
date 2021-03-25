@@ -444,6 +444,7 @@ private boolean r_fix_gd() {
   return true;
 }
 
+@Override
 public boolean stem() {
   I_p1 = limit;
   int v_1 = cursor;

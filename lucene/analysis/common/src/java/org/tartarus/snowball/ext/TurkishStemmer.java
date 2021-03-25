@@ -2248,6 +2248,7 @@ private boolean r_postlude() {
   return true;
 }
 
+@Override
 public boolean stem() {
   if (!r_more_than_one_syllable_word())
   {

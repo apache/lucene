@@ -386,6 +386,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
       return Float.POSITIVE_INFINITY;
     }
 
+    @Override
     public int docID() {
       return currentDoc;
     }
