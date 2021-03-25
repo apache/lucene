@@ -20,10 +20,17 @@ package org.apache.lucene.document;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
@@ -31,6 +38,46 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
 public class TestPerFieldConsistency extends LuceneTestCase {
+
+  private static IndexableFieldType randomIndexedField(Random random) {
+    FieldType fieldType = new FieldType();
+    IndexOptions indexOptions = RandomPicks.randomFrom(random, IndexOptions.values());
+    while (indexOptions == IndexOptions.NONE) {
+      indexOptions = RandomPicks.randomFrom(random, IndexOptions.values());
+    }
+    fieldType.setStoreTermVectors(random.nextBoolean());
+    if (fieldType.storeTermVectors()) {
+      fieldType.setStoreTermVectorPositions(random.nextBoolean());
+      if (fieldType.storeTermVectorPositions()) {
+        fieldType.setStoreTermVectorPayloads(random.nextBoolean());
+        fieldType.setStoreTermVectorOffsets(random.nextBoolean());
+      }
+    }
+    fieldType.setOmitNorms(random.nextBoolean());
+    fieldType.setStored(random.nextBoolean());
+
+    fieldType.freeze();
+    return fieldType;
+  }
+
+  private static IndexableFieldType randomVectorFieldType(Random random) {
+    FieldType fieldType = new FieldType();
+    VectorValues.SearchStrategy searchStrategy = RandomPicks.randomFrom(random, VectorValues.SearchStrategy.values());
+    while (searchStrategy == VectorValues.SearchStrategy.NONE) {
+      searchStrategy = RandomPicks.randomFrom(random, VectorValues.SearchStrategy.values());
+    }
+    fieldType.setVectorDimensionsAndSearchStrategy(randomIntBetween(1, 10), searchStrategy);
+    return fieldType;
+  }
+
+  private static Field[] randomFields() {
+    Random random = random();
+    int fieldsCount = randomIntBetween(2, 4);
+    fieldsCount = 2;
+
+
+    return null;
+  }
 
   public void testDocWithMissingSchemaOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
