@@ -95,6 +95,9 @@ API Changes
 * LUCENE-9796: SortedDocValues no longer extends BinaryDocValues, as binaryValue() was not performant.
   See MIGRATE.md for details. (Robert Muir)
 
+* LUCENE-9853: JapaneseAnalyzer should use CJKWidthCharFilter for full-width and half-width character normalization.
+  (Tomoko Uchida)
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
