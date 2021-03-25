@@ -47,7 +47,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class BaseCompositeReader<R extends IndexReader> extends CompositeReader {
   private final R[] subReaders;
+  /** A comparator for sorting sub-readers */
   protected final Comparator<R> subReadersSorter;
+
   private final int[] starts; // 1st docno for each reader
   private final int maxDoc;
   private AtomicInteger numDocs = new AtomicInteger(-1); // computed lazily
