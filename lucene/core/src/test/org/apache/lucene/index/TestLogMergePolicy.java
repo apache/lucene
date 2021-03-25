@@ -22,6 +22,7 @@ import org.apache.lucene.index.MergePolicy.OneMerge;
 
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
+  @Override
   public MergePolicy mergePolicy() {
     return newLogMergePolicy(random());
   }

@@ -164,6 +164,7 @@ public boolean r_CONSONANT() {
   return true;
 }
 
+@Override
 public boolean stem() {
   int v_1 = cursor;
   if (cursor >= limit)

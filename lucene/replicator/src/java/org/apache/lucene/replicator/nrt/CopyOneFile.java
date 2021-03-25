@@ -82,6 +82,7 @@ public class CopyOneFile implements Closeable {
     this.buffer = other.buffer;
   }
 
+  @Override
   public void close() throws IOException {
     out.close();
     dest.finishCopyFile(name);

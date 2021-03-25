@@ -73,7 +73,8 @@ public abstract class WithNestedTests {
           new TestRuleAdapter() {
             private TestRuleIgnoreAfterMaxFailures prevRule;
 
-            protected void before() throws Throwable {
+            @Override
+            protected void before() {
               if (!isPropertyEmpty(SysGlobals.SYSPROP_TESTFILTER())
                   || !isPropertyEmpty(SysGlobals.SYSPROP_TESTCLASS())
                   || !isPropertyEmpty(SysGlobals.SYSPROP_TESTMETHOD())
@@ -95,7 +96,8 @@ public abstract class WithNestedTests {
               RandomizedTest.assumeFalse(FailureMarker.hadFailures());
             }
 
-            protected void afterAlways(List<Throwable> errors) throws Throwable {
+            @Override
+            protected void afterAlways(List<Throwable> errors) {
               if (prevRule != null) {
                 LuceneTestCase.replaceMaxFailureRule(prevRule);
               }

@@ -619,6 +619,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
           long blockEndOffset;
           LongValues values;
 
+          @Override
           public long get(long index) {
             final long block = index >>> shift;
             if (this.block != block) {

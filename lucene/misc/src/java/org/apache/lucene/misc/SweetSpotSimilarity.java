@@ -173,6 +173,7 @@ public class SweetSpotSimilarity extends ClassicSimilarity {
     return Float.isNaN(result) ? max : result;
   }
 
+  @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append("SweetSpotSimilarity")

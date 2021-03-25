@@ -107,6 +107,7 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
   }
 
   // LUCENE-3380 -- make sure we get exception if the directory really does not exist.
+  @Override
   public void testNoDir() throws Throwable {
     Path primDir = createTempDir("foo");
     Path secondDir = createTempDir("bar");

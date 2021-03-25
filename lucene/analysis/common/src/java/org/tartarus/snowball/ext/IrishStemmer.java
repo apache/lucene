@@ -365,6 +365,7 @@ private boolean r_verb_sfx() {
   return true;
 }
 
+@Override
 public boolean stem() {
   int v_1 = cursor;
   r_initial_morph();

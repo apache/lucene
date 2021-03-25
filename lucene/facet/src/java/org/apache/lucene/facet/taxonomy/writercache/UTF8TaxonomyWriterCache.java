@@ -142,6 +142,7 @@ public final class UTF8TaxonomyWriterCache implements TaxonomyWriterCache, Accou
   }
 
   /** How many labels are currently stored in the cache. */
+  @Override
   public int size() {
     return count;
   }

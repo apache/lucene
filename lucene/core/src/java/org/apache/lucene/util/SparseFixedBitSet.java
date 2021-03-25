@@ -138,6 +138,7 @@ public class SparseFixedBitSet extends BitSet {
   }
 
   /** Set the bit at index <code>i</code>. */
+  @Override
   public void set(int i) {
     assert consistent(i);
     final int i4096 = i >>> 12;
@@ -193,6 +194,7 @@ public class SparseFixedBitSet extends BitSet {
   }
 
   /** Clear the bit at index <code>i</code>. */
+  @Override
   public void clear(int i) {
     assert consistent(i);
     final int i4096 = i >>> 12;

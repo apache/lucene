@@ -151,18 +151,21 @@ public class TestGeo3dShapeWGS84ModelRectRelation extends ShapeRectRelationTestC
 
   // very slow, test sources are not all here, no clue how to fix it
   @Nightly
+  @Override
   public void testGeoCircleRect() {
     super.testGeoCircleRect();
   }
 
   // very slow, test sources are not all here, no clue how to fix it
   @Nightly
+  @Override
   public void testGeoPolygonRect() {
     super.testGeoPolygonRect();
   }
 
   // very slow, test sources are not all here, no clue how to fix it
   @Nightly
+  @Override
   public void testGeoPathRect() {
     super.testGeoPathRect();
   }

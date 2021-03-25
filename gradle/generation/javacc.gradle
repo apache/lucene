@@ -132,6 +132,12 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "public class QueryParser ",
               '@SuppressWarnings("unused") public class QueryParser ')
+          text = text.replace(
+              "final public Query TopLevelQuery(",
+              "@Override final public Query TopLevelQuery(")
+          text = text.replace(
+              "public void ReInit(CharStream ",
+              "@Override public void ReInit(CharStream ")
           return text
         })
       }

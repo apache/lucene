@@ -34,6 +34,7 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
   private boolean useNonNrtReaders = true;
 
   @Before
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     useNonNrtReaders = random().nextBoolean();

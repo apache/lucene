@@ -477,6 +477,7 @@ public class FSTTermsReader extends FieldsProducer {
           this.fsaState = -1;
         }
 
+        @Override
         public String toString() {
           return "arc=" + fstArc + " state=" + fsaState;
         }

@@ -133,6 +133,7 @@ public class Lucene60PointsWriter extends PointsWriter {
               throw new IllegalStateException();
             }
 
+            @Override
             public void visit(int docID, byte[] packedValue) throws IOException {
               writer.add(packedValue, docID);
             }

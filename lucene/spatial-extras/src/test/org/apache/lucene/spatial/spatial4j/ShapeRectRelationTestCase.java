@@ -48,24 +48,29 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
 
     // 2 times each -- should be plenty
 
+    @Override
     protected int getContainsMinimum(int laps) {
       return 2;
     }
 
+    @Override
     protected int getIntersectsMinimum(int laps) {
       return 2;
     }
 
     // producing "within" cases in Geo3D based on our random shapes doesn't happen often. It'd be
     // nice to increase this.
+    @Override
     protected int getWithinMinimum(int laps) {
       return 2;
     }
 
+    @Override
     protected int getDisjointMinimum(int laps) {
       return 2;
     }
 
+    @Override
     protected int getBoundingMinimum(int laps) {
       return 2;
     }

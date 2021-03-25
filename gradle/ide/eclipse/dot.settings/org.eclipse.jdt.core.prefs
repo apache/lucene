@@ -34,6 +34,7 @@ org.eclipse.jdt.core.compiler.problem.noImplicitStringConversion=error
 org.eclipse.jdt.core.compiler.problem.overridingPackageDefaultMethod=error
 org.eclipse.jdt.core.compiler.problem.unusedImport=error
 org.eclipse.jdt.core.compiler.problem.unusedLocal=error
+org.eclipse.jdt.core.compiler.problem.missingOverrideAnnotation=error
 org.eclipse.jdt.core.compiler.problem.varargsArgumentNeedCast=error
 org.eclipse.jdt.core.compiler.annotation.nullanalysis=disabled
 org.eclipse.jdt.core.compiler.source=11

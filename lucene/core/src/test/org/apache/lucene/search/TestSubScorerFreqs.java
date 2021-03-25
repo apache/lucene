@@ -102,6 +102,7 @@ public class TestSubScorerFreqs extends LuceneTestCase {
       subScorers.put(((Scorer) scorer).getWeight().getQuery(), scorer);
     }
 
+    @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       final int docBase = context.docBase;
       return new FilterLeafCollector(super.getLeafCollector(context)) {

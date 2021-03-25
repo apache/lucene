@@ -221,6 +221,7 @@ class SimpleCopyJob extends CopyJob {
     return false;
   }
 
+  @Override
   protected CopyOneFile newCopyOneFile(CopyOneFile prev) {
     return new CopyOneFile(prev, c.in);
   }
@@ -234,6 +235,7 @@ class SimpleCopyJob extends CopyJob {
     }
   }
 
+  @Override
   public synchronized void cancel(String reason, Throwable exc) throws IOException {
     try {
       super.cancel(reason, exc);

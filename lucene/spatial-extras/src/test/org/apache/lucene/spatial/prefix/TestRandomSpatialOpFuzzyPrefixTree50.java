@@ -21,6 +21,7 @@ package org.apache.lucene.spatial.prefix;
  */
 public class TestRandomSpatialOpFuzzyPrefixTree50 extends TestRandomSpatialOpFuzzyPrefixTree {
 
+  @Override
   protected RecursivePrefixTreeStrategy newRPT() {
     return new RecursivePrefixTreeStrategy(this.grid, getClass().getSimpleName()) {
       @Override

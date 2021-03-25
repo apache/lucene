@@ -1454,6 +1454,7 @@ public final class Tessellator {
     }
 
     /** pretty print the triangle vertices */
+    @Override
     public String toString() {
       String result =
           vertex[0].x

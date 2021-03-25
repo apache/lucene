@@ -45,6 +45,7 @@ public class TestOrdinalMap extends LuceneTestCase {
   private static final RamUsageTester.Accumulator ORDINAL_MAP_ACCUMULATOR =
       new RamUsageTester.Accumulator() {
 
+        @Override
         public long accumulateObject(
             Object o,
             long shallowSize,

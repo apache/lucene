@@ -119,6 +119,7 @@ public class FieldType implements IndexableFieldType {
    *
    * @see #setTokenized(boolean)
    */
+  @Override
   public boolean tokenized() {
     return this.tokenized;
   }

@@ -285,6 +285,7 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
     }
   }
 
+  @Override
   public void testSliceOfSlice() throws Exception {
     int upto = TEST_NIGHTLY ? 10 : 8;
     for (int i = 0; i < upto; i++) {

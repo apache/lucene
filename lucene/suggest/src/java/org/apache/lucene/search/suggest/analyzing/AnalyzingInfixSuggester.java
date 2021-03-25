@@ -611,6 +611,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
    * @return the result of the suggester
    * @throws IOException f the is IO exception while reading data from the index
    */
+  @Override
   public List<LookupResult> lookup(
       CharSequence key,
       BooleanQuery contextQuery,
