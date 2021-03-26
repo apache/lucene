@@ -78,6 +78,8 @@ configure(rootProject) {
         from rootProject.file("${resources}/dot.settings")
         into rootProject.file(".settings")
       }
+      def ecjLintConfig = rootProject.file("gradle/validation/ecj-lint/ecj.javadocs.prefs")
+      rootProject.file(".settings/org.eclipse.jdt.core.prefs") << ecjLintConfig.text.replace("=error","=warning")
     }
   }
 }
