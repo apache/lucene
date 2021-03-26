@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import org.apache.tools.ant.filters.ReplaceTokens;
 import org.gradle.plugins.ide.eclipse.model.SourceFolder
 import org.gradle.plugins.ide.eclipse.model.ClasspathEntry
 
@@ -73,11 +74,24 @@ configure(rootProject) {
   }
 
   eclipseJdt {
+    def errorMode = project.propertyOrDefault('eclipse.errors','warning');
+    def ecjLintFile = rootProject.file('gradle/validation/ecj-lint/ecj.javadocs.prefs');
+    
+    inputs.file(ecjLintFile)
+    inputs.property('errorMode', errorMode)
+  
     doLast {
+      def ecjLintConfig = ecjLintFile.getText('UTF-8')
+        .replaceAll(/=error\b/, '=' + errorMode)
       project.sync {
         from rootProject.file("${resources}/dot.settings")
         into rootProject.file(".settings")
+        filter(ReplaceTokens, tokens: [
+          'ecj-lint-config': ecjLintConfig
+        ])
+        filteringCharset = 'UTF-8'
       }
+      logger.lifecycle('Eclipse config written with ECJ errors configured as {}. Change by passing -Peclipse.errors=ignore/warning/error.', errorMode)
     }
   }
 }
