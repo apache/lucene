@@ -1,5 +1,5 @@
-#Sun Sep 23 13:02:27 EDT 2012
-eclipse.preferences.version=1
+@ecj-lint-config@
+
 # Note: all compiler flags are defined in ECJ linter configuration
 org.eclipse.jdt.core.formatter.align_type_members_on_columns=false
 org.eclipse.jdt.core.formatter.alignment_for_arguments_in_allocation_expression=16
