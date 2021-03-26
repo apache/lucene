@@ -187,7 +187,7 @@ public class MultiPassIndexSplitter {
       extends BaseCompositeReader<FakeDeleteLeafIndexReader> {
 
     public FakeDeleteIndexReader(IndexReader reader) throws IOException {
-      super(initSubReaders(reader));
+      super(initSubReaders(reader), null);
     }
 
     private static FakeDeleteLeafIndexReader[] initSubReaders(IndexReader reader)
