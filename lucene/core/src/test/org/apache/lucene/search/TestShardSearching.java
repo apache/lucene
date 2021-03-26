@@ -378,14 +378,9 @@ public class TestShardSearching extends ShardSearchingTestBase {
       }
     }
 
-    int numHitsPaged;
+    int numHitsPaged = hits.scoreDocs.length;
     if (state != null && state.searchAfterLocal != null) {
-      numHitsPaged = hits.scoreDocs.length;
-      if (state != null) {
-        numHitsPaged += state.numHitsPaged;
-      }
-    } else {
-      numHitsPaged = hits.scoreDocs.length;
+      numHitsPaged += state.numHitsPaged;
     }
 
     final boolean moreHits;

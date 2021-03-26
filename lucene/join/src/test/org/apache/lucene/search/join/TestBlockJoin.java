@@ -855,26 +855,24 @@ public class TestBlockJoin extends LuceneTestCase {
       if (VERBOSE) {
         System.out.println(
             "\nTEST: block join index gets "
-                + (joinResults == null ? 0 : joinResults.size())
+                + joinResults.size()
                 + " groups; hitsPerGroup="
                 + hitsPerGroup);
-        if (joinResults != null) {
-          for (Map.Entry<Integer, TopDocs> entry : joinResults.entrySet()) {
+        for (Map.Entry<Integer, TopDocs> entry : joinResults.entrySet()) {
+          System.out.println(
+              "  group parentID=" + entry.getKey() + " (docID=" + entry.getKey() + ")");
+          for (ScoreDoc childHit : entry.getValue().scoreDocs) {
+            final Document doc = joinS.doc(childHit.doc);
+            //              System.out.println("    score=" + childHit.score + " childID=" +
+            // doc.get("childID") + " (docID=" + childHit.doc + ")");
             System.out.println(
-                "  group parentID=" + entry.getKey() + " (docID=" + entry.getKey() + ")");
-            for (ScoreDoc childHit : entry.getValue().scoreDocs) {
-              final Document doc = joinS.doc(childHit.doc);
-              //              System.out.println("    score=" + childHit.score + " childID=" +
-              // doc.get("childID") + " (docID=" + childHit.doc + ")");
-              System.out.println(
-                  "    childID="
-                      + doc.get("childID")
-                      + " child0="
-                      + doc.get("child0")
-                      + " (docID="
-                      + childHit.doc
-                      + ")");
-            }
+                "    childID="
+                    + doc.get("childID")
+                    + " child0="
+                    + doc.get("child0")
+                    + " (docID="
+                    + childHit.doc
+                    + ")");
           }
         }
       }

@@ -552,14 +552,10 @@ public class TestPointQueries extends LuceneTestCase {
                           + " TO "
                           + upper);
                   byte[] tmp = new byte[8];
-                  if (lower != null) {
-                    NumericUtils.longToSortableBytes(lower, tmp, 0);
-                    System.out.println("  lower bytes=" + Arrays.toString(tmp));
-                  }
-                  if (upper != null) {
-                    NumericUtils.longToSortableBytes(upper, tmp, 0);
-                    System.out.println("  upper bytes=" + Arrays.toString(tmp));
-                  }
+                  NumericUtils.longToSortableBytes(lower, tmp, 0);
+                  System.out.println("  lower bytes=" + Arrays.toString(tmp));
+                  NumericUtils.longToSortableBytes(upper, tmp, 0);
+                  System.out.println("  upper bytes=" + Arrays.toString(tmp));
                 }
 
                 if (random().nextBoolean()) {

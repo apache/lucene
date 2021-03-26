@@ -102,11 +102,9 @@ public class LatLonPointPrototypeQueries {
         }
         totalHits += points.getDocCount();
         BKDReader reader = (BKDReader) points;
-        if (reader != null) {
-          readers.add(reader);
-          docBases.add(leaf.docBase);
-          liveDocs.add(leaf.reader().getLiveDocs());
-        }
+        readers.add(reader);
+        docBases.add(leaf.docBase);
+        liveDocs.add(leaf.reader().getLiveDocs());
       }
     }
 

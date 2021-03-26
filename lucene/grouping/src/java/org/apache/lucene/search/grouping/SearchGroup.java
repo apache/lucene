@@ -143,9 +143,9 @@ public class SearchGroup<T> {
       if (_other instanceof MergedGroup) {
         MergedGroup<?> other = (MergedGroup<?>) _other;
         if (groupValue == null) {
-          return other == null;
+          return other.groupValue == null;
         } else {
-          return groupValue.equals(other);
+          return groupValue.equals(other.groupValue);
         }
       } else {
         return false;
