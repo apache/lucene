@@ -183,7 +183,7 @@ public class TestCircle2D extends LuceneTestCase {
   public void testLineIntersects() {
     Component2D circle2D;
     if (random().nextBoolean()) {
-      Circle circle = new Circle(0, 0, 0.3f);
+      Circle circle = new Circle(0, 0, 35000);
       circle2D = LatLonGeometry.create(circle);
     } else {
       XYCircle xyCircle = new XYCircle(0, 0, 0.3f);
