@@ -658,6 +658,7 @@ public final class CheckIndex implements Closeable {
               throw new RuntimeException(
                   "index sort changed from " + previousIndexSort + " to " + indexSort);
             }
+          } else {
             previousIndexSort = indexSort;
           }
         }
