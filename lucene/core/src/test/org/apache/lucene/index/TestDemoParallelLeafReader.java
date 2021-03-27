@@ -529,7 +529,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
               // closing (which makes MDW.close's
               // checkIndex angry):
               closedSegments.add(segIDGen);
-              parReader = null;
             }
             parReader = parLeafReader;
 

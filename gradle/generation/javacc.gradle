@@ -131,7 +131,7 @@ configure(project(":lucene:queryparser")) {
               "static final private LookaheadSuccess jj_ls =")
           text = text.replace(
               "public class QueryParser ",
-              '@SuppressWarnings("unused") public class QueryParser ')
+              '@SuppressWarnings({"unused","null"}) public class QueryParser ')
           text = text.replace(
               "final public Query TopLevelQuery(",
               "@Override final public Query TopLevelQuery(")
@@ -162,7 +162,7 @@ configure(project(":lucene:queryparser")) {
               "new java.util.ArrayList<>")
           text = text.replace(
               "public class QueryParser ",
-              '@SuppressWarnings("unused") public class QueryParser ')
+              '@SuppressWarnings({"unused","null"}) public class QueryParser ')
           return text
         })
       }
@@ -241,7 +241,7 @@ configure(project(":lucene:queryparser")) {
               "Collections.singletonList")
           text = text.replace(
               "public class StandardSyntaxParser ",
-              '@SuppressWarnings("unused") public class StandardSyntaxParser ')
+              '@SuppressWarnings({"unused","null"}) public class StandardSyntaxParser ')
           return text
         })
       }

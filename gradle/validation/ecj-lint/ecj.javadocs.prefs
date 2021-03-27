@@ -89,7 +89,7 @@ org.eclipse.jdt.core.compiler.problem.potentiallyUnclosedCloseable=ignore
 # TODO: generics-related warning that is normally enabled by default
 org.eclipse.jdt.core.compiler.problem.rawTypeReference=ignore
 org.eclipse.jdt.core.compiler.problem.redundantNullAnnotation=error
-org.eclipse.jdt.core.compiler.problem.redundantNullCheck=ignore
+org.eclipse.jdt.core.compiler.problem.redundantNullCheck=error
 org.eclipse.jdt.core.compiler.problem.redundantSpecificationOfTypeArguments=ignore
 org.eclipse.jdt.core.compiler.problem.redundantSuperinterface=error
 org.eclipse.jdt.core.compiler.problem.reportMethodCanBePotentiallyStatic=ignore
