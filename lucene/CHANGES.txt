@@ -227,7 +227,9 @@ Bug fixes
   (Mark Harwood, Mike Drob)
 
 * LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon 
-  splitting. (Ignacio Vera)  
+  splitting. (Ignacio Vera)
+
+* LUCENE-9870: Fix Circle2D intersectsLine t-value (distance) range clamp (Jørgen Nystad)
 
 Changes in Backwards Compatibility Policy
 
