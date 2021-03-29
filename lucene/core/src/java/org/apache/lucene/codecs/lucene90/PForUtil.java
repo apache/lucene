@@ -49,7 +49,8 @@ final class PForUtil {
     for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
       if (longs[i] > top8[0]) {
         top8[0] = longs[i];
-        Arrays.sort(top8);
+        Arrays.sort(
+            top8); // For only 8 entries we just sort on every iteration instead of maintaining a PQ
       }
     }
 
