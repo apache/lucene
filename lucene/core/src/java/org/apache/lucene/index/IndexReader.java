@@ -81,7 +81,9 @@ public abstract class IndexReader implements Closeable {
   /**
    * A utility class that gives hooks in order to help build a cache based on the data that is
    * contained in this index.
+   *
    * <p>Example: cache the number of documents that match a query per reader.
+   *
    * <pre class="prettyprint">
    * public class QueryCountCache {
    *
