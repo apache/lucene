@@ -63,9 +63,8 @@ configure(project(":lucene:analysis:icu")) {
         ]
       }
 
-      project.exec {
+      project.quietExec {
         executable gennorm
-        ignoreExitValue = false
         args = [
             "-v",
             "-s",
@@ -77,9 +76,9 @@ configure(project(":lucene:analysis:icu")) {
             "NativeDigitFolding.txt"
         ]
       }
-      project.exec {
+
+      project.quietExec {
         executable icupkg
-        ignoreExitValue = false
         args = [
             "-tb",
             "${buildDir}/utr30.tmp",
@@ -157,10 +156,8 @@ configure(project(":lucene:analysis:icu")) {
       project.delete icuSrcDir
 
       // Extract the tgz
-      project.exec {
+      project.quietExec {
         executable "tar"
-        ignoreExitValue false
-
         workingDir icuBuildDir
         args = [
             "-zxvf",
@@ -169,9 +166,8 @@ configure(project(":lucene:analysis:icu")) {
       }
 
       // Compile: (cd icu/source && ./configure --prefix=$(pwd) --enable-rpath && make -j4)
-      project.exec {
+      project.quietExec {
         executable "sh"
-        ignoreExitValue false
 
         workingDir icuSrcDir
         args = [
@@ -181,9 +177,8 @@ configure(project(":lucene:analysis:icu")) {
         ]
       }
 
-      project.exec {
+      project.quietExec {
         executable "make"
-        ignoreExitValue false
         workingDir icuSrcDir
         args = [
             "-j4"
@@ -192,9 +187,8 @@ configure(project(":lucene:analysis:icu")) {
 
       // Test that the binaries work:  derb -V
       logger.lifecycle("Compiled ICU, checking...")
-      project.exec {
+      project.quietExec {
         executable "./derb"
-        ignoreExitValue false
         workingDir icuBinDir
         args = [
             "-V"

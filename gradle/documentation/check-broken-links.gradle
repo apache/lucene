@@ -45,23 +45,14 @@ class CheckBrokenLinksTask extends DefaultTask {
 
   @TaskAction
   def check() {
-    def result
-    output.withOutputStream { output ->
-      result = project.exec {
-        executable project.externalTool("python3")
-        ignoreExitValue = true
-        standardOutput = output
-        errorOutput = output
-        args = [
-          "-B",
-          validationScript.absolutePath,
-          docsDir.get().getAsFile()
-        ]
-      }
-    }
-
-    if (result.getExitValue() != 0) {
-      throw new GradleException("Broken links check failed. Command output at: ${output}")
+    project.quietExec {
+      executable project.externalTool("python3")
+      ignoreExitValue = false
+      args = [
+        "-B",
+        validationScript.absolutePath,
+        docsDir.get().getAsFile()
+      ]
     }
   }
 }

@@ -44,7 +44,7 @@ configure(project(":lucene:core")) {
 
       ['gen_BulkOperation.py', 'gen_Packed64SingleBlock.py'].each { prog ->
         logger.lifecycle("Executing: ${prog} in ${targetDir}")
-        project.exec {
+        quietExec {
           workingDir targetDir
           executable project.externalTool("python3")
           args = ['-B', "${prog}"]
@@ -69,7 +69,7 @@ configure(project(":lucene:core")) {
 
       ['1', '2'].each { num ->
         ['True', 'False'].each { transpose ->
-          project.exec {
+          quietExec {
             workingDir targetDir
             executable project.externalTool("python3")
             args = ['-B', 'createLevAutomata.py', num, transpose, "${momanDir}/finenight/python"]

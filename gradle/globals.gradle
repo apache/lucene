@@ -72,5 +72,58 @@ allprojects {
         }
       }
     }
+
+    // Utility function similar to project.exec but not emitting
+    // any output unless an error code is returned from the executed command.
+    quietExec = { closure ->
+      // Resolve any properties against the provided closure.
+      resolveStrategy = Closure.DELEGATE_ONLY
+      delegate = closure.delegate
+
+      File outputFile = File.createTempFile("exec-output-", ".txt", getTemporaryDir())
+      ExecResult result
+      boolean saveIgnoreExitValue
+      ExecSpec saveExecSpec
+
+      outputFile.withOutputStream { output ->
+        // we want to capture both stdout and stderr to the same
+        // stream but gradle attempts to close these separately
+        // (it has two independent pumping threads) and it can happen
+        // that one still tries to write something when the other closed
+        // the underlying output stream.
+        def wrapped = new java.io.FilterOutputStream(output) {
+          public void close() {
+            // no-op. we close this stream manually.
+          }
+        }
+
+        result = project.exec { ExecSpec execSpec ->
+          project.configure(execSpec, closure)
+
+          saveIgnoreExitValue = execSpec.ignoreExitValue
+          saveExecSpec = execSpec
+
+          standardOutput = wrapped
+          errorOutput = wrapped
+          ignoreExitValue true
+        }
+      }
+
+      if (result.getExitValue() != 0) {
+        // Pipe the output to console. Intentionally skips any encoding conversion
+        // and pumps raw bytes.
+        logger.error(new String(outputFile.bytes))
+
+        if (!saveIgnoreExitValue) {
+          result.rethrowFailure()
+          throw new GradleException("The executed process ${saveExecSpec.executable} " +
+              "returned an odd status " +
+              "code: ${result.exitValue}, " +
+              "output at: ${outputFile} (and logged above).")
+        }
+      }
+
+      return result
+    }
   }
 }

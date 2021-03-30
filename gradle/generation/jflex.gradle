@@ -157,16 +157,13 @@ configure(project(":lucene:analysis:common")) {
     doFirst {
       // Regenerate HTMLCharacterEntities.jflex first.
       def target = file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
-      target.withOutputStream { output ->
-        project.exec {
-          executable = project.externalTool("python3")
-          workingDir = target.parentFile
-          standardOutput = output
-          args += [
-              "-B", // don't write any bytecode cache
-              "htmlentity.py"
-          ]
-        }
+      quietExec {
+        executable = project.externalTool("python3")
+        workingDir = target.parentFile
+        args += [
+            "-B", // don't write any bytecode cache
+            "htmlentity.py"
+        ]
       }
 
       project.ant.fixcrlf(

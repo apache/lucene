@@ -106,7 +106,7 @@ configure(project(":lucene:analysis:common")) {
       dependsOn downloadSnowballData
 
       doFirst {
-        project.exec {
+        project.quietExec {
           executable "bash"
           args = [snowballScript, snowballStemmerDir, snowballWebsiteDir, snowballDataDir, projectDir]
         }
