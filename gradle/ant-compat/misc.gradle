@@ -15,14 +15,6 @@
  * limitations under the License.
  */
 
-
-// Exclude inner classes from testing.
-allprojects {
-  tasks.withType(Test) { task ->
-    exclude '**/*$*'
-  }
-}
-
 // Exclude test classes that are not actually stand-alone tests (they're executed from other stuff).
 configure(project(":lucene:replicator")) {
   plugins.withType(JavaPlugin) {
