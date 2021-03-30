@@ -585,7 +585,7 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
     nrtDeletesThread.setDaemon(true);
     nrtDeletesThread.start();
 
-    long gen1 = w.addDocument(new Document());
+    w.addDocument(new Document());
     long gen2 = w.deleteAll();
     nrtDeletesThread.waitForGeneration(gen2);
     IOUtils.close(nrtDeletesThread, nrtDeletes, w, dir);

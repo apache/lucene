@@ -228,7 +228,6 @@ public class Trie {
     int cmd = -1;
     StrEnum e = new StrEnum(key, forward);
     Character ch = null;
-    Character aux = null;
 
     for (int i = 0; i < key.length(); ) {
       ch = e.next();
@@ -243,7 +242,7 @@ public class Trie {
 
       for (int skip = c.skip; skip > 0; skip--) {
         if (i < key.length()) {
-          aux = e.next();
+          e.next();
         } else {
           return null;
         }

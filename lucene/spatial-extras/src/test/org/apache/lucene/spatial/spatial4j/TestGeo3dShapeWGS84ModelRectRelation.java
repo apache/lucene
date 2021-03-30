@@ -112,8 +112,6 @@ public class TestGeo3dShapeWGS84ModelRectRelation extends ShapeRectRelationTestC
             16 * RADIANS_PER_DEGREE,
             4 * RADIANS_PER_DEGREE,
             36 * RADIANS_PER_DEGREE);
-    final GeoPoint pt =
-        new GeoPoint(planetModel, 16 * RADIANS_PER_DEGREE, 23.81626064835212 * RADIANS_PER_DEGREE);
     final GeoPoint[] pathPoints =
         new GeoPoint[] {
           new GeoPoint(
@@ -153,18 +151,21 @@ public class TestGeo3dShapeWGS84ModelRectRelation extends ShapeRectRelationTestC
 
   // very slow, test sources are not all here, no clue how to fix it
   @Nightly
+  @Override
   public void testGeoCircleRect() {
     super.testGeoCircleRect();
   }
 
   // very slow, test sources are not all here, no clue how to fix it
   @Nightly
+  @Override
   public void testGeoPolygonRect() {
     super.testGeoPolygonRect();
   }
 
   // very slow, test sources are not all here, no clue how to fix it
   @Nightly
+  @Override
   public void testGeoPathRect() {
     super.testGeoPathRect();
   }

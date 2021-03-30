@@ -131,6 +131,7 @@ public class RandomCodec extends AssertingCodec {
                           throw new IllegalStateException();
                         }
 
+                        @Override
                         public void visit(int docID, byte[] packedValue) throws IOException {
                           writer.add(packedValue, docID);
                         }
@@ -296,28 +297,6 @@ public class RandomCodec extends AssertingCodec {
         throws IOException {
       super(maxDoc, tempDir, tempFileNamePrefix, config, maxMBSortInHeap, totalPointCount);
       this.random = new Random(randomSeed);
-    }
-
-    private static boolean getRandomSingleValuePerDoc(boolean singleValuePerDoc, int randomSeed) {
-      // If we are single valued, sometimes pretend we aren't:
-      return singleValuePerDoc && (new Random(randomSeed).nextBoolean());
-    }
-
-    private static boolean getRandomLongOrds(
-        long totalPointCount, boolean singleValuePerDoc, int randomSeed) {
-      // Always use long ords if we have too many points, but sometimes randomly use it anyway when
-      // singleValuePerDoc is false:
-      return totalPointCount > Integer.MAX_VALUE
-          || (getRandomSingleValuePerDoc(singleValuePerDoc, randomSeed) == false
-              && new Random(randomSeed).nextBoolean());
-    }
-
-    private static long getRandomOfflineSorterBufferMB(int randomSeed) {
-      return TestUtil.nextInt(new Random(randomSeed), 1, 8);
-    }
-
-    private static int getRandomOfflineSorterMaxTempFiles(int randomSeed) {
-      return TestUtil.nextInt(new Random(randomSeed), 2, 20);
     }
 
     @Override

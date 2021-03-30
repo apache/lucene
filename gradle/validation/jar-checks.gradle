@@ -39,10 +39,8 @@ buildscript {
 // Configure license checksum folder for top-level projects.
 // (The file("licenses") inside the configure scope resolves
 // relative to the current project so they're not the same).
-if (!skipLucene) {
-  configure(project(":lucene")) {
-    ext.licensesDir = file("licenses")
-  }
+configure(project(":lucene")) {
+  ext.licensesDir = file("licenses")
 }
 
 // All known license types. If 'noticeOptional' is true then
@@ -99,8 +97,6 @@ subprojects {
     dependsOn configurations.jarValidation
 
     doFirst {
-      def isSolr = project.path.startsWith(":solr")
-
       // When gradle resolves a configuration it applies exclude rules from inherited configurations
       // globally (this seems like a bug to me). So we process each inherited configuration independently
       // but make sure there are no other dependencies on jarValidation itself.
@@ -129,18 +125,8 @@ subprojects {
       while (!queue.isEmpty()) {
         def dep = queue.removeFirst()
 
-        // Skip any artifacts from other Solr modules (they will be resolved there).
-        if (dep.moduleGroup == "org.apache.solr") {
-          continue
-        }
-
         // Skip any artifacts from Lucene modules.
-        if (dep.moduleGroup.startsWith("org.apache.lucene")) {
-          // ... but process their transitive dependencies for Solr compatibility.
-          if (isSolr) {
-            queue.addAll(dep.children)
-          }
-        } else {
+        if (!dep.moduleGroup.startsWith("org.apache.lucene")) {
           queue.addAll(dep.children)
           dep.moduleArtifacts.each { resolvedArtifact ->
             def file = resolvedArtifact.file
@@ -272,12 +258,8 @@ subprojects {
 
 // Add top-project level tasks validating dangling files
 // and regenerating dependency checksums.
-def plist = []
-if (!skipLucene) {
-  plist.add(project(":lucene"))
-}
 
-configure(plist) {
+configure(project(":lucene")) {
   def validationTasks = subprojects.collectMany { it.tasks.matching { it.name == "licenses" } }
   def jarInfoTasks = subprojects.collectMany { it.tasks.matching { it.name == "collectJarInfos" } }
 
@@ -366,14 +348,12 @@ configure(plist) {
 // Exclude files that are not a result of direct dependencies but have to be there.
 // It would be probably better to move non-dependency licenses into the actual project
 // where they're used and only assemble them for the distribution package.
-if (!skipLucene) {
-  configure(project(":lucene")) {
-    checkDanglingLicenseFiles {
-      exclude += [
-          "elegant-icon-font-*",
-          "ant-*",
-          "ivy-*",
-      ]
-    }
+configure(project(":lucene")) {
+  checkDanglingLicenseFiles {
+    exclude += [
+        "elegant-icon-font-*",
+        "ant-*",
+        "ivy-*",
+    ]
   }
 }

@@ -181,7 +181,7 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
 
   public void testSeekSliceZero() throws Exception {
     int upto = TEST_NIGHTLY ? 31 : 3;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < upto; i++) {
       MMapDirectory mmapDir = new MMapDirectory(createTempDir("testSeekSliceZero"), 1 << i);
       IndexOutput io = mmapDir.createOutput("zeroBytes", newIOContext(random()));
       io.close();
@@ -285,6 +285,7 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
     }
   }
 
+  @Override
   public void testSliceOfSlice() throws Exception {
     int upto = TEST_NIGHTLY ? 10 : 8;
     for (int i = 0; i < upto; i++) {

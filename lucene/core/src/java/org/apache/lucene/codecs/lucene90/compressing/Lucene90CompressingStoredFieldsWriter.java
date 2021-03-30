@@ -711,7 +711,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   boolean tooDirty(Lucene90CompressingStoredFieldsReader candidate) {
     // more than 1% dirty, or more than hard limit of 1024 dirty chunks
     return candidate.getNumDirtyChunks() > 1024
-        || candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs();
+        || (candidate.getNumDirtyChunks() > 1
+            && candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs());
   }
 
   private static class CompressingStoredFieldsMergeSub extends DocIDMerger.Sub {

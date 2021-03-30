@@ -49,11 +49,6 @@ public abstract class FilterSortedDocValues extends SortedDocValues {
   }
 
   @Override
-  public BytesRef binaryValue() throws IOException {
-    return in.binaryValue();
-  }
-
-  @Override
   public int getValueCount() {
     return in.getValueCount();
   }

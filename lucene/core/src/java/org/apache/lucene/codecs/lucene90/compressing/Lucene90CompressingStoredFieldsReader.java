@@ -180,10 +180,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       numDirtyChunks = metaIn.readVLong();
       numDirtyDocs = metaIn.readVLong();
 
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, null);
-        metaIn.close();
-      }
+      CodecUtil.checkFooter(metaIn, null);
+      metaIn.close();
 
       success = true;
     } catch (Throwable t) {

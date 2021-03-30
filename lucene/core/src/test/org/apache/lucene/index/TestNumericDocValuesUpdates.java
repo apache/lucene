@@ -138,9 +138,6 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       writer.addDocument(doc(i, val));
     }
 
-    int numDocUpdates = 0;
-    int numValueUpdates = 0;
-
     for (int i = 0; i < numOperations; i++) {
       final int op = TestUtil.nextInt(random(), 1, 100);
       final long val = random().nextLong();
@@ -152,10 +149,8 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
         final int id = TestUtil.nextInt(random(), 0, expected.size() - 1);
         expected.put(id, val);
         if (op <= UPD_CUTOFF) {
-          numDocUpdates++;
           writer.updateDocument(new Term("id", "doc-" + id), doc(id, val));
         } else {
-          numValueUpdates++;
           writer.updateNumericDocValue(new Term("id", "doc-" + id), "val", val);
         }
       }
@@ -456,7 +451,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       BytesRef term = bdv.binaryValue();
       assertEquals(new BytesRef(Integer.toString(i)), term);
       assertEquals(i, sdv.nextDoc());
-      term = sdv.binaryValue();
+      term = sdv.lookupOrd(sdv.ordValue());
       assertEquals(new BytesRef(Integer.toString(i)), term);
       assertEquals(i, ssdv.nextDoc());
 
@@ -615,7 +610,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       assertEquals(i, ndv.nextDoc());
       assertEquals(17, ndv.longValue());
       assertEquals(i, sdv.nextDoc());
-      final BytesRef term = sdv.binaryValue();
+      final BytesRef term = sdv.lookupOrd(sdv.ordValue());
       assertEquals(new BytesRef("value"), term);
     }
 
@@ -832,7 +827,6 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     int refreshChance = TestUtil.nextInt(random(), 5, 200);
     int deleteChance = TestUtil.nextInt(random(), 2, 100);
 
-    int idUpto = 0;
     int deletedCount = 0;
 
     List<OneSortDoc> docs = new ArrayList<>();
@@ -1600,7 +1594,6 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
 
       // update all doc values
       long value = random().nextInt();
-      NumericDocValuesField[] update = new NumericDocValuesField[numDocs];
       for (int i = 0; i < numDocs; i++) {
         Term term = new Term("id", new BytesRef(Integer.toString(i)));
         writer.updateDocValues(term, new NumericDocValuesField("ndv", value));

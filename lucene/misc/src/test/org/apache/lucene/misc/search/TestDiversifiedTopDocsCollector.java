@@ -24,7 +24,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -190,7 +189,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
       extends DiversifiedTopDocsCollector {
 
     private final String field;
-    private BinaryDocValues vals;
+    private SortedDocValues vals;
 
     public HashedDocValuesDiversifiedCollector(int size, int maxHitsPerKey, String field) {
       super(size, maxHitsPerKey);
@@ -227,14 +226,14 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
 
         @Override
         public long longValue() throws IOException {
-          return vals == null ? -1 : vals.binaryValue().hashCode();
+          return vals == null ? -1 : vals.lookupOrd(vals.ordValue()).hashCode();
         }
       };
     }
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-      this.vals = DocValues.getBinary(context.reader(), field);
+      this.vals = DocValues.getSorted(context.reader(), field);
       return super.getLeafCollector(context);
     }
   }

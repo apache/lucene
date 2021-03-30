@@ -79,6 +79,36 @@ class FlagEnumerator {
       return false;
     }
 
+    boolean hasAnyFlag(int entryId, char[] sortedFlags) {
+      int length = data[entryId];
+      if (length == 0) return false;
+
+      int pos1 = entryId + 1;
+      int limit1 = entryId + 1 + length;
+
+      int pos2 = 0;
+      int limit2 = sortedFlags.length;
+
+      char c1 = data[pos1];
+      char c2 = sortedFlags[pos2];
+      while (true) {
+        if (c1 == c2) {
+          return true;
+        }
+        if (c1 < c2) {
+          if (++pos1 >= limit1) {
+            return false;
+          }
+          c1 = data[pos1];
+        } else {
+          if (++pos2 >= limit2) {
+            return false;
+          }
+          c2 = sortedFlags[pos2];
+        }
+      }
+    }
+
     char[] getFlags(int entryId) {
       return ArrayUtil.copyOfSubArray(data, entryId + 1, entryId + 1 + data[entryId]);
     }

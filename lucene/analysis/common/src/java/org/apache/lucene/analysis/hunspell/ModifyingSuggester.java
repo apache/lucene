@@ -132,6 +132,7 @@ class ModifyingSuggester {
     int before = result.size();
     for (RepEntry entry : speller.dictionary.repTable) {
       for (String candidate : entry.substitute(word)) {
+        candidate = candidate.trim();
         if (trySuggestion(candidate)) {
           continue;
         }

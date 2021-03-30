@@ -95,19 +95,24 @@ public final class AboutDialogFactory implements DialogOpener.DialogFactory {
   }
 
   private JPanel header() {
+    Color luceneColor = Color.decode("#019B8F");
     JPanel panel = new JPanel(new GridLayout(3, 1));
     panel.setOpaque(false);
 
     JPanel logo = new JPanel(new FlowLayout(FlowLayout.CENTER));
     logo.setOpaque(false);
-    logo.add(new JLabel(ImageUtils.createImageIcon("luke-logo.gif", 200, 40)));
+    JLabel logoLbl = new JLabel("Luke");
+    logoLbl.setFont(new Font(logoLbl.getFont().getFontName(), Font.BOLD | Font.ITALIC, 48));
+    logoLbl.setForeground(luceneColor);
+    logo.add(logoLbl);
     panel.add(logo);
 
     JPanel project = new JPanel(new FlowLayout(FlowLayout.CENTER));
     project.setOpaque(false);
-    JLabel projectLbl = new JLabel("Lucene Toolbox Project");
+    project.add(new JLabel(ImageUtils.createImageIcon("lucene-logo.png", 120, 32)));
+    JLabel projectLbl = new JLabel(" Toolbox Project");
     projectLbl.setFont(new Font(projectLbl.getFont().getFontName(), Font.BOLD, 32));
-    projectLbl.setForeground(Color.decode("#5aaa88"));
+    projectLbl.setForeground(luceneColor);
     project.add(projectLbl);
     panel.add(project);
 
@@ -120,7 +125,6 @@ public final class AboutDialogFactory implements DialogOpener.DialogFactory {
     JLabel subTitleLbl = new JLabel("GUI client of the best Java search library Apache Lucene");
     subTitleLbl.setFont(new Font(subTitleLbl.getFont().getFontName(), Font.PLAIN, 20));
     subTitle.add(subTitleLbl);
-    subTitle.add(new JLabel(ImageUtils.createImageIcon("lucene-logo.gif", 100, 15)));
     desc.add(subTitle);
 
     JPanel link = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));

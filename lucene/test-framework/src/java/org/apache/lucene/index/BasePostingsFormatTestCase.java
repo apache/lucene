@@ -357,7 +357,6 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
   public void testLevel2Ghosts() throws Exception {
     Directory dir = newDirectory();
 
-    Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwc = newIndexWriterConfig(null);
     iwc.setCodec(getCodec());
     iwc.setMergePolicy(newLogMergePolicy());

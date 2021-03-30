@@ -64,6 +64,7 @@ class NearestNeighbor {
       this.distanceSortKey = distanceSortKey;
     }
 
+    @Override
     public int compareTo(Cell other) {
       return Double.compare(distanceSortKey, other.distanceSortKey);
     }

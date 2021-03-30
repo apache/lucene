@@ -21,6 +21,10 @@ package org.apache.lucene.util;
  *
  * <p>Attributes are used to add data in a dynamic, yet type-safe way to a source of usually
  * streamed objects, e. g. a {@link org.apache.lucene.analysis.TokenStream}.
+ *
+ * <p>All implementations must list all implemented {@link Attribute} interfaces in their {@code
+ * implements} clause. {@code AttributeSource} reflectively identifies all attributes and makes them
+ * available to consumers like {@code TokenStream}s.
  */
 public abstract class AttributeImpl implements Cloneable, Attribute {
   /**

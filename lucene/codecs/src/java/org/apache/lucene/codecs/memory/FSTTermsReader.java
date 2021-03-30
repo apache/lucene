@@ -477,6 +477,7 @@ public class FSTTermsReader extends FieldsProducer {
           this.fsaState = -1;
         }
 
+        @Override
         public String toString() {
           return "arc=" + fstArc + " state=" + fsaState;
         }
@@ -559,7 +560,7 @@ public class FSTTermsReader extends FieldsProducer {
         if (term == null) {
           return SeekStatus.END;
         } else {
-          return term.equals(target) ? SeekStatus.FOUND : SeekStatus.NOT_FOUND;
+          return term.get().equals(target) ? SeekStatus.FOUND : SeekStatus.NOT_FOUND;
         }
       }
 

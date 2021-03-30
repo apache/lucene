@@ -95,10 +95,7 @@ public final class SleepingLockWrapper extends FilterDirectory {
     } while (sleepCount++ < maxSleepCount || lockWaitTimeout == LOCK_OBTAIN_WAIT_FOREVER);
 
     // we failed to obtain the lock in the required time
-    String reason = "Lock obtain timed out: " + this.toString();
-    if (failureReason != null) {
-      reason += ": " + failureReason;
-    }
+    String reason = "Lock obtain timed out: " + this.toString() + ": " + failureReason;
     throw new LockObtainFailedException(reason, failureReason);
   }
 

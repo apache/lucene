@@ -371,7 +371,7 @@ public abstract class DocValuesStats<T> {
 
     @Override
     protected void doAccumulate(int count) throws IOException {
-      BytesRef val = sdv.binaryValue();
+      BytesRef val = sdv.lookupOrd(sdv.ordValue());
       if (max == null || val.compareTo(max) > 0) {
         max = copyFrom(val, max);
       }

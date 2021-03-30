@@ -939,7 +939,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   boolean tooDirty(Lucene90CompressingTermVectorsReader candidate) {
     // more than 1% dirty, or more than hard limit of 1024 dirty chunks
     return candidate.getNumDirtyChunks() > 1024
-        || candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs();
+        || (candidate.getNumDirtyChunks() > 1
+            && candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs());
   }
 
   @Override

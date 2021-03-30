@@ -1346,6 +1346,7 @@ private boolean r_measure() {
   return true;
 }
 
+@Override
 public boolean stem() {
   B_Y_found = false;
   B_stemmed = false;

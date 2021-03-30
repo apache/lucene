@@ -31,7 +31,6 @@ import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.lucene86.Lucene86PointsFormat;
-import org.apache.lucene.codecs.lucene86.Lucene86SegmentInfoFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
@@ -46,7 +45,7 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 public class Lucene90Codec extends Codec {
 
   /** Configuration option for the codec. */
-  public static enum Mode {
+  public enum Mode {
     /** Trade compression ratio for retrieval speed. */
     BEST_SPEED(Lucene90StoredFieldsFormat.Mode.BEST_SPEED, Lucene90DocValuesFormat.Mode.BEST_SPEED),
     /** Trade retrieval speed for compression ratio. */
@@ -65,7 +64,7 @@ public class Lucene90Codec extends Codec {
 
   private final TermVectorsFormat vectorsFormat = new Lucene90TermVectorsFormat();
   private final FieldInfosFormat fieldInfosFormat = new Lucene90FieldInfosFormat();
-  private final SegmentInfoFormat segmentInfosFormat = new Lucene86SegmentInfoFormat();
+  private final SegmentInfoFormat segmentInfosFormat = new Lucene90SegmentInfoFormat();
   private final LiveDocsFormat liveDocsFormat = new Lucene90LiveDocsFormat();
   private final CompoundFormat compoundFormat = new Lucene90CompoundFormat();
   private final PostingsFormat defaultFormat;

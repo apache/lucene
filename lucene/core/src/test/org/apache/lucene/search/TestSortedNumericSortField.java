@@ -47,6 +47,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     }
   }
 
+  @SuppressWarnings("unlikely-arg-type")
   public void testEquals() throws Exception {
     SortField sf = new SortedNumericSortField("a", SortField.Type.LONG);
     assertFalse(sf.equals(null));

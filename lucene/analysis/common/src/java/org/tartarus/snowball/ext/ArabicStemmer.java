@@ -1066,6 +1066,7 @@ private boolean r_Suffix_All_alef_maqsura() {
   return true;
 }
 
+@Override
 public boolean stem() {
   B_is_noun = true;
   B_is_verb = true;

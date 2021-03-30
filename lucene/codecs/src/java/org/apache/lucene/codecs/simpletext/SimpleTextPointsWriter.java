@@ -99,6 +99,7 @@ class SimpleTextPointsWriter extends PointsWriter {
               throw new IllegalStateException();
             }
 
+            @Override
             public void visit(int docID, byte[] packedValue) throws IOException {
               writer.add(packedValue, docID);
             }
@@ -155,14 +156,6 @@ class SimpleTextPointsWriter extends PointsWriter {
 
   private void write(IndexOutput out, String s) throws IOException {
     SimpleTextUtil.write(out, s, scratch);
-  }
-
-  private void writeInt(IndexOutput out, int x) throws IOException {
-    SimpleTextUtil.write(out, Integer.toString(x), scratch);
-  }
-
-  private void writeLong(IndexOutput out, long x) throws IOException {
-    SimpleTextUtil.write(out, Long.toString(x), scratch);
   }
 
   private void write(IndexOutput out, BytesRef b) throws IOException {

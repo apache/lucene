@@ -1479,7 +1479,7 @@ public class Dictionary {
     return reuse;
   }
 
-  private static char[] toSortedCharArray(Set<Character> set) {
+  static char[] toSortedCharArray(Set<Character> set) {
     char[] chars = new char[set.size()];
     int i = 0;
     for (Character c : set) {

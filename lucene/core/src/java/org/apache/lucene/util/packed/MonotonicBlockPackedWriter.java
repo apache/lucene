@@ -67,6 +67,7 @@ public final class MonotonicBlockPackedWriter extends AbstractBlockPackedWriter 
     super.add(l);
   }
 
+  @Override
   protected void flush() throws IOException {
     assert off > 0;
 

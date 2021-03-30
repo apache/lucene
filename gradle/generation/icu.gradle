@@ -108,13 +108,7 @@ configure(project(":lucene:analysis:icu")) {
     }
   }
 
-  task regenerate() {
-    description "Regenerate ICU data files"
-    group "generation"
-
-    dependsOn genUtr30DataFiles
-    dependsOn genRbbi
-  }
+  regenerate.dependsOn genUtr30DataFiles, genRbbi
 
   task compileIcuWindows() {
     doFirst {

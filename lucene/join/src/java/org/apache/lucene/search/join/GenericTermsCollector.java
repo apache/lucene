@@ -18,8 +18,8 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.LeafCollector;
@@ -106,7 +106,7 @@ interface GenericTermsCollector extends Collector {
   }
 
   static GenericTermsCollector createCollectorSV(
-      Function<BinaryDocValues> svFunction, ScoreMode mode) {
+      Function<SortedDocValues> svFunction, ScoreMode mode) {
 
     switch (mode) {
       case None:

@@ -121,6 +121,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     Thread[] threads = new Thread[3];
     threads[0] =
         new Thread() {
+          @Override
           public void run() {
             Document doc = new Document();
             StringField f = new StringField("color", "", Store.NO);
@@ -169,6 +170,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
                     searcher.search(
                         q,
                         new FilterCollector(collector2) {
+                          @Override
                           public ScoreMode scoreMode() {
                             return ScoreMode.COMPLETE; // will not use the cache because of scores
                           }

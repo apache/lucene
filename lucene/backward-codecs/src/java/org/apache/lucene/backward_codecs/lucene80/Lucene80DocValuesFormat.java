@@ -140,7 +140,7 @@ import org.apache.lucene.util.packed.DirectWriter;
 public final class Lucene80DocValuesFormat extends DocValuesFormat {
 
   /** Configuration option for doc values. */
-  public static enum Mode {
+  public enum Mode {
     /** Trade compression ratio for retrieval speed. */
     BEST_SPEED,
     /** Trade retrieval speed for compression ratio. */

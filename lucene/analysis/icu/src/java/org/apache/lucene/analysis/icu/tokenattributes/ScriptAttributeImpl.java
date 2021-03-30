@@ -25,7 +25,7 @@ import org.apache.lucene.util.AttributeReflector;
  *
  * @lucene.experimental
  */
-public class ScriptAttributeImpl extends AttributeImpl implements ScriptAttribute, Cloneable {
+public class ScriptAttributeImpl extends AttributeImpl implements ScriptAttribute {
   private int code = UScript.COMMON;
 
   /** Initializes this attribute with <code>UScript.COMMON</code> */

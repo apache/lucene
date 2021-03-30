@@ -112,7 +112,6 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
   private static final int MAX_THREADS_AT_ONCE = 10;
 
   static class CheckSegmentCount implements Runnable, Closeable {
-    private final IndexWriter w;
     private final AtomicInteger maxThreadCountPerIter;
     private final AtomicInteger indexingCount;
     private DirectoryReader r;
@@ -120,7 +119,6 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     public CheckSegmentCount(
         IndexWriter w, AtomicInteger maxThreadCountPerIter, AtomicInteger indexingCount)
         throws IOException {
-      this.w = w;
       this.maxThreadCountPerIter = maxThreadCountPerIter;
       this.indexingCount = indexingCount;
       r = DirectoryReader.open(w);

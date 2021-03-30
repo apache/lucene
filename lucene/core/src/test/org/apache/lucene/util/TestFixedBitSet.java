@@ -334,6 +334,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     doPrevSetBit(bs, obs);
   }
 
+  @Override
   public void testPrevSetBit() {
     checkPrevSetBitArray(new int[] {}, 0);
     checkPrevSetBitArray(new int[] {0}, 1);

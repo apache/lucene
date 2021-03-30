@@ -15,23 +15,22 @@
  * limitations under the License.
  */
 
+package org.apache.lucene.codecs.lucene90;
 
-// Force versions of certain components to align them with ant build.
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
+import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.Version;
 
-project(":solr").subprojects {
-  plugins.withType(JavaPlugin) {
-    dependencies {
-      implementation enforcedPlatform('org.slf4j:slf4j-api:1.7.24')
-      implementation enforcedPlatform('commons-logging:commons-logging:1.1.3')
-    }
+public class TestLucene90SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
+
+  @Override
+  protected Version[] getVersions() {
+    return new Version[] {Version.LATEST};
   }
-}
 
-configure(project(":solr:server")) {
-  afterEvaluate {
-    dependencies {
-      libExt enforcedPlatform('org.slf4j:slf4j-api:1.7.24')
-      libExt enforcedPlatform('commons-logging:commons-logging:1.1.3')
-    }
+  @Override
+  protected Codec getCodec() {
+    return TestUtil.getDefaultCodec();
   }
 }

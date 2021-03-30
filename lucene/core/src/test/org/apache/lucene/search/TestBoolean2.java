@@ -356,8 +356,6 @@ public class TestBoolean2 extends LuceneTestCase {
   public void testRandomQueries() throws Exception {
     String[] vals = {"w1", "w2", "w3", "w4", "w5", "xx", "yy", "zzz"};
 
-    int tot = 0;
-
     BooleanQuery q1 = null;
     try {
 
@@ -395,7 +393,6 @@ public class TestBoolean2 extends LuceneTestCase {
         collector = TopFieldCollector.create(sort, 1000, 1);
         searcher.search(q1, collector);
         ScoreDoc[] hits2 = collector.topDocs().scoreDocs;
-        tot += hits2.length;
         CheckHits.checkEqual(q1, hits1, hits2);
 
         BooleanQuery.Builder q3 = new BooleanQuery.Builder();

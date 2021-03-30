@@ -528,6 +528,7 @@ private boolean r_standard_suffix() {
   return true;
 }
 
+@Override
 public boolean stem() {
   int v_1 = cursor;
   r_prelude();

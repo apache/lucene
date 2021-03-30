@@ -307,6 +307,11 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     }
     iw.getConfig().setMergePolicy(newLogMergePolicy());
     iw.forceMerge(1);
+    // add a single doc and merge again
+    Document doc = new Document();
+    doc.add(new StoredField("text", "not very long at all"));
+    iw.addDocument(doc);
+    iw.forceMerge(1);
     DirectoryReader ir2 = DirectoryReader.openIfChanged(ir);
     assertNotNull(ir2);
     ir.close();
@@ -314,8 +319,8 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
     Lucene90CompressingStoredFieldsReader reader =
         (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-    // we could get lucky, and have zero, but typically one.
-    assertTrue(reader.getNumDirtyChunks() <= 1);
+    // at most 2: the 5 chunks from 5 doc segment will be collapsed into a single chunk
+    assertTrue(reader.getNumDirtyChunks() <= 2);
     ir.close();
     iw.close();
     dir.close();

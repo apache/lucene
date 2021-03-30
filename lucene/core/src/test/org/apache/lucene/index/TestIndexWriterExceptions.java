@@ -1430,7 +1430,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         w.close();
         IndexReader reader = DirectoryReader.open(dir);
         assertTrue(reader.numDocs() > 0);
-        SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
+        SegmentInfos.readLatestCommit(dir);
         for (LeafReaderContext context : reader.leaves()) {
           assertFalse(context.reader().getFieldInfos().hasVectors());
         }

@@ -49,7 +49,6 @@ public class OrdinalMap implements Accountable {
   // TODO: use more efficient packed ints structures?
 
   private static class TermsEnumIndex {
-    public static final TermsEnumIndex[] EMPTY_ARRAY = new TermsEnumIndex[0];
     final int subIndex;
     final TermsEnum termsEnum;
     BytesRef currentTerm;

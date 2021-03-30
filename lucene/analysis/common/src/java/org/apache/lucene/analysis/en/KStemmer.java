@@ -619,10 +619,6 @@ public class KStemmer {
    * CharArrayMap<String>(maxCacheSize,false); }
    ***/
 
-  private char finalChar() {
-    return word.charAt(k);
-  }
-
   private char penultChar() {
     return word.charAt(k - 1);
   }

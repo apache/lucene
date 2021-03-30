@@ -16,6 +16,9 @@ New Features
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
+* LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
+  (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
@@ -91,6 +94,12 @@ API Changes
 
 * LUCENE-9480: Make DataInput's skipBytes(long) abstract as the implementation was not performant.
   IndexInput's api is unaffected: skipBytes() is implemented via seek(). (Greg Miller)
+
+* LUCENE-9796: SortedDocValues no longer extends BinaryDocValues, as binaryValue() was not performant.
+  See MIGRATE.md for details. (Robert Muir)
+
+* LUCENE-9853: JapaneseAnalyzer should use CJKWidthCharFilter for full-width and half-width character normalization.
+  (Tomoko Uchida)
 
 Improvements
 
@@ -191,10 +200,10 @@ Improvements
 * LUCENE-9674: Implement faster advance on VectorValues using binary search.
   (Anand Kotriwal, Mike Sokolov)
 
-* LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
-  (Jaison Bi via Bruno Roustant)
-
 * LUCENE-9794: Speed up implementations of DataInput.skipBytes(). (Greg Miller)
+
+* LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
+  (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
 
 Bug fixes
 
@@ -218,7 +227,7 @@ Bug fixes
   (Mark Harwood, Mike Drob)
 
 * LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon 
-  splitting. (Ignacio Vera)  
+  splitting. (Ignacio Vera)
 
 Changes in Backwards Compatibility Policy
 
@@ -237,8 +246,6 @@ Other
 
 * LUCENE-9631: Properly override slice() on subclasses of OffsetRange. (Dawid Weiss)
 
-* LUCENE-9312: Allow gradle builds against arbitrary JVMs. (Tomoko Uchida, Dawid Weiss)
-
 * LUCENE-9391: Upgrade HPPC to 0.8.2. (Haoyu Zhai)
 
 * LUCENE-8768: Fix Javadocs build in Java 11. (Namgyu Kim)
@@ -256,7 +263,7 @@ Other
 * LUCENE-9411: Fail complation on warnings, 9x gradle-only (Erick Erickson, Dawid Weiss)
   Deserves mention here as well as Lucene CHANGES.txt since it affects both.
 
-* LUCENE-9433: Remove Ant support from trunk (Erick Erickson, Uwe Schindler et.al.)
+* LUCENE-9077 LUCENE-9433: Support Gradle build, remove Ant support from trunk (Dawid Weiss, Erick Erickson, Uwe Schindler et.al.)
 
 * LUCENE-9215: Replace checkJavaDocs.py with doclet (Robert Muir, Dawid Weiss, Uwe Schindler)
 
@@ -294,11 +301,17 @@ New Features
 * LUCENE-9694: New tool for creating a deterministic index to enable benchmarking changes
   on a consistent multi-segment index even when they require re-indexing. (Haoyu Zhai)
 
+* LUCENE-9385: Add FacetsConfig option to control which drill-down
+  terms are indexed for a FacetLabel (Zachary Chen)
+
 Improvements
 ---------------------
 
 * LUCENE-9725: BM25FQuery was extended to handle similarities beyond BM25Similarity. It
   was renamed to CombinedFieldQuery to reflect its more general scope. (Julie Tibshirani)
+
+* LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
+  (Jaison Bi via Bruno Roustant)
 
 Optimizations
 ---------------------
@@ -314,10 +327,33 @@ Bug Fixes
   throw an exception when the query implements TwoPhaseIterator and when the score is requested
   repeatedly. (David Smiley, hossman)
 
+* LUCENE-9791: BytesRefHash.equals/find is now thread safe, fixing a
+  Luwak/Monitor bug causing registered queries to sometimes fail to
+  match. (Paweł Bugalski)
+
+* LUCENE-9887: Fixed parameter use in RadixSelector.
+  (liupanfeng via Adrien Grand)
+
 Other
 ---------------------
-(No changes)
 
+* LUCENE-9836: Removed the pure Maven build. It is no longer possible to build
+  artifacts using Maven (this feature was no longer working correctly). Due to
+  migration to Gradle for Lucene/Solr 9.0, the maintenance of the Maven build
+  was no longer reasonable. POM files are generated for deployment to Maven
+  Central only. Please use "ant generate-maven-artifacts" to produce and deploy
+  artifacts to any repository.  (Uwe Schindler, Dawid Weiss)
+
+* LUCENE-9836: Migrate Maven tasks to use "maven-resolver-ant-tasks"
+  instead of the no longer maintained "maven-ant-tasks".  (Uwe Schindler)
+
+======================= Lucene 8.8.2 =======================
+
+Bug Fixes
+---------------------
+
+* LUCENE-9870: Fix Circle2D intersectsLine t-value (distance) range clamp (Jørgen Nystad)
+  
 ======================= Lucene 8.8.1 =======================
 
 Bug Fixes
@@ -1328,8 +1364,6 @@ Other
 * LUCENE-8886: Fix TestMutablePointsReaderUtils tests. (Ignacio Vera)
 
 ======================= Lucene 8.1.1 =======================
-(No Changes)
-
 Improvements
 
 * LUCENE-8781: FST lookup performance has been improved in many cases by
@@ -10284,7 +10318,7 @@ Changes in backwards compatibility policy
     To prevent this slowdown, use oal.index.IndexUpgrader
     to upgrade your indexes to latest file format (LUCENE-3082).
 
-    Mixed flex/pre-flex indexes are perfectly fine -- the two
+  - Mixed flex/pre-flex indexes are perfectly fine -- the two
     emulation layers (flex API on pre-flex index, and pre-flex API on
     flex index) will remap the access as required.  So on upgrading to
     4.0 you can start indexing new documents into an existing index.

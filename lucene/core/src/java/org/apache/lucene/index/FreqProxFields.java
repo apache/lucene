@@ -40,6 +40,7 @@ class FreqProxFields extends Fields {
     }
   }
 
+  @Override
   public Iterator<String> iterator() {
     return fields.keySet().iterator();
   }
@@ -137,6 +138,7 @@ class FreqProxFields extends Fields {
       ord = -1;
     }
 
+    @Override
     public SeekStatus seekCeil(BytesRef text) {
       // TODO: we could instead keep the BytesRefHash
       // intact so this is a hash lookup
@@ -173,6 +175,7 @@ class FreqProxFields extends Fields {
       }
     }
 
+    @Override
     public void seekExact(long ord) {
       this.ord = (int) ord;
       int textStart = postingsArray.textStarts[sortedTermIDs[this.ord]];
@@ -281,6 +284,7 @@ class FreqProxFields extends Fields {
      * @see TermState
      * @see #seekExact(BytesRef, TermState)
      */
+    @Override
     public TermState termState() throws IOException {
       return new TermState() {
         @Override

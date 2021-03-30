@@ -82,7 +82,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         assert docID >= 0 && docID < maxDoc;
         assert docID > lastDocID;
         lastDocID = docID;
-        long value = values.longValue();
+        values.longValue();
       }
 
       in.addNumericField(field, valuesProducer);
@@ -146,7 +146,6 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         throws IOException {
       SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
 
-      long valueCount = 0;
       int lastDocID = -1;
       while (true) {
         int docID = values.nextDoc();
@@ -157,7 +156,6 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         lastDocID = values.docID();
         int count = values.docValueCount();
         assert count > 0;
-        valueCount += count;
         long previous = Long.MIN_VALUE;
         for (int i = 0; i < count; i++) {
           long nextValue = values.nextValue();
@@ -185,14 +183,12 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         lastValue = BytesRef.deepCopyOf(b);
       }
 
-      int docCount = 0;
       LongBitSet seenOrds = new LongBitSet(valueCount);
       while (true) {
         int docID = values.nextDoc();
         if (docID == NO_MORE_DOCS) {
           break;
         }
-        docCount++;
 
         long lastOrd = -1;
         while (true) {

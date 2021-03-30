@@ -145,6 +145,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
       super(TopScoreDocCollector.create(10, Integer.MAX_VALUE));
     }
 
+    @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       final int docBase = context.docBase;
       return new FilterLeafCollector(super.getLeafCollector(context)) {

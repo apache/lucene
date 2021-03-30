@@ -25,7 +25,42 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * Lucene 9.0 vector format, which encodes dense numeric vector values.
+ * Lucene 9.0 vector format, which encodes numeric vector values and an optional associated graph
+ * connecting the documents having values. The graph is used to power HNSW search. The format
+ * consists of three files:
+ *
+ * <h2>.vec (vector data) file</h2>
+ *
+ * <p>This file stores all the floating-point vector data ordered by field, document ordinal, and
+ * vector dimension. The floats are stored in little-endian byte order.
+ *
+ * <h2>.vex (vector index) file</h2>
+ *
+ * <p>Stores graphs connecting the documents for each field. For each document having a vector for a
+ * given field, this is stored as:
+ *
+ * <ul>
+ *   <li><b>[int32]</b> the number of neighbor nodes
+ *   <li><b>array[vint]</b> the neighbor ordinals, delta-encoded (initially subtracting -1)
+ * </ul>
+ *
+ * <h2>.vem (vector metadata) file</h2>
+ *
+ * <p>For each field:
+ *
+ * <ul>
+ *   <li><b>[int32]</b> field number
+ *   <li><b>[int32]</b> vector search strategy ordinal
+ *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
+ *   <li><b>[vlong]</b> length of this field's vectors, in bytes
+ *   <li><b>[vlong]</b> offset to this field's index in the .vex file
+ *   <li><b>[vlong]</b> length of this field's index data, in bytes
+ *   <li><b>[int]</b> dimension of this field's vectors
+ *   <li><b>[int]</b> the number of documents having values for this field
+ *   <li><b>array[vint]</b> the docids of documents having vectors, in order
+ *   <li><b>array[vlong]</b> for each document having a vector, the offset (delta-encoded relative
+ *       to the previous document) of its entry in the .vex file
+ * </ul>
  *
  * @lucene.experimental
  */

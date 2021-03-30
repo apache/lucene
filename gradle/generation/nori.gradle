@@ -81,5 +81,7 @@ configure(project(":lucene:analysis:nori")) {
         })
       }
     }
+
+    regenerate.dependsOn compileMecabKo
   }
 }

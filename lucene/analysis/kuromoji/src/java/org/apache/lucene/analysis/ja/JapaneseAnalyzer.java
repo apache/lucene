@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.analysis.CharArraySet;
@@ -25,7 +26,7 @@ import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.cjk.CJKWidthFilter;
+import org.apache.lucene.analysis.cjk.CJKWidthCharFilter;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 
@@ -95,7 +96,6 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
     Tokenizer tokenizer = new JapaneseTokenizer(userDict, true, true, mode);
     TokenStream stream = new JapaneseBaseFormFilter(tokenizer);
     stream = new JapanesePartOfSpeechStopFilter(stream, stoptags);
-    stream = new CJKWidthFilter(stream);
     stream = new StopFilter(stream, stopwords);
     stream = new JapaneseKatakanaStemFilter(stream);
     stream = new LowerCaseFilter(stream);
@@ -104,8 +104,17 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
 
   @Override
   protected TokenStream normalize(String fieldName, TokenStream in) {
-    TokenStream result = new CJKWidthFilter(in);
-    result = new LowerCaseFilter(result);
+    TokenStream result = new LowerCaseFilter(in);
     return result;
+  }
+
+  @Override
+  protected Reader initReader(String fieldName, Reader reader) {
+    return new CJKWidthCharFilter(reader);
+  }
+
+  @Override
+  protected Reader initReaderForNormalization(String fieldName, Reader reader) {
+    return new CJKWidthCharFilter(reader);
   }
 }

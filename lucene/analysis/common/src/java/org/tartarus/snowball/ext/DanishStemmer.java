@@ -263,6 +263,7 @@ private boolean r_undouble() {
   return true;
 }
 
+@Override
 public boolean stem() {
   int v_1 = cursor;
   r_mark_regions();

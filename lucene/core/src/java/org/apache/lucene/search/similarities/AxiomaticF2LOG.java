@@ -78,14 +78,13 @@ public class AxiomaticF2LOG extends Axiomatic {
   protected Explanation tfExplain(BasicStats stats, double freq, double docLen) {
     return Explanation.match((float) tf(stats, freq, docLen), "tf, term frequency, equals to 1");
   }
-  ;
 
   @Override
   protected Explanation lnExplain(BasicStats stats, double freq, double docLen) {
     return Explanation.match((float) ln(stats, freq, docLen), "ln, document length, equals to 1");
   }
-  ;
 
+  @Override
   protected Explanation tflnExplain(BasicStats stats, double freq, double docLen) {
     return Explanation.match(
         (float) tfln(stats, freq, docLen),
@@ -97,8 +96,8 @@ public class AxiomaticF2LOG extends Axiomatic {
             (float) stats.getAvgFieldLength(),
             "avgdl, average length of field across all documents"));
   }
-  ;
 
+  @Override
   protected Explanation idfExplain(BasicStats stats, double freq, double docLen) {
     return Explanation.match(
         (float) idf(stats, freq, docLen),
@@ -107,5 +106,4 @@ public class AxiomaticF2LOG extends Axiomatic {
             (float) stats.getNumberOfDocuments(), "N, total number of documents with field"),
         Explanation.match((float) stats.getDocFreq(), "n, number of documents containing term"));
   }
-  ;
 }
