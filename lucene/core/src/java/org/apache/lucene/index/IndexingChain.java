@@ -327,38 +327,22 @@ final class IndexingChain implements Accountable {
         PerField perField = fieldHash[i];
         while (perField != null) {
           if (perField.pointValuesWriter != null) {
-            if (perField.fieldInfo.getPointDimensionCount() == 0) {
-              // BUG
-              throw new AssertionError(
-                  "segment="
-                      + state.segmentInfo
-                      + ": field=\""
-                      + perField.fieldInfo.name
-                      + "\" has no points but wrote them");
-            }
-            if (pointsWriter == null) {
-              // lazy init
-              PointsFormat fmt = state.segmentInfo.getCodec().pointsFormat();
-              if (fmt == null) {
-                throw new IllegalStateException(
-                    "field=\""
-                        + perField.fieldInfo.name
-                        + "\" was indexed as points but codec does not support points");
+            // We could have initialized pointValuesWriter, but failed to write even a single doc
+            if (perField.pointValuesWriter.getNumDocs() > 0) {
+              if (pointsWriter == null) {
+                // lazy init
+                PointsFormat fmt = state.segmentInfo.getCodec().pointsFormat();
+                if (fmt == null) {
+                  throw new IllegalStateException(
+                      "field=\""
+                          + perField.fieldInfo.name
+                          + "\" was indexed as points but codec does not support points");
+                }
+                pointsWriter = fmt.fieldsWriter(state);
               }
-              pointsWriter = fmt.fieldsWriter(state);
+              perField.pointValuesWriter.flush(state, sortMap, pointsWriter);
             }
-
-            perField.pointValuesWriter.flush(state, sortMap, pointsWriter);
             perField.pointValuesWriter = null;
-          } else if (perField.fieldInfo != null
-              && perField.fieldInfo.getPointDimensionCount() != 0) {
-            // BUG
-            throw new AssertionError(
-                "segment="
-                    + state.segmentInfo
-                    + ": field=\""
-                    + perField.fieldInfo.name
-                    + "\" has points but did not write them");
           }
           perField = perField.next;
         }
