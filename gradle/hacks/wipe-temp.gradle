@@ -19,13 +19,11 @@
 // so that it doesn't pollute user's tmp. Wipe it during a clean though.
 
 configure(rootProject) {
-  task cleanGradleTmp(type: Delete) {
-    delete fileTree(".gradle/tmp").matching {
+  gradle.buildFinished {
+    rootProject.delete fileTree(".gradle/tmp").matching {
       include "gradle-worker-classpath*"
     }
   }
-
-  clean.dependsOn cleanGradleTmp
 }
 
 // Make sure we clean up after running tests.
@@ -33,7 +31,7 @@ allprojects {
   plugins.withType(JavaPlugin) {
     def temps = []
 
-    task cleanTaskTmp() {
+    task wipeTaskTemp() {
       doLast {
         temps.each { temp ->
           project.delete fileTree(temp).matching {
@@ -44,7 +42,7 @@ allprojects {
     }
 
     tasks.withType(Test) {
-      finalizedBy rootProject.cleanGradleTmp, cleanTaskTmp
+      finalizedBy wipeTaskTemp
       temps += temporaryDir
     }
   }
