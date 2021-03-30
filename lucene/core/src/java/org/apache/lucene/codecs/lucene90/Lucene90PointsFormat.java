@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene86;
+package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.PointsFormat;
@@ -24,7 +24,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * Lucene 8.6 point format, which encodes dimensional values in a block KD-tree structure for fast
+ * Lucene 9.0 point format, which encodes dimensional values in a block KD-tree structure for fast
  * 1D range and N dimensional shape intersection filtering. See <a
  * href="https://www.cs.duke.edu/~pankaj/publications/papers/bkd-sstd.pdf">this paper</a> for
  * details.
@@ -43,11 +43,11 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-public final class Lucene86PointsFormat extends PointsFormat {
+public final class Lucene90PointsFormat extends PointsFormat {
 
-  static final String DATA_CODEC_NAME = "Lucene86PointsFormatData";
-  static final String INDEX_CODEC_NAME = "Lucene86PointsFormatIndex";
-  static final String META_CODEC_NAME = "Lucene86PointsFormatMeta";
+  static final String DATA_CODEC_NAME = "Lucene90PointsFormatData";
+  static final String INDEX_CODEC_NAME = "Lucene90PointsFormatIndex";
+  static final String META_CODEC_NAME = "Lucene90PointsFormatMeta";
 
   /** Filename extension for the leaf blocks */
   public static final String DATA_EXTENSION = "kdd";
@@ -62,15 +62,15 @@ public final class Lucene86PointsFormat extends PointsFormat {
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Sole constructor */
-  public Lucene86PointsFormat() {}
+  public Lucene90PointsFormat() {}
 
   @Override
   public PointsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene86PointsWriter(state);
+    return new Lucene90PointsWriter(state);
   }
 
   @Override
   public PointsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene86PointsReader(state);
+    return new Lucene90PointsReader(state);
   }
 }

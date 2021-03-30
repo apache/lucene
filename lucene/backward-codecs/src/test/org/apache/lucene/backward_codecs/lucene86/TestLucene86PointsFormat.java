@@ -14,10 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene86;
+package org.apache.lucene.backward_codecs.lucene86;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
@@ -48,7 +49,7 @@ public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
 
   public TestLucene86PointsFormat() {
     // standard issue
-    Codec defaultCodec = TestUtil.getDefaultCodec();
+    Codec defaultCodec = new Lucene87RWCodec();
     if (random().nextBoolean()) {
       // randomize parameters
       maxPointsInLeafNode = TestUtil.nextInt(random(), 50, 500);

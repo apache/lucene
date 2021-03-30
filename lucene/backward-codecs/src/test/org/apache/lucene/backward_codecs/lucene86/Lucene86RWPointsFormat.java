@@ -14,9 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.backward_codecs.lucene86;
 
-/**
- * Components from the Lucene 8.6 index format. See {@link org.apache.lucene.codecs.lucene90} for an
- * overview of the current index format.
- */
-package org.apache.lucene.codecs.lucene86;
+import java.io.IOException;
+import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.index.SegmentWriteState;
+
+/** Writable version of Lucene86PointsFormat for testing */
+public final class Lucene86RWPointsFormat extends Lucene86PointsFormat {
+
+  /** Sole constructor */
+  public Lucene86RWPointsFormat() {}
+
+  @Override
+  public PointsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene86PointsWriter(state);
+  }
+}
