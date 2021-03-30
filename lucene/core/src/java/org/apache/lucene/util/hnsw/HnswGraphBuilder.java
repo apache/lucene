@@ -99,7 +99,7 @@ public final class HnswGraphBuilder {
     }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
-    this.hnsw = new HnswGraph(maxConn, searchStrategy);
+    this.hnsw = new HnswGraph(maxConn);
     bound = BoundsChecker.create(searchStrategy.reversed);
     random = new Random(seed);
     scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));

@@ -16,6 +16,9 @@ New Features
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
+* LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
+  (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
@@ -94,6 +97,9 @@ API Changes
 
 * LUCENE-9796: SortedDocValues no longer extends BinaryDocValues, as binaryValue() was not performant.
   See MIGRATE.md for details. (Robert Muir)
+
+* LUCENE-9853: JapaneseAnalyzer should use CJKWidthCharFilter for full-width and half-width character normalization.
+  (Tomoko Uchida)
 
 Improvements
 
@@ -221,7 +227,9 @@ Bug fixes
   (Mark Harwood, Mike Drob)
 
 * LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon 
-  splitting. (Ignacio Vera)  
+  splitting. (Ignacio Vera)
+
+* LUCENE-9870: Fix Circle2D intersectsLine t-value (distance) range clamp (Jørgen Nystad)
 
 Changes in Backwards Compatibility Policy
 
@@ -240,8 +248,6 @@ Other
 
 * LUCENE-9631: Properly override slice() on subclasses of OffsetRange. (Dawid Weiss)
 
-* LUCENE-9312: Allow gradle builds against arbitrary JVMs. (Tomoko Uchida, Dawid Weiss)
-
 * LUCENE-9391: Upgrade HPPC to 0.8.2. (Haoyu Zhai)
 
 * LUCENE-8768: Fix Javadocs build in Java 11. (Namgyu Kim)
@@ -259,7 +265,7 @@ Other
 * LUCENE-9411: Fail complation on warnings, 9x gradle-only (Erick Erickson, Dawid Weiss)
   Deserves mention here as well as Lucene CHANGES.txt since it affects both.
 
-* LUCENE-9433: Remove Ant support from trunk (Erick Erickson, Uwe Schindler et.al.)
+* LUCENE-9077 LUCENE-9433: Support Gradle build, remove Ant support from trunk (Dawid Weiss, Erick Erickson, Uwe Schindler et.al.)
 
 * LUCENE-9215: Replace checkJavaDocs.py with doclet (Robert Muir, Dawid Weiss, Uwe Schindler)
 
@@ -297,6 +303,9 @@ New Features
 * LUCENE-9694: New tool for creating a deterministic index to enable benchmarking changes
   on a consistent multi-segment index even when they require re-indexing. (Haoyu Zhai)
 
+* LUCENE-9385: Add FacetsConfig option to control which drill-down
+  terms are indexed for a FacetLabel (Zachary Chen)
+
 Improvements
 ---------------------
 
@@ -323,6 +332,9 @@ Bug Fixes
 * LUCENE-9791: BytesRefHash.equals/find is now thread safe, fixing a
   Luwak/Monitor bug causing registered queries to sometimes fail to
   match. (Paweł Bugalski)
+
+* LUCENE-9887: Fixed parameter use in RadixSelector.
+  (liupanfeng via Adrien Grand)
 
 Other
 ---------------------
@@ -1347,8 +1359,6 @@ Other
 * LUCENE-8886: Fix TestMutablePointsReaderUtils tests. (Ignacio Vera)
 
 ======================= Lucene 8.1.1 =======================
-(No Changes)
-
 Improvements
 
 * LUCENE-8781: FST lookup performance has been improved in many cases by
@@ -10303,7 +10313,7 @@ Changes in backwards compatibility policy
     To prevent this slowdown, use oal.index.IndexUpgrader
     to upgrade your indexes to latest file format (LUCENE-3082).
 
-    Mixed flex/pre-flex indexes are perfectly fine -- the two
+  - Mixed flex/pre-flex indexes are perfectly fine -- the two
     emulation layers (flex API on pre-flex index, and pre-flex API on
     flex index) will remap the access as required.  So on upgrading to
     4.0 you can start indexing new documents into an existing index.

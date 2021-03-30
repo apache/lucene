@@ -347,6 +347,7 @@ public abstract class RangeFieldQuery extends Query {
         return Relation.CELL_CROSSES_QUERY;
       }
 
+      @Override
       boolean matches(byte[] queryPackedValue, byte[] packedValue, int numDims, int bytesPerDim) {
         return INTERSECTS.matches(queryPackedValue, packedValue, numDims, bytesPerDim)
             && WITHIN.matches(queryPackedValue, packedValue, numDims, bytesPerDim) == false;

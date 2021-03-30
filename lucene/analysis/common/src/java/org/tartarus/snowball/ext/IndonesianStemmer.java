@@ -264,6 +264,7 @@ private boolean r_remove_second_order_prefix() {
   return true;
 }
 
+@Override
 public boolean stem() {
   I_measure = 0;
   int v_1 = cursor;

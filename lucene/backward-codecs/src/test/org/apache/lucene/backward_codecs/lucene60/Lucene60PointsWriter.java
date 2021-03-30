@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.backward_codecs.lucene60;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,7 +40,7 @@ import org.apache.lucene.util.bkd.BKDReader;
 import org.apache.lucene.util.bkd.BKDWriter;
 
 /** Writes dimensional values */
-public class Lucene60PointsWriter extends PointsWriter implements Closeable {
+public class Lucene60PointsWriter extends PointsWriter {
 
   /** Output used to write the BKD tree data file */
   protected final IndexOutput dataOut;
@@ -134,6 +133,7 @@ public class Lucene60PointsWriter extends PointsWriter implements Closeable {
               throw new IllegalStateException();
             }
 
+            @Override
             public void visit(int docID, byte[] packedValue) throws IOException {
               writer.add(packedValue, docID);
             }

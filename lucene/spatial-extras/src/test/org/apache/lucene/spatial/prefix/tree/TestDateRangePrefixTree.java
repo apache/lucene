@@ -184,7 +184,6 @@ public class TestDateRangePrefixTree extends LuceneTestCase {
 
   private void roundTrip(Calendar calOrig) throws ParseException {
     Calendar cal = (Calendar) calOrig.clone();
-    String lastString = null;
     while (true) {
       String calString;
       {
@@ -231,7 +230,6 @@ public class TestDateRangePrefixTree extends LuceneTestCase {
         if (e.getMessage().equals("Calendar underflow")) return;
         throw e;
       }
-      lastString = calString;
     }
   }
 

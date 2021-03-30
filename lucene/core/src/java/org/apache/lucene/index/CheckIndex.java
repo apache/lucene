@@ -64,8 +64,6 @@ import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.automaton.Automata;
-import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -608,6 +606,8 @@ public final class CheckIndex implements Closeable {
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
+    Sort previousIndexSort = null;
+
     for (int i = 0; i < numSegments; i++) {
       final SegmentCommitInfo info = sis.info(i);
       long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
@@ -640,7 +640,6 @@ public final class CheckIndex implements Closeable {
       int toLoseDocCount = info.info.maxDoc();
 
       SegmentReader reader = null;
-      Sort previousIndexSort = null;
 
       try {
         msg(infoStream, "    version=" + (version == null ? "3.0" : version));
@@ -1092,171 +1091,6 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
-  }
-
-  /**
-   * Visits all terms in the range minTerm (inclusive) to maxTerm (exclusive), marking all doc IDs
-   * encountered into allDocsSeen, and returning the total number of terms visited.
-   */
-  private static long getDocsFromTermRange(
-      String field,
-      int maxDoc,
-      TermsEnum termsEnum,
-      FixedBitSet docsSeen,
-      BytesRef minTerm,
-      BytesRef maxTerm,
-      boolean isIntersect)
-      throws IOException {
-    docsSeen.clear(0, docsSeen.length());
-
-    long termCount = 0;
-    PostingsEnum postingsEnum = null;
-    BytesRefBuilder lastTerm = null;
-    while (true) {
-      BytesRef term;
-
-      // Kinda messy: for intersect, we must first next(), but for "normal", we are already on our
-      // first term:
-      if (isIntersect || termCount != 0) {
-        term = termsEnum.next();
-      } else {
-        term = termsEnum.term();
-      }
-
-      if (term == null) {
-        if (isIntersect == false) {
-          throw new RuntimeException("didn't see max term field=" + field + " term=" + maxTerm);
-        }
-        // System.out.println("      terms=" + termCount);
-        return termCount;
-      }
-
-      assert term.isValid();
-
-      if (lastTerm == null) {
-        lastTerm = new BytesRefBuilder();
-        lastTerm.copyBytes(term);
-      } else {
-        if (lastTerm.get().compareTo(term) >= 0) {
-          throw new RuntimeException(
-              "terms out of order: lastTerm=" + lastTerm.get() + " term=" + term);
-        }
-        lastTerm.copyBytes(term);
-      }
-
-      // System.out.println("    term=" + term);
-
-      // Caller already ensured terms enum positioned >= minTerm:
-      if (term.compareTo(minTerm) < 0) {
-        throw new RuntimeException("saw term before min term field=" + field + " term=" + minTerm);
-      }
-
-      if (isIntersect == false) {
-        int cmp = term.compareTo(maxTerm);
-        if (cmp == 0) {
-          // Done!
-          // System.out.println("      terms=" + termCount);
-          return termCount;
-        } else if (cmp > 0) {
-          throw new RuntimeException("didn't see end term field=" + field + " term=" + maxTerm);
-        }
-      }
-
-      postingsEnum = termsEnum.postings(postingsEnum, 0);
-
-      int lastDoc = -1;
-      while (true) {
-        int doc = postingsEnum.nextDoc();
-        if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-          break;
-        }
-        if (doc <= lastDoc) {
-          throw new RuntimeException("term " + term + ": doc " + doc + " <= lastDoc " + lastDoc);
-        }
-        if (doc >= maxDoc) {
-          throw new RuntimeException("term " + term + ": doc " + doc + " >= maxDoc " + maxDoc);
-        }
-
-        // System.out.println("      doc=" + doc);
-        docsSeen.set(doc);
-
-        lastDoc = doc;
-      }
-
-      termCount++;
-    }
-  }
-
-  /**
-   * Test Terms.intersect on this range, and validates that it returns the same doc ids as using
-   * non-intersect TermsEnum. Returns true if any fake terms were seen.
-   */
-  private static boolean checkSingleTermRange(
-      String field,
-      int maxDoc,
-      Terms terms,
-      BytesRef minTerm,
-      BytesRef maxTerm,
-      FixedBitSet normalDocs,
-      FixedBitSet intersectDocs)
-      throws IOException {
-    // System.out.println("    check minTerm=" + minTerm.utf8ToString() + " maxTerm=" +
-    // maxTerm.utf8ToString());
-    assert minTerm.compareTo(maxTerm) <= 0;
-
-    TermsEnum termsEnum = terms.iterator();
-    TermsEnum.SeekStatus status = termsEnum.seekCeil(minTerm);
-    if (status != TermsEnum.SeekStatus.FOUND) {
-      throw new RuntimeException(
-          "failed to seek to existing term field=" + field + " term=" + minTerm);
-    }
-
-    // Do "dumb" iteration to visit all terms in the range:
-    long normalTermCount =
-        getDocsFromTermRange(field, maxDoc, termsEnum, normalDocs, minTerm, maxTerm, false);
-
-    // Now do the same operation using intersect:
-    long intersectTermCount =
-        getDocsFromTermRange(
-            field,
-            maxDoc,
-            terms.intersect(
-                new CompiledAutomaton(
-                    Automata.makeBinaryInterval(minTerm, true, maxTerm, false),
-                    true,
-                    false,
-                    Integer.MAX_VALUE,
-                    true),
-                null),
-            intersectDocs,
-            minTerm,
-            maxTerm,
-            true);
-
-    if (intersectTermCount > normalTermCount) {
-      throw new RuntimeException(
-          "intersect returned too many terms: field="
-              + field
-              + " intersectTermCount="
-              + intersectTermCount
-              + " normalTermCount="
-              + normalTermCount);
-    }
-
-    if (normalDocs.equals(intersectDocs) == false) {
-      throw new RuntimeException(
-          "intersect visited different docs than straight terms enum: "
-              + normalDocs.cardinality()
-              + " for straight enum, vs "
-              + intersectDocs.cardinality()
-              + " for intersect, minTerm="
-              + minTerm
-              + " maxTerm="
-              + maxTerm);
-    }
-    // System.out.println("      docs=" + normalTermCount);
-    // System.out.println("    " + intersectTermCount + " vs " + normalTermCount);
-    return intersectTermCount != normalTermCount;
   }
 
   /**
@@ -2553,7 +2387,6 @@ public final class CheckIndex implements Closeable {
   public static class VerifyPointsVisitor implements PointValues.IntersectVisitor {
     private long pointCountSeen;
     private int lastDocID = -1;
-    private final int maxDoc;
     private final FixedBitSet docsSeen;
     private final byte[] lastMinPackedValue;
     private final byte[] lastMaxPackedValue;
@@ -2570,7 +2403,6 @@ public final class CheckIndex implements Closeable {
     /** Sole constructor */
     public VerifyPointsVisitor(String fieldName, int maxDoc, PointValues values)
         throws IOException {
-      this.maxDoc = maxDoc;
       this.fieldName = fieldName;
       numDataDims = values.getNumDimensions();
       numIndexDims = values.getNumIndexDimensions();

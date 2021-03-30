@@ -22,8 +22,7 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
 /** Attribute for {@link Token#getPartOfSpeech()}. */
-public class PartOfSpeechAttributeImpl extends AttributeImpl
-    implements PartOfSpeechAttribute, Cloneable {
+public class PartOfSpeechAttributeImpl extends AttributeImpl implements PartOfSpeechAttribute {
   private Token token;
 
   @Override

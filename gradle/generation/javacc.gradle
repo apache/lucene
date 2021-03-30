@@ -95,6 +95,12 @@ def commonCleanups = { FileTree generatedFiles ->
       text = text.replace(
           "public  void setDebugStream(java.io.PrintStream ds) { debugStream = ds; }",
           "// (setDebugStream omitted).")
+      text = text.replace(
+          "public class QueryParserTokenManager ",
+          '@SuppressWarnings("unused") public class QueryParserTokenManager ')
+      text = text.replace(
+          "public class StandardSyntaxParserTokenManager ",
+          '@SuppressWarnings("unused") public class StandardSyntaxParserTokenManager ')
       return text
     })
   }
@@ -123,6 +129,15 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "final private LookaheadSuccess jj_ls =",
               "static final private LookaheadSuccess jj_ls =")
+          text = text.replace(
+              "public class QueryParser ",
+              '@SuppressWarnings({"unused","null"}) public class QueryParser ')
+          text = text.replace(
+              "final public Query TopLevelQuery(",
+              "@Override final public Query TopLevelQuery(")
+          text = text.replace(
+              "public void ReInit(CharStream ",
+              "@Override public void ReInit(CharStream ")
           return text
         })
       }
@@ -145,6 +160,9 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "new java.util.ArrayList<int[]>",
               "new java.util.ArrayList<>")
+          text = text.replace(
+              "public class QueryParser ",
+              '@SuppressWarnings({"unused","null"}) public class QueryParser ')
           return text
         })
       }
@@ -221,26 +239,13 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "Collections.<QueryNode> singletonList",
               "Collections.singletonList")
+          text = text.replace(
+              "public class StandardSyntaxParser ",
+              '@SuppressWarnings({"unused","null"}) public class StandardSyntaxParser ')
           return text
         })
       }
     }
-  }
-
-  task regenerate() {
-    description "Regenerate any generated sources"
-    group "generation"
-
-    // Run regeneration tasks.
-    dependsOn javaccParserClassic, javaccParserSurround, javaccParserFlexible
-
-    // Clean up and reformat the generated sources after generation.
-    dependsOn "tidy"
-  }
-
-  // Make sure tidy runs after generation, if they're defined.
-  tasks.matching { it.name == "tidy" }.configureEach {
-    mustRunAfter javaccParserClassic, javaccParserSurround, javaccParserFlexible
   }
 
   task javacc() {
@@ -251,6 +256,8 @@ configure(project(":lucene:queryparser")) {
     dependsOn javaccParserSurround
     dependsOn javaccParserFlexible
   }
+
+  regenerate.dependsOn javacc, tidy
 }
 
 // We always regenerate, no need to declare outputs.

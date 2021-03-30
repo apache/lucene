@@ -55,7 +55,7 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 public class Lucene87Codec extends Codec {
 
   /** Configuration option for the codec. */
-  public static enum Mode {
+  public enum Mode {
     /** Trade compression ratio for retrieval speed. */
     BEST_SPEED(Lucene87StoredFieldsFormat.Mode.BEST_SPEED, Lucene80DocValuesFormat.Mode.BEST_SPEED),
     /** Trade retrieval speed for compression ratio. */

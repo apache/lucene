@@ -45,13 +45,6 @@ public class XYZBounds implements Bounds {
   /** Maximum z */
   private Double maxZ = null;
 
-  /** Set to true if no longitude bounds can be stated */
-  private boolean noLongitudeBound = false;
-  /** Set to true if no top latitude bound can be stated */
-  private boolean noTopLatitudeBound = false;
-  /** Set to true if no bottom latitude bound can be stated */
-  private boolean noBottomLatitudeBound = false;
-
   /** Construct an empty bounds object */
   public XYZBounds() {}
 
@@ -202,6 +195,7 @@ public class XYZBounds implements Bounds {
    * @param bounds are the constraints on the plane.
    * @return updated Bounds object.
    */
+  @Override
   public Bounds addHorizontalPlane(
       final PlanetModel planetModel,
       final double latitude,
@@ -220,6 +214,7 @@ public class XYZBounds implements Bounds {
    * @param bounds are the constraints on the plane.
    * @return updated Bounds object.
    */
+  @Override
   public Bounds addVerticalPlane(
       final PlanetModel planetModel,
       final double longitude,

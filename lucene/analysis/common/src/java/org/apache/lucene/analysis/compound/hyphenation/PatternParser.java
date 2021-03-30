@@ -22,7 +22,6 @@ import javax.xml.parsers.SAXParserFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
@@ -341,24 +340,4 @@ public class PatternParser extends DefaultHandler {
       word = readToken(chars);
     }
   }
-
-  /** Returns a string of the location. */
-  private String getLocationString(SAXParseException ex) {
-    StringBuilder str = new StringBuilder();
-
-    String systemId = ex.getSystemId();
-    if (systemId != null) {
-      int index = systemId.lastIndexOf('/');
-      if (index != -1) {
-        systemId = systemId.substring(index + 1);
-      }
-      str.append(systemId);
-    }
-    str.append(':');
-    str.append(ex.getLineNumber());
-    str.append(':');
-    str.append(ex.getColumnNumber());
-
-    return str.toString();
-  } // getLocationString(SAXParseException):String
 }

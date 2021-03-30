@@ -37,8 +37,10 @@ import org.apache.lucene.util.TestUtil;
 
 /** Base test case for testing indexing and search functionality of cartesian geometry * */
 public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
+  @Override
   protected abstract ShapeType getShapeType();
 
+  @Override
   protected Object nextShape() {
     return getShapeType().nextShape();
   }
@@ -207,16 +209,19 @@ public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
   /** internal shape type for testing different shape types */
   protected enum ShapeType {
     POINT() {
+      @Override
       public XYPoint nextShape() {
         return ShapeTestUtil.nextPoint();
       }
     },
     LINE() {
+      @Override
       public XYLine nextShape() {
         return ShapeTestUtil.nextLine();
       }
     },
     POLYGON() {
+      @Override
       public XYPolygon nextShape() {
         while (true) {
           XYPolygon p = ShapeTestUtil.nextPolygon();
@@ -230,6 +235,7 @@ public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
       }
     },
     MIXED() {
+      @Override
       public Object nextShape() {
         return RandomPicks.randomFrom(random(), subList).nextShape();
       }

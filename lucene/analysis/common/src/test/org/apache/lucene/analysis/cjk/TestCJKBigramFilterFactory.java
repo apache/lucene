@@ -56,11 +56,10 @@ public class TestCJKBigramFilterFactory extends BaseTokenStreamFactoryTestCase {
 
   /** Test that bogus arguments result in exception */
   public void testBogusArguments() throws Exception {
-    IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              tokenFilterFactory("CJKBigram", "bogusArg", "bogusValue");
-            });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          tokenFilterFactory("CJKBigram", "bogusArg", "bogusValue");
+        });
   }
 }

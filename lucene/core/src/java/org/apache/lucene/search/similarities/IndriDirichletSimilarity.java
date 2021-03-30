@@ -86,6 +86,7 @@ public class IndriDirichletSimilarity extends LMSimilarity {
     return mu;
   }
 
+  @Override
   public String getName() {
     return String.format(Locale.ROOT, "IndriDirichlet(%f)", getMu());
   }

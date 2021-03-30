@@ -19,7 +19,7 @@ package org.apache.lucene.queryparser.surround.parser;
 
 
 /** Token Manager. */
-public class QueryParserTokenManager implements QueryParserConstants {
+@SuppressWarnings("unused") public class QueryParserTokenManager implements QueryParserConstants {
 
   /** Debug output. */
   // (debugStream omitted).

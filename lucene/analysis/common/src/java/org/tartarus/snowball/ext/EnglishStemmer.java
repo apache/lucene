@@ -865,6 +865,7 @@ private boolean r_postlude() {
   return true;
 }
 
+@Override
 public boolean stem() {
   lab0: {
     int v_1 = cursor;

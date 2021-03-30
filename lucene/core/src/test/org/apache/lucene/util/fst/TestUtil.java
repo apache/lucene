@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util.fst;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.util.BytesRef;
@@ -98,27 +97,5 @@ public class TestUtil extends LuceneTestCase {
           Util.toIntsRef(new BytesRef(word), new IntsRefBuilder()), outputs.getNoOutput());
     }
     return fstCompiler.compile();
-  }
-
-  private List<String> createRandomDictionary(int width, int depth) {
-    return createRandomDictionary(new ArrayList<>(), new StringBuilder(), width, depth);
-  }
-
-  private List<String> createRandomDictionary(
-      List<String> dict, StringBuilder buf, int width, int depth) {
-    char c = (char) random().nextInt(128);
-    assert width < Character.MIN_SURROGATE / 8 - 128; // avoid surrogate chars
-    int len = buf.length();
-    for (int i = 0; i < width; i++) {
-      buf.append(c);
-      if (depth > 0) {
-        createRandomDictionary(dict, buf, width, depth - 1);
-      } else {
-        dict.add(buf.toString());
-      }
-      c += random().nextInt(8);
-      buf.setLength(len);
-    }
-    return dict;
   }
 }

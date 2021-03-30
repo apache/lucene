@@ -44,7 +44,7 @@ public class TestNGramTokenizer extends BaseTokenStreamTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          NGramTokenizer tok = new NGramTokenizer(2, 1);
+          new NGramTokenizer(2, 1);
         });
   }
 

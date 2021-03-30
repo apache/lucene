@@ -15,12 +15,21 @@
  * limitations under the License.
  */
 
-def skipErrorProne = rootProject.runtimeJavaVersion > JavaVersion.VERSION_15;
-if (skipErrorProne) {
+def skipReason
+
+if (rootProject.runtimeJavaVersion > JavaVersion.VERSION_15) {
+  skipReason = "won't work with JDK ${rootProject.runtimeJavaVersion}"
+}
+
+if (!Boolean.parseBoolean(propertyOrDefault("tests.nightly", "false"))) {
+  skipReason = "skipped on non-nightly runs"
+}
+
+if (skipReason) {
   configure(rootProject) {
     task errorProneSkipped() {
       doFirst {
-        logger.warn("WARNING: errorprone disabled (won't work with JDK ${rootProject.runtimeJavaVersion})")
+        logger.warn("WARNING: errorprone disabled (${skipReason})")
       }
     }
   }
@@ -31,7 +40,7 @@ allprojects { prj ->
     // LUCENE-9650: Errorprone on master/gradle does not work with JDK-16+
     // this is a hack to keep the dependency (so that palantir's version check doesn't complain)
     // but don't include the plugin (which fails on JDK16+).
-    if (skipErrorProne) {
+    if (skipReason) {
       tasks.withType(JavaCompile) { task -> task.dependsOn ":errorProneSkipped" }
       configurations {
         errorprone

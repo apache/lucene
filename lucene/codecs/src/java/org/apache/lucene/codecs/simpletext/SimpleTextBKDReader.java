@@ -22,7 +22,6 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextPointsWriter.BLOCK_V
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
@@ -109,6 +108,7 @@ final class SimpleTextBKDReader extends PointValues implements Accountable {
     }
   }
 
+  @Override
   public void intersect(IntersectVisitor visitor) throws IOException {
     intersect(getIntersectState(visitor), 1, minPackedValue, maxPackedValue);
   }
@@ -192,59 +192,6 @@ final class SimpleTextBKDReader extends PointValues implements Accountable {
       assert br.length == packedBytesLength;
       System.arraycopy(br.bytes, br.offset, scratchPackedValue, 0, packedBytesLength);
       visitor.visit(docIDs[i], scratchPackedValue);
-    }
-  }
-
-  private void visitCompressedDocValues(
-      int[] commonPrefixLengths,
-      byte[] scratchPackedValue,
-      IndexInput in,
-      int[] docIDs,
-      int count,
-      IntersectVisitor visitor,
-      int compressedDim)
-      throws IOException {
-    // the byte at `compressedByteOffset` is compressed using run-length compression,
-    // other suffix bytes are stored verbatim
-    final int compressedByteOffset =
-        compressedDim * bytesPerDim + commonPrefixLengths[compressedDim];
-    commonPrefixLengths[compressedDim]++;
-    int i;
-    for (i = 0; i < count; ) {
-      scratchPackedValue[compressedByteOffset] = in.readByte();
-      final int runLen = Byte.toUnsignedInt(in.readByte());
-      for (int j = 0; j < runLen; ++j) {
-        for (int dim = 0; dim < numDims; dim++) {
-          int prefix = commonPrefixLengths[dim];
-          in.readBytes(scratchPackedValue, dim * bytesPerDim + prefix, bytesPerDim - prefix);
-        }
-        visitor.visit(docIDs[i + j], scratchPackedValue);
-      }
-      i += runLen;
-    }
-    if (i != count) {
-      throw new CorruptIndexException(
-          "Sub blocks do not add up to the expected count: " + count + " != " + i, in);
-    }
-  }
-
-  private int readCompressedDim(IndexInput in) throws IOException {
-    int compressedDim = in.readByte();
-    if (compressedDim < -1 || compressedDim >= numIndexDims) {
-      throw new CorruptIndexException("Got compressedDim=" + compressedDim, in);
-    }
-    return compressedDim;
-  }
-
-  private void readCommonPrefixes(
-      int[] commonPrefixLengths, byte[] scratchPackedValue, IndexInput in) throws IOException {
-    for (int dim = 0; dim < numDims; dim++) {
-      int prefix = in.readVInt();
-      commonPrefixLengths[dim] = prefix;
-      if (prefix > 0) {
-        in.readBytes(scratchPackedValue, dim * bytesPerDim, prefix);
-      }
-      // System.out.println("R: " + dim + " of " + numDims + " prefix=" + prefix);
     }
   }
 

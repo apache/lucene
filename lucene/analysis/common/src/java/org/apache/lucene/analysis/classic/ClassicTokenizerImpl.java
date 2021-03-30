@@ -22,7 +22,7 @@ package org.apache.lucene.analysis.classic;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /** This class implements the classic lucene StandardTokenizer up until 3.0 */
-@SuppressWarnings("fallthrough")
+@SuppressWarnings({"unused", "fallthrough"})
 class ClassicTokenizerImpl {
 
   /** This character denotes the end of file */

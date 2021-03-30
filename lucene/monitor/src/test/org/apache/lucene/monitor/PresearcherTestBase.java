@@ -38,6 +38,7 @@ import org.apache.lucene.util.BytesRef;
 
 public abstract class PresearcherTestBase extends MonitorTestBase {
 
+  @Override
   public Monitor newMonitor() throws IOException {
     return new Monitor(WHITESPACE, createPresearcher());
   }

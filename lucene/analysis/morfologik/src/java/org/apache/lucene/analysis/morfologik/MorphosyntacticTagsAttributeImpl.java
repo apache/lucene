@@ -27,7 +27,7 @@ import org.apache.lucene.util.AttributeReflector;
  * @see MorphosyntacticTagsAttribute
  */
 public class MorphosyntacticTagsAttributeImpl extends AttributeImpl
-    implements MorphosyntacticTagsAttribute, Cloneable {
+    implements MorphosyntacticTagsAttribute {
 
   /** Initializes this attribute with no tags */
   public MorphosyntacticTagsAttributeImpl() {}

@@ -96,7 +96,7 @@ allprojects {
              RandomPicks.randomFrom(new Random(projectSeedLong), ["US-ASCII", "ISO-8859-1", "UTF-8"])
            },
            description: "Sets the default file.encoding on test JVM.", buildOnly: true],
-          // test data
+          // Test data file used.
           [propName: 'tests.linedocsfile', value: 'europarl.lines.txt.gz', description: "Test data file path."],
           // miscellaneous; some of them very weird.
           [propName: 'tests.LUCENE_VERSION', value: baseVersion, description: "Base Lucene version."],

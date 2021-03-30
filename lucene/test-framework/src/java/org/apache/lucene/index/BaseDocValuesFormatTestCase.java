@@ -2287,7 +2287,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         if (docValues.docID() < i) {
           docValues.nextDoc();
         }
-        if (docValues != null && stringValues.length > 0) {
+        if (stringValues.length > 0) {
           assertEquals(i, docValues.docID());
           for (int j = 0; j < stringValues.length; j++) {
             assert docValues != null;

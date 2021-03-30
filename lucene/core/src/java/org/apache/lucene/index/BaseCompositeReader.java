@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -46,6 +47,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class BaseCompositeReader<R extends IndexReader> extends CompositeReader {
   private final R[] subReaders;
+  /** A comparator for sorting sub-readers */
+  protected final Comparator<R> subReadersSorter;
+
   private final int[] starts; // 1st docno for each reader
   private final int maxDoc;
   private AtomicInteger numDocs = new AtomicInteger(-1); // computed lazily
@@ -63,9 +67,15 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
    *     #getSequentialSubReaders} and used to resolve the correct subreader for docID-based
    *     methods. <b>Please note:</b> This array is <b>not</b> cloned and not protected for
    *     modification, the subclass is responsible to do this.
+   * @param subReadersSorter – a comparator for sorting sub readers. If not {@code null}, this
+   *     comparator is used to sort sub readers, before using the for resolving doc IDs.
    */
-  protected BaseCompositeReader(R[] subReaders) throws IOException {
+  protected BaseCompositeReader(R[] subReaders, Comparator<R> subReadersSorter) throws IOException {
+    if (subReadersSorter != null) {
+      Arrays.sort(subReaders, subReadersSorter);
+    }
     this.subReaders = subReaders;
+    this.subReadersSorter = subReadersSorter;
     this.subReadersList = Collections.unmodifiableList(Arrays.asList(subReaders));
     starts = new int[subReaders.length + 1]; // build starts array
     long maxDoc = 0;

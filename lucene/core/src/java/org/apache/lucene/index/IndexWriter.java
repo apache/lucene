@@ -2368,6 +2368,7 @@ public class IndexWriter
    *
    * <p>The Set is unmodifiable.
    */
+  @Override
   public synchronized Set<SegmentCommitInfo> getMergingSegments() {
     return Collections.unmodifiableSet(mergingSegments);
   }
@@ -4240,17 +4241,13 @@ public class IndexWriter
     }
 
     if (infoStream.isEnabled("IW")) {
-      if (mergedDeletesAndUpdates == null) {
-        infoStream.message("IW", "no new deletes or field updates since merge started");
-      } else {
-        String msg = mergedDeletesAndUpdates.getDelCount() - numDeletesBefore + " new deletes";
-        if (anyDVUpdates) {
-          msg += " and " + mergedDeletesAndUpdates.getNumDVUpdates() + " new field updates";
-          msg += " (" + mergedDeletesAndUpdates.ramBytesUsed.get() + ") bytes";
-        }
-        msg += " since merge started";
-        infoStream.message("IW", msg);
+      String msg = mergedDeletesAndUpdates.getDelCount() - numDeletesBefore + " new deletes";
+      if (anyDVUpdates) {
+        msg += " and " + mergedDeletesAndUpdates.getNumDVUpdates() + " new field updates";
+        msg += " (" + mergedDeletesAndUpdates.ramBytesUsed.get() + ") bytes";
       }
+      msg += " since merge started";
+      infoStream.message("IW", msg);
     }
 
     merge.info.setBufferedDeletesGen(minGen);
@@ -6271,6 +6268,7 @@ public class IndexWriter
       writer.merge(merge);
     }
 
+    @Override
     public String toString() {
       return writer.segString();
     }

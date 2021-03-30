@@ -636,26 +636,32 @@ public class TestPhraseWildcardQuery extends LuceneTestCase {
 
     static final AssertCounters NO_OP =
         new AssertCounters() {
+          @Override
           AssertCounters singleTermAnalysis(int c) {
             return this;
           }
 
+          @Override
           AssertCounters multiTermAnalysis(int c) {
             return this;
           }
 
+          @Override
           AssertCounters segmentUse(int c) {
             return this;
           }
 
+          @Override
           AssertCounters segmentSkip(int c) {
             return this;
           }
 
+          @Override
           AssertCounters queryEarlyStop(int c) {
             return this;
           }
 
+          @Override
           AssertCounters expansion(int c) {
             return this;
           }

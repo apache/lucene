@@ -46,7 +46,7 @@ package org.apache.lucene.queryparser.flexible.standard.parser;
 
 
 /** Token Manager. */
-public class StandardSyntaxParserTokenManager implements StandardSyntaxParserConstants {
+@SuppressWarnings("unused") public class StandardSyntaxParserTokenManager implements StandardSyntaxParserConstants {
 
   /** Debug output. */
   // (debugStream omitted).

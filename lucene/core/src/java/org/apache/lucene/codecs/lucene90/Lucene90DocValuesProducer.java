@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +51,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectReader;
 
 /** reader for {@link Lucene90DocValuesFormat} */
-final class Lucene90DocValuesProducer extends DocValuesProducer implements Closeable {
+final class Lucene90DocValuesProducer extends DocValuesProducer {
   private final Map<String, NumericEntry> numerics = new HashMap<>();
   private final Map<String, BinaryEntry> binaries = new HashMap<>();
   private final Map<String, SortedEntry> sorted = new HashMap<>();

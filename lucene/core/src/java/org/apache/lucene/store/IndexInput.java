@@ -37,7 +37,7 @@ import java.io.IOException;
  *
  * @see Directory
  */
-public abstract class IndexInput extends DataInput implements Cloneable, Closeable {
+public abstract class IndexInput extends DataInput implements Closeable {
 
   private final String resourceDescription;
 

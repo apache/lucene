@@ -170,7 +170,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
     final Rectangle indexedShape = ctx.getShapeFactory().rect(180, 180, -10, 10);
     final Rectangle queryShape = ctx.getShapeFactory().rect(-180, -180, -20, 20);
     final SpatialOperation operation = SpatialOperation.IsWithin;
-    final boolean match = true; // yes it is within
 
     // the rest is super.testOperation without leading assert:
 
@@ -179,7 +178,7 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
     Query query = strategy.makeQuery(new SpatialArgs(operation, queryShape));
     SearchResults got = executeQuery(query, 1);
     assert got.numFound <= 1 : "unclean test env";
-    if ((got.numFound == 1) != match) fail(operation + " I:" + indexedShape + " Q:" + queryShape);
+    if (got.numFound != 1) fail(operation + " I:" + indexedShape + " Q:" + queryShape);
     deleteAll(); // clean up after ourselves
   }
 

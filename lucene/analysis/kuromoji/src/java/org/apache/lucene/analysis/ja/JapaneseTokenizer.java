@@ -70,7 +70,7 @@ import org.apache.lucene.util.fst.FST;
 public final class JapaneseTokenizer extends Tokenizer {
 
   /** Tokenization mode: this determines how the tokenizer handles compound and unknown words. */
-  public static enum Mode {
+  public enum Mode {
     /** Ordinary segmentation: no decomposition for compounds, */
     NORMAL,
 
