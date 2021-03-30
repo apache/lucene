@@ -28,7 +28,7 @@ plugins {
   id 'com.diffplug.spotless' version "5.8.2" apply false
 }
 
-apply from: file('gradle/defaults.gradle')
+apply from: file('gradle/globals.gradle')
 
 // General metadata.
 
@@ -107,7 +107,7 @@ ext {
 // if the build file is incorrectly written and evaluates something
 // eagerly).
 
-apply from: file('gradle/generate-defaults.gradle')
+apply from: file('gradle/generation/local-settings.gradle')
 
 // Ant-compatibility layer: apply folder layout early so that
 // evaluation of other scripts doesn't need to be deferred.
@@ -115,16 +115,16 @@ apply from: file('gradle/ant-compat/folder-layout.gradle')
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
-apply from: file('gradle/defaults-java.gradle')
+apply from: file('gradle/java/javac.gradle')
 apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/testing/alternative-jdk-support.gradle')
-apply from: file('gradle/jar-manifest.gradle')
+apply from: file('gradle/java/jar-manifest.gradle')
 
 // Publishing and releasing
-apply from: file('gradle/maven/defaults-maven.gradle')
-apply from: file('gradle/releasing.gradle')
+apply from: file('gradle/publishing/defaults-maven.gradle')
+apply from: file('gradle/publishing/distribution.gradle')
 
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')
@@ -143,7 +143,6 @@ apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')
 apply from: file('gradle/validation/ecj-lint.gradle')
 apply from: file('gradle/validation/gradlew-scripts-tweaked.gradle')
-apply from: file('gradle/validation/check-broken-links.gradle')
 
 apply from: file('gradle/validation/spotless.gradle')
 
@@ -163,7 +162,7 @@ apply from: file('gradle/datasets/external-datasets.gradle')
 apply from: file('gradle/native/disable-native.gradle')
 
 // Additional development aids.
-apply from: file('gradle/maven/maven-local.gradle')
+apply from: file('gradle/publishing/maven-local.gradle')
 apply from: file('gradle/testing/per-project-summary.gradle')
 apply from: file('gradle/testing/slowest-tests-at-end.gradle')
 apply from: file('gradle/testing/failed-tests-at-end.gradle')
@@ -181,6 +180,7 @@ apply from: file('gradle/documentation/documentation.gradle')
 apply from: file('gradle/documentation/changes-to-html.gradle')
 apply from: file('gradle/documentation/markdown.gradle')
 apply from: file('gradle/documentation/render-javadoc.gradle')
+apply from: file('gradle/documentation/check-broken-links.gradle')
 
 apply from: file('gradle/hacks/gradle-archives.gradle')
 apply from: file('gradle/hacks/wipe-temp.gradle')
