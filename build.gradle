@@ -20,7 +20,7 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   id "base"
-  id "com.palantir.consistent-versions" version "1.14.0"
+  id "com.palantir.consistent-versions" version "1.28.0"
   id "org.owasp.dependencycheck" version "5.3.0"
   id 'de.thetaphi.forbiddenapis' version '3.1' apply false
   id "de.undercouch.download" version "4.1.1" apply false
@@ -166,11 +166,6 @@ apply from: file('gradle/testing/failed-tests-at-end.gradle')
 apply from: file('gradle/testing/profiling.gradle')
 apply from: file('gradle/testing/beasting.gradle')
 apply from: file('gradle/help.gradle')
-
-// Ant-compatibility layer. ALL OF THESE SHOULD BE GONE at some point. They are
-// here so that we can coexist with current ant build but they are indicative
-// of potential problems with the build conventions, dependencies, etc.
-apply from: file('gradle/ant-compat/test-classes-cross-deps.gradle')
 
 apply from: file('gradle/documentation/documentation.gradle')
 apply from: file('gradle/documentation/changes-to-html.gradle')

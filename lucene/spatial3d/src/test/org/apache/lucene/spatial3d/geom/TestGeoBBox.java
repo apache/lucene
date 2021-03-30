@@ -16,15 +16,12 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
-public class TestGeoBBox {
+public class TestGeoBBox extends LuceneTestCase {
 
   protected static final double DEGREES_TO_RADIANS = Math.PI / 180.0;
 
@@ -32,7 +29,7 @@ public class TestGeoBBox {
   public void testBBoxDegenerate() {
     GeoBBox box;
     int relationship;
-    List<GeoPoint> points = new ArrayList<GeoPoint>();
+    List<GeoPoint> points = new ArrayList<>();
     points.add(
         new GeoPoint(PlanetModel.SPHERE, -49 * DEGREES_TO_RADIANS, -176 * DEGREES_TO_RADIANS));
     points.add(

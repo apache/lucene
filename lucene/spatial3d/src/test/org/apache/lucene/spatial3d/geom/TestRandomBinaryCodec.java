@@ -17,15 +17,17 @@
 
 package org.apache.lucene.spatial3d.geom;
 
+import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
+
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Test to check Serialization */
-public class TestRandomBinaryCodec extends RandomGeo3dShapeGenerator {
-
+public class TestRandomBinaryCodec extends LuceneTestCase {
   @Test
   @Repeat(iterations = 10)
   public void testRandomPointCodec() throws IOException {
