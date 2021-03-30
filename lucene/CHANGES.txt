@@ -229,8 +229,6 @@ Bug fixes
 * LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon 
   splitting. (Ignacio Vera)
 
-* LUCENE-9870: Fix Circle2D intersectsLine t-value (distance) range clamp (Jørgen Nystad)
-
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9669: DirectoryReader#open now accepts an argument to open indices created with versions
@@ -348,6 +346,13 @@ Other
 
 * LUCENE-9836: Migrate Maven tasks to use "maven-resolver-ant-tasks"
   instead of the no longer maintained "maven-ant-tasks".  (Uwe Schindler)
+
+======================= Lucene 8.8.2 =======================
+
+Bug Fixes
+---------------------
+
+* LUCENE-9870: Fix Circle2D intersectsLine t-value (distance) range clamp (Jørgen Nystad)
   
 ======================= Lucene 8.8.1 =======================
 
