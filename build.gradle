@@ -170,7 +170,6 @@ apply from: file('gradle/help.gradle')
 // Ant-compatibility layer. ALL OF THESE SHOULD BE GONE at some point. They are
 // here so that we can coexist with current ant build but they are indicative
 // of potential problems with the build conventions, dependencies, etc.
-apply from: file('gradle/ant-compat/misc.gradle')
 apply from: file('gradle/ant-compat/test-classes-cross-deps.gradle')
 
 apply from: file('gradle/documentation/documentation.gradle')
