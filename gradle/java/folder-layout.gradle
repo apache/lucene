@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-// Adapt to custom folder convention.
+// Adapt to custom, legacy folder convention.
 allprojects {
   plugins.withType(JavaPlugin) {
     sourceSets {
@@ -32,11 +32,7 @@ allprojects {
       into sourceSets.test.java.outputDir
     }
     processTestResources.dependsOn copyTestResources
-  }
-}
 
-allprojects {
-  plugins.withType(JavaPlugin) {
     // if 'src/tools' exists, add it as a separate sourceSet.
     if (file('src/tools/java').exists()) {
       sourceSets {

@@ -109,12 +109,9 @@ ext {
 
 apply from: file('gradle/generation/local-settings.gradle')
 
-// Ant-compatibility layer: apply folder layout early so that
-// evaluation of other scripts doesn't need to be deferred.
-apply from: file('gradle/ant-compat/folder-layout.gradle')
-
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
+apply from: file('gradle/java/folder-layout.gradle')
 apply from: file('gradle/java/javac.gradle')
 apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
