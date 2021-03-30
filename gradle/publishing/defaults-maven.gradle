@@ -84,6 +84,20 @@ configure(subprojects.findAll { it.path in rootProject.published }) { prj ->
     }
   }
 
+  // Skip any test fixtures in publishing.
+  afterEvaluate {
+    configurations.matching {
+      return it.name in [
+          "testFixturesApiElements",
+          "testFixturesRuntimeElements"
+      ]
+    }.all {
+      project.components.java.withVariantsFromConfiguration(it) {
+        skip()
+      }
+    }
+  }
+
   // Do not generate gradle metadata files.
   tasks.withType(GenerateModuleMetadata) {
     enabled = false

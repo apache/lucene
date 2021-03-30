@@ -18,6 +18,7 @@ package org.apache.lucene.benchmark.byTask;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -35,6 +36,7 @@ import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
+import org.junit.Assert;
 
 /** Test very simply that perf tasks are parsed as expected. */
 @SuppressSysoutChecks(bugUrl = "very noisy")
@@ -122,9 +124,14 @@ public class TestPerfTasksParse extends LuceneTestCase {
   /** Test the parsing of example scripts * */
   @SuppressWarnings("try")
   public void testParseExamples() throws Exception {
-    // hackedy-hack-hack
+
+    // Locate the folder with *.alg resources. This is hacky - we look up
+    // one of the resources and then assume it's an accessible path.
+    URL resource = getClass().getClassLoader().getResource("addIndexes.alg");
+    Assert.assertNotNull("Couldn't locate *.alg resources?", resource);
+
     boolean foundFiles = false;
-    final Path examplesDir = Paths.get(getClass().getResource("/conf").toURI());
+    final Path examplesDir = Paths.get(resource.toURI()).getParent();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(examplesDir, "*.alg")) {
       for (Path path : stream) {
         Config config = new Config(Files.newBufferedReader(path, StandardCharsets.UTF_8));
@@ -152,10 +159,12 @@ public class TestPerfTasksParse extends LuceneTestCase {
           config.set("query.maker", MockQueryMaker.class.getName());
         }
         PerfRunData data = new PerfRunData(config);
-        try (Algorithm algo = new Algorithm(data)) {}
+        new Algorithm(data).close();
+
         foundFiles = true;
       }
     }
+
     if (!foundFiles) {
       fail("could not find any .alg files!");
     }

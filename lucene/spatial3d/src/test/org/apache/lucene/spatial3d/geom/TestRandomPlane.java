@@ -17,13 +17,16 @@
 
 package org.apache.lucene.spatial3d.geom;
 
+import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
+
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Random test for planes. */
-public class TestRandomPlane extends RandomGeo3dShapeGenerator {
+public class TestRandomPlane extends LuceneTestCase {
 
   @Test
   @Repeat(iterations = 10)

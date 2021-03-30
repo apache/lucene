@@ -17,14 +17,14 @@
 
 package org.apache.lucene.spatial3d.geom;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomDouble;
-
+import com.carrotsearch.randomizedtesting.RandomizedContext;
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.util.LuceneTestCase;
+import java.util.Random;
 
 /**
  * Class for generating random Geo3dShapes. They can be generated under given constraints which are
@@ -34,7 +34,7 @@ import org.apache.lucene.util.LuceneTestCase;
  * otherwise they are convex. Internally they can be created using GeoConvexPolygons and
  * GeoConcavePolygons.
  */
-public class RandomGeo3dShapeGenerator extends LuceneTestCase {
+public final class RandomGeo3dShapeGenerator {
 
   /* Max num of iterations to find right shape under given constrains */
   private static final int MAX_SHAPE_ITERATIONS = 20;
@@ -59,13 +59,21 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
   protected static final int CONVEX_SIMPLE_POLYGON = 500;
   protected static final int CONCAVE_SIMPLE_POLYGON = 501;
 
+  /** Static methods only. */
+  private RandomGeo3dShapeGenerator() {}
+
+  /** @return Returns a private-use random forked from the current {@link RandomizedContext}. */
+  private static Random random() {
+    return new Random(RandomizedContext.current().getRandom().nextLong());
+  }
+
   /**
    * Method that returns a random generated Planet model from the supported Planet models. currently
    * SPHERE and WGS84
    *
    * @return a random generated Planet model
    */
-  public PlanetModel randomPlanetModel() {
+  public static PlanetModel randomPlanetModel() {
     final int shapeType = random().nextInt(2);
     switch (shapeType) {
       case 0:
@@ -86,7 +94,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    *
    * @return a random generated shape code
    */
-  public int randomShapeType() {
+  public static int randomShapeType() {
     return random().nextInt(12);
   }
 
@@ -98,7 +106,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    *
    * @return a random generated polygon code
    */
-  public int randomGeoAreaShapeType() {
+  public static int randomGeoAreaShapeType() {
     return random().nextInt(12);
   }
 
@@ -107,7 +115,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    *
    * @return a random generated convex shape code
    */
-  public int randomConvexShapeType() {
+  public static int randomConvexShapeType() {
     int shapeType = randomShapeType();
     while (isConcave(shapeType)) {
       shapeType = randomShapeType();
@@ -120,7 +128,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    *
    * @return a random generated concave shape code
    */
-  public int randomConcaveShapeType() {
+  public static int randomConcaveShapeType() {
     int shapeType = randomShapeType();
     while (!isConcave(shapeType)) {
       shapeType = randomShapeType();
@@ -133,7 +141,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    *
    * @return true if the shape represented by the code is concave
    */
-  public boolean isConcave(int shapeType) {
+  public static boolean isConcave(int shapeType) {
     return (shapeType == CONCAVE_POLYGON);
   }
 
@@ -142,7 +150,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    *
    * @return an empty Constraints object
    */
-  public Constraints getEmptyConstraint() {
+  public static Constraints getEmptyConstraint() {
     return new Constraints();
   }
 
@@ -152,7 +160,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param planetModel The planet model.
    * @return The random generated GeoPoint.
    */
-  public GeoPoint randomGeoPoint(PlanetModel planetModel) {
+  public static GeoPoint randomGeoPoint(PlanetModel planetModel) {
     GeoPoint point = null;
     while (point == null) {
       point = randomGeoPoint(planetModel, getEmptyConstraint());
@@ -168,14 +176,14 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPoint.
    */
-  public GeoPoint randomGeoPoint(PlanetModel planetModel, Constraints constraints) {
+  public static GeoPoint randomGeoPoint(PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_POINT_ITERATIONS) {
-      double lat = randomDouble() * Math.PI / 2;
+      double lat = RandomizedTest.randomDouble() * Math.PI / 2;
       if (random().nextBoolean()) {
         lat = (-1) * lat;
       }
-      double lon = randomDouble() * Math.PI;
+      double lon = RandomizedTest.randomDouble() * Math.PI;
       if (random().nextBoolean()) {
         lon = (-1) * lon;
       }
@@ -195,7 +203,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param planetModel The planet model.
    * @return The random generated GeoAreaShape.
    */
-  public GeoAreaShape randomGeoAreaShape(int shapeType, PlanetModel planetModel) {
+  public static GeoAreaShape randomGeoAreaShape(int shapeType, PlanetModel planetModel) {
     GeoAreaShape geoAreaShape = null;
     while (geoAreaShape == null) {
       geoAreaShape = randomGeoAreaShape(shapeType, planetModel, new Constraints());
@@ -212,7 +220,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoAreaShape.
    */
-  public GeoAreaShape randomGeoAreaShape(
+  public static GeoAreaShape randomGeoAreaShape(
       int shapeType, PlanetModel planetModel, Constraints constraints) {
     return (GeoAreaShape) randomGeoShape(shapeType, planetModel, constraints);
   }
@@ -224,7 +232,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param planetModel The planet model.
    * @return The random generated GeoShape.
    */
-  public GeoShape randomGeoShape(int shapeType, PlanetModel planetModel) {
+  public static GeoShape randomGeoShape(int shapeType, PlanetModel planetModel) {
     GeoShape geoShape = null;
     while (geoShape == null) {
       geoShape = randomGeoShape(shapeType, planetModel, new Constraints());
@@ -241,7 +249,8 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoShape.
    */
-  public GeoShape randomGeoShape(int shapeType, PlanetModel planetModel, Constraints constraints) {
+  public static GeoShape randomGeoShape(
+      int shapeType, PlanetModel planetModel, Constraints constraints) {
     switch (shapeType) {
       case CONVEX_POLYGON:
         {
@@ -312,7 +321,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPointShape.
    */
-  private GeoPointShape point(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPointShape point(PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
       iterations++;
@@ -344,7 +353,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoCircle.
    */
-  private GeoCircle circle(PlanetModel planetModel, Constraints constraints) {
+  private static GeoCircle circle(PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
       iterations++;
@@ -377,7 +386,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoCircle.
    */
-  private GeoCircle exactCircle(PlanetModel planetModel, Constraints constraints) {
+  private static GeoCircle exactCircle(PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
       iterations++;
@@ -411,7 +420,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoBBox.
    */
-  private GeoBBox rectangle(PlanetModel planetModel, Constraints constraints) {
+  private static GeoBBox rectangle(PlanetModel planetModel, Constraints constraints) {
 
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
@@ -451,7 +460,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated degenerated GeoPath.
    */
-  private GeoPath line(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPath line(PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
       iterations++;
@@ -483,7 +492,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPath.
    */
-  private GeoPath path(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPath path(PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
       iterations++;
@@ -516,7 +525,8 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoCompositeMembershipShape.
    */
-  private GeoCompositeAreaShape collection(PlanetModel planetModel, Constraints constraints) {
+  private static GeoCompositeAreaShape collection(
+      PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
       iterations++;
@@ -544,7 +554,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPolygon.
    */
-  private GeoPolygon convexPolygon(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPolygon convexPolygon(PlanetModel planetModel, Constraints constraints) {
     int vertexCount = random().nextInt(4) + 3;
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
@@ -575,7 +585,8 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPolygon.
    */
-  private GeoPolygon convexPolygonWithHoles(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPolygon convexPolygonWithHoles(
+      PlanetModel planetModel, Constraints constraints) {
     int vertexCount = random().nextInt(4) + 3;
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
@@ -633,7 +644,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param pointConstraints The given constraints that a point must comply.
    * @return The random generated GeoPolygon.
    */
-  private List<GeoPolygon> concavePolygonHoles(
+  private static List<GeoPolygon> concavePolygonHoles(
       PlanetModel planetModel,
       GeoPolygon polygon,
       Constraints holeConstraints,
@@ -681,7 +692,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPolygon.
    */
-  private GeoPolygon concavePolygon(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPolygon concavePolygon(PlanetModel planetModel, Constraints constraints) {
 
     int vertexCount = random().nextInt(4) + 3;
     int iterations = 0;
@@ -715,7 +726,8 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPolygon.
    */
-  private GeoPolygon concavePolygonWithHoles(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPolygon concavePolygonWithHoles(
+      PlanetModel planetModel, Constraints constraints) {
     int vertexCount = random().nextInt(4) + 3;
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
@@ -770,7 +782,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPolygon.
    */
-  private GeoPolygon complexPolygon(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPolygon complexPolygon(PlanetModel planetModel, Constraints constraints) {
     int polygonsCount = random().nextInt(2) + 1;
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
@@ -807,7 +819,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPolygon.
    */
-  private GeoPolygon simpleConvexPolygon(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPolygon simpleConvexPolygon(PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
       iterations++;
@@ -838,7 +850,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated GeoPolygon.
    */
-  private GeoPolygon concaveSimplePolygon(PlanetModel planetModel, Constraints constraints) {
+  private static GeoPolygon concaveSimplePolygon(PlanetModel planetModel, Constraints constraints) {
     int iterations = 0;
     while (iterations < MAX_SHAPE_ITERATIONS) {
       iterations++;
@@ -870,7 +882,8 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param constraints The given constraints.
    * @return The random generated List of GeoPoints.
    */
-  private List<GeoPoint> points(int count, PlanetModel planetModel, Constraints constraints) {
+  private static List<GeoPoint> points(
+      int count, PlanetModel planetModel, Constraints constraints) {
     List<GeoPoint> geoPoints = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
       GeoPoint point = randomGeoPoint(planetModel, constraints);
@@ -889,7 +902,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param shape The polygon to check.
    * @return True if the polygon contains antipodal points.
    */
-  private boolean isConcave(PlanetModel planetModel, GeoPolygon shape) {
+  private static boolean isConcave(PlanetModel planetModel, GeoPolygon shape) {
     return (shape.isWithin(planetModel.NORTH_POLE) && shape.isWithin(planetModel.SOUTH_POLE))
         || (shape.isWithin(planetModel.MAX_X_POLE) && shape.isWithin(planetModel.MIN_X_POLE))
         || (shape.isWithin(planetModel.MAX_Y_POLE) && shape.isWithin(planetModel.MIN_Y_POLE));
@@ -903,7 +916,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param shape The polygon to check.
    * @return True if the polygon dies not contains antipodal points.
    */
-  private boolean isConvex(PlanetModel planetModel, GeoPolygon shape) {
+  private static boolean isConvex(PlanetModel planetModel, GeoPolygon shape) {
     return !isConcave(planetModel, shape);
   }
 
@@ -912,8 +925,8 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    *
    * @return the cutoff angle.
    */
-  private double randomCutoffAngle() {
-    return randomDouble() * Math.PI;
+  private static double randomCutoffAngle() {
+    return RandomizedTest.randomDouble() * Math.PI;
   }
 
   /**
@@ -922,7 +935,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * @param points The points to order.
    * @return The list of ordered points anti-clockwise.
    */
-  protected List<GeoPoint> orderPoints(List<GeoPoint> points) {
+  protected static List<GeoPoint> orderPoints(List<GeoPoint> points) {
     double x = 0;
     double y = 0;
     double z = 0;
@@ -964,7 +977,7 @@ public class RandomGeo3dShapeGenerator extends LuceneTestCase {
    * Class that holds the constraints that are given to build shapes. It consists in a list of
    * GeoAreaShapes and relationships the new shape needs to satisfy.
    */
-  class Constraints extends HashMap<GeoAreaShape, Integer> {
+  static class Constraints extends HashMap<GeoAreaShape, Integer> {
 
     /**
      * Check if the shape is valid under the constraints.

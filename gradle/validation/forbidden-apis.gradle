@@ -69,10 +69,12 @@ allprojects { prj ->
       suppressAnnotations += [
           "**.SuppressForbidden"
       ]
+
+      doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
     }
 
     // Configure defaults for sourceSets.test
-    forbiddenApisTest {
+    tasks.matching { it.name in ["forbiddenApisTest", "forbiddenApisTestFixtures"] }.all {
       bundledSignatures += [
           'jdk-unsafe',
           'jdk-deprecated',
@@ -87,6 +89,12 @@ allprojects { prj ->
       suppressAnnotations += [
           "**.SuppressForbidden"
       ]
+
+      if (it.name == "forbiddenApisTestFixtures") {
+        doFirst dynamicSignatures.curry(configurations.testFixturesCompileClasspath, "lucene")
+      } else {
+        doFirst dynamicSignatures.curry(configurations.testCompileClasspath, "lucene")
+      }
     }
 
     // Configure defaults for sourceSets.tools (if present).
@@ -103,7 +111,19 @@ allprojects { prj ->
       ]
 
       doFirst dynamicSignatures.curry(configurations.toolsCompileClasspath, "lucene")
+
       inputs.dir(file(resources))
+    }
+
+    // We rely on resolved configurations to compute the relevant set of rule
+    // files for forbiddenApis. Since we don't want to resolve these configurations until
+    // the task is executed, we can't really use them as task inputs properly. This is a
+    // chicken-and-egg problem.
+    //
+    // This is the simplest workaround possible: just point at all the rule files and indicate
+    // them as inputs. This way if a rule is modified, checks will be reapplied.
+    configure(tasks.matching { it.name.startsWith("forbiddenApis") }) { task ->
+      task.inputs.dir(file(resources))
     }
 
     // Disable sysout signatures for these projects.
@@ -115,25 +135,6 @@ allprojects { prj ->
       forbiddenApisMain.bundledSignatures -= [
           'jdk-system-out'
       ]
-    }
-
-    forbiddenApisMain {
-      doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
-    }
-
-    forbiddenApisTest {
-      doFirst dynamicSignatures.curry(configurations.testCompileClasspath, "lucene")
-    }
-
-    // We rely on resolved configurations to compute the relevant set of rule
-    // files for forbiddenApis. Since we don't want to resolve these configurations until
-    // the task is executed, we can't really use them as task inputs properly. This is a
-    // chicken-and-egg problem.
-    //
-    // This is the simplest workaround possible: just point at all the rule files and indicate
-    // them as inputs. This way if a rule is modified, checks will be reapplied.
-    configure([forbiddenApisMain, forbiddenApisTest]) { task ->
-      task.inputs.dir(file(resources))
     }
   })
 }

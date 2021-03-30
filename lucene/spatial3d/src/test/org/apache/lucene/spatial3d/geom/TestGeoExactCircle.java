@@ -17,11 +17,14 @@
 
 package org.apache.lucene.spatial3d.geom;
 
+import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
+
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Tests for GeoExactCircle. */
-public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
+public class TestGeoExactCircle extends LuceneTestCase {
 
   @Test
   public void testExactCircle() {
@@ -78,8 +81,7 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
   @Repeat(iterations = 100)
   public void RandomPointBearingWGS84Test() {
     PlanetModel planetModel = PlanetModel.WGS84;
-    RandomGeo3dShapeGenerator generator = new RandomGeo3dShapeGenerator();
-    GeoPoint center = generator.randomGeoPoint(planetModel);
+    GeoPoint center = randomGeoPoint(planetModel);
     double radius = random().nextDouble() * Math.PI;
     checkBearingPoint(planetModel, center, radius, 0);
     checkBearingPoint(planetModel, center, radius, 0.5 * Math.PI);
@@ -197,7 +199,8 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
   @Repeat(iterations = 100)
   public void testRandomLUCENE8054() {
     PlanetModel planetModel = randomPlanetModel();
-    GeoCircle circle1 = (GeoCircle) randomGeoAreaShape(EXACT_CIRCLE, planetModel);
+    GeoCircle circle1 =
+        (GeoCircle) randomGeoAreaShape(RandomGeo3dShapeGenerator.EXACT_CIRCLE, planetModel);
     // new radius, a bit smaller than the generated one!
     double radius = circle1.getRadius() * (1 - 0.01 * random().nextDouble());
     // circle with same center and new radius

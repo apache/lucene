@@ -15,36 +15,38 @@
  * limitations under the License.
  */
 
-configure(rootProject) {
-  task checkBrokenLinks {
-    group 'Verification'
-    description 'Check broken links in the entire documentation'
-
-    dependsOn ':lucene:documentation:checkBrokenLinks'
-  }
-}
+def resources = scriptResources(buildscript)
 
 configure(project(':lucene:documentation')) {
-  task checkBrokenLinks(type: CheckBrokenLinksTask, 'dependsOn': 'documentation')
+  task checkBrokenLinks(type: CheckBrokenLinksTask) {
+    group 'Verification'
+    description 'Check broken links in the entire documentation'
+    dependsOn 'documentation'
+
+    validationScript = file("${resources}/checkJavadocLinks.py")
+    docsDir.fileProvider(provider { -> file(project.docroot) })
+    output = project.file("${buildDir}/check-broken-links-output.txt")
+  }
+
   check.dependsOn checkBrokenLinks
 }
 
 class CheckBrokenLinksTask extends DefaultTask {
-
   // wraps input directory location in DirectoryProperty so as to lazily evaluate 'docroot' property
   // (see gradle/documentation/documentation.gradle)
   @InputDirectory
   final DirectoryProperty docsDir = project.objects.directoryProperty()
-    .fileProvider(project.providers.provider { project.docroot })
 
   @InputFile
-  File script = project.rootProject.file("dev-tools/scripts/checkJavadocLinks.py")
+  File validationScript
+
+  @OutputFile
+  File output
 
   @TaskAction
   def check() {
-    def outputFile = project.file("${getTemporaryDir()}/check-broken-links-output.txt")
     def result
-    outputFile.withOutputStream { output ->
+    output.withOutputStream { output ->
       result = project.exec {
         executable project.externalTool("python3")
         ignoreExitValue = true
@@ -52,14 +54,14 @@ class CheckBrokenLinksTask extends DefaultTask {
         errorOutput = output
         args = [
           "-B",
-          script.absolutePath,
+          validationScript.absolutePath,
           docsDir.get().getAsFile()
         ]
       }
     }
 
     if (result.getExitValue() != 0) {
-      throw new GradleException("Broken links check failed. Command output at: ${outputFile}")
+      throw new GradleException("Broken links check failed. Command output at: ${output}")
     }
   }
 }
