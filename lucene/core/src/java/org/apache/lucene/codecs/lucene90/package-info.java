@@ -141,7 +141,7 @@
  * <p>Each segment index maintains the following:
  *
  * <ul>
- *   <li>{@link org.apache.lucene.codecs.lucene86.Lucene86SegmentInfoFormat Segment info}. This
+ *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90SegmentInfoFormat Segment info}. This
  *       contains metadata about a segment, such as the number of documents, what files it uses, and
  *       information about how the segment is sorted
  *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90FieldInfosFormat Field names}. This
@@ -229,7 +229,7 @@
  * file.</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene86.Lucene86SegmentInfoFormat Segment Info}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90SegmentInfoFormat Segment Info}</td>
  * <td>.si</td>
  * <td>Stores metadata about a segment</td>
  * </tr>
