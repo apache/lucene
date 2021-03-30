@@ -205,8 +205,6 @@ Improvements
 * LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
   (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
 
-* LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
-
 Bug fixes
 
 
@@ -314,6 +312,8 @@ Improvements
 
 * LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
   (Jaison Bi via Bruno Roustant)
+
+* LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
 
 Optimizations
 ---------------------
