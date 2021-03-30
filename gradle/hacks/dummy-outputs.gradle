@@ -1,5 +1,3 @@
-import java.nio.charset.StandardCharsets
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,27 +15,27 @@ import java.nio.charset.StandardCharsets
  * limitations under the License.
  */
 
-// This ensures 'gradlew*' scripts contain the manual fix so that they
-// don't fork a daemon subprocess on the initial run.
+// LUCENE-9505: utility function that sets up dummy outputs for a task so that
+// clean[TaskName] works and allows selective re-runs.
 
-configure(rootProject) {
-  task gradlewScriptsTweaked() { task ->
-    def scripts = [
-        file("gradlew"),
-        file("gradlew.bat")
-    ]
-
-    inputs.files(scripts)
-
-    doFirst {
-      scripts.each { file ->
-        def content = new String(file.readBytes(), StandardCharsets.US_ASCII)
-        if (content.indexOf("Don't fork a daemon mode on initial run that generates local defaults") < 0) {
-          throw new GradleException("Launch script ${file} does not have a manual daemon tweak (see LUCENE-9232).")
-        }
-      }
+def setupDummyOutputs = { Task task ->
+  File dummyOutput = file("${task.project.buildDir}/tasks/${task.name}/dummy-output.txt")
+  task.outputs.file(dummyOutput)
+  task.doLast {
+    if (!dummyOutput.exists()) {
+      dummyOutput.createNewFile()
     }
   }
+}
 
-  check.dependsOn gradlewScriptsTweaked
+allprojects {
+  tasks.matching {
+    it.name.startsWith("ecjLint") ||
+    it.name in [
+        "gradlewScriptsTweaked",
+        "validateSourcePatterns"
+    ] }.all { Task task ->
+    task.logger.info("Setting up ${task.path} as no-output.")
+    setupDummyOutputs(task)
+  }
 }

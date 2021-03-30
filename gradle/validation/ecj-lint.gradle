@@ -47,9 +47,6 @@ allprojects {
         // The inputs are all source files from the sourceSet.
         inputs.files sourceSet.allSource.asFileTree
 
-        // This task has no proper outputs.
-        setupDummyOutputs(task)
-
         // We create a task for all source sets but ignore those
         // that don't have any Java source directories.
         enabled = !srcDirs.isEmpty()
