@@ -280,6 +280,8 @@ Other
 
 * LUCENE-9822: Add assertion to PFOR exception encoding, documenting the BLOCK_SIZE assumption. (Greg Miller)
 
+* LUCENE-9883: Turn on ecj missingEnumCaseDespiteDefault setting. (Zach Chen)
+
 ======================= Lucene 8.9.0 =======================
 
 API Changes
@@ -1061,8 +1063,6 @@ Build
 * Upgrade forbiddenapis to version 2.7; upgrade Groovy to 2.4.17.  (Uwe Schindler)
 
 * LUCENE-9041: Upgrade ecj to 3.19.0 to fix sporadic precommit javadoc issues (Kevin Risden)
-
-* LUCENE-9883: Turn on ecj missingEnumCaseDespiteDefault setting. (Zach Chen)
 
 ======================= Lucene 8.3.1 =======================
 
