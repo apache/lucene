@@ -60,14 +60,14 @@ public class Lucene86PointsWriter extends PointsWriter {
         IndexFileNames.segmentFileName(
             writeState.segmentInfo.name,
             writeState.segmentSuffix,
-            Lucene86RWPointsFormat.DATA_EXTENSION);
+            Lucene86PointsFormat.DATA_EXTENSION);
     dataOut = writeState.directory.createOutput(dataFileName, writeState.context);
     boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
           dataOut,
-          Lucene86RWPointsFormat.DATA_CODEC_NAME,
-          Lucene86RWPointsFormat.VERSION_CURRENT,
+          Lucene86PointsFormat.DATA_CODEC_NAME,
+          Lucene86PointsFormat.VERSION_CURRENT,
           writeState.segmentInfo.getId(),
           writeState.segmentSuffix);
 
@@ -75,12 +75,12 @@ public class Lucene86PointsWriter extends PointsWriter {
           IndexFileNames.segmentFileName(
               writeState.segmentInfo.name,
               writeState.segmentSuffix,
-              Lucene86RWPointsFormat.META_EXTENSION);
+              Lucene86PointsFormat.META_EXTENSION);
       metaOut = writeState.directory.createOutput(metaFileName, writeState.context);
       CodecUtil.writeIndexHeader(
           metaOut,
-          Lucene86RWPointsFormat.META_CODEC_NAME,
-          Lucene86RWPointsFormat.VERSION_CURRENT,
+          Lucene86PointsFormat.META_CODEC_NAME,
+          Lucene86PointsFormat.VERSION_CURRENT,
           writeState.segmentInfo.getId(),
           writeState.segmentSuffix);
 
@@ -88,12 +88,12 @@ public class Lucene86PointsWriter extends PointsWriter {
           IndexFileNames.segmentFileName(
               writeState.segmentInfo.name,
               writeState.segmentSuffix,
-              Lucene86RWPointsFormat.INDEX_EXTENSION);
+              Lucene86PointsFormat.INDEX_EXTENSION);
       indexOut = writeState.directory.createOutput(indexFileName, writeState.context);
       CodecUtil.writeIndexHeader(
           indexOut,
-          Lucene86RWPointsFormat.INDEX_CODEC_NAME,
-          Lucene86RWPointsFormat.VERSION_CURRENT,
+          Lucene86PointsFormat.INDEX_CODEC_NAME,
+          Lucene86PointsFormat.VERSION_CURRENT,
           writeState.segmentInfo.getId(),
           writeState.segmentSuffix);
 
