@@ -16,6 +16,13 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
+import static org.apache.lucene.codecs.simpletext.SimpleTextPointsWriter.BLOCK_COUNT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextPointsWriter.BLOCK_DOC_ID;
+import static org.apache.lucene.codecs.simpletext.SimpleTextPointsWriter.BLOCK_VALUE;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
@@ -25,14 +32,6 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDPointValues;
 import org.apache.lucene.util.bkd.BKDReader;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-
-import static org.apache.lucene.codecs.simpletext.SimpleTextPointsWriter.BLOCK_COUNT;
-import static org.apache.lucene.codecs.simpletext.SimpleTextPointsWriter.BLOCK_DOC_ID;
-import static org.apache.lucene.codecs.simpletext.SimpleTextPointsWriter.BLOCK_VALUE;
 
 /** Forked from {@link BKDPointValues} and simplified/specialized for SimpleText's usage */
 final class SimpleTextBKDReader implements BKDReader {
@@ -143,10 +142,10 @@ final class SimpleTextBKDReader implements BKDReader {
       // with 5 leaves you need a depth=4 tree:
       return MathUtil.log(numLeaves, 2) + 2;
     }
-    
+
     @Override
     public BKDReader.IndexTree clone() {
-      IndexTree index =  new IndexTree(nodeID, level, minPackedValue, maxPackedValue);
+      IndexTree index = new IndexTree(nodeID, level, minPackedValue, maxPackedValue);
       if (isLeafNode() == false) {
         // copy node data
         index.splitDims[level] = splitDims[level];
@@ -166,28 +165,28 @@ final class SimpleTextBKDReader implements BKDReader {
 
     private void pushLeft() {
       int address = nodeID * bytesPerIndexEntry;
-     // final int splitDimPos;
+      // final int splitDimPos;
       if (config.numIndexDims == 1) {
         splitDims[level] = 0;
       } else {
         splitDims[level] = (splitPackedValues[address++] & 0xff);
       }
-      final int splitDimPos = splitDims[level] * config.bytesPerDim; 
+      final int splitDimPos = splitDims[level] * config.bytesPerDim;
       if (splitDimValueStack[level] == null) {
         splitDimValueStack[level] = new byte[config.bytesPerDim];
       }
       // save the dimension we are going to change
       System.arraycopy(
-              maxPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
+          maxPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
       assert Arrays.compareUnsigned(
-              maxPackedValue,
-              splitDimPos,
-              splitDimPos + config.bytesPerDim,
-              splitPackedValues,
-              address,
-              address + config.bytesPerDim)
+                  maxPackedValue,
+                  splitDimPos,
+                  splitDimPos + config.bytesPerDim,
+                  splitPackedValues,
+                  address,
+                  address + config.bytesPerDim)
               >= 0
-              : "config.bytesPerDim="
+          : "config.bytesPerDim="
               + config.bytesPerDim
               + " splitDim="
               + splitDims[level]
@@ -198,12 +197,7 @@ final class SimpleTextBKDReader implements BKDReader {
       nodeID *= 2;
       level++;
       // add the split dim value:
-      System.arraycopy(
-              splitPackedValues,
-              address,
-              maxPackedValue,
-              splitDimPos,
-              config.bytesPerDim);
+      System.arraycopy(splitPackedValues, address, maxPackedValue, splitDimPos, config.bytesPerDim);
     }
 
     @Override
@@ -228,16 +222,16 @@ final class SimpleTextBKDReader implements BKDReader {
       assert splitDimValueStack[level] != null;
       // save the dimension we are going to change
       System.arraycopy(
-              minPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
+          minPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
       assert Arrays.compareUnsigned(
-              minPackedValue,
-              splitDimPos,
-              splitDimPos + config.bytesPerDim,
-              splitPackedValues,
-              address,
-              address + config.bytesPerDim)
+                  minPackedValue,
+                  splitDimPos,
+                  splitDimPos + config.bytesPerDim,
+                  splitPackedValues,
+                  address,
+                  address + config.bytesPerDim)
               <= 0
-              : "config.bytesPerDim="
+          : "config.bytesPerDim="
               + config.bytesPerDim
               + " splitDim="
               + splitDims[level]
@@ -248,12 +242,7 @@ final class SimpleTextBKDReader implements BKDReader {
       nodeID = 2 * nodeID + 1;
       level++;
       // add the split dim value:
-      System.arraycopy(
-              splitPackedValues,
-              address,
-              minPackedValue,
-              splitDimPos,
-              config.bytesPerDim);
+      System.arraycopy(splitPackedValues, address, minPackedValue, splitDimPos, config.bytesPerDim);
     }
 
     @Override
@@ -271,19 +260,19 @@ final class SimpleTextBKDReader implements BKDReader {
       // restore the split dimension
       if (isLeft) {
         System.arraycopy(
-                splitDimValueStack[level],
-                0,
-                maxPackedValue,
-                splitDims[level] * config.bytesPerDim,
-                config.bytesPerDim);
+            splitDimValueStack[level],
+            0,
+            maxPackedValue,
+            splitDims[level] * config.bytesPerDim,
+            config.bytesPerDim);
       } else {
 
         System.arraycopy(
-                splitDimValueStack[level],
-                0,
-                minPackedValue,
-                splitDims[level] * config.bytesPerDim,
-                config.bytesPerDim);
+            splitDimValueStack[level],
+            0,
+            minPackedValue,
+            splitDims[level] * config.bytesPerDim,
+            config.bytesPerDim);
       }
     }
 
@@ -372,7 +361,7 @@ final class SimpleTextBKDReader implements BKDReader {
 
     private String stripPrefix(BytesRefBuilder scratch, BytesRef prefix) {
       return new String(
-              scratch.bytes(), prefix.length, scratch.length() - prefix.length, StandardCharsets.UTF_8);
+          scratch.bytes(), prefix.length, scratch.length() - prefix.length, StandardCharsets.UTF_8);
     }
 
     private boolean startsWith(BytesRefBuilder scratch, BytesRef prefix) {
