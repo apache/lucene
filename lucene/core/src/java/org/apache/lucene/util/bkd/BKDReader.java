@@ -17,146 +17,71 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValues.IntersectVisitor;
 
 /**
- * A {@link PointValues} wrapper for {@link BKDIndexInput} to handle intersections.
+ * Abstraction of a block KD-tree that contains multi-dimensional points in byte[] space.
  *
- * @lucene.experimental
+ * @lucene.internal
  */
-public final class BKDReader extends PointValues {
+public interface BKDReader {
 
-  final BKDIndexInput in;
+  /** BKD tree parameters */
+  BKDConfig getConfig();
 
-  /** Sole constructor */
-  public BKDReader(BKDIndexInput in) throws IOException {
-    this.in = in;
-  }
+  /** min packed value */
+  byte[] getMinPackedValue();
 
-  /** Create a new {@link BKDIndexInput.IndexTree} */
-  public BKDIndexInput.IndexTree getIndexTree() {
-    return in.getIndexTree();
-  }
+  /** max packed value */
+  byte[] getMaxPackedValue();
 
-  @Override
-  public void intersect(IntersectVisitor visitor) throws IOException {
-    final BKDIndexInput.IndexTree indexTree = in.getIndexTree();
-    intersect(visitor, indexTree);
-    assert indexTree.moveToParent() == false;
-  }
+  /** Total number of points */
+  long getPointCount();
 
-  @Override
-  public long estimatePointCount(IntersectVisitor visitor) {
-    final BKDIndexInput.IndexTree indexTree = in.getIndexTree();
-    final long count = estimatePointCount(visitor, indexTree);
-    assert indexTree.moveToParent() == false;
-    return count;
-  }
+  /** Total number of documents */
+  int getDocCount();
 
-  /** Fast path: this is called when the query box fully encompasses all cells under this node. */
-  private void addAll(IntersectVisitor visitor, BKDIndexInput.IndexTree index, boolean grown)
-      throws IOException {
-    // System.out.println("R: addAll nodeID=" + nodeID);
+  /** Create a new {@link IndexTree} to navigate the index */
+  IndexTree getIndexTree();
 
-    if (grown == false) {
-      final long maxPointCount = index.size();
-      if (maxPointCount
-          <= Integer.MAX_VALUE) { // could be >MAX_VALUE if there are more than 2B points in total
-        visitor.grow((int) maxPointCount);
-        grown = true;
-      }
-    }
-    if (index.moveToChild()) {
-      addAll(visitor, index, grown);
-      while (index.moveToSibling()) {
-        addAll(visitor, index, grown);
-      }
-      index.moveToParent();
-    } else {
-      assert grown;
-      // TODO: we can assert that the first value here in fact matches what the index claimed?
-      index.visitDocIDs(visitor);
-    }
-  }
+  /** Basic operations to read the BKD tree. */
+  interface IndexTree extends Cloneable {
 
-  private void intersect(IntersectVisitor visitor, BKDIndexInput.IndexTree index)
-      throws IOException {
-    Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
-    if (r == Relation.CELL_OUTSIDE_QUERY) {
-      // This cell is fully outside of the query shape: stop recursing
-    } else if (r == Relation.CELL_INSIDE_QUERY) {
-      // This cell is fully inside of the query shape: recursively add all points in this cell
-      // without filtering
-      addAll(visitor, index, false);
-      // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
-      // through and do full filtering:
-    } else if (index.moveToChild()) {
-      intersect(visitor, index);
-      while (index.moveToSibling()) {
-        intersect(visitor, index);
-      }
-      index.moveToParent();
-    } else {
-      // TODO: we can assert that the first value here in fact matches what the index claimed?
-      // Leaf node; scan and filter all points in this block:
-      index.visitDocValues(visitor);
-    }
-  }
+    /** Clone, the current node becomes the root of the new tree. */
+    IndexTree clone();
 
-  private long estimatePointCount(IntersectVisitor visitor, BKDIndexInput.IndexTree index) {
+    /**
+     * Move to the first child node and return {@code true} upon success. Returns {@code false} for
+     * leaf nodes and {@code true} otherwise. Should not be called if the current node has already
+     * called this method.
+     */
+    boolean moveToChild();
 
-    Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
+    /**
+     * Move to the next sibling node and return {@code true} upon success. Returns {@code false} if
+     * the current node has no more siblings.
+     */
+    boolean moveToSibling();
 
-    if (r == Relation.CELL_OUTSIDE_QUERY) {
-      // This cell is fully outside of the query shape: stop recursing
-      return 0L;
-    } else if (r == Relation.CELL_INSIDE_QUERY) {
-      return index.size();
-    } else if (index.moveToChild()) {
-      long cost = estimatePointCount(visitor, index);
-      while (index.moveToSibling()) {
-        cost += estimatePointCount(visitor, index);
-      }
-      index.moveToParent();
-      return cost;
-    } else {
-      // Assume half the points matched
-      return (in.getConfig().maxPointsInLeafNode + 1) / 2;
-    }
-  }
+    /**
+     * Move to the parent node and return {@code true} upon success. Returns {@code false} for the
+     * root node and {@code true} otherwise.
+     */
+    boolean moveToParent();
 
-  @Override
-  public byte[] getMinPackedValue() {
-    return in.getMinPackedValue().clone();
-  }
+    /** Return the minimum packed value of the current node. */
+    byte[] getMinPackedValue();
 
-  @Override
-  public byte[] getMaxPackedValue() {
-    return in.getMaxPackedValue().clone();
-  }
+    /** Return the maximum packed value of the current node. */
+    byte[] getMaxPackedValue();
 
-  @Override
-  public int getNumDimensions() {
-    return in.getConfig().numDims;
-  }
+    /** Return the number of points below the current node. */
+    long size();
 
-  @Override
-  public int getNumIndexDimensions() {
-    return in.getConfig().numIndexDims;
-  }
+    /** Visit the docs of the current node. Only valid if moveToChild() is false. */
+    void visitDocIDs(IntersectVisitor visitor) throws IOException;
 
-  @Override
-  public int getBytesPerDimension() {
-    return in.getConfig().bytesPerDim;
-  }
-
-  @Override
-  public long size() {
-    return in.getPointCount();
-  }
-
-  @Override
-  public int getDocCount() {
-    return in.getDocCount();
+    /** Visit the values of the current node. Only valid if moveToChild() is false. */
+    void visitDocValues(IntersectVisitor visitor) throws IOException;
   }
 }

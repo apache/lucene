@@ -244,7 +244,7 @@ public class BKDWriter implements Closeable {
   }
 
   private static class MergeReader {
-    private final BKDIndexInput.LeafIterator leafIterator;
+    private final BKDReader.IndexTree indexTree;
     private final BKDConfig config;
     private final MergeState.DocMap docMap;
     private final MergeIntersectsVisitor mergeIntersectsVisitor;
@@ -255,10 +255,13 @@ public class BKDWriter implements Closeable {
     /** Current packed value */
     public final byte[] packedValue;
 
-    public MergeReader(BKDReader bkd, MergeState.DocMap docMap) throws IOException {
+    public MergeReader(BKDPointValues bkd, MergeState.DocMap docMap) throws IOException {
       this.config = bkd.in.getConfig();
-      this.leafIterator = bkd.in.getLeafTreeIterator();
+      this.indexTree = bkd.in.getIndexTree();
       this.mergeIntersectsVisitor = new MergeIntersectsVisitor(config);
+      // move to first child of the tree and collect docs
+      while (indexTree.moveToChild()) {}
+      indexTree.visitDocValues(mergeIntersectsVisitor);
       this.docMap = docMap;
       this.packedValue = new byte[config.packedBytesLength];
     }
@@ -267,9 +270,7 @@ public class BKDWriter implements Closeable {
       // System.out.println("MR.next this=" + this);
       while (true) {
         if (docBlockUpto == mergeIntersectsVisitor.docsInBlock) {
-          mergeIntersectsVisitor.reset();
-          if (leafIterator.visitNextLeaf(mergeIntersectsVisitor) == false) {
-            // System.out.println("  done!");
+          if (collectNextLeaf() == false) {
             assert mergeIntersectsVisitor.docsInBlock == 0;
             return false;
           }
@@ -299,6 +300,20 @@ public class BKDWriter implements Closeable {
           return true;
         }
       }
+    }
+
+    private boolean collectNextLeaf() throws IOException {
+      assert indexTree.moveToChild() == false;
+      mergeIntersectsVisitor.reset();
+      do {
+        if (indexTree.moveToSibling()) {
+          // move to first child of this node and collect docs
+          while (indexTree.moveToChild()) {}
+          indexTree.visitDocValues(mergeIntersectsVisitor);
+          return true;
+        }
+      } while (indexTree.moveToParent());
+      return false;
     }
   }
 
@@ -592,23 +607,23 @@ public class BKDWriter implements Closeable {
   }
 
   /**
-   * More efficient bulk-add for incoming {@link BKDReader}s. This does a merge sort of the already
-   * sorted values and currently only works when numDims==1. This returns -1 if all documents
-   * containing dimensional values were deleted.
+   * More efficient bulk-add for incoming {@link BKDPointValues}s. This does a merge sort of the
+   * already sorted values and currently only works when numDims==1. This returns -1 if all
+   * documents containing dimensional values were deleted.
    */
   public Runnable merge(
       IndexOutput metaOut,
       IndexOutput indexOut,
       IndexOutput dataOut,
       List<MergeState.DocMap> docMaps,
-      List<BKDReader> readers)
+      List<BKDPointValues> readers)
       throws IOException {
     assert docMaps == null || readers.size() == docMaps.size();
 
     BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim, readers.size());
 
     for (int i = 0; i < readers.size(); i++) {
-      BKDReader bkd = readers.get(i);
+      BKDPointValues bkd = readers.get(i);
       MergeState.DocMap docMap;
       if (docMaps == null) {
         docMap = null;

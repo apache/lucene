@@ -36,7 +36,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDConfig;
-import org.apache.lucene.util.bkd.BKDReader;
+import org.apache.lucene.util.bkd.BKDPointValues;
 import org.apache.lucene.util.bkd.BKDWriter;
 
 /** Writes dimensional values */
@@ -212,7 +212,7 @@ public class Lucene60PointsWriter extends PointsWriter {
                   config,
                   maxMBSortInHeap,
                   totMaxSize)) {
-            List<BKDReader> bkdReaders = new ArrayList<>();
+            List<BKDPointValues> bkdPointValues = new ArrayList<>();
             List<MergeState.DocMap> docMaps = new ArrayList<>();
             for (int i = 0; i < mergeState.pointsReaders.length; i++) {
               PointsReader reader = mergeState.pointsReaders[i];
@@ -231,16 +231,16 @@ public class Lucene60PointsWriter extends PointsWriter {
                 FieldInfos readerFieldInfos = mergeState.fieldInfos[i];
                 FieldInfo readerFieldInfo = readerFieldInfos.fieldInfo(fieldInfo.name);
                 if (readerFieldInfo != null && readerFieldInfo.getPointDimensionCount() > 0) {
-                  BKDReader bkdReader = reader60.readers.get(readerFieldInfo.number);
-                  if (bkdReader != null) {
-                    bkdReaders.add(bkdReader);
+                  BKDPointValues aBKDPointValues = reader60.readers.get(readerFieldInfo.number);
+                  if (aBKDPointValues != null) {
+                    bkdPointValues.add(aBKDPointValues);
                     docMaps.add(mergeState.docMaps[i]);
                   }
                 }
               }
             }
 
-            Runnable finalizer = writer.merge(dataOut, dataOut, dataOut, docMaps, bkdReaders);
+            Runnable finalizer = writer.merge(dataOut, dataOut, dataOut, docMaps, bkdPointValues);
             if (finalizer != null) {
               indexFPs.put(fieldInfo.name, dataOut.getFilePointer());
               finalizer.run();

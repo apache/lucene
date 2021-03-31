@@ -32,7 +32,7 @@ import org.apache.lucene.util.MathUtil;
  *
  * @lucene.experimental
  */
-public class BKDDefaultIndexInput implements BKDIndexInput {
+public class BKDDefaultReader implements BKDReader {
 
   final BKDConfig config;
   final int numLeaves;
@@ -51,7 +51,7 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
    * Caller must pre-seek the provided {@link IndexInput} to the index location that {@link
    * BKDWriter#finish} returned. BKD tree is always stored off-heap.
    */
-  public BKDDefaultIndexInput(IndexInput metaIn, IndexInput indexIn, IndexInput dataIn)
+  public BKDDefaultReader(IndexInput metaIn, IndexInput indexIn, IndexInput dataIn)
       throws IOException {
     version =
         CodecUtil.checkHeader(
@@ -140,7 +140,7 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
   }
 
   @Override
-  public BKDIndexInput.IndexTree getIndexTree() {
+  public BKDReader.IndexTree getIndexTree() {
     return new IndexTree(
         packedIndex.clone(),
         this.in.clone(),
@@ -151,30 +151,10 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
         maxPackedValue);
   }
 
-  @Override
-  public LeafIterator getLeafTreeIterator() throws IOException {
-    final IndexInput input = in.clone();
-    final IndexTree indexTree =
-        new IndexTree(
-            packedIndex.clone(), input, config, numLeaves, version, minPackedValue, maxPackedValue);
-    input.seek(minLeafBlockFP);
-    return new LeafIterator() {
-      int leaf = 0;
-
-      @Override
-      public boolean visitNextLeaf(PointValues.IntersectVisitor visitor) throws IOException {
-        if (leaf < numLeaves) {
-          indexTree.visitDocValues(visitor, input.getFilePointer());
-          leaf++;
-          return true;
-        }
-        return false;
-      }
-    };
-  }
-
-  private static class IndexTree implements BKDIndexInput.IndexTree {
+  private static class IndexTree implements BKDReader.IndexTree {
     private int nodeID;
+    // during clone, the node root can be different to 1
+    private final int nodeRoot;
     // level is 1-based so that we can do level-1 w/o checking each time:
     private int level;
     // used to read the packed tree off-heap
@@ -257,6 +237,7 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
       this.config = config;
       this.version = version;
       this.nodeID = nodeID;
+      this.nodeRoot = nodeID;
       this.level = level;
       leafNodeOffset = numLeaves;
       this.innerNodes = innerNodes;
@@ -281,9 +262,9 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
     }
 
     @Override
-    public BKDIndexInput.IndexTree clone() {
-      BKDDefaultIndexInput.IndexTree index =
-          new BKDDefaultIndexInput.IndexTree(
+    public BKDReader.IndexTree clone() {
+      BKDDefaultReader.IndexTree index =
+          new BKDDefaultReader.IndexTree(
               innerNodes.clone(),
               leafNodes.clone(),
               config,
@@ -414,7 +395,7 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
 
     @Override
     public boolean moveToSibling() {
-      if ((nodeID & 1) == 0) {
+      if (nodeID != nodeRoot && (nodeID & 1) == 0) {
         pop(true);
         pushRight();
         assert nodeExists();
@@ -447,7 +428,7 @@ public class BKDDefaultIndexInput implements BKDIndexInput {
 
     @Override
     public boolean moveToParent() {
-      if (nodeID == 1) {
+      if (nodeID == nodeRoot) {
         return false;
       }
       pop((nodeID & 1) == 0);

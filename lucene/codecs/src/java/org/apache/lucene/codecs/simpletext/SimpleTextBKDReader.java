@@ -29,9 +29,9 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.bkd.BKDReader;
+import org.apache.lucene.util.bkd.BKDPointValues;
 
-/** Forked from {@link BKDReader} and simplified/specialized for SimpleText's usage */
+/** Forked from {@link BKDPointValues} and simplified/specialized for SimpleText's usage */
 final class SimpleTextBKDReader extends PointValues implements Accountable {
   // Packed array of byte[] holding all split values in the full binary tree:
   private final byte[] splitPackedValues;

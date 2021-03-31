@@ -30,8 +30,8 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.bkd.BKDIndexInput.IndexTree;
-import org.apache.lucene.util.bkd.BKDReader;
+import org.apache.lucene.util.bkd.BKDPointValues;
+import org.apache.lucene.util.bkd.BKDReader.IndexTree;
 
 /**
  * KNN search on top of N dimensional indexed float points.
@@ -174,7 +174,7 @@ public class FloatPointNearestNeighbor {
   }
 
   private static NearestHit[] nearest(
-      List<BKDReader> readers,
+      List<BKDPointValues> readers,
       List<Bits> liveDocs,
       List<Integer> docBases,
       final int topN,
@@ -202,7 +202,7 @@ public class FloatPointNearestNeighbor {
 
     // Add root cell for each reader into the queue:
     for (int i = 0; i < readers.size(); ++i) {
-      BKDReader reader = readers.get(i);
+      BKDPointValues reader = readers.get(i);
       byte[] minPackedValue = reader.getMinPackedValue();
       byte[] maxPackedValue = reader.getMaxPackedValue();
       IndexTree indexTree = reader.getIndexTree();
@@ -309,19 +309,19 @@ public class FloatPointNearestNeighbor {
     if (searcher == null) {
       throw new IllegalArgumentException("searcher must not be null");
     }
-    List<BKDReader> readers = new ArrayList<>();
+    List<BKDPointValues> readers = new ArrayList<>();
     List<Integer> docBases = new ArrayList<>();
     List<Bits> liveDocs = new ArrayList<>();
     int totalHits = 0;
     for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {
       PointValues points = leaf.reader().getPointValues(field);
       if (points != null) {
-        if (points instanceof BKDReader == false) {
+        if (points instanceof BKDPointValues == false) {
           throw new IllegalArgumentException(
               "can only run on Lucene60PointsReader points implementation, but got " + points);
         }
         totalHits += points.getDocCount();
-        readers.add((BKDReader) points);
+        readers.add((BKDPointValues) points);
         docBases.add(leaf.docBase);
         liveDocs.add(leaf.reader().getLiveDocs());
       }
