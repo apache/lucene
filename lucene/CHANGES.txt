@@ -1062,6 +1062,8 @@ Build
 
 * LUCENE-9041: Upgrade ecj to 3.19.0 to fix sporadic precommit javadoc issues (Kevin Risden)
 
+* LUCENE-9883: Turn on ecj missingEnumCaseDespiteDefault setting. (Zach Chen)
+
 ======================= Lucene 8.3.1 =======================
 
 Bug Fixes
