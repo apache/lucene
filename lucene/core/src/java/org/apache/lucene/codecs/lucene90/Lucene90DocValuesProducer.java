@@ -1108,6 +1108,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       switch (status) {
         case FOUND:
           return Math.toIntExact(termsEnum.ord());
+        case NOT_FOUND:
+        case END:
         default:
           return Math.toIntExact(-1L - termsEnum.ord());
       }
@@ -1148,6 +1150,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       switch (status) {
         case FOUND:
           return termsEnum.ord();
+        case NOT_FOUND:
+        case END:
         default:
           return -1L - termsEnum.ord();
       }

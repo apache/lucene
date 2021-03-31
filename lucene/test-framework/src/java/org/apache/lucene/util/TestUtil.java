@@ -1403,6 +1403,9 @@ public final class TestUtil {
           case SORTED:
             field2 = new SortedDocValuesField(field1.name(), field1.binaryValue());
             break;
+          case NONE:
+          case SORTED_SET:
+          case SORTED_NUMERIC:
           default:
             throw new IllegalStateException("unknown Type: " + dvType);
         }

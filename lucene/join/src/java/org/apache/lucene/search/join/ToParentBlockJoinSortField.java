@@ -74,6 +74,11 @@ public class ToParentBlockJoinSortField extends SortField {
       case INT:
         // ok
         break;
+      case CUSTOM:
+      case DOC:
+      case REWRITEABLE:
+      case STRING_VAL:
+      case SCORE:
       default:
         throw new UnsupportedOperationException("Sort type " + type + " is not supported");
     }
@@ -118,6 +123,11 @@ public class ToParentBlockJoinSortField extends SortField {
         return getLongComparator(numHits, sortPos);
       case INT:
         return getIntComparator(numHits, sortPos);
+      case CUSTOM:
+      case DOC:
+      case REWRITEABLE:
+      case STRING_VAL:
+      case SCORE:
       default:
         throw new UnsupportedOperationException("Sort type " + getType() + " is not supported");
     }

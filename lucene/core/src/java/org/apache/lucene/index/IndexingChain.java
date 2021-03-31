@@ -909,6 +909,7 @@ final class IndexingChain implements Accountable {
         ((SortedSetDocValuesWriter) fp.docValuesWriter).addValue(docID, field.binaryValue());
         break;
 
+      case NONE:
       default:
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }

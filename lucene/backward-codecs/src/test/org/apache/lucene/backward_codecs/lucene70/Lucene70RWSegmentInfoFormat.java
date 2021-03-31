@@ -129,6 +129,10 @@ public class Lucene70RWSegmentInfoFormat extends Lucene70SegmentInfoFormat {
             throw new IllegalStateException("Unexpected SortedNumericSortField " + sortField);
           }
           break;
+        case DOC:
+        case REWRITEABLE:
+        case STRING_VAL:
+        case SCORE:
         default:
           throw new IllegalStateException("Unexpected sort type: " + sortField.getType());
       }
@@ -207,6 +211,11 @@ public class Lucene70RWSegmentInfoFormat extends Lucene70SegmentInfoFormat {
             output.writeByte((byte) 1);
             output.writeInt(Float.floatToIntBits(((Float) missingValue).floatValue()));
             break;
+          case CUSTOM:
+          case DOC:
+          case REWRITEABLE:
+          case STRING_VAL:
+          case SCORE:
           default:
             throw new IllegalStateException("Unexpected sort type: " + sortField.getType());
         }

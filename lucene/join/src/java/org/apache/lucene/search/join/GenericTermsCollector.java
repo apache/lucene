@@ -43,6 +43,9 @@ interface GenericTermsCollector extends Collector {
         return wrap(new TermsCollector.MV(mvFunction));
       case Avg:
         return new MV.Avg(mvFunction);
+      case Max:
+      case Min:
+      case Total:
       default:
         return new MV(mvFunction, mode);
     }
@@ -113,6 +116,9 @@ interface GenericTermsCollector extends Collector {
         return wrap(new TermsCollector.SV(svFunction));
       case Avg:
         return new SV.Avg(svFunction);
+      case Max:
+      case Min:
+      case Total:
       default:
         return new SV(svFunction, mode);
     }
