@@ -278,6 +278,8 @@ Other
 
 * LUCENE-9822: Add assertion to PFOR exception encoding, documenting the BLOCK_SIZE assumption. (Greg Miller)
 
+* LUCENE-9883: Turn on ecj missingEnumCaseDespiteDefault setting. (Zach Chen)
+
 ======================= Lucene 8.9.0 =======================
 
 API Changes

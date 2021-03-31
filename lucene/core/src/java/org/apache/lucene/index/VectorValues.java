@@ -135,6 +135,7 @@ public abstract class VectorValues extends DocIdSetIterator {
           return squareDistance(v1, v2);
         case DOT_PRODUCT_HNSW:
           return dotProduct(v1, v2);
+        case NONE:
         default:
           throw new IllegalStateException("Incomparable search strategy: " + this);
       }
@@ -146,6 +147,7 @@ public abstract class VectorValues extends DocIdSetIterator {
         case EUCLIDEAN_HNSW:
         case DOT_PRODUCT_HNSW:
           return true;
+        case NONE:
         default:
           return false;
       }

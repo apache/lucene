@@ -606,6 +606,7 @@ public class MemoryIndex {
         }
         info.binaryProducer.dvBytesValuesSet.add((BytesRef) docValuesValue);
         break;
+      case NONE:
       default:
         throw new UnsupportedOperationException("unknown doc values type [" + docValuesType + "]");
     }

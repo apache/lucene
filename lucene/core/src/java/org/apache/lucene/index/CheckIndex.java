@@ -3241,6 +3241,7 @@ public final class CheckIndex implements Closeable {
         checkDVIterator(fi, maxDoc, dvReader::getNumeric);
         checkNumericDocValues(fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi));
         break;
+      case NONE:
       default:
         throw new AssertionError();
     }

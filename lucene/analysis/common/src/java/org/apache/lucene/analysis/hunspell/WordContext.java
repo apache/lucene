@@ -54,6 +54,8 @@ enum WordContext {
         return dictionary.compoundMiddle;
       case COMPOUND_END:
         return dictionary.compoundEnd;
+      case COMPOUND_RULE_END:
+      case SIMPLE_WORD:
       default:
         return Dictionary.FLAG_UNSET;
     }

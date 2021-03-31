@@ -278,6 +278,7 @@ public abstract class PointRangeQuery extends Query {
               case CELL_OUTSIDE_QUERY:
                 // none of the points match, clear all documents
                 return Relation.CELL_INSIDE_QUERY;
+              case CELL_CROSSES_QUERY:
               default:
                 return relation;
             }
