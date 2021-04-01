@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-import groovy.json.*
-import org.apache.commons.codec.digest.DigestUtils
-
 // Add a top-level pseudo-task to which we will attach individual regenerate tasks.
 
 configure(rootProject) {
@@ -30,13 +27,17 @@ configure(rootProject) {
   }
 }
 
+def resources = scriptResources(buildscript)
+def skeletonDefault = file("${resources}/skeleton.default.txt")
+def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expansion.txt")
+
 configure(project(":lucene:core")) {
-  task jflexStandardTokenizerImpl(type: JFlexTask) {
+  task generateStandardTokenizer(type: JFlexTask) {
     description "Regenerate StandardTokenizerImpl.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
-    skeleton = file("src/data/jflex/skeleton.disable.buffer.expansion.txt")
+    skeleton = skeletonNoBufferExpansion
 
     doLast {
       ant.replace(
@@ -48,112 +49,32 @@ configure(project(":lucene:core")) {
     }
   }
 
-  regenerate.dependsOn jflexStandardTokenizerImpl, "tidy"
+  regenerate.dependsOn wrapWithPersistentChecksums(generateStandardTokenizer, "spotlessApply")
 }
 
 configure(project(":lucene:analysis:common")) {
-  task jflexWikipediaTokenizerImpl(type: JFlexTask) {
+  task generateWikipediaTokenizer(type: JFlexTask) {
     description "Regenerate WikipediaTokenizerImpl.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
+    skeleton = skeletonDefault
   }
 
-  task jflexClassicTokenizerImpl(type: JFlexTask) {
+  task generateClassicTokenizer(type: JFlexTask) {
     description "Regenerate ClassicTokenizerImpl.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/classic/ClassicTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
+    skeleton = skeletonDefault
   }
 
-// incremental task generation - experiment
-  Task sourceTask = jflexClassicTokenizerImpl
-
-  Task checksumLoadTask = tasks.create("${sourceTask.name}ChecksumLoad", {
-    ext {
-      checksumMatch = true
-    }
-
-    doFirst {
-      // Collect all of task inputs/ outputs.
-      FileCollection allFiles = sourceTask.inputs.files + sourceTask.outputs.files
-      ext.allFiles = allFiles
-
-      // Compute checksums for root-project relative paths
-      Map<File, String> actualChecksums = allFiles.files.collectEntries { file ->
-        [
-            sourceTask.project.rootDir.relativePath(file),
-            file.exists() ? new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() : "--"
-        ]
-      }
-      ext.actualChecksums = actualChecksums
-
-      // Load any previously written checksums
-      ext.checksumsFile = project.file("src/generated/checksums/${sourceTask.name}.json")
-      Map<File, String> savedChecksums = [:]
-      if (checksumsFile.exists()) {
-        savedChecksums = new JsonSlurper().parse(checksumsFile) as Map
-      }
-      ext.savedChecksums = savedChecksums
-
-      ext.checksumMatch = (savedChecksums.equals(actualChecksums))
-    }
-  })
-
-  Task checksumSaveTask = tasks.create("${sourceTask.name}ChecksumSave", {
-    dependsOn checksumLoadTask
-
-    doFirst {
-      File checksumsFile = checksumLoadTask.ext.checksumsFile
-      checksumsFile.parentFile.mkdirs()
-
-      // Recompute checksums for root-project relative paths
-      Map<File, String> actualChecksums = checksumLoadTask.ext.allFiles.files.collectEntries { file ->
-        [
-            sourceTask.project.rootDir.relativePath(file),
-            new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim()
-        ]
-      }
-
-      checksumsFile.setText(
-          JsonOutput.prettyPrint(JsonOutput.toJson(actualChecksums)), "UTF-8")
-
-      logger.lifecycle("Updated generated file checksums for task ${sourceTask.path}.")
-    }
-  })
-
-  Task genWrapperTask = tasks.create("${sourceTask.name}Conditional", {
-    List<Task> orderedTasks = [checksumLoadTask, sourceTask, tidy, checksumSaveTask]
-    dependsOn orderedTasks
-
-    // Hard ordering of dependency execution.
-    for (int i = 1; i < orderedTasks.size(); i++) {
-      orderedTasks[i].mustRunAfter orderedTasks[i - 1]
-    }
-
-    // Conditional execution only if checksum mismatch occurred.
-    orderedTasks.each { t ->
-      if (t != tidy && t != checksumLoadTask) {
-        t.onlyIf { !checksumLoadTask.checksumMatch }
-      }
-    }
-
-    doFirst {
-      if (checksumLoadTask.checksumMatch) {
-        logger.lifecycle("Generated file checksums for task ${sourceTask.path} consistent with sources, skipped generation tasks.")
-      }
-    }
-  })
-// end
-
-  task jflexUAX29URLEmailTokenizerImpl(type: JFlexTask) {
+  task generateUAX29URLEmailTokenizer(type: JFlexTask) {
     description "Regenerate UAX29URLEmailTokenizerImpl.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.disable.buffer.expansion.txt")
+    skeleton = skeletonNoBufferExpansion
     heapSize = "12g"
 
     doFirst {
@@ -170,12 +91,12 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  task jflexHTMLStripCharFilter(type: JFlexTask) {
+  task generateHTMLStripCharFilter(type: JFlexTask) {
     description "Regenerate HTMLStripCharFilter.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
+    skeleton = skeletonDefault
 
     doFirst {
       // Regenerate HTMLCharacterEntities.jflex first.
@@ -197,11 +118,10 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn jflexUAX29URLEmailTokenizerImpl,
-          jflexHTMLStripCharFilter,
-          "jflexClassicTokenizerImplConditional",
-          jflexWikipediaTokenizerImpl,
-          "tidy"
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizer, "spotlessApply"),
+      wrapWithPersistentChecksums(generateClassicTokenizer, "spotlessApply"),
+      wrapWithPersistentChecksums(generateUAX29URLEmailTokenizer, "spotlessApply"),
+      wrapWithPersistentChecksums(generateHTMLStripCharFilter, "spotlessApply")
 }
 
 class JFlexTask extends DefaultTask {

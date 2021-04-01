@@ -257,7 +257,7 @@ configure(project(":lucene:queryparser")) {
     dependsOn javaccParserFlexible
   }
 
-  regenerate.dependsOn javacc, tidy
+  regenerate.dependsOn mustRunInOrder([javacc, "spotlessApply"])
 }
 
 // We always regenerate, no need to declare outputs.

@@ -89,8 +89,8 @@ configure(project(":lucene:core")) {
     description "Regenerate Moman-based sources."
     group "generation"
 
-    dependsOn utilGenLev, utilGenPacked
+    dependsOn mustRunInOrder([utilGenLev, utilGenPacked, "spotlessApply"])
   }
 
-  regenerate.dependsOn moman, "tidy"
+  regenerate.dependsOn moman
 }
