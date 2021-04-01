@@ -14,12 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.backward_codecs.lucene60;
+package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.backward_codecs.lucene84.Lucene84RWCodec;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.PointsFormat;
+import org.apache.lucene.codecs.PointsReader;
+import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.BasePointsFormatTestCase;
@@ -32,23 +35,67 @@ import org.apache.lucene.index.MockRandomMergePolicy;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.bkd.BKDConfig;
 
-/** Tests Lucene60PointsFormat */
-public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
+public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
+
   private final Codec codec;
   private final int maxPointsInLeafNode;
 
-  public TestLucene60PointsFormat() {
-    codec = new Lucene84RWCodec();
-    maxPointsInLeafNode = BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+  public TestLucene90PointsFormat() {
+    // standard issue
+    Codec defaultCodec = TestUtil.getDefaultCodec();
+    if (random().nextBoolean()) {
+      // randomize parameters
+      maxPointsInLeafNode = TestUtil.nextInt(random(), 50, 500);
+      double maxMBSortInHeap = 3.0 + (3 * random().nextDouble());
+      if (VERBOSE) {
+        System.out.println(
+            "TEST: using Lucene60PointsFormat with maxPointsInLeafNode="
+                + maxPointsInLeafNode
+                + " and maxMBSortInHeap="
+                + maxMBSortInHeap);
+      }
+
+      // sneaky impersonation!
+      codec =
+          new FilterCodec(defaultCodec.getName(), defaultCodec) {
+            @Override
+            public PointsFormat pointsFormat() {
+              return new PointsFormat() {
+                @Override
+                public PointsWriter fieldsWriter(SegmentWriteState writeState) throws IOException {
+                  return new Lucene90PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap);
+                }
+
+                @Override
+                public PointsReader fieldsReader(SegmentReadState readState) throws IOException {
+                  return new Lucene90PointsReader(readState);
+                }
+              };
+            }
+          };
+    } else {
+      // standard issue
+      codec = defaultCodec;
+      maxPointsInLeafNode = BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+    }
   }
 
   @Override
   protected Codec getCodec() {
     return codec;
+  }
+
+  @Override
+  public void testMergeStability() throws Exception {
+    assumeFalse(
+        "TODO: mess with the parameters and test gets angry!", codec instanceof FilterCodec);
+    super.testMergeStability();
   }
 
   public void testEstimatePointCount() throws IOException {

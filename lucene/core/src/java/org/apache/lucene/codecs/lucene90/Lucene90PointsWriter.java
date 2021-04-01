@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene86;
+package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,7 +38,7 @@ import org.apache.lucene.util.bkd.BKDReader;
 import org.apache.lucene.util.bkd.BKDWriter;
 
 /** Writes dimensional values */
-public class Lucene86PointsWriter extends PointsWriter {
+public class Lucene90PointsWriter extends PointsWriter {
 
   /** Outputs used to write the BKD tree data files. */
   protected final IndexOutput metaOut, indexOut, dataOut;
@@ -49,7 +49,7 @@ public class Lucene86PointsWriter extends PointsWriter {
   private boolean finished;
 
   /** Full constructor */
-  public Lucene86PointsWriter(
+  public Lucene90PointsWriter(
       SegmentWriteState writeState, int maxPointsInLeafNode, double maxMBSortInHeap)
       throws IOException {
     assert writeState.fieldInfos.hasPointValues();
@@ -60,14 +60,14 @@ public class Lucene86PointsWriter extends PointsWriter {
         IndexFileNames.segmentFileName(
             writeState.segmentInfo.name,
             writeState.segmentSuffix,
-            Lucene86PointsFormat.DATA_EXTENSION);
+            Lucene90PointsFormat.DATA_EXTENSION);
     dataOut = writeState.directory.createOutput(dataFileName, writeState.context);
     boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
           dataOut,
-          Lucene86PointsFormat.DATA_CODEC_NAME,
-          Lucene86PointsFormat.VERSION_CURRENT,
+          Lucene90PointsFormat.DATA_CODEC_NAME,
+          Lucene90PointsFormat.VERSION_CURRENT,
           writeState.segmentInfo.getId(),
           writeState.segmentSuffix);
 
@@ -75,12 +75,12 @@ public class Lucene86PointsWriter extends PointsWriter {
           IndexFileNames.segmentFileName(
               writeState.segmentInfo.name,
               writeState.segmentSuffix,
-              Lucene86PointsFormat.META_EXTENSION);
+              Lucene90PointsFormat.META_EXTENSION);
       metaOut = writeState.directory.createOutput(metaFileName, writeState.context);
       CodecUtil.writeIndexHeader(
           metaOut,
-          Lucene86PointsFormat.META_CODEC_NAME,
-          Lucene86PointsFormat.VERSION_CURRENT,
+          Lucene90PointsFormat.META_CODEC_NAME,
+          Lucene90PointsFormat.VERSION_CURRENT,
           writeState.segmentInfo.getId(),
           writeState.segmentSuffix);
 
@@ -88,12 +88,12 @@ public class Lucene86PointsWriter extends PointsWriter {
           IndexFileNames.segmentFileName(
               writeState.segmentInfo.name,
               writeState.segmentSuffix,
-              Lucene86PointsFormat.INDEX_EXTENSION);
+              Lucene90PointsFormat.INDEX_EXTENSION);
       indexOut = writeState.directory.createOutput(indexFileName, writeState.context);
       CodecUtil.writeIndexHeader(
           indexOut,
-          Lucene86PointsFormat.INDEX_CODEC_NAME,
-          Lucene86PointsFormat.VERSION_CURRENT,
+          Lucene90PointsFormat.INDEX_CODEC_NAME,
+          Lucene90PointsFormat.VERSION_CURRENT,
           writeState.segmentInfo.getId(),
           writeState.segmentSuffix);
 
@@ -109,7 +109,7 @@ public class Lucene86PointsWriter extends PointsWriter {
    * Uses the defaults values for {@code maxPointsInLeafNode} (1024) and {@code maxMBSortInHeap}
    * (16.0)
    */
-  public Lucene86PointsWriter(SegmentWriteState writeState) throws IOException {
+  public Lucene90PointsWriter(SegmentWriteState writeState) throws IOException {
     this(
         writeState,
         BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE,
@@ -183,7 +183,7 @@ public class Lucene86PointsWriter extends PointsWriter {
      * a bulk merge of the points.
      */
     for (PointsReader reader : mergeState.pointsReaders) {
-      if (reader instanceof Lucene86PointsReader == false) {
+      if (reader instanceof Lucene90PointsReader == false) {
         // We can only bulk merge when all to-be-merged segments use our format:
         super.merge(mergeState);
         return;
@@ -242,8 +242,8 @@ public class Lucene86PointsWriter extends PointsWriter {
               if (reader != null) {
 
                 // we confirmed this up above
-                assert reader instanceof Lucene86PointsReader;
-                Lucene86PointsReader reader60 = (Lucene86PointsReader) reader;
+                assert reader instanceof Lucene90PointsReader;
+                Lucene90PointsReader reader90 = (Lucene90PointsReader) reader;
 
                 // NOTE: we cannot just use the merged fieldInfo.number (instead of resolving to
                 // this
@@ -253,7 +253,7 @@ public class Lucene86PointsWriter extends PointsWriter {
                 FieldInfos readerFieldInfos = mergeState.fieldInfos[i];
                 FieldInfo readerFieldInfo = readerFieldInfos.fieldInfo(fieldInfo.name);
                 if (readerFieldInfo != null && readerFieldInfo.getPointDimensionCount() > 0) {
-                  BKDReader bkdReader = reader60.readers.get(readerFieldInfo.number);
+                  BKDReader bkdReader = reader90.readers.get(readerFieldInfo.number);
                   if (bkdReader != null) {
                     bkdReaders.add(bkdReader);
                     docMaps.add(mergeState.docMaps[i]);

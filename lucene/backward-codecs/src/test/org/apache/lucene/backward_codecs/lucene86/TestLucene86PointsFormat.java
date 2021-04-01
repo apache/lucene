@@ -14,10 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene86;
+package org.apache.lucene.backward_codecs.lucene86;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
@@ -48,7 +49,7 @@ public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
 
   public TestLucene86PointsFormat() {
     // standard issue
-    Codec defaultCodec = TestUtil.getDefaultCodec();
+    Codec defaultCodec = new Lucene87RWCodec();
     if (random().nextBoolean()) {
       // randomize parameters
       maxPointsInLeafNode = TestUtil.nextInt(random(), 50, 500);
@@ -340,86 +341,5 @@ public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
     }
     r.close();
     dir.close();
-  }
-
-  public void testDocCountEdgeCases() {
-    PointValues values = getPointValues(Long.MAX_VALUE, 1, Long.MAX_VALUE);
-    long docs = values.estimateDocCount(null);
-    assertEquals(1, docs);
-    values = getPointValues(Long.MAX_VALUE, 1, 1);
-    docs = values.estimateDocCount(null);
-    assertEquals(1, docs);
-    values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, Long.MAX_VALUE);
-    docs = values.estimateDocCount(null);
-    assertEquals(Integer.MAX_VALUE, docs);
-    values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, Long.MAX_VALUE / 2);
-    docs = values.estimateDocCount(null);
-    assertEquals(Integer.MAX_VALUE, docs);
-    values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, 1);
-    docs = values.estimateDocCount(null);
-    assertEquals(1, docs);
-  }
-
-  public void testRandomDocCount() {
-    for (int i = 0; i < 100; i++) {
-      long size = TestUtil.nextLong(random(), 1, Long.MAX_VALUE);
-      int maxDoc = (size > Integer.MAX_VALUE) ? Integer.MAX_VALUE : Math.toIntExact(size);
-      int docCount = TestUtil.nextInt(random(), 1, maxDoc);
-      long estimatedPointCount = TestUtil.nextLong(random(), 0, size);
-      PointValues values = getPointValues(size, docCount, estimatedPointCount);
-      long docs = values.estimateDocCount(null);
-      assertTrue(docs <= estimatedPointCount);
-      assertTrue(docs <= maxDoc);
-      assertTrue(docs >= estimatedPointCount / (size / docCount));
-    }
-  }
-
-  private PointValues getPointValues(long size, int docCount, long estimatedPointCount) {
-    return new PointValues() {
-      @Override
-      public void intersect(IntersectVisitor visitor) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public long estimatePointCount(IntersectVisitor visitor) {
-        return estimatedPointCount;
-      }
-
-      @Override
-      public byte[] getMinPackedValue() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public byte[] getMaxPackedValue() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int getNumDimensions() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int getNumIndexDimensions() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int getBytesPerDimension() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public long size() {
-        return size;
-      }
-
-      @Override
-      public int getDocCount() {
-        return docCount;
-      }
-    };
   }
 }

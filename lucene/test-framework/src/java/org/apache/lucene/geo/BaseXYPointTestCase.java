@@ -31,8 +31,8 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.codecs.lucene86.Lucene86PointsReader;
-import org.apache.lucene.codecs.lucene86.Lucene86PointsWriter;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -1312,13 +1312,13 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
             return new PointsFormat() {
               @Override
               public PointsWriter fieldsWriter(SegmentWriteState writeState) throws IOException {
-                return new Lucene86PointsWriter(
+                return new Lucene90PointsWriter(
                     writeState, pointsInLeaf, BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP);
               }
 
               @Override
               public PointsReader fieldsReader(SegmentReadState readState) throws IOException {
-                return new Lucene86PointsReader(readState);
+                return new Lucene90PointsReader(readState);
               }
             };
           }
