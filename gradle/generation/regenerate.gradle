@@ -104,7 +104,8 @@ configure([
               actual = actual - same
               expected = expected - same
 
-              throw new GradleException("Checksums mismatch for generated files (showing mismatches only):\n" +
+              throw new GradleException("Checksums mismatch for derived resources; you might have" +
+                  " modified a generated source file?:\n" +
                   "Actual:\n  ${actual.entrySet().join('\n  ')}\n\n" +
                   "Expected:\n  ${expected.entrySet().join('\n  ')}"
               )
@@ -160,11 +161,13 @@ configure([
         }
 
         // Set conditional execution only if checksum mismatch occurred.
-        project.afterEvaluate {
-          resolveTaskRefs([sourceTask, checksumSaveTask]).each { t ->
-            t.configure {
-              logger.info("Making " + t.name + " run only if " + checksumLoadTask.name + " indicates changes")
-              onlyIf { !checksumLoadTask.checksumMatch }
+        if (!gradle.startParameter.isRerunTasks()) {
+          project.afterEvaluate {
+            resolveTaskRefs([sourceTask, checksumSaveTask]).each { t ->
+              t.configure {
+                logger.info("Making " + t.name + " run only if " + checksumLoadTask.name + " indicates changes")
+                onlyIf { !checksumLoadTask.checksumMatch }
+              }
             }
           }
         }
