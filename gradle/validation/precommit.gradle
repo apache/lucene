@@ -32,10 +32,6 @@ configure(rootProject) {
   // This uses lazy collections as they may not yet be defined.
   allprojects { prj ->
     precommit.dependsOn prj.tasks.matching { task ->
-      if (task.name.endsWith("ChecksumCheck")) {
-        println task.name
-      }
-
       return task.name.endsWith("ChecksumCheck") ||
           task.name in [
           "forbiddenApis",
