@@ -14,18 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene80;
+package org.apache.lucene.codecs.lucene90;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseNormsFormatTestCase;
-import org.apache.lucene.util.TestUtil;
-
-/** Tests Lucene90NormsFormat */
-public class TestLucene90NormsFormat extends BaseNormsFormatTestCase {
-  private final Codec codec = TestUtil.getDefaultCodec();
+/** Test the merge instance of the Lucene90 norms format. */
+public class TestLucene90NormsFormatMergeInstance extends TestLucene90NormsFormat {
 
   @Override
-  protected Codec getCodec() {
-    return codec;
+  protected boolean shouldTestMergeInstance() {
+    return true;
   }
 }
