@@ -91,7 +91,6 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
   private int docCount;
 
   private final PForUtil pforUtil;
-  private final ForDeltaUtil forDeltaUtil;
   private final Lucene90SkipWriter skipWriter;
 
   private boolean fieldHasNorms;
@@ -120,9 +119,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       } else {
         throw new Error();
       }
-      final ForUtil forUtil = new ForUtil();
-      forDeltaUtil = new ForDeltaUtil(forUtil);
-      pforUtil = new PForUtil(forUtil);
+      pforUtil = new PForUtil(new ForUtil());
       if (state.fieldInfos.hasProx()) {
         posDeltaBuffer = new long[BLOCK_SIZE];
         String posFileName =
@@ -252,7 +249,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     docCount++;
 
     if (docBufferUpto == BLOCK_SIZE) {
-      forDeltaUtil.encodeDeltas(docDeltaBuffer, docOut);
+      pforUtil.encode(docDeltaBuffer, docOut);
       if (writeFreqs) {
         pforUtil.encode(freqBuffer, docOut);
       }

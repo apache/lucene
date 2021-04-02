@@ -310,9 +310,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
   final class BlockDocsEnum extends PostingsEnum {
 
-    final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -458,7 +456,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
 
         if (indexHasFreq) {
           if (needsFreq) {
@@ -569,9 +567,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
   // Also handles payloads + offsets
   final class EverythingEnum extends PostingsEnum {
 
-    final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE + 1];
@@ -759,7 +755,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
         blockUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
@@ -1055,9 +1051,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsDocsEnum extends ImpactsEnum {
 
-    final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -1151,7 +1145,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         if (indexHasFreqs) {
           pforUtil.decode(docIn, freqBuffer);
         }
@@ -1250,9 +1244,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsPostingsEnum extends ImpactsEnum {
 
-    final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -1364,7 +1356,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, true);
@@ -1544,9 +1536,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsEverythingEnum extends ImpactsEnum {
 
-    final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -1755,7 +1745,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         if (indexHasFreq) {
           isFreqsRead =
               false; // freq block will be loaded lazily when necessary, we don't load it here
