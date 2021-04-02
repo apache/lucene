@@ -52,7 +52,7 @@ configure(project(":lucene:analysis:icu")) {
     dependsOn { sourceSets.tools.runtimeClasspath }
 
     // gennorm generates file order-dependent output, so make it constant here.
-    def inputFiles = fileTree(dir: utr30DataDir, include: "*.txt").sort()
+    def inputFiles = fileTree(dir: utr30DataDir, include: "*.txt").asList().toSorted(Comparator.comparing { File f -> f.name })
     def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
 
     inputs.files inputFiles
