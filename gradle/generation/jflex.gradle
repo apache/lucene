@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-
 // Add a top-level pseudo-task to which we will attach individual regenerate tasks.
 
 configure(rootProject) {
@@ -28,71 +27,17 @@ configure(rootProject) {
   }
 }
 
-// We always regenerate, no need to declare outputs.
-class JFlexTask extends DefaultTask {
-  @Input
-  File jflexFile
-
-  @Input
-  File skeleton
-
-  @Optional
-  String heapSize
-
-  JFlexTask() {
-    dependsOn(project.rootProject.configurations.jflex)
-  }
-
-  @TaskAction
-  def generate() {
-    if (!jflexFile || !jflexFile.exists()) {
-      throw new RuntimeException("JFlex file does not exist: ${jflexFile}")
-    }
-    def targetDir = jflexFile.parentFile
-    def target = jflexFile.absolutePath.replace(".jflex", ".java")
-
-    logger.lifecycle("Regenerating JFlex:\n  from: ${jflexFile}\n    to: ${target}")
-    project.javaexec {
-      classpath {
-        project.rootProject.configurations.jflex
-      }
-      main = "jflex.Main"
-      args += [
-          "-nobak",
-          "--quiet",
-          "--encoding", "UTF-8",
-      ]
-
-      if (heapSize) {
-        maxHeapSize = heapSize
-      }
-
-      if (skeleton) {
-        args += ["--skel", skeleton.absolutePath]
-      }
-
-      args += [
-        "-d", targetDir.absolutePath,
-        jflexFile
-      ]
-    }
-
-    // Correct line endings for Windows.
-    project.ant.fixcrlf(
-        file: target,
-        encoding: "UTF-8",
-        eol: "lf"
-    )
-  }
-}
+def resources = scriptResources(buildscript)
+def skeletonDefault = file("${resources}/skeleton.default.txt")
+def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expansion.txt")
 
 configure(project(":lucene:core")) {
-  task jflexStandardTokenizerImpl(type: JFlexTask) {
+  task generateStandardTokenizer(type: JFlexTask) {
     description "Regenerate StandardTokenizerImpl.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
-    skeleton = file("src/data/jflex/skeleton.disable.buffer.expansion.txt")
+    skeleton = skeletonNoBufferExpansion
 
     doLast {
       ant.replace(
@@ -104,33 +49,32 @@ configure(project(":lucene:core")) {
     }
   }
 
-  regenerate.dependsOn jflexStandardTokenizerImpl, "tidy"
+  regenerate.dependsOn wrapWithPersistentChecksums(generateStandardTokenizer, "spotlessApply")
 }
 
 configure(project(":lucene:analysis:common")) {
-
-  task jflexWikipediaTokenizerImpl(type: JFlexTask) {
+  task generateWikipediaTokenizer(type: JFlexTask) {
     description "Regenerate WikipediaTokenizerImpl.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
+    skeleton = skeletonDefault
   }
 
-  task jflexClassicTokenizerImpl(type: JFlexTask) {
+  task generateClassicTokenizer(type: JFlexTask) {
     description "Regenerate ClassicTokenizerImpl.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/classic/ClassicTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
+    skeleton = skeletonDefault
   }
 
-  task jflexUAX29URLEmailTokenizerImpl(type: JFlexTask) {
+  task generateUAX29URLEmailTokenizer(type: JFlexTask) {
     description "Regenerate UAX29URLEmailTokenizerImpl.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.disable.buffer.expansion.txt")
+    skeleton = skeletonNoBufferExpansion
     heapSize = "12g"
 
     doFirst {
@@ -147,12 +91,12 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  task jflexHTMLStripCharFilter(type: JFlexTask) {
+  task generateHTMLStripCharFilter(type: JFlexTask) {
     description "Regenerate HTMLStripCharFilter.java"
     group "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
+    skeleton = skeletonDefault
 
     doFirst {
       // Regenerate HTMLCharacterEntities.jflex first.
@@ -174,9 +118,72 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn jflexUAX29URLEmailTokenizerImpl,
-          jflexHTMLStripCharFilter,
-          jflexClassicTokenizerImpl,
-          jflexWikipediaTokenizerImpl,
-          "tidy"
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizer, "spotlessApply"),
+      wrapWithPersistentChecksums(generateClassicTokenizer, "spotlessApply"),
+      wrapWithPersistentChecksums(generateUAX29URLEmailTokenizer, "spotlessApply"),
+      wrapWithPersistentChecksums(generateHTMLStripCharFilter, "spotlessApply")
+}
+
+class JFlexTask extends DefaultTask {
+  @InputFile
+  File jflexFile
+
+  @InputFile
+  File skeleton
+
+  @Optional
+  String heapSize
+
+  @OutputFile
+  File getGeneratedFile() {
+    return project.file(jflexFile.absolutePath.replace(".jflex", ".java"))
+  }
+
+  JFlexTask() {
+    dependsOn(project.rootProject.configurations.jflex)
+  }
+
+  @TaskAction
+  def generate() {
+    if (!jflexFile || !jflexFile.exists()) {
+      throw new GradleException("JFlex file does not exist: ${jflexFile}")
+    }
+
+    def target = project.file(jflexFile.absolutePath.replace(".jflex", ".java"))
+
+    logger.lifecycle("Recompiling JFlex: ${project.rootDir.relativePath(jflexFile)}")
+
+    project.javaexec {
+      classpath {
+        project.rootProject.configurations.jflex
+      }
+
+      main = "jflex.Main"
+      args += [
+          "-nobak",
+          "--quiet",
+          "--encoding", "UTF-8",
+      ]
+
+      if (heapSize) {
+        maxHeapSize = heapSize
+      }
+
+      if (skeleton) {
+        args += ["--skel", skeleton.absolutePath]
+      }
+
+      args += [
+          "-d", target.parentFile.absolutePath,
+          jflexFile
+      ]
+    }
+
+    // Correct line endings for Windows.
+    project.ant.fixcrlf(
+        file: target,
+        encoding: "UTF-8",
+        eol: "lf"
+    )
+  }
 }

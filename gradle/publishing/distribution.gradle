@@ -17,17 +17,6 @@
 
 import org.apache.commons.codec.digest.DigestUtils
 
-// We're using commons-codec for computing checksums.
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath "commons-codec:commons-codec:${scriptDepVersions['commons-codec']}"
-    }
-}
-
 allprojects {
     plugins.withType(DistributionPlugin) {
         def checksum = {

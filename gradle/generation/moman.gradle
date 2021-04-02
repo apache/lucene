@@ -16,15 +16,18 @@
  */
 apply plugin: "de.undercouch.download"
 
+def resources = scriptResources(buildscript)
+
 configure(project(":lucene:core")) {
   ext {
+    momanSource = "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
     momanDir = file("${buildDir}/moman")
   }
 
   task installMoman(type: Download) {
     def momanZip = file("${momanDir}/moman.zip")
 
-    src "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
+    src momanSource
     dest momanZip
     onlyIfModified true
 
@@ -36,13 +39,16 @@ configure(project(":lucene:core")) {
   }
 
   task utilGenPacked(dependsOn: installMoman) {
-    description "Regenerate util/PackedBulkOperationsPacked*.java and Packed64SingleBlock.java"
-    group "generation"
+    def targetDir = file("src/java/org/apache/lucene/util/packed")
+
+    inputs.property("source", momanSource)
+    outputs.files fileTree(dir: targetDir, includes: ["Packed64SingleBlock.java", "BulkOperation*.java"])
 
     doLast {
-      def targetDir = file("src/java/org/apache/lucene/util/packed")
-
-      ['gen_BulkOperation.py', 'gen_Packed64SingleBlock.py'].each { prog ->
+      [
+        file("${resources}/gen_BulkOperation.py"),
+        file("${resources}/gen_Packed64SingleBlock.py")
+      ].each { prog ->
         logger.lifecycle("Executing: ${prog} in ${targetDir}")
         quietExec {
           workingDir targetDir
@@ -61,18 +67,22 @@ configure(project(":lucene:core")) {
   }
 
   task utilGenLev(dependsOn: installMoman) {
-    description "Regenerate util/automaton Lev*ParametricDescription.java"
-    group "generation"
+    def targetDir = file("src/java/org/apache/lucene/util/automaton")
+
+    inputs.property("source", momanSource)
+    outputs.files fileTree(dir: targetDir, includes: ["*ParametricDescription.java"])
 
     doLast {
-      def targetDir = file("src/java/org/apache/lucene/util/automaton")
-
       ['1', '2'].each { num ->
         ['True', 'False'].each { transpose ->
           quietExec {
             workingDir targetDir
             executable project.externalTool("python3")
-            args = ['-B', 'createLevAutomata.py', num, transpose, "${momanDir}/finenight/python"]
+            args = ['-B',
+                    file("${resources}/createLevAutomata.py").toString(),
+                    num,
+                    transpose,
+                    "${momanDir}/finenight/python"]
           }
         }
       }
@@ -89,8 +99,9 @@ configure(project(":lucene:core")) {
     description "Regenerate Moman-based sources."
     group "generation"
 
-    dependsOn utilGenLev, utilGenPacked
+    dependsOn wrapWithPersistentChecksums(utilGenPacked, "spotlessApply")
+    dependsOn wrapWithPersistentChecksums(utilGenLev, "spotlessApply")
   }
 
-  regenerate.dependsOn moman, "tidy"
+  regenerate.dependsOn moman
 }

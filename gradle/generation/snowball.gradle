@@ -114,5 +114,5 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn snowball, "tidy"
+  regenerate.dependsOn mustRunInOrder([snowball, "spotlessApply"])
 }

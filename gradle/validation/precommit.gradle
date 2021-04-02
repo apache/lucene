@@ -26,11 +26,14 @@ configure(rootProject) {
     dependsOn ":verifyLocks"
     dependsOn ":versionsPropsAreSorted"
     dependsOn ":checkWorkingCopyClean"
+  }
 
-    // Attach all these tasks from all projects that have them.
-    // This uses lazy collections as they may not yet be defined.
-    dependsOn allprojects.collect { prj ->
-      prj.tasks.matching { task -> task.name in [
+  // Attach all these tasks from all projects that have them.
+  // This uses lazy collections as they may not yet be defined.
+  allprojects { prj ->
+    precommit.dependsOn prj.tasks.matching { task ->
+      return task.name.endsWith("ChecksumCheck") ||
+          task.name in [
           "forbiddenApis",
           "licenses",
           "javadoc",
@@ -39,7 +42,6 @@ configure(rootProject) {
           "validateSourcePatterns",
           "spotlessCheck"
       ]}
-    }
   }
 
   // Each validation task should be attached to check but make sure
