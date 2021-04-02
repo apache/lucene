@@ -56,9 +56,23 @@ configure([
       // constraints to each node in the execution graph but not node-and-dependencies).
       //
       // sourceTask - the task to wrap
-      // otherTasks - other tasks that should be scheduled to run after source task and
-      //   before checksum calculation.
-      wrapWithPersistentChecksums = { Task sourceTask, Object... otherTasks ->
+      // extraConfig - a map with extra (optional) configuration options.
+      //   andThenTasks: other tasks that should be scheduled to run after source task and
+      //     before checksum calculation.
+      wrapWithPersistentChecksums = { Task sourceTask, Map<String, Object> extraConfig = [:] ->
+        def toList = { value ->
+          if (value instanceof List) {
+            return value
+          } else if (value == null) {
+            return []
+          } else {
+            return [ value ]
+          }
+        }
+
+        List<Object> andThenTasks = toList(extraConfig.get("andThenTasks"))
+        List<Object> ignoreWithSource =  toList(extraConfig.get("ignoreWithSource"))
+
         // Create checksum-loader task.
         Task checksumLoadTask = tasks.create("${sourceTask.name}ChecksumLoad", {
           ext {
@@ -140,7 +154,7 @@ configure([
           def deps = [
               checksumLoadTask,
               sourceTask,
-              *otherTasks,
+              *andThenTasks,
               checksumSaveTask
           ].flatten()
 
@@ -163,7 +177,7 @@ configure([
         // Set conditional execution only if checksum mismatch occurred.
         if (!gradle.startParameter.isRerunTasks()) {
           project.afterEvaluate {
-            resolveTaskRefs([sourceTask, checksumSaveTask]).each { t ->
+            resolveTaskRefs([sourceTask, *ignoreWithSource, checksumSaveTask]).each { t ->
               t.configure {
                 logger.info("Making " + t.name + " run only if " + checksumLoadTask.name + " indicates changes")
                 onlyIf { !checksumLoadTask.checksumMatch }

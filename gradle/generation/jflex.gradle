@@ -49,7 +49,7 @@ configure(project(":lucene:core")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateStandardTokenizer, "spotlessApply")
+  regenerate.dependsOn wrapWithPersistentChecksums(generateStandardTokenizer, [ andThenTasks: "spotlessApply" ])
 }
 
 configure(project(":lucene:analysis:common")) {
@@ -118,10 +118,10 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizer, "spotlessApply"),
-      wrapWithPersistentChecksums(generateClassicTokenizer, "spotlessApply"),
-      wrapWithPersistentChecksums(generateUAX29URLEmailTokenizer, "spotlessApply"),
-      wrapWithPersistentChecksums(generateHTMLStripCharFilter, "spotlessApply")
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizer, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateClassicTokenizer, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateUAX29URLEmailTokenizer, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateHTMLStripCharFilter, [ andThenTasks: "spotlessApply" ])
 }
 
 class JFlexTask extends DefaultTask {
