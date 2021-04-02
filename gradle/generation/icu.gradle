@@ -43,8 +43,10 @@ configure(project(":lucene:analysis:icu")) {
     icupkg = file("${icuBinDir}/icupkg")
   }
 
+  def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
+
   task genUtr30DataFiles() {
-    dependsOn Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
+    dependsOn icuCompileTask
 
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
@@ -115,7 +117,7 @@ configure(project(":lucene:analysis:icu")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFiles)
+  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFiles, [ ignoreWithSource: icuCompileTask ])
   regenerate.dependsOn wrapWithPersistentChecksums(genRbbi)
 
   task compileIcuWindows() {

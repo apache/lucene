@@ -252,9 +252,9 @@ configure(project(":lucene:queryparser")) {
     description "Regenerate query parsers (javacc syntax definitions)."
     group "generation"
 
-    dependsOn wrapWithPersistentChecksums(javaccParserClassic, "spotlessApply"),
-        wrapWithPersistentChecksums(javaccParserSurround, "spotlessApply"),
-        wrapWithPersistentChecksums(javaccParserFlexible, "spotlessApply")
+    dependsOn wrapWithPersistentChecksums(javaccParserClassic, [ andThenTasks: "spotlessApply" ]),
+        wrapWithPersistentChecksums(javaccParserSurround, [ andThenTasks: "spotlessApply" ]),
+        wrapWithPersistentChecksums(javaccParserFlexible, [ andThenTasks: "spotlessApply" ])
   }
 
   regenerate.dependsOn javacc
