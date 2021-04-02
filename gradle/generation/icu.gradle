@@ -49,6 +49,13 @@ configure(project(":lucene:analysis:icu")) {
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
 
+    // gennorm generates file order-dependent output, so make it constant here.
+    def inputFiles = fileTree(dir: utr30DataDir, include: "*.txt").sort()
+    def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
+
+    inputs.files inputFiles
+    outputs.file outputFile
+
     doFirst {
       // all these steps must be done sequentially: it's a pipeline resulting in utr30.nrm
       def v = getVersion('com.ibm.icu', 'icu4j');
@@ -71,9 +78,7 @@ configure(project(":lucene:analysis:icu")) {
             utr30DataDir,
             "-o",
             "${buildDir}/utr30.tmp",
-            "nfc.txt", "nfkc.txt", "nfkc_cf.txt", "BasicFoldings.txt",
-            "DiacriticFolding.txt", "DingbatFolding.txt", "HanRadicalFolding.txt",
-            "NativeDigitFolding.txt"
+            *(inputFiles.collect { it.name })
         ]
       }
 
@@ -82,7 +87,7 @@ configure(project(":lucene:analysis:icu")) {
         args = [
             "-tb",
             "${buildDir}/utr30.tmp",
-            "src/resources/org/apache/lucene/analysis/icu/utr30.nrm"
+            outputFile
         ]
       }
     }
@@ -92,6 +97,12 @@ configure(project(":lucene:analysis:icu")) {
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
 
+    def sourceDir = file("src/data/uax29")
+    def targetDir = file("src/resources/org/apache/lucene/analysis/icu/segmentation")
+
+    inputs.files fileTree(dir: sourceDir, include: "*.rbbi")
+    outputs.files fileTree(dir: targetDir, include: "*.brk")
+
     doFirst {
       project.javaexec {
         main = "org.apache.lucene.analysis.icu.RBBIRuleCompiler"
@@ -99,15 +110,13 @@ configure(project(":lucene:analysis:icu")) {
 
         ignoreExitValue false
         enableAssertions true
-        args = [
-            "src/data/uax29",
-            "src/resources/org/apache/lucene/analysis/icu/segmentation"
-        ]
+        args = [ sourceDir, targetDir ]
       }
     }
   }
 
-  regenerate.dependsOn genUtr30DataFiles, genRbbi
+  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFiles)
+  regenerate.dependsOn wrapWithPersistentChecksums(genRbbi)
 
   task compileIcuWindows() {
     doFirst {
