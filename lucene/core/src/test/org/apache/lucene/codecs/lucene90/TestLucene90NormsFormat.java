@@ -14,16 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene50;
+package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseLiveDocsFormatTestCase;
+import org.apache.lucene.index.BaseNormsFormatTestCase;
 import org.apache.lucene.util.TestUtil;
 
-public class TestLucene90LiveDocsFormat extends BaseLiveDocsFormatTestCase {
+/** Tests Lucene90NormsFormat */
+public class TestLucene90NormsFormat extends BaseNormsFormatTestCase {
+  private final Codec codec = TestUtil.getDefaultCodec();
 
   @Override
   protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
+    return codec;
   }
 }
