@@ -1,0 +1,16 @@
+// Declare script dependency versions outside of palantir's
+// version unification control. These are not our main dependencies
+// but are reused in buildSrc and across applied scripts.
+
+ext {
+  scriptDepVersions = [
+      "apache-rat": "0.11",
+      "commons-codec": "1.13",
+      "ecj": "3.25.0",
+      "flexmark": "0.61.24",
+      "icu": "68.2",
+      "javacc": "7.0.4",
+      "jflex": "1.7.0",
+      "jgit": "5.9.0.202009080501-r",
+  ]
+}

@@ -81,18 +81,6 @@ ext {
 
   minJavaVersion = JavaVersion.VERSION_11
 
-  // Declare script dependency versions outside of palantir's
-  // version unification control. These are not our main dependencies.
-  scriptDepVersions = [
-      "apache-rat": "0.11",
-      "commons-codec": "1.13",
-      "ecj": "3.25.0",
-      "javacc": "7.0.4",
-      "jflex": "1.7.0",
-      "jgit": "5.9.0.202009080501-r",
-      "flexmark": "0.61.24",
-  ]
-
   // Allow definiting external tool locations using system props.
   externalTool = { name ->
     def resolved = propertyOrDefault("${name}.exe", name as String)
@@ -100,6 +88,8 @@ ext {
     return resolved
   }
 }
+
+apply from: file('buildSrc/scriptDepVersions.gradle')
 
 // Include smaller chunks configuring dedicated build areas.
 // Some of these intersect or add additional functionality.
@@ -152,6 +142,7 @@ apply from: file('gradle/generation/kuromoji.gradle')
 apply from: file('gradle/generation/nori.gradle')
 apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
+apply from: file('gradle/generation/unicode-data.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
 
