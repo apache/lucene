@@ -67,8 +67,9 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.LongsRef;
-import org.apache.lucene.util.packed.PackedInts;
+import org.apache.lucene.util.packed.DirectReader;
 
 /**
  * {@link StoredFieldsReader} impl for {@link Lucene90CompressingStoredFieldsFormat}.
@@ -83,7 +84,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long maxPointer;
   private final IndexInput fieldsStream;
   private final int chunkSize;
-  private final int packedIntsVersion;
   private final CompressionMode compressionMode;
   private final Decompressor decompressor;
   private final int numDocs;
@@ -102,7 +102,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     this.indexReader = reader.indexReader.clone();
     this.maxPointer = reader.maxPointer;
     this.chunkSize = reader.chunkSize;
-    this.packedIntsVersion = reader.packedIntsVersion;
     this.compressionMode = reader.compressionMode;
     this.decompressor = reader.decompressor.clone();
     this.numDocs = reader.numDocs;
@@ -153,7 +152,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           segmentSuffix);
 
       chunkSize = metaIn.readVInt();
-      packedIntsVersion = metaIn.readVInt();
 
       decompressor = compressionMode.newDecompressor();
       this.merging = false;
@@ -450,18 +448,10 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           throw new CorruptIndexException(
               "bitsPerStoredFields=" + bitsPerStoredFields, fieldsStream);
         } else {
-          final PackedInts.ReaderIterator it =
-              PackedInts.getReaderIteratorNoHeader(
-                  fieldsStream,
-                  PackedInts.Format.PACKED,
-                  packedIntsVersion,
-                  chunkDocs,
-                  bitsPerStoredFields,
-                  1024);
-          for (int i = 0; i < chunkDocs; ) {
-            final LongsRef next = it.next(Integer.MAX_VALUE);
-            System.arraycopy(next.longs, next.offset, numStoredFields, i, next.length);
-            i += next.length;
+          final LongValues it =
+              DirectReader.getInstance(fieldsStream, chunkDocs, bitsPerStoredFields);
+          for (int i = 0; i < chunkDocs; i++) {
+            numStoredFields[i] = it.get(i);
           }
         }
 
@@ -476,21 +466,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         } else if (bitsPerStoredFields > 31) {
           throw new CorruptIndexException("bitsPerLength=" + bitsPerLength, fieldsStream);
         } else {
-          final PackedInts.ReaderIterator it =
-              PackedInts.getReaderIteratorNoHeader(
-                  fieldsStream,
-                  PackedInts.Format.PACKED,
-                  packedIntsVersion,
-                  chunkDocs,
-                  bitsPerLength,
-                  1024);
-          for (int i = 0; i < chunkDocs; ) {
-            final LongsRef next = it.next(Integer.MAX_VALUE);
-            System.arraycopy(next.longs, next.offset, offsets, i + 1, next.length);
-            i += next.length;
-          }
-          for (int i = 0; i < chunkDocs; ++i) {
-            offsets[i + 1] += offsets[i];
+          final LongValues it = DirectReader.getInstance(fieldsStream, chunkDocs, bitsPerLength);
+          for (int i = 0; i < chunkDocs; i++) {
+            offsets[i + 1] = offsets[i] + it.get(i);
           }
         }
 
@@ -720,10 +698,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
   int getNumDocs() {
     return numDocs;
-  }
-
-  int getPackedIntsVersion() {
-    return packedIntsVersion;
   }
 
   @Override

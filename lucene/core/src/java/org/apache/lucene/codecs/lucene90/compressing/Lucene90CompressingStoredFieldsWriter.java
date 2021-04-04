@@ -47,7 +47,7 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.packed.PackedInts;
+import org.apache.lucene.util.packed.DirectWriter;
 
 /**
  * {@link StoredFieldsWriter} impl for {@link Lucene90CompressingStoredFieldsFormat}.
@@ -72,8 +72,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   static final int NUMERIC_LONG = 0x04;
   static final int NUMERIC_DOUBLE = 0x05;
 
-  static final int TYPE_BITS = PackedInts.bitsRequired(NUMERIC_DOUBLE);
-  static final int TYPE_MASK = (int) PackedInts.maxValue(TYPE_BITS);
+  static final int TYPE_BITS = DirectWriter.bitsRequired(NUMERIC_DOUBLE);
+  static final int TYPE_MASK = (int) DirectWriter.maxValue(TYPE_BITS);
 
   static final int VERSION_START = 1;
   static final int VERSION_CURRENT = VERSION_START;
@@ -151,7 +151,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
               context);
 
       metaStream.writeVInt(chunkSize);
-      metaStream.writeVInt(PackedInts.VERSION_CURRENT);
 
       success = true;
     } finally {
@@ -214,10 +213,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         for (int i = 0; i < length; ++i) {
           max |= values[i];
         }
-        final int bitsRequired = PackedInts.bitsRequired(max);
+        final int bitsRequired = DirectWriter.bitsRequired(max);
         out.writeVInt(bitsRequired);
-        final PackedInts.Writer w =
-            PackedInts.getWriterNoHeader(out, PackedInts.Format.PACKED, length, bitsRequired, 1);
+        final DirectWriter w = DirectWriter.getInstance(out, length, bitsRequired);
         for (int i = 0; i < length; ++i) {
           w.add(values[i]);
         }
@@ -603,7 +601,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
       } else if (matchingFieldsReader.getCompressionMode() == compressionMode
           && matchingFieldsReader.getChunkSize() == chunkSize
-          && matchingFieldsReader.getPackedIntsVersion() == PackedInts.VERSION_CURRENT
           && liveDocs == null
           && !tooDirty(matchingFieldsReader)) {
         // optimized merge, raw byte copy
