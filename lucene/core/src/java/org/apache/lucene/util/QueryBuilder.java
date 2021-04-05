@@ -97,8 +97,6 @@ public class QueryBuilder {
   /**
    * Creates a boolean query from the query text.
    *
-   * <p>
-   *
    * @param field field name
    * @param queryText text to be passed to the analyzer
    * @param operator operator used for clauses between analyzer tokens.
@@ -128,8 +126,6 @@ public class QueryBuilder {
   /**
    * Creates a phrase query from the query text.
    *
-   * <p>
-   *
    * @param field field name
    * @param queryText text to be passed to the analyzer
    * @param phraseSlop number of other words permitted between words in query phrase
@@ -142,8 +138,6 @@ public class QueryBuilder {
 
   /**
    * Creates a minimum-should-match query from the query text.
-   *
-   * <p>
    *
    * @param field field name
    * @param queryText text to be passed to the analyzer
