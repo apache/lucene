@@ -15,26 +15,21 @@
  * limitations under the License.
  */
 
-
-// Make sure the build environment is consistent.
-apply from: file('../gradle/validation/check-environment.gradle')
-
 repositories {
   mavenCentral()
 }
 
-ext {
-  // Declare script dependency versions outside of palantir's
-  // version unification control. These are not our main dependencies.
-  scriptDepVersions = [
-      "commons-codec": "1.13"
-  ]
-}
+// Make sure the build environment is consistent.
+apply from: file('../gradle/validation/check-environment.gradle')
+
+// Load common buildSrc and script deps.
+apply from: file("scriptDepVersions.gradle")
 
 dependencies {
   implementation gradleApi()
   implementation localGroovy()
 
   implementation "commons-codec:commons-codec:${scriptDepVersions['commons-codec']}"
+  implementation "com.ibm.icu:icu4j:${scriptDepVersions['icu']}"
 }
 
