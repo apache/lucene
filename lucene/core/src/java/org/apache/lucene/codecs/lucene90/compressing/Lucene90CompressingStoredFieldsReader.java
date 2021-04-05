@@ -444,7 +444,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         final int bitsPerStoredFields = fieldsStream.readVInt();
         if (bitsPerStoredFields == 0) {
           Arrays.fill(numStoredFields, 0, chunkDocs, fieldsStream.readVInt());
-        } else if (bitsPerStoredFields > 31) {
+        } else if (bitsPerStoredFields > 32) {
           throw new CorruptIndexException(
               "bitsPerStoredFields=" + bitsPerStoredFields, fieldsStream);
         } else {
@@ -463,7 +463,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           for (int i = 0; i < chunkDocs; ++i) {
             offsets[1 + i] = (1 + i) * length;
           }
-        } else if (bitsPerStoredFields > 31) {
+        } else if (bitsPerStoredFields > 32) {
           throw new CorruptIndexException("bitsPerLength=" + bitsPerLength, fieldsStream);
         } else {
           final LongValues it = DirectReader.getInstance(fieldsStream, chunkDocs, bitsPerLength);
