@@ -16,7 +16,7 @@
  */
 // Generated from IANA Root Zone Database <https://www.internic.net/zones/root.zone>
 // file version from 2021 Apr 6, Tue 17:13:00 Coordinated Universal Time
-// generated on 2021 Apr 6, Tue 19:30:41 Coordinated Universal Time
+// generated on 2021 Apr 6, Tue 19:35:02 Coordinated Universal Time
 // by org.apache.lucene.analysis.standard.GenerateJflexTLDMacros
 
 // LUCENE-8278: None of the TLDs in {ASCIITLD} is a 1-character-shorter prefix of another TLD
