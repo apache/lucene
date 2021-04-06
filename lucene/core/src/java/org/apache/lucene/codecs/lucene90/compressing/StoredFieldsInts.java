@@ -26,26 +26,16 @@ class StoredFieldsInts {
   private StoredFieldsInts() {}
 
   static void writeInts(int[] values, int start, int count, DataOutput out) throws IOException {
-    boolean sorted = true;
+    boolean allEqual = true;
     for (int i = 1; i < count; ++i) {
-      if (values[start + i - 1] > values[start + i]) {
-        sorted = false;
+      if (values[start + i] != values[start]) {
+        allEqual = false;
         break;
       }
     }
-    if (sorted) {
-      if (count > 0 && values[start] > values[start + count - 1]) {
+    if (allEqual) {
         out.writeByte((byte) 0);
         out.writeVInt(values[0]);
-      } else {
-        out.writeByte((byte) 1);
-        int previous = 0;
-        for (int i = 0; i < count; ++i) {
-          int doc = values[start + i];
-          out.writeVInt(doc - previous);
-          previous = doc;
-        }
-      }
     } else {
       long max = 0;
       for (int i = 0; i < count; ++i) {
@@ -56,38 +46,6 @@ class StoredFieldsInts {
         for (int i = 0; i < count; ++i) {
           out.writeByte((byte) values[start + i]);
         }
-      } else if (max <= 0xffff) {
-        out.writeByte((byte) 16);
-        for (int i = 0; i < count; ++i) {
-          out.writeShort((short) values[start + i]);
-        }
-      } else if (max <= 0xffffff) {
-        out.writeByte((byte) 24);
-        int i;
-        for (i = 0; i < count - 7; i += 8) {
-          int doc1 = values[start + i];
-          int doc2 = values[start + i + 1];
-          int doc3 = values[start + i + 2];
-          int doc4 = values[start + i + 3];
-          int doc5 = values[start + i + 4];
-          int doc6 = values[start + i + 5];
-          int doc7 = values[start + i + 6];
-          int doc8 = values[start + i + 7];
-          long l1 = (doc1 & 0xffffffL) << 40 | (doc2 & 0xffffffL) << 16 | ((doc3 >>> 8) & 0xFFFFL);
-          long l2 =
-              (doc3 & 0xFFL) << 56
-                  | (doc4 & 0xffffffL) << 32
-                  | (doc5 & 0xffffffL) << 8
-                  | ((doc6 >> 16) & 0xFFL);
-          long l3 = (doc6 & 0xFFFFL) << 48 | (doc7 & 0xffffffL) << 24 | (doc8 & 0xffffffL);
-          out.writeLong(l1);
-          out.writeLong(l2);
-          out.writeLong(l3);
-        }
-        for (; i < count; ++i) {
-          out.writeShort((short) (values[start + i] >>> 8));
-          out.writeByte((byte) values[start + i]);
-        }
       } else {
         out.writeByte((byte) 32);
         for (int i = 0; i < count; ++i) {
@@ -96,25 +54,16 @@ class StoredFieldsInts {
       }
     }
   }
-
+  
   /** Read {@code count} integers into {@code values}. */
   static void readInts(IndexInput in, int count, int[] values, int offset) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case 0:
-        Arrays.fill(values, offset, count, in.readVInt());
-        break;
-      case 1:
-        readDeltaVInts(in, count, values, offset);
+        Arrays.fill(values, offset, offset + count, in.readVInt());
         break;
       case 8:
         readInts8(in, count, values, offset);
-        break;
-      case 16:
-        readInts16(in, count, values, offset);
-        break;
-      case 24:
-        readInts24(in, count, values, offset);
         break;
       case 32:
         readInts32(in, count, values, offset);
@@ -123,49 +72,11 @@ class StoredFieldsInts {
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
   }
-
-  private static void readDeltaVInts(IndexInput in, int count, int[] values, int offset)
-      throws IOException {
-    int doc = 0;
-    for (int i = 0; i < count; i++) {
-      doc += in.readVInt();
-      values[offset + i] = doc;
-    }
-  }
-
+  
   private static void readInts8(IndexInput in, int count, int[] values, int offset)
       throws IOException {
     for (int i = 0; i < count; i++) {
       values[offset + i] = Byte.toUnsignedInt(in.readByte());
-    }
-  }
-
-  private static void readInts16(IndexInput in, int count, int[] values, int offset)
-      throws IOException {
-    for (int i = 0; i < count; i++) {
-      values[offset + i] = Short.toUnsignedInt(in.readShort());
-    }
-  }
-
-  private static void readInts24(IndexInput in, int count, int[] values, int offset)
-      throws IOException {
-    int i;
-    for (i = 0; i < count - 7; i += 8) {
-      long l1 = in.readLong();
-      long l2 = in.readLong();
-      long l3 = in.readLong();
-      values[offset + i] = (int) (l1 >>> 40);
-      values[offset + i + 1] = (int) (l1 >>> 16) & 0xffffff;
-      values[offset + i + 2] = (int) (((l1 & 0xffff) << 8) | (l2 >>> 56));
-      values[offset + i + 3] = (int) (l2 >>> 32) & 0xffffff;
-      values[offset + i + 4] = (int) (l2 >>> 8) & 0xffffff;
-      values[offset + i + 5] = (int) (((l2 & 0xff) << 16) | (l3 >>> 48));
-      values[offset + i + 6] = (int) (l3 >>> 24) & 0xffffff;
-      values[offset + i + 7] = (int) l3 & 0xffffff;
-    }
-    for (; i < count; ++i) {
-      values[offset + i] =
-          (Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte());
     }
   }
 

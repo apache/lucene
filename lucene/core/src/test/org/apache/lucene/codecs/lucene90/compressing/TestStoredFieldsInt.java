@@ -41,21 +41,6 @@ public class TestStoredFieldsInt extends LuceneTestCase {
     }
   }
 
-  public void testSorted() throws Exception {
-    int numIters = atLeast(100);
-    try (Directory dir = newDirectory()) {
-      for (int iter = 0; iter < numIters; ++iter) {
-        int[] values = new int[random().nextInt(5000)];
-        final int bpv = TestUtil.nextInt(random(), 1, 32);
-        for (int i = 0; i < values.length; ++i) {
-          values[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
-        }
-        Arrays.sort(values);
-        test(dir, values);
-      }
-    }
-  }
-
   public void testAllEquals() throws Exception {
     try (Directory dir = newDirectory()) {
       int[] docIDs = new int[random().nextInt(5000)];
