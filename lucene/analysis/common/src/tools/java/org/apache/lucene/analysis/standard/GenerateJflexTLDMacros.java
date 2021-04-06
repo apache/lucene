@@ -62,7 +62,7 @@ public class GenerateJflexTLDMacros {
     new GenerateJflexTLDMacros(args[0], args[1]).execute();
   }
 
-  private static final String NL = System.getProperty("line.separator");
+  private static final String NL = "\n";
 
   private static final String APACHE_LICENSE =
       "/*"

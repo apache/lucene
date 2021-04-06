@@ -55,7 +55,7 @@ configure(project(":lucene:core")) {
 configure(project(":lucene:analysis:common")) {
   task generateTlds() {
     def tldZones = "https://www.internic.net/zones/root.zone"
-    def outputFile = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex-macro")
+    def outputFile = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex")
 
     description "Regenerate ${outputFile}"
     group "generation"
@@ -75,6 +75,8 @@ configure(project(":lucene:analysis:common")) {
             outputFile
         ]
       }
+
+      logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
     }
   }
 
@@ -101,6 +103,13 @@ configure(project(":lucene:analysis:common")) {
     jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
     skeleton = skeletonNoBufferExpansion
     heapSize = "12g"
+
+    // Don't enforce strict dependency (although it would make sense to regenerate both).
+    // Just ensure we run after TLD regeneration, if it runs too.
+    mustRunAfter generateTlds
+
+    // Additional input (included by the source jflex file)
+    inputs.file file('src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex')
 
     doFirst {
       logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
