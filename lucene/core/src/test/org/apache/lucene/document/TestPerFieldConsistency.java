@@ -31,7 +31,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
@@ -108,6 +107,29 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     return new Field[] {textField, docValuesField, pointField, vectorField};
   }
 
+  private static void doTestDocWithMissingSchemaOptionsThrowsError(
+      Field[] fields, int missing, IndexWriter writer, String errorMsg) {
+    final Document doc = new Document();
+    for (int i = 0; i < fields.length; i++) {
+      if (i != missing) {
+        doc.add(fields[i]);
+      }
+    }
+    IllegalArgumentException exception =
+        expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc));
+    assertTrue(exception.getMessage().contains(errorMsg));
+  }
+
+  private static void doTestDocWithExtraSchemaOptionsThrowsError(
+      Field existing, Field extra, IndexWriter writer, String errorMsg) {
+    Document doc = new Document();
+    doc.add(existing);
+    doc.add(extra);
+    IllegalArgumentException exception =
+        expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc));
+    assertTrue(exception.getMessage().contains(errorMsg));
+  }
+
   public void testDocWithMissingSchemaOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig()); ) {
@@ -119,42 +141,40 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.addDocument(doc0);
 
       // the same segment: indexing a doc with a missing field throws error
-      int missingFieldIdx = randomIntBetween(0, fields.length - 1);
-      final Document doc1 = new Document();
-      for (int i = 0; i < fields.length; i++) {
-        if (i != missingFieldIdx) {
-          doc1.add(fields[i]);
-        }
+      int numNotIndexedDocs = 0;
+      for (int missingFieldIdx = 0; missingFieldIdx < fields.length; missingFieldIdx++) {
+        numNotIndexedDocs++;
+        doTestDocWithMissingSchemaOptionsThrowsError(
+            fields,
+            missingFieldIdx,
+            writer,
+            "Inconsistency of field data structures across documents for field [myfield] of doc ["
+                + numNotIndexedDocs
+                + "].");
       }
-      IllegalArgumentException exception =
-          expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
-      String expectedErrMsg =
-          "Inconsistency of field data structures across documents for field [myfield] of doc [1].";
-      assertEquals(expectedErrMsg, exception.getMessage());
-
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
-        LeafReader lr1 = reader.leaves().get(0).reader();
-        assertEquals(1, lr1.numDocs());
-        assertEquals(1, lr1.numDeletedDocs());
+        assertEquals(1, reader.leaves().get(0).reader().numDocs());
+        assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedDocs());
       }
 
       // diff segment, same index: indexing a doc with a missing field throws error
-      exception = expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
-      assertTrue(exception.getMessage().contains("cannot change field \"myfield\" from "));
-
+      numNotIndexedDocs = 0;
+      for (int missingFieldIdx = 0; missingFieldIdx < fields.length; missingFieldIdx++) {
+        numNotIndexedDocs++;
+        doTestDocWithMissingSchemaOptionsThrowsError(
+            fields, missingFieldIdx, writer, "cannot change field \"myfield\" from ");
+      }
       writer.addDocument(doc0); // add document with correct data structures
-
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
-        LeafReader lr2 = reader.leaves().get(1).reader();
-        assertEquals(1, lr2.numDocs());
-        assertEquals(1, lr2.numDeletedDocs());
+        assertEquals(1, reader.leaves().get(1).reader().numDocs());
+        assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedDocs());
       }
     }
   }
 
-  public void testDocWithExtraIndexingOptionsThrowsError() throws IOException {
+  public void testDocWithExtraSchemaOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
       final Field[] fields = randomFieldsWithTheSameName("myfield");
@@ -164,38 +184,40 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.addDocument(doc0);
 
       // the same segment: indexing a field with extra field indexing options returns error
-      int extraFieldIndex = randomIntBetween(0, fields.length - 1);
-      while (extraFieldIndex == existingFieldIdx) {
-        extraFieldIndex = randomIntBetween(0, fields.length - 1);
+      int numNotIndexedDocs = 0;
+      for (int extraFieldIndex = 0; extraFieldIndex < fields.length; extraFieldIndex++) {
+        if (extraFieldIndex == existingFieldIdx) continue;
+        numNotIndexedDocs++;
+        doTestDocWithExtraSchemaOptionsThrowsError(
+            fields[existingFieldIdx],
+            fields[extraFieldIndex],
+            writer,
+            "Inconsistency of field data structures across documents for field [myfield] of doc ["
+                + numNotIndexedDocs
+                + "].");
       }
-      final Document doc1 = new Document();
-      doc1.add(fields[existingFieldIdx]);
-      doc1.add(fields[extraFieldIndex]);
-
-      IllegalArgumentException exception =
-          expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
-      String expectedErrMsg =
-          "Inconsistency of field data structures across documents for field [myfield] of doc [1].";
-      assertEquals(expectedErrMsg, exception.getMessage());
-
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
-        LeafReader lr1 = reader.leaves().get(0).reader();
-        assertEquals(1, lr1.numDocs());
-        assertEquals(1, lr1.numDeletedDocs());
+        assertEquals(1, reader.leaves().get(0).reader().numDocs());
+        assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedDocs());
       }
 
       // diff segment, same index: indexing a field with extra field indexing options returns error
-      exception = expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
-      assertTrue(exception.getMessage().contains("cannot change field \"myfield\" from "));
-
+      numNotIndexedDocs = 0;
+      for (int extraFieldIndex = 0; extraFieldIndex < fields.length; extraFieldIndex++) {
+        if (extraFieldIndex == existingFieldIdx) continue;
+        numNotIndexedDocs++;
+        doTestDocWithExtraSchemaOptionsThrowsError(
+            fields[existingFieldIdx],
+            fields[extraFieldIndex],
+            writer,
+            "cannot change field \"myfield\" from ");
+      }
       writer.addDocument(doc0); // add document with correct data structures
-
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
-        LeafReader lr2 = reader.leaves().get(1).reader();
-        assertEquals(1, lr2.numDocs());
-        assertEquals(1, lr2.numDeletedDocs());
+        assertEquals(1, reader.leaves().get(1).reader().numDocs());
+        assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedDocs());
       }
     }
   }
