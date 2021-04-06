@@ -477,7 +477,9 @@ public class KnnGraphTester {
     if (Files.exists(nnPath)) {
       return readNN(nnPath);
     } else {
-      int[][] nn = new FullKnn(dim, topK, SEARCH_STRATEGY, quiet).computeNN(docPath, numDocs, queryPath, numIters, Runtime.getRuntime().availableProcessors());
+      int[][] nn =
+          new FullKnn(dim, topK, SEARCH_STRATEGY, quiet)
+              .computeNN(docPath, queryPath, Runtime.getRuntime().availableProcessors());
       writeNN(nn, nnPath);
       return nn;
     }

@@ -1,13 +1,28 @@
-package org.apache.lucene.util;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-import org.apache.lucene.index.VectorValues;
-import org.junit.Assert;
+package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.Arrays;
+import org.apache.lucene.index.VectorValues;
+import org.junit.Assert;
 
 public class TestFullKnn extends LuceneTestCase {
 
@@ -31,16 +46,17 @@ public class TestFullKnn extends LuceneTestCase {
   public void setUp() throws Exception {
     super.setUp();
     fullKnn = new FullKnn(5, 3, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, true);
-    vec0 = new float[]{1, 2, 3, 4, 5};
+    vec0 = new float[] {1, 2, 3, 4, 5};
     VectorUtil.l2normalize(vec0);
-    vec1 = new float[]{6, 7, 8, 9, 10};
+    vec1 = new float[] {6, 7, 8, 9, 10};
     VectorUtil.l2normalize(vec1);
-    vec2 = new float[]{1, 2, 3, 4, 6};
+    vec2 = new float[] {1, 2, 3, 4, 6};
     VectorUtil.l2normalize(vec2);
   }
 
   private ByteBuffer floatArrayToByteBuffer(float[] floats) {
-    ByteBuffer byteBuf = ByteBuffer.allocateDirect(floats.length * Float.BYTES); //4 bytes per float
+    ByteBuffer byteBuf =
+        ByteBuffer.allocateDirect(floats.length * Float.BYTES); // 4 bytes per float
     byteBuf.order(ByteOrder.LITTLE_ENDIAN);
     FloatBuffer buffer = byteBuf.asFloatBuffer();
     buffer.put(floats);
@@ -82,16 +98,16 @@ public class TestFullKnn extends LuceneTestCase {
     assertBufferEqualsArray(fa, wholeBuffer);
 
     final ByteBuffer fb5_5 = sf.getBuffer(5, 5);
-    assertBufferEqualsArray(Arrays.copyOfRange(fa, 5, 10), fb5_5);
+    assertBufferEqualsArray(ArrayUtil.copyOfSubArray(fa, 5, 10), fb5_5);
 
     final ByteBuffer fb5_3 = sf.getBuffer(5, 3);
-    assertBufferEqualsArray(Arrays.copyOfRange(fa, 5, 8), fb5_3);
+    assertBufferEqualsArray(ArrayUtil.copyOfSubArray(fa, 5, 8), fb5_3);
 
     final ByteBuffer fb2_12 = sf.getBuffer(5, 0);
-    assertBufferEqualsArray(new byte[]{}, fb2_12);
+    assertBufferEqualsArray(new byte[] {}, fb2_12);
 
     final ByteBuffer fb5_1 = sf.getBuffer(5, 1);
-    assertBufferEqualsArray(Arrays.copyOfRange(fa, 5, 6), fb5_1);
+    assertBufferEqualsArray(ArrayUtil.copyOfSubArray(fa, 5, 6), fb5_1);
   }
 
   public void testSuccessFullKnn() throws IOException {
@@ -99,33 +115,57 @@ public class TestFullKnn extends LuceneTestCase {
     float[] threeDocs = joinArrays(vec0, vec1, vec2);
     float[] threeQueries = joinArrays(vec1, vec0, vec2);
 
-    int[][] result = fullKnn.doFullKnn(2, 1, 1, new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
-        new SimpleBufferProvider(floatArrayToByteBuffer(vec1)));
+    int[][] result =
+        fullKnn.doFullKnn(
+            2,
+            1,
+            1,
+            new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
+            new SimpleBufferProvider(floatArrayToByteBuffer(vec1)));
 
-    Assert.assertArrayEquals(result[0], new int[]{1, 0});
+    Assert.assertArrayEquals(result[0], new int[] {1, 0});
 
-    result = fullKnn.doFullKnn(2, 1, 2, new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
-        new SimpleBufferProvider(floatArrayToByteBuffer(vec0)));
+    result =
+        fullKnn.doFullKnn(
+            2,
+            1,
+            2,
+            new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
+            new SimpleBufferProvider(floatArrayToByteBuffer(vec0)));
 
-    Assert.assertArrayEquals(result[0], new int[]{0, 1});
+    Assert.assertArrayEquals(result[0], new int[] {0, 1});
 
     float[] twoQueries = joinArrays(vec1, vec0);
-    result = fullKnn.doFullKnn(2, 2, 2, new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
-        new SimpleBufferProvider(floatArrayToByteBuffer(twoQueries)));
+    result =
+        fullKnn.doFullKnn(
+            2,
+            2,
+            2,
+            new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
+            new SimpleBufferProvider(floatArrayToByteBuffer(twoQueries)));
 
-    Assert.assertArrayEquals(result, new int[][]{{1, 0}, {0, 1}});
+    Assert.assertArrayEquals(result, new int[][] {{1, 0}, {0, 1}});
 
+    result =
+        fullKnn.doFullKnn(
+            3,
+            3,
+            3,
+            new SimpleBufferProvider(floatArrayToByteBuffer(threeDocs)),
+            new SimpleBufferProvider(floatArrayToByteBuffer(threeQueries)));
 
-    result = fullKnn.doFullKnn(3, 3, 3, new SimpleBufferProvider(floatArrayToByteBuffer(threeDocs)),
-        new SimpleBufferProvider(floatArrayToByteBuffer(threeQueries)));
-
-    Assert.assertArrayEquals(new int[][]{{1, 0}, {0, 2}, {2, 0}}, result);
+    Assert.assertArrayEquals(new int[][] {{1, 0}, {0, 2}, {2, 0}}, result);
 
     FullKnn full3nn = new FullKnn(5, 3, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, true);
-    result = full3nn.doFullKnn(3, 3, 3, new SimpleBufferProvider(floatArrayToByteBuffer(threeDocs)),
-        new SimpleBufferProvider(floatArrayToByteBuffer(threeQueries)));
+    result =
+        full3nn.doFullKnn(
+            3,
+            3,
+            3,
+            new SimpleBufferProvider(floatArrayToByteBuffer(threeDocs)),
+            new SimpleBufferProvider(floatArrayToByteBuffer(threeQueries)));
 
-    Assert.assertArrayEquals(new int[][]{{1, 0, 2}, {0, 2, 1}, {2, 0, 1}}, result);
+    Assert.assertArrayEquals(new int[][] {{1, 0, 2}, {0, 2, 1}, {2, 0, 1}}, result);
   }
 
   public void testExceptionFullKnn() {
@@ -134,7 +174,11 @@ public class TestFullKnn extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          fullKnn.doFullKnn(2, 1, 1, new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
+          fullKnn.doFullKnn(
+              2,
+              1,
+              1,
+              new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
               new SimpleBufferProvider(floatArrayToByteBuffer(vec1)));
         });
   }
