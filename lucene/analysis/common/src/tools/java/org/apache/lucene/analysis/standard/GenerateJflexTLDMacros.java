@@ -56,7 +56,7 @@ public class GenerateJflexTLDMacros {
     if (args.length != 2 || args[0].equals("--help") || args[0].equals("-help")) {
       System.err.println("Cmd line params:");
       System.err.println(
-          "\tjava " + GenerateJflexTLDMacros.class.getName() + "<ZoneFileURL> <JFlexOutputFile>");
+          "  java " + GenerateJflexTLDMacros.class.getName() + "<ZoneFileURL> <JFlexOutputFile>");
       System.exit(1);
     }
     new GenerateJflexTLDMacros(args[0], args[1]).execute();
@@ -270,7 +270,7 @@ public class GenerateJflexTLDMacros {
 
     boolean isFirst = true;
     for (String TLD : TLDs) {
-      writer.write("\t");
+      writer.write("  ");
       if (isFirst) {
         isFirst = false;
         writer.write("  ");
@@ -280,7 +280,7 @@ public class GenerateJflexTLDMacros {
       writer.write(getCaseInsensitiveRegex(TLD));
       writer.write(NL);
     }
-    writer.write("\t) \".\"?   // Accept trailing root (empty) domain");
+    writer.write("  ) \".\"?   // Accept trailing root (empty) domain");
     writer.write(NL);
     writer.write(NL);
   }
