@@ -89,8 +89,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final int numDocs;
   private final boolean merging;
   private final BlockState state;
+  private final long numChunks; // number of written blocks
   private final long numDirtyChunks; // number of incomplete compressed blocks written
-  private final long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
+  private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private boolean closed;
 
   // used by clone
@@ -106,6 +107,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     this.compressionMode = reader.compressionMode;
     this.decompressor = reader.decompressor.clone();
     this.numDocs = reader.numDocs;
+    this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
     this.numDirtyDocs = reader.numDirtyDocs;
     this.merging = merging;
@@ -177,6 +179,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       this.maxPointer = maxPointer;
       this.indexReader = indexReader;
 
+      numChunks = metaIn.readVLong();
       numDirtyChunks = metaIn.readVLong();
       numDirtyDocs = metaIn.readVLong();
 
@@ -716,6 +719,15 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     }
     assert numDirtyChunks >= 0;
     return numDirtyChunks;
+  }
+
+  long getNumChunks() {
+    if (version != VERSION_CURRENT) {
+      throw new IllegalStateException(
+          "getNumChunks should only ever get called when the reader is on the current version");
+    }
+    assert numChunks >= 0;
+    return numChunks;
   }
 
   int getNumDocs() {

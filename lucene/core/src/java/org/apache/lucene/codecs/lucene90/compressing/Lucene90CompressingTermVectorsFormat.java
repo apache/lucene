@@ -41,6 +41,7 @@ public class Lucene90CompressingTermVectorsFormat extends TermVectorsFormat {
   private final CompressionMode compressionMode;
   private final int chunkSize;
   private final int blockSize;
+  private final int maxDocsPerChunk;
 
   /**
    * Create a new {@link Lucene90CompressingTermVectorsFormat}.
@@ -63,6 +64,7 @@ public class Lucene90CompressingTermVectorsFormat extends TermVectorsFormat {
    * @param segmentSuffix a suffix to append to files created by this format
    * @param compressionMode the {@link CompressionMode} to use
    * @param chunkSize the minimum number of bytes of a single chunk of stored documents
+   * @param maxDocsPerChunk the maximum number of documents in a single chunk
    * @param blockSize the number of chunks to store in an index block.
    * @see CompressionMode
    */
@@ -71,6 +73,7 @@ public class Lucene90CompressingTermVectorsFormat extends TermVectorsFormat {
       String segmentSuffix,
       CompressionMode compressionMode,
       int chunkSize,
+      int maxDocsPerChunk,
       int blockSize) {
     this.formatName = formatName;
     this.segmentSuffix = segmentSuffix;
@@ -79,6 +82,7 @@ public class Lucene90CompressingTermVectorsFormat extends TermVectorsFormat {
       throw new IllegalArgumentException("chunkSize must be >= 1");
     }
     this.chunkSize = chunkSize;
+    this.maxDocsPerChunk = maxDocsPerChunk;
     if (blockSize < 1) {
       throw new IllegalArgumentException("blockSize must be >= 1");
     }
@@ -104,6 +108,7 @@ public class Lucene90CompressingTermVectorsFormat extends TermVectorsFormat {
         formatName,
         compressionMode,
         chunkSize,
+        maxDocsPerChunk,
         blockSize);
   }
 
@@ -114,6 +119,8 @@ public class Lucene90CompressingTermVectorsFormat extends TermVectorsFormat {
         + compressionMode
         + ", chunkSize="
         + chunkSize
+        + ", maxDocsPerChunk="
+        + maxDocsPerChunk
         + ", blockSize="
         + blockSize
         + ")";
