@@ -53,6 +53,31 @@ configure(project(":lucene:core")) {
 }
 
 configure(project(":lucene:analysis:common")) {
+  task generateTlds() {
+    def tldZones = "https://www.internic.net/zones/root.zone"
+    def outputFile = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex-macro")
+
+    description "Regenerate ${outputFile}"
+    group "generation"
+
+    dependsOn { sourceSets.tools.runtimeClasspath }
+
+    outputs.file outputFile
+
+    doFirst {
+      project.javaexec {
+        main = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
+        classpath = sourceSets.tools.runtimeClasspath
+
+        ignoreExitValue false
+        args = [
+            tldZones,
+            outputFile
+        ]
+      }
+    }
+  }
+
   task generateWikipediaTokenizer(type: JFlexTask) {
     description "Regenerate WikipediaTokenizerImpl.java"
     group "generation"
@@ -121,7 +146,8 @@ configure(project(":lucene:analysis:common")) {
   regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizer, [ andThenTasks: "spotlessApply" ]),
       wrapWithPersistentChecksums(generateClassicTokenizer, [ andThenTasks: "spotlessApply" ]),
       wrapWithPersistentChecksums(generateUAX29URLEmailTokenizer, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateHTMLStripCharFilter, [ andThenTasks: "spotlessApply" ])
+      wrapWithPersistentChecksums(generateHTMLStripCharFilter, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateTlds, [ andThenTasks: "spotlessApply" ])
 }
 
 class JFlexTask extends DefaultTask {
