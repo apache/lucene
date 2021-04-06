@@ -16,11 +16,10 @@
  */
 package org.apache.lucene.codecs.lucene90.compressing;
 
-import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.IndexInput;
-
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexInput;
 
 class StoredFieldsInts {
 
@@ -74,8 +73,12 @@ class StoredFieldsInts {
           int doc6 = values[start + i + 5];
           int doc7 = values[start + i + 6];
           int doc8 = values[start + i + 7];
-          long l1 = (doc1 & 0xffffffL) << 40 | (doc2 & 0xffffffL) << 16  | ((doc3 >>> 8) & 0xFFFFL);
-          long l2 = (doc3 & 0xFFL) << 56 | (doc4 & 0xffffffL) << 32 | (doc5 & 0xffffffL) << 8 | ((doc6 >> 16) & 0xFFL);
+          long l1 = (doc1 & 0xffffffL) << 40 | (doc2 & 0xffffffL) << 16 | ((doc3 >>> 8) & 0xFFFFL);
+          long l2 =
+              (doc3 & 0xFFL) << 56
+                  | (doc4 & 0xffffffL) << 32
+                  | (doc5 & 0xffffffL) << 8
+                  | ((doc6 >> 16) & 0xFFL);
           long l3 = (doc6 & 0xFFFFL) << 48 | (doc7 & 0xffffffL) << 24 | (doc8 & 0xffffffL);
           out.writeLong(l1);
           out.writeLong(l2);
@@ -109,7 +112,7 @@ class StoredFieldsInts {
         break;
       case 16:
         readInts16(in, count, values, offset);
-        break;  
+        break;
       case 24:
         readInts24(in, count, values, offset);
         break;
@@ -121,7 +124,8 @@ class StoredFieldsInts {
     }
   }
 
-  private static void readDeltaVInts(IndexInput in, int count, int[] values, int offset) throws IOException {
+  private static void readDeltaVInts(IndexInput in, int count, int[] values, int offset)
+      throws IOException {
     int doc = 0;
     for (int i = 0; i < count; i++) {
       doc += in.readVInt();
@@ -129,19 +133,22 @@ class StoredFieldsInts {
     }
   }
 
-  private static void readInts8(IndexInput in, int count, int[] values, int offset) throws IOException {
+  private static void readInts8(IndexInput in, int count, int[] values, int offset)
+      throws IOException {
     for (int i = 0; i < count; i++) {
       values[offset + i] = Byte.toUnsignedInt(in.readByte());
     }
   }
 
-  private static void readInts16(IndexInput in, int count, int[] values, int offset) throws IOException {
+  private static void readInts16(IndexInput in, int count, int[] values, int offset)
+      throws IOException {
     for (int i = 0; i < count; i++) {
       values[offset + i] = Short.toUnsignedInt(in.readShort());
     }
   }
 
-  private static void readInts24(IndexInput in, int count, int[] values, int offset) throws IOException {
+  private static void readInts24(IndexInput in, int count, int[] values, int offset)
+      throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
       long l1 = in.readLong();
@@ -157,11 +164,13 @@ class StoredFieldsInts {
       values[offset + i + 7] = (int) l3 & 0xffffff;
     }
     for (; i < count; ++i) {
-      values[offset + i] = (Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte());
+      values[offset + i] =
+          (Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte());
     }
   }
 
-  private static void readInts32(IndexInput in, int count, int[] values, int offset) throws IOException {
+  private static void readInts32(IndexInput in, int count, int[] values, int offset)
+      throws IOException {
     for (int i = 0; i < count; i++) {
       values[offset + i] = in.readInt();
     }

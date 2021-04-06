@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene90.compressing;
 
+import java.util.Arrays;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -23,8 +24,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
-
-import java.util.Arrays;
 
 public class TestStoredFieldsInt extends LuceneTestCase {
 
@@ -80,7 +79,10 @@ public class TestStoredFieldsInt extends LuceneTestCase {
       final int offset = random().nextInt(5);
       int[] read = new int[ints.length + offset];
       StoredFieldsInts.readInts(in, ints.length, read, offset);
-      assertArrayEquals(offset + " " + ints.length, ints,  ArrayUtil.copyOfSubArray(read, offset, offset + ints.length));
+      assertArrayEquals(
+          offset + " " + ints.length,
+          ints,
+          ArrayUtil.copyOfSubArray(read, offset, offset + ints.length));
       assertEquals(len, in.getFilePointer());
     }
     dir.deleteFile("tmp");

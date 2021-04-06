@@ -40,7 +40,6 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import org.apache.lucene.codecs.CodecUtil;
@@ -68,7 +67,6 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.LongsRef;
 
 /**
  * {@link StoredFieldsReader} impl for {@link Lucene90CompressingStoredFieldsFormat}.
@@ -373,8 +371,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     // whether the block has been sliced, this happens for large documents
     private boolean sliced;
 
-    private int[] offsets = IntsRef.EMPTY_INTS; //EMPTY_LONGS;
-    private int[] numStoredFields =  IntsRef.EMPTY_INTS; //LongsRef.EMPTY_LONGS;
+    private int[] offsets = IntsRef.EMPTY_INTS; // EMPTY_LONGS;
+    private int[] numStoredFields = IntsRef.EMPTY_INTS; // LongsRef.EMPTY_LONGS;
 
     // the start pointer at which you can read the compressed documents
     private long startPointer;
@@ -434,10 +432,10 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       offsets = ArrayUtil.grow(offsets, chunkDocs + 1);
       numStoredFields = ArrayUtil.grow(numStoredFields, chunkDocs);
-      
+
       if (chunkDocs == 1) {
-          numStoredFields[0] = fieldsStream.readVInt();
-          offsets[1] = fieldsStream.readVInt();
+        numStoredFields[0] = fieldsStream.readVInt();
+        offsets[1] = fieldsStream.readVInt();
       } else {
         // Number of stored fields per document
         StoredFieldsInts.readInts(fieldsStream, chunkDocs, numStoredFields, 0);
@@ -447,14 +445,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         for (int i = 0; i < chunkDocs; ++i) {
           offsets[i + 1] += offsets[i];
         }
-        
+
         // Additional validation: only the empty document has a serialized length of 0
         for (int i = 0; i < chunkDocs; ++i) {
           final long len = offsets[i + 1] - offsets[i];
           final long storedFields = numStoredFields[i];
           if ((len == 0) != (storedFields == 0)) {
             throw new CorruptIndexException(
-                    "length=" + len + ", numStoredFields=" + storedFields, fieldsStream);
+                "length=" + len + ", numStoredFields=" + storedFields, fieldsStream);
           }
         }
       }

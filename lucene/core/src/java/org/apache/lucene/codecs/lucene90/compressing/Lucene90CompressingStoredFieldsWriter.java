@@ -47,7 +47,7 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.packed.DirectWriter;
+import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * {@link StoredFieldsWriter} impl for {@link Lucene90CompressingStoredFieldsFormat}.
@@ -72,8 +72,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   static final int NUMERIC_LONG = 0x04;
   static final int NUMERIC_DOUBLE = 0x05;
 
-  static final int TYPE_BITS = DirectWriter.bitsRequired(NUMERIC_DOUBLE);
-  static final int TYPE_MASK = (int) DirectWriter.maxValue(TYPE_BITS);
+  static final int TYPE_BITS = PackedInts.bitsRequired(NUMERIC_DOUBLE);
+  static final int TYPE_MASK = (int) PackedInts.maxValue(TYPE_BITS);
 
   static final int VERSION_START = 1;
   static final int VERSION_CURRENT = VERSION_START;
