@@ -50,7 +50,7 @@ import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuery
 /**
  * Parser for the standard Lucene syntax
  */
-@SuppressWarnings("unused") public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserConstants {
+@SuppressWarnings({"unused","null"}) public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserConstants {
   public StandardSyntaxParser() {
     this(new FastCharStream(Reader.nullReader()));
   }

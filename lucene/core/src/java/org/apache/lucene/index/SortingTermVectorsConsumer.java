@@ -38,7 +38,7 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
 
   private static final TermVectorsFormat TEMP_TERM_VECTORS_FORMAT =
       new Lucene90CompressingTermVectorsFormat(
-          "TempTermVectors", "", SortingStoredFieldsConsumer.NO_COMPRESSION, 8 * 1024, 10);
+          "TempTermVectors", "", SortingStoredFieldsConsumer.NO_COMPRESSION, 8 * 1024, 128, 10);
   TrackingTmpOutputDirectoryWrapper tmpDirectory;
 
   SortingTermVectorsConsumer(

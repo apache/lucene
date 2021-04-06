@@ -83,8 +83,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   private final int numDocs;
   private boolean closed;
   private final BlockPackedReaderIterator reader;
+  private final long numChunks; // number of written blocks
   private final long numDirtyChunks; // number of incomplete compressed blocks written
-  private final long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
+  private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private final long maxPointer; // end of the data section
 
   // used by clone
@@ -100,6 +101,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     this.reader =
         new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
     this.version = reader.version;
+    this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
     this.numDirtyDocs = reader.numDirtyDocs;
     this.maxPointer = reader.maxPointer;
@@ -167,6 +169,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       this.indexReader = fieldsIndexReader;
       this.maxPointer = fieldsIndexReader.getMaxPointer();
 
+      numChunks = metaIn.readVLong();
       numDirtyChunks = metaIn.readVLong();
       numDirtyDocs = metaIn.readVLong();
 
@@ -174,10 +177,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       this.reader =
           new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
 
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, null);
-        metaIn.close();
-      }
+      CodecUtil.checkFooter(metaIn, null);
+      metaIn.close();
 
       success = true;
     } catch (Throwable t) {
@@ -238,6 +239,15 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
     assert numDirtyChunks >= 0;
     return numDirtyChunks;
+  }
+
+  long getNumChunks() {
+    if (version != VERSION_CURRENT) {
+      throw new IllegalStateException(
+          "getNumChunks should only ever get called when the reader is on the current version");
+    }
+    assert numChunks >= 0;
+    return numChunks;
   }
 
   int getNumDocs() {

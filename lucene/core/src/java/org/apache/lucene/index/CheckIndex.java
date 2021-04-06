@@ -606,6 +606,8 @@ public final class CheckIndex implements Closeable {
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
+    Sort previousIndexSort = null;
+
     for (int i = 0; i < numSegments; i++) {
       final SegmentCommitInfo info = sis.info(i);
       long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
@@ -638,7 +640,6 @@ public final class CheckIndex implements Closeable {
       int toLoseDocCount = info.info.maxDoc();
 
       SegmentReader reader = null;
-      Sort previousIndexSort = null;
 
       try {
         msg(infoStream, "    version=" + (version == null ? "3.0" : version));
@@ -3240,6 +3241,7 @@ public final class CheckIndex implements Closeable {
         checkDVIterator(fi, maxDoc, dvReader::getNumeric);
         checkNumericDocValues(fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi));
         break;
+      case NONE:
       default:
         throw new AssertionError();
     }

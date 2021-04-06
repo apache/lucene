@@ -192,8 +192,6 @@ public final class Geo3DPoint extends Field {
   /**
    * Create a query for matching a path.
    *
-   * <p>
-   *
    * @param field field name. must not be null.
    * @param pathLatitudes latitude values for points of the path: must be within standard +/-90
    *     coordinate bounds.

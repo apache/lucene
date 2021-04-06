@@ -311,6 +311,7 @@ public final class JapaneseTokenizer extends Tokenizer {
         extendedMode = true;
         outputCompounds = !discardCompoundToken;
         break;
+      case NORMAL:
       default:
         searchMode = false;
         extendedMode = false;

@@ -500,8 +500,6 @@ public class WeightedSpanTermExtractor {
    * Creates a Map of <code>WeightedSpanTerms</code> from the given <code>Query</code> and <code>
    * TokenStream</code>.
    *
-   * <p>
-   *
    * @param query that caused hit
    * @param tokenStream of text to be highlighted
    * @return Map containing WeightedSpanTerms
@@ -515,8 +513,6 @@ public class WeightedSpanTermExtractor {
   /**
    * Creates a Map of <code>WeightedSpanTerms</code> from the given <code>Query</code> and <code>
    * TokenStream</code>.
-   *
-   * <p>
    *
    * @param query that caused hit
    * @param tokenStream of text to be highlighted
@@ -543,8 +539,6 @@ public class WeightedSpanTermExtractor {
    * Creates a Map of <code>WeightedSpanTerms</code> from the given <code>Query</code> and <code>
    * TokenStream</code>. Uses a supplied <code>IndexReader</code> to properly weight terms (for
    * gradient highlighting).
-   *
-   * <p>
    *
    * @param query that caused hit
    * @param tokenStream of text to be highlighted

@@ -120,7 +120,7 @@ public abstract class CompressingCodec extends FilterCodec {
             name, segmentSuffix, compressionMode, chunkSize, maxDocsPerChunk, blockShift);
     this.termVectorsFormat =
         new Lucene90CompressingTermVectorsFormat(
-            name, segmentSuffix, compressionMode, chunkSize, blockShift);
+            name, segmentSuffix, compressionMode, chunkSize, maxDocsPerChunk, blockShift);
   }
 
   /** Creates a compressing codec with an empty segment suffix */

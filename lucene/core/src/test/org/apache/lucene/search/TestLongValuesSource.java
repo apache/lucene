@@ -164,6 +164,14 @@ public class TestLongValuesSource extends LuceneTestCase {
           case LONG:
             mutated[i] = LongValuesSource.fromLongField(s.getField()).getSortField(reverse);
             break;
+          case CUSTOM:
+          case DOUBLE:
+          case FLOAT:
+          case DOC:
+          case REWRITEABLE:
+          case STRING:
+          case STRING_VAL:
+          case SCORE:
           default:
             mutated[i] = original[i];
         }

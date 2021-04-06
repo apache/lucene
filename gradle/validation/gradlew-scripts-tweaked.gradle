@@ -29,9 +29,6 @@ configure(rootProject) {
 
     inputs.files(scripts)
 
-    // This task has no proper outputs.
-    setupDummyOutputs(task)
-
     doFirst {
       scripts.each { file ->
         def content = new String(file.readBytes(), StandardCharsets.US_ASCII)

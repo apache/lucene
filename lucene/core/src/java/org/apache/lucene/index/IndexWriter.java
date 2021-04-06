@@ -1652,6 +1652,10 @@ public class IndexWriter
                           case BINARY:
                             return new BinaryDocValuesFieldUpdates(
                                 nextGen, k, rld.info.info.maxDoc());
+                          case NONE:
+                          case SORTED:
+                          case SORTED_NUMERIC:
+                          case SORTED_SET:
                           default:
                             throw new AssertionError("type: " + update.type + " is not supported");
                         }
@@ -1666,6 +1670,10 @@ public class IndexWriter
                     docValuesFieldUpdates.add(
                         leafDocId, ((BinaryDocValuesUpdate) update).getValue());
                     break;
+                  case NONE:
+                  case SORTED:
+                  case SORTED_SET:
+                  case SORTED_NUMERIC:
                   default:
                     throw new AssertionError("type: " + update.type + " is not supported");
                 }
@@ -1982,6 +1990,10 @@ public class IndexWriter
         case BINARY:
           dvUpdates[i] = new BinaryDocValuesUpdate(term, f.name(), f.binaryValue());
           break;
+        case NONE:
+        case SORTED:
+        case SORTED_NUMERIC:
+        case SORTED_SET:
         default:
           throw new IllegalArgumentException(
               "can only update NUMERIC or BINARY fields: field=" + f.name() + ", type=" + dvType);
@@ -2348,6 +2360,11 @@ public class IndexWriter
         case COMMIT:
           spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, this);
           break;
+        case EXPLICIT:
+        case FULL_FLUSH:
+        case MERGE_FINISHED:
+        case SEGMENT_FLUSH:
+        case CLOSING:
         default:
           spec = mergePolicy.findMerges(trigger, segmentInfos, this);
       }
@@ -4206,6 +4223,10 @@ public class IndexWriter
                     new BinaryDocValuesFieldUpdates(
                         updates.delGen, updates.field, merge.info.info.maxDoc());
                 break;
+              case NONE:
+              case SORTED:
+              case SORTED_SET:
+              case SORTED_NUMERIC:
               default:
                 throw new AssertionError();
             }
@@ -4241,17 +4262,13 @@ public class IndexWriter
     }
 
     if (infoStream.isEnabled("IW")) {
-      if (mergedDeletesAndUpdates == null) {
-        infoStream.message("IW", "no new deletes or field updates since merge started");
-      } else {
-        String msg = mergedDeletesAndUpdates.getDelCount() - numDeletesBefore + " new deletes";
-        if (anyDVUpdates) {
-          msg += " and " + mergedDeletesAndUpdates.getNumDVUpdates() + " new field updates";
-          msg += " (" + mergedDeletesAndUpdates.ramBytesUsed.get() + ") bytes";
-        }
-        msg += " since merge started";
-        infoStream.message("IW", msg);
+      String msg = mergedDeletesAndUpdates.getDelCount() - numDeletesBefore + " new deletes";
+      if (anyDVUpdates) {
+        msg += " and " + mergedDeletesAndUpdates.getNumDVUpdates() + " new field updates";
+        msg += " (" + mergedDeletesAndUpdates.ramBytesUsed.get() + ") bytes";
       }
+      msg += " since merge started";
+      infoStream.message("IW", msg);
     }
 
     merge.info.setBufferedDeletesGen(minGen);

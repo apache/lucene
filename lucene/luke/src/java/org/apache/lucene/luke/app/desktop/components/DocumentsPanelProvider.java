@@ -1130,6 +1130,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
           case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS:
             sb.append("dfpo");
             break;
+          case NONE:
           default:
             sb.append("----");
         }
@@ -1212,6 +1213,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
           case SORTED_SET:
             sb.append("srtset");
             break;
+          case NONE:
           default:
             sb.append("??????");
         }

@@ -230,19 +230,17 @@ public class SidedPlane extends Plane implements Membership {
       final Vector insidePoint, final Vector point1, final Vector point2, final Vector point3) {
     SidedPlane rval = null;
 
-    if (rval == null) {
-      try {
-        final Vector planeNormal =
-            new Vector(
-                point1.x - point2.x,
-                point1.y - point2.y,
-                point1.z - point2.z,
-                point2.x - point3.x,
-                point2.y - point3.y,
-                point2.z - point3.z);
-        rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point2));
-      } catch (IllegalArgumentException e) {
-      }
+    try {
+      final Vector planeNormal =
+          new Vector(
+              point1.x - point2.x,
+              point1.y - point2.y,
+              point1.z - point2.z,
+              point2.x - point3.x,
+              point2.y - point3.y,
+              point2.z - point3.z);
+      rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point2));
+    } catch (IllegalArgumentException e) {
     }
 
     if (rval == null) {

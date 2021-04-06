@@ -278,6 +278,7 @@ public class MatchRegionRetriever {
           // depending on the use case (OffsetsFromValues, for example).
           return new OffsetsFromTokens(field, analyzer);
 
+        case NONE:
         default:
           return (matchesIterator, doc) -> {
             throw new IOException(

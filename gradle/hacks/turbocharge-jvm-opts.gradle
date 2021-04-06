@@ -30,7 +30,12 @@ allprojects {
 
     // Inject vm options into any JavaExec task... We could narrow it
     // down but I don't think there is any harm in keeping it broad.
-    tasks.withType(JavaExec) {
+    tasks.withType(JavaExec) { task ->
+        // Skip tuning java exec for benchmarks.
+        if (task.path == ":lucene:benchmark:run") {
+            return
+        }
+
         jvmArgs += vmOpts
     }
 }

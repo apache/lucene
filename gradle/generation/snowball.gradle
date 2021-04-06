@@ -106,7 +106,7 @@ configure(project(":lucene:analysis:common")) {
       dependsOn downloadSnowballData
 
       doFirst {
-        project.exec {
+        project.quietExec {
           executable "bash"
           args = [snowballScript, snowballStemmerDir, snowballWebsiteDir, snowballDataDir, projectDir]
         }
@@ -114,5 +114,5 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn snowball, "tidy"
+  regenerate.dependsOn mustRunInOrder([snowball, "spotlessApply"])
 }

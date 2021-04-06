@@ -1,8 +1,8 @@
+<<<<<<< HEAD
 #Sun Sep 23 13:02:27 EDT 2012
 eclipse.preferences.version=1
 # Note: all compiler flags are defined in ECJ linter configuration
-org.eclipse.jdt.core.formatter.align_assignment_statements_on_columns=false
-org.eclipse.jdt.core.formatter.align_fields_grouping_blank_lines=2147483647
+@ecj-lint-config@
 org.eclipse.jdt.core.formatter.align_type_members_on_columns=false
 org.eclipse.jdt.core.formatter.align_variable_declarations_on_columns=false
 org.eclipse.jdt.core.formatter.align_with_spaces=false

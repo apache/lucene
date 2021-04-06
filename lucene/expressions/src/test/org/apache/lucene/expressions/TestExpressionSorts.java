@@ -159,6 +159,11 @@ public class TestExpressionSorts extends LuceneTestCase {
         return DoubleValuesSource.fromDoubleField(field.getField());
       case SCORE:
         return DoubleValuesSource.SCORES;
+      case CUSTOM:
+      case DOC:
+      case REWRITEABLE:
+      case STRING:
+      case STRING_VAL:
       default:
         throw new UnsupportedOperationException();
     }

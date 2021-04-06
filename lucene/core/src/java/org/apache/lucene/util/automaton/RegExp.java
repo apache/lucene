@@ -1030,6 +1030,14 @@ public class RegExp {
       case REGEXP_AUTOMATON:
         set.add(s);
         break;
+      case REGEXP_ANYCHAR:
+      case REGEXP_ANYSTRING:
+      case REGEXP_CHAR:
+      case REGEXP_CHAR_RANGE:
+      case REGEXP_EMPTY:
+      case REGEXP_INTERVAL:
+      case REGEXP_PRE_CLASS:
+      case REGEXP_STRING:
       default:
     }
   }

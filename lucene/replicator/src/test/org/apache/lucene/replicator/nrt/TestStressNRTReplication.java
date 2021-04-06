@@ -550,6 +550,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
   /** Launches a child "server" (separate JVM), which is either primary or replica node */
   @SuppressForbidden(reason = "ProcessBuilder requires java.io.File for CWD")
+  @SuppressWarnings("null")
   NodeProcess startNode(final int id, Path indexPath, boolean isPrimary, long forcePrimaryVersion)
       throws IOException {
     nodeTimeStamps[id] = System.nanoTime();
