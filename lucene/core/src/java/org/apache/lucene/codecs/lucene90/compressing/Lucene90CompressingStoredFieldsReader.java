@@ -371,8 +371,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     // whether the block has been sliced, this happens for large documents
     private boolean sliced;
 
-    private int[] offsets = IntsRef.EMPTY_INTS; // EMPTY_LONGS;
-    private int[] numStoredFields = IntsRef.EMPTY_INTS; // LongsRef.EMPTY_LONGS;
+    private int[] offsets = IntsRef.EMPTY_INTS;
+    private int[] numStoredFields = IntsRef.EMPTY_INTS;
 
     // the start pointer at which you can read the compressed documents
     private long startPointer;
