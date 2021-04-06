@@ -235,7 +235,7 @@ public class TestHnsw extends LuceneTestCase {
     HnswGraph hnsw = builder.build(vectors);
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
-      float[] query = randomVector(random(), dim);
+      float[] query = VectorUtil.randomVector(random(), dim);
       NeighborQueue actual = HnswGraph.search(query, topK, 100, vectors, hnsw, random());
       NeighborQueue expected = new NeighborQueue(topK, vectors.searchStrategy.reversed);
       for (int j = 0; j < size; j++) {
@@ -415,18 +415,9 @@ public class TestHnsw extends LuceneTestCase {
     private static float[][] createRandomVectors(int size, int dimension, Random random) {
       float[][] vectors = new float[size][];
       for (int offset = 0; offset < size; offset += random.nextInt(3) + 1) {
-        vectors[offset] = randomVector(random, dimension);
+        vectors[offset] = VectorUtil.randomVector(random, dimension);
       }
       return vectors;
     }
-  }
-
-  private static float[] randomVector(Random random, int dim) {
-    float[] vec = new float[dim];
-    for (int i = 0; i < dim; i++) {
-      vec[i] = random.nextFloat();
-    }
-    VectorUtil.l2normalize(vec);
-    return vec;
   }
 }

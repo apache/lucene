@@ -1,19 +1,17 @@
 package org.apache.lucene.util;
 
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.util.hnsw.NeighborQueue;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +42,7 @@ public class FullKnn {
     float[] queryVector;
     float[] currDocVector;
     int queryIndex;
-    NeighborQueue queue;
+    private LongHeap queue;
     FloatBuffer docVectors;
     VectorValues.SearchStrategy searchStrategy;
 
@@ -52,7 +50,11 @@ public class FullKnn {
       this.queryIndex = queryIndex;
       this.queryVector = queryVector;
       this.currDocVector = new float[queryVector.length];
-      queue = new NeighborQueue(topK, searchStrategy.reversed);
+      if (searchStrategy.reversed) {
+        queue = LongHeap.create(LongHeap.Order.MAX, topK);
+      } else {
+        queue = LongHeap.create(LongHeap.Order.MIN, topK);
+      }
       this.searchStrategy = searchStrategy;
     }
 
@@ -60,7 +62,7 @@ public class FullKnn {
       while (this.docVectors.hasRemaining()) {
         this.docVectors.get(this.currDocVector);
         float d = this.searchStrategy.compare(this.queryVector, this.currDocVector);
-        this.queue.insertWithOverflow(this.currDocIndex, d);
+        this.queue.insertWithOverflow(encodeNodeIdAndScore(this.currDocIndex, d));
         this.currDocIndex++;
       }
     }
@@ -70,75 +72,80 @@ public class FullKnn {
    * computes the exact KNN match for each query vector in queryPath for all the document vectors in docPath
    *
    * @param docPath   : path to the file containing the float 32 document vectors in bytes with little-endian byte order
-   *                  Throws exception if topK is greater than number of documents in this file
-   * @param numDocs   : number of vectors in the document vector file at docPath
    * @param queryPath : path to the file containing the containing 32-bit floating point vectors in little-endian byte order
-   * @param numIters  : number of vectors in the query vector file at queryPath
    * @param numThreads : create numThreads to parallelize work
    * @return : returns an int 2D array ( int matches[][]) of size 'numIters x topK'. matches[i] is an array containing
    * the indexes of the topK most similar document vectors to the ith query vector, and is sorted by similarity, with
    * the most similar vector first. Similarity is defined by the searchStrategy used to construct this FullKnn.
-   * @throws IOException : if topK is greater than number of documents in docPath file
+   * @throws IllegalArgumentException : if topK is greater than number of documents in docPath file
+   *         IOException : In case of IO exception while reading files.
    */
-  public int[][] computeNN(Path docPath, int numDocs, Path queryPath, int numIters, int numThreads) throws IOException {
+  public int[][] computeNN(Path docPath, Path queryPath, int numThreads) throws IOException {
     assert numThreads > 0;
+    final int numDocs = (int) (docPath.toFile().length() / (dim * Float.BYTES));
+    final int numQueries = (int) (docPath.toFile().length() / (dim * Float.BYTES));
 
-    int[][] result = new int[numIters][];
     if (!quiet) {
-      System.out.println("computing true nearest neighbors of " + numIters + " target vectors using " + numThreads + " threads.");
+      System.out.println("computing true nearest neighbors of " + numQueries + " target vectors using " + numThreads + " threads.");
+    }
+
+    try (FileChannel docInput = FileChannel.open(docPath);
+         FileChannel queryInput = FileChannel.open(queryPath)) {
+      return doFullKnn(numDocs, numQueries, numThreads, new FileChannelBufferProvider(docInput), new FileChannelBufferProvider(queryInput));
+    }
+  }
+
+  int[][] doFullKnn(int numDocs, int numQueries, int numThreads, BufferProvider docInput, BufferProvider queryInput) throws IOException {
+    if (numDocs < topK) {
+      throw new IllegalArgumentException(String.format("topK (%d) cannot be greater than number of docs in docPath (%d)", topK, numDocs));
     }
 
     final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
-    try (FileChannel docInput = FileChannel.open(docPath);
-         FileChannel queryInput = FileChannel.open(queryPath)) {
-      FloatBuffer queries = queryInput.map(FileChannel.MapMode.READ_ONLY, 0, numIters * dim * Float.BYTES)
-          .order(ByteOrder.LITTLE_ENDIAN)
-          .asFloatBuffer();
-      float[] query = new float[dim];
-      List<KnnJob> jobList = new ArrayList<>(numThreads);
-      for (int i = 0; i < numIters; ) {
+    int[][] result = new int[numQueries][];
 
-        for (int j = 0; j < numThreads && i < numIters; i++, j++) {
-          queries.get(query);
-          jobList.add(new KnnJob(i, Arrays.copyOf(query, query.length), topK, searchStrategy));
-        }
+    FloatBuffer queries = queryInput.getBuffer(0, numQueries * dim * Float.BYTES).asFloatBuffer();
+    float[] query = new float[dim];
+    List<KnnJob> jobList = new ArrayList<>(numThreads);
+    for (int i = 0; i < numQueries; ) {
 
-        long maxBufferSize = (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES);
-        int docsLeft = numDocs;
-        int currDocIndex = 0;
-        int offset = 0;
-        while (docsLeft > 0) {
-          long totalBytes = (long) docsLeft * dim * Float.BYTES;
-          int blockSize = (int) Math.min(totalBytes, maxBufferSize);
-
-          FloatBuffer docVectors = docInput.map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
-              .order(ByteOrder.LITTLE_ENDIAN)
-              .asFloatBuffer();
-          offset += blockSize;
-
-          final List<CompletableFuture<Void>> completableFutures = jobList.stream()
-              .peek(job -> job.docVectors = docVectors.duplicate())
-              .peek(job -> job.currDocIndex = currDocIndex).map(job ->
-                  CompletableFuture.runAsync(() -> job.execute(), executorService)).collect(Collectors.toList());
-
-          CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture<?>[completableFutures.size()])).join();
-          docsLeft -= (blockSize / (dim * Float.BYTES));
-        }
-
-        jobList.forEach(job -> {
-          result[job.queryIndex] = new int[topK];
-          for (int k = topK - 1; k >= 0; k--) {
-            result[job.queryIndex][k] = job.queue.pop();
-            //System.out.print(" " + n);
-          }
-          if (!quiet && (job.queryIndex + 1) % 10 == 0) {
-            System.out.print(" " + (job.queryIndex + 1));
-            System.out.flush();
-          }
-        });
-
-        jobList.clear();
+      for (int j = 0; j < numThreads && i < numQueries; i++, j++) {
+        queries.get(query);
+        jobList.add(new KnnJob(i, Arrays.copyOf(query, query.length), topK, searchStrategy));
       }
+
+      long maxBufferSize = (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES);
+      int docsLeft = numDocs;
+      int currDocIndex = 0;
+      int offset = 0;
+      while (docsLeft > 0) {
+        long totalBytes = (long) docsLeft * dim * Float.BYTES;
+        int blockSize = (int) Math.min(totalBytes, maxBufferSize);
+
+        FloatBuffer docVectors = docInput.getBuffer(offset, blockSize).asFloatBuffer();
+        offset += blockSize;
+
+        final List<CompletableFuture<Void>> completableFutures = jobList.stream()
+            .peek(job -> job.docVectors = docVectors.duplicate())
+            .peek(job -> job.currDocIndex = currDocIndex).map(job ->
+                CompletableFuture.runAsync(() -> job.execute(), executorService)).collect(Collectors.toList());
+
+        CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture<?>[completableFutures.size()])).join();
+        docsLeft -= (blockSize / (dim * Float.BYTES));
+      }
+
+      jobList.forEach(job -> {
+        result[job.queryIndex] = new int[topK];
+        for (int k = topK - 1; k >= 0; k--) {
+          result[job.queryIndex][k] = popNodeId(job.queue);
+          //System.out.print(" " + n);
+        }
+        if (!quiet && (job.queryIndex + 1) % 10 == 0) {
+          System.out.print(" " + (job.queryIndex + 1));
+          System.out.flush();
+        }
+      });
+
+      jobList.clear();
     }
 
     executorService.shutdown();
@@ -152,5 +159,41 @@ public class FullKnn {
     }
 
     return result;
+  }
+
+  /**
+   * pops the queue and returns the last 4 bytes of long where nodeId is stored.
+   * @param queue
+   * @return
+   */
+  private int popNodeId(LongHeap queue) {
+    return (int) queue.pop();
+  }
+
+  /**
+   * encodes the score and nodeId into a single long with score in first 4 bytes, to make it sortable by score.
+   * @param node
+   * @param score
+   * @return
+   */
+  private static long encodeNodeIdAndScore(int node, float score) {
+    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | node;
+  }
+
+  interface BufferProvider {
+    ByteBuffer getBuffer(int offset, int blockSize) throws IOException;
+  }
+
+  private static class FileChannelBufferProvider implements BufferProvider {
+    private FileChannel fileChannel;
+
+    FileChannelBufferProvider(FileChannel fileChannel) {
+      this.fileChannel = fileChannel;
+    }
+
+    public ByteBuffer getBuffer(int offset, int blockSize) throws IOException {
+      return fileChannel.map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
+          .order(ByteOrder.LITTLE_ENDIAN);
+    }
   }
 }
