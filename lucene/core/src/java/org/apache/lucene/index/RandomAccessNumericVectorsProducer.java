@@ -14,16 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseVectorFormatTestCase;
-import org.apache.lucene.util.TestUtil;
+package org.apache.lucene.index;
 
-public class TestLucene90VectorFormat extends BaseVectorFormatTestCase {
-
-  @Override
-  protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
-  }
+/**
+ * Something (generally a {@link NumericVectors}) that provides a {@link
+ * RandomAccessNumericVectors}.
+ *
+ * @lucene.experimental
+ */
+public interface RandomAccessNumericVectorsProducer {
+  /**
+   * Return a random access interface over this iterator's vectors. Calling the RandomAccess methods
+   * will have no effect on the progress of the iteration or the values returned by this iterator.
+   * Successive calls will retrieve independent copies that do not overwrite each others' returned
+   * values.
+   */
+  RandomAccessNumericVectors randomAccess();
 }

@@ -22,7 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -39,17 +39,17 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Base class aiming at testing {@link VectorFormat vectors formats}. To test a new format, all you
- * need is to register a new {@link Codec} which uses it and extend this class and override {@link
- * #getCodec()}.
+ * Base class aiming at testing {@link HnswVectorsFormat vectors formats}. To test a new format, all
+ * you need is to register a new {@link Codec} which uses it and extend this class and override
+ * {@link #getCodec()}.
  *
  * @lucene.experimental
  */
-public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCase {
+public abstract class BaseHnswVectorsFormatTestCase extends BaseIndexFileFormatTestCase {
 
   @Override
   protected void addRandomFields(Document doc) {
-    doc.add(new VectorField("v2", randomVector(30), VectorValues.SearchStrategy.NONE));
+    doc.add(new VectorField("v2", randomVector(30), NumericVectors.SearchStrategy.NONE));
   }
 
   // Suddenly add vectors to an existing field:
@@ -62,7 +62,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       }
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
     }
@@ -73,7 +73,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     VectorField field = new VectorField("f", v);
     assertEquals(1, field.fieldType().vectorDimension());
     assertEquals(
-        VectorValues.SearchStrategy.EUCLIDEAN_HNSW, field.fieldType().vectorSearchStrategy());
+        NumericVectors.SearchStrategy.EUCLIDEAN_HNSW, field.fieldType().vectorSearchStrategy());
     assertSame(v, field.vectorValue());
   }
 
@@ -82,14 +82,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     expectThrows(IllegalArgumentException.class, () -> new VectorField("f", null));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new VectorField("f", new float[1], (VectorValues.SearchStrategy) null));
+        () -> new VectorField("f", new float[1], (NumericVectors.SearchStrategy) null));
     expectThrows(IllegalArgumentException.class, () -> new VectorField("f", new float[0]));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new VectorField("f", new float[VectorValues.MAX_DIMENSIONS + 1]));
+        () -> new VectorField("f", new float[NumericVectors.MAX_DIMENSIONS + 1]));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new VectorField("f", new float[VectorValues.MAX_DIMENSIONS + 1], (FieldType) null));
+        () -> new VectorField("f", new float[NumericVectors.MAX_DIMENSIONS + 1], (FieldType) null));
   }
 
   public void testFieldSetValue() {
@@ -104,23 +104,23 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   public void testFieldCreateFieldType() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> VectorField.createHnswType(0, VectorValues.SearchStrategy.EUCLIDEAN_HNSW, 16, 16));
+        () -> VectorField.createHnswType(0, NumericVectors.SearchStrategy.EUCLIDEAN_HNSW, 16, 16));
     expectThrows(
         IllegalArgumentException.class,
         () ->
             VectorField.createHnswType(
-                VectorValues.MAX_DIMENSIONS + 1,
-                VectorValues.SearchStrategy.EUCLIDEAN_HNSW,
+                NumericVectors.MAX_DIMENSIONS + 1,
+                NumericVectors.SearchStrategy.EUCLIDEAN_HNSW,
                 16,
                 16));
     expectThrows(
         IllegalArgumentException.class,
-        () -> VectorField.createHnswType(VectorValues.MAX_DIMENSIONS + 1, null, 16, 16));
+        () -> VectorField.createHnswType(NumericVectors.MAX_DIMENSIONS + 1, null, 16, 16));
     expectThrows(
         IllegalArgumentException.class,
         () ->
             VectorField.createHnswType(
-                VectorValues.MAX_DIMENSIONS + 1, VectorValues.SearchStrategy.NONE, 16, 16));
+                NumericVectors.MAX_DIMENSIONS + 1, NumericVectors.SearchStrategy.NONE, 16, 16));
   }
 
   // Illegal schema change tests:
@@ -129,7 +129,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+      doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       w.addDocument(doc);
       if (random().nextBoolean()) {
         // sometimes test with two segments
@@ -137,7 +137,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       }
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[3], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+      doc2.add(new VectorField("f", new float[3], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       assertEquals(
@@ -149,7 +149,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+      doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       w.addDocument(doc);
       if (random().nextBoolean()) {
         // sometimes test with two segments
@@ -157,7 +157,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       }
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+      doc2.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       assertEquals(
@@ -170,13 +170,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new VectorField("f", new float[1], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc2.add(
+            new VectorField("f", new float[1], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -189,13 +190,13 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+        doc2.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -208,7 +209,8 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   public void testAddIndexesDirectory0() throws Exception {
     String fieldName = "field";
     Document doc = new Document();
-    doc.add(new VectorField(fieldName, new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+    doc.add(
+        new VectorField(fieldName, new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -219,10 +221,10 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         w2.forceMerge(1);
         try (IndexReader reader = w2.getReader()) {
           LeafReader r = getOnlyLeafReader(reader);
-          VectorValues vectorValues = r.getVectorValues(fieldName);
-          assertEquals(0, vectorValues.nextDoc());
-          assertEquals(0, vectorValues.vectorValue()[0], 0);
-          assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+          NumericVectors numericVectors = r.getVectorValues(fieldName);
+          assertEquals(0, numericVectors.nextDoc());
+          assertEquals(0, numericVectors.vectorValue()[0], 0);
+          assertEquals(NO_MORE_DOCS, numericVectors.nextDoc());
         }
       }
     }
@@ -237,17 +239,17 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         w.addDocument(doc);
       }
       doc.add(
-          new VectorField(fieldName, new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+          new VectorField(fieldName, new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         w2.addDocument(doc);
         w2.addIndexes(dir);
         w2.forceMerge(1);
         try (IndexReader reader = w2.getReader()) {
           LeafReader r = getOnlyLeafReader(reader);
-          VectorValues vectorValues = r.getVectorValues(fieldName);
-          assertNotEquals(NO_MORE_DOCS, vectorValues.nextDoc());
-          assertEquals(0, vectorValues.vectorValue()[0], 0);
-          assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+          NumericVectors numericVectors = r.getVectorValues(fieldName);
+          assertNotEquals(NO_MORE_DOCS, numericVectors.nextDoc());
+          assertEquals(0, numericVectors.vectorValue()[0], 0);
+          assertEquals(NO_MORE_DOCS, numericVectors.nextDoc());
         }
       }
     }
@@ -257,7 +259,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     String fieldName = "field";
     float[] vector = new float[1];
     Document doc = new Document();
-    doc.add(new VectorField(fieldName, vector, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+    doc.add(new VectorField(fieldName, vector, NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -270,13 +272,13 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         w2.forceMerge(1);
         try (IndexReader reader = w2.getReader()) {
           LeafReader r = getOnlyLeafReader(reader);
-          VectorValues vectorValues = r.getVectorValues(fieldName);
-          assertEquals(0, vectorValues.nextDoc());
+          NumericVectors numericVectors = r.getVectorValues(fieldName);
+          assertEquals(0, numericVectors.nextDoc());
           // The merge order is randomized, we might get 0 first, or 1
-          float value = vectorValues.vectorValue()[0];
+          float value = numericVectors.vectorValue()[0];
           assertTrue(value == 0 || value == 1);
-          assertEquals(1, vectorValues.nextDoc());
-          value += vectorValues.vectorValue()[0];
+          assertEquals(1, numericVectors.nextDoc());
+          value += numericVectors.vectorValue()[0];
           assertEquals(1, value, 0);
         }
       }
@@ -288,12 +290,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[5], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w2.addDocument(doc);
         IllegalArgumentException expected =
             expectThrows(
@@ -309,12 +311,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
         w2.addDocument(doc);
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addIndexes(dir));
@@ -330,12 +332,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[5], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -354,12 +356,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -379,12 +381,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[5], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -401,12 +403,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -423,8 +425,8 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
-      doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+      doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
+      doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
       assertEquals(
@@ -443,11 +445,11 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
               doc.add(
                   new VectorField(
                       "f",
-                      new float[VectorValues.MAX_DIMENSIONS + 1],
-                      VectorValues.SearchStrategy.DOT_PRODUCT_HNSW)));
+                      new float[NumericVectors.MAX_DIMENSIONS + 1],
+                      NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW)));
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[1], VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+      doc2.add(new VectorField("f", new float[1], NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
       w.addDocument(doc2);
     }
   }
@@ -459,11 +461,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       Exception e =
           expectThrows(
               IllegalArgumentException.class,
-              () -> doc.add(new VectorField("f", new float[0], VectorValues.SearchStrategy.NONE)));
+              () ->
+                  doc.add(new VectorField("f", new float[0], NumericVectors.SearchStrategy.NONE)));
       assertEquals("cannot index an empty vector", e.getMessage());
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[1], VectorValues.SearchStrategy.NONE));
+      doc2.add(new VectorField("f", new float[1], NumericVectors.SearchStrategy.NONE));
       w.addDocument(doc2);
     }
   }
@@ -473,14 +476,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
       IndexWriterConfig iwc = newIndexWriterConfig();
       iwc.setCodec(Codec.forName("SimpleText"));
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
         w.forceMerge(1);
       }
@@ -494,12 +497,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
       }
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc.add(new VectorField("f", new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         w.addDocument(doc);
         w.forceMerge(1);
       }
@@ -507,7 +510,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   public void testInvalidVectorFieldUsage() {
-    VectorField field = new VectorField("field", new float[2], VectorValues.SearchStrategy.NONE);
+    VectorField field = new VectorField("field", new float[2], NumericVectors.SearchStrategy.NONE);
 
     expectThrows(IllegalArgumentException.class, () -> field.setIntValue(14));
 
@@ -523,7 +526,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       doc.add(new StringField("id", "0", Field.Store.NO));
       doc.add(
           new VectorField(
-              "v", new float[] {2, 3, 5}, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+              "v", new float[] {2, 3, 5}, NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       w.addDocument(doc);
       w.addDocument(new Document());
       w.commit();
@@ -546,14 +549,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       doc.add(new StringField("id", "0", Field.Store.NO));
       doc.add(
           new VectorField(
-              "v0", new float[] {2, 3, 5}, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+              "v0", new float[] {2, 3, 5}, NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       w.addDocument(doc);
       w.commit();
 
       doc = new Document();
       doc.add(
           new VectorField(
-              "v1", new float[] {2, 3, 5}, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+              "v1", new float[] {2, 3, 5}, NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       w.addDocument(doc);
       w.forceMerge(1);
     }
@@ -565,13 +568,13 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     int[] fieldDocCounts = new int[numFields];
     float[] fieldTotals = new float[numFields];
     int[] fieldDims = new int[numFields];
-    VectorValues.SearchStrategy[] fieldSearchStrategies =
-        new VectorValues.SearchStrategy[numFields];
+    NumericVectors.SearchStrategy[] fieldSearchStrategies =
+        new NumericVectors.SearchStrategy[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
       fieldSearchStrategies[i] =
-          VectorValues.SearchStrategy.values()[
-              random().nextInt(VectorValues.SearchStrategy.values().length)];
+          NumericVectors.SearchStrategy.values()[
+              random().nextInt(NumericVectors.SearchStrategy.values().length)];
     }
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
@@ -595,7 +598,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
           float checksum = 0;
           String fieldName = "int" + field;
           for (LeafReaderContext ctx : r.leaves()) {
-            VectorValues vectors = ctx.reader().getVectorValues(fieldName);
+            NumericVectors vectors = ctx.reader().getVectorValues(fieldName);
             if (vectors != null) {
               docCount += vectors.size();
               while (vectors.nextDoc() != NO_MORE_DOCS) {
@@ -618,26 +621,26 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc1 = new Document();
-      doc1.add(new VectorField(fieldName, v, VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+      doc1.add(new VectorField(fieldName, v, NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
       v[0] = 1;
       Document doc2 = new Document();
-      doc2.add(new VectorField(fieldName, v, VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+      doc2.add(new VectorField(fieldName, v, NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
       iw.addDocument(doc1);
       iw.addDocument(doc2);
       v[0] = 2;
       Document doc3 = new Document();
-      doc3.add(new VectorField(fieldName, v, VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
+      doc3.add(new VectorField(fieldName, v, NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
       iw.addDocument(doc3);
       iw.forceMerge(1);
       try (IndexReader reader = iw.getReader()) {
         LeafReader r = getOnlyLeafReader(reader);
-        VectorValues vectorValues = r.getVectorValues(fieldName);
-        vectorValues.nextDoc();
-        assertEquals(1, vectorValues.vectorValue()[0], 0);
-        vectorValues.nextDoc();
-        assertEquals(1, vectorValues.vectorValue()[0], 0);
-        vectorValues.nextDoc();
-        assertEquals(2, vectorValues.vectorValue()[0], 0);
+        NumericVectors numericVectors = r.getVectorValues(fieldName);
+        numericVectors.nextDoc();
+        assertEquals(1, numericVectors.vectorValue()[0], 0);
+        numericVectors.nextDoc();
+        assertEquals(1, numericVectors.vectorValue()[0], 0);
+        numericVectors.nextDoc();
+        assertEquals(2, numericVectors.vectorValue()[0], 0);
       }
     }
   }
@@ -656,19 +659,19 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       try (IndexReader reader = iw.getReader()) {
         LeafReader leaf = getOnlyLeafReader(reader);
 
-        VectorValues vectorValues = leaf.getVectorValues(fieldName);
-        assertEquals(2, vectorValues.dimension());
-        assertEquals(3, vectorValues.size());
-        assertEquals("1", leaf.document(vectorValues.nextDoc()).get("id"));
-        assertEquals(-1f, vectorValues.vectorValue()[0], 0);
-        assertEquals("2", leaf.document(vectorValues.nextDoc()).get("id"));
-        assertEquals(1, vectorValues.vectorValue()[0], 0);
-        assertEquals("4", leaf.document(vectorValues.nextDoc()).get("id"));
-        assertEquals(0, vectorValues.vectorValue()[0], 0);
-        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        NumericVectors numericVectors = leaf.getVectorValues(fieldName);
+        assertEquals(2, numericVectors.dimension());
+        assertEquals(3, numericVectors.size());
+        assertEquals("1", leaf.document(numericVectors.nextDoc()).get("id"));
+        assertEquals(-1f, numericVectors.vectorValue()[0], 0);
+        assertEquals("2", leaf.document(numericVectors.nextDoc()).get("id"));
+        assertEquals(1, numericVectors.vectorValue()[0], 0);
+        assertEquals("4", leaf.document(numericVectors.nextDoc()).get("id"));
+        assertEquals(0, numericVectors.vectorValue()[0], 0);
+        assertEquals(NO_MORE_DOCS, numericVectors.nextDoc());
 
-        RandomAccessVectorValues ra =
-            ((RandomAccessVectorValuesProducer) vectorValues).randomAccess();
+        RandomAccessNumericVectors ra =
+            ((RandomAccessNumericVectorsProducer) numericVectors).randomAccess();
         assertEquals(-1f, ra.vectorValue(0)[0], 0);
         assertEquals(1f, ra.vectorValue(1)[0], 0);
         assertEquals(0f, ra.vectorValue(2)[0], 0);
@@ -681,44 +684,44 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       float[] v = new float[] {1};
-      doc.add(new VectorField("field1", v, VectorValues.SearchStrategy.EUCLIDEAN_HNSW));
-      doc.add(new VectorField("field2", new float[] {1, 2, 3}, VectorValues.SearchStrategy.NONE));
+      doc.add(new VectorField("field1", v, NumericVectors.SearchStrategy.EUCLIDEAN_HNSW));
+      doc.add(new VectorField("field2", new float[] {1, 2, 3}, NumericVectors.SearchStrategy.NONE));
       iw.addDocument(doc);
       v[0] = 2;
       iw.addDocument(doc);
       doc = new Document();
       doc.add(
           new VectorField(
-              "field3", new float[] {1, 2, 3}, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW));
+              "field3", new float[] {1, 2, 3}, NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
       iw.addDocument(doc);
       iw.forceMerge(1);
       try (IndexReader reader = iw.getReader()) {
         LeafReader leaf = reader.leaves().get(0).reader();
 
-        VectorValues vectorValues = leaf.getVectorValues("field1");
-        assertEquals(1, vectorValues.dimension());
-        assertEquals(2, vectorValues.size());
-        vectorValues.nextDoc();
-        assertEquals(1f, vectorValues.vectorValue()[0], 0);
-        vectorValues.nextDoc();
-        assertEquals(2f, vectorValues.vectorValue()[0], 0);
-        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        NumericVectors numericVectors = leaf.getVectorValues("field1");
+        assertEquals(1, numericVectors.dimension());
+        assertEquals(2, numericVectors.size());
+        numericVectors.nextDoc();
+        assertEquals(1f, numericVectors.vectorValue()[0], 0);
+        numericVectors.nextDoc();
+        assertEquals(2f, numericVectors.vectorValue()[0], 0);
+        assertEquals(NO_MORE_DOCS, numericVectors.nextDoc());
 
-        VectorValues vectorValues2 = leaf.getVectorValues("field2");
-        assertEquals(3, vectorValues2.dimension());
-        assertEquals(2, vectorValues2.size());
-        vectorValues2.nextDoc();
-        assertEquals(2f, vectorValues2.vectorValue()[1], 0);
-        vectorValues2.nextDoc();
-        assertEquals(2f, vectorValues2.vectorValue()[1], 0);
-        assertEquals(NO_MORE_DOCS, vectorValues2.nextDoc());
+        NumericVectors numericVectors2 = leaf.getVectorValues("field2");
+        assertEquals(3, numericVectors2.dimension());
+        assertEquals(2, numericVectors2.size());
+        numericVectors2.nextDoc();
+        assertEquals(2f, numericVectors2.vectorValue()[1], 0);
+        numericVectors2.nextDoc();
+        assertEquals(2f, numericVectors2.vectorValue()[1], 0);
+        assertEquals(NO_MORE_DOCS, numericVectors2.nextDoc());
 
-        VectorValues vectorValues3 = leaf.getVectorValues("field3");
-        assertEquals(3, vectorValues3.dimension());
-        assertEquals(1, vectorValues3.size());
-        vectorValues3.nextDoc();
-        assertEquals(1f, vectorValues3.vectorValue()[0], 0);
-        assertEquals(NO_MORE_DOCS, vectorValues3.nextDoc());
+        NumericVectors numericVectors3 = leaf.getVectorValues("field3");
+        assertEquals(3, numericVectors3.dimension());
+        assertEquals(1, numericVectors3.size());
+        numericVectors3.nextDoc();
+        assertEquals(1f, numericVectors3.vectorValue()[0], 0);
+        assertEquals(NO_MORE_DOCS, numericVectors3.nextDoc());
       }
     }
   }
@@ -750,9 +753,9 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         if (random().nextBoolean() && values[i] != null) {
           // sometimes use a shared scratch array
           System.arraycopy(values[i], 0, scratch, 0, scratch.length);
-          add(iw, fieldName, i, scratch, VectorValues.SearchStrategy.NONE);
+          add(iw, fieldName, i, scratch, NumericVectors.SearchStrategy.NONE);
         } else {
-          add(iw, fieldName, i, values[i], VectorValues.SearchStrategy.NONE);
+          add(iw, fieldName, i, values[i], NumericVectors.SearchStrategy.NONE);
         }
         if (random().nextInt(10) == 2) {
           // sometimes delete a random document
@@ -772,14 +775,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       try (IndexReader reader = iw.getReader()) {
         int valueCount = 0, totalSize = 0;
         for (LeafReaderContext ctx : reader.leaves()) {
-          VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
-          if (vectorValues == null) {
+          NumericVectors numericVectors = ctx.reader().getVectorValues(fieldName);
+          if (numericVectors == null) {
             continue;
           }
-          totalSize += vectorValues.size();
+          totalSize += numericVectors.size();
           int docId;
-          while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
-            float[] v = vectorValues.vectorValue();
+          while ((docId = numericVectors.nextDoc()) != NO_MORE_DOCS) {
+            float[] v = numericVectors.vectorValue();
             assertEquals(dimension, v.length);
             String idString = ctx.reader().document(docId).getField("id").stringValue();
             int id = Integer.parseInt(idString);
@@ -825,18 +828,18 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         values[i] = value;
         id2value[id] = value;
         id2ord[id] = i;
-        add(iw, fieldName, id, value, VectorValues.SearchStrategy.EUCLIDEAN_HNSW);
+        add(iw, fieldName, id, value, NumericVectors.SearchStrategy.EUCLIDEAN_HNSW);
       }
       try (IndexReader reader = iw.getReader()) {
         for (LeafReaderContext ctx : reader.leaves()) {
           Bits liveDocs = ctx.reader().getLiveDocs();
-          VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
-          if (vectorValues == null) {
+          NumericVectors numericVectors = ctx.reader().getVectorValues(fieldName);
+          if (numericVectors == null) {
             continue;
           }
           int docId;
-          while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
-            float[] v = vectorValues.vectorValue();
+          while ((docId = numericVectors.nextDoc()) != NO_MORE_DOCS) {
+            float[] v = numericVectors.vectorValue();
             assertEquals(dimension, v.length);
             String idString = ctx.reader().document(docId).getField("id").stringValue();
             int id = Integer.parseInt(idString);
@@ -862,14 +865,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       String field,
       int id,
       float[] vector,
-      VectorValues.SearchStrategy searchStrategy)
+      NumericVectors.SearchStrategy searchStrategy)
       throws IOException {
     add(iw, field, id, random().nextInt(100), vector, searchStrategy);
   }
 
   private void add(IndexWriter iw, String field, int id, int sortkey, float[] vector)
       throws IOException {
-    add(iw, field, id, sortkey, vector, VectorValues.SearchStrategy.NONE);
+    add(iw, field, id, sortkey, vector, NumericVectors.SearchStrategy.NONE);
   }
 
   private void add(
@@ -878,7 +881,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       int id,
       int sortkey,
       float[] vector,
-      VectorValues.SearchStrategy searchStrategy)
+      NumericVectors.SearchStrategy searchStrategy)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
@@ -904,10 +907,10 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("v1", randomVector(3), VectorValues.SearchStrategy.NONE));
+        doc.add(new VectorField("v1", randomVector(3), NumericVectors.SearchStrategy.NONE));
         w.addDocument(doc);
 
-        doc.add(new VectorField("v2", randomVector(3), VectorValues.SearchStrategy.NONE));
+        doc.add(new VectorField("v2", randomVector(3), NumericVectors.SearchStrategy.NONE));
         w.addDocument(doc);
       }
 
@@ -928,10 +931,10 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   public void testSearchStrategyIdentifiers() {
     // make sure we don't accidentally mess up search strategy identifiers by re-ordering their
     // enumerators
-    assertEquals(0, VectorValues.SearchStrategy.NONE.ordinal());
-    assertEquals(1, VectorValues.SearchStrategy.EUCLIDEAN_HNSW.ordinal());
-    assertEquals(2, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW.ordinal());
-    assertEquals(3, VectorValues.SearchStrategy.values().length);
+    assertEquals(0, NumericVectors.SearchStrategy.NONE.ordinal());
+    assertEquals(1, NumericVectors.SearchStrategy.EUCLIDEAN_HNSW.ordinal());
+    assertEquals(2, NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW.ordinal());
+    assertEquals(3, NumericVectors.SearchStrategy.values().length);
   }
 
   public void testAdvance() throws Exception {
@@ -943,36 +946,36 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
           Document doc = new Document();
           // randomly add a vector field
           if (random().nextInt(4) == 3) {
-            doc.add(new VectorField(fieldName, new float[4], VectorValues.SearchStrategy.NONE));
+            doc.add(new VectorField(fieldName, new float[4], NumericVectors.SearchStrategy.NONE));
           }
           w.addDocument(doc);
         }
         w.forceMerge(1);
         try (IndexReader reader = w.getReader()) {
           LeafReader r = getOnlyLeafReader(reader);
-          VectorValues vectorValues = r.getVectorValues(fieldName);
-          int[] vectorDocs = new int[vectorValues.size() + 1];
+          NumericVectors numericVectors = r.getVectorValues(fieldName);
+          int[] vectorDocs = new int[numericVectors.size() + 1];
           int cur = -1;
-          while (++cur < vectorValues.size() + 1) {
-            vectorDocs[cur] = vectorValues.nextDoc();
+          while (++cur < numericVectors.size() + 1) {
+            vectorDocs[cur] = numericVectors.nextDoc();
             if (cur != 0) {
               assertTrue(vectorDocs[cur] > vectorDocs[cur - 1]);
             }
           }
-          vectorValues = r.getVectorValues(fieldName);
+          numericVectors = r.getVectorValues(fieldName);
           cur = -1;
           for (int i = 0; i < numdocs; i++) {
             // randomly advance to i
             if (random().nextInt(4) == 3) {
               while (vectorDocs[++cur] < i)
                 ;
-              assertEquals(vectorDocs[cur], vectorValues.advance(i));
-              assertEquals(vectorDocs[cur], vectorValues.docID());
-              if (vectorValues.docID() == NO_MORE_DOCS) {
+              assertEquals(vectorDocs[cur], numericVectors.advance(i));
+              assertEquals(vectorDocs[cur], numericVectors.docID());
+              if (numericVectors.docID() == NO_MORE_DOCS) {
                 break;
               }
               // make i equal to docid so that it is greater than docId in the next loop iteration
-              i = vectorValues.docID();
+              i = numericVectors.docID();
             }
           }
         }

@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.HnswVectorsWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
@@ -31,7 +31,7 @@ import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /** Buffers up pending vector value(s) per doc, then flushes when segment flushes. */
-class VectorValuesWriter {
+class NumericVectorsWriter {
 
   private final FieldInfo fieldInfo;
   private final Counter iwBytesUsed;
@@ -42,7 +42,7 @@ class VectorValuesWriter {
 
   private long bytesUsed;
 
-  VectorValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed) {
+  NumericVectorsWriter(FieldInfo fieldInfo, Counter iwBytesUsed) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = iwBytesUsed;
     this.docsWithField = new DocsWithFieldSet();
@@ -100,35 +100,35 @@ class VectorValuesWriter {
    *
    * @param sortMap specifies the order of documents being flushed, or null if they are to be
    *     flushed in docid order
-   * @param vectorWriter the Codec's vector writer that handles the actual encoding and I/O
+   * @param hnswVectorsWriter the Codec's vector writer that handles the actual encoding and I/O
    * @throws IOException if there is an error writing the field and its values
    */
-  public void flush(Sorter.DocMap sortMap, VectorWriter vectorWriter) throws IOException {
-    VectorValues vectorValues =
-        new BufferedVectorValues(
+  public void flush(Sorter.DocMap sortMap, HnswVectorsWriter hnswVectorsWriter) throws IOException {
+    NumericVectors numericVectors =
+        new BufferedNumericVectors(
             docsWithField,
             vectors,
             fieldInfo.getVectorDimension(),
             fieldInfo.getVectorSearchStrategy());
     if (sortMap != null) {
-      vectorWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
+      hnswVectorsWriter.writeField(fieldInfo, new SortingNumericVectors(numericVectors, sortMap));
     } else {
-      vectorWriter.writeField(fieldInfo, vectorValues);
+      hnswVectorsWriter.writeField(fieldInfo, numericVectors);
     }
   }
 
-  static class SortingVectorValues extends VectorValues
-      implements RandomAccessVectorValuesProducer {
+  static class SortingNumericVectors extends NumericVectors
+      implements RandomAccessNumericVectorsProducer {
 
-    private final VectorValues delegate;
-    private final RandomAccessVectorValues randomAccess;
+    private final NumericVectors delegate;
+    private final RandomAccessNumericVectors randomAccess;
     private final int[] docIdOffsets;
     private final int[] ordMap;
     private int docId = -1;
 
-    SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+    SortingNumericVectors(NumericVectors delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
-      randomAccess = ((RandomAccessVectorValuesProducer) delegate).randomAccess();
+      randomAccess = ((RandomAccessNumericVectorsProducer) delegate).randomAccess();
       docIdOffsets = new int[sortMap.size()];
 
       int offset = 1; // 0 means no vector for this (field, document)
@@ -207,13 +207,13 @@ class VectorValuesWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessNumericVectors randomAccess() {
 
       // Must make a new delegate randomAccess so that we have our own distinct float[]
-      final RandomAccessVectorValues delegateRA =
-          ((RandomAccessVectorValuesProducer) SortingVectorValues.this.delegate).randomAccess();
+      final RandomAccessNumericVectors delegateRA =
+          ((RandomAccessNumericVectorsProducer) SortingNumericVectors.this.delegate).randomAccess();
 
-      return new RandomAccessVectorValues() {
+      return new RandomAccessNumericVectors() {
 
         @Override
         public int size() {
@@ -243,8 +243,8 @@ class VectorValuesWriter {
     }
   }
 
-  private static class BufferedVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  private static class BufferedNumericVectors extends NumericVectors
+      implements RandomAccessNumericVectors, RandomAccessNumericVectorsProducer {
 
     final DocsWithFieldSet docsWithField;
 
@@ -261,7 +261,7 @@ class VectorValuesWriter {
     DocIdSetIterator docsWithFieldIter;
     int ord = -1;
 
-    BufferedVectorValues(
+    BufferedNumericVectors(
         DocsWithFieldSet docsWithField,
         List<float[]> vectors,
         int dimension,
@@ -278,8 +278,8 @@ class VectorValuesWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new BufferedVectorValues(docsWithField, vectors, dimension, searchStrategy);
+    public RandomAccessNumericVectors randomAccess() {
+      return new BufferedNumericVectors(docsWithField, vectors, dimension, searchStrategy);
     }
 
     @Override

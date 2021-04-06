@@ -17,23 +17,23 @@
 
 package org.apache.lucene.document;
 
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 
 /**
  * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
  * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
- * {@link VectorValues}, which is a forward-only docID-based iterator and also offers random-access
- * by dense ordinal (not docId). VectorValues.SearchStrategys may be used to compare vectors at
- * query time (for example as part of result ranking). A VectorField may be associated with a search
- * strategy that defines the metric used for nearest-neighbor search among vectors of that field,
- * but at the moment this association is purely nominal: it is intended for future use by the
- * to-be-implemented nearest neighbors search.
+ * {@link NumericVectors}, which is a forward-only docID-based iterator and also offers
+ * random-access by dense ordinal (not docId). VectorValues.SearchStrategys may be used to compare
+ * vectors at query time (for example as part of result ranking). A VectorField may be associated
+ * with a search strategy that defines the metric used for nearest-neighbor search among vectors of
+ * that field, but at the moment this association is purely nominal: it is intended for future use
+ * by the to-be-implemented nearest neighbors search.
  */
 public class VectorField extends Field {
 
-  private static FieldType createType(float[] v, VectorValues.SearchStrategy searchStrategy) {
+  private static FieldType createType(float[] v, NumericVectors.SearchStrategy searchStrategy) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -41,9 +41,9 @@ public class VectorField extends Field {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
-    if (dimension > VectorValues.MAX_DIMENSIONS) {
+    if (dimension > NumericVectors.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
-          "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
+          "cannot index vectors with dimension greater than " + NumericVectors.MAX_DIMENSIONS);
     }
     if (searchStrategy == null) {
       throw new IllegalArgumentException("search strategy must not be null");
@@ -65,13 +65,13 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createHnswType(
-      int dimension, VectorValues.SearchStrategy searchStrategy, int maxConn, int beamWidth) {
+      int dimension, NumericVectors.SearchStrategy searchStrategy, int maxConn, int beamWidth) {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
-    if (dimension > VectorValues.MAX_DIMENSIONS) {
+    if (dimension > NumericVectors.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
-          "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
+          "cannot index vectors with dimension greater than " + NumericVectors.MAX_DIMENSIONS);
     }
     if (searchStrategy == null || !searchStrategy.isHnsw()) {
       throw new IllegalArgumentException(
@@ -97,7 +97,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector, VectorValues.SearchStrategy searchStrategy) {
+  public VectorField(String name, float[] vector, NumericVectors.SearchStrategy searchStrategy) {
     super(name, createType(vector, searchStrategy));
     fieldsData = vector;
   }
@@ -113,7 +113,7 @@ public class VectorField extends Field {
    *     dimension &gt; 1024.
    */
   public VectorField(String name, float[] vector) {
-    this(name, vector, VectorValues.SearchStrategy.EUCLIDEAN_HNSW);
+    this(name, vector, NumericVectors.SearchStrategy.EUCLIDEAN_HNSW);
   }
 
   /**

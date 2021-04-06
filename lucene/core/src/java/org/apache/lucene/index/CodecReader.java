@@ -24,11 +24,11 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.HnswVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 
@@ -85,7 +85,7 @@ public abstract class CodecReader extends LeafReader implements Accountable {
    *
    * @lucene.internal
    */
-  public abstract VectorReader getVectorReader();
+  public abstract HnswVectorsReader getVectorReader();
 
   @Override
   public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
@@ -213,7 +213,7 @@ public abstract class CodecReader extends LeafReader implements Accountable {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final NumericVectors getVectorValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {

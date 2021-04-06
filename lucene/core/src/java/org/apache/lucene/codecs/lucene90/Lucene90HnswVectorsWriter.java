@@ -22,12 +22,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.HnswVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.NumericVectors;
+import org.apache.lucene.index.RandomAccessNumericVectorsProducer;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -40,32 +40,32 @@ import org.apache.lucene.util.hnsw.NeighborArray;
  *
  * @lucene.experimental
  */
-public final class Lucene90VectorWriter extends VectorWriter {
+public final class Lucene90HnswVectorsWriter extends HnswVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
 
   private boolean finished;
 
-  Lucene90VectorWriter(SegmentWriteState state) throws IOException {
+  Lucene90HnswVectorsWriter(SegmentWriteState state) throws IOException {
     assert state.fieldInfos.hasVectorValues();
     segmentWriteState = state;
 
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene90VectorFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90VectorFormat.VECTOR_DATA_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_DATA_EXTENSION);
 
     String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90VectorFormat.VECTOR_INDEX_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
 
     boolean success = false;
     try {
@@ -75,20 +75,20 @@ public final class Lucene90VectorWriter extends VectorWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene90VectorFormat.META_CODEC_NAME,
-          Lucene90VectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.META_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene90VectorFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene90VectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
-          Lucene90VectorFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene90VectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;
@@ -100,7 +100,7 @@ public final class Lucene90VectorWriter extends VectorWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
+  public void writeField(FieldInfo fieldInfo, NumericVectors vectors) throws IOException {
     long pos = vectorData.getFilePointer();
     // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
     // CFS is not used, eg for larger indexes
@@ -122,10 +122,10 @@ public final class Lucene90VectorWriter extends VectorWriter {
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     long vectorIndexOffset = vectorIndex.getFilePointer();
     if (vectors.searchStrategy().isHnsw()) {
-      if (vectors instanceof RandomAccessVectorValuesProducer) {
+      if (vectors instanceof RandomAccessNumericVectorsProducer) {
         writeGraph(
             vectorIndex,
-            (RandomAccessVectorValuesProducer) vectors,
+            (RandomAccessNumericVectorsProducer) vectors,
             vectorIndexOffset,
             offsets,
             count,
@@ -175,7 +175,7 @@ public final class Lucene90VectorWriter extends VectorWriter {
     }
   }
 
-  private void writeVectorValue(VectorValues vectors) throws IOException {
+  private void writeVectorValue(NumericVectors vectors) throws IOException {
     // write vector value
     BytesRef binaryValue = vectors.binaryValue();
     assert binaryValue.length == vectors.dimension() * Float.BYTES;
@@ -192,7 +192,7 @@ public final class Lucene90VectorWriter extends VectorWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValuesProducer vectorValues,
+      RandomAccessNumericVectorsProducer vectorValues,
       long graphDataOffset,
       long[] offsets,
       int count,

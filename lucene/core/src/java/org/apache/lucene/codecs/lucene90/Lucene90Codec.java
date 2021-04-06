@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.HnswVectorsFormat;
 import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.PointsFormat;
@@ -29,7 +30,6 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
@@ -84,7 +84,7 @@ public class Lucene90Codec extends Codec {
         }
       };
 
-  private final VectorFormat vectorFormat = new Lucene90VectorFormat();
+  private final HnswVectorsFormat hnswVectorsFormat = new Lucene90HnswVectorsFormat();
 
   private final StoredFieldsFormat storedFieldsFormat;
 
@@ -147,8 +147,8 @@ public class Lucene90Codec extends Codec {
   }
 
   @Override
-  public final VectorFormat vectorFormat() {
-    return vectorFormat;
+  public final HnswVectorsFormat vectorFormat() {
+    return hnswVectorsFormat;
   }
 
   /**

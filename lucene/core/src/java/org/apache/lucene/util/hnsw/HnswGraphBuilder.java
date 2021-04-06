@@ -20,9 +20,9 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Random;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NumericVectors;
+import org.apache.lucene.index.RandomAccessNumericVectors;
+import org.apache.lucene.index.RandomAccessNumericVectorsProducer;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -54,8 +54,8 @@ public final class HnswGraphBuilder {
   private final int beamWidth;
   private final NeighborArray scratch;
 
-  private final VectorValues.SearchStrategy searchStrategy;
-  private final RandomAccessVectorValues vectorValues;
+  private final NumericVectors.SearchStrategy searchStrategy;
+  private final RandomAccessNumericVectors vectorValues;
   private final Random random;
   private final BoundsChecker bound;
   final HnswGraph hnsw;
@@ -64,10 +64,10 @@ public final class HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private RandomAccessVectorValues buildVectors;
+  private RandomAccessNumericVectors buildVectors;
 
   /** Construct the builder with default configurations */
-  public HnswGraphBuilder(RandomAccessVectorValuesProducer vectors) {
+  public HnswGraphBuilder(RandomAccessNumericVectorsProducer vectors) {
     this(vectors, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, randSeed);
   }
 
@@ -84,11 +84,11 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors, int maxConn, int beamWidth, long seed) {
+      RandomAccessNumericVectorsProducer vectors, int maxConn, int beamWidth, long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     searchStrategy = vectorValues.searchStrategy();
-    if (searchStrategy == VectorValues.SearchStrategy.NONE) {
+    if (searchStrategy == NumericVectors.SearchStrategy.NONE) {
       throw new IllegalStateException("No distance function");
     }
     if (maxConn <= 0) {
@@ -113,7 +113,7 @@ public final class HnswGraphBuilder {
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public HnswGraph build(RandomAccessVectorValues vectors) throws IOException {
+  public HnswGraph build(RandomAccessNumericVectors vectors) throws IOException {
     if (vectors == vectorValues) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -227,7 +227,7 @@ public final class HnswGraphBuilder {
       float[] candidate,
       float score,
       NeighborArray neighbors,
-      RandomAccessVectorValues vectorValues)
+      RandomAccessNumericVectors vectorValues)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {

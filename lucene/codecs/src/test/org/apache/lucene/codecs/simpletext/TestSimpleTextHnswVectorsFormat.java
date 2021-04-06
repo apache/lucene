@@ -14,20 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.simpletext;
 
-package org.apache.lucene.index;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.BaseHnswVectorsFormatTestCase;
 
-/**
- * Something (generally a {@link VectorValues}) that provides a {@link RandomAccessVectorValues}.
- *
- * @lucene.experimental
- */
-public interface RandomAccessVectorValuesProducer {
-  /**
-   * Return a random access interface over this iterator's vectors. Calling the RandomAccess methods
-   * will have no effect on the progress of the iteration or the values returned by this iterator.
-   * Successive calls will retrieve independent copies that do not overwrite each others' returned
-   * values.
-   */
-  RandomAccessVectorValues randomAccess();
+public class TestSimpleTextHnswVectorsFormat extends BaseHnswVectorsFormatTestCase {
+  @Override
+  protected Codec getCodec() {
+    return new SimpleTextCodec();
+  }
 }

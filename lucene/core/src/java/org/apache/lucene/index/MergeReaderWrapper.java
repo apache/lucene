@@ -198,7 +198,7 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String fieldName) throws IOException {
+  public NumericVectors getVectorValues(String fieldName) throws IOException {
     return in.getVectorValues(fieldName);
   }
 

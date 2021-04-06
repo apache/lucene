@@ -30,13 +30,13 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.HnswVectorsFormat;
+import org.apache.lucene.codecs.HnswVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.VectorField;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -440,13 +440,13 @@ final class IndexingChain implements Accountable {
 
   /** Writes all buffered vectors. */
   private void writeVectors(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    VectorWriter vectorWriter = null;
+    HnswVectorsWriter hnswVectorsWriter = null;
     boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
         while (perField != null) {
-          if (perField.vectorValuesWriter != null) {
+          if (perField.numericVectorsWriter != null) {
             if (perField.fieldInfo.getVectorDimension() == 0) {
               // BUG
               throw new AssertionError(
@@ -456,20 +456,20 @@ final class IndexingChain implements Accountable {
                       + perField.fieldInfo.name
                       + "\" has no vectors but wrote them");
             }
-            if (vectorWriter == null) {
+            if (hnswVectorsWriter == null) {
               // lazy init
-              VectorFormat fmt = state.segmentInfo.getCodec().vectorFormat();
+              HnswVectorsFormat fmt = state.segmentInfo.getCodec().vectorFormat();
               if (fmt == null) {
                 throw new IllegalStateException(
                     "field=\""
                         + perField.fieldInfo.name
                         + "\" was indexed as vectors but codec does not support vectors");
               }
-              vectorWriter = fmt.fieldsWriter(state);
+              hnswVectorsWriter = fmt.fieldsWriter(state);
             }
 
-            perField.vectorValuesWriter.flush(sortMap, vectorWriter);
-            perField.vectorValuesWriter = null;
+            perField.numericVectorsWriter.flush(sortMap, hnswVectorsWriter);
+            perField.numericVectorsWriter = null;
           } else if (perField.fieldInfo.getVectorDimension() != 0) {
             // BUG
             throw new AssertionError(
@@ -482,15 +482,15 @@ final class IndexingChain implements Accountable {
           perField = perField.next;
         }
       }
-      if (vectorWriter != null) {
-        vectorWriter.finish();
+      if (hnswVectorsWriter != null) {
+        hnswVectorsWriter.finish();
       }
       success = true;
     } finally {
       if (success) {
-        IOUtils.close(vectorWriter);
+        IOUtils.close(hnswVectorsWriter);
       } else {
-        IOUtils.closeWhileHandlingException(vectorWriter);
+        IOUtils.closeWhileHandlingException(hnswVectorsWriter);
       }
     }
   }
@@ -918,7 +918,7 @@ final class IndexingChain implements Accountable {
   /** Called from processDocument to index one field's vector value */
   private void indexVector(int docID, PerField fp, IndexableField field) {
     int dimension = field.fieldType().vectorDimension();
-    VectorValues.SearchStrategy searchStrategy = field.fieldType().vectorSearchStrategy();
+    NumericVectors.SearchStrategy searchStrategy = field.fieldType().vectorSearchStrategy();
 
     // Record dimensions and distance function for this field; this setter will throw IllegalArgExc
     // if
@@ -929,10 +929,10 @@ final class IndexingChain implements Accountable {
     }
     fp.fieldInfo.setVectorDimensionAndSearchStrategy(dimension, searchStrategy);
 
-    if (fp.vectorValuesWriter == null) {
-      fp.vectorValuesWriter = new VectorValuesWriter(fp.fieldInfo, bytesUsed);
+    if (fp.numericVectorsWriter == null) {
+      fp.numericVectorsWriter = new NumericVectorsWriter(fp.fieldInfo, bytesUsed);
     }
-    fp.vectorValuesWriter.addValue(docID, ((VectorField) field).vectorValue());
+    fp.numericVectorsWriter.addValue(docID, ((VectorField) field).vectorValue());
   }
 
   /** Returns a previously created {@link PerField}, or null if this field name wasn't seen yet. */
@@ -1042,7 +1042,7 @@ final class IndexingChain implements Accountable {
     PointValuesWriter pointValuesWriter;
 
     // Non-null if this field ever had vector values in this segment:
-    VectorValuesWriter vectorValuesWriter;
+    NumericVectorsWriter numericVectorsWriter;
 
     /** We use this to know when a PerField is seen for the first time in the current document. */
     long fieldGen = -1;

@@ -2319,7 +2319,7 @@ public final class CheckIndex implements Closeable {
                       + "\" has vector values but dimension is "
                       + dimension);
             }
-            VectorValues values = reader.getVectorValues(fieldInfo.name);
+            NumericVectors values = reader.getVectorValues(fieldInfo.name);
             if (values == null) {
               continue;
             }

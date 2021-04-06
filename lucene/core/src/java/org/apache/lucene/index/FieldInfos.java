@@ -290,9 +290,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   static final class FieldVectorProperties {
     final int numDimensions;
-    final VectorValues.SearchStrategy searchStrategy;
+    final NumericVectors.SearchStrategy searchStrategy;
 
-    FieldVectorProperties(int numDimensions, VectorValues.SearchStrategy searchStrategy) {
+    FieldVectorProperties(int numDimensions, NumericVectors.SearchStrategy searchStrategy) {
       this.numDimensions = numDimensions;
       this.searchStrategy = searchStrategy;
     }
@@ -344,7 +344,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
         int indexDimensionCount,
         int dimensionNumBytes,
         int vectorDimension,
-        VectorValues.SearchStrategy searchStrategy,
+        NumericVectors.SearchStrategy searchStrategy,
         boolean isSoftDeletesField) {
       if (indexOptions != IndexOptions.NONE) {
         IndexOptions currentOpts = this.indexOptions.get(fieldName);
@@ -623,7 +623,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
         Integer number,
         String name,
         int numDimensions,
-        VectorValues.SearchStrategy searchStrategy) {
+        NumericVectors.SearchStrategy searchStrategy) {
       if (name.equals(numberToName.get(number)) == false) {
         throw new IllegalArgumentException(
             "field number "
@@ -758,15 +758,15 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     synchronized void setVectorDimensionsAndSearchStrategy(
-        int number, String name, int numDimensions, VectorValues.SearchStrategy searchStrategy) {
+        int number, String name, int numDimensions, NumericVectors.SearchStrategy searchStrategy) {
       if (numDimensions <= 0) {
         throw new IllegalArgumentException(
             "vector numDimensions must be > 0; got " + numDimensions);
       }
-      if (numDimensions > VectorValues.MAX_DIMENSIONS) {
+      if (numDimensions > NumericVectors.MAX_DIMENSIONS) {
         throw new IllegalArgumentException(
             "vector numDimensions must be <= VectorValues.MAX_DIMENSIONS (="
-                + VectorValues.MAX_DIMENSIONS
+                + NumericVectors.MAX_DIMENSIONS
                 + "); got "
                 + numDimensions);
       }
@@ -814,7 +814,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 0,
                 0,
                 0,
-                VectorValues.SearchStrategy.NONE,
+                NumericVectors.SearchStrategy.NONE,
                 isSoftDeletesField);
         fi =
             new FieldInfo(
@@ -831,7 +831,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 0,
                 0,
                 0,
-                VectorValues.SearchStrategy.NONE,
+                NumericVectors.SearchStrategy.NONE,
                 isSoftDeletesField);
         assert !byName.containsKey(fi.name);
         globalFieldNumbers.verifyConsistent(
@@ -856,7 +856,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
         int indexDimensionCount,
         int dimensionNumBytes,
         int vectorDimension,
-        VectorValues.SearchStrategy vectorSearchStrategy,
+        NumericVectors.SearchStrategy vectorSearchStrategy,
         boolean isSoftDeletesField) {
       assert assertNotFinished();
       if (docValues == null) {

@@ -31,13 +31,13 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public abstract class VectorValues extends DocIdSetIterator {
+public abstract class NumericVectors extends DocIdSetIterator {
 
   /** The maximum length of a vector */
   public static int MAX_DIMENSIONS = 1024;
 
   /** Sole constructor */
-  protected VectorValues() {}
+  protected NumericVectors() {}
 
   /** Return the dimension of the vectors */
   public abstract int dimension();
@@ -96,7 +96,7 @@ public abstract class VectorValues extends DocIdSetIterator {
   public enum SearchStrategy {
 
     /**
-     * No search strategy is provided. Note: {@link VectorValues#search(float[], int, int)} is not
+     * No search strategy is provided. Note: {@link NumericVectors#search(float[], int, int)} is not
      * supported for fields specifying this strategy.
      */
     NONE,
@@ -158,8 +158,8 @@ public abstract class VectorValues extends DocIdSetIterator {
    * Represents the lack of vector values. It is returned by providers that do not support
    * VectorValues.
    */
-  public static final VectorValues EMPTY =
-      new VectorValues() {
+  public static final NumericVectors EMPTY =
+      new NumericVectors() {
 
         @Override
         public int size() {

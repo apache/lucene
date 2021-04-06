@@ -17,21 +17,21 @@
 
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextVectorWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextHnswVectorsWriter.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.HnswVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.NumericVectors;
+import org.apache.lucene.index.RandomAccessNumericVectors;
+import org.apache.lucene.index.RandomAccessNumericVectorsProducer;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -49,10 +49,10 @@ import org.apache.lucene.util.StringHelper;
  *
  * @lucene.experimental
  */
-public class SimpleTextVectorReader extends VectorReader {
+public class SimpleTextHnswVectorsReader extends HnswVectorsReader {
   // shallowSizeOfInstance for fieldEntries map is included in ramBytesUsed() calculation
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextVectorReader.class)
+      RamUsageEstimator.shallowSizeOfInstance(SimpleTextHnswVectorsReader.class)
           + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class);
 
   private static final BytesRef EMPTY = new BytesRef("");
@@ -62,18 +62,18 @@ public class SimpleTextVectorReader extends VectorReader {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
   private final Map<String, FieldEntry> fieldEntries = new HashMap<>();
 
-  SimpleTextVectorReader(SegmentReadState readState) throws IOException {
+  SimpleTextHnswVectorsReader(SegmentReadState readState) throws IOException {
     this.readState = readState;
     String metaFileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
             readState.segmentSuffix,
-            SimpleTextVectorFormat.META_EXTENSION);
+            SimpleTextHnswVectorsFormat.META_EXTENSION);
     String vectorFileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
             readState.segmentSuffix,
-            SimpleTextVectorFormat.VECTOR_EXTENSION);
+            SimpleTextHnswVectorsFormat.VECTOR_EXTENSION);
 
     boolean success = false;
     try (ChecksumIndexInput in =
@@ -82,8 +82,8 @@ public class SimpleTextVectorReader extends VectorReader {
       while (fieldNumber != -1) {
         String fieldName = readString(in, FIELD_NAME);
         String scoreFunctionName = readString(in, SCORE_FUNCTION);
-        VectorValues.SearchStrategy searchStrategy =
-            VectorValues.SearchStrategy.valueOf(scoreFunctionName);
+        NumericVectors.SearchStrategy searchStrategy =
+            NumericVectors.SearchStrategy.valueOf(scoreFunctionName);
         long vectorDataOffset = readLong(in, VECTOR_DATA_OFFSET);
         long vectorDataLength = readLong(in, VECTOR_DATA_LENGTH);
         int dimension = readInt(in, VECTOR_DIMENSION);
@@ -110,7 +110,7 @@ public class SimpleTextVectorReader extends VectorReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public NumericVectors getVectorValues(String field) throws IOException {
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     if (info == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
@@ -119,7 +119,7 @@ public class SimpleTextVectorReader extends VectorReader {
     }
     int dimension = info.getVectorDimension();
     if (dimension == 0) {
-      return VectorValues.EMPTY;
+      return NumericVectors.EMPTY;
     }
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {
@@ -138,7 +138,7 @@ public class SimpleTextVectorReader extends VectorReader {
     }
     IndexInput bytesSlice =
         dataIn.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new SimpleTextVectorValues(fieldEntry, bytesSlice);
+    return new SimpleTextNumericVectors(fieldEntry, bytesSlice);
   }
 
   @Override
@@ -199,7 +199,7 @@ public class SimpleTextVectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SearchStrategy searchStrategy;
+    final NumericVectors.SearchStrategy searchStrategy;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -207,7 +207,7 @@ public class SimpleTextVectorReader extends VectorReader {
 
     FieldEntry(
         int dimension,
-        VectorValues.SearchStrategy searchStrategy,
+        NumericVectors.SearchStrategy searchStrategy,
         long vectorDataOffset,
         long vectorDataLength,
         int[] ordToDoc) {
@@ -223,8 +223,8 @@ public class SimpleTextVectorReader extends VectorReader {
     }
   }
 
-  private static class SimpleTextVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  private static class SimpleTextNumericVectors extends NumericVectors
+      implements RandomAccessNumericVectors, RandomAccessNumericVectorsProducer {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -234,7 +234,7 @@ public class SimpleTextVectorReader extends VectorReader {
 
     int curOrd;
 
-    SimpleTextVectorValues(FieldEntry entry, IndexInput in) throws IOException {
+    SimpleTextNumericVectors(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new float[entry.size()][entry.dimension];
@@ -271,7 +271,7 @@ public class SimpleTextVectorReader extends VectorReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessNumericVectors randomAccess() {
       return this;
     }
 

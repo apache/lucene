@@ -22,8 +22,8 @@ import org.apache.lucene.analysis.Analyzer; // javadocs
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.VectorValues;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {
@@ -42,7 +42,7 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
-  private VectorValues.SearchStrategy vectorSearchStrategy = VectorValues.SearchStrategy.NONE;
+  private NumericVectors.SearchStrategy vectorSearchStrategy = NumericVectors.SearchStrategy.NONE;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -370,15 +370,15 @@ public class FieldType implements IndexableFieldType {
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
   public void setVectorDimensionsAndSearchStrategy(
-      int numDimensions, VectorValues.SearchStrategy distFunc) {
+      int numDimensions, NumericVectors.SearchStrategy distFunc) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
     }
-    if (numDimensions > VectorValues.MAX_DIMENSIONS) {
+    if (numDimensions > NumericVectors.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
           "vector numDimensions must be <= VectorValues.MAX_DIMENSIONS (="
-              + VectorValues.MAX_DIMENSIONS
+              + NumericVectors.MAX_DIMENSIONS
               + "); got "
               + numDimensions);
     }
@@ -392,7 +392,7 @@ public class FieldType implements IndexableFieldType {
   }
 
   @Override
-  public VectorValues.SearchStrategy vectorSearchStrategy() {
+  public NumericVectors.SearchStrategy vectorSearchStrategy() {
     return vectorSearchStrategy;
   }
 

@@ -113,8 +113,8 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public VectorValues.SearchStrategy vectorSearchStrategy() {
-            return VectorValues.SearchStrategy.NONE;
+          public NumericVectors.SearchStrategy vectorSearchStrategy() {
+            return NumericVectors.SearchStrategy.NONE;
           }
 
           @Override
