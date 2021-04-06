@@ -34,8 +34,8 @@ class StoredFieldsInts {
       }
     }
     if (allEqual) {
-        out.writeByte((byte) 0);
-        out.writeVInt(values[0]);
+      out.writeByte((byte) 0);
+      out.writeVInt(values[0]);
     } else {
       long max = 0;
       for (int i = 0; i < count; ++i) {
@@ -54,7 +54,7 @@ class StoredFieldsInts {
       }
     }
   }
-  
+
   /** Read {@code count} integers into {@code values}. */
   static void readInts(IndexInput in, int count, int[] values, int offset) throws IOException {
     final int bpv = in.readByte();
@@ -72,7 +72,7 @@ class StoredFieldsInts {
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
   }
-  
+
   private static void readInts8(IndexInput in, int count, int[] values, int offset)
       throws IOException {
     for (int i = 0; i < count; i++) {
