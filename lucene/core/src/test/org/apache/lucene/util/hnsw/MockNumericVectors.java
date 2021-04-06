@@ -17,15 +17,15 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.RandomAccessNumericVectors;
+import org.apache.lucene.index.RandomAccessNumericVectorsProducer;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
-class MockVectorValues extends VectorValues
-    implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+class MockNumericVectors extends NumericVectors
+    implements RandomAccessNumericVectors, RandomAccessNumericVectorsProducer {
   private final float[] scratch;
 
   protected final int dimension;
@@ -36,7 +36,7 @@ class MockVectorValues extends VectorValues
 
   private int pos = -1;
 
-  MockVectorValues(SearchStrategy searchStrategy, float[][] values) {
+  MockNumericVectors(SearchStrategy searchStrategy, float[][] values) {
     this.searchStrategy = searchStrategy;
     this.dimension = values[0].length;
     this.values = values;
@@ -52,8 +52,8 @@ class MockVectorValues extends VectorValues
     scratch = new float[dimension];
   }
 
-  public MockVectorValues copy() {
-    return new MockVectorValues(searchStrategy, values);
+  public MockNumericVectors copy() {
+    return new MockNumericVectors(searchStrategy, values);
   }
 
   @Override
@@ -86,7 +86,7 @@ class MockVectorValues extends VectorValues
   }
 
   @Override
-  public RandomAccessVectorValues randomAccess() {
+  public RandomAccessNumericVectors randomAccess() {
     return copy();
   }
 

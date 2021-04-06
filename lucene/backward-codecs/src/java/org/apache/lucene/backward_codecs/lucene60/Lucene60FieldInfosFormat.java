@@ -29,7 +29,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -212,7 +212,7 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
                 pointIndexDimensionCount,
                 pointNumBytes,
                 0,
-                VectorValues.SearchStrategy.NONE,
+                NumericVectors.SearchStrategy.NONE,
                 isSoftDeletesField);
       } catch (IllegalStateException e) {
         throw new CorruptIndexException(

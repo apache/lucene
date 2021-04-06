@@ -34,7 +34,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 
@@ -95,7 +95,7 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             0,
             0,
-            VectorValues.SearchStrategy.NONE,
+            NumericVectors.SearchStrategy.NONE,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
@@ -154,7 +154,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String fieldName) {
+  public NumericVectors getVectorValues(String fieldName) {
     return null;
   }
 

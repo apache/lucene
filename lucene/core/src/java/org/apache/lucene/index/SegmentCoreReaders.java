@@ -33,7 +33,7 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NumericVectorsReader;
 import org.apache.lucene.index.IndexReader.CacheKey;
 import org.apache.lucene.index.IndexReader.ClosedListener;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -59,7 +59,7 @@ final class SegmentCoreReaders {
   final StoredFieldsReader fieldsReaderOrig;
   final TermVectorsReader termVectorsReaderOrig;
   final PointsReader pointsReader;
-  final VectorReader vectorReader;
+  final NumericVectorsReader numericVectorsReader;
   final CompoundDirectory cfsReader;
   final String segment;
   /**
@@ -150,9 +150,9 @@ final class SegmentCoreReaders {
       }
 
       if (coreFieldInfos.hasVectorValues()) {
-        vectorReader = codec.vectorFormat().fieldsReader(segmentReadState);
+        numericVectorsReader = codec.vectorFormat().fieldsReader(segmentReadState);
       } else {
-        vectorReader = null;
+        numericVectorsReader = null;
       }
 
       success = true;
@@ -194,7 +194,7 @@ final class SegmentCoreReaders {
             cfsReader,
             normsProducer,
             pointsReader,
-            vectorReader);
+          numericVectorsReader);
       }
     }
   }

@@ -55,7 +55,7 @@ public final class FieldInfo {
   private int pointNumBytes;
 
   private int vectorDimension; // if it is a positive value, it means this field indexes vectors
-  private VectorValues.SearchStrategy vectorSearchStrategy = VectorValues.SearchStrategy.NONE;
+  private NumericVectors.SearchStrategy vectorSearchStrategy = NumericVectors.SearchStrategy.NONE;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -79,7 +79,7 @@ public final class FieldInfo {
       int pointIndexDimensionCount,
       int pointNumBytes,
       int vectorDimension,
-      VectorValues.SearchStrategy vectorSearchStrategy,
+      NumericVectors.SearchStrategy vectorSearchStrategy,
       boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
@@ -170,7 +170,7 @@ public final class FieldInfo {
       throw new IllegalStateException("vectorDimension must be >=0; got " + vectorDimension);
     }
 
-    if (vectorDimension == 0 && vectorSearchStrategy != VectorValues.SearchStrategy.NONE) {
+    if (vectorDimension == 0 && vectorSearchStrategy != NumericVectors.SearchStrategy.NONE) {
       throw new IllegalStateException(
           "vector search strategy must be NONE when dimension = 0; got " + vectorSearchStrategy);
     }
@@ -358,18 +358,18 @@ public final class FieldInfo {
    * distance function
    */
   public void setVectorDimensionAndSearchStrategy(
-      int dimension, VectorValues.SearchStrategy searchStrategy) {
+      int dimension, NumericVectors.SearchStrategy searchStrategy) {
     if (dimension < 0) {
       throw new IllegalArgumentException("vector dimension must be >= 0; got " + dimension);
     }
-    if (dimension > VectorValues.MAX_DIMENSIONS) {
+    if (dimension > NumericVectors.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
           "vector dimension must be <= VectorValues.MAX_DIMENSIONS (="
-              + VectorValues.MAX_DIMENSIONS
+              + NumericVectors.MAX_DIMENSIONS
               + "); got "
               + dimension);
     }
-    if (dimension == 0 && searchStrategy != VectorValues.SearchStrategy.NONE) {
+    if (dimension == 0 && searchStrategy != NumericVectors.SearchStrategy.NONE) {
       throw new IllegalArgumentException(
           "vector search strategy must be NONE when the vector dimension = 0; got "
               + searchStrategy);
@@ -384,7 +384,7 @@ public final class FieldInfo {
               + name
               + "\"");
     }
-    if (vectorSearchStrategy != VectorValues.SearchStrategy.NONE
+    if (vectorSearchStrategy != NumericVectors.SearchStrategy.NONE
         && vectorSearchStrategy != searchStrategy) {
       throw new IllegalArgumentException(
           "cannot change vector search strategy from "
@@ -407,8 +407,8 @@ public final class FieldInfo {
     return vectorDimension;
   }
 
-  /** Returns {@link VectorValues.SearchStrategy} for the field */
-  public VectorValues.SearchStrategy getVectorSearchStrategy() {
+  /** Returns {@link NumericVectors.SearchStrategy} for the field */
+  public NumericVectors.SearchStrategy getVectorSearchStrategy() {
     return vectorSearchStrategy;
   }
 

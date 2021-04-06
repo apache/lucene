@@ -1353,8 +1353,8 @@ public class MemoryIndex {
     }
 
     @Override
-    public VectorValues getVectorValues(String fieldName) {
-      return VectorValues.EMPTY;
+    public NumericVectors getVectorValues(String fieldName) {
+      return NumericVectors.EMPTY;
     }
 
     @Override

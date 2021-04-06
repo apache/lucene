@@ -19,14 +19,14 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.util.Accountable;
 
 /** Reads vectors from an index. */
-public abstract class VectorReader implements Closeable, Accountable {
+public abstract class NumericVectorsReader implements Closeable, Accountable {
 
   /** Sole constructor */
-  protected VectorReader() {}
+  protected NumericVectorsReader() {}
 
   /**
    * Checks consistency of this reader.
@@ -38,8 +38,8 @@ public abstract class VectorReader implements Closeable, Accountable {
    */
   public abstract void checkIntegrity() throws IOException;
 
-  /** Returns the {@link VectorValues} for the given {@code field} */
-  public abstract VectorValues getVectorValues(String field) throws IOException;
+  /** Returns the {@link NumericVectors} for the given {@code field} */
+  public abstract NumericVectors getVectorValues(String field) throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
@@ -47,7 +47,7 @@ public abstract class VectorReader implements Closeable, Accountable {
    *
    * <p>The default implementation returns {@code this}
    */
-  public VectorReader getMergeInstance() {
+  public NumericVectorsReader getMergeInstance() {
     return this;
   }
 }

@@ -26,16 +26,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NumericVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnGraphValues;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.RandomAccessNumericVectors;
+import org.apache.lucene.index.RandomAccessNumericVectorsProducer;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -53,7 +53,7 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public final class Lucene90VectorReader extends VectorReader {
+public final class Lucene90NumericVectorsReader extends NumericVectorsReader {
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
@@ -61,10 +61,10 @@ public final class Lucene90VectorReader extends VectorReader {
   private final IndexInput vectorIndex;
   private final long checksumSeed;
 
-  Lucene90VectorReader(SegmentReadState state) throws IOException {
+  Lucene90NumericVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
 
-    int versionMeta = readMetadata(state, Lucene90VectorFormat.META_EXTENSION);
+    int versionMeta = readMetadata(state, Lucene90NumericVectorsFormat.META_EXTENSION);
     long[] checksumRef = new long[1];
     boolean success = false;
     try {
@@ -72,15 +72,15 @@ public final class Lucene90VectorReader extends VectorReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene90VectorFormat.VECTOR_DATA_EXTENSION,
-              Lucene90VectorFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene90NumericVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene90NumericVectorsFormat.VECTOR_DATA_CODEC_NAME,
               checksumRef);
       vectorIndex =
           openDataInput(
               state,
               versionMeta,
-              Lucene90VectorFormat.VECTOR_INDEX_EXTENSION,
-              Lucene90VectorFormat.VECTOR_INDEX_CODEC_NAME,
+              Lucene90NumericVectorsFormat.VECTOR_INDEX_EXTENSION,
+              Lucene90NumericVectorsFormat.VECTOR_INDEX_CODEC_NAME,
               checksumRef);
       success = true;
     } finally {
@@ -101,9 +101,9 @@ public final class Lucene90VectorReader extends VectorReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene90VectorFormat.META_CODEC_NAME,
-                Lucene90VectorFormat.VERSION_START,
-                Lucene90VectorFormat.VERSION_CURRENT,
+                Lucene90NumericVectorsFormat.META_CODEC_NAME,
+                Lucene90NumericVectorsFormat.VERSION_START,
+                Lucene90NumericVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -130,8 +130,8 @@ public final class Lucene90VectorReader extends VectorReader {
         CodecUtil.checkIndexHeader(
             in,
             codecName,
-            Lucene90VectorFormat.VERSION_START,
-            Lucene90VectorFormat.VERSION_CURRENT,
+            Lucene90NumericVectorsFormat.VERSION_START,
+            Lucene90NumericVectorsFormat.VERSION_CURRENT,
             state.segmentInfo.getId(),
             state.segmentSuffix);
     if (versionMeta != versionVectorData) {
@@ -158,16 +158,16 @@ public final class Lucene90VectorReader extends VectorReader {
     }
   }
 
-  private VectorValues.SearchStrategy readSearchStrategy(DataInput input) throws IOException {
+  private NumericVectors.SearchStrategy readSearchStrategy(DataInput input) throws IOException {
     int searchStrategyId = input.readInt();
-    if (searchStrategyId < 0 || searchStrategyId >= VectorValues.SearchStrategy.values().length) {
+    if (searchStrategyId < 0 || searchStrategyId >= NumericVectors.SearchStrategy.values().length) {
       throw new CorruptIndexException("Invalid search strategy id: " + searchStrategyId, input);
     }
-    return VectorValues.SearchStrategy.values()[searchStrategyId];
+    return NumericVectors.SearchStrategy.values()[searchStrategyId];
   }
 
   private FieldEntry readField(DataInput input) throws IOException {
-    VectorValues.SearchStrategy searchStrategy = readSearchStrategy(input);
+    NumericVectors.SearchStrategy searchStrategy = readSearchStrategy(input);
     switch (searchStrategy) {
       case NONE:
         return new FieldEntry(input, searchStrategy);
@@ -181,7 +181,7 @@ public final class Lucene90VectorReader extends VectorReader {
 
   @Override
   public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90VectorReader.class);
+    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90NumericVectorsReader.class);
     totalBytes +=
         RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
@@ -198,14 +198,14 @@ public final class Lucene90VectorReader extends VectorReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public NumericVectors getVectorValues(String field) throws IOException {
     FieldInfo info = fieldInfos.fieldInfo(field);
     if (info == null) {
       return null;
     }
     int dimension = info.getVectorDimension();
     if (dimension == 0) {
-      return VectorValues.EMPTY;
+      return NumericVectors.EMPTY;
     }
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null) {
@@ -235,7 +235,7 @@ public final class Lucene90VectorReader extends VectorReader {
     }
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new OffHeapVectorValues(fieldEntry, bytesSlice);
+    return new OffHeapNumericVectors(fieldEntry, bytesSlice);
   }
 
   public KnnGraphValues getGraphValues(String field) throws IOException {
@@ -270,7 +270,7 @@ public final class Lucene90VectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SearchStrategy searchStrategy;
+    final NumericVectors.SearchStrategy searchStrategy;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -278,7 +278,7 @@ public final class Lucene90VectorReader extends VectorReader {
     final long indexDataLength;
     final int[] ordToDoc;
 
-    FieldEntry(DataInput input, VectorValues.SearchStrategy searchStrategy) throws IOException {
+    FieldEntry(DataInput input, NumericVectors.SearchStrategy searchStrategy) throws IOException {
       this.searchStrategy = searchStrategy;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
@@ -302,7 +302,7 @@ public final class Lucene90VectorReader extends VectorReader {
 
     final long[] ordOffsets;
 
-    HnswGraphFieldEntry(DataInput input, VectorValues.SearchStrategy searchStrategy)
+    HnswGraphFieldEntry(DataInput input, NumericVectors.SearchStrategy searchStrategy)
         throws IOException {
       super(input, searchStrategy);
       ordOffsets = new long[size()];
@@ -315,8 +315,8 @@ public final class Lucene90VectorReader extends VectorReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  private class OffHeapVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  private class OffHeapNumericVectors extends NumericVectors
+      implements RandomAccessNumericVectors, RandomAccessNumericVectorsProducer {
 
     final FieldEntry fieldEntry;
     final IndexInput dataIn;
@@ -329,7 +329,7 @@ public final class Lucene90VectorReader extends VectorReader {
     int ord = -1;
     int doc = -1;
 
-    OffHeapVectorValues(FieldEntry fieldEntry, IndexInput dataIn) {
+    OffHeapNumericVectors(FieldEntry fieldEntry, IndexInput dataIn) {
       this.fieldEntry = fieldEntry;
       this.dataIn = dataIn;
       byteSize = Float.BYTES * fieldEntry.dimension;
@@ -404,8 +404,8 @@ public final class Lucene90VectorReader extends VectorReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new OffHeapVectorValues(fieldEntry, dataIn.clone());
+    public RandomAccessNumericVectors randomAccess() {
+      return new OffHeapNumericVectors(fieldEntry, dataIn.clone());
     }
 
     @Override

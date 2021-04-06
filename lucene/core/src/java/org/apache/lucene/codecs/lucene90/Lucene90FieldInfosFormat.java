@@ -29,8 +29,8 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.index.VectorValues.SearchStrategy;
+import org.apache.lucene.index.NumericVectors;
+import org.apache.lucene.index.NumericVectors.SearchStrategy;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -173,7 +173,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
             pointNumBytes = 0;
           }
           final int vectorDimension = input.readVInt();
-          final VectorValues.SearchStrategy vectorDistFunc = getDistFunc(input, input.readByte());
+          final NumericVectors.SearchStrategy vectorDistFunc = getDistFunc(input, input.readByte());
 
           try {
             infos[i] =
@@ -254,12 +254,12 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  private static VectorValues.SearchStrategy getDistFunc(IndexInput input, byte b)
+  private static NumericVectors.SearchStrategy getDistFunc(IndexInput input, byte b)
       throws IOException {
-    if (b < 0 || b >= VectorValues.SearchStrategy.values().length) {
+    if (b < 0 || b >= NumericVectors.SearchStrategy.values().length) {
       throw new CorruptIndexException("invalid distance function: " + b, input);
     }
-    return VectorValues.SearchStrategy.values()[b];
+    return NumericVectors.SearchStrategy.values()[b];
   }
 
   static {

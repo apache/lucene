@@ -25,7 +25,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public interface RandomAccessVectorValues {
+public interface RandomAccessNumericVectors {
 
   /** Return the number of vector values */
   int size();
@@ -34,7 +34,7 @@ public interface RandomAccessVectorValues {
   int dimension();
 
   /** Return the search strategy used to compare these vectors */
-  VectorValues.SearchStrategy searchStrategy();
+  NumericVectors.SearchStrategy searchStrategy();
 
   /**
    * Return the vector value indexed at the given ordinal. The provided floating point array may be

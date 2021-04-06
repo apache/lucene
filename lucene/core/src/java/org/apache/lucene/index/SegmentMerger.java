@@ -26,7 +26,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NumericVectorsWriter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.InfoStream;
@@ -236,7 +236,7 @@ final class SegmentMerger {
   }
 
   private void mergeVectorValues(SegmentWriteState segmentWriteState) throws IOException {
-    try (VectorWriter writer = codec.vectorFormat().fieldsWriter(segmentWriteState)) {
+    try (NumericVectorsWriter writer = codec.vectorFormat().fieldsWriter(segmentWriteState)) {
       writer.merge(mergeState);
     }
   }

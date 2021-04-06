@@ -23,18 +23,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NumericVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 
 /** Writes vector-valued fields in a plain text format */
-public class SimpleTextVectorWriter extends VectorWriter {
+public class SimpleTextNumericVectorsWriter extends NumericVectorsWriter {
 
   static final BytesRef FIELD_NUMBER = new BytesRef("field-number ");
   static final BytesRef FIELD_NAME = new BytesRef("field-name ");
@@ -47,7 +47,7 @@ public class SimpleTextVectorWriter extends VectorWriter {
   private final IndexOutput meta, vectorData;
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
-  SimpleTextVectorWriter(SegmentWriteState state) throws IOException {
+  SimpleTextNumericVectorsWriter(SegmentWriteState state) throws IOException {
     assert state.fieldInfos.hasVectorValues();
 
     boolean success = false;
@@ -55,12 +55,12 @@ public class SimpleTextVectorWriter extends VectorWriter {
     try {
       String metaFileName =
           IndexFileNames.segmentFileName(
-              state.segmentInfo.name, state.segmentSuffix, SimpleTextVectorFormat.META_EXTENSION);
+              state.segmentInfo.name, state.segmentSuffix, SimpleTextNumericVectorsFormat.META_EXTENSION);
       meta = state.directory.createOutput(metaFileName, state.context);
 
       String vectorDataFileName =
           IndexFileNames.segmentFileName(
-              state.segmentInfo.name, state.segmentSuffix, SimpleTextVectorFormat.VECTOR_EXTENSION);
+              state.segmentInfo.name, state.segmentSuffix, SimpleTextNumericVectorsFormat.VECTOR_EXTENSION);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
       success = true;
     } finally {
@@ -71,7 +71,7 @@ public class SimpleTextVectorWriter extends VectorWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
+  public void writeField(FieldInfo fieldInfo, NumericVectors vectors) throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     int docV;
@@ -85,7 +85,7 @@ public class SimpleTextVectorWriter extends VectorWriter {
     }
   }
 
-  private void writeVectorValue(VectorValues vectors) throws IOException {
+  private void writeVectorValue(NumericVectors vectors) throws IOException {
     // write vector value
     float[] value = vectors.vectorValue();
     assert value.length == vectors.dimension();

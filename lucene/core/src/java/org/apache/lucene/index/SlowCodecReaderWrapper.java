@@ -26,7 +26,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NumericVectorsReader;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -77,7 +77,7 @@ public final class SlowCodecReaderWrapper {
         }
 
         @Override
-        public VectorReader getVectorReader() {
+        public NumericVectorsReader getVectorReader() {
           reader.ensureOpen();
           return readerToVectorReader(reader);
         }
@@ -163,10 +163,10 @@ public final class SlowCodecReaderWrapper {
     };
   }
 
-  private static VectorReader readerToVectorReader(LeafReader reader) {
-    return new VectorReader() {
+  private static NumericVectorsReader readerToVectorReader(LeafReader reader) {
+    return new NumericVectorsReader() {
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
+      public NumericVectors getVectorValues(String field) throws IOException {
         return reader.getVectorValues(field);
       }
 

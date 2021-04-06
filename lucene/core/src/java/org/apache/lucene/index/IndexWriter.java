@@ -1970,7 +1970,7 @@ public class IndexWriter
             0,
             0,
             0,
-            VectorValues.SearchStrategy.NONE,
+            NumericVectors.SearchStrategy.NONE,
             f.name().equals(config.softDeletesField));
         assert globalFieldNumberMap.contains(f.name(), dvType);
       }

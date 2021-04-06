@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.NumericVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
@@ -84,7 +84,7 @@ public class Lucene90Codec extends Codec {
         }
       };
 
-  private final VectorFormat vectorFormat = new Lucene90VectorFormat();
+  private final NumericVectorsFormat numericVectorsFormat = new Lucene90NumericVectorsFormat();
 
   private final StoredFieldsFormat storedFieldsFormat;
 
@@ -147,8 +147,8 @@ public class Lucene90Codec extends Codec {
   }
 
   @Override
-  public final VectorFormat vectorFormat() {
-    return vectorFormat;
+  public final NumericVectorsFormat vectorFormat() {
+    return numericVectorsFormat;
   }
 
   /**

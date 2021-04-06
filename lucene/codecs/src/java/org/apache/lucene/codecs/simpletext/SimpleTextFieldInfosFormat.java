@@ -28,7 +28,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -158,7 +158,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), VECTOR_SEARCH_STRATEGY);
         String scoreFunction = readString(VECTOR_SEARCH_STRATEGY.length, scratch);
-        VectorValues.SearchStrategy vectorDistFunc = distanceFunction(scoreFunction);
+        NumericVectors.SearchStrategy vectorDistFunc = distanceFunction(scoreFunction);
 
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), SOFT_DELETES);
@@ -201,8 +201,8 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
     return DocValuesType.valueOf(dvType);
   }
 
-  public VectorValues.SearchStrategy distanceFunction(String scoreFunction) {
-    return VectorValues.SearchStrategy.valueOf(scoreFunction);
+  public NumericVectors.SearchStrategy distanceFunction(String scoreFunction) {
+    return NumericVectors.SearchStrategy.valueOf(scoreFunction);
   }
 
   private String readString(int offset, BytesRefBuilder scratch) {

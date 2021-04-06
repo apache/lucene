@@ -335,9 +335,9 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     }
 
     if (r.nextBoolean()) {
-      int dimension = 1 + r.nextInt(VectorValues.MAX_DIMENSIONS);
-      VectorValues.SearchStrategy searchStrategy =
-          RandomPicks.randomFrom(r, VectorValues.SearchStrategy.values());
+      int dimension = 1 + r.nextInt(NumericVectors.MAX_DIMENSIONS);
+      NumericVectors.SearchStrategy searchStrategy =
+          RandomPicks.randomFrom(r, NumericVectors.SearchStrategy.values());
       type.setVectorDimensionsAndSearchStrategy(dimension, searchStrategy);
     }
 

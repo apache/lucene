@@ -108,7 +108,7 @@ public abstract class FilterCodec extends Codec {
   }
 
   @Override
-  public VectorFormat vectorFormat() {
+  public NumericVectorsFormat vectorFormat() {
     return delegate.vectorFormat();
   }
 }

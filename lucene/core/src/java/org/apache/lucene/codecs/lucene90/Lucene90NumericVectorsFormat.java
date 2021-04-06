@@ -18,9 +18,9 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NumericVectorsFormat;
+import org.apache.lucene.codecs.NumericVectorsReader;
+import org.apache.lucene.codecs.NumericVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
@@ -64,7 +64,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-public final class Lucene90VectorFormat extends VectorFormat {
+public final class Lucene90NumericVectorsFormat extends NumericVectorsFormat {
 
   static final String META_CODEC_NAME = "Lucene90VectorFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene90VectorFormatData";
@@ -77,15 +77,15 @@ public final class Lucene90VectorFormat extends VectorFormat {
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Sole constructor */
-  public Lucene90VectorFormat() {}
+  public Lucene90NumericVectorsFormat() {}
 
   @Override
-  public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90VectorWriter(state);
+  public NumericVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene90NumericVectorsWriter(state);
   }
 
   @Override
-  public VectorReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene90VectorReader(state);
+  public NumericVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new Lucene90NumericVectorsReader(state);
   }
 }

@@ -27,20 +27,20 @@ import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.RandomAccessNumericVectors;
+import org.apache.lucene.index.RandomAccessNumericVectorsProducer;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
-public abstract class VectorWriter implements Closeable {
+public abstract class NumericVectorsWriter implements Closeable {
 
   /** Sole constructor */
-  protected VectorWriter() {}
+  protected NumericVectorsWriter() {}
 
   /** Write all values contained in the provided reader */
-  public abstract void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException;
+  public abstract void writeField(FieldInfo fieldInfo, NumericVectors values) throws IOException;
 
   /** Called once at the end before close */
   public abstract void finish() throws IOException;
@@ -48,7 +48,7 @@ public abstract class VectorWriter implements Closeable {
   /** Merge the vector values from multiple segments, for all fields */
   public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
-      VectorReader reader = mergeState.vectorReaders[i];
+      NumericVectorsReader reader = mergeState.numericVectorsReaders[i];
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
       if (reader != null) {
         reader.checkIntegrity();
@@ -69,14 +69,14 @@ public abstract class VectorWriter implements Closeable {
     }
     List<VectorValuesSub> subs = new ArrayList<>();
     int dimension = -1;
-    VectorValues.SearchStrategy searchStrategy = null;
+    NumericVectors.SearchStrategy searchStrategy = null;
     int nonEmptySegmentIndex = 0;
-    for (int i = 0; i < mergeState.vectorReaders.length; i++) {
-      VectorReader vectorReader = mergeState.vectorReaders[i];
-      if (vectorReader != null) {
+    for (int i = 0; i < mergeState.numericVectorsReaders.length; i++) {
+      NumericVectorsReader numericVectorsReader = mergeState.numericVectorsReaders[i];
+      if (numericVectorsReader != null) {
         if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
           int segmentDimension = mergeFieldInfo.getVectorDimension();
-          VectorValues.SearchStrategy segmentSearchStrategy =
+          NumericVectors.SearchStrategy segmentSearchStrategy =
               mergeFieldInfo.getVectorSearchStrategy();
           if (dimension == -1) {
             dimension = segmentDimension;
@@ -98,7 +98,7 @@ public abstract class VectorWriter implements Closeable {
                     + "!="
                     + segmentSearchStrategy);
           }
-          VectorValues values = vectorReader.getVectorValues(mergeFieldInfo.name);
+          NumericVectors values = numericVectorsReader.getVectorValues(mergeFieldInfo.name);
           if (values != null) {
             subs.add(new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
           }
@@ -108,7 +108,7 @@ public abstract class VectorWriter implements Closeable {
     // Create a new VectorValues by iterating over the sub vectors, mapping the resulting
     // docids using docMaps in the mergeState.
     if (subs.size() > 0) {
-      writeField(mergeFieldInfo, new VectorValuesMerger(subs, mergeState));
+      writeField(mergeFieldInfo, new NumericVectorsMerger(subs, mergeState));
     }
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
@@ -118,11 +118,11 @@ public abstract class VectorWriter implements Closeable {
   /** Tracks state of one sub-reader that we are merging */
   private static class VectorValuesSub extends DocIDMerger.Sub {
 
-    final VectorValues values;
+    final NumericVectors values;
     final int segmentIndex;
     int count;
 
-    VectorValuesSub(int segmentIndex, MergeState.DocMap docMap, VectorValues values) {
+    VectorValuesSub(int segmentIndex, MergeState.DocMap docMap, NumericVectors values) {
       super(docMap);
       this.values = values;
       this.segmentIndex = segmentIndex;
@@ -145,8 +145,8 @@ public abstract class VectorWriter implements Closeable {
    * reverse ordinal mapping for documents having values in order to support random access by dense
    * ordinal.
    */
-  private static class VectorValuesMerger extends VectorValues
-      implements RandomAccessVectorValuesProducer {
+  private static class NumericVectorsMerger extends NumericVectors
+      implements RandomAccessNumericVectorsProducer {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
     private final int[] ordBase;
@@ -161,7 +161,7 @@ public abstract class VectorWriter implements Closeable {
     private int[] ordMap;
     private int ord;
 
-    VectorValuesMerger(List<VectorValuesSub> subs, MergeState mergeState) throws IOException {
+    NumericVectorsMerger(List<VectorValuesSub> subs, MergeState mergeState) throws IOException {
       this.subs = subs;
       docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
       int totalCost = 0, totalSize = 0;
@@ -217,7 +217,7 @@ public abstract class VectorWriter implements Closeable {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessNumericVectors randomAccess() {
       return new MergerRandomAccess();
     }
 
@@ -251,15 +251,15 @@ public abstract class VectorWriter implements Closeable {
       throw new UnsupportedOperationException();
     }
 
-    class MergerRandomAccess implements RandomAccessVectorValues {
+    class MergerRandomAccess implements RandomAccessNumericVectors {
 
-      private final List<RandomAccessVectorValues> raSubs;
+      private final List<RandomAccessNumericVectors> raSubs;
 
       MergerRandomAccess() {
         raSubs = new ArrayList<>(subs.size());
         for (VectorValuesSub sub : subs) {
-          if (sub.values instanceof RandomAccessVectorValuesProducer) {
-            raSubs.add(((RandomAccessVectorValuesProducer) sub.values).randomAccess());
+          if (sub.values instanceof RandomAccessNumericVectorsProducer) {
+            raSubs.add(((RandomAccessNumericVectorsProducer) sub.values).randomAccess());
           } else {
             throw new IllegalStateException(
                 "Cannot merge VectorValues without support for random access");
@@ -274,12 +274,12 @@ public abstract class VectorWriter implements Closeable {
 
       @Override
       public int dimension() {
-        return VectorValuesMerger.this.dimension();
+        return NumericVectorsMerger.this.dimension();
       }
 
       @Override
       public SearchStrategy searchStrategy() {
-        return VectorValuesMerger.this.searchStrategy();
+        return NumericVectorsMerger.this.searchStrategy();
       }
 
       @Override
