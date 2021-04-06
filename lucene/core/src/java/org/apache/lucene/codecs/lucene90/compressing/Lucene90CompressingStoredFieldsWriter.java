@@ -194,33 +194,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   private static void saveInts(int[] values, int length, DataOutput out) throws IOException {
-    assert length > 0;
     if (length == 1) {
       out.writeVInt(values[0]);
     } else {
-      boolean allEqual = true;
-      for (int i = 1; i < length; ++i) {
-        if (values[i] != values[0]) {
-          allEqual = false;
-          break;
-        }
-      }
-      if (allEqual) {
-        out.writeVInt(0);
-        out.writeVInt(values[0]);
-      } else {
-        long max = 0;
-        for (int i = 0; i < length; ++i) {
-          max |= values[i];
-        }
-        final int bitsRequired = DirectWriter.bitsRequired(max);
-        out.writeVInt(bitsRequired);
-        final DirectWriter w = DirectWriter.getInstance(out, length, bitsRequired);
-        for (int i = 0; i < length; ++i) {
-          w.add(values[i]);
-        }
-        w.finish();
-      }
+      StoredFieldsInts.writeInts(values, 0, length, out);
     }
   }
 

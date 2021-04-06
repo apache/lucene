@@ -67,9 +67,8 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LongValues;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LongsRef;
-import org.apache.lucene.util.packed.DirectReader;
 
 /**
  * {@link StoredFieldsReader} impl for {@link Lucene90CompressingStoredFieldsFormat}.
@@ -374,8 +373,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     // whether the block has been sliced, this happens for large documents
     private boolean sliced;
 
-    private long[] offsets = LongsRef.EMPTY_LONGS;
-    private long[] numStoredFields = LongsRef.EMPTY_LONGS;
+    private int[] offsets = IntsRef.EMPTY_INTS; //EMPTY_LONGS;
+    private int[] numStoredFields =  IntsRef.EMPTY_INTS; //LongsRef.EMPTY_LONGS;
 
     // the start pointer at which you can read the compressed documents
     private long startPointer;
@@ -435,50 +434,27 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       offsets = ArrayUtil.grow(offsets, chunkDocs + 1);
       numStoredFields = ArrayUtil.grow(numStoredFields, chunkDocs);
-
+      
       if (chunkDocs == 1) {
-        numStoredFields[0] = fieldsStream.readVInt();
-        offsets[1] = fieldsStream.readVInt();
+          numStoredFields[0] = fieldsStream.readVInt();
+          offsets[1] = fieldsStream.readVInt();
       } else {
         // Number of stored fields per document
-        final int bitsPerStoredFields = fieldsStream.readVInt();
-        if (bitsPerStoredFields == 0) {
-          Arrays.fill(numStoredFields, 0, chunkDocs, fieldsStream.readVInt());
-        } else if (bitsPerStoredFields > 32) {
-          throw new CorruptIndexException(
-              "bitsPerStoredFields=" + bitsPerStoredFields, fieldsStream);
-        } else {
-          final LongValues it =
-              DirectReader.getInstance(fieldsStream, chunkDocs, bitsPerStoredFields);
-          for (int i = 0; i < chunkDocs; i++) {
-            numStoredFields[i] = it.get(i);
-          }
-        }
-
+        StoredFieldsInts.readInts(fieldsStream, chunkDocs, numStoredFields, 0);
         // The stream encodes the length of each document and we decode
         // it into a list of monotonically increasing offsets
-        final int bitsPerLength = fieldsStream.readVInt();
-        if (bitsPerLength == 0) {
-          final int length = fieldsStream.readVInt();
-          for (int i = 0; i < chunkDocs; ++i) {
-            offsets[1 + i] = (1 + i) * length;
-          }
-        } else if (bitsPerStoredFields > 32) {
-          throw new CorruptIndexException("bitsPerLength=" + bitsPerLength, fieldsStream);
-        } else {
-          final LongValues it = DirectReader.getInstance(fieldsStream, chunkDocs, bitsPerLength);
-          for (int i = 0; i < chunkDocs; i++) {
-            offsets[i + 1] = offsets[i] + it.get(i);
-          }
+        StoredFieldsInts.readInts(fieldsStream, chunkDocs, offsets, 1);
+        for (int i = 0; i < chunkDocs; ++i) {
+          offsets[i + 1] += offsets[i];
         }
-
+        
         // Additional validation: only the empty document has a serialized length of 0
         for (int i = 0; i < chunkDocs; ++i) {
           final long len = offsets[i + 1] - offsets[i];
           final long storedFields = numStoredFields[i];
           if ((len == 0) != (storedFields == 0)) {
             throw new CorruptIndexException(
-                "length=" + len + ", numStoredFields=" + storedFields, fieldsStream);
+                    "length=" + len + ", numStoredFields=" + storedFields, fieldsStream);
           }
         }
       }
@@ -486,7 +462,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       startPointer = fieldsStream.getFilePointer();
 
       if (merging) {
-        final int totalLength = Math.toIntExact(offsets[chunkDocs]);
+        final int totalLength = offsets[chunkDocs];
         // decompress eagerly
         if (sliced) {
           bytes.offset = bytes.length = 0;
@@ -519,8 +495,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       }
 
       final int index = docID - docBase;
-      final int offset = Math.toIntExact(offsets[index]);
-      final int length = Math.toIntExact(offsets[index + 1]) - offset;
+      final int offset = offsets[index];
+      final int length = offsets[index + 1] - offset;
       final int totalLength = Math.toIntExact(offsets[chunkDocs]);
       final int numStoredFields = Math.toIntExact(this.numStoredFields[index]);
 

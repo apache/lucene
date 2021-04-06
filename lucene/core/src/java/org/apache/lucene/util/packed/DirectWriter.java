@@ -144,17 +144,6 @@ public final class DirectWriter {
   }
 
   /**
-   * Calculates the maximum unsigned long that can be expressed with the given number of bits.
-   *
-   * @param bitsPerValue the number of bits available for any given value.
-   * @return the maximum value for the given bits.
-   * @lucene.internal
-   */
-  public static long maxValue(int bitsPerValue) {
-    return PackedInts.maxValue(bitsPerValue);
-  }
-
-  /**
    * Returns how many bits are required to hold values up to and including maxValue, interpreted as
    * an unsigned value.
    *

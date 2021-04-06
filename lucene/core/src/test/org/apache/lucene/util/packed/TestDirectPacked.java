@@ -110,22 +110,11 @@ public class TestDirectPacked extends LuceneTestCase {
       writer.finish();
       output.close();
       IndexInput input = directory.openInput(name, IOContext.DEFAULT);
-      {
-        LongValues reader =
-            DirectReader.getInstance(
-                input.randomAccessSlice(0, input.length()), bitsRequired, offset);
-        for (int j = 0; j < original.length; j++) {
-          assertEquals("bpv=" + bpv, original[j], reader.get(j));
-        }
-        assertEquals(input.getFilePointer(), 0L);
-      }
-      {
-        input.seek(offset);
-        LongValues reader = DirectReader.getInstance(input, original.length, bitsRequired);
-        assertEquals(input.getFilePointer(), input.length());
-        for (int j = 0; j < original.length; j++) {
-          assertEquals("bpv=" + bpv, original[j], reader.get(j));
-        }
+      LongValues reader =
+          DirectReader.getInstance(
+              input.randomAccessSlice(0, input.length()), bitsRequired, offset);
+      for (int j = 0; j < original.length; j++) {
+        assertEquals("bpv=" + bpv, original[j], reader.get(j));
       }
       input.close();
     }

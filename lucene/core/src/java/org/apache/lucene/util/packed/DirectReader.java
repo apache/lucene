@@ -17,7 +17,6 @@
 package org.apache.lucene.util.packed;
 
 import java.io.IOException;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.LongValues;
 
@@ -38,19 +37,6 @@ import org.apache.lucene.util.LongValues;
  * @see DirectWriter
  */
 public class DirectReader {
-
-  /**
-   * Retrieves an instance with {@code valueCount} values decoding {@code bitsPerValue} for each
-   * value. The provided {@link IndexInput} is advanced to the end of the values array.
-   */
-  public static LongValues getInstance(IndexInput input, long valueCount, int bitsPerValue)
-      throws IOException {
-    final long length = (long) Math.ceil((double) valueCount * bitsPerValue / 8) + 3;
-    final long offset = input.getFilePointer();
-    final RandomAccessInput slice = input.randomAccessSlice(offset, length);
-    input.seek(offset + length);
-    return getInstance(slice, bitsPerValue);
-  }
 
   /**
    * Retrieves an instance from the specified slice written decoding {@code bitsPerValue} for each
