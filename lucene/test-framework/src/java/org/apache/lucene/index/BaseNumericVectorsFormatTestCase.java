@@ -39,9 +39,9 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Base class aiming at testing {@link NumericVectorsFormat vectors formats}. To test a new format, all you
- * need is to register a new {@link Codec} which uses it and extend this class and override {@link
- * #getCodec()}.
+ * Base class aiming at testing {@link NumericVectorsFormat vectors formats}. To test a new format,
+ * all you need is to register a new {@link Codec} which uses it and extend this class and override
+ * {@link #getCodec()}.
  *
  * @lucene.experimental
  */
@@ -176,7 +176,8 @@ public abstract class BaseNumericVectorsFormatTestCase extends BaseIndexFileForm
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new VectorField("f", new float[1], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
+        doc2.add(
+            new VectorField("f", new float[1], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -208,7 +209,8 @@ public abstract class BaseNumericVectorsFormatTestCase extends BaseIndexFileForm
   public void testAddIndexesDirectory0() throws Exception {
     String fieldName = "field";
     Document doc = new Document();
-    doc.add(new VectorField(fieldName, new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
+    doc.add(
+        new VectorField(fieldName, new float[4], NumericVectors.SearchStrategy.DOT_PRODUCT_HNSW));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -459,7 +461,8 @@ public abstract class BaseNumericVectorsFormatTestCase extends BaseIndexFileForm
       Exception e =
           expectThrows(
               IllegalArgumentException.class,
-              () -> doc.add(new VectorField("f", new float[0], NumericVectors.SearchStrategy.NONE)));
+              () ->
+                  doc.add(new VectorField("f", new float[0], NumericVectors.SearchStrategy.NONE)));
       assertEquals("cannot index an empty vector", e.getMessage());
 
       Document doc2 = new Document();

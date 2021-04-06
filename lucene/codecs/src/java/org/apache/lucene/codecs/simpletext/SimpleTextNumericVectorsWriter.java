@@ -26,8 +26,8 @@ import java.util.List;
 import org.apache.lucene.codecs.NumericVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.NumericVectors;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -55,12 +55,16 @@ public class SimpleTextNumericVectorsWriter extends NumericVectorsWriter {
     try {
       String metaFileName =
           IndexFileNames.segmentFileName(
-              state.segmentInfo.name, state.segmentSuffix, SimpleTextNumericVectorsFormat.META_EXTENSION);
+              state.segmentInfo.name,
+              state.segmentSuffix,
+              SimpleTextNumericVectorsFormat.META_EXTENSION);
       meta = state.directory.createOutput(metaFileName, state.context);
 
       String vectorDataFileName =
           IndexFileNames.segmentFileName(
-              state.segmentInfo.name, state.segmentSuffix, SimpleTextNumericVectorsFormat.VECTOR_EXTENSION);
+              state.segmentInfo.name,
+              state.segmentSuffix,
+              SimpleTextNumericVectorsFormat.VECTOR_EXTENSION);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
       success = true;
     } finally {

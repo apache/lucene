@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
@@ -103,7 +102,9 @@ class NumericVectorsWriter {
    * @param numericVectorsWriter the Codec's vector writer that handles the actual encoding and I/O
    * @throws IOException if there is an error writing the field and its values
    */
-  public void flush(Sorter.DocMap sortMap, org.apache.lucene.codecs.NumericVectorsWriter numericVectorsWriter) throws IOException {
+  public void flush(
+      Sorter.DocMap sortMap, org.apache.lucene.codecs.NumericVectorsWriter numericVectorsWriter)
+      throws IOException {
     NumericVectors numericVectors =
         new BufferedNumericVectors(
             docsWithField,
@@ -111,7 +112,8 @@ class NumericVectorsWriter {
             fieldInfo.getVectorDimension(),
             fieldInfo.getVectorSearchStrategy());
     if (sortMap != null) {
-      numericVectorsWriter.writeField(fieldInfo, new SortingNumericVectors(numericVectors, sortMap));
+      numericVectorsWriter.writeField(
+          fieldInfo, new SortingNumericVectors(numericVectors, sortMap));
     } else {
       numericVectorsWriter.writeField(fieldInfo, numericVectors);
     }

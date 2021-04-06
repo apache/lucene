@@ -172,7 +172,8 @@ public class TestKnnGraph extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
         Lucene90NumericVectorsReader vectorReader =
-            ((Lucene90NumericVectorsReader) ((CodecReader) getOnlyLeafReader(reader)).getVectorReader());
+            ((Lucene90NumericVectorsReader)
+                ((CodecReader) getOnlyLeafReader(reader)).getVectorReader());
         graph = copyGraph(vectorReader.getGraphValues(KNN_GRAPH_FIELD));
       }
     }

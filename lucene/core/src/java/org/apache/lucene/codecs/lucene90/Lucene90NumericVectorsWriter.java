@@ -25,9 +25,9 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.NumericVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.index.RandomAccessNumericVectorsProducer;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -53,7 +53,9 @@ public final class Lucene90NumericVectorsWriter extends NumericVectorsWriter {
 
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene90NumericVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name,
+            state.segmentSuffix,
+            Lucene90NumericVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(

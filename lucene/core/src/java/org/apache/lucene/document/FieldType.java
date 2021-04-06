@@ -22,8 +22,8 @@ import org.apache.lucene.analysis.Analyzer; // javadocs
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.NumericVectors;
+import org.apache.lucene.index.PointValues;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {

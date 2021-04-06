@@ -18,7 +18,8 @@
 package org.apache.lucene.index;
 
 /**
- * Something (generally a {@link NumericVectors}) that provides a {@link RandomAccessNumericVectors}.
+ * Something (generally a {@link NumericVectors}) that provides a {@link
+ * RandomAccessNumericVectors}.
  *
  * @lucene.experimental
  */

@@ -24,12 +24,12 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
  * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
  * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
- * {@link NumericVectors}, which is a forward-only docID-based iterator and also offers random-access
- * by dense ordinal (not docId). VectorValues.SearchStrategys may be used to compare vectors at
- * query time (for example as part of result ranking). A VectorField may be associated with a search
- * strategy that defines the metric used for nearest-neighbor search among vectors of that field,
- * but at the moment this association is purely nominal: it is intended for future use by the
- * to-be-implemented nearest neighbors search.
+ * {@link NumericVectors}, which is a forward-only docID-based iterator and also offers
+ * random-access by dense ordinal (not docId). VectorValues.SearchStrategys may be used to compare
+ * vectors at query time (for example as part of result ranking). A VectorField may be associated
+ * with a search strategy that defines the metric used for nearest-neighbor search among vectors of
+ * that field, but at the moment this association is purely nominal: it is intended for future use
+ * by the to-be-implemented nearest neighbors search.
  */
 public class VectorField extends Field {
 
@@ -65,7 +65,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createHnswType(
-    int dimension, NumericVectors.SearchStrategy searchStrategy, int maxConn, int beamWidth) {
+      int dimension, NumericVectors.SearchStrategy searchStrategy, int maxConn, int beamWidth) {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }

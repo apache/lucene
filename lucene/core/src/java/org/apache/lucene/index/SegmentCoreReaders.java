@@ -29,11 +29,11 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
+import org.apache.lucene.codecs.NumericVectorsReader;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.NumericVectorsReader;
 import org.apache.lucene.index.IndexReader.CacheKey;
 import org.apache.lucene.index.IndexReader.ClosedListener;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -194,7 +194,7 @@ final class SegmentCoreReaders {
             cfsReader,
             normsProducer,
             pointsReader,
-          numericVectorsReader);
+            numericVectorsReader);
       }
     }
   }

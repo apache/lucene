@@ -20,9 +20,9 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Random;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.index.RandomAccessNumericVectors;
 import org.apache.lucene.index.RandomAccessNumericVectorsProducer;
-import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -84,7 +84,7 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public HnswGraphBuilder(
-    RandomAccessNumericVectorsProducer vectors, int maxConn, int beamWidth, long seed) {
+      RandomAccessNumericVectorsProducer vectors, int maxConn, int beamWidth, long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     searchStrategy = vectorValues.searchStrategy();

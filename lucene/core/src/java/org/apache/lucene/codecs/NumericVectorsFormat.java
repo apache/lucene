@@ -18,9 +18,9 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import org.apache.lucene.index.NumericVectors;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.NumericVectors;
 
 /**
  * Encodes/decodes per-document vector and any associated indexing structures required to support
