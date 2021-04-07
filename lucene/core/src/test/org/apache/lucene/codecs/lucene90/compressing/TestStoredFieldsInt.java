@@ -43,7 +43,7 @@ public class TestStoredFieldsInt extends LuceneTestCase {
   public void testAllEquals() throws Exception {
     try (Directory dir = newDirectory()) {
       int[] docIDs = new int[random().nextInt(5000) + 1];
-      final int bpv = TestUtil.nextInt(random(), 1, 32);
+      final int bpv = TestUtil.nextInt(random(), 1, 31);
       Arrays.fill(docIDs, TestUtil.nextInt(random(), 0, (1 << bpv) - 1));
       test(dir, docIDs);
     }
