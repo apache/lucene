@@ -22,8 +22,12 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 
 class StoredFieldsInts {
+  
+  private static final int BLOCK_SIZE = 128;
+  private static final int BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1;
+  private final long[] tmp = new long[BLOCK_SIZE / 2];
 
-  private StoredFieldsInts() {}
+  StoredFieldsInts() {}
 
   static void writeInts(int[] values, int start, int count, DataOutput out) throws IOException {
     boolean allEqual = true;
@@ -43,20 +47,75 @@ class StoredFieldsInts {
       }
       if (max <= 0xff) {
         out.writeByte((byte) 8);
-        for (int i = 0; i < count; ++i) {
-          out.writeByte((byte) values[start + i]);
-        }
+        writeInts8(out, count, values, start);
+      } else if (max <= 0xffff) {
+        out.writeByte((byte) 16);
+        writeInts16(out, count, values, start);
       } else {
         out.writeByte((byte) 32);
-        for (int i = 0; i < count; ++i) {
-          out.writeInt(values[start + i]);
-        }
+        writeInts32(out, count, values, start);
       }
     }
   }
 
+  private static void writeInts8(DataOutput out, int count, int[] values, int offset)
+          throws IOException {
+    int k = 0;
+    for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
+      int step = offset + k;
+      for (int i = 0; i < 16; ++i) {
+        long l =
+                ((long) values[step + i] << 56)
+                        | ((long) values[step + 16 + i] << 48)
+                        | ((long) values[step + 32 + i] << 40)
+                        | ((long) values[step + 48 + i] << 32)
+                        | ((long) values[step + 64 + i] << 24)
+                        | ((long) values[step + 80 + i] << 16)
+                        | ((long) values[step + 96 + i] << 8)
+                        | (long) values[step + 112 + i];
+        out.writeLong(Long.reverseBytes(l));
+      }
+    }
+    for (; k < count; k++) {
+      out.writeByte((byte) values[offset + k]);
+    }
+  }
+
+  private static void writeInts16(DataOutput out, int count, int[] values, int offset)
+          throws IOException {
+    int k = 0;
+    for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
+      int step = offset + k;
+      for (int i = 0; i < 32; ++i) {
+        long l = ((long) values[step + i] << 48) 
+                | ((long)  values[step + 32 + i] << 32) 
+                | ((long)  values[step + 64 + i] << 16) 
+                | (long) values[step + 96 + i];
+        out.writeLong(Long.reverseBytes(l));
+      }
+    }
+    for (; k < count; k++) {
+      out.writeShort((short) values[offset + k]);
+    }
+  }
+
+  private static void writeInts32(DataOutput out, int count, int[] values, int offset)
+          throws IOException {
+    int k = 0;
+    for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
+      int step = offset + k;
+      for (int i = 0; i < 64; ++i) {
+        long l = ((long)values[step + i] << 32) | (long) values[step + 64 + i];
+        out.writeLong(Long.reverseBytes(l));
+      }
+    }
+    for (; k < count; k++) {
+      out.writeInt(values[offset + k]);
+    }
+  }
+
   /** Read {@code count} integers into {@code values}. */
-  static void readInts(IndexInput in, int count, int[] values, int offset) throws IOException {
+  void readInts(IndexInput in, int count, int[] values, int offset) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case 0:
@@ -65,6 +124,9 @@ class StoredFieldsInts {
       case 8:
         readInts8(in, count, values, offset);
         break;
+      case 16:
+        readInts16(in, count, values, offset);
+        break;  
       case 32:
         readInts32(in, count, values, offset);
         break;
@@ -72,18 +134,63 @@ class StoredFieldsInts {
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
   }
-
-  private static void readInts8(IndexInput in, int count, int[] values, int offset)
+  
+  private void readInts8(IndexInput in, int count, int[] values, int offset)
       throws IOException {
-    for (int i = 0; i < count; i++) {
-      values[offset + i] = Byte.toUnsignedInt(in.readByte());
+    int k = 0;
+    for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
+      in.readLELongs(tmp, 0, 16);
+      final int step = offset + k;
+      for (int i = 0; i < 16; ++i) {
+        final long l = tmp[i];
+        values[step + i] = (int) ((l >>> 56) & 0xFFL);
+        values[step + 16 + i] = (int) ((l >>> 48) & 0xFFL);
+        values[step + 32 + i] = (int) ((l >>> 40) & 0xFFL);
+        values[step + 48 + i] = (int) ((l >>> 32) & 0xFFL);
+        values[step + 64 + i] = (int) ((l >>> 24) & 0xFFL);
+        values[step + 80 + i] = (int) ((l >>> 16) & 0xFFL);
+        values[step + 96 + i] = (int) ((l >>> 8) & 0xFFL);
+        values[step + 112 + i] = (int) (l & 0xFFL);
+      }
+    }
+    for (; k < count; k++) {
+      values[offset + k] = Byte.toUnsignedInt(in.readByte());
     }
   }
 
-  private static void readInts32(IndexInput in, int count, int[] values, int offset)
+  private void readInts16(IndexInput in, int count, int[] values, int offset)
+          throws IOException {
+    int k = 0;
+    for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
+      in.readLELongs(tmp, 0, 32);
+      int step = offset + k;
+      for (int i = 0; i < 32; ++i) {
+        final long l = tmp[i];
+        values[step + i] = (int) ((l >>> 48) & 0xFFFFL);
+        values[step + 32 + i] = (int) ((l >>> 32) & 0xFFFFL);
+        values[step + 64 + i] = (int) ((l >>> 16) & 0xFFFFL);
+        values[step + 96 + i] = (int) (l & 0xFFFFL);
+      }
+    }
+    for (; k < count; k++) {
+      values[offset + k] = Short.toUnsignedInt(in.readShort());
+    }
+  }
+
+  private void readInts32(IndexInput in, int count, int[] values, int offset)
       throws IOException {
-    for (int i = 0; i < count; i++) {
-      values[offset + i] = in.readInt();
+    int k = 0;
+    for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
+      in.readLELongs(tmp, 0, 64);
+      final int step = offset + k;
+      for (int i = 0; i < 64; ++i) {
+        final long l = tmp[i];
+        values[step + i] = (int) (l >>> 32);
+        values[step + 64 + i] = (int) (l & 0xFFFFFFFFL);
+      }
+    }
+    for (; k < count; k++) {
+      values[offset + k] = in.readInt();
     }
   }
 }

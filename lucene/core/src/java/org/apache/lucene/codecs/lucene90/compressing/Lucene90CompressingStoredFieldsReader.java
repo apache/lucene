@@ -373,6 +373,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
     private int[] offsets = IntsRef.EMPTY_INTS;
     private int[] numStoredFields = IntsRef.EMPTY_INTS;
+    private StoredFieldsInts intsReader = new StoredFieldsInts();
 
     // the start pointer at which you can read the compressed documents
     private long startPointer;
@@ -438,10 +439,10 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         offsets[1] = fieldsStream.readVInt();
       } else {
         // Number of stored fields per document
-        StoredFieldsInts.readInts(fieldsStream, chunkDocs, numStoredFields, 0);
+        intsReader.readInts(fieldsStream, chunkDocs, numStoredFields, 0);
         // The stream encodes the length of each document and we decode
         // it into a list of monotonically increasing offsets
-        StoredFieldsInts.readInts(fieldsStream, chunkDocs, offsets, 1);
+        intsReader.readInts(fieldsStream, chunkDocs, offsets, 1);
         for (int i = 0; i < chunkDocs; ++i) {
           offsets[i + 1] += offsets[i];
         }
@@ -495,8 +496,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       final int index = docID - docBase;
       final int offset = offsets[index];
       final int length = offsets[index + 1] - offset;
-      final int totalLength = Math.toIntExact(offsets[chunkDocs]);
-      final int numStoredFields = Math.toIntExact(this.numStoredFields[index]);
+      final int totalLength = offsets[chunkDocs];
+      final int numStoredFields = this.numStoredFields[index];
 
       final BytesRef bytes;
       if (merging) {

@@ -31,7 +31,7 @@ public class TestStoredFieldsInt extends LuceneTestCase {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int[] values = new int[random().nextInt(5000)];
+        int[] values = new int[random().nextInt(5000) + 1];
         final int bpv = TestUtil.nextInt(random(), 1, 32);
         for (int i = 0; i < values.length; ++i) {
           values[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
@@ -43,7 +43,7 @@ public class TestStoredFieldsInt extends LuceneTestCase {
 
   public void testAllEquals() throws Exception {
     try (Directory dir = newDirectory()) {
-      int[] docIDs = new int[random().nextInt(5000)];
+      int[] docIDs = new int[random().nextInt(5000) + 1];
       final int bpv = TestUtil.nextInt(random(), 1, 32);
       Arrays.fill(docIDs, TestUtil.nextInt(random(), 0, (1 << bpv) - 1));
       test(dir, docIDs);
@@ -63,9 +63,9 @@ public class TestStoredFieldsInt extends LuceneTestCase {
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       final int offset = random().nextInt(5);
       int[] read = new int[ints.length + offset];
-      StoredFieldsInts.readInts(in, ints.length, read, offset);
+      StoredFieldsInts reader = new StoredFieldsInts();
+      reader.readInts(in, ints.length, read, offset);
       assertArrayEquals(
-          offset + " " + ints.length,
           ints,
           ArrayUtil.copyOfSubArray(read, offset, offset + ints.length));
       assertEquals(len, in.getFilePointer());
