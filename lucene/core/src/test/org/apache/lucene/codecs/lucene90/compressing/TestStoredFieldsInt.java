@@ -21,7 +21,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
@@ -62,10 +61,13 @@ public class TestStoredFieldsInt extends LuceneTestCase {
 
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       final int offset = random().nextInt(5);
-      int[] read = new int[ints.length + offset];
-      StoredFieldsInts reader = new StoredFieldsInts();
-      reader.readInts(in, ints.length, read, offset);
-      assertArrayEquals(ints, ArrayUtil.copyOfSubArray(read, offset, offset + ints.length));
+      long[] read = new long[ints.length + offset];
+      StoredFieldsInts.readInts(in, ints.length, read, offset);
+      int[] readInts = new int[ints.length];
+      for (int i = 0; i < ints.length; i++) {
+        readInts[i] = (int) read[offset + i];
+      }
+      assertArrayEquals(ints, readInts);
       assertEquals(len, in.getFilePointer());
     }
     dir.deleteFile("tmp");

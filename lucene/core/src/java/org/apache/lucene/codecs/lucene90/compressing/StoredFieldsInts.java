@@ -25,9 +25,8 @@ class StoredFieldsInts {
 
   private static final int BLOCK_SIZE = 128;
   private static final int BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1;
-  private final long[] tmp = new long[BLOCK_SIZE / 2];
 
-  StoredFieldsInts() {}
+  private StoredFieldsInts() {}
 
   static void writeInts(int[] values, int start, int count, DataOutput out) throws IOException {
     boolean allEqual = true;
@@ -116,7 +115,7 @@ class StoredFieldsInts {
   }
 
   /** Read {@code count} integers into {@code values}. */
-  void readInts(IndexInput in, int count, int[] values, int offset) throws IOException {
+  static void readInts(IndexInput in, int count, long[] values, int offset) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case 0:
@@ -136,21 +135,22 @@ class StoredFieldsInts {
     }
   }
 
-  private void readInts8(IndexInput in, int count, int[] values, int offset) throws IOException {
+  private static void readInts8(IndexInput in, int count, long[] values, int offset)
+      throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
-      in.readLELongs(tmp, 0, 16);
       final int step = offset + k;
+      in.readLELongs(values, step, 16);
       for (int i = 0; i < 16; ++i) {
-        final long l = tmp[i];
-        values[step + i] = (int) ((l >>> 56) & 0xFFL);
-        values[step + 16 + i] = (int) ((l >>> 48) & 0xFFL);
-        values[step + 32 + i] = (int) ((l >>> 40) & 0xFFL);
-        values[step + 48 + i] = (int) ((l >>> 32) & 0xFFL);
-        values[step + 64 + i] = (int) ((l >>> 24) & 0xFFL);
-        values[step + 80 + i] = (int) ((l >>> 16) & 0xFFL);
-        values[step + 96 + i] = (int) ((l >>> 8) & 0xFFL);
-        values[step + 112 + i] = (int) (l & 0xFFL);
+        final long l = values[step + i];
+        values[step + i] = (l >>> 56) & 0xFFL;
+        values[step + 16 + i] = (l >>> 48) & 0xFFL;
+        values[step + 32 + i] = (l >>> 40) & 0xFFL;
+        values[step + 48 + i] = (l >>> 32) & 0xFFL;
+        values[step + 64 + i] = (l >>> 24) & 0xFFL;
+        values[step + 80 + i] = (l >>> 16) & 0xFFL;
+        values[step + 96 + i] = (l >>> 8) & 0xFFL;
+        values[step + 112 + i] = l & 0xFFL;
       }
     }
     for (; k < count; k++) {
@@ -158,17 +158,18 @@ class StoredFieldsInts {
     }
   }
 
-  private void readInts16(IndexInput in, int count, int[] values, int offset) throws IOException {
+  private static void readInts16(IndexInput in, int count, long[] values, int offset)
+      throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
-      in.readLELongs(tmp, 0, 32);
       int step = offset + k;
+      in.readLELongs(values, step, 32);
       for (int i = 0; i < 32; ++i) {
-        final long l = tmp[i];
-        values[step + i] = (int) ((l >>> 48) & 0xFFFFL);
-        values[step + 32 + i] = (int) ((l >>> 32) & 0xFFFFL);
-        values[step + 64 + i] = (int) ((l >>> 16) & 0xFFFFL);
-        values[step + 96 + i] = (int) (l & 0xFFFFL);
+        final long l = values[step + i];
+        values[step + i] = (l >>> 48) & 0xFFFFL;
+        values[step + 32 + i] = (l >>> 32) & 0xFFFFL;
+        values[step + 64 + i] = (l >>> 16) & 0xFFFFL;
+        values[step + 96 + i] = l & 0xFFFFL;
       }
     }
     for (; k < count; k++) {
@@ -176,15 +177,16 @@ class StoredFieldsInts {
     }
   }
 
-  private void readInts32(IndexInput in, int count, int[] values, int offset) throws IOException {
+  private static void readInts32(IndexInput in, int count, long[] values, int offset)
+      throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
-      in.readLELongs(tmp, 0, 64);
       final int step = offset + k;
+      in.readLELongs(values, step, 64);
       for (int i = 0; i < 64; ++i) {
-        final long l = tmp[i];
-        values[step + i] = (int) (l >>> 32);
-        values[step + 64 + i] = (int) (l & 0xFFFFFFFFL);
+        final long l = values[step + i];
+        values[step + i] = l >>> 32;
+        values[step + 64 + i] = l & 0xFFFFFFFFL;
       }
     }
     for (; k < count; k++) {
