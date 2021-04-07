@@ -551,8 +551,9 @@ public class Dictionary {
 
       @Override
       public List<String> getMorphologicalValues(int entryIndex, String key) {
-        assert key.length() == 3;
-        assert key.charAt(2) == ':';
+        assert key.length() == 3 && key.charAt(2) == ':'
+            : "A morphological data key should consist of two letters followed by a semicolon, found: "
+                + key;
 
         String fields = getMorphologicalData(entryIndex);
         if (fields.isEmpty() || !fields.contains(key)) return Collections.emptyList();
