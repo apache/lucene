@@ -234,6 +234,9 @@ Bug fixes
 
 Changes in Backwards Compatibility Policy
 
+* LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
+  level domains. This may change the token sequence compared to previous Lucene versions. (Dawid Weiss)
+
 * LUCENE-9669: DirectoryReader#open now accepts an argument to open indices created with versions
   older than N-1. Lucene now can open indices created with a major version of N-2 in read-only mode.
   Opening an index created with a major version of N-2 with an IndexWriter is not supported.

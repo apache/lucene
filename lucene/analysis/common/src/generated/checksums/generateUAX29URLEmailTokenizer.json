@@ -1,5 +1,6 @@
 {
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex": "472a33bcf5741bc8923aaa2717000d9ccd62f1e2",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex": "56a751d27e481fb55388f91ebf34f5a0cb8cb1b2",
     "gradle/generation/jflex/skeleton.disable.buffer.expansion.txt": "68263ff0a014904c6e89b040d868d8f399408908",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java": "ebeb76148ee02612841c463819f86d8932c9a7c3"
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex": "29b05df80da071a249ff68067d5833fd7e4a9ff4",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java": "e437900d9570ca007f9c02c9ea286222b644c329"
 }

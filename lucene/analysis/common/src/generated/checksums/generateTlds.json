@@ -1,0 +1,4 @@
+{
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex": "29b05df80da071a249ff68067d5833fd7e4a9ff4",
+    "lucene/analysis/common/src/test/org/apache/lucene/analysis/email/TLDs.txt": "b346a80f511b64a59d556eb3ef58cf396e98c631"
+}

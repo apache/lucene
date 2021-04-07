@@ -132,7 +132,7 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 //     RFC-5321: Simple Mail Transfer Protocol
 //     RFC-5322: Internet Message Format
 
-%include ASCIITLD.jflex-macro
+%include ASCIITLD.jflex
 
 DomainLabel = [A-Za-z0-9] ([-A-Za-z0-9]* [A-Za-z0-9])?
 DomainLabelSequence = {DomainLabel} ("." {DomainLabel})*

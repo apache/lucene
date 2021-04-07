@@ -53,6 +53,35 @@ configure(project(":lucene:core")) {
 }
 
 configure(project(":lucene:analysis:common")) {
+  task generateTlds() {
+    def tldZones = "https://www.internic.net/zones/root.zone"
+    def jflexMacro = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex")
+    def tldList = file("src/test/org/apache/lucene/analysis/email/TLDs.txt")
+
+    description "Regenerate top-level domain jflex macros and tests"
+    group "generation"
+
+    dependsOn { sourceSets.tools.runtimeClasspath }
+
+    outputs.files jflexMacro, tldList
+
+    doFirst {
+      project.javaexec {
+        main = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
+        classpath = sourceSets.tools.runtimeClasspath
+
+        ignoreExitValue false
+        args = [
+            tldZones,
+            jflexMacro,
+            tldList
+        ]
+      }
+
+      logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
+    }
+  }
+
   task generateWikipediaTokenizer(type: JFlexTask) {
     description "Regenerate WikipediaTokenizerImpl.java"
     group "generation"
@@ -76,6 +105,13 @@ configure(project(":lucene:analysis:common")) {
     jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
     skeleton = skeletonNoBufferExpansion
     heapSize = "12g"
+
+    // Don't enforce strict dependency (although it would make sense to regenerate both).
+    // Just ensure we run after TLD regeneration, if it runs too.
+    mustRunAfter generateTlds
+
+    // Additional input (included by the source jflex file)
+    inputs.file file('src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex')
 
     doFirst {
       logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
@@ -121,7 +157,8 @@ configure(project(":lucene:analysis:common")) {
   regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizer, [ andThenTasks: "spotlessApply" ]),
       wrapWithPersistentChecksums(generateClassicTokenizer, [ andThenTasks: "spotlessApply" ]),
       wrapWithPersistentChecksums(generateUAX29URLEmailTokenizer, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateHTMLStripCharFilter, [ andThenTasks: "spotlessApply" ])
+      wrapWithPersistentChecksums(generateHTMLStripCharFilter, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateTlds, [ andThenTasks: "spotlessApply" ])
 }
 
 class JFlexTask extends DefaultTask {

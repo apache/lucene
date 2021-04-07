@@ -40,6 +40,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Generates a file containing JFlex macros to accept valid ASCII TLDs (top level domains), for
@@ -53,16 +54,18 @@ import java.util.regex.Pattern;
 public class GenerateJflexTLDMacros {
 
   public static void main(String... args) throws Exception {
-    if (args.length != 2 || args[0].equals("--help") || args[0].equals("-help")) {
+    if (args.length != 3 || args[0].equals("--help") || args[0].equals("-help")) {
       System.err.println("Cmd line params:");
       System.err.println(
-          "\tjava " + GenerateJflexTLDMacros.class.getName() + "<ZoneFileURL> <JFlexOutputFile>");
+          "  java "
+              + GenerateJflexTLDMacros.class.getName()
+              + "<ZoneFileURL> <JFlexOutputFile> <TLDListFile>");
       System.exit(1);
     }
-    new GenerateJflexTLDMacros(args[0], args[1]).execute();
+    new GenerateJflexTLDMacros(args[0], args[1], args[2]).execute();
   }
 
-  private static final String NL = System.getProperty("line.separator");
+  private static final String NL = "\n";
 
   private static final String APACHE_LICENSE =
       "/*"
@@ -103,16 +106,21 @@ public class GenerateJflexTLDMacros {
       Pattern.compile("([-A-Za-z0-9]+)\\.\\s+\\d+\\s+IN\\s+NS\\s+.*");
   private final URL tldFileURL;
   private long tldFileLastModified = -1L;
-  private final Path outputFile;
+  private final Path tldListFile;
+  private final Path jflexMacroFile;
+
   private final SortedMap<String, Boolean> processedTLDsLongestFirst =
       new TreeMap<>(
           Comparator.comparing(String::length).reversed().thenComparing(String::compareTo));
-  private final List<SortedSet<String>> TLDsBySuffixLength =
-      new ArrayList<>(); // list position indicates suffix length
 
-  public GenerateJflexTLDMacros(String tldFileURL, String outputFile) throws Exception {
+  // list position indicates suffix length
+  private final List<SortedSet<String>> TLDsBySuffixLength = new ArrayList<>();
+
+  public GenerateJflexTLDMacros(String tldFileURL, String jflexFile, String tldListFile)
+      throws Exception {
     this.tldFileURL = new URL(tldFileURL);
-    this.outputFile = Paths.get(outputFile);
+    this.jflexMacroFile = Paths.get(jflexFile);
+    this.tldListFile = Paths.get(tldListFile);
   }
 
   /**
@@ -126,7 +134,7 @@ public class GenerateJflexTLDMacros {
     getIANARootZoneDatabase();
     partitionTLDprefixesBySuffixLength();
     writeOutput();
-    System.out.println("Wrote TLD macros to '" + outputFile + "':");
+    System.out.println("Wrote TLD macros to '" + jflexMacroFile + "':");
     int totalDomains = 0;
     for (int suffixLength = 0; suffixLength < TLDsBySuffixLength.size(); ++suffixLength) {
       int domainsAtThisSuffixLength = TLDsBySuffixLength.get(suffixLength).size();
@@ -214,11 +222,19 @@ public class GenerateJflexTLDMacros {
    * case-insensitively.
    */
   private void writeOutput() throws IOException {
+    Files.writeString(
+        tldListFile,
+        "# Generated from IANA Root Zone Database (gradlew generateTlds)."
+            + processedTLDsLongestFirst.keySet().stream()
+                .sorted()
+                .collect(Collectors.joining("\n")),
+        StandardCharsets.UTF_8);
+
     final DateFormat dateFormat =
         DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL, Locale.ROOT);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     try (Writer writer =
-        new OutputStreamWriter(Files.newOutputStream(outputFile), StandardCharsets.UTF_8)) {
+        new OutputStreamWriter(Files.newOutputStream(jflexMacroFile), StandardCharsets.UTF_8)) {
       writer.write(APACHE_LICENSE);
       writer.write("// Generated from IANA Root Zone Database <");
       writer.write(tldFileURL.toString());
@@ -270,7 +286,7 @@ public class GenerateJflexTLDMacros {
 
     boolean isFirst = true;
     for (String TLD : TLDs) {
-      writer.write("\t");
+      writer.write("  ");
       if (isFirst) {
         isFirst = false;
         writer.write("  ");
@@ -280,7 +296,7 @@ public class GenerateJflexTLDMacros {
       writer.write(getCaseInsensitiveRegex(TLD));
       writer.write(NL);
     }
-    writer.write("\t) \".\"?   // Accept trailing root (empty) domain");
+    writer.write("  ) \".\"?   // Accept trailing root (empty) domain");
     writer.write(NL);
     writer.write(NL);
   }
