@@ -22,7 +22,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 
 class StoredFieldsInts {
-  
+
   private static final int BLOCK_SIZE = 128;
   private static final int BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1;
   private final long[] tmp = new long[BLOCK_SIZE / 2];
@@ -59,20 +59,20 @@ class StoredFieldsInts {
   }
 
   private static void writeInts8(DataOutput out, int count, int[] values, int offset)
-          throws IOException {
+      throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       int step = offset + k;
       for (int i = 0; i < 16; ++i) {
         long l =
-                ((long) values[step + i] << 56)
-                        | ((long) values[step + 16 + i] << 48)
-                        | ((long) values[step + 32 + i] << 40)
-                        | ((long) values[step + 48 + i] << 32)
-                        | ((long) values[step + 64 + i] << 24)
-                        | ((long) values[step + 80 + i] << 16)
-                        | ((long) values[step + 96 + i] << 8)
-                        | (long) values[step + 112 + i];
+            ((long) values[step + i] << 56)
+                | ((long) values[step + 16 + i] << 48)
+                | ((long) values[step + 32 + i] << 40)
+                | ((long) values[step + 48 + i] << 32)
+                | ((long) values[step + 64 + i] << 24)
+                | ((long) values[step + 80 + i] << 16)
+                | ((long) values[step + 96 + i] << 8)
+                | (long) values[step + 112 + i];
         out.writeLong(Long.reverseBytes(l));
       }
     }
@@ -82,14 +82,15 @@ class StoredFieldsInts {
   }
 
   private static void writeInts16(DataOutput out, int count, int[] values, int offset)
-          throws IOException {
+      throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       int step = offset + k;
       for (int i = 0; i < 32; ++i) {
-        long l = ((long) values[step + i] << 48) 
-                | ((long)  values[step + 32 + i] << 32) 
-                | ((long)  values[step + 64 + i] << 16) 
+        long l =
+            ((long) values[step + i] << 48)
+                | ((long) values[step + 32 + i] << 32)
+                | ((long) values[step + 64 + i] << 16)
                 | (long) values[step + 96 + i];
         out.writeLong(Long.reverseBytes(l));
       }
@@ -100,12 +101,12 @@ class StoredFieldsInts {
   }
 
   private static void writeInts32(DataOutput out, int count, int[] values, int offset)
-          throws IOException {
+      throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       int step = offset + k;
       for (int i = 0; i < 64; ++i) {
-        long l = ((long)values[step + i] << 32) | (long) values[step + 64 + i];
+        long l = ((long) values[step + i] << 32) | (long) values[step + 64 + i];
         out.writeLong(Long.reverseBytes(l));
       }
     }
@@ -126,7 +127,7 @@ class StoredFieldsInts {
         break;
       case 16:
         readInts16(in, count, values, offset);
-        break;  
+        break;
       case 32:
         readInts32(in, count, values, offset);
         break;
@@ -134,9 +135,8 @@ class StoredFieldsInts {
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
   }
-  
-  private void readInts8(IndexInput in, int count, int[] values, int offset)
-      throws IOException {
+
+  private void readInts8(IndexInput in, int count, int[] values, int offset) throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       in.readLELongs(tmp, 0, 16);
@@ -158,8 +158,7 @@ class StoredFieldsInts {
     }
   }
 
-  private void readInts16(IndexInput in, int count, int[] values, int offset)
-          throws IOException {
+  private void readInts16(IndexInput in, int count, int[] values, int offset) throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       in.readLELongs(tmp, 0, 32);
@@ -177,8 +176,7 @@ class StoredFieldsInts {
     }
   }
 
-  private void readInts32(IndexInput in, int count, int[] values, int offset)
-      throws IOException {
+  private void readInts32(IndexInput in, int count, int[] values, int offset) throws IOException {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       in.readLELongs(tmp, 0, 64);

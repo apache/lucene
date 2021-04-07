@@ -65,9 +65,7 @@ public class TestStoredFieldsInt extends LuceneTestCase {
       int[] read = new int[ints.length + offset];
       StoredFieldsInts reader = new StoredFieldsInts();
       reader.readInts(in, ints.length, read, offset);
-      assertArrayEquals(
-          ints,
-          ArrayUtil.copyOfSubArray(read, offset, offset + ints.length));
+      assertArrayEquals(ints, ArrayUtil.copyOfSubArray(read, offset, offset + ints.length));
       assertEquals(len, in.getFilePointer());
     }
     dir.deleteFile("tmp");
