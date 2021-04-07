@@ -31,7 +31,7 @@ public class TestStoredFieldsInt extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
         int[] values = new int[random().nextInt(5000) + 1];
-        final int bpv = TestUtil.nextInt(random(), 1, 32);
+        final int bpv = TestUtil.nextInt(random(), 1, 31);
         for (int i = 0; i < values.length; ++i) {
           values[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
