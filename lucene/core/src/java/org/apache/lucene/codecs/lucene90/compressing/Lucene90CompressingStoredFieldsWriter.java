@@ -152,7 +152,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
               context);
 
       metaStream.writeVInt(chunkSize);
-      metaStream.writeVInt(PackedInts.VERSION_CURRENT);
 
       success = true;
     } finally {
@@ -196,34 +195,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   private static void saveInts(int[] values, int length, DataOutput out) throws IOException {
-    assert length > 0;
     if (length == 1) {
       out.writeVInt(values[0]);
     } else {
-      boolean allEqual = true;
-      for (int i = 1; i < length; ++i) {
-        if (values[i] != values[0]) {
-          allEqual = false;
-          break;
-        }
-      }
-      if (allEqual) {
-        out.writeVInt(0);
-        out.writeVInt(values[0]);
-      } else {
-        long max = 0;
-        for (int i = 0; i < length; ++i) {
-          max |= values[i];
-        }
-        final int bitsRequired = PackedInts.bitsRequired(max);
-        out.writeVInt(bitsRequired);
-        final PackedInts.Writer w =
-            PackedInts.getWriterNoHeader(out, PackedInts.Format.PACKED, length, bitsRequired, 1);
-        for (int i = 0; i < length; ++i) {
-          w.add(values[i]);
-        }
-        w.finish();
-      }
+      StoredFieldsInts.writeInts(values, 0, length, out);
     }
   }
 
@@ -603,7 +578,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
       } else if (matchingFieldsReader.getCompressionMode() == compressionMode
           && matchingFieldsReader.getChunkSize() == chunkSize
-          && matchingFieldsReader.getPackedIntsVersion() == PackedInts.VERSION_CURRENT
           && liveDocs == null
           && !tooDirty(matchingFieldsReader)) {
         // optimized merge, raw byte copy

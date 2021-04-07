@@ -40,7 +40,6 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import org.apache.lucene.codecs.CodecUtil;
@@ -68,7 +67,6 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongsRef;
-import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * {@link StoredFieldsReader} impl for {@link Lucene90CompressingStoredFieldsFormat}.
@@ -83,7 +81,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long maxPointer;
   private final IndexInput fieldsStream;
   private final int chunkSize;
-  private final int packedIntsVersion;
   private final CompressionMode compressionMode;
   private final Decompressor decompressor;
   private final int numDocs;
@@ -103,7 +100,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     this.indexReader = reader.indexReader.clone();
     this.maxPointer = reader.maxPointer;
     this.chunkSize = reader.chunkSize;
-    this.packedIntsVersion = reader.packedIntsVersion;
     this.compressionMode = reader.compressionMode;
     this.decompressor = reader.decompressor.clone();
     this.numDocs = reader.numDocs;
@@ -155,7 +151,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           segmentSuffix);
 
       chunkSize = metaIn.readVInt();
-      packedIntsVersion = metaIn.readVInt();
 
       decompressor = compressionMode.newDecompressor();
       this.merging = false;
@@ -446,55 +441,12 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         offsets[1] = fieldsStream.readVInt();
       } else {
         // Number of stored fields per document
-        final int bitsPerStoredFields = fieldsStream.readVInt();
-        if (bitsPerStoredFields == 0) {
-          Arrays.fill(numStoredFields, 0, chunkDocs, fieldsStream.readVInt());
-        } else if (bitsPerStoredFields > 31) {
-          throw new CorruptIndexException(
-              "bitsPerStoredFields=" + bitsPerStoredFields, fieldsStream);
-        } else {
-          final PackedInts.ReaderIterator it =
-              PackedInts.getReaderIteratorNoHeader(
-                  fieldsStream,
-                  PackedInts.Format.PACKED,
-                  packedIntsVersion,
-                  chunkDocs,
-                  bitsPerStoredFields,
-                  1024);
-          for (int i = 0; i < chunkDocs; ) {
-            final LongsRef next = it.next(Integer.MAX_VALUE);
-            System.arraycopy(next.longs, next.offset, numStoredFields, i, next.length);
-            i += next.length;
-          }
-        }
-
+        StoredFieldsInts.readInts(fieldsStream, chunkDocs, numStoredFields, 0);
         // The stream encodes the length of each document and we decode
         // it into a list of monotonically increasing offsets
-        final int bitsPerLength = fieldsStream.readVInt();
-        if (bitsPerLength == 0) {
-          final int length = fieldsStream.readVInt();
-          for (int i = 0; i < chunkDocs; ++i) {
-            offsets[1 + i] = (1 + i) * length;
-          }
-        } else if (bitsPerStoredFields > 31) {
-          throw new CorruptIndexException("bitsPerLength=" + bitsPerLength, fieldsStream);
-        } else {
-          final PackedInts.ReaderIterator it =
-              PackedInts.getReaderIteratorNoHeader(
-                  fieldsStream,
-                  PackedInts.Format.PACKED,
-                  packedIntsVersion,
-                  chunkDocs,
-                  bitsPerLength,
-                  1024);
-          for (int i = 0; i < chunkDocs; ) {
-            final LongsRef next = it.next(Integer.MAX_VALUE);
-            System.arraycopy(next.longs, next.offset, offsets, i + 1, next.length);
-            i += next.length;
-          }
-          for (int i = 0; i < chunkDocs; ++i) {
-            offsets[i + 1] += offsets[i];
-          }
+        StoredFieldsInts.readInts(fieldsStream, chunkDocs, offsets, 1);
+        for (int i = 0; i < chunkDocs; ++i) {
+          offsets[i + 1] += offsets[i];
         }
 
         // Additional validation: only the empty document has a serialized length of 0
@@ -732,10 +684,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
   int getNumDocs() {
     return numDocs;
-  }
-
-  int getPackedIntsVersion() {
-    return packedIntsVersion;
   }
 
   @Override
