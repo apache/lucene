@@ -33,26 +33,50 @@ allprojects {
       options.compilerArgs += [
         "-Xlint:-deprecation",
         "-Xlint:-serial",
+        "-Xlint:auxiliaryclass",
         "-Xlint:cast",
         "-Xlint:classfile",
         "-Xlint:dep-ann",
         "-Xlint:divzero",
         "-Xlint:empty",
+        "-Xlint:exports",
         "-Xlint:fallthrough",
         "-Xlint:finally",
+        "-Xlint:opens",
         "-Xlint:options",
+        "-Xlint:overloads",
         "-Xlint:overrides",
+        // TODO: some tests seem to have bad classpaths?
+        // this check seems to be a good sanity check for gradle?
+        // "-Xlint:path",
         "-Xlint:processing",
         "-Xlint:rawtypes",
+        "-Xlint:removal",
         "-Xlint:static",
+        "-Xlint:requires-automatic",
+        "-Xlint:requires-transitive-automatic",
         "-Xlint:try",
         "-Xlint:unchecked",
         "-Xlint:varargs",
+        "-Xlint:preview",
         "-Xdoclint:all/protected",
         "-Xdoclint:-missing",
         "-Xdoclint:-accessibility",
         "-proc:none",  // proc:none was added because of LOG4J2-1925 / JDK-8186647
       ]
+
+      // enable some warnings only relevant to newer language features
+      if (rootProject.runtimeJavaVersion >= JavaVersion.VERSION_15) {
+        options.compilerArgs += [
+          "-Xlint:text-blocks",
+        ]
+      }
+
+      if (rootProject.runtimeJavaVersion >= JavaVersion.VERSION_16) {
+        options.compilerArgs += [
+          "-Xlint:synchronization",
+        ]
+      }
 
       if (propertyOrDefault("javac.failOnWarnings", true).toBoolean()) {
         options.compilerArgs += "-Werror"
