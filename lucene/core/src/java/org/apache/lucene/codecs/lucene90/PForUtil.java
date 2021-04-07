@@ -25,6 +25,7 @@ import org.apache.lucene.util.packed.PackedInts;
 /** Utility class to encode sequences of 128 small positive integers. */
 final class PForUtil {
 
+  private static final int MAX_EXCEPTIONS = 7;
   private static final int HALF_BLOCK_SIZE = ForUtil.BLOCK_SIZE / 2;
 
   // IDENTITY_PLUS_ONE[i] == i + 1
@@ -46,7 +47,9 @@ final class PForUtil {
   }
 
   private final ForUtil forUtil;
-  private final byte[] exceptionBuff = new byte[14];
+  // buffer for reading exception data; each exception uses two bytes (pos + high-order bits of the
+  // exception)
+  private final byte[] exceptionBuff = new byte[MAX_EXCEPTIONS * 2];
 
   PForUtil(ForUtil forUtil) {
     assert ForUtil.BLOCK_SIZE <= 256 : "blocksize must fit in one byte. got " + ForUtil.BLOCK_SIZE;
@@ -55,24 +58,25 @@ final class PForUtil {
 
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, DataOutput out) throws IOException {
-    // At most 7 exceptions
-    final long[] top8 = new long[8];
-    Arrays.fill(top8, -1L);
+    // Determine the top MAX_EXCEPTIONS + 1 values
+    final long[] top = new long[MAX_EXCEPTIONS + 1];
+    Arrays.fill(top, -1L);
     for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
-      if (longs[i] > top8[0]) {
-        top8[0] = longs[i];
+      if (longs[i] > top[0]) {
+        top[0] = longs[i];
         Arrays.sort(
-            top8); // For only 8 entries we just sort on every iteration instead of maintaining a PQ
+            top); // For only a small number of entries we just sort on every iteration instead of
+        // maintaining a PQ
       }
     }
 
-    final int maxBitsRequired = PackedInts.bitsRequired(top8[7]);
+    final int maxBitsRequired = PackedInts.bitsRequired(top[MAX_EXCEPTIONS]);
     // We store the patch on a byte, so we can't decrease the number of bits required by more than 8
-    final int patchedBitsRequired = Math.max(PackedInts.bitsRequired(top8[0]), maxBitsRequired - 8);
+    final int patchedBitsRequired = Math.max(PackedInts.bitsRequired(top[0]), maxBitsRequired - 8);
     int numExceptions = 0;
     final long maxUnpatchedValue = (1L << patchedBitsRequired) - 1;
     for (int i = 1; i < 8; ++i) {
-      if (top8[i] > maxUnpatchedValue) {
+      if (top[i] > maxUnpatchedValue) {
         numExceptions++;
       }
     }
