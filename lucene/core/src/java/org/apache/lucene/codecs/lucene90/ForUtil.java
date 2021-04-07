@@ -516,7 +516,7 @@ final class ForUtil {
   /**
    * Decodes 128 integers into 64 {@code longs} such that each long contains two values, each
    * represented with 32 bits. Values [0..63] are encoded in the high-order bits of {@code longs}
-   * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [64..127].
+   * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [0..63].
    * This representation may allow subsequent operations to be performed on two values at a time.
    */
   void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
