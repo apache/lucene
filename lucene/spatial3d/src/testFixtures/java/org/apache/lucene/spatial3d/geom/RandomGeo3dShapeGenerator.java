@@ -338,7 +338,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return pointShape;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -371,7 +373,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return circle;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -405,7 +409,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return circle;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -445,7 +451,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return bbox;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -477,7 +485,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return path;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -510,7 +520,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return path;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -570,7 +582,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -627,7 +641,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -677,7 +693,9 @@ public final class RandomGeo3dShapeGenerator {
           return holes;
         }
         pointConstraints.put(hole, GeoArea.DISJOINT);
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -710,7 +728,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -767,7 +787,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -803,7 +825,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -834,7 +858,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }
@@ -866,7 +892,9 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         continue;
       }
     }

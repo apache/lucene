@@ -31,7 +31,9 @@ public final class File {
     file.fileName = name;
     try {
       file.displaySize = CommitsImpl.toDisplaySize(Files.size(Paths.get(indexPath, name)));
-    } catch (IOException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
       file.displaySize = "unknown";
     }
     return file;

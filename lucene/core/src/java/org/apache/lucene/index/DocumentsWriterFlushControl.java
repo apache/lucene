@@ -665,7 +665,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         try {
           documentsWriter.subtractFlushedNumDocs(dwpt.getNumDocsInRAM());
           dwpt.abort();
-        } catch (Exception ex) {
+        } catch (
+            @SuppressWarnings("unused")
+            Exception ex) {
           // that's fine we just abort everything here this is best effort
         } finally {
           doAfterFlush(dwpt);
@@ -677,7 +679,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
               blockedFlush); // add the blockedFlushes for correct accounting in doAfterFlush
           documentsWriter.subtractFlushedNumDocs(blockedFlush.getNumDocsInRAM());
           blockedFlush.abort();
-        } catch (Exception ex) {
+        } catch (
+            @SuppressWarnings("unused")
+            Exception ex) {
           // that's fine we just abort everything here this is best effort
         } finally {
           doAfterFlush(blockedFlush);

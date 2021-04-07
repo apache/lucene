@@ -52,7 +52,9 @@ public class EnumFieldSource extends FieldCacheSource {
     Integer intValue = null;
     try {
       intValue = Integer.parseInt(valueStr);
-    } catch (NumberFormatException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        NumberFormatException e) {
     }
     return intValue;
   }

@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.uk;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import morfologik.stemming.Dictionary;
 import org.apache.lucene.analysis.Analyzer;
@@ -73,7 +74,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)
-        throw new RuntimeException("Unable to load default stopword set");
+        throw new UncheckedIOException("Unable to load default stopword set", ex);
       }
     }
   }

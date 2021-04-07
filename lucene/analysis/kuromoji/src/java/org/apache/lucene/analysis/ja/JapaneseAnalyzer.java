@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.analysis.CharArraySet;
@@ -86,7 +87,7 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
         }
       } catch (IOException ex) {
         // default set should always be present as it is part of the distribution (JAR)
-        throw new RuntimeException("Unable to load default stopword or stoptag set");
+        throw new UncheckedIOException("Unable to load default stopword or stoptag set", ex);
       }
     }
   }

@@ -86,8 +86,7 @@ org.eclipse.jdt.core.compiler.problem.pessimisticNullAnalysisForFreeTypeVariable
 org.eclipse.jdt.core.compiler.problem.possibleAccidentalBooleanAssignment=ignore
 org.eclipse.jdt.core.compiler.problem.potentialNullReference=ignore
 org.eclipse.jdt.core.compiler.problem.potentiallyUnclosedCloseable=ignore
-# TODO: generics-related warning that is normally enabled by default
-org.eclipse.jdt.core.compiler.problem.rawTypeReference=ignore
+org.eclipse.jdt.core.compiler.problem.rawTypeReference=error
 org.eclipse.jdt.core.compiler.problem.redundantNullAnnotation=error
 org.eclipse.jdt.core.compiler.problem.redundantNullCheck=error
 org.eclipse.jdt.core.compiler.problem.redundantSpecificationOfTypeArguments=ignore
@@ -106,7 +105,7 @@ org.eclipse.jdt.core.compiler.problem.terminalDeprecation=error
 org.eclipse.jdt.core.compiler.problem.typeParameterHiding=error
 org.eclipse.jdt.core.compiler.problem.unavoidableGenericTypeProblems=enabled
 org.eclipse.jdt.core.compiler.problem.uncheckedTypeOperation=error
-# TODO: resource-related warning that is normally disabled by default
+# TODO: resource-related warning that is normally enabled by default
 # this analysis gets confused by some IOUtils method, maybe there is an improvement possible?
 org.eclipse.jdt.core.compiler.problem.unclosedCloseable=ignore
 org.eclipse.jdt.core.compiler.problem.undocumentedEmptyBlock=ignore
@@ -124,7 +123,7 @@ org.eclipse.jdt.core.compiler.problem.unusedDeclaredThrownException=ignore
 org.eclipse.jdt.core.compiler.problem.unusedDeclaredThrownExceptionExemptExceptionAndThrowable=enabled
 org.eclipse.jdt.core.compiler.problem.unusedDeclaredThrownExceptionIncludeDocCommentReference=enabled
 org.eclipse.jdt.core.compiler.problem.unusedDeclaredThrownExceptionWhenOverriding=disabled
-org.eclipse.jdt.core.compiler.problem.unusedExceptionParameter=ignore
+org.eclipse.jdt.core.compiler.problem.unusedExceptionParameter=error
 org.eclipse.jdt.core.compiler.problem.unusedImport=error
 org.eclipse.jdt.core.compiler.problem.unusedLabel=error
 org.eclipse.jdt.core.compiler.problem.unusedLocal=error
@@ -134,7 +133,7 @@ org.eclipse.jdt.core.compiler.problem.unusedParameterIncludeDocCommentReference=
 org.eclipse.jdt.core.compiler.problem.unusedParameterWhenImplementingAbstract=disabled
 org.eclipse.jdt.core.compiler.problem.unusedParameterWhenOverridingConcrete=disabled
 org.eclipse.jdt.core.compiler.problem.unusedPrivateMember=error
-org.eclipse.jdt.core.compiler.problem.unusedTypeParameter=ignore
+org.eclipse.jdt.core.compiler.problem.unusedTypeParameter=error
 # TODO: normally enabled by default: warns of unnecessary SuppressedWarnings token
 # some SuppressWarnings are used for other tools
 org.eclipse.jdt.core.compiler.problem.unusedWarningToken=ignore

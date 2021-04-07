@@ -71,7 +71,9 @@ public class DiffIt {
   static int get(int i, String s) {
     try {
       return Integer.parseInt(s.substring(i, i + 1));
-    } catch (Throwable x) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception x) {
       return 1;
     }
   }
@@ -111,7 +113,9 @@ public class DiffIt {
                 System.out.println(stem + " " + diff.exec(token, stem));
               }
             }
-          } catch (java.util.NoSuchElementException x) {
+          } catch (
+              @SuppressWarnings("unused")
+              java.util.NoSuchElementException x) {
             // no base token (stem) on a line
           }
         }

@@ -167,7 +167,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (value != null) {
           coreCount = Integer.parseInt(value);
         }
-      } catch (Throwable ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          Throwable ignored) {
       }
 
       maxThreadCount = Math.max(1, Math.min(4, coreCount / 2));
@@ -466,7 +468,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (toSync != null) {
           try {
             toSync.join();
-          } catch (InterruptedException ie) {
+          } catch (
+              @SuppressWarnings("unused")
+              InterruptedException ie) {
             // ignore this Exception, we will retry until all threads are dead
             interrupted = true;
           }
@@ -649,7 +653,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     // Let CMS run new merges if necessary:
     try {
       merge(mergeSource, MergeTrigger.MERGE_FINISHED);
-    } catch (AlreadyClosedException ace) {
+    } catch (
+        @SuppressWarnings("unused")
+        AlreadyClosedException ace) {
       // OK
     } catch (IOException ioe) {
       throw new UncheckedIOException(ioe);

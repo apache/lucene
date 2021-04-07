@@ -49,7 +49,7 @@ class ReplicaFileDeleter {
     try {
       dir.openInput(fileName, IOContext.DEFAULT).close();
       return true;
-    } catch (NoSuchFileException | FileNotFoundException e) {
+    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
       return false;
     }
   }

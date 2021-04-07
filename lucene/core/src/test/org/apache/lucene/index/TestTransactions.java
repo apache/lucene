@@ -124,29 +124,41 @@ public class TestTransactions extends LuceneTestCase {
         synchronized (lock) {
           try {
             writer1.prepareCommit();
-          } catch (Throwable t) {
+          } catch (
+              @SuppressWarnings("unused")
+              Throwable t) {
             // release resources
             try {
               writer1.rollback();
-            } catch (Throwable ignore) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable ignore) {
             }
             try {
               writer2.rollback();
-            } catch (Throwable ignore) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable ignore) {
             }
             return;
           }
           try {
             writer2.prepareCommit();
-          } catch (Throwable t) {
+          } catch (
+              @SuppressWarnings("unused")
+              Throwable t) {
             // release resources
             try {
               writer1.rollback();
-            } catch (Throwable ignore) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable ignore) {
             }
             try {
               writer2.rollback();
-            } catch (Throwable ignore) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable ignore) {
             }
             return;
           }

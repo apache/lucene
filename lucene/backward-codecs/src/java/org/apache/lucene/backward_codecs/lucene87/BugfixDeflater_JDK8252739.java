@@ -91,9 +91,13 @@ interface BugfixDeflater_JDK8252739 {
       if (restoredLength != testData.length) {
         return true;
       }
-    } catch (DataFormatException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        DataFormatException e) {
       return true;
-    } catch (RuntimeException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        RuntimeException e) {
       return true;
     } finally {
       inflater.end();

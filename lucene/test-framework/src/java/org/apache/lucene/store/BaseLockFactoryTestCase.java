@@ -141,7 +141,9 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
                     fail();
                   }
                   assert lock != null; // stupid compiler
-                } catch (IOException ex) {
+                } catch (
+                    @SuppressWarnings("unused")
+                    IOException ex) {
                   //
                 }
                 if (atomicCounter.incrementAndGet() > runs) {

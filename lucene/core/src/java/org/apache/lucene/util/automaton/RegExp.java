@@ -1328,7 +1328,7 @@ public class RegExp {
           }
           return makeInterval(flags, imin, imax, digits);
         } catch (NumberFormatException e) {
-          throw new IllegalArgumentException("interval syntax error at position " + (pos - 1));
+          throw new IllegalArgumentException("interval syntax error at position " + (pos - 1), e);
         }
       }
     } else {

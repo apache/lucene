@@ -332,7 +332,9 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
                           }
                         });
                     Files.deleteIfExists(path);
-                  } catch (IOException ex2) {
+                  } catch (
+                      @SuppressWarnings("unused")
+                      IOException ex2) {
                   }
 
                   log.error("Cannot create index", ex);

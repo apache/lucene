@@ -205,7 +205,9 @@ public final class Lucene90VectorWriter extends VectorWriter {
     } else {
       try {
         maxConn = Integer.parseInt(maxConnStr);
-      } catch (NumberFormatException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          NumberFormatException e) {
         throw new NumberFormatException(
             "Received non integer value for max-connections parameter of HnswGraphBuilder, value: "
                 + maxConnStr);
@@ -216,7 +218,9 @@ public final class Lucene90VectorWriter extends VectorWriter {
     } else {
       try {
         beamWidth = Integer.parseInt(beamWidthStr);
-      } catch (NumberFormatException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          NumberFormatException e) {
         throw new NumberFormatException(
             "Received non integer value for beam-width parameter of HnswGraphBuilder, value: "
                 + beamWidthStr);

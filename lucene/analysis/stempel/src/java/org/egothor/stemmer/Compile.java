@@ -136,7 +136,9 @@ public class Compile {
                 trie.add(token, diff.exec(token, stem));
               }
             }
-          } catch (java.util.NoSuchElementException x) {
+          } catch (
+              @SuppressWarnings("unused")
+              java.util.NoSuchElementException x) {
             // no base token (stem) on a line
           }
         }

@@ -668,7 +668,9 @@ public class Dictionary {
     int numLines;
     try {
       numLines = Integer.parseInt(args[3]);
-    } catch (NumberFormatException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        NumberFormatException e) {
       return;
     }
     affixData = ArrayUtil.grow(affixData, currentAffix * 4 + numLines * 4);
@@ -1296,7 +1298,9 @@ public class Dictionary {
       try {
         int alias = Integer.parseInt(morphData.trim());
         morphData = morphAliases[alias - 1];
-      } catch (NumberFormatException ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          NumberFormatException ignored) {
       }
     }
     if (morphData.isBlank()) {

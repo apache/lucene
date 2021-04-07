@@ -146,34 +146,30 @@ public class TestGeoExactCircle extends LuceneTestCase {
 
   @Test
   public void exactCircleLargeTest() {
-    boolean success = true;
-    try {
-      GeoCircleFactory.makeExactGeoCircle(
-          new PlanetModel(0.99, 1.05), 0.25 * Math.PI, 0, 0.35 * Math.PI, 1e-12);
-    } catch (IllegalArgumentException e) {
-      success = false;
-    }
-    assertTrue(success);
-    success = false;
-    try {
-      GeoCircleFactory.makeExactGeoCircle(
-          PlanetModel.WGS84, 0.25 * Math.PI, 0, 0.9996 * Math.PI, 1e-12);
-    } catch (IllegalArgumentException e) {
-      success = true;
-    }
-    assertTrue(success);
+    // should not throw exception
+    GeoCircleFactory.makeExactGeoCircle(
+        new PlanetModel(0.99, 1.05), 0.25 * Math.PI, 0, 0.35 * Math.PI, 1e-12);
+    // should throw exception
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          GeoCircleFactory.makeExactGeoCircle(
+              PlanetModel.WGS84, 0.25 * Math.PI, 0, 0.9996 * Math.PI, 1e-12);
+        });
   }
 
   @Test
   public void testExactCircleDoesNotFit() {
-    boolean exception = false;
-    try {
-      GeoCircleFactory.makeExactGeoCircle(
-          PlanetModel.WGS84, 1.5633796542562415, -1.0387149580695152, 3.1409865861032844, 1e-12);
-    } catch (IllegalArgumentException e) {
-      exception = true;
-    }
-    assertTrue(exception);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          GeoCircleFactory.makeExactGeoCircle(
+              PlanetModel.WGS84,
+              1.5633796542562415,
+              -1.0387149580695152,
+              3.1409865861032844,
+              1e-12);
+        });
   }
 
   public void testBigCircleInSphere() {
@@ -309,13 +305,11 @@ public class TestGeoExactCircle extends LuceneTestCase {
 
   public void testLUCENE8080() {
     PlanetModel planetModel = new PlanetModel(1.6304230055804751, 1.0199671157571204);
-    boolean fail = false;
-    try {
-      GeoCircleFactory.makeExactGeoCircle(
-          planetModel, 0.8853814403571284, 0.9784990176851283, 0.9071033527030907, 1e-11);
-    } catch (IllegalArgumentException e) {
-      fail = true;
-    }
-    assertTrue(fail);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          GeoCircleFactory.makeExactGeoCircle(
+              planetModel, 0.8853814403571284, 0.9784990176851283, 0.9071033527030907, 1e-11);
+        });
   }
 }

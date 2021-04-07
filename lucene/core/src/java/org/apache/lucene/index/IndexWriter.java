@@ -1049,7 +1049,8 @@ public class IndexWriter
           throw new IllegalArgumentException(
               "the provided reader is stale: its prior commit file \""
                   + segmentInfos.getSegmentsFileName()
-                  + "\" is missing from index");
+                  + "\" is missing from index",
+              ioe);
         }
 
         if (reader.writer != null) {
@@ -5628,7 +5629,9 @@ public class IndexWriter
     Collection<String> files;
     try {
       files = info.files();
-    } catch (IllegalStateException ise) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
       // OK
       files = null;
     }

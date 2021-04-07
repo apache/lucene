@@ -107,7 +107,9 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               dir.setMaxSizeInBytes(0);
               try {
                 writer.close();
-              } catch (AlreadyClosedException ace) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  AlreadyClosedException ace) {
                 // OK
               }
             }

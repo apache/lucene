@@ -436,7 +436,9 @@ public class TestCodecs extends LuceneTestCase {
         try {
           termsEnum.seekExact(idx);
           success = true;
-        } catch (UnsupportedOperationException uoe) {
+        } catch (
+            @SuppressWarnings("unused")
+            UnsupportedOperationException uoe) {
           // ok -- skip it
         }
         if (success) {
@@ -488,7 +490,9 @@ public class TestCodecs extends LuceneTestCase {
             termsEnum.seekExact(i);
             assertEquals(field.terms[i].docs.length, termsEnum.docFreq());
             assertTrue(termsEnum.term().bytesEquals(new BytesRef(field.terms[i].text2)));
-          } catch (UnsupportedOperationException uoe) {
+          } catch (
+              @SuppressWarnings("unused")
+              UnsupportedOperationException uoe) {
           }
         }
 

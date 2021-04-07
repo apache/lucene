@@ -249,7 +249,9 @@ public final class VersionBlockTreeTermsReader extends FieldsProducer {
     } else {
       try {
         return b.utf8ToString() + " " + b;
-      } catch (Throwable t) {
+      } catch (
+          @SuppressWarnings("unused")
+          Throwable t) {
         // If BytesRef isn't actually UTF8, or it's eg a
         // prefix of UTF8 that ends mid-unicode-char, we
         // fallback to hex:
