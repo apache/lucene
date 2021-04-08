@@ -190,7 +190,7 @@ final class PForUtil {
    */
   private static void prefixSumOf(long[] longs, long base, long val) {
     for (int i = 0; i < ForUtil.BLOCK_SIZE; i++) {
-      longs[i] = IDENTITY_PLUS_ONE[i] * val + base;
+      longs[i] = (i + 1) * val + base;
     }
   }
 
