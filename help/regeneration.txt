@@ -1,0 +1,23 @@
+Regeneration
+============
+
+Lucene makes use of some generated code (e.g. jflex tokenizers).
+
+Examples below assume cwd at the gradlew script in the top directory of
+the project's checkout.
+
+
+Generic regeneration commands
+------------------------------
+
+Regenerate code:
+
+gradlew regenerate tidy
+
+Force-regenerate code, even when it isn't necessary:
+
+gradlew --rerun-tasks regenerate tidy
+
+Force-regenerate code, except for one tokenizer which is extremely slow:
+
+gradlew --rerun-tasks regenerate tidy -x generateUAX29URLEmailTokenizer
