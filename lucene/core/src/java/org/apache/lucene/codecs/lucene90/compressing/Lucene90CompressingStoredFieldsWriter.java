@@ -650,6 +650,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
 
         // since we bulk merged all chunks, we inherit any dirty ones from this segment.
+        numChunks += matchingFieldsReader.getNumChunks();
         numDirtyChunks += matchingFieldsReader.getNumDirtyChunks();
         numDirtyDocs += matchingFieldsReader.getNumDirtyDocs();
       } else {
