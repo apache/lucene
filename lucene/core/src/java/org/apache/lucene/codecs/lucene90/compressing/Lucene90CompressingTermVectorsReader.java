@@ -369,7 +369,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         case 0:
           {
             LongValues fieldFlags = getLongValues(vectorsStream, fieldNums.length, FLAGS_BITS);
-            final ByteBuffersDataOutput out = new ByteBuffersDataOutput();
+            final long expectedSize = (long) Math.ceil((double) totalFields * FLAGS_BITS / 8) + 3;
+            final ByteBuffersDataOutput out = new ByteBuffersDataOutput(expectedSize);
             final DirectWriter writer = DirectWriter.getInstance(out, totalFields, FLAGS_BITS);
             for (int i = 0; i < totalFields; ++i) {
               final int fieldNumOff = (int) allFieldNumOffs.get(i);
