@@ -119,7 +119,7 @@ configure([
               expected = expected - same
 
               throw new GradleException("Checksums mismatch for derived resources; you might have" +
-                  " modified a generated source file?:\n" +
+                  " modified a generated resource (regenerate task: ${sourceTask.path}IfChanged):\n" +
                   "Actual:\n  ${actual.entrySet().join('\n  ')}\n\n" +
                   "Expected:\n  ${expected.entrySet().join('\n  ')}"
               )
@@ -172,6 +172,10 @@ configure([
         project.afterEvaluate {
           conditionalTask.group sourceTask.group
           conditionalTask.description sourceTask.description + " (if sources changed)"
+
+          // Hide low-level tasks from help.
+          sourceTask.group = null
+          sourceTask.description sourceTask.description + " (low-level)"
         }
 
         // Set conditional execution only if checksum mismatch occurred.
