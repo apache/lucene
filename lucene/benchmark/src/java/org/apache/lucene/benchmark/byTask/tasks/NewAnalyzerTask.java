@@ -46,7 +46,9 @@ public class NewAnalyzerTask extends PerfTask {
       // default one anymore
       Constructor<? extends Analyzer> cnstr = clazz.getConstructor(Version.class);
       return cnstr.newInstance(Version.LATEST);
-    } catch (NoSuchMethodException nsme) {
+    } catch (
+        @SuppressWarnings("unused")
+        NoSuchMethodException nsme) {
       // otherwise use default ctor
       return clazz.getConstructor().newInstance();
     }
@@ -80,7 +82,9 @@ public class NewAnalyzerTask extends PerfTask {
             String coreClassName = "org.apache.lucene.analysis.core." + analyzerName;
             analyzer = createAnalyzer(coreClassName);
             analyzerName = coreClassName;
-          } catch (ClassNotFoundException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              ClassNotFoundException e) {
             // If not a core analyzer, try the base analysis package
             analyzerName = "org.apache.lucene.analysis." + analyzerName;
             analyzer = createAnalyzer(analyzerName);

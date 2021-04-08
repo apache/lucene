@@ -123,7 +123,9 @@ public class TestAllFilesDetectBitFlips extends LuceneTestCase {
               System.out.println(
                   "TEST: changing a byte in " + victim + " did not update the checksum)");
               return;
-            } catch (CorruptIndexException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                CorruptIndexException e) {
               // ok
             }
           }

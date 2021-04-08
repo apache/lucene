@@ -141,7 +141,7 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
     IndexInput in = null;
     try {
       in = dir.openInput("foo", IOContext.DEFAULT);
-    } catch (NoSuchFileException | FileNotFoundException fnfe) {
+    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException fnfe) {
       // ok
       changed = true;
     }
@@ -150,7 +150,9 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
         int x;
         try {
           x = in.readInt();
-        } catch (EOFException eofe) {
+        } catch (
+            @SuppressWarnings("unused")
+            EOFException eofe) {
           changed = true;
           break;
         }

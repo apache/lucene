@@ -135,7 +135,9 @@ public class TestXYShape extends LuceneTestCase {
         try {
           Tessellator.tessellate(p);
           break;
-        } catch (Exception e) {
+        } catch (
+            @SuppressWarnings("unused")
+            Exception e) {
           // ignore, try other combination
         }
       }

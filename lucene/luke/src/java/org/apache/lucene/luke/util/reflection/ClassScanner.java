@@ -69,7 +69,9 @@ public class ClassScanner {
       try {
         executorService.shutdown();
         executorService.awaitTermination(10, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          InterruptedException e) {
       } finally {
         executorService.shutdownNow();
       }

@@ -752,7 +752,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
               // System.err.println("Generated: "+q);
               // assertTrue(false);
               return q;
-            } catch (IllegalArgumentException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                IllegalArgumentException e) {
               continue;
             }
           }
@@ -777,7 +779,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
               // System.err.println("Generated: "+q);
               // assertTrue(false);
               return q;
-            } catch (IllegalArgumentException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                IllegalArgumentException e) {
               continue;
             }
           }
@@ -794,7 +798,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
                   GeoTestUtil.nextLatitude(),
                   GeoTestUtil.nextLongitude(),
                   widthMeters);
-            } catch (IllegalArgumentException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                IllegalArgumentException e) {
               continue;
             }
           }
@@ -806,7 +812,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
             try {
               return Geo3DPoint.newBoxQuery(
                   field, planetModel, r.minLat, r.maxLat, r.minLon, r.maxLon);
-            } catch (IllegalArgumentException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                IllegalArgumentException e) {
               continue;
             }
           }
@@ -826,7 +834,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
             }
             try {
               return Geo3DPoint.newPathQuery(field, latitudes, longitudes, width, planetModel);
-            } catch (IllegalArgumentException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                IllegalArgumentException e) {
               // This is what happens when we create a shape that is invalid.  Although it is
               // conceivable that there are cases where
               // the exception is thrown incorrectly, we aren't going to be able to do that in this
@@ -866,7 +876,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
                 continue;
               }
               return rval;
-            } catch (IllegalArgumentException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                IllegalArgumentException e) {
               // This is what happens when we create a shape that is invalid.  Although it is
               // conceivable that there are cases where
               // the exception is thrown incorrectly, we aren't going to be able to do that in this
@@ -886,7 +898,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
 
             try {
               return GeoCircleFactory.makeGeoCircle(planetModel, lat, lon, angle);
-            } catch (IllegalArgumentException iae) {
+            } catch (
+                @SuppressWarnings("unused")
+                IllegalArgumentException iae) {
               // angle is too small; try again:
               continue;
             }
@@ -928,7 +942,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
             }
             try {
               return GeoPathFactory.makeGeoPath(planetModel, width, points);
-            } catch (IllegalArgumentException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                IllegalArgumentException e) {
               // This is what happens when we create a shape that is invalid.  Although it is
               // conceivable that there are cases where
               // the exception is thrown incorrectly, we aren't going to be able to do that in this

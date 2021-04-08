@@ -165,7 +165,9 @@ public class TestIndexAndTaxonomyReplicationClient extends ReplicatorTestCase {
         } finally {
           reader.close();
         }
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // we can hit IndexNotFoundException or e.g. EOFException (on
         // segments_N) because it is being copied at the same time it is read by
         // DirectoryReader.open().
@@ -425,7 +427,7 @@ public class TestIndexAndTaxonomyReplicationClient extends ReplicatorTestCase {
                   checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8), false);
                   try {
                     checker.checkIndex(null);
-                  } catch (IOException | RuntimeException ioe) {
+                  } catch (@SuppressWarnings("unused") IOException | RuntimeException ioe) {
                     // ok: we fallback below
                   }
                 }

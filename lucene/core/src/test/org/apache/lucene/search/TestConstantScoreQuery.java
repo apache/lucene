@@ -95,7 +95,9 @@ public class TestConstantScoreQuery extends LuceneTestCase {
         Collection<Scorable.ChildScorable> children = s.getChildren();
         if (children.size() == 0) return s;
         s = children.stream().findFirst().get().child;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // If FakeScorer returns UnsupportedOperationException
         // We catch Exception here to deal with the (impossible) IOException too
         return s;

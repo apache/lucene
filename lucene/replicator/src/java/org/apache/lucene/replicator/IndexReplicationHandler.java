@@ -79,7 +79,9 @@ public class IndexReplicationHandler implements ReplicationHandler {
         // IndexNotFoundException which we handle below
         return commits.get(commits.size() - 1);
       }
-    } catch (IndexNotFoundException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IndexNotFoundException e) {
       // ignore the exception and return null
     }
     return null;

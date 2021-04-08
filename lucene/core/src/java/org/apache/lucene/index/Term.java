@@ -116,7 +116,9 @@ public final class Term implements Comparable<Term>, Accountable {
       return decoder
           .decode(ByteBuffer.wrap(termText.bytes, termText.offset, termText.length))
           .toString();
-    } catch (CharacterCodingException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        CharacterCodingException e) {
       return termText.toString();
     }
   }

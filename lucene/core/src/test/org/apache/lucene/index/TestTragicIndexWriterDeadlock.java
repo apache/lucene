@@ -52,7 +52,9 @@ public class TestTragicIndexWriterDeadlock extends LuceneTestCase {
                 w.addDocument(new Document());
                 w.commit();
               }
-            } catch (Throwable t) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable t) {
               done.set(true);
               // System.out.println("commit exc:");
               // t.printStackTrace(System.out);
@@ -80,7 +82,9 @@ public class TestTragicIndexWriterDeadlock extends LuceneTestCase {
               } finally {
                 r.close();
               }
-            } catch (Throwable t) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable t) {
               done.set(true);
               // System.out.println("nrt exc:");
               // t.printStackTrace(System.out);

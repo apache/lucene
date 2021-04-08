@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.hi;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.StopFilter;
@@ -70,7 +71,7 @@ public final class HindiAnalyzer extends StopwordAnalyzerBase {
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)
-        throw new RuntimeException("Unable to load default stopword set");
+        throw new UncheckedIOException("Unable to load default stopword set", ex);
       }
     }
   }

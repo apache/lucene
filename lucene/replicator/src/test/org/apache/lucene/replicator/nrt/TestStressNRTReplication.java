@@ -1109,7 +1109,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
                         + hitCount);
               }
             }
-          } catch (IOException ioe) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException ioe) {
             // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
             // ioe.printStackTrace(System.out);
             IOUtils.closeWhileHandlingException(c);
@@ -1173,7 +1175,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 stop.set(true);
                 fail(failMessage);
               }
-            } catch (IOException ioe) {
+            } catch (
+                @SuppressWarnings("unused")
+                IOException ioe) {
               // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
               // throw new RuntimeException(ioe);
               // ioe.printStackTrace(System.out);
@@ -1274,14 +1278,18 @@ public class TestStressNRTReplication extends LuceneTestCase {
               curPrimary.addOrUpdateDocument(c, doc, false);
               transLog.addDocument(idString, doc);
             }
-          } catch (IOException se) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException se) {
             // Assume primary crashed
             if (c != null) {
               message("top: indexer lost connection to primary");
             }
             try {
               c.close();
-            } catch (Throwable t) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable t) {
             }
             curPrimary = null;
             c = null;
@@ -1303,12 +1311,16 @@ public class TestStressNRTReplication extends LuceneTestCase {
             c.out.writeByte(SimplePrimaryNode.CMD_INDEXING_DONE);
             c.flush();
             c.in.readByte();
-          } catch (IOException se) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException se) {
             // Assume primary crashed
             message("top: indexer lost connection to primary");
             try {
               c.close();
-            } catch (Throwable t) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable t) {
             }
             curPrimary = null;
             c = null;

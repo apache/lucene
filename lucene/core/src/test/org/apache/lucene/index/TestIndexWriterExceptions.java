@@ -477,14 +477,18 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     for (int i = 0; i < 10; i++) {
       try {
         w.addDocument(doc);
-      } catch (RuntimeException re) {
+      } catch (
+          @SuppressWarnings("unused")
+          RuntimeException re) {
         break;
       }
     }
 
     try {
       ((ConcurrentMergeScheduler) w.getConfig().getMergeScheduler()).sync();
-    } catch (IllegalStateException ise) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
       // OK: merge exc causes tragedy
     }
     assertTrue(testPoint.failed);
@@ -955,7 +959,9 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       if ((i - 1) % 2 == 0) {
         try {
           writer.commit();
-        } catch (IOException ioe) {
+        } catch (
+            @SuppressWarnings("unused")
+            IOException ioe) {
           // expected
         }
       }
@@ -1088,7 +1094,9 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       dir.setRandomIOExceptionRate(0.5);
       try {
         w.forceMerge(1);
-      } catch (IllegalStateException ise) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalStateException ise) {
         // expected
       } catch (IOException ioe) {
         if (ioe.getCause() == null) {
@@ -1099,7 +1107,9 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       // System.out.println("TEST: now close IW");
       try {
         w.close();
-      } catch (IllegalStateException ise) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalStateException ise) {
         // ok
       }
       dir.close();
@@ -1183,7 +1193,9 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
     try {
       writer.close();
-    } catch (IllegalArgumentException ok) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalArgumentException ok) {
       // ok
     }
 
@@ -1881,10 +1893,12 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       } catch (AssertionError ex) {
         // This is fine: we tripped IW's assert that all files it's about to fsync do exist:
         assertTrue(ex.getMessage().matches("file .* does not exist; files=\\[.*\\]"));
-      } catch (CorruptIndexException ex) {
+      } catch (
+          @SuppressWarnings("unused")
+          CorruptIndexException ex) {
         // Exceptions are fine - we are running out of file handlers here
         continue;
-      } catch (FileNotFoundException | NoSuchFileException ex) {
+      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException ex) {
         continue;
       }
       failure.clearDoFail();
@@ -2070,7 +2084,9 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
       try {
         iw.rollback();
-      } catch (FakeIOException expected) {
+      } catch (
+          @SuppressWarnings("unused")
+          FakeIOException expected) {
         // ok, we randomly hit exc here
       }
 
@@ -2142,10 +2158,14 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           // Flush new segment:
           DirectoryReader.open(w).close();
         }
-      } catch (AlreadyClosedException ace) {
+      } catch (
+          @SuppressWarnings("unused")
+          AlreadyClosedException ace) {
         // OK: e.g. CMS hit the exc in BG thread and closed the writer
         break;
-      } catch (FakeIOException fioe) {
+      } catch (
+          @SuppressWarnings("unused")
+          FakeIOException fioe) {
         // OK: e.g. SMS hit the exception
         break;
       }

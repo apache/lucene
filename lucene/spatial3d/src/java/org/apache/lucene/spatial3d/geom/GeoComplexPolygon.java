@@ -748,7 +748,9 @@ class GeoComplexPolygon extends GeoBasePolygon {
       for (final TraversalStrategy ts : traversalStrategies) {
         try {
           return ts.apply(testPoint, testPointInSet, x, y, z);
-        } catch (IllegalArgumentException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalArgumentException e) {
           // Continue
         }
       }
@@ -895,7 +897,9 @@ class GeoComplexPolygon extends GeoBasePolygon {
       // System.out.println(" creating sector linear crossing edge iterator");
       return new SectorLinearCrossingEdgeIterator(
           testPoint, plane, abovePlane, belowPlane, thePointX, thePointY, thePointZ);
-    } catch (IllegalArgumentException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalArgumentException e) {
       // Assume we failed because we could not construct bounding planes, so do it another way.
       // System.out.println(" create full linear crossing edge iterator");
       return new FullLinearCrossingEdgeIterator(
@@ -1057,7 +1061,9 @@ class GeoComplexPolygon extends GeoBasePolygon {
 
         // System.out.println(" Check point in set? " + rval);
         return rval;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         // Intersection point apparently was on edge, so try another strategy
         // System.out.println(" Trying dual crossing edge iterator");
         final CountingEdgeIterator edgeIterator =

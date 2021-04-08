@@ -77,7 +77,9 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
       if (!success) {
         try {
           close();
-        } catch (Throwable t) {
+        } catch (
+            @SuppressWarnings("unused")
+            Throwable t) {
         } // ensure we throw our original exception
       }
     }

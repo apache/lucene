@@ -416,10 +416,14 @@ public class TestIndexWriterMerging extends LuceneTestCase {
                   for (int i = 0; i < 100; i++) {
                     try {
                       finalWriter.addDocument(doc);
-                    } catch (AlreadyClosedException e) {
+                    } catch (
+                        @SuppressWarnings("unused")
+                        AlreadyClosedException e) {
                       done = true;
                       break;
-                    } catch (NullPointerException e) {
+                    } catch (
+                        @SuppressWarnings("unused")
+                        NullPointerException e) {
                       done = true;
                       break;
                     } catch (Throwable e) {

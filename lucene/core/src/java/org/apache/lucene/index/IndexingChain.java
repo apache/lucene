@@ -1218,7 +1218,7 @@ final class IndexingChain implements Accountable {
                 Math.addExact(invertState.length, invertState.termFreqAttribute.getTermFrequency());
           } catch (ArithmeticException ae) {
             throw new IllegalArgumentException(
-                "too many tokens for field \"" + field.name() + "\"");
+                "too many tokens for field \"" + field.name() + "\"", ae);
           }
 
           // System.out.println("  term=" + invertState.termAttribute);

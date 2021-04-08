@@ -47,7 +47,9 @@ public class TestRandomGeoPolygon extends LuceneTestCase {
     try {
       GeoPolygon polygon = GeoPolygonFactory.makeGeoPolygon(planetModel, points);
       assertTrue(polygon != null);
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
       fail(points.toString());
     }
   }
@@ -64,7 +66,9 @@ public class TestRandomGeoPolygon extends LuceneTestCase {
     points.add(point4);
     try {
       GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
       fail(points.toString());
     }
   }

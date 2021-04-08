@@ -98,11 +98,8 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     writer = new IndexWriter(dir, c);
     Document doc = new Document();
     doc.add(newField("boringFieldName", "aaa ", storedTextType));
-    try {
-      writer.addDocument(doc);
-    } catch (BadNews badNews) {
-      fail("Unwanted exception");
-    }
+    // should not throw BadNews
+    writer.addDocument(doc);
     infoPrintStream.flush();
     String infoStream = new String(infoBytes.toByteArray(), IOUtils.UTF_8);
     assertFalse(infoStream.contains("boringFieldName"));

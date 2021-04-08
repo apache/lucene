@@ -126,7 +126,9 @@ public class TestMaxFailuresRule extends WithNestedTests {
                   try {
                     die.await();
                     return;
-                  } catch (Exception e) {
+                  } catch (
+                      @SuppressWarnings("unused")
+                      Exception ignored) {
                     /* ignore */
                   }
                 }

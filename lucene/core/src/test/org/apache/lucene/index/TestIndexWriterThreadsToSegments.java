@@ -274,7 +274,9 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
                 for (int j = 0; j < 1000; j++) {
                   w.addDocument(doc);
                 }
-              } catch (AlreadyClosedException ace) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  AlreadyClosedException ace) {
                 // ok
               } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -289,7 +291,9 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     Thread.sleep(100);
     try {
       w.close();
-    } catch (IllegalStateException ise) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
       // OK but not required
     }
     for (Thread t : threads) {

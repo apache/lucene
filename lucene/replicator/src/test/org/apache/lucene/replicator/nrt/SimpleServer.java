@@ -326,7 +326,9 @@ public class SimpleServer extends LuceneTestCase {
                 while (System.nanoTime() < endTime) {
                   try {
                     Thread.sleep(10);
-                  } catch (InterruptedException e) {
+                  } catch (
+                      @SuppressWarnings("unused")
+                      InterruptedException e) {
                   }
                   if (stop.get()) {
                     break;
@@ -372,7 +374,9 @@ public class SimpleServer extends LuceneTestCase {
         Socket socket;
         try {
           socket = ss.accept();
-        } catch (SocketException se) {
+        } catch (
+            @SuppressWarnings("unused")
+            SocketException se) {
           // when ClientHandler closes our ss we will hit this
           node.message("top: server socket exc; now exit");
           break;

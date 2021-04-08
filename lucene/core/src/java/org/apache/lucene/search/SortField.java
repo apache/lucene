@@ -211,7 +211,7 @@ public class SortField {
     try {
       return Type.valueOf(type);
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Can't deserialize SortField - unknown type " + type);
+      throw new IllegalArgumentException("Can't deserialize SortField - unknown type " + type, e);
     }
   }
 

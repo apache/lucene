@@ -132,7 +132,9 @@ public class TestIndexWriterNRTIsCurrent extends LuceneTestCase {
         if (currentReader != null) {
           try {
             currentReader.decRef();
-          } catch (IOException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException e) {
           }
         }
       }

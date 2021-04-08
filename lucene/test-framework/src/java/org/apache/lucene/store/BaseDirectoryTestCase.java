@@ -571,7 +571,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
                         try (IndexInput input = dir.openInput(file, newIOContext(random()))) {
                           // Just open, nothing else.
                           assert input != null;
-                        } catch (AccessDeniedException e) {
+                        } catch (
+                            @SuppressWarnings("unused")
+                            AccessDeniedException e) {
                           // Access denied is allowed for files for which the output is still open
                           // (MockDirectoryWriter enforces
                           // this, for example). Since we don't synchronize with the writer thread,
