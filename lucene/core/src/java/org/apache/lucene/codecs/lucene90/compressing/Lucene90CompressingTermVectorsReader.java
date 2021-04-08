@@ -52,17 +52,22 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.packed.BlockPackedReaderIterator;
+import org.apache.lucene.util.packed.DirectReader;
+import org.apache.lucene.util.packed.DirectWriter;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -274,6 +279,15 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return new Lucene90CompressingTermVectorsReader(this);
   }
 
+  private static LongValues getLongValues(IndexInput input, int values, int bitsPerValue)
+      throws IOException {
+    final long offset = input.getFilePointer();
+    final long length = (long) Math.ceil((double) values * bitsPerValue / 8) + 3;
+    final RandomAccessInput slice = input.randomAccessSlice(offset, length);
+    input.seek(offset + length);
+    return DirectReader.getInstance(slice, bitsPerValue);
+  }
+
   @Override
   public Fields get(int doc) throws IOException {
     ensureOpen();
@@ -347,39 +361,30 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
     // read field numbers and flags
     final int[] fieldNumOffs = new int[numFields];
-    final PackedInts.Reader flags;
+    final LongValues flags;
     {
-      final int bitsPerOff = PackedInts.bitsRequired(fieldNums.length - 1);
-      final PackedInts.Reader allFieldNumOffs =
-          PackedInts.getReaderNoHeader(
-              vectorsStream, PackedInts.Format.PACKED, packedIntsVersion, totalFields, bitsPerOff);
+      final int bitsPerOff = DirectWriter.bitsRequired(fieldNums.length - 1);
+      final LongValues allFieldNumOffs = getLongValues(vectorsStream, totalFields, bitsPerOff);
       switch (vectorsStream.readVInt()) {
         case 0:
-          final PackedInts.Reader fieldFlags =
-              PackedInts.getReaderNoHeader(
-                  vectorsStream,
-                  PackedInts.Format.PACKED,
-                  packedIntsVersion,
-                  fieldNums.length,
-                  FLAGS_BITS);
-          PackedInts.Mutable f = PackedInts.getMutable(totalFields, FLAGS_BITS, PackedInts.COMPACT);
-          for (int i = 0; i < totalFields; ++i) {
-            final int fieldNumOff = (int) allFieldNumOffs.get(i);
-            assert fieldNumOff >= 0 && fieldNumOff < fieldNums.length;
-            final int fgs = (int) fieldFlags.get(fieldNumOff);
-            f.set(i, fgs);
+          {
+            LongValues fieldFlags = getLongValues(vectorsStream, fieldNums.length, FLAGS_BITS);
+            final ByteBuffersDataOutput out = new ByteBuffersDataOutput();
+            final DirectWriter writer = DirectWriter.getInstance(out, totalFields, FLAGS_BITS);
+            for (int i = 0; i < totalFields; ++i) {
+              final int fieldNumOff = (int) allFieldNumOffs.get(i);
+              assert fieldNumOff >= 0 && fieldNumOff < fieldNums.length;
+              writer.add(fieldFlags.get(fieldNumOff));
+            }
+            writer.finish();
+            flags = DirectReader.getInstance(out.toDataInput(), FLAGS_BITS);
+            break;
           }
-          flags = f;
-          break;
         case 1:
-          flags =
-              PackedInts.getReaderNoHeader(
-                  vectorsStream,
-                  PackedInts.Format.PACKED,
-                  packedIntsVersion,
-                  totalFields,
-                  FLAGS_BITS);
-          break;
+          {
+            flags = getLongValues(vectorsStream, totalFields, FLAGS_BITS);
+            break;
+          }
         default:
           throw new AssertionError();
       }
@@ -389,17 +394,11 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     // number of terms per field for all fields
-    final PackedInts.Reader numTerms;
+    final LongValues numTerms;
     final int totalTerms;
     {
       final int bitsRequired = vectorsStream.readVInt();
-      numTerms =
-          PackedInts.getReaderNoHeader(
-              vectorsStream,
-              PackedInts.Format.PACKED,
-              packedIntsVersion,
-              totalFields,
-              bitsRequired);
+      numTerms = getLongValues(vectorsStream, totalFields, bitsRequired);
       int sum = 0;
       for (int i = 0; i < totalFields; ++i) {
         sum += numTerms.get(i);
@@ -690,8 +689,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   }
 
   // field -> term index -> position index
-  private int[][] positionIndex(
-      int skip, int numFields, PackedInts.Reader numTerms, int[] termFreqs) {
+  private int[][] positionIndex(int skip, int numFields, LongValues numTerms, int[] termFreqs) {
     final int[][] positionIndex = new int[numFields][];
     int termIndex = 0;
     for (int i = 0; i < skip; ++i) {
@@ -713,8 +711,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   private int[][] readPositions(
       int skip,
       int numFields,
-      PackedInts.Reader flags,
-      PackedInts.Reader numTerms,
+      LongValues flags,
+      LongValues numTerms,
       int[] termFreqs,
       int flag,
       final int totalPositions,
