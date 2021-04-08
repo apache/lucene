@@ -168,6 +168,9 @@ configure([
           }
         })
 
+        // Load checksums before the source task executes, otherwise it's always ignored.
+        sourceTask.dependsOn checksumLoadTask
+
         // Copy the description and group from the source task.
         project.afterEvaluate {
           conditionalTask.group sourceTask.group
