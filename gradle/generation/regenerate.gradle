@@ -144,7 +144,7 @@ configure([
             }
 
             checksumsFile.setText(
-                JsonOutput.prettyPrint(JsonOutput.toJson(actualChecksums)), "UTF-8")
+                JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String, String>(actualChecksums))), "UTF-8")
 
             logger.warn("Updated generated file checksums for task ${sourceTask.path}.")
           }
