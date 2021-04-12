@@ -125,5 +125,5 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn mustRunInOrder([snowball, "spotlessApply"])
+  regenerate.dependsOn wrapWithPersistentChecksums(snowball, [ andThenTasks: "spotlessApply" ])
 }
