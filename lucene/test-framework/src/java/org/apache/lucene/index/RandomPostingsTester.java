@@ -739,11 +739,6 @@ public class RandomPostingsTester {
           public void close() throws IOException {}
 
           @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
-
-          @Override
           public NumericDocValues getNorms(FieldInfo field) throws IOException {
             if (newFieldInfos.fieldInfo(field.number).hasNorms()) {
               return new NumericDocValues() {

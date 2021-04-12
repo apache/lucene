@@ -835,11 +835,6 @@ public class TestCodecs extends LuceneTestCase {
         new NormsProducer() {
 
           @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
-
-          @Override
           public void close() throws IOException {}
 
           @Override

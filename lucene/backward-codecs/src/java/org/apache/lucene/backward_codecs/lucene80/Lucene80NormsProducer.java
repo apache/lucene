@@ -476,11 +476,6 @@ final class Lucene80NormsProducer extends NormsProducer implements Cloneable {
   }
 
   @Override
-  public long ramBytesUsed() {
-    return 64L * norms.size(); // good enough
-  }
-
-  @Override
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(data);
   }

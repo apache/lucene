@@ -18,8 +18,6 @@ package org.apache.lucene.codecs.bloom;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -44,8 +42,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -370,27 +366,6 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       public ImpactsEnum impacts(int flags) throws IOException {
         return delegate().impacts(flags);
       }
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long sizeInBytes =
-          ((delegateFieldsProducer != null) ? delegateFieldsProducer.ramBytesUsed() : 0);
-      for (Map.Entry<String, FuzzySet> entry : bloomsByFieldName.entrySet()) {
-        sizeInBytes += entry.getKey().length() * Character.BYTES;
-        sizeInBytes += entry.getValue().ramBytesUsed();
-      }
-      return sizeInBytes;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      List<Accountable> resources =
-          new ArrayList<>(Accountables.namedAccountables("field", bloomsByFieldName));
-      if (delegateFieldsProducer != null) {
-        resources.add(Accountables.namedAccountable("delegate", delegateFieldsProducer));
-      }
-      return Collections.unmodifiableList(resources);
     }
 
     @Override

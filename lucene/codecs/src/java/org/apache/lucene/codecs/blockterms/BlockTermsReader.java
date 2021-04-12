@@ -17,11 +17,8 @@
 package org.apache.lucene.codecs.blockterms;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.TreeMap;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
@@ -41,7 +38,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -58,8 +54,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 public class BlockTermsReader extends FieldsProducer {
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(BlockTermsReader.class);
   // Open input to the main terms dict file (_X.tis)
   private final IndexInput in;
 
@@ -869,30 +863,6 @@ public class BlockTermsReader extends FieldsProducer {
         }
       }
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long ramBytesUsed = BASE_RAM_BYTES_USED;
-    ramBytesUsed += (postingsReader != null) ? postingsReader.ramBytesUsed() : 0;
-    ramBytesUsed += (indexReader != null) ? indexReader.ramBytesUsed() : 0;
-    ramBytesUsed += fields.size() * 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-    for (FieldReader reader : fields.values()) {
-      ramBytesUsed += reader.ramBytesUsed();
-    }
-    return ramBytesUsed;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    List<Accountable> resources = new ArrayList<>();
-    if (indexReader != null) {
-      resources.add(Accountables.namedAccountable("term index", indexReader));
-    }
-    if (postingsReader != null) {
-      resources.add(Accountables.namedAccountable("delegate", postingsReader));
-    }
-    return Collections.unmodifiableList(resources);
   }
 
   @Override

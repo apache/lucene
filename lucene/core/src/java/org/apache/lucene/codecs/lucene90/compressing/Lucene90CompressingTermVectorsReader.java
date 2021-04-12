@@ -30,8 +30,6 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingT
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VERSION_START;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import org.apache.lucene.codecs.CodecUtil;
@@ -56,8 +54,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -1304,16 +1300,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       sum += el;
     }
     return sum;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return indexReader.ramBytesUsed();
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    return Collections.singleton(Accountables.namedAccountable("term vector index", indexReader));
   }
 
   @Override
