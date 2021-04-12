@@ -1,0 +1,87 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+def resources = scriptResources(buildscript)
+
+configure(rootProject) {
+  configurations {
+    icu_62
+    icu_68
+  }
+
+  dependencies {
+    icu_62 "com.ibm.icu:icu4j:62.2"
+    icu_68 "com.ibm.icu:icu4j:68.2"
+  }
+
+  // Exclude ICU config from palantir's version unification.
+  versionRecommendations {
+    excludeConfigurations "icu_68", "icu_62"
+  }
+}
+
+// Regenerates UnicodeProps.java
+configure(project(":lucene:analysis:common")) {
+  task generateUnicodeProps() {
+    def icuConfig = rootProject.configurations.icu_68
+    def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
+
+    dependsOn icuConfig
+    outputs.file outputFile
+
+    doFirst {
+      project.javaexec {
+        main "groovy.lang.GroovyShell"
+        classpath icuConfig, rootProject.configurations.groovy
+
+        args = [
+            "--encoding", "UTF-8",
+            file("${resources}/GenerateUnicodeProps.groovy"),
+            outputFile
+        ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodeProps, [ andThenTasks: "spotlessApply" ])
+}
+
+configure(project(":lucene:core")) {
+  task generateEmojiProperties() {
+    def icuConfig = rootProject.configurations.icu_62
+    def outputFile = file("src/data/jflex/UnicodeEmojiProperties.jflex")
+
+    dependsOn icuConfig
+    outputs.file outputFile
+
+    doFirst {
+      println icuConfig.files
+      project.javaexec {
+        main "groovy.lang.GroovyShell"
+        classpath icuConfig, rootProject.configurations.groovy
+
+        args = [
+            "--encoding", "UTF-8",
+            file("${resources}/GenerateEmojiProperties.groovy"),
+            outputFile
+        ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiProperties)
+}
