@@ -30,6 +30,5 @@ dependencies {
   implementation localGroovy()
 
   implementation "commons-codec:commons-codec:${scriptDepVersions['commons-codec']}"
-  implementation "com.ibm.icu:icu4j:${scriptDepVersions['icu']}"
 }
 

@@ -170,7 +170,7 @@ configure(project(":lucene:queryparser")) {
   }
 
   task javaccParserFlexible(type: JavaCCTask) {
-    description "Regenerate Flexible query parser from queryparser/flexible/standard/parser/StandardSyntaxParser.jj"
+    description "Regenerate flexible query parser from queryparser/flexible/standard/parser/StandardSyntaxParser.jj"
     group "generation"
 
     javaccFile = file('src/java/org/apache/lucene/queryparser/flexible/standard/parser/StandardSyntaxParser.jj')

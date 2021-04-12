@@ -19,23 +19,25 @@ def resources = scriptResources(buildscript)
 
 configure(rootProject) {
   configurations {
-    icu_68_1
+    icu_62
+    icu_68
   }
 
   dependencies {
-    icu_68_1 "com.ibm.icu:icu4j:68.1"
+    icu_62 "com.ibm.icu:icu4j:62.2"
+    icu_68 "com.ibm.icu:icu4j:68.2"
   }
 
   // Exclude ICU config from palantir's version unification.
   versionRecommendations {
-    excludeConfigurations "icu_68_1"
+    excludeConfigurations "icu_68", "icu_62"
   }
 }
 
 // Regenerates UnicodeProps.java
 configure(project(":lucene:analysis:common")) {
   task generateUnicodeProps() {
-    def icuConfig = rootProject.configurations.icu_68_1
+    def icuConfig = rootProject.configurations.icu_68
     def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
 
     dependsOn icuConfig
@@ -60,7 +62,7 @@ configure(project(":lucene:analysis:common")) {
 
 configure(project(":lucene:core")) {
   task generateEmojiProperties() {
-    def icuConfig = rootProject.configurations.icu_68_1
+    def icuConfig = rootProject.configurations.icu_62
     def outputFile = file("src/data/jflex/UnicodeEmojiProperties.jflex")
 
     dependsOn icuConfig
