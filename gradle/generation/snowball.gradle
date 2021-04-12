@@ -105,6 +105,14 @@ configure(project(":lucene:analysis:common")) {
             "ext/*Stemmer.java"
         ])
 
+    inputs.files fileTree(
+        dir: "src/resources/org/apache/lucene/analysis/snowball",
+        include: "*_stop.txt")
+
+    inputs.files fileTree(
+        dir: "src/test/org/apache/lucene/analysis/snowball",
+        include: "*.zip")
+
     // Don't even bother adding dependencies on Windows.
     if (Os.isFamily(Os.FAMILY_WINDOWS)) {
       doFirst {
@@ -125,5 +133,5 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(snowball, [ andThenTasks: "spotlessApply" ])
+  regenerate.dependsOn wrapWithPersistentChecksums(snowball, [ andThenTasks: "spotlessApply", ignoreWithSource: [downloadSnowballStemmers, downloadSnowballWebsite, downloadSnowballData] ])
 }
