@@ -10,13 +10,13 @@ modification, are permitted provided that the following conditions
 are met:
 
   1. Redistributions of source code must retain the above copyright notice,
-   this list of conditions and the following disclaimer.
+     this list of conditions and the following disclaimer.
   2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
   3. Neither the name of the Snowball project nor the names of its contributors
-   may be used to endorse or promote products derived from this software
-   without specific prior written permission.
+     may be used to endorse or promote products derived from this software
+     without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -404,22 +404,22 @@ public class SnowballProgram implements Serializable {
   /*
   extern void debug(struct SN_env * z, int number, int line_count)
   {   int i;
-    int limit = SIZE(z->p);
-    //if (number >= 0) printf("%3d (line %4d): '", number, line_count);
-    if (number >= 0) printf("%3d (line %4d): [%d]'", number, line_count,limit);
-    for (i = 0; i <= limit; i++)
-    {   if (z->lb == i) printf("{");
-      if (z->bra == i) printf("[");
-      if (z->c == i) printf("|");
-      if (z->ket == i) printf("]");
-      if (z->l == i) printf("}");
-      if (i < limit)
-      {   int ch = z->p[i];
-        if (ch == 0) ch = '#';
-        printf("%c", ch);
+      int limit = SIZE(z->p);
+      //if (number >= 0) printf("%3d (line %4d): '", number, line_count);
+      if (number >= 0) printf("%3d (line %4d): [%d]'", number, line_count,limit);
+      for (i = 0; i <= limit; i++)
+      {   if (z->lb == i) printf("{");
+          if (z->bra == i) printf("[");
+          if (z->c == i) printf("|");
+          if (z->ket == i) printf("]");
+          if (z->l == i) printf("}");
+          if (i < limit)
+          {   int ch = z->p[i];
+              if (ch == 0) ch = '#';
+              printf("%c", ch);
+          }
       }
-    }
-    printf("'\n");
+      printf("'\n");
   }
   */
 
