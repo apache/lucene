@@ -17,8 +17,6 @@
 
 package org.apache.lucene.util;
 
-import java.util.Random;
-
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
@@ -112,15 +110,6 @@ public final class VectorUtil {
       squareSum += diff * diff;
     }
     return squareSum;
-  }
-
-  public static float[] randomVector(Random random, int dim) {
-    float[] vec = new float[dim];
-    for (int i = 0; i < dim; i++) {
-      vec[i] = random.nextFloat();
-    }
-    VectorUtil.l2normalize(vec);
-    return vec;
   }
 
   /**
