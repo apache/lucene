@@ -904,6 +904,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         }
 
         // since we bulk merged all chunks, we inherit any dirty ones from this segment.
+        numChunks += matchingVectorsReader.getNumChunks();
         numDirtyChunks += matchingVectorsReader.getNumDirtyChunks();
         numDirtyDocs += matchingVectorsReader.getNumDirtyDocs();
       } else {
