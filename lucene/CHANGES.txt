@@ -101,6 +101,8 @@ API Changes
 * LUCENE-9853: JapaneseAnalyzer should use CJKWidthCharFilter for full-width and half-width character normalization.
   (Tomoko Uchida)
 
+* LUCENE-9387: Removed CodecReader#ramBytesUsed. (Adrien Grand)
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
