@@ -195,7 +195,7 @@ configure(project(":lucene:analysis:icu")) {
         executable "tar"
         workingDir icuBuildDir
         args = [
-            "-zxvf",
+            "-zxf",
             icuSrcTgz
         ]
       }
@@ -205,6 +205,8 @@ configure(project(":lucene:analysis:icu")) {
         executable "sh"
 
         workingDir icuSrcDir
+        environment("CFLAGS", "-O0")
+        environment("CXXFLAGS", "-O0")
         args = [
             "configure",
             "--prefix=${icuSrcDir}",
@@ -215,6 +217,7 @@ configure(project(":lucene:analysis:icu")) {
       project.quietExec {
         executable "make"
         workingDir icuSrcDir
+        // TODO: use tests.jvms or similar instead of hardcoding at 4
         args = [
             "-j4"
         ]
