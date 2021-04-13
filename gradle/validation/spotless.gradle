@@ -50,8 +50,7 @@ configure(project(":lucene").subprojects) { prj ->
 
           case ":lucene:analysis:common":
             targetExclude "**/HTMLStripCharFilter.java",
-                "**/UAX29URLEmailTokenizerImpl.java",
-                "**/tartarus/**"
+                "**/UAX29URLEmailTokenizerImpl.java"
             break
 
           case ":lucene:test-framework":

@@ -30,16 +30,6 @@ test $# -eq 4
 trap 'echo "*** BUILD FAILED ***" $BASH_SOURCE:$LINENO: error: "$BASH_COMMAND" returned $?' ERR
 set -eEuo pipefail
 
-# reformats file indentation to kill the crazy space/tabs mix.
-# prevents early blindness !
-function reformat_java() {
-  # convert tabs to 8 spaces, then reduce indent from 4 space to 2 space
-  target=$1
-  tmpfile=$(mktemp)
-  cat ${target} | perl -p -e 's/\t/        /g' | perl -p -e 's/    /  /g' > ${tmpfile}
-  mv ${tmpfile} ${target}
-}
-
 # generate stuff with existing makefile, just 'make' will try to do crazy stuff with e.g. python
 # and likely fail. so only ask for our specific target.
 (cd ${SRCDIR} && chmod a+x libstemmer/mkalgorithms.pl && make dist_libstemmer_java)
@@ -50,7 +40,6 @@ for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java"; do
   cat ${SRCDIR}/COPYING >> ${DESTDIR}/${file}
   echo "*/" >> ${DESTDIR}/${file}
   cat ${SRCDIR}/java/org/tartarus/snowball/${file} >> ${DESTDIR}/${file}
-  reformat_java ${DESTDIR}/${file}
 done
 
 rm ${DESTDIR}/ext/*Stemmer.java
@@ -67,7 +56,6 @@ for file in ${SRCDIR}/java/org/tartarus/snowball/ext/*.java; do
   fi
   echo ${newclazz} | sed -e 's/Stemmer//' >> ${TESTDSTDIR}/languages.txt
   cat $file | sed "s/${oldclazz}/${newclazz}/g" > ${DESTDIR}/ext/${newclazz}.java
-  reformat_java ${DESTDIR}/ext/${newclazz}.java
 done
 
 # regenerate test data
