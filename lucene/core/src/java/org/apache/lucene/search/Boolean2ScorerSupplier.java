@@ -238,11 +238,36 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
       //
       // However, as WANDScorer uses more complex algorithm and data structure, we would like to
       // still use DisjunctionSumScorer to handle exhaustive pure disjunctions, which may be faster
-      if (scoreMode == ScoreMode.TOP_SCORES || minShouldMatch > 1) {
+      boolean isPureDisjunction =
+          subs.get(Occur.FILTER).isEmpty()
+              && subs.get(Occur.MUST).isEmpty()
+              && subs.get(Occur.MUST_NOT).isEmpty();
+      // top-level boolean term query
+      boolean allTermScorers =
+          optionalScorers.stream().allMatch(scorer -> scorer instanceof TermScorer);
+
+      if (isPureDisjunction
+          && allTermScorers
+          && isSimilarCost(optionalScorers)
+          && minShouldMatch <= 1) {
+        return new DisjunctionSumScorer(weight, optionalScorers, scoreMode);
+      } else if (scoreMode == ScoreMode.TOP_SCORES || minShouldMatch > 1) {
         return new WANDScorer(weight, optionalScorers, minShouldMatch, scoreMode);
       } else {
         return new DisjunctionSumScorer(weight, optionalScorers, scoreMode);
       }
     }
+  }
+
+  private boolean isSimilarCost(List<Scorer> optionalScorers) {
+    long minCost = Long.MAX_VALUE;
+    long maxCost = Long.MIN_VALUE;
+    for (Scorer scorer : optionalScorers) {
+      long cost = scorer.iterator().cost();
+      minCost = Math.min(minCost, cost);
+      maxCost = Math.max(maxCost, cost);
+    }
+
+    return maxCost / minCost < 2;
   }
 }

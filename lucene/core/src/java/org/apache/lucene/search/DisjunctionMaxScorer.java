@@ -29,10 +29,7 @@ import org.apache.lucene.util.MathUtil;
 final class DisjunctionMaxScorer extends DisjunctionScorer {
   private final List<Scorer> subScorers;
   /* Multiplier applied to non-maximum-scoring subqueries for a document as they are summed into the result. */
-  private final float tieBreakerMultiplier;
-
-  private final DisjunctionScoreBlockBoundaryPropagator disjunctionBlockPropagator;
-
+  protected final float tieBreakerMultiplier;
   /**
    * Creates a new instance of DisjunctionMaxScorer
    *
@@ -45,16 +42,11 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
       Weight weight, float tieBreakerMultiplier, List<Scorer> subScorers, ScoreMode scoreMode)
       throws IOException {
     super(weight, subScorers, scoreMode);
-    this.subScorers = subScorers;
-    this.tieBreakerMultiplier = tieBreakerMultiplier;
     if (tieBreakerMultiplier < 0 || tieBreakerMultiplier > 1) {
       throw new IllegalArgumentException("tieBreakerMultiplier must be in [0, 1]");
     }
-    if (scoreMode == ScoreMode.TOP_SCORES) {
-      this.disjunctionBlockPropagator = new DisjunctionScoreBlockBoundaryPropagator(subScorers);
-    } else {
-      this.disjunctionBlockPropagator = null;
-    }
+    this.subScorers = subScorers;
+    this.tieBreakerMultiplier = tieBreakerMultiplier;
   }
 
   @Override
@@ -71,11 +63,6 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
       }
     }
     return (float) (scoreMax + otherScoreSum * tieBreakerMultiplier);
-  }
-
-  @Override
-  public int advanceShallow(int target) throws IOException {
-    return disjunctionBlockPropagator.advanceShallow(target);
   }
 
   @Override
@@ -108,8 +95,7 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
 
   @Override
   public void setMinCompetitiveScore(float minScore) throws IOException {
-    getBlockMaxApprox().setMinCompetitiveScore(minScore);
-    disjunctionBlockPropagator.setMinCompetitiveScore(minScore);
+    super.setMinCompetitiveScore(minScore);
     if (tieBreakerMultiplier == 0) {
       // TODO: we could even remove some scorers from the priority queue?
       for (Scorer scorer : subScorers) {

@@ -21,6 +21,7 @@ import java.util.List;
 
 /** A Scorer for OR like queries, counterpart of <code>ConjunctionScorer</code>. */
 final class DisjunctionSumScorer extends DisjunctionScorer {
+  private final List<Scorer> subScorers;
 
   /**
    * Construct a <code>DisjunctionScorer</code>.
@@ -31,6 +32,7 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
   DisjunctionSumScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
       throws IOException {
     super(weight, subScorers, scoreMode);
+    this.subScorers = subScorers;
   }
 
   @Override
@@ -45,8 +47,18 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    // It's ok to return a bad upper bound here since we use WANDScorer when
-    // we actually care about block scores.
-    return Float.MAX_VALUE;
+    double sum = 0;
+    for (Scorer scorer : subScorers) {
+      sum += scorer.getMaxScore(upTo);
+    }
+    return (float) sum;
+  }
+
+  @Override
+  public void setMinCompetitiveScore(float minScore) throws IOException {
+    super.setMinCompetitiveScore(minScore);
+    for (Scorer scorer : subScorers) {
+      scorer.setMinCompetitiveScore(minScore);
+    }
   }
 }
