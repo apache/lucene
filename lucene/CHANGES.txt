@@ -208,6 +208,8 @@ Improvements
 * LUCENE-9898: Removes no longer used scorePayload method from BM25Similarity
   (Pieter van Boxtel)
 
+* LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
+
 Bug fixes
 
 
