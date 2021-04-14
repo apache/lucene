@@ -217,9 +217,8 @@ configure(project(":lucene:analysis:icu")) {
       project.quietExec {
         executable "make"
         workingDir icuSrcDir
-        // TODO: use tests.jvms or similar instead of hardcoding at 4
         args = [
-            "-j4"
+            "-j${propertyOrDefault('tests.jvms', '4')}"
         ]
       }
 
