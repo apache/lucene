@@ -41,21 +41,33 @@ import org.apache.lucene.analysis.util.StemmerUtil;
  */
 public final class ScandinavianNormalizationFilter extends TokenFilter {
 
-  public static final Set<Foldings> ALL_FOLDINGS = Set.of(Foldings.AA, Foldings.AO, Foldings.OO, Foldings.AE, Foldings.OE);
-
+  /**
+   * Create the filter with default folding rules, backward compatible with all earlier versions
+   * @param input the TokenStream
+   */
   public ScandinavianNormalizationFilter(TokenStream input) {
     super(input);
     this.foldings = ALL_FOLDINGS;
   }
 
+  /**
+   * Create the filter using custom folding rules.
+   * @param input the TokenStream
+   * @param foldings a Set of Foldings to apply (i.e. AE, OE, AA, AO, OO)
+   */
   public ScandinavianNormalizationFilter(TokenStream input, Set<Foldings> foldings) {
     super(input);
     this.foldings = foldings;
   }
 
+  /**
+   * List of possible foldings that can be used when configuring the filter
+   */
   public enum Foldings {
     AA, AO, AE, OE, OO
   }
+
+  protected static final Set<Foldings> ALL_FOLDINGS = Set.of(Foldings.AA, Foldings.AO, Foldings.OO, Foldings.AE, Foldings.OE);
 
   private final CharTermAttribute charTermAttribute = addAttribute(CharTermAttribute.class);
 
