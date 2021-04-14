@@ -90,14 +90,30 @@ public class TestCodecs extends LuceneTestCase {
       this.omitTF = omitTF;
       this.storePayloads = storePayloads;
       // TODO: change this test to use all three
-      fieldInfo = fieldInfos.getOrAdd(name);
-      if (omitTF) {
-        fieldInfo.setIndexOptions(IndexOptions.DOCS);
+      FieldInfo fieldInfo0 = fieldInfos.fieldInfo(name);
+      if (fieldInfo0 != null) {
+        fieldInfo = fieldInfo0;
       } else {
-        fieldInfo.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-      }
-      if (storePayloads) {
-        fieldInfo.setStorePayloads();
+        IndexOptions indexOptions =
+            omitTF ? IndexOptions.DOCS : IndexOptions.DOCS_AND_FREQS_AND_POSITIONS;
+        fieldInfo =
+            fieldInfos.add(
+                new FieldInfo(
+                    name,
+                    -1,
+                    false,
+                    false,
+                    storePayloads,
+                    indexOptions,
+                    DocValuesType.NONE,
+                    -1,
+                    new HashMap<>(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    VectorValues.SearchStrategy.NONE,
+                    false));
       }
       this.terms = terms;
       for (int i = 0; i < terms.length; i++) terms[i].field = this;

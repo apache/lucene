@@ -456,7 +456,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       doc.add(new StringField("id", "" + i, Store.YES));
-      doc.add(new NumericDocValuesField("id", i));
+      doc.add(new NumericDocValuesField("numericId", i));
       doc.add(new BinaryDocValuesField("binaryId", new BytesRef(new byte[] {(byte) i})));
       writer.addDocument(doc);
       if (random().nextBoolean()) {
@@ -467,19 +467,19 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     doUpdate(
         new Term("id", "" + doc),
         writer,
-        new NumericDocValuesField("id", doc + 1),
+        new NumericDocValuesField("numericId", doc + 1),
         new BinaryDocValuesField("binaryId", new BytesRef(new byte[] {(byte) (doc + 1)})));
     IndexReader reader = writer.getReader();
-    NumericDocValues idValues = null;
+    NumericDocValues numericIdValues = null;
     BinaryDocValues binaryIdValues = null;
     for (LeafReaderContext c : reader.leaves()) {
       TopDocs topDocs =
           new IndexSearcher(c.reader()).search(new TermQuery(new Term("id", "" + doc)), 10);
       if (topDocs.totalHits.value == 1) {
-        assertNull(idValues);
+        assertNull(numericIdValues);
         assertNull(binaryIdValues);
-        idValues = c.reader().getNumericDocValues("id");
-        assertEquals(topDocs.scoreDocs[0].doc, idValues.advance(topDocs.scoreDocs[0].doc));
+        numericIdValues = c.reader().getNumericDocValues("numericId");
+        assertEquals(topDocs.scoreDocs[0].doc, numericIdValues.advance(topDocs.scoreDocs[0].doc));
         binaryIdValues = c.reader().getBinaryDocValues("binaryId");
         assertEquals(topDocs.scoreDocs[0].doc, binaryIdValues.advance(topDocs.scoreDocs[0].doc));
       } else {
@@ -487,10 +487,10 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
       }
     }
 
-    assertNotNull(idValues);
+    assertNotNull(numericIdValues);
     assertNotNull(binaryIdValues);
 
-    assertEquals(doc + 1, idValues.longValue());
+    assertEquals(doc + 1, numericIdValues.longValue());
     assertEquals(new BytesRef(new byte[] {(byte) (doc + 1)}), binaryIdValues.binaryValue());
     IOUtils.close(reader, writer, dir);
   }
@@ -709,7 +709,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
       IllegalArgumentException iae =
           expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
       assertEquals(
-          "cannot change DocValues type from NUMERIC to BINARY for field \"not_existing\"",
+          "cannot change field \"not_existing\" from doc values type=NUMERIC to inconsistent doc values type=BINARY",
           iae.getMessage());
 
       iae =
@@ -720,12 +720,12 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
                       new Term("id", "1"),
                       new BinaryDocValuesField("not_existing", new BytesRef())));
       assertEquals(
-          "cannot change DocValues type from NUMERIC to BINARY for field \"not_existing\"",
+          "Can't update [BINARY] doc values; the field [not_existing] has inconsistent doc values' type of [NUMERIC].",
           iae.getMessage());
     }
   }
 
-  public void testUpdateFieldWithNoPreviousDocValues() throws IOException {
+  public void testUpdateFieldWithNoPreviousDocValuesThrowsError() throws IOException {
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, conf)) {
@@ -740,13 +740,14 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
       } else if (random().nextBoolean()) {
         writer.commit();
       }
-      writer.updateDocValues(new Term("id", "1"), new NumericDocValuesField("id", 1));
-      try (DirectoryReader reader = writer.getReader()) {
-        NumericDocValues id = reader.leaves().get(0).reader().getNumericDocValues("id");
-        assertNotNull(id);
-        assertTrue(id.advanceExact(0));
-        assertEquals(1, id.longValue());
-      }
+      IllegalArgumentException exception =
+          expectThrows(
+              IllegalArgumentException.class,
+              () ->
+                  writer.updateDocValues(new Term("id", "1"), new NumericDocValuesField("id", 1)));
+      assertEquals(
+          "Can't update [NUMERIC] doc values; the field [id] has inconsistent doc values' type of [NONE].",
+          exception.getMessage());
     }
   }
 }

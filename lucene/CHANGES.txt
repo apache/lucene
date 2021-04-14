@@ -103,6 +103,13 @@ API Changes
 
 * LUCENE-9387: Removed CodecReader#ramBytesUsed. (Adrien Grand)
 
+* LUCENE-9334: Require consistency between data-structures on a per-field basis.
+  A field across all documents within an index must be indexed with the same index
+  options and data-structures. As a consequence of this, doc values updates are
+  only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
+  Adrien Grand, Simon Willnauer)
+
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
