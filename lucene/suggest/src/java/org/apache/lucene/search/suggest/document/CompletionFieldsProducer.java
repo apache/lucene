@@ -53,7 +53,7 @@ import org.apache.lucene.util.IOUtils;
  * <p>NOTE: Only the footer is validated for Completion dictionary (.lkp) and not the checksum due
  * to random access pattern and checksum validation being too costly at instantiation
  */
-final class CompletionFieldsProducer extends FieldsProducer {
+final class CompletionFieldsProducer extends FieldsProducer implements Accountable {
 
   private FieldsProducer delegateFieldsProducer;
   private Map<String, CompletionsTermsReader> readers;
@@ -153,7 +153,7 @@ final class CompletionFieldsProducer extends FieldsProducer {
 
   @Override
   public long ramBytesUsed() {
-    long ramBytesUsed = delegateFieldsProducer.ramBytesUsed();
+    long ramBytesUsed = 0;
     for (CompletionsTermsReader reader : readers.values()) {
       ramBytesUsed += reader.ramBytesUsed();
     }

@@ -24,14 +24,13 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.util.Accountable;
 
 /**
  * Abstract API that produces numeric, binary, sorted, sortedset, and sortednumeric docvalues.
  *
  * @lucene.experimental
  */
-public abstract class DocValuesProducer implements Closeable, Accountable {
+public abstract class DocValuesProducer implements Closeable {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected DocValuesProducer() {}

@@ -17,18 +17,13 @@
 package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
@@ -39,13 +34,9 @@ import org.apache.lucene.util.fst.OffHeapFSTStore;
  *
  * @lucene.internal
  */
-public final class FieldReader extends Terms implements Accountable {
+public final class FieldReader extends Terms {
 
   // private final boolean DEBUG = BlockTreeTermsWriter.DEBUG;
-
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(FieldReader.class)
-          + 3 * RamUsageEstimator.shallowSizeOfInstance(BytesRef.class);
 
   final long numTerms;
   final FieldInfo fieldInfo;
@@ -194,20 +185,6 @@ public final class FieldReader extends Terms implements Accountable {
     }
     return new IntersectTermsEnum(
         this, compiled.automaton, compiled.runAutomaton, compiled.commonSuffixRef, startTerm);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED + ((index != null) ? index.ramBytesUsed() : 0);
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    if (index == null) {
-      return Collections.emptyList();
-    } else {
-      return Collections.singleton(Accountables.namedAccountable("term index", index));
-    }
   }
 
   @Override

@@ -28,13 +28,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 final class FieldsIndexReader extends FieldsIndex {
-
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(FieldsIndexReader.class);
 
   private final int maxDoc;
   private final int blockShift;
@@ -109,15 +105,6 @@ final class FieldsIndexReader extends FieldsIndex {
             startPointersStartPointer, startPointersEndPointer - startPointersStartPointer);
     docs = DirectMonotonicReader.getInstance(docsMeta, docsSlice);
     startPointers = DirectMonotonicReader.getInstance(startPointersMeta, startPointersSlice);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED
-        + docsMeta.ramBytesUsed()
-        + startPointersMeta.ramBytesUsed()
-        + docs.ramBytesUsed()
-        + startPointers.ramBytesUsed();
   }
 
   @Override

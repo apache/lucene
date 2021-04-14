@@ -53,7 +53,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -789,11 +788,6 @@ public final class CheckIndex implements Closeable {
           checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
         }
         msg(infoStream, "");
-
-        if (verbose) {
-          msg(infoStream, "detailed segment RAM usage: ");
-          msg(infoStream, Accountables.toString(reader));
-        }
 
       } catch (Throwable t) {
         if (failFast) {

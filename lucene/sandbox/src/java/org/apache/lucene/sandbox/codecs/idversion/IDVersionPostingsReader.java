@@ -99,11 +99,6 @@ final class IDVersionPostingsReader extends PostingsReaderBase {
   }
 
   @Override
-  public long ramBytesUsed() {
-    return 0;
-  }
-
-  @Override
   public void checkIntegrity() throws IOException {}
 
   @Override

@@ -235,11 +235,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       public int size() {
         return postingsReader.size();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return postingsReader.ramBytesUsed();
-      }
     };
   }
 
@@ -269,11 +264,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }
@@ -305,11 +295,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }
@@ -358,11 +343,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }
@@ -439,11 +419,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
-      }
     };
   }
 
@@ -485,11 +460,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }

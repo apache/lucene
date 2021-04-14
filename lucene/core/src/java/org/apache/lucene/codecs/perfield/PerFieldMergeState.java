@@ -252,11 +252,6 @@ final class PerFieldMergeState {
     }
 
     @Override
-    public long ramBytesUsed() {
-      return in.ramBytesUsed();
-    }
-
-    @Override
     public Iterator<String> iterator() {
       return filtered.iterator();
     }

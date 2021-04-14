@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.uniformsplit;
 
 import java.io.IOException;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
 
@@ -39,7 +38,7 @@ import org.apache.lucene.util.IOSupplier;
  *
  * @lucene.experimental
  */
-public interface IndexDictionary extends Accountable {
+public interface IndexDictionary {
 
   /**
    * Writes this dictionary to the provided output.
@@ -103,5 +102,5 @@ public interface IndexDictionary extends Accountable {
    * org.apache.lucene.index.TermsEnum#seekExact} are called (it is not loaded for a direct
    * all-terms enumeration).
    */
-  interface BrowserSupplier extends IOSupplier<Browser>, Accountable {}
+  interface BrowserSupplier extends IOSupplier<Browser> {}
 }

@@ -61,9 +61,4 @@ public abstract class EmptyDocValuesProducer extends DocValuesProducer {
   public void close() {
     throw new UnsupportedOperationException();
   }
-
-  @Override
-  public long ramBytesUsed() {
-    throw new UnsupportedOperationException();
-  }
 }

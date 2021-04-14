@@ -18,7 +18,6 @@ package org.apache.lucene.backward_codecs.lucene40.blocktree;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -35,8 +34,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
@@ -371,23 +368,6 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
         return b.toString();
       }
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long sizeInBytes = postingsReader.ramBytesUsed();
-    for (FieldReader reader : fieldMap.values()) {
-      sizeInBytes += reader.ramBytesUsed();
-    }
-    return sizeInBytes;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    List<Accountable> resources =
-        new ArrayList<>(Accountables.namedAccountables("field", fieldMap));
-    resources.add(Accountables.namedAccountable("delegate", postingsReader));
-    return Collections.unmodifiableList(resources);
   }
 
   @Override
