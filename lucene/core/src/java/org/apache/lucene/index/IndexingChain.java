@@ -686,26 +686,26 @@ final class IndexingChain implements Accountable {
       pf.setInvertState();
     }
     DocValuesType dvType = fi.getDocValuesType();
-    if (dvType != DocValuesType.NONE) {
-      switch (dvType) {
-        case NUMERIC:
-          pf.docValuesWriter = new NumericDocValuesWriter(fi, bytesUsed);
-          break;
-        case BINARY:
-          pf.docValuesWriter = new BinaryDocValuesWriter(fi, bytesUsed);
-          break;
-        case SORTED:
-          pf.docValuesWriter = new SortedDocValuesWriter(fi, bytesUsed);
-          break;
-        case SORTED_NUMERIC:
-          pf.docValuesWriter = new SortedNumericDocValuesWriter(fi, bytesUsed);
-          break;
-        case SORTED_SET:
-          pf.docValuesWriter = new SortedSetDocValuesWriter(fi, bytesUsed);
-          break;
-        default:
-          throw new AssertionError("unrecognized DocValues.Type: " + dvType);
-      }
+    switch (dvType) {
+      case NONE:
+        break;
+      case NUMERIC:
+        pf.docValuesWriter = new NumericDocValuesWriter(fi, bytesUsed);
+        break;
+      case BINARY:
+        pf.docValuesWriter = new BinaryDocValuesWriter(fi, bytesUsed);
+        break;
+      case SORTED:
+        pf.docValuesWriter = new SortedDocValuesWriter(fi, bytesUsed);
+        break;
+      case SORTED_NUMERIC:
+        pf.docValuesWriter = new SortedNumericDocValuesWriter(fi, bytesUsed);
+        break;
+      case SORTED_SET:
+        pf.docValuesWriter = new SortedSetDocValuesWriter(fi, bytesUsed);
+        break;
+      default:
+        throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }
     if (fi.getPointDimensionCount() != 0) {
       pf.pointValuesWriter = new PointValuesWriter(byteBlockAllocator, bytesUsed, fi);

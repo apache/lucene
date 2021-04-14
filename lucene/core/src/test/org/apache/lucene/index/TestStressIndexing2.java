@@ -52,6 +52,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
   private static Map<String, FieldType> fieldTypes;
 
   @Before
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     fieldTypes = new ConcurrentHashMap<>();
