@@ -194,7 +194,9 @@ class SimpleReplicaNode extends ReplicaNode {
 
       try {
         cmd = in.readByte();
-      } catch (EOFException eofe) {
+      } catch (
+          @SuppressWarnings("unused")
+          EOFException eofe) {
         break;
       }
 

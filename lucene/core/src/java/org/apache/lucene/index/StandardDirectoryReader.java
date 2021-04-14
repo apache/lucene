@@ -310,7 +310,9 @@ public final class StandardDirectoryReader extends DirectoryReader {
       if (reader != null) {
         try {
           reader.decRef();
-        } catch (Throwable t) {
+        } catch (
+            @SuppressWarnings("unused")
+            Throwable t) {
           // Ignore so we keep throwing original exception
         }
       }
@@ -461,7 +463,9 @@ public final class StandardDirectoryReader extends DirectoryReader {
           if (writer != null) {
             try {
               writer.decRefDeleter(segmentInfos);
-            } catch (AlreadyClosedException ex) {
+            } catch (
+                @SuppressWarnings("unused")
+                AlreadyClosedException ex) {
               // This is OK, it just means our original writer was
               // closed before we were, and this may leave some
               // un-referenced files in the index, which is

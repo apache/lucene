@@ -70,7 +70,9 @@ public final class PhoneticFilter extends TokenFilter {
     try {
       String v = encoder.encode(value).toString();
       if (v.length() > 0 && !value.equals(v)) phonetic = v;
-    } catch (Exception ignored) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception ignored) {
     } // just use the direct text
 
     if (phonetic == null) return true;

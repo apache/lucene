@@ -70,7 +70,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
   private static SpanRewriteMethod selectRewriteMethod(MultiTermQuery query) {
     MultiTermQuery.RewriteMethod method = query.getRewriteMethod();
     if (method instanceof TopTermsRewrite) {
-      final int pqsize = ((TopTermsRewrite) method).getSize();
+      final int pqsize = ((TopTermsRewrite<?>) method).getSize();
       return new TopTermsSpanBooleanQueryRewrite(pqsize);
     } else {
       return SCORING_SPAN_QUERY_REWRITE;

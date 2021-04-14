@@ -78,7 +78,9 @@ class WordDictionary extends AbstractDictionary {
       singleInstance = new WordDictionary();
       try {
         singleInstance.load();
-      } catch (IOException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException e) {
         String wordDictRoot = AnalyzerProfile.ANALYSIS_DATA_DIR;
         singleInstance.load(wordDictRoot);
       } catch (ClassNotFoundException e) {
@@ -165,7 +167,9 @@ class WordDictionary extends AbstractDictionary {
       output.writeObject(wordItem_charArrayTable);
       output.writeObject(wordItem_frequencyTable);
       // log.info("serialize core dict.");
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
       // log.warn(e.getMessage());
     }
   }

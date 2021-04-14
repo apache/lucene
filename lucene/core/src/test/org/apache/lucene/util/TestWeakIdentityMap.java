@@ -133,7 +133,9 @@ public class TestWeakIdentityMap extends LuceneTestCase {
         assertTrue("previousSize(" + size + ")>=iteratorSize(" + c + ")", size >= c);
         assertTrue("iteratorSize(" + c + ")>=newSize(" + newSize + ")", c >= newSize);
         size = newSize;
-      } catch (InterruptedException ie) {
+      } catch (
+          @SuppressWarnings("unused")
+          InterruptedException ie) {
       }
 
     map.clear();
@@ -244,7 +246,9 @@ public class TestWeakIdentityMap extends LuceneTestCase {
         assertTrue("previousSize(" + size + ")>=iteratorSize(" + c + ")", size >= c);
         assertTrue("iteratorSize(" + c + ")>=newSize(" + newSize + ")", c >= newSize);
         size = newSize;
-      } catch (InterruptedException ie) {
+      } catch (
+          @SuppressWarnings("unused")
+          InterruptedException ie) {
       }
   }
 }

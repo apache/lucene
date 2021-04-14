@@ -53,7 +53,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -606,8 +605,6 @@ public final class CheckIndex implements Closeable {
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
-    Sort previousIndexSort = null;
-
     for (int i = 0; i < numSegments; i++) {
       final SegmentCommitInfo info = sis.info(i);
       long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
@@ -653,14 +650,6 @@ public final class CheckIndex implements Closeable {
         Sort indexSort = info.info.getIndexSort();
         if (indexSort != null) {
           msg(infoStream, "    sort=" + indexSort);
-          if (previousIndexSort != null) {
-            if (previousIndexSort.equals(indexSort) == false) {
-              throw new RuntimeException(
-                  "index sort changed from " + previousIndexSort + " to " + indexSort);
-            }
-          } else {
-            previousIndexSort = indexSort;
-          }
         }
         segInfoStat.numFiles = info.files().size();
         segInfoStat.sizeMB = info.sizeInBytes() / (1024. * 1024.);
@@ -799,11 +788,6 @@ public final class CheckIndex implements Closeable {
           checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
         }
         msg(infoStream, "");
-
-        if (verbose) {
-          msg(infoStream, "detailed segment RAM usage: ");
-          msg(infoStream, Accountables.toString(reader));
-        }
 
       } catch (Throwable t) {
         if (failFast) {
@@ -1334,7 +1318,9 @@ public final class CheckIndex implements Closeable {
           long ord = -1;
           try {
             ord = termsEnum.ord();
-          } catch (UnsupportedOperationException uoe) {
+          } catch (
+              @SuppressWarnings("unused")
+              UnsupportedOperationException uoe) {
             hasOrd = false;
           }
 

@@ -254,7 +254,9 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
         try {
           Files.createDirectory(f);
           success = true;
-        } catch (IOException ignore) {
+        } catch (
+            @SuppressWarnings("unused")
+            IOException ignore) {
         }
       } while (!success);
 
@@ -281,7 +283,9 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
       try {
         Files.createDirectory(f);
         success = true;
-      } catch (IOException ignore) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException ignore) {
       }
     } while (!success);
 
@@ -306,7 +310,9 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
       try {
         Files.createFile(f);
         success = true;
-      } catch (IOException ignore) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException ignore) {
       }
     } while (!success);
 

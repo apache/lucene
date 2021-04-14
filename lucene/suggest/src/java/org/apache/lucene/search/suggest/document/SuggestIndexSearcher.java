@@ -69,7 +69,9 @@ public class SuggestIndexSearcher extends IndexSearcher {
       if (scorer != null) {
         try {
           scorer.score(collector.getLeafCollector(context), context.reader().getLiveDocs());
-        } catch (CollectionTerminatedException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            CollectionTerminatedException e) {
           // collection was terminated prematurely
           // continue with the following leaf
         }

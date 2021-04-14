@@ -495,7 +495,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (SecurityException ignored) {
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException ignored) {
     }
     BULK_MERGE_ENABLED = v;
   }
@@ -648,6 +650,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
 
         // since we bulk merged all chunks, we inherit any dirty ones from this segment.
+        numChunks += matchingFieldsReader.getNumChunks();
         numDirtyChunks += matchingFieldsReader.getNumDirtyChunks();
         numDirtyDocs += matchingFieldsReader.getNumDirtyDocs();
       } else {

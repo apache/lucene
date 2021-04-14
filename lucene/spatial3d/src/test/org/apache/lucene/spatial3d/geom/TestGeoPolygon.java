@@ -659,13 +659,11 @@ public class TestGeoPolygon extends LuceneTestCase {
     points.add(new GeoPoint(-0.1699323603224724, 0.8516746480592872, 0.4963385521664198));
     points.add(new GeoPoint(0.2654788898359613, 0.7380222309164597, 0.6200740473100581));
 
-    boolean illegalArgumentException = false;
-    try {
-      GeoPolygonFactory.makeGeoPolygon(PlanetModel.WGS84, points, null);
-    } catch (IllegalArgumentException e) {
-      illegalArgumentException = true;
-    }
-    assertTrue(illegalArgumentException);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          GeoPolygonFactory.makeGeoPolygon(PlanetModel.WGS84, points, null);
+        });
   }
 
   @Test
@@ -692,13 +690,11 @@ public class TestGeoPolygon extends LuceneTestCase {
     points.add(new GeoPoint(PlanetModel.WGS84, 0.4654236264787552, 1.3013260557429494));
     points.add(new GeoPoint(PlanetModel.WGS84, -1.2964641581620537, -1.487600369139357));
 
-    boolean illegalArgumentException = false;
-    try {
-      GeoPolygonFactory.makeGeoPolygon(PlanetModel.WGS84, points, null);
-    } catch (IllegalArgumentException e) {
-      illegalArgumentException = true;
-    }
-    assertTrue(illegalArgumentException);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          GeoPolygonFactory.makeGeoPolygon(PlanetModel.WGS84, points, null);
+        });
   }
 
   @Test
@@ -1030,15 +1026,11 @@ public class TestGeoPolygon extends LuceneTestCase {
     final BitSet poly2Bitset = new BitSet();
     poly2Bitset.set(1);
 
-    boolean result;
-    try {
-      new GeoConvexPolygon(PlanetModel.WGS84, poly2List);
-      result = true;
-    } catch (IllegalArgumentException e) {
-      result = false;
-    }
-
-    assertTrue(!result);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new GeoConvexPolygon(PlanetModel.WGS84, poly2List);
+        });
   }
 
   @Test

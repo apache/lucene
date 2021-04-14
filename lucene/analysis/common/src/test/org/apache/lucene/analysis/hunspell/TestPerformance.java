@@ -187,7 +187,9 @@ public class TestPerformance extends LuceneTestCase {
     long start = System.nanoTime();
     try {
       speller.suggest(word);
-    } catch (SuggestionTimeoutException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        SuggestionTimeoutException e) {
       System.out.println("Timeout happened for " + word + ", skipping");
       return false;
     }

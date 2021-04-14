@@ -51,7 +51,7 @@ public final class OverviewImpl extends LukeModel implements Overview {
     try {
       this.termCounts = new TermCounts(reader);
     } catch (IOException e) {
-      throw new LukeException("An error occurred when collecting term statistics.");
+      throw new LukeException("An error occurred when collecting term statistics.", e);
     }
     this.topTerms = new TopTerms(reader);
   }

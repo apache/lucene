@@ -19,14 +19,13 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.util.Accountable;
 
 /**
  * Abstract API that produces terms, doc, freq, prox, offset and payloads postings.
  *
  * @lucene.experimental
  */
-public abstract class FieldsProducer extends Fields implements Closeable, Accountable {
+public abstract class FieldsProducer extends Fields implements Closeable {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected FieldsProducer() {}
 

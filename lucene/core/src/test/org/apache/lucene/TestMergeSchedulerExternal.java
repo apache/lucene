@@ -135,7 +135,9 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
 
     try {
       ((MyMergeScheduler) writer.getConfig().getMergeScheduler()).sync();
-    } catch (IllegalStateException ise) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
       // OK
     }
     writer.rollback();

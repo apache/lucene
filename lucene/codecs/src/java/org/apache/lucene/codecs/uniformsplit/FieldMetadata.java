@@ -26,10 +26,8 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * Metadata and stats for one field in the index.
@@ -38,10 +36,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * @lucene.experimental
  */
-public class FieldMetadata implements Accountable {
-
-  private static final long BASE_RAM_USAGE =
-      RamUsageEstimator.shallowSizeOfInstance(FieldMetadata.class);
+public class FieldMetadata {
 
   protected final FieldInfo fieldInfo;
   protected final boolean isMutable;
@@ -184,11 +179,6 @@ public class FieldMetadata implements Accountable {
 
   public BytesRef getLastTerm() {
     return lastTerm;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_USAGE + (docsSeen == null ? 0 : docsSeen.ramBytesUsed());
   }
 
   /** Reads/writes field metadata. */

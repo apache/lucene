@@ -766,7 +766,7 @@ public final class JavascriptCompiler {
       type = MethodHandles.publicLookup().unreflect(method).type();
     } catch (IllegalAccessException iae) {
       throw new IllegalArgumentException(
-          method + " is not accessible (declaring class or method not public).");
+          method + " is not accessible (declaring class or method not public).", iae);
     }
     // do some checks if the signature is "compatible":
     if (!Modifier.isStatic(method.getModifiers())) {
@@ -791,7 +791,9 @@ public final class JavascriptCompiler {
     try {
       final Class<?> clazz = method.getDeclaringClass();
       ok = Class.forName(clazz.getName(), false, parent) == clazz;
-    } catch (ClassNotFoundException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        ClassNotFoundException e) {
       ok = false;
     }
     if (!ok) {

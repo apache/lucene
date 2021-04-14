@@ -197,10 +197,5 @@ class CrankyPointsFormat extends PointsFormat {
         throw new IOException("Fake IOException");
       }
     }
-
-    @Override
-    public long ramBytesUsed() {
-      return delegate.ramBytesUsed();
-    }
   }
 }

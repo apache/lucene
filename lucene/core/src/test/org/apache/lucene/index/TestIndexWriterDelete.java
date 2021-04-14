@@ -945,7 +945,9 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     try {
       modifier.commit();
       writerClosed = false;
-    } catch (IllegalStateException ise) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
       // The above exc struck during merge, and closed the writer
       writerClosed = true;
     }

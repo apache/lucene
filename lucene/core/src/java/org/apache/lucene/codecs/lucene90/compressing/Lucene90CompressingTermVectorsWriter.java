@@ -786,7 +786,9 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (SecurityException ignored) {
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException ignored) {
     }
     BULK_MERGE_ENABLED = v;
   }
@@ -891,6 +893,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         }
 
         // since we bulk merged all chunks, we inherit any dirty ones from this segment.
+        numChunks += matchingVectorsReader.getNumChunks();
         numDirtyChunks += matchingVectorsReader.getNumDirtyChunks();
         numDirtyDocs += matchingVectorsReader.getNumDirtyDocs();
       } else {

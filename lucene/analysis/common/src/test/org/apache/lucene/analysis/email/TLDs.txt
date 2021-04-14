@@ -1,4 +1,4 @@
-# Generated from IANA Root Zone Database (gradlew generateTlds).aaa
+# Generated from IANA TLD Database (gradlew generateTlds).aaa
 aarp
 abarth
 abb

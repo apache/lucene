@@ -145,7 +145,7 @@ public class ReplicationService {
     try {
       action = ReplicationAction.valueOf(pathElements[ACTION_IDX].toUpperCase(Locale.ENGLISH));
     } catch (IllegalArgumentException e) {
-      throw new ServletException("Unsupported action provided: " + pathElements[ACTION_IDX]);
+      throw new ServletException("Unsupported action provided: " + pathElements[ACTION_IDX], e);
     }
 
     final Replicator replicator = replicators.get(pathElements[SHARD_IDX]);

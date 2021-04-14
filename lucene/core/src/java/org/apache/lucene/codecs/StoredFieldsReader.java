@@ -19,7 +19,6 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.util.Accountable;
 
 /**
  * Codec API for reading stored fields.
@@ -30,7 +29,7 @@ import org.apache.lucene.util.Accountable;
  *
  * @lucene.experimental
  */
-public abstract class StoredFieldsReader implements Cloneable, Closeable, Accountable {
+public abstract class StoredFieldsReader implements Cloneable, Closeable {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected StoredFieldsReader() {}
 

@@ -139,11 +139,6 @@ public class Lucene86PointsReader extends PointsReader {
   }
 
   @Override
-  public long ramBytesUsed() {
-    return 0L;
-  }
-
-  @Override
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(indexIn);
     CodecUtil.checksumEntireFile(dataIn);

@@ -157,7 +157,9 @@ public class IndexFiles {
                 throws IOException {
               try {
                 indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
-              } catch (IOException ignore) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  IOException ignore) {
                 // don't index files that can't be read.
               }
               return FileVisitResult.CONTINUE;

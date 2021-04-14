@@ -58,7 +58,9 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
         try {
           // Sleep for 100ms before each .next() call.
           Thread.sleep(100);
-        } catch (InterruptedException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            InterruptedException e) {
         }
         return in.next();
       }

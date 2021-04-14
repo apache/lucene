@@ -86,7 +86,9 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     if (indexProperty != null) {
       try {
         index = Boolean.valueOf(indexProperty);
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // ignore
       }
     }
@@ -95,7 +97,9 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     if (splitProperty != null) {
       try {
         split = Boolean.valueOf(splitProperty);
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // ignore
       }
     }
@@ -438,7 +442,9 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
         }
       }
       return new NewsPost(body.toString(), subject, groupName);
-    } catch (Throwable e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Throwable e) {
       return null;
     }
   }

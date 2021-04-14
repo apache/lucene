@@ -297,7 +297,7 @@ public abstract class DataInput implements Cloneable {
     try {
       return (DataInput) super.clone();
     } catch (CloneNotSupportedException e) {
-      throw new Error("This cannot happen: Failing to clone DataInput");
+      throw new Error("This cannot happen: Failing to clone DataInput", e);
     }
   }
 

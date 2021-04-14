@@ -95,7 +95,9 @@ public class NumericUtils {
     try {
       // try parse to long
       return Long.parseLong(value.trim());
-    } catch (NumberFormatException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        NumberFormatException e) {
       // try parse to double
       double dvalue = Double.parseDouble(value.trim());
       return org.apache.lucene.util.NumericUtils.doubleToSortableLong(dvalue);

@@ -19,14 +19,13 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.util.Accountable;
 
 /**
  * Abstract API to visit point values.
  *
  * @lucene.experimental
  */
-public abstract class PointsReader implements Closeable, Accountable {
+public abstract class PointsReader implements Closeable {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected PointsReader() {}

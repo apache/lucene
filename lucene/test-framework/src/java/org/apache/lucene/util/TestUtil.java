@@ -70,7 +70,6 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -82,7 +81,6 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.SlowCodecReaderWrapper;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -181,7 +179,9 @@ public final class TestUtil {
         try {
           iterator.remove();
           throw new AssertionError("broken iterator (supports remove): " + iterator);
-        } catch (UnsupportedOperationException expected) {
+        } catch (
+            @SuppressWarnings("unused")
+            UnsupportedOperationException expected) {
           // ok
         }
       }
@@ -190,7 +190,9 @@ public final class TestUtil {
     try {
       iterator.next();
       throw new AssertionError("broken iterator (allows next() when hasNext==false) " + iterator);
-    } catch (NoSuchElementException expected) {
+    } catch (
+        @SuppressWarnings("unused")
+        NoSuchElementException expected) {
       // ok
     }
   }
@@ -212,14 +214,18 @@ public final class TestUtil {
       try {
         iterator.remove();
         throw new AssertionError("broken iterator (supports remove): " + iterator);
-      } catch (UnsupportedOperationException expected) {
+      } catch (
+          @SuppressWarnings("unused")
+          UnsupportedOperationException expected) {
         // ok
       }
     }
     try {
       iterator.next();
       throw new AssertionError("broken iterator (allows next() when hasNext==false) " + iterator);
-    } catch (NoSuchElementException expected) {
+    } catch (
+        @SuppressWarnings("unused")
+        NoSuchElementException expected) {
       // ok
     }
   }
@@ -249,7 +255,9 @@ public final class TestUtil {
       try {
         coll.remove(coll.iterator().next());
         throw new AssertionError("broken collection (supports remove): " + coll);
-      } catch (UnsupportedOperationException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          UnsupportedOperationException e) {
         // ok
       }
     }
@@ -257,14 +265,18 @@ public final class TestUtil {
     try {
       coll.add(null);
       throw new AssertionError("broken collection (supports add): " + coll);
-    } catch (UnsupportedOperationException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        UnsupportedOperationException e) {
       // ok
     }
 
     try {
       coll.addAll(Collections.singleton(null));
       throw new AssertionError("broken collection (supports addAll): " + coll);
-    } catch (UnsupportedOperationException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        UnsupportedOperationException e) {
       // ok
     }
 
@@ -359,16 +371,6 @@ public final class TestUtil {
 
     if (LuceneTestCase.INFOSTREAM) {
       System.out.println(bos.toString(IOUtils.UTF_8));
-    }
-
-    LeafReader unwrapped = FilterLeafReader.unwrap(reader);
-    if (unwrapped instanceof SegmentReader) {
-      SegmentReader sr = (SegmentReader) unwrapped;
-      long bytesUsed = sr.ramBytesUsed();
-      if (sr.ramBytesUsed() < 0) {
-        throw new IllegalStateException("invalid ramBytesUsed for reader: " + bytesUsed);
-      }
-      assert Accountables.toString(sr) != null;
     }
 
     // FieldInfos should be cached at the reader and always return the same instance
@@ -1515,7 +1517,9 @@ public final class TestUtil {
         // ignore bugs in Sun's regex impl
         try {
           replacement = p.matcher(nonBmpString).replaceAll("_");
-        } catch (StringIndexOutOfBoundsException jdkBug) {
+        } catch (
+            @SuppressWarnings("unused")
+            StringIndexOutOfBoundsException jdkBug) {
           System.out.println("WARNING: your jdk is buggy!");
           System.out.println(
               "Pattern.compile(\""
@@ -1527,7 +1531,9 @@ public final class TestUtil {
         if (replacement != null && UnicodeUtil.validUTF16String(replacement)) {
           return p;
         }
-      } catch (PatternSyntaxException ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          PatternSyntaxException ignored) {
         // Loop trying until we hit something that compiles.
       }
     }
@@ -1617,7 +1623,7 @@ public final class TestUtil {
     } else {
       try {
         return br.utf8ToString() + " " + br.toString();
-      } catch (AssertionError | IllegalArgumentException t) {
+      } catch (@SuppressWarnings("unused") AssertionError | IllegalArgumentException t) {
         // If BytesRef isn't actually UTF8, or it's eg a
         // prefix of UTF8 that ends mid-unicode-char, we
         // fallback to hex:

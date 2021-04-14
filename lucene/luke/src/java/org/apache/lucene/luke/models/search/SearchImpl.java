@@ -261,7 +261,7 @@ public final class SearchImpl extends LukeModel implements Search {
     try {
       return mlt.like(docid);
     } catch (IOException e) {
-      throw new LukeException("Failed to create MLT query for doc: " + docid);
+      throw new LukeException("Failed to create MLT query for doc: " + docid, e);
     }
   }
 

@@ -20,7 +20,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -43,11 +42,8 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.MergedIterator;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * Enables per field postings support.
@@ -282,9 +278,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
   private static class FieldsReader extends FieldsProducer {
 
-    private static final long BASE_RAM_BYTES_USED =
-        RamUsageEstimator.shallowSizeOfInstance(FieldsReader.class);
-
     private final Map<String, FieldsProducer> fields = new TreeMap<>();
     private final Map<String, FieldsProducer> formats = new HashMap<>();
     private final String segment;
@@ -366,22 +359,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     @Override
     public void close() throws IOException {
       IOUtils.close(formats.values());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long ramBytesUsed = BASE_RAM_BYTES_USED;
-      ramBytesUsed += fields.size() * 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-      ramBytesUsed += formats.size() * 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-      for (Map.Entry<String, FieldsProducer> entry : formats.entrySet()) {
-        ramBytesUsed += entry.getValue().ramBytesUsed();
-      }
-      return ramBytesUsed;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      return Accountables.namedAccountables("format", formats);
     }
 
     @Override

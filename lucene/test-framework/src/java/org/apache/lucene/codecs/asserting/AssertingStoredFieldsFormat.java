@@ -61,8 +61,6 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
       this.creationThread = Thread.currentThread();
       // do a few simple checks on init
       assert toString() != null;
-      assert ramBytesUsed() >= 0;
-      assert getChildResources() != null;
     }
 
     @Override
@@ -82,20 +80,6 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     public StoredFieldsReader clone() {
       assert merging == false : "Merge instances do not support cloning";
       return new AssertingStoredFieldsReader(in.clone(), maxDoc, false);
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long v = in.ramBytesUsed();
-      assert v >= 0;
-      return v;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      Collection<Accountable> res = in.getChildResources();
-      TestUtil.checkReadOnly(res);
-      return res;
     }
 
     @Override

@@ -299,7 +299,9 @@ public class TestDeletionPolicy extends LuceneTestCase {
                 + (lastDeleteTime - modTime)
                 + " msec) but did not get deleted ",
             lastDeleteTime - modTime <= leeway);
-      } catch (IOException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException e) {
         // OK
         break;
       }

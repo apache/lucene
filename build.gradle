@@ -89,6 +89,15 @@ ext {
   }
 }
 
+configurations {
+  groovy
+}
+
+dependencies {
+  // Use a newer groovy that doesn't have illegal reflective accesses.
+  groovy "org.codehaus.groovy:groovy-all:3.0.7"
+}
+
 apply from: file('buildSrc/scriptDepVersions.gradle')
 
 // Include smaller chunks configuring dedicated build areas.
@@ -142,7 +151,6 @@ apply from: file('gradle/generation/kuromoji.gradle')
 apply from: file('gradle/generation/nori.gradle')
 apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
-apply from: file('gradle/generation/unicode-data.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
 
