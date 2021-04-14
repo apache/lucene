@@ -147,6 +147,9 @@ public final class ConcatenateGraphFilter extends TokenStream {
     super.reset();
     // we only capture this if we really need it to save the UTF-8 to UTF-16 conversion
     charTermAttribute = getAttribute(CharTermAttribute.class); // may return null
+    // make sure the TermToBytesRefAttribute attribute is implemented by our class, not via
+    // CharTermAttribute's
+    assert getAttribute(TermToBytesRefAttribute.class) instanceof BytesRefBuilderTermAttributeImpl;
     wasReset = true;
   }
 
@@ -347,8 +350,9 @@ public final class ConcatenateGraphFilter extends TokenStream {
    *
    * @lucene.internal
    */
+  @SuppressWarnings("unused") // do not warn/error on redundant interface
   public static final class BytesRefBuilderTermAttributeImpl extends AttributeImpl
-      implements BytesRefBuilderTermAttribute, TermToBytesRefAttribute {
+      implements BytesRefBuilderTermAttribute, TermToBytesRefAttribute /*required*/ {
     private final BytesRefBuilder bytes = new BytesRefBuilder();
     private transient CharsRefBuilder charsRef;
 

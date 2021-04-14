@@ -69,7 +69,9 @@ class SliceExecutor {
         executor.execute(task);
 
         return;
-      } catch (RejectedExecutionException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          RejectedExecutionException e) {
         // Execute on caller thread
       }
     }

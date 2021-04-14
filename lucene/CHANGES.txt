@@ -16,6 +16,9 @@ New Features
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
+* LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
+  (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
@@ -95,13 +98,18 @@ API Changes
 * LUCENE-9796: SortedDocValues no longer extends BinaryDocValues, as binaryValue() was not performant.
   See MIGRATE.md for details. (Robert Muir)
 
+* LUCENE-9853: JapaneseAnalyzer should use CJKWidthCharFilter for full-width and half-width character normalization.
+  (Tomoko Uchida)
+
+* LUCENE-9387: Removed CodecReader#ramBytesUsed. (Adrien Grand)
+
 * LUCENE-9334: Require consistency between data-structures on a per-field basis.
   A field across all documents within an index must be indexed with the same index
   options and data-structures. As a consequence of this, doc values updates are
   only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
   Adrien Grand, Simon Willnauer)
 
-=======
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
@@ -206,13 +214,18 @@ Improvements
 * LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
   (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
 
+* LUCENE-9898: Removes no longer used scorePayload method from BM25Similarity
+  (Pieter van Boxtel)
+
+* LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
+
 Bug fixes
 
 
-* LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen, 
+* LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
   Julie Tibshirani)
 
-* LUCENE-8663: NRTCachingDirectory.slowFileExists may open a file while 
+* LUCENE-8663: NRTCachingDirectory.slowFileExists may open a file while
   it's inaccessible. (Dawid Weiss)
 
 * LUCENE-9117: RamUsageEstimator hangs with AOT compilation. Removed any attempt to
@@ -227,17 +240,20 @@ Bug fixes
 * LUCENE-9365: FuzzyQuery was missing matches when prefix length was equal to the term length
   (Mark Harwood, Mike Drob)
 
-* LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon 
-  splitting. (Ignacio Vera)  
+* LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon
+  splitting. (Ignacio Vera)
 
 Changes in Backwards Compatibility Policy
+
+* LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
+  level domains. This may change the token sequence compared to previous Lucene versions. (Dawid Weiss)
 
 * LUCENE-9669: DirectoryReader#open now accepts an argument to open indices created with versions
   older than N-1. Lucene now can open indices created with a major version of N-2 in read-only mode.
   Opening an index created with a major version of N-2 with an IndexWriter is not supported.
   Further does lucene only support file-format compatibilty which enables reading of old indices while
-  semantic changes like analysis or certain encoding on top of the file format are only supported on 
-  a best effort basis. (Simon Willnauer)  
+  semantic changes like analysis or certain encoding on top of the file format are only supported on
+  a best effort basis. (Simon Willnauer)
 
 Other
 
@@ -246,8 +262,6 @@ Other
   Bruno Roustant, Dawid Weiss)
 
 * LUCENE-9631: Properly override slice() on subclasses of OffsetRange. (Dawid Weiss)
-
-* LUCENE-9312: Allow gradle builds against arbitrary JVMs. (Tomoko Uchida, Dawid Weiss)
 
 * LUCENE-9391: Upgrade HPPC to 0.8.2. (Haoyu Zhai)
 
@@ -266,7 +280,7 @@ Other
 * LUCENE-9411: Fail complation on warnings, 9x gradle-only (Erick Erickson, Dawid Weiss)
   Deserves mention here as well as Lucene CHANGES.txt since it affects both.
 
-* LUCENE-9433: Remove Ant support from trunk (Erick Erickson, Uwe Schindler et.al.)
+* LUCENE-9077 LUCENE-9433: Support Gradle build, remove Ant support from trunk (Dawid Weiss, Erick Erickson, Uwe Schindler et.al.)
 
 * LUCENE-9215: Replace checkJavaDocs.py with doclet (Robert Muir, Dawid Weiss, Uwe Schindler)
 
@@ -281,28 +295,39 @@ Other
 
 * LUCENE-9822: Add assertion to PFOR exception encoding, documenting the BLOCK_SIZE assumption. (Greg Miller)
 
+* LUCENE-9883: Turn on ecj missingEnumCaseDespiteDefault setting. (Zach Chen)
+ 
+* LUCENE-9705: Make new versions of all index formats for the Lucene90 codec and move 
+  the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)  
+
 ======================= Lucene 8.9.0 =======================
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
+  Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
+  Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
 
 New Features
 ---------------------
 
-* LUCENE-9537:  Added smoothingScore method and default implementation to 
-  Scorable abstract class.  The smoothing score allows scorers to calculate a 
-  score for a document where the search term or subquery is not present.  The 
-  smoothing score acts like an idf so that documents that do not have terms or 
-  subqueries that are more frequent in the index are not penalized as much as 
-  documents that do not have less frequent terms or subqueries and prevents 
-  scores which are the product or terms or subqueries from going to zero. Added 
-  the implementation of the Indri AND and the IndriDirichletSimilarity from the 
-  academic Indri search engine: http://www.lemurproject.org/indri.php. 
-  (Cameron VandenBerg)   
+* LUCENE-9537:  Added smoothingScore method and default implementation to
+  Scorable abstract class.  The smoothing score allows scorers to calculate a
+  score for a document where the search term or subquery is not present.  The
+  smoothing score acts like an idf so that documents that do not have terms or
+  subqueries that are more frequent in the index are not penalized as much as
+  documents that do not have less frequent terms or subqueries and prevents
+  scores which are the product or terms or subqueries from going to zero. Added
+  the implementation of the Indri AND and the IndriDirichletSimilarity from the
+  academic Indri search engine: http://www.lemurproject.org/indri.php.
+  (Cameron VandenBerg)
 
 * LUCENE-9694: New tool for creating a deterministic index to enable benchmarking changes
   on a consistent multi-segment index even when they require re-indexing. (Haoyu Zhai)
+
+* LUCENE-9385: Add FacetsConfig option to control which drill-down
+  terms are indexed for a FacetLabel (Zachary Chen)
 
 Improvements
 ---------------------
@@ -313,6 +338,8 @@ Improvements
 * LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
   (Jaison Bi via Bruno Roustant)
 
+* LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
+
 Optimizations
 ---------------------
 (No changes)
@@ -320,16 +347,12 @@ Optimizations
 Bug Fixes
 ---------------------
 
-* LUCENE-9744: NPE on a degenerate query in MinimumShouldMatchIntervalsSource
-  $MinimumMatchesIterator.getSubMatches(). (Alan Woodward)
-
-* LUCENE-9762: DoubleValuesSource.fromQuery (also used by FunctionScoreQuery.boostByQuery) could
-  throw an exception when the query implements TwoPhaseIterator and when the score is requested
-  repeatedly. (David Smiley, hossman)
-
 * LUCENE-9791: BytesRefHash.equals/find is now thread safe, fixing a
   Luwak/Monitor bug causing registered queries to sometimes fail to
   match. (Paweł Bugalski)
+
+* LUCENE-9887: Fixed parameter use in RadixSelector.
+  (liupanfeng via Adrien Grand)
 
 Other
 ---------------------
@@ -343,7 +366,21 @@ Other
 
 * LUCENE-9836: Migrate Maven tasks to use "maven-resolver-ant-tasks"
   instead of the no longer maintained "maven-ant-tasks".  (Uwe Schindler)
-  
+
+======================= Lucene 8.8.2 =======================
+
+Bug Fixes
+---------------------
+
+* LUCENE-9870: Fix Circle2D intersectsLine t-value (distance) range clamp (Jørgen Nystad)
+
+* LUCENE-9744: NPE on a degenerate query in MinimumShouldMatchIntervalsSource
+  $MinimumMatchesIterator.getSubMatches(). (Alan Woodward)
+
+* LUCENE-9762: DoubleValuesSource.fromQuery (also used by FunctionScoreQuery.boostByQuery) could
+  throw an exception when the query implements TwoPhaseIterator and when the score is requested
+  repeatedly. (David Smiley, hossman)
+
 ======================= Lucene 8.8.1 =======================
 
 Bug Fixes
@@ -361,9 +398,9 @@ New Features
   the generated synonyms to copy some or all flags from the original token (Gus Heck).
 
 
-* LUCENE-9552: New LatLonPoint query that accepts an array of LatLonGeometries. (Ignacio Vera) 
+* LUCENE-9552: New LatLonPoint query that accepts an array of LatLonGeometries. (Ignacio Vera)
 
-* LUCENE-9641: LatLonPoint query support for spatial relationships. (Ignacio Vera) 
+* LUCENE-9641: LatLonPoint query support for spatial relationships. (Ignacio Vera)
 
 * LUCENE-9553: New XYPoint query that accepts an array of XYGeometries. (Ignacio Vera)
 
@@ -1354,8 +1391,6 @@ Other
 * LUCENE-8886: Fix TestMutablePointsReaderUtils tests. (Ignacio Vera)
 
 ======================= Lucene 8.1.1 =======================
-(No Changes)
-
 Improvements
 
 * LUCENE-8781: FST lookup performance has been improved in many cases by
@@ -10310,7 +10345,7 @@ Changes in backwards compatibility policy
     To prevent this slowdown, use oal.index.IndexUpgrader
     to upgrade your indexes to latest file format (LUCENE-3082).
 
-    Mixed flex/pre-flex indexes are perfectly fine -- the two
+  - Mixed flex/pre-flex indexes are perfectly fine -- the two
     emulation layers (flex API on pre-flex index, and pre-flex API on
     flex index) will remap the access as required.  So on upgrading to
     4.0 you can start indexing new documents into an existing index.

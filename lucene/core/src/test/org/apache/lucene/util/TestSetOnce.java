@@ -37,9 +37,13 @@ public class TestSetOnce extends LuceneTestCase {
         sleep(RAND.nextInt(10)); // sleep for a short time
         set.set(Integer.valueOf(getName().substring(2)));
         success = true;
-      } catch (InterruptedException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          InterruptedException e) {
         // ignore
-      } catch (RuntimeException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          RuntimeException e) {
         // TODO: change exception type
         // expected.
         success = false;

@@ -279,12 +279,16 @@ public class AnalyzerFactoryTask extends PerfTask {
                     createAnalysisPipelineComponent(stok, clazz);
                     expectedArgType = ArgType.TOKENFILTER;
                   } catch (IllegalArgumentException e2) {
-                    throw new RuntimeException(
-                        "Line #"
-                            + lineno(stok)
-                            + ": Can't find class '"
-                            + argName
-                            + "' as CharFilterFactory or TokenizerFactory");
+                    RuntimeException ex =
+                        new RuntimeException(
+                            "Line #"
+                                + lineno(stok)
+                                + ": Can't find class '"
+                                + argName
+                                + "' as CharFilterFactory or TokenizerFactory",
+                            e2);
+                    ex.addSuppressed(e);
+                    throw ex;
                   }
                 }
               } else { // expectedArgType = ArgType.TOKENFILTER
@@ -298,7 +302,8 @@ public class AnalyzerFactoryTask extends PerfTask {
                           + lineno(stok)
                           + ": Can't find class '"
                           + className
-                          + "' as TokenFilterFactory");
+                          + "' as TokenFilterFactory",
+                      e);
                 }
                 createAnalysisPipelineComponent(stok, clazz);
               }
@@ -483,13 +488,17 @@ public class AnalyzerFactoryTask extends PerfTask {
           // Second, retry lookup after prepending the Lucene analysis package prefix
           return Class.forName(LUCENE_ANALYSIS_PACKAGE_PREFIX + className).asSubclass(expectedType);
         } catch (ClassNotFoundException e1) {
-          throw new ClassNotFoundException(
-              "Can't find class '"
-                  + className
-                  + "' or '"
-                  + LUCENE_ANALYSIS_PACKAGE_PREFIX
-                  + className
-                  + "'");
+          ClassNotFoundException ex =
+              new ClassNotFoundException(
+                  "Can't find class '"
+                      + className
+                      + "' or '"
+                      + LUCENE_ANALYSIS_PACKAGE_PREFIX
+                      + className
+                      + "'",
+                  e1);
+          ex.addSuppressed(e);
+          throw ex;
         }
       }
     }

@@ -113,12 +113,10 @@ class GeoComplexPolygon extends GeoBasePolygon {
         }
         if (lastEdge != null) {
           lastEdge.next = edge;
-          edge.previous = lastEdge;
         }
         lastEdge = edge;
         lastGeoPoint = thisGeoPoint;
       }
-      firstEdge.previous = lastEdge;
       lastEdge.next = firstEdge;
       shapeStartEdges[edgePointIndex] = firstEdge;
       edgePointIndex++;
@@ -750,7 +748,9 @@ class GeoComplexPolygon extends GeoBasePolygon {
       for (final TraversalStrategy ts : traversalStrategies) {
         try {
           return ts.apply(testPoint, testPointInSet, x, y, z);
-        } catch (IllegalArgumentException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalArgumentException e) {
           // Continue
         }
       }
@@ -897,7 +897,9 @@ class GeoComplexPolygon extends GeoBasePolygon {
       // System.out.println(" creating sector linear crossing edge iterator");
       return new SectorLinearCrossingEdgeIterator(
           testPoint, plane, abovePlane, belowPlane, thePointX, thePointY, thePointZ);
-    } catch (IllegalArgumentException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalArgumentException e) {
       // Assume we failed because we could not construct bounding planes, so do it another way.
       // System.out.println(" create full linear crossing edge iterator");
       return new FullLinearCrossingEdgeIterator(
@@ -920,7 +922,6 @@ class GeoComplexPolygon extends GeoBasePolygon {
     public final SidedPlane backingPlane;
     public final Plane plane;
     public final XYZBounds planeBounds;
-    public Edge previous = null;
     public Edge next = null;
 
     public Edge(final PlanetModel pm, final GeoPoint startPoint, final GeoPoint endPoint) {
@@ -1060,7 +1061,9 @@ class GeoComplexPolygon extends GeoBasePolygon {
 
         // System.out.println(" Check point in set? " + rval);
         return rval;
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
         // Intersection point apparently was on edge, so try another strategy
         // System.out.println(" Trying dual crossing edge iterator");
         final CountingEdgeIterator edgeIterator =
@@ -1190,8 +1193,6 @@ class GeoComplexPolygon extends GeoBasePolygon {
   private abstract static class Tree {
     private final Node rootNode;
 
-    protected static final Edge[] EMPTY_ARRAY = new Edge[0];
-
     /**
      * Constructor.
      *
@@ -1283,7 +1284,6 @@ class GeoComplexPolygon extends GeoBasePolygon {
 
   /** This is the z-tree. */
   private static class ZTree extends Tree {
-    public Node rootNode = null;
 
     public ZTree(final List<Edge> allEdges) {
       super(allEdges);
@@ -1444,7 +1444,6 @@ class GeoComplexPolygon extends GeoBasePolygon {
   /** Count the number of verifiable edge crossings for a full 1/2 a world. */
   private class FullLinearCrossingEdgeIterator implements CountingEdgeIterator {
 
-    private final GeoPoint testPoint;
     private final Plane plane;
     private final Plane abovePlane;
     private final Plane belowPlane;
@@ -1468,7 +1467,6 @@ class GeoComplexPolygon extends GeoBasePolygon {
       assert plane.evaluateIsZero(thePointX, thePointY, thePointZ)
           : "Check point is not on travel plane";
       assert plane.evaluateIsZero(testPoint) : "Test point is not on travel plane";
-      this.testPoint = testPoint;
       this.plane = plane;
       this.abovePlane = abovePlane;
       this.belowPlane = belowPlane;
@@ -1573,7 +1571,6 @@ class GeoComplexPolygon extends GeoBasePolygon {
   /** Count the number of verifiable edge crossings for less than 1/2 a world. */
   private class SectorLinearCrossingEdgeIterator implements CountingEdgeIterator {
 
-    private final GeoPoint testPoint;
     private final Plane plane;
     private final Plane abovePlane;
     private final Plane belowPlane;
@@ -1598,7 +1595,6 @@ class GeoComplexPolygon extends GeoBasePolygon {
       assert plane.evaluateIsZero(thePointX, thePointY, thePointZ)
           : "Check point is not on travel plane";
       assert plane.evaluateIsZero(testPoint) : "Test point is not on travel plane";
-      this.testPoint = testPoint;
       this.plane = plane;
       this.abovePlane = abovePlane;
       this.belowPlane = belowPlane;

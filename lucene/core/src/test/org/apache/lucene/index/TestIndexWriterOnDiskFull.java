@@ -107,7 +107,9 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               dir.setMaxSizeInBytes(0);
               try {
                 writer.close();
-              } catch (AlreadyClosedException ace) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  AlreadyClosedException ace) {
                 // OK
               }
             }
@@ -158,9 +160,6 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
     // them, the merged result can easily be larger than the
     // sum because the merged FST may use array encoding for
     // some arcs (which uses more space):
-
-    final String idFormat = TestUtil.getPostingsFormat("id");
-    final String contentFormat = TestUtil.getPostingsFormat("content");
 
     int START_COUNT = 57;
     int NUM_DIR = TEST_NIGHTLY ? 50 : 5;

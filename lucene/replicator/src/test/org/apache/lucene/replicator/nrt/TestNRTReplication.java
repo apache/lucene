@@ -125,7 +125,6 @@ public class TestNRTReplication extends LuceneTestCase {
     long initCommitVersion = -1;
     long initInfosVersion = -1;
     Pattern logTimeStart = Pattern.compile("^[0-9\\.]+s .*");
-    boolean sawExistingSegmentsFile = false;
 
     while (true) {
       String l = r.readLine();
@@ -159,7 +158,6 @@ public class TestNRTReplication extends LuceneTestCase {
       } else if (l.startsWith("NODE STARTED")) {
         break;
       } else if (l.contains("replica cannot start: existing segments file=")) {
-        sawExistingSegmentsFile = true;
       }
     }
 

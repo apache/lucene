@@ -36,6 +36,7 @@ public class STUniformSplitRot13PostingsFormat extends UniformSplitRot13Postings
     super("STUniformSplitRot13", false);
   }
 
+  @Override
   protected FieldsConsumer createFieldsConsumer(
       SegmentWriteState segmentWriteState, PostingsWriterBase postingsWriter) throws IOException {
     return new STUniformSplitTermsWriter(
@@ -61,6 +62,7 @@ public class STUniformSplitRot13PostingsFormat extends UniformSplitRot13Postings
     };
   }
 
+  @Override
   protected FieldsProducer createFieldsProducer(
       SegmentReadState segmentReadState, PostingsReaderBase postingsReader) throws IOException {
     return new STUniformSplitTermsReader(

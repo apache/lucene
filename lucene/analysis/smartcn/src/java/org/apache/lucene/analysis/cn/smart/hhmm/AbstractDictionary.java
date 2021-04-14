@@ -86,7 +86,9 @@ abstract class AbstractDictionary {
     try {
       String cchar = new String(buffer, "GB2312");
       return cchar;
-    } catch (UnsupportedEncodingException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        UnsupportedEncodingException e) {
       return "";
     }
   }

@@ -38,13 +38,14 @@ public class TestOrdinalMap extends LuceneTestCase {
     try {
       ORDINAL_MAP_OWNER_FIELD = OrdinalMap.class.getDeclaredField("owner");
     } catch (Exception e) {
-      throw new Error();
+      throw new Error(e);
     }
   }
 
   private static final RamUsageTester.Accumulator ORDINAL_MAP_ACCUMULATOR =
       new RamUsageTester.Accumulator() {
 
+        @Override
         public long accumulateObject(
             Object o,
             long shallowSize,

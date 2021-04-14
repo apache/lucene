@@ -165,7 +165,9 @@ public class TestIndexAndTaxonomyReplicationClient extends ReplicatorTestCase {
         } finally {
           reader.close();
         }
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // we can hit IndexNotFoundException or e.g. EOFException (on
         // segments_N) because it is being copied at the same time it is read by
         // DirectoryReader.open().
@@ -419,14 +421,13 @@ public class TestIndexAndTaxonomyReplicationClient extends ReplicatorTestCase {
                 // verify taxonomy index is fully consistent (since we only add one
                 // category to all documents, there's nothing much more to validate.
                 ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
-                CheckIndex.Status indexStatus = null;
 
                 try (CheckIndex checker = new CheckIndex(handlerTaxoDir.getDelegate())) {
                   checker.setFailFast(true);
                   checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8), false);
                   try {
-                    indexStatus = checker.checkIndex(null);
-                  } catch (IOException | RuntimeException ioe) {
+                    checker.checkIndex(null);
+                  } catch (@SuppressWarnings("unused") IOException | RuntimeException ioe) {
                     // ok: we fallback below
                   }
                 }

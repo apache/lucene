@@ -86,7 +86,9 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     if (indexProperty != null) {
       try {
         index = Boolean.valueOf(indexProperty);
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // ignore
       }
     }
@@ -95,7 +97,9 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     if (splitProperty != null) {
       try {
         split = Boolean.valueOf(splitProperty);
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // ignore
       }
     }
@@ -437,8 +441,10 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
           }
         }
       }
-      return new NewsPost(body.toString(), subject, groupName, number);
-    } catch (Throwable e) {
+      return new NewsPost(body.toString(), subject, groupName);
+    } catch (
+        @SuppressWarnings("unused")
+        Throwable e) {
       return null;
     }
   }
@@ -447,13 +453,11 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     private final String body;
     private final String subject;
     private final String group;
-    private final String number;
 
-    private NewsPost(String body, String subject, String group, String number) {
+    private NewsPost(String body, String subject, String group) {
       this.body = body;
       this.subject = subject;
       this.group = group;
-      this.number = number;
     }
 
     public String getBody() {
@@ -466,10 +470,6 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
 
     public String getGroup() {
       return group;
-    }
-
-    public String getNumber() {
-      return number;
     }
   }
 }

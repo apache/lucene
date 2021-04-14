@@ -54,7 +54,6 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
   private static class IndexerThread extends Thread {
 
     private final CyclicBarrier syncStart;
-    boolean diskFull;
     Throwable error;
     IndexWriter writer;
     boolean noErrors;
@@ -100,7 +99,6 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
           // ioe.printStackTrace(System.out);
           if (ioe.getMessage().startsWith("fake disk full at")
               || ioe.getMessage().equals("now failing on purpose")) {
-            diskFull = true;
             try {
               Thread.sleep(1);
             } catch (InterruptedException ie) {
@@ -116,7 +114,9 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
             }
             break;
           }
-        } catch (AlreadyClosedException ace) {
+        } catch (
+            @SuppressWarnings("unused")
+            AlreadyClosedException ace) {
           // OK: abort closes the writer
           break;
         } catch (Throwable t) {
@@ -174,7 +174,9 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       dir.setMaxSizeInBytes(0);
       try {
         writer.commit();
-      } catch (AlreadyClosedException ace) {
+      } catch (
+          @SuppressWarnings("unused")
+          AlreadyClosedException ace) {
         // OK: abort closes the writer
         assertTrue(writer.isDeleterClosed());
       } finally {
@@ -304,10 +306,14 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
         writer.commit();
         writer.close();
         success = true;
-      } catch (AlreadyClosedException ace) {
+      } catch (
+          @SuppressWarnings("unused")
+          AlreadyClosedException ace) {
         // OK: abort closes the writer
         assertTrue(writer.isDeleterClosed());
-      } catch (IOException ioe) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException ioe) {
         writer.rollback();
         failure.clearDoFail();
       }
@@ -604,7 +610,9 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
                           writerRef.get().prepareCommit();
                         }
                         writerRef.get().commit();
-                      } catch (AlreadyClosedException | NullPointerException ace) {
+                      } catch (@SuppressWarnings("unused")
+                          AlreadyClosedException
+                          | NullPointerException ace) {
                         // ok
                       } finally {
                         commitLock.unlock();
@@ -617,7 +625,10 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
                       }
                       try {
                         writerRef.get().addDocument(docs.nextDoc());
-                      } catch (AlreadyClosedException | NullPointerException | AssertionError ace) {
+                      } catch (@SuppressWarnings("unused")
+                          AlreadyClosedException
+                          | NullPointerException
+                          | AssertionError ace) {
                         // ok
                       }
                       break;

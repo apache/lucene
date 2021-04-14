@@ -983,6 +983,7 @@ final class IndexingChain implements Accountable {
         ((SortedSetDocValuesWriter) fp.docValuesWriter).addValue(docID, field.binaryValue());
         break;
 
+      case NONE:
       default:
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }
@@ -1205,7 +1206,7 @@ final class IndexingChain implements Accountable {
                 Math.addExact(invertState.length, invertState.termFreqAttribute.getTermFrequency());
           } catch (ArithmeticException ae) {
             throw new IllegalArgumentException(
-                "too many tokens for field \"" + field.name() + "\"");
+                "too many tokens for field \"" + field.name() + "\"", ae);
           }
 
           // System.out.println("  term=" + invertState.termAttribute);

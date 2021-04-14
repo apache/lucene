@@ -43,16 +43,19 @@ public class TestParallelDrillSideways extends TestDrillSideways {
     executor = null;
   }
 
+  @Override
   protected DrillSideways getNewDrillSideways(
       IndexSearcher searcher, FacetsConfig config, SortedSetDocValuesReaderState state) {
     return new DrillSideways(searcher, config, null, state, executor);
   }
 
+  @Override
   protected DrillSideways getNewDrillSideways(
       IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
     return new DrillSideways(searcher, config, taxoReader, null, executor);
   }
 
+  @Override
   protected DrillSideways getNewDrillSidewaysScoreSubdocsAtOnce(
       IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
     return new DrillSideways(searcher, config, taxoReader, null, executor) {
@@ -63,6 +66,7 @@ public class TestParallelDrillSideways extends TestDrillSideways {
     };
   }
 
+  @Override
   protected DrillSideways getNewDrillSidewaysBuildFacetsResult(
       IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
     return new DrillSideways(searcher, config, taxoReader, null, executor) {

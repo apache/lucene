@@ -579,7 +579,7 @@ public class Field implements IndexableField {
   }
 
   /** Specifies whether and how a field should be stored. */
-  public static enum Store {
+  public enum Store {
 
     /**
      * Store the original field value in the index. This is useful for short texts like a document's

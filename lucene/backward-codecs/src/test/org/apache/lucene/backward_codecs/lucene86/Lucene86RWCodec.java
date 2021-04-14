@@ -24,7 +24,9 @@ import org.apache.lucene.backward_codecs.lucene80.Lucene80RWNormsFormat;
 import org.apache.lucene.backward_codecs.lucene84.Lucene84RWPostingsFormat;
 import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.NormsFormat;
+import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -53,6 +55,11 @@ public class Lucene86RWCodec extends Lucene86Codec {
   }
 
   @Override
+  public SegmentInfoFormat segmentInfoFormat() {
+    return new Lucene86RWSegmentInfoFormat();
+  }
+
+  @Override
   public StoredFieldsFormat storedFieldsFormat() {
     return storedFieldsFormat;
   }
@@ -75,5 +82,10 @@ public class Lucene86RWCodec extends Lucene86Codec {
   @Override
   public TermVectorsFormat termVectorsFormat() {
     return new Lucene50RWTermVectorsFormat();
+  }
+
+  @Override
+  public final PointsFormat pointsFormat() {
+    return new Lucene86RWPointsFormat();
   }
 }

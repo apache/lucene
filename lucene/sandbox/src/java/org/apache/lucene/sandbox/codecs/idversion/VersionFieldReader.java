@@ -17,23 +17,19 @@
 package org.apache.lucene.sandbox.codecs.idversion;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.PairOutputs.Pair;
 
 /** BlockTree's implementation of {@link Terms}. */
 // public for CheckIndex:
-final class VersionFieldReader extends Terms implements Accountable {
+final class VersionFieldReader extends Terms {
   final long numTerms;
   final FieldInfo fieldInfo;
   final long sumTotalTermFreq;
@@ -171,20 +167,6 @@ final class VersionFieldReader extends Terms implements Accountable {
   @Override
   public int getDocCount() {
     return docCount;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return ((index != null) ? index.ramBytesUsed() : 0);
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    if (index == null) {
-      return Collections.emptyList();
-    } else {
-      return Collections.singletonList(Accountables.namedAccountable("term index", index));
-    }
   }
 
   @Override

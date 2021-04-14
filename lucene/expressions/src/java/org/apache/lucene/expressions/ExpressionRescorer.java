@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Rescorer;
@@ -45,21 +44,6 @@ class ExpressionRescorer extends SortRescorer {
     super(new Sort(expression.getSortField(bindings, true)));
     this.expression = expression;
     this.bindings = bindings;
-  }
-
-  private static DoubleValues scores(int doc, float score) {
-    return new DoubleValues() {
-      @Override
-      public double doubleValue() throws IOException {
-        return score;
-      }
-
-      @Override
-      public boolean advanceExact(int target) throws IOException {
-        assert doc == target;
-        return true;
-      }
-    };
   }
 
   @Override

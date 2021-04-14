@@ -178,7 +178,9 @@ public class TestQueryParser extends QueryParserTestBase {
               float fms = fuzzyMinSim;
               try {
                 fms = Float.parseFloat(fuzzySlop.image.substring(1, fuzzySlop.image.length() - 1));
-              } catch (Exception ignored) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  Exception ignored) {
               }
               float value = Float.parseFloat(termImage);
               return getRangeQuery(

@@ -94,6 +94,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private int docBase; // doc ID at the beginning of the chunk
   private int numBufferedDocs; // docBase + numBufferedDocs == current doc ID
 
+  private long numChunks;
   private long numDirtyChunks; // number of incomplete compressed blocks written
   private long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
 
@@ -151,7 +152,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
               context);
 
       metaStream.writeVInt(chunkSize);
-      metaStream.writeVInt(PackedInts.VERSION_CURRENT);
 
       success = true;
     } finally {
@@ -195,34 +195,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   private static void saveInts(int[] values, int length, DataOutput out) throws IOException {
-    assert length > 0;
     if (length == 1) {
       out.writeVInt(values[0]);
     } else {
-      boolean allEqual = true;
-      for (int i = 1; i < length; ++i) {
-        if (values[i] != values[0]) {
-          allEqual = false;
-          break;
-        }
-      }
-      if (allEqual) {
-        out.writeVInt(0);
-        out.writeVInt(values[0]);
-      } else {
-        long max = 0;
-        for (int i = 0; i < length; ++i) {
-          max |= values[i];
-        }
-        final int bitsRequired = PackedInts.bitsRequired(max);
-        out.writeVInt(bitsRequired);
-        final PackedInts.Writer w =
-            PackedInts.getWriterNoHeader(out, PackedInts.Format.PACKED, length, bitsRequired, 1);
-        for (int i = 0; i < length; ++i) {
-          w.add(values[i]);
-        }
-        w.finish();
-      }
+      StoredFieldsInts.writeInts(values, 0, length, out);
     }
   }
 
@@ -249,6 +225,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   private void flush() throws IOException {
+    numChunks++;
     indexWriter.writeIndex(numBufferedDocs, fieldsStream.getFilePointer());
 
     // transform end offsets into lengths
@@ -489,10 +466,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   public void finish(FieldInfos fis, int numDocs) throws IOException {
     if (numBufferedDocs > 0) {
       numDirtyChunks++; // incomplete: we had to force this flush
-      final long expectedChunkDocs =
-          Math.min(
-              maxDocsPerChunk, (long) ((double) chunkSize / bufferedDocs.size() * numBufferedDocs));
-      numDirtyDocs += expectedChunkDocs - numBufferedDocs;
+      numDirtyDocs += numBufferedDocs;
       flush();
     } else {
       assert bufferedDocs.size() == 0;
@@ -502,6 +476,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
           "Wrote " + docBase + " docs, finish called with numDocs=" + numDocs);
     }
     indexWriter.finish(numDocs, fieldsStream.getFilePointer(), metaStream);
+    metaStream.writeVLong(numChunks);
     metaStream.writeVLong(numDirtyChunks);
     metaStream.writeVLong(numDirtyDocs);
     CodecUtil.writeFooter(metaStream);
@@ -520,7 +495,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (SecurityException ignored) {
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException ignored) {
     }
     BULK_MERGE_ENABLED = v;
   }
@@ -603,7 +580,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
       } else if (matchingFieldsReader.getCompressionMode() == compressionMode
           && matchingFieldsReader.getChunkSize() == chunkSize
-          && matchingFieldsReader.getPackedIntsVersion() == PackedInts.VERSION_CURRENT
           && liveDocs == null
           && !tooDirty(matchingFieldsReader)) {
         // optimized merge, raw byte copy
@@ -615,8 +591,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
         // flush any pending chunks
         if (numBufferedDocs > 0) {
-          flush();
           numDirtyChunks++; // incomplete: we had to force this flush
+          numDirtyDocs += numBufferedDocs;
+          flush();
         }
 
         // iterate over each chunk. we use the stored fields index to find chunk boundaries,
@@ -673,6 +650,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
 
         // since we bulk merged all chunks, we inherit any dirty ones from this segment.
+        numChunks += matchingFieldsReader.getNumChunks();
         numDirtyChunks += matchingFieldsReader.getNumDirtyChunks();
         numDirtyDocs += matchingFieldsReader.getNumDirtyDocs();
       } else {
@@ -709,10 +687,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
    * ratio can degrade. This is a safety switch.
    */
   boolean tooDirty(Lucene90CompressingStoredFieldsReader candidate) {
-    // more than 1% dirty, or more than hard limit of 1024 dirty chunks
-    return candidate.getNumDirtyChunks() > 1024
-        || (candidate.getNumDirtyChunks() > 1
-            && candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs());
+    // A segment is considered dirty only if it has enough dirty docs to make a full block
+    // AND more than 1% blocks are dirty.
+    return candidate.getNumDirtyDocs() > maxDocsPerChunk
+        && candidate.getNumDirtyChunks() * 100 > candidate.getNumChunks();
   }
 
   private static class CompressingStoredFieldsMergeSub extends DocIDMerger.Sub {

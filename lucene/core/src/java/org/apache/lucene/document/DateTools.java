@@ -116,7 +116,9 @@ public class DateTools {
     try {
       return TL_FORMATS.get()[dateString.length()].parse(dateString);
     } catch (Exception e) {
-      throw new ParseException("Input is not a valid date string: " + dateString, 0);
+      ParseException ex = new ParseException("Input is not a valid date string: " + dateString, 0);
+      ex.initCause(e);
+      throw ex;
     }
   }
 
@@ -169,7 +171,7 @@ public class DateTools {
   }
 
   /** Specifies the time granularity. */
-  public static enum Resolution {
+  public enum Resolution {
 
     /** Limit a date's resolution to year granularity. */
     YEAR(4),

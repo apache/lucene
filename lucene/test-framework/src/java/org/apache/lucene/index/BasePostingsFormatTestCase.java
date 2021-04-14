@@ -357,7 +357,6 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
   public void testLevel2Ghosts() throws Exception {
     Directory dir = newDirectory();
 
-    Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwc = newIndexWriterConfig(null);
     iwc.setCodec(getCodec());
     iwc.setMergePolicy(newLogMergePolicy());
@@ -616,7 +615,9 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
         long ord;
         try {
           ord = termsEnum.ord();
-        } catch (UnsupportedOperationException uoe) {
+        } catch (
+            @SuppressWarnings("unused")
+            UnsupportedOperationException uoe) {
           supportsOrds = false;
           ord = -1;
         }

@@ -395,3 +395,8 @@ better to use the ordinal alone (integer-based datastructures) for per-document 
 call lookupOrd() a few times at the end (e.g. for the hits you want to display). Otherwise, if you
 really don't want per-document ordinals, but instead a per-document `byte[]`, use a BinaryDocValues
 field.
+
+## Removed CodecReader.ramBytesUsed() (LUCENE-9387)
+
+Lucene index readers are now using so little memory with the default codec that
+it was decided to remove the ability to estimate their RAM usage.

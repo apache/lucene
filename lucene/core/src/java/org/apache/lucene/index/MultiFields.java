@@ -75,11 +75,7 @@ public final class MultiFields extends Fields {
         slices2.add(subSlices[i]);
       }
     }
-    if (subs2.size() == 0) {
-      result = null;
-      // don't cache this case with an unbounded cache, since the number of fields that don't exist
-      // is unbounded.
-    } else {
+    if (subs2.size() != 0) {
       result =
           new MultiTerms(
               subs2.toArray(Terms.EMPTY_ARRAY), slices2.toArray(ReaderSlice.EMPTY_ARRAY));

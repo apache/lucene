@@ -22,7 +22,7 @@ import java.util.Objects;
 public final class BooleanClause {
 
   /** Specifies how clauses are to occur in matching documents. */
-  public static enum Occur {
+  public enum Occur {
 
     /** Use this operator for clauses that <i>must</i> appear in the matching documents. */
     MUST {

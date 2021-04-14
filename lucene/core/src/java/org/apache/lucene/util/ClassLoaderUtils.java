@@ -42,7 +42,9 @@ public interface ClassLoaderUtils {
         cl = cl.getParent();
       }
       return false;
-    } catch (SecurityException se) {
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
       return false;
     }
   }

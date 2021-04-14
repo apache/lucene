@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.asserting;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Iterator;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -33,7 +32,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.TestUtil;
@@ -63,8 +61,6 @@ public final class AssertingPostingsFormat extends PostingsFormat {
       this.in = in;
       // do a few simple checks on init
       assert toString() != null;
-      assert ramBytesUsed() >= 0;
-      assert getChildResources() != null;
     }
 
     @Override
@@ -89,20 +85,6 @@ public final class AssertingPostingsFormat extends PostingsFormat {
     @Override
     public int size() {
       return in.size();
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long v = in.ramBytesUsed();
-      assert v >= 0;
-      return v;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      Collection<Accountable> res = in.getChildResources();
-      TestUtil.checkReadOnly(res);
-      return res;
     }
 
     @Override

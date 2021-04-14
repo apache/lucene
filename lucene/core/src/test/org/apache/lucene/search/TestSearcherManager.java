@@ -235,7 +235,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                 awaitEnterWarm.countDown();
                 awaitClose.await();
               }
-            } catch (InterruptedException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                InterruptedException e) {
               //
             }
             return new IndexSearcher(r, es);
@@ -270,7 +272,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   }
                   searcherManager.maybeRefresh();
                   success.set(true);
-                } catch (AlreadyClosedException e) {
+                } catch (
+                    @SuppressWarnings("unused")
+                    AlreadyClosedException e) {
                   // expected
                 } catch (Throwable e) {
                   if (VERBOSE) {
@@ -642,7 +646,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   IndexSearcher searcher;
                   try {
                     searcher = mgr.acquire();
-                  } catch (AlreadyClosedException ace) {
+                  } catch (
+                      @SuppressWarnings("unused")
+                      AlreadyClosedException ace) {
                     // ok
                     continue;
                   }
@@ -672,7 +678,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   refreshCount++;
                   try {
                     mgr.maybeRefreshBlocking();
-                  } catch (AlreadyClosedException ace) {
+                  } catch (
+                      @SuppressWarnings("unused")
+                      AlreadyClosedException ace) {
                     // ok
                     aceCount++;
                     continue;
@@ -704,7 +712,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   try {
                     mgrRef.set(new SearcherManager(writerRef.get(), null));
                     break;
-                  } catch (AlreadyClosedException ace) {
+                  } catch (
+                      @SuppressWarnings("unused")
+                      AlreadyClosedException ace) {
                     // ok
                     aceCount++;
                   }

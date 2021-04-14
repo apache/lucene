@@ -185,11 +185,6 @@ public class TestTermBytesComparator extends LuceneTestCase {
 
       @Override
       public void close() {}
-
-      @Override
-      public long ramBytesUsed() {
-        return 0;
-      }
     };
   }
 }

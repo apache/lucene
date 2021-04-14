@@ -69,7 +69,7 @@ public class ParallelCompositeReader extends BaseCompositeReader<LeafReader> {
   public ParallelCompositeReader(
       boolean closeSubReaders, CompositeReader[] readers, CompositeReader[] storedFieldReaders)
       throws IOException {
-    super(prepareLeafReaders(readers, storedFieldReaders));
+    super(prepareLeafReaders(readers, storedFieldReaders), null);
     this.closeSubReaders = closeSubReaders;
     Collections.addAll(completeReaderSet, readers);
     Collections.addAll(completeReaderSet, storedFieldReaders);

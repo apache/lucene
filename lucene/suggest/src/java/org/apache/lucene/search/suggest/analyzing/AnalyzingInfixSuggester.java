@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,15 +42,12 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -74,10 +69,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RamUsageEstimator;
 
 // TODO:
 //   - a PostingsFormat that stores super-high-freq terms as
@@ -611,6 +603,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
    * @return the result of the suggester
    * @throws IOException f the is IO exception while reading data from the index
    */
+  @Override
   public List<LookupResult> lookup(
       CharSequence key,
       BooleanQuery contextQuery,
@@ -945,58 +938,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
 
   @Override
   public long ramBytesUsed() {
-    long mem = RamUsageEstimator.shallowSizeOf(this);
-    try {
-      if (searcherMgr != null) {
-        SearcherManager mgr;
-        IndexSearcher searcher;
-        synchronized (searcherMgrLock) {
-          mgr = searcherMgr; // acquire & release on same SearcherManager, via local reference
-          searcher = mgr.acquire();
-        }
-        try {
-          for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-            LeafReader reader = FilterLeafReader.unwrap(context.reader());
-            if (reader instanceof SegmentReader) {
-              mem += ((SegmentReader) context.reader()).ramBytesUsed();
-            }
-          }
-        } finally {
-          mgr.release(searcher);
-        }
-      }
-      return mem;
-    } catch (IOException ioe) {
-      throw new RuntimeException(ioe);
-    }
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    List<Accountable> resources = new ArrayList<>();
-    try {
-      if (searcherMgr != null) {
-        SearcherManager mgr;
-        IndexSearcher searcher;
-        synchronized (searcherMgrLock) {
-          mgr = searcherMgr; // acquire & release on same SearcherManager, via local reference
-          searcher = mgr.acquire();
-        }
-        try {
-          for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-            LeafReader reader = FilterLeafReader.unwrap(context.reader());
-            if (reader instanceof SegmentReader) {
-              resources.add(Accountables.namedAccountable("segment", (SegmentReader) reader));
-            }
-          }
-        } finally {
-          mgr.release(searcher);
-        }
-      }
-      return Collections.unmodifiableList(resources);
-    } catch (IOException ioe) {
-      throw new RuntimeException(ioe);
-    }
+    return 0L;
   }
 
   @Override

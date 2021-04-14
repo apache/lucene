@@ -1049,7 +1049,8 @@ public class IndexWriter
           throw new IllegalArgumentException(
               "the provided reader is stale: its prior commit file \""
                   + segmentInfos.getSegmentsFileName()
-                  + "\" is missing from index");
+                  + "\" is missing from index",
+              ioe);
         }
 
         if (reader.writer != null) {
@@ -1642,6 +1643,10 @@ public class IndexWriter
                           case BINARY:
                             return new BinaryDocValuesFieldUpdates(
                                 nextGen, k, rld.info.info.maxDoc());
+                          case NONE:
+                          case SORTED:
+                          case SORTED_NUMERIC:
+                          case SORTED_SET:
                           default:
                             throw new AssertionError("type: " + update.type + " is not supported");
                         }
@@ -1656,6 +1661,10 @@ public class IndexWriter
                     docValuesFieldUpdates.add(
                         leafDocId, ((BinaryDocValuesUpdate) update).getValue());
                     break;
+                  case NONE:
+                  case SORTED:
+                  case SORTED_SET:
+                  case SORTED_NUMERIC:
                   default:
                     throw new AssertionError("type: " + update.type + " is not supported");
                 }
@@ -1955,6 +1964,10 @@ public class IndexWriter
         case BINARY:
           dvUpdates[i] = new BinaryDocValuesUpdate(term, f.name(), f.binaryValue());
           break;
+        case NONE:
+        case SORTED:
+        case SORTED_NUMERIC:
+        case SORTED_SET:
         default:
           throw new IllegalArgumentException(
               "can only update NUMERIC or BINARY fields: field=" + f.name() + ", type=" + dvType);
@@ -2321,6 +2334,11 @@ public class IndexWriter
         case COMMIT:
           spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, this);
           break;
+        case EXPLICIT:
+        case FULL_FLUSH:
+        case MERGE_FINISHED:
+        case SEGMENT_FLUSH:
+        case CLOSING:
         default:
           spec = mergePolicy.findMerges(trigger, segmentInfos, this);
       }
@@ -2341,6 +2359,7 @@ public class IndexWriter
    *
    * <p>The Set is unmodifiable.
    */
+  @Override
   public synchronized Set<SegmentCommitInfo> getMergingSegments() {
     return Collections.unmodifiableSet(mergingSegments);
   }
@@ -4168,6 +4187,10 @@ public class IndexWriter
                     new BinaryDocValuesFieldUpdates(
                         updates.delGen, updates.field, merge.info.info.maxDoc());
                 break;
+              case NONE:
+              case SORTED:
+              case SORTED_SET:
+              case SORTED_NUMERIC:
               default:
                 throw new AssertionError();
             }
@@ -4203,17 +4226,13 @@ public class IndexWriter
     }
 
     if (infoStream.isEnabled("IW")) {
-      if (mergedDeletesAndUpdates == null) {
-        infoStream.message("IW", "no new deletes or field updates since merge started");
-      } else {
-        String msg = mergedDeletesAndUpdates.getDelCount() - numDeletesBefore + " new deletes";
-        if (anyDVUpdates) {
-          msg += " and " + mergedDeletesAndUpdates.getNumDVUpdates() + " new field updates";
-          msg += " (" + mergedDeletesAndUpdates.ramBytesUsed.get() + ") bytes";
-        }
-        msg += " since merge started";
-        infoStream.message("IW", msg);
+      String msg = mergedDeletesAndUpdates.getDelCount() - numDeletesBefore + " new deletes";
+      if (anyDVUpdates) {
+        msg += " and " + mergedDeletesAndUpdates.getNumDVUpdates() + " new field updates";
+        msg += " (" + mergedDeletesAndUpdates.ramBytesUsed.get() + ") bytes";
       }
+      msg += " since merge started";
+      infoStream.message("IW", msg);
     }
 
     merge.info.setBufferedDeletesGen(minGen);
@@ -5573,7 +5592,9 @@ public class IndexWriter
     Collection<String> files;
     try {
       files = info.files();
-    } catch (IllegalStateException ise) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
       // OK
       files = null;
     }
@@ -6234,6 +6255,7 @@ public class IndexWriter
       writer.merge(merge);
     }
 
+    @Override
     public String toString() {
       return writer.segString();
     }

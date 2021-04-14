@@ -20,14 +20,13 @@ import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute; // javadocs
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.util.Accountable;
 
 /**
  * Codec API for reading term vectors:
  *
  * @lucene.experimental
  */
-public abstract class TermVectorsReader implements Cloneable, Closeable, Accountable {
+public abstract class TermVectorsReader implements Cloneable, Closeable {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected TermVectorsReader() {}

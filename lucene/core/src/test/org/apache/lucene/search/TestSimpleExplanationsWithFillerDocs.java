@@ -119,11 +119,13 @@ public class TestSimpleExplanationsWithFillerDocs extends TestSimpleExplanations
     super.qtest(q, expDocNrs);
   }
 
+  @Override
   public void testMA1() throws Exception {
     Assume.assumeNotNull("test is not viable with empty filler docs", EXTRA);
     super.testMA1();
   }
 
+  @Override
   public void testMA2() throws Exception {
     Assume.assumeNotNull("test is not viable with empty filler docs", EXTRA);
     super.testMA2();

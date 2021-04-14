@@ -47,10 +47,11 @@ import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.TestUtil;
+import org.junit.AssumptionViolatedException;
 
 /**
  * Child process with silly naive TCP socket server to handle between-node commands, launched for
- * each node by TestNRTReplication.
+ * each node by {@link TestNRTReplication}.
  */
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
@@ -223,8 +224,12 @@ public class SimpleServer extends LuceneTestCase {
 
   @SuppressWarnings("try")
   public void test() throws Exception {
+    String nodeId = System.getProperty("tests.nrtreplication.nodeid");
+    if (nodeId == null) {
+      throw new AssumptionViolatedException("Not a stand-alone test.");
+    }
 
-    int id = Integer.parseInt(System.getProperty("tests.nrtreplication.nodeid"));
+    int id = Integer.parseInt(nodeId);
     Thread.currentThread().setName("main child " + id);
     Path indexPath = Paths.get(System.getProperty("tests.nrtreplication.indexpath"));
     boolean isPrimary = System.getProperty("tests.nrtreplication.isPrimary") != null;
@@ -321,7 +326,9 @@ public class SimpleServer extends LuceneTestCase {
                 while (System.nanoTime() < endTime) {
                   try {
                     Thread.sleep(10);
-                  } catch (InterruptedException e) {
+                  } catch (
+                      @SuppressWarnings("unused")
+                      InterruptedException e) {
                   }
                   if (stop.get()) {
                     break;
@@ -367,7 +374,9 @@ public class SimpleServer extends LuceneTestCase {
         Socket socket;
         try {
           socket = ss.accept();
-        } catch (SocketException se) {
+        } catch (
+            @SuppressWarnings("unused")
+            SocketException se) {
           // when ClientHandler closes our ss we will hit this
           node.message("top: server socket exc; now exit");
           break;

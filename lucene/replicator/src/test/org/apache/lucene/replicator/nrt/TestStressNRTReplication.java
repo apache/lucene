@@ -44,9 +44,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LineFileDocs;
@@ -444,7 +441,6 @@ public class TestStressNRTReplication extends LuceneTestCase {
       return;
     }
 
-    int id = replicaToPromote.id;
     message("top: now startPrimary " + replicaToPromote);
     startPrimary(replicaToPromote.id);
   }
@@ -554,6 +550,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
   /** Launches a child "server" (separate JVM), which is either primary or replica node */
   @SuppressForbidden(reason = "ProcessBuilder requires java.io.File for CWD")
+  @SuppressWarnings("null")
   NodeProcess startNode(final int id, Path indexPath, boolean isPrimary, long forcePrimaryVersion)
       throws IOException {
     nodeTimeStamps[id] = System.nanoTime();
@@ -1005,9 +1002,6 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
     @Override
     public void run() {
-      // Maps version to number of hits for silly 'the' TermQuery:
-      Query theQuery = new TermQuery(new Term("body", "the"));
-
       // Persists connections
       Map<Integer, Connection> connections = new HashMap<>();
 
@@ -1115,7 +1109,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
                         + hitCount);
               }
             }
-          } catch (IOException ioe) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException ioe) {
             // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
             // ioe.printStackTrace(System.out);
             IOUtils.closeWhileHandlingException(c);
@@ -1179,7 +1175,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 stop.set(true);
                 fail(failMessage);
               }
-            } catch (IOException ioe) {
+            } catch (
+                @SuppressWarnings("unused")
+                IOException ioe) {
               // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
               // throw new RuntimeException(ioe);
               // ioe.printStackTrace(System.out);
@@ -1220,8 +1218,6 @@ public class TestStressNRTReplication extends LuceneTestCase {
         int sleepChance = TestUtil.nextInt(random(), 4, 100);
 
         message("top: indexer: updatePct=" + updatePct + " sleepChance=" + sleepChance);
-
-        long lastTransLogLoc = transLog.getNextLocation();
 
         NodeProcess curPrimary = null;
         Connection c = null;
@@ -1282,14 +1278,18 @@ public class TestStressNRTReplication extends LuceneTestCase {
               curPrimary.addOrUpdateDocument(c, doc, false);
               transLog.addDocument(idString, doc);
             }
-          } catch (IOException se) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException se) {
             // Assume primary crashed
             if (c != null) {
               message("top: indexer lost connection to primary");
             }
             try {
               c.close();
-            } catch (Throwable t) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable t) {
             }
             curPrimary = null;
             c = null;
@@ -1311,12 +1311,16 @@ public class TestStressNRTReplication extends LuceneTestCase {
             c.out.writeByte(SimplePrimaryNode.CMD_INDEXING_DONE);
             c.flush();
             c.in.readByte();
-          } catch (IOException se) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException se) {
             // Assume primary crashed
             message("top: indexer lost connection to primary");
             try {
               c.close();
-            } catch (Throwable t) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable t) {
             }
             curPrimary = null;
             c = null;

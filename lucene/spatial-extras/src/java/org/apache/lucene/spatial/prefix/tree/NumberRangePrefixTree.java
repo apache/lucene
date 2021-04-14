@@ -82,6 +82,7 @@ public abstract class NumberRangePrefixTree extends SpatialPrefixTree {
    */
   public static interface NRShape extends Shape, Cloneable {
     /** The result should be parseable by {@link #parseShape(String)}. */
+    @Override
     abstract String toString();
 
     /**

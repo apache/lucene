@@ -387,10 +387,17 @@ public abstract class LuceneTestCase extends Assert {
 
   public static final boolean TEST_ASSERTS_ENABLED = systemPropertyAsBoolean("tests.asserts", true);
 
-  /** TODO: javadoc? */
+  /**
+   * The default (embedded resource) lines file.
+   *
+   * @see #TEST_LINE_DOCS_FILE
+   */
   public static final String DEFAULT_LINE_DOCS_FILE = "europarl.lines.txt.gz";
 
-  /** TODO: javadoc? */
+  /**
+   * Random sample from enwiki used in tests. See {@code help/tests.txt}. gradle task downloading
+   * this data set: {@code gradlew getEnWikiRandomLines}.
+   */
   public static final String JENKINS_LARGE_LINE_DOCS_FILE = "enwiki.random.lines.txt";
 
   /** Gets the codec to run tests with. */
@@ -407,7 +414,7 @@ public abstract class LuceneTestCase extends Assert {
   /** Gets the directory to run tests with */
   public static final String TEST_DIRECTORY = System.getProperty("tests.directory", "random");
 
-  /** the line file used by LineFileDocs */
+  /** The line file used in tests (by {@link LineFileDocs}). */
   public static final String TEST_LINE_DOCS_FILE =
       System.getProperty("tests.linedocsfile", DEFAULT_LINE_DOCS_FILE);
 
@@ -1437,7 +1444,9 @@ public abstract class LuceneTestCase extends Assert {
     try {
       try {
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
-      } catch (ClassCastException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          ClassCastException e) {
         // TEST_DIRECTORY is not a sub-class of FSDirectory, so draw one at random
         fsdirClass = RandomPicks.randomFrom(random(), FS_DIRECTORIES);
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
@@ -1705,7 +1714,9 @@ public abstract class LuceneTestCase extends Assert {
             clazz.getConstructor(Path.class, LockFactory.class);
         final Path dir = createTempDir("index");
         return pathCtor.newInstance(dir, lf);
-      } catch (NoSuchMethodException nsme) {
+      } catch (
+          @SuppressWarnings("unused")
+          NoSuchMethodException nsme) {
         // Ignore
       }
 
@@ -1715,7 +1726,9 @@ public abstract class LuceneTestCase extends Assert {
         // try ctor with only LockFactory
         try {
           return clazz.getConstructor(LockFactory.class).newInstance(lf);
-        } catch (NoSuchMethodException nsme) {
+        } catch (
+            @SuppressWarnings("unused")
+            NoSuchMethodException nsme) {
           // Ignore
         }
       }
@@ -2038,7 +2051,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       return Paths.get(this.getClass().getResource(name).toURI());
     } catch (Exception e) {
-      throw new IOException("Cannot find resource: " + name);
+      throw new IOException("Cannot find resource: " + name, e);
     }
   }
 
@@ -2136,29 +2149,6 @@ public abstract class LuceneTestCase extends Assert {
     assertEquals(info, leftTerms.getSumTotalTermFreq(), rightTerms.getSumTotalTermFreq());
     if (leftTerms.size() != -1 && rightTerms.size() != -1) {
       assertEquals(info, leftTerms.size(), rightTerms.size());
-    }
-  }
-
-  private static class RandomBits implements Bits {
-    FixedBitSet bits;
-
-    RandomBits(int maxDoc, double pctLive, Random random) {
-      bits = new FixedBitSet(maxDoc);
-      for (int i = 0; i < maxDoc; i++) {
-        if (random.nextDouble() <= pctLive) {
-          bits.set(i);
-        }
-      }
-    }
-
-    @Override
-    public boolean get(int index) {
-      return bits.get(index);
-    }
-
-    @Override
-    public int length() {
-      return bits.length();
     }
   }
 
@@ -3050,7 +3040,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       dir.openInput(fileName, IOContext.DEFAULT).close();
       return true;
-    } catch (NoSuchFileException | FileNotFoundException e) {
+    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
       return false;
     }
   }

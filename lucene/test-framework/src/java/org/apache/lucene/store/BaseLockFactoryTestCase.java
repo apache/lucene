@@ -141,7 +141,9 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
                     fail();
                   }
                   assert lock != null; // stupid compiler
-                } catch (IOException ex) {
+                } catch (
+                    @SuppressWarnings("unused")
+                    IOException ex) {
                   //
                 }
                 if (atomicCounter.incrementAndGet() > runs) {
@@ -260,27 +262,25 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
           }
           break;
         }
-        if (writer != null) {
-          try {
-            addDoc(writer);
-          } catch (Throwable t) {
-            hitException = true;
-            System.out.println(
-                "Stress Test Index Writer: addDoc hit unexpected exception: " + t.toString());
-            t.printStackTrace(System.out);
-            System.out.println(toString(baos));
-            break;
-          }
-          try {
-            writer.close();
-          } catch (Throwable t) {
-            hitException = true;
-            System.out.println(
-                "Stress Test Index Writer: close hit unexpected exception: " + t.toString());
-            t.printStackTrace(System.out);
-            System.out.println(toString(baos));
-            break;
-          }
+        try {
+          addDoc(writer);
+        } catch (Throwable t) {
+          hitException = true;
+          System.out.println(
+              "Stress Test Index Writer: addDoc hit unexpected exception: " + t.toString());
+          t.printStackTrace(System.out);
+          System.out.println(toString(baos));
+          break;
+        }
+        try {
+          writer.close();
+        } catch (Throwable t) {
+          hitException = true;
+          System.out.println(
+              "Stress Test Index Writer: close hit unexpected exception: " + t.toString());
+          t.printStackTrace(System.out);
+          System.out.println(toString(baos));
+          break;
         }
       }
     }

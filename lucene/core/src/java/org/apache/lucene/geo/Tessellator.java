@@ -265,13 +265,10 @@ public final class Tessellator {
       if (list == list.next) {
         throw new IllegalArgumentException("Points are all coplanar in hole: " + holes[i]);
       }
-      // Determine if the resulting hole polygon was successful.
-      if (list != null) {
-        // Add the leftmost vertex of the hole.
-        Node leftMost = fetchLeftmost(list);
-        holeList.add(leftMost);
-        holeListPolygons.put(leftMost, holes[i]);
-      }
+      // Add the leftmost vertex of the hole.
+      Node leftMost = fetchLeftmost(list);
+      holeList.add(leftMost);
+      holeListPolygons.put(leftMost, holes[i]);
       nodeIndex += holes[i].numPoints();
     }
     return eliminateHoles(holeList, holeListPolygons, outerNode);
@@ -1454,6 +1451,7 @@ public final class Tessellator {
     }
 
     /** pretty print the triangle vertices */
+    @Override
     public String toString() {
       String result =
           vertex[0].x

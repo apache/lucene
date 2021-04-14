@@ -46,7 +46,6 @@ public class TestLongValuesSource extends LuceneTestCase {
     dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     int numDocs = TestUtil.nextInt(random(), 2049, 4000);
-    int leastValue = 45;
     for (int i = 0; i < numDocs; i++) {
       Document document = new Document();
       document.add(newTextField("english", English.intToEnglish(i), Field.Store.NO));
@@ -165,6 +164,14 @@ public class TestLongValuesSource extends LuceneTestCase {
           case LONG:
             mutated[i] = LongValuesSource.fromLongField(s.getField()).getSortField(reverse);
             break;
+          case CUSTOM:
+          case DOUBLE:
+          case FLOAT:
+          case DOC:
+          case REWRITEABLE:
+          case STRING:
+          case STRING_VAL:
+          case SCORE:
           default:
             mutated[i] = original[i];
         }

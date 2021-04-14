@@ -365,7 +365,36 @@ public final class KoreanTokenizer extends Tokenizer {
         case XSV:
           spacePenalty = 3000;
           break;
-
+        case IC:
+        case MAG:
+        case MAJ:
+        case MM:
+        case NA:
+        case NNB:
+        case NNBC:
+        case NNG:
+        case NNP:
+        case NP:
+        case NR:
+        case SC:
+        case SE:
+        case SF:
+        case SH:
+        case SL:
+        case SN:
+        case SP:
+        case SSC:
+        case SSO:
+        case SY:
+        case UNA:
+        case UNKNOWN:
+        case VA:
+        case VCN:
+        case VSV:
+        case VV:
+        case VX:
+        case XPN:
+        case XR:
         default:
           break;
       }

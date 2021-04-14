@@ -228,7 +228,6 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
       Directory dir = newDirectory();
       RandomIndexWriter w =
           new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
-      DocValuesType valueType = DocValuesType.SORTED;
 
       Document doc = new Document();
       Document docNoGroup = new Document();
@@ -579,6 +578,10 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
       case SORTED:
         valuesField = new SortedDocValuesField(groupField, new BytesRef(value));
         break;
+      case NONE:
+      case NUMERIC:
+      case SORTED_SET:
+      case SORTED_NUMERIC:
       default:
         fail("unhandled type");
     }

@@ -97,12 +97,6 @@ public class ReadTokensTask extends PerfTask {
     int left;
     String s;
 
-    void init(String s) {
-      this.s = s;
-      left = s.length();
-      this.upto = 0;
-    }
-
     @Override
     public int read(char[] c) {
       return read(c, 0, c.length);

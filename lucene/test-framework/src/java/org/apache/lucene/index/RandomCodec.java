@@ -39,9 +39,9 @@ import org.apache.lucene.codecs.blockterms.LuceneVarGapDocFreqInterval;
 import org.apache.lucene.codecs.blockterms.LuceneVarGapFixedInterval;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.bloom.TestBloomFilteredLucenePostings;
-import org.apache.lucene.codecs.lucene86.Lucene86PointsReader;
-import org.apache.lucene.codecs.lucene86.Lucene86PointsWriter;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
 import org.apache.lucene.codecs.memory.DirectPostingsFormat;
 import org.apache.lucene.codecs.memory.FSTPostingsFormat;
 import org.apache.lucene.codecs.mockrandom.MockRandomPostingsFormat;
@@ -102,7 +102,7 @@ public class RandomCodec extends AssertingCodec {
 
             // Randomize how BKDWriter chooses its splits:
 
-            return new Lucene86PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap) {
+            return new Lucene90PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap) {
               @Override
               public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
 
@@ -131,6 +131,7 @@ public class RandomCodec extends AssertingCodec {
                           throw new IllegalStateException();
                         }
 
+                        @Override
                         public void visit(int docID, byte[] packedValue) throws IOException {
                           writer.add(packedValue, docID);
                         }
@@ -156,7 +157,7 @@ public class RandomCodec extends AssertingCodec {
 
           @Override
           public PointsReader fieldsReader(SegmentReadState readState) throws IOException {
-            return new Lucene86PointsReader(readState);
+            return new Lucene90PointsReader(readState);
           }
         });
   }
@@ -296,28 +297,6 @@ public class RandomCodec extends AssertingCodec {
         throws IOException {
       super(maxDoc, tempDir, tempFileNamePrefix, config, maxMBSortInHeap, totalPointCount);
       this.random = new Random(randomSeed);
-    }
-
-    private static boolean getRandomSingleValuePerDoc(boolean singleValuePerDoc, int randomSeed) {
-      // If we are single valued, sometimes pretend we aren't:
-      return singleValuePerDoc && (new Random(randomSeed).nextBoolean());
-    }
-
-    private static boolean getRandomLongOrds(
-        long totalPointCount, boolean singleValuePerDoc, int randomSeed) {
-      // Always use long ords if we have too many points, but sometimes randomly use it anyway when
-      // singleValuePerDoc is false:
-      return totalPointCount > Integer.MAX_VALUE
-          || (getRandomSingleValuePerDoc(singleValuePerDoc, randomSeed) == false
-              && new Random(randomSeed).nextBoolean());
-    }
-
-    private static long getRandomOfflineSorterBufferMB(int randomSeed) {
-      return TestUtil.nextInt(new Random(randomSeed), 1, 8);
-    }
-
-    private static int getRandomOfflineSorterMaxTempFiles(int randomSeed) {
-      return TestUtil.nextInt(new Random(randomSeed), 2, 20);
     }
 
     @Override

@@ -29,12 +29,12 @@ import org.apache.lucene.index.SegmentWriteState;
  * connecting the documents having values. The graph is used to power HNSW search. The format
  * consists of three files:
  *
- * <h1>.vec (vector data) file</h1>
+ * <h2>.vec (vector data) file</h2>
  *
  * <p>This file stores all the floating-point vector data ordered by field, document ordinal, and
  * vector dimension. The floats are stored in little-endian byte order.
  *
- * <h1>.vex (vector index) file</h1>
+ * <h2>.vex (vector index) file</h2>
  *
  * <p>Stores graphs connecting the documents for each field. For each document having a vector for a
  * given field, this is stored as:
@@ -44,7 +44,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li><b>array[vint]</b> the neighbor ordinals, delta-encoded (initially subtracting -1)
  * </ul>
  *
- * <h1>.vem (vector metadata) file</h1>
+ * <h2>.vem (vector metadata) file</h2>
  *
  * <p>For each field:
  *

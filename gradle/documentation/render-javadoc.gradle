@@ -297,6 +297,10 @@ class RenderJavadocTask extends DefaultTask {
   @Input
   List<String> javadocMissingIgnore = []
 
+  @Input
+  @Optional
+  ListProperty<String> extraOpts = project.objects.listProperty(String)
+
   @Nullable
   @Optional
   @Input
@@ -365,6 +369,9 @@ class RenderJavadocTask extends DefaultTask {
 
     opts << [ '-quiet' ]
 
+    // Add all extra options, if any.
+    opts.addAll(extraOpts.orElse([]).get())
+
     def allOfflineLinks = [:]
     allOfflineLinks.putAll(offlineLinks)
 
@@ -408,7 +415,16 @@ class RenderJavadocTask extends DefaultTask {
     opts << [ '--release', 11 ]
     opts << '-Xdoclint:all,-missing'
 
-    // Temporary file that holds all javadoc options for the current task.
+    // Increase Javadoc's heap.
+    opts += [ "-J-Xmx512m" ]
+    // Force locale to be "en_US" (fix for: https://bugs.openjdk.java.net/browse/JDK-8222793)
+    opts += [ "-J-Duser.language=en", "-J-Duser.country=US" ]
+
+    // -J options have to be passed on command line, they are not interpreted if passed via args file.
+    def jOpts = opts.findAll { opt -> opt instanceof String && opt.startsWith("-J") }
+    opts.removeAll(jOpts)
+
+    // Temporary file that holds all javadoc options for the current task (except jOpts)
     optionsFile.withWriter("UTF-8", { writer ->
       // escapes an option with single quotes or whitespace to be passed in the options.txt file for
       def escapeJavadocOption = { String s -> (s =~ /[ '"]/) ? ("'" + s.replaceAll(/[\\'"]/, /\\$0/) + "'") : s }
@@ -435,50 +451,11 @@ class RenderJavadocTask extends DefaultTask {
 
     logger.info("Javadoc executable used: ${javadocCmd}")
 
-    def outputFile = project.file("${getTemporaryDir()}/javadoc-output.txt")
-    def result
-
-    outputFile.withOutputStream { output ->
-      result = project.exec {
+    project.quietExec {
         executable javadocCmd
 
-        // we want to capture both stdout and stderr to the same
-        // stream but gradle attempts to close these separately
-        // (it has two independent pumping threads) and it can happen
-        // that one still tries to write something when the other closed
-        // the underlying output stream.
-        def wrapped = new java.io.FilterOutputStream(output) {
-          public void close() { 
-            // no-op. we close this stream manually.
-          }
-        }
-        standardOutput = wrapped
-        errorOutput = wrapped
-
         args += [ "@${optionsFile}" ]
-
-        // -J flags can't be passed via options file... (an error "javadoc: error - invalid flag: -J-Xmx512m" occurs.)
-        args += [ "-J-Xmx512m" ]
-        // force locale to be "en_US" (fix for: https://bugs.openjdk.java.net/browse/JDK-8222793)
-        args += [ "-J-Duser.language=en", "-J-Duser.country=US" ]
-
-        ignoreExitValue true
-      }
-    }
-
-    if (result.getExitValue() != 0) {
-      // Pipe the output to console. Intentionally skips any encoding conversion 
-      // and pumps raw bytes.
-      System.out.write(outputFile.bytes)
-      System.out.flush()
-
-      def cause
-      try {
-        result.rethrowFailure()
-      } catch (ex) {
-        cause = ex
-      }
-      throw new GradleException("Javadoc generation failed for ${project.path},\n  Options file at: ${optionsFile}\n  Command output at: ${outputFile}", cause)
+        args += jOpts
     }
 
     // append some special table css, prettify css

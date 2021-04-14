@@ -33,6 +33,7 @@ abstract class LegacyPrefixTree extends SpatialPrefixTree {
     super(ctx, maxLevels);
   }
 
+  @Override
   public double getDistanceForLevel(int level) {
     if (level < 1 || level > getMaxLevels())
       throw new IllegalArgumentException("Level must be in 1 to maxLevels range");

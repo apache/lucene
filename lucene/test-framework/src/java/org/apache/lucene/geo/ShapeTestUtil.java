@@ -39,7 +39,9 @@ public class ShapeTestUtil {
         double radius = random.nextDouble() * 0.5 * Float.MAX_VALUE + 1.0;
         try {
           return createRegularPolygon(nextFloat(random), nextFloat(random), radius, gons);
-        } catch (IllegalArgumentException iae) {
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalArgumentException iae) {
           // something went wrong, try again
         }
       }

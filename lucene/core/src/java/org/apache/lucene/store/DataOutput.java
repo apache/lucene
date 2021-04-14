@@ -100,89 +100,89 @@ public abstract class DataOutput {
    *
    * <table class="padding2" style="border-spacing: 0px; border-collapse: separate; border: 0">
    * <caption>variable length encoding examples</caption>
-   * <tr valign="top">
+   * <tr style="vertical-align: top">
    *   <th style="text-align:left">Value</th>
    *   <th style="text-align:left">Byte 1</th>
    *   <th style="text-align:left">Byte 2</th>
    *   <th style="text-align:left">Byte 3</th>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>0</td>
    *   <td><code>00000000</code></td>
    *   <td></td>
    *   <td></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>1</td>
    *   <td><code>00000001</code></td>
    *   <td></td>
    *   <td></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>2</td>
    *   <td><code>00000010</code></td>
    *   <td></td>
    *   <td></td>
    * </tr>
    * <tr>
-   *   <td valign="top">...</td>
-   *   <td valign="bottom"></td>
-   *   <td valign="bottom"></td>
-   *   <td valign="bottom"></td>
+   *   <td style="vertical-align: top">...</td>
+   *   <td></td>
+   *   <td></td>
+   *   <td></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>127</td>
    *   <td><code>01111111</code></td>
    *   <td></td>
    *   <td></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>128</td>
    *   <td><code>10000000</code></td>
    *   <td><code>00000001</code></td>
    *   <td></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>129</td>
    *   <td><code>10000001</code></td>
    *   <td><code>00000001</code></td>
    *   <td></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>130</td>
    *   <td><code>10000010</code></td>
    *   <td><code>00000001</code></td>
    *   <td></td>
    * </tr>
    * <tr>
-   *   <td valign="top">...</td>
+   *   <td style="vertical-align: top">...</td>
    *   <td></td>
    *   <td></td>
    *   <td></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>16,383</td>
    *   <td><code>11111111</code></td>
    *   <td><code>01111111</code></td>
    *   <td></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>16,384</td>
    *   <td><code>10000000</code></td>
    *   <td><code>10000000</code></td>
    *   <td><code>00000001</code></td>
    * </tr>
-   * <tr valign="bottom">
+   * <tr style="vertical-align: bottom">
    *   <td>16,385</td>
    *   <td><code>10000001</code></td>
    *   <td><code>10000000</code></td>
    *   <td><code>00000001</code></td>
    * </tr>
    * <tr>
-   *   <td valign="top">...</td>
-   *   <td valign="bottom"></td>
-   *   <td valign="bottom"></td>
-   *   <td valign="bottom"></td>
+   *   <td style="vertical-align: top">...</td>
+   *   <td ></td>
+   *   <td ></td>
+   *   <td ></td>
    * </tr>
    * </table>
    *

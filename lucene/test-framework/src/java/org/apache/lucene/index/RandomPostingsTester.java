@@ -65,7 +65,6 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
 public class RandomPostingsTester {
 
   private static final IntToLongFunction DOC_TO_NORM = doc -> 1 + (doc & 0x0f);
-  private static final long MAX_NORM = 0x10;
 
   /** Which features to test. */
   public enum Option {
@@ -738,11 +737,6 @@ public class RandomPostingsTester {
 
           @Override
           public void close() throws IOException {}
-
-          @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
 
           @Override
           public NumericDocValues getNorms(FieldInfo field) throws IOException {
@@ -1493,7 +1487,9 @@ public class RandomPostingsTester {
           // Try seek by ord sometimes:
           try {
             termsEnum.seekExact(fieldAndTerm.ord);
-          } catch (UnsupportedOperationException uoe) {
+          } catch (
+              @SuppressWarnings("unused")
+              UnsupportedOperationException uoe) {
             supportsOrds = false;
             assertTrue(termsEnum.seekExact(fieldAndTerm.term));
           }
@@ -1511,7 +1507,9 @@ public class RandomPostingsTester {
       if (supportsOrds) {
         try {
           termOrd = termsEnum.ord();
-        } catch (UnsupportedOperationException uoe) {
+        } catch (
+            @SuppressWarnings("unused")
+            UnsupportedOperationException uoe) {
           supportsOrds = false;
           termOrd = -1;
         }
@@ -1651,7 +1649,9 @@ public class RandomPostingsTester {
       try {
         iterator.remove();
         throw new AssertionError("Fields.iterator() allows for removal");
-      } catch (UnsupportedOperationException expected) {
+      } catch (
+          @SuppressWarnings("unused")
+          UnsupportedOperationException expected) {
         // expected;
       }
     }

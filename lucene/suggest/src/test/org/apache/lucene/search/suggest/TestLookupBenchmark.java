@@ -156,7 +156,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
     } else {
       try {
         lookup = cls.getConstructor().newInstance();
-      } catch (InstantiationException | NoSuchMethodException e) {
+      } catch (@SuppressWarnings("unused") InstantiationException | NoSuchMethodException e) {
         Analyzer a = new MockAnalyzer(random, MockTokenizer.KEYWORD, false);
         if (cls == AnalyzingInfixSuggester.class || cls == BlendedInfixSuggester.class) {
           Constructor<? extends Lookup> ctor = cls.getConstructor(Directory.class, Analyzer.class);

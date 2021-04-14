@@ -521,7 +521,9 @@ public class TestPackedInts extends LuceneTestCase {
     Packed64 p64 = null;
     try {
       p64 = new Packed64(INDEX, BITS);
-    } catch (OutOfMemoryError oome) {
+    } catch (
+        @SuppressWarnings("unused")
+        OutOfMemoryError oome) {
       // This can easily happen: we're allocating a
       // long[] that needs 256-273 MB.  Heap is 512 MB,
       // but not all of that is available for large
@@ -540,7 +542,9 @@ public class TestPackedInts extends LuceneTestCase {
     Packed64SingleBlock p64sb = null;
     try {
       p64sb = Packed64SingleBlock.create(INDEX, BITS);
-    } catch (OutOfMemoryError oome) {
+    } catch (
+        @SuppressWarnings("unused")
+        OutOfMemoryError oome) {
       // Ignore: see comment above
     }
     if (p64sb != null) {

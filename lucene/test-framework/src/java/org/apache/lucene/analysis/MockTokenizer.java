@@ -71,7 +71,7 @@ public class MockTokenizer extends Tokenizer {
   // TODO: "register" with LuceneTestCase to ensure all streams are closed() ?
   // currently, we can only check that the lifecycle is correct if someone is reusing,
   // but not for "one-offs".
-  private static enum State {
+  private enum State {
     SETREADER, // consumer set a reader input either via ctor or via reset(Reader)
     RESET, // consumer has called reset()
     INCREMENT, // consumer is consuming, has called incrementToken() == true

@@ -79,7 +79,9 @@ final class SubtypeCollector<T> implements Runnable {
                   types.add(clazz.asSubclass(superType));
                 }
                 break;
-              } catch (Throwable e) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  Throwable e) {
               }
             }
           }

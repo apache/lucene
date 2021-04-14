@@ -34,7 +34,7 @@ import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
 
 /** Assembles a QueryBuilder which uses only core Lucene Query objects */
-public class CoreParser implements QueryBuilder, SpanQueryBuilder {
+public class CoreParser implements SpanQueryBuilder {
 
   protected String defaultField;
   protected Analyzer analyzer;
@@ -166,7 +166,9 @@ public class CoreParser implements QueryBuilder, SpanQueryBuilder {
     dbf.setValidating(false);
     try {
       dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-    } catch (ParserConfigurationException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        ParserConfigurationException e) {
       // ignore since all implementations are required to support the
       // {@link javax.xml.XMLConstants#FEATURE_SECURE_PROCESSING} feature
     }
@@ -185,6 +187,7 @@ public class CoreParser implements QueryBuilder, SpanQueryBuilder {
     }
   }
 
+  @Override
   public Query getQuery(Element e) throws ParserException {
     return queryFactory.getQuery(e);
   }

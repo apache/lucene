@@ -797,7 +797,9 @@ public class TestLatLonShape extends LuceneTestCase {
         polygon = new Polygon(lats, lons);
         Tessellator.tessellate(polygon);
         break;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // invalid polygon, try a new one
       }
     }

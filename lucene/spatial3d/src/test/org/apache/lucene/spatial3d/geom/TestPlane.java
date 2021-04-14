@@ -16,14 +16,11 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Test basic plane functionality. */
-public class TestPlane {
+public class TestPlane extends LuceneTestCase {
 
   @Test
   public void testIdenticalPlanes() {

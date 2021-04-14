@@ -33,7 +33,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * @lucene.internal
  */
-public class SparseFixedBitSet extends BitSet implements Bits, Accountable {
+public class SparseFixedBitSet extends BitSet {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(SparseFixedBitSet.class);
@@ -138,6 +138,7 @@ public class SparseFixedBitSet extends BitSet implements Bits, Accountable {
   }
 
   /** Set the bit at index <code>i</code>. */
+  @Override
   public void set(int i) {
     assert consistent(i);
     final int i4096 = i >>> 12;
@@ -193,6 +194,7 @@ public class SparseFixedBitSet extends BitSet implements Bits, Accountable {
   }
 
   /** Clear the bit at index <code>i</code>. */
+  @Override
   public void clear(int i) {
     assert consistent(i);
     final int i4096 = i >>> 12;

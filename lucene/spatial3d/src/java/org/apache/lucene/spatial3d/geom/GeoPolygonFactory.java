@@ -234,7 +234,9 @@ public class GeoPolygonFactory {
         }
         throw new IllegalArgumentException(
             "cannot find a point that is inside the polygon " + filteredPointList);
-      } catch (TileException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          TileException e) {
         // Couldn't tile the polygon; use GeoComplexPolygon instead, if we can.
       }
     }
@@ -515,7 +517,9 @@ public class GeoPolygonFactory {
                 new GeoPoint(-testPoint.x, -testPoint.y, -testPoint.z),
                 !isTestPointInside);
           }
-        } catch (IllegalArgumentException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalArgumentException e) {
           // Probably bad choice of test point.
           return null;
         }
@@ -2022,8 +2026,6 @@ public class GeoPolygonFactory {
    */
   private static class SafePath {
     public final GeoPoint lastPoint;
-    public final int lastPointIndex;
-    public final Plane lastPlane;
     public final SafePath previous;
 
     /** Create a new safe end point. */
@@ -2033,8 +2035,6 @@ public class GeoPolygonFactory {
         final int lastPointIndex,
         final Plane lastPlane) {
       this.lastPoint = lastPoint;
-      this.lastPointIndex = lastPointIndex;
-      this.lastPlane = lastPlane;
       this.previous = previous;
     }
 

@@ -18,6 +18,7 @@ package org.apache.lucene.search.suggest.analyzing;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -999,7 +1000,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
       try {
         suggester.add(new BytesRef(key), null, 10, null);
       } catch (IOException e) {
-        fail("Could not build suggest dictionary correctly");
+        throw new UncheckedIOException("Could not build suggest dictionary correctly", e);
       }
     }
   }

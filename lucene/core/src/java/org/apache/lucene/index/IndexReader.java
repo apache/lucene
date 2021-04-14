@@ -82,6 +82,41 @@ public abstract class IndexReader implements Closeable {
    * A utility class that gives hooks in order to help build a cache based on the data that is
    * contained in this index.
    *
+   * <p>Example: cache the number of documents that match a query per reader.
+   *
+   * <pre class="prettyprint">
+   * public class QueryCountCache {
+   *
+   *   private final Query query;
+   *   private final Map&lt;IndexReader.CacheKey, Integer&gt; counts = new ConcurrentHashMap&lt;&gt;();
+   *
+   *   // Create a cache of query counts for the given query
+   *   public QueryCountCache(Query query) {
+   *     this.query = query;
+   *   }
+   *
+   *   // Count the number of matches of the query on the given IndexSearcher
+   *   public int count(IndexSearcher searcher) throws IOException {
+   *     IndexReader.CacheHelper cacheHelper = searcher.getIndexReader().getReaderCacheHelper();
+   *     if (cacheHelper == null) {
+   *       // reader doesn't support caching
+   *       return searcher.count(query);
+   *     } else {
+   *       // make sure the cache entry is cleared when the reader is closed
+   *       cacheHelper.addClosedListener(counts::remove);
+   *       return counts.computeIfAbsent(cacheHelper.getKey(), cacheKey -&gt; {
+   *         try {
+   *           return searcher.count(query);
+   *         } catch (IOException e) {
+   *           throw new UncheckedIOException(e);
+   *         }
+   *       });
+   *     }
+   *   }
+   *
+   * }
+   * </pre>
+   *
    * @lucene.experimental
    */
   public static interface CacheHelper {

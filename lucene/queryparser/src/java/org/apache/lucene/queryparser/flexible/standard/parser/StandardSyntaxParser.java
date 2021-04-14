@@ -50,7 +50,7 @@ import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuery
 /**
  * Parser for the standard Lucene syntax
  */
-public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserConstants {
+@SuppressWarnings({"unused","null"}) public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserConstants {
   public StandardSyntaxParser() {
     this(new FastCharStream(Reader.nullReader()));
   }
@@ -60,6 +60,7 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
    * @param query  the query string to be parsed.
    * @throws ParseException if the parsing fails
    */
+  @Override
   public QueryNode parse(CharSequence query, CharSequence field) throws QueryNodeParseException {
     ReInit(new FastCharStream(new StringReader(query.toString())));
     try {

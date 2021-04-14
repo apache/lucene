@@ -404,6 +404,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
       else return Explanation.noMatch(this.toString());
     }
 
+    @Override
     public DoubleValuesSource rewrite(IndexSearcher searcher) throws IOException {
       return this;
     }

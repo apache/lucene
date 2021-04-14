@@ -68,7 +68,7 @@ import org.apache.lucene.util.fst.NoOutputs;
  * @see FSTCompletion
  * @lucene.experimental
  */
-public class FSTCompletionLookup extends Lookup implements Accountable {
+public class FSTCompletionLookup extends Lookup {
   /**
    * An invalid bucket count if we're creating an object of this class from an existing FST.
    *

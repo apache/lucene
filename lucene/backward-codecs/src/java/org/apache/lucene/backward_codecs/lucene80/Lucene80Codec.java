@@ -41,8 +41,6 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 /**
  * Implements the Lucene 8.0 index format.
  *
- * <p>
- *
  * @see org.apache.lucene.backward_codecs.lucene80 package documentation for file format details.
  * @lucene.experimental
  */

@@ -65,6 +65,7 @@ final class DocValuesAdapter {
         return createSortedDocValues(docid, field, DocValuesType.SORTED);
       case SORTED_SET:
         return createSortedSetDocValues(docid, field, DocValuesType.SORTED_SET);
+      case NONE:
       default:
         return Optional.empty();
     }

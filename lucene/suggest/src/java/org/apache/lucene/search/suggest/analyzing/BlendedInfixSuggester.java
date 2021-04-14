@@ -69,7 +69,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
   private final BlenderType blenderType;
 
   /** The different types of blender. */
-  public static enum BlenderType {
+  public enum BlenderType {
     /** Application dependent; override {@link #calculateCoefficient} to compute it. */
     CUSTOM,
     /** weight*(1 - 0.10*position) */
@@ -368,6 +368,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
         coefficient = 1. / Math.pow((position + 1.0), exponent);
         break;
 
+      case CUSTOM:
       default:
         coefficient = 1;
     }

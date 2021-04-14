@@ -397,11 +397,6 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     doc.add(new StoredField("foobar", TestUtil.randomSimpleString(random())));
   }
 
-  @Override
-  public void testRamBytesUsed() throws IOException {
-    assumeTrue("not applicable for this format", true);
-  }
-
   private FieldInfo createFieldInfo() {
     return new FieldInfo(
         "field",

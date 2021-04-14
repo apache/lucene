@@ -52,7 +52,9 @@ public class EnumFieldSource extends FieldCacheSource {
     Integer intValue = null;
     try {
       intValue = Integer.parseInt(valueStr);
-    } catch (NumberFormatException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        NumberFormatException e) {
     }
     return intValue;
   }
@@ -102,8 +104,6 @@ public class EnumFieldSource extends FieldCacheSource {
     final NumericDocValues arr = DocValues.getNumeric(readerContext.reader(), field);
 
     return new IntDocValues(this) {
-      final MutableValueInt val = new MutableValueInt();
-
       int lastDocID;
 
       private int getValueForDoc(int doc) throws IOException {

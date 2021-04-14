@@ -155,11 +155,6 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public void close() {}
-
-      @Override
-      public long ramBytesUsed() {
-        return 0;
-      }
     };
   }
 
@@ -200,11 +195,6 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public void close() {}
-
-      @Override
-      public long ramBytesUsed() {
-        return 0;
-      }
     };
   }
 
@@ -243,11 +233,6 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public void close() {}
-
-      @Override
-      public long ramBytesUsed() {
-        return 0;
-      }
     };
   }
 
@@ -270,11 +255,6 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public void close() {}
-
-      @Override
-      public long ramBytesUsed() {
-        return 0;
-      }
     };
   }
 
@@ -297,11 +277,6 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public void close() {}
-
-      @Override
-      public long ramBytesUsed() {
-        return 0;
-      }
     };
   }
 
@@ -336,11 +311,6 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public void close() {}
-
-      @Override
-      public long ramBytesUsed() {
-        return 0;
-      }
     };
   }
 }

@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.asserting;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Collection;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -33,7 +32,6 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LongBitSet;
@@ -82,7 +80,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         assert docID >= 0 && docID < maxDoc;
         assert docID > lastDocID;
         lastDocID = docID;
-        long value = values.longValue();
+        values.longValue();
       }
 
       in.addNumericField(field, valuesProducer);
@@ -146,7 +144,6 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         throws IOException {
       SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
 
-      long valueCount = 0;
       int lastDocID = -1;
       while (true) {
         int docID = values.nextDoc();
@@ -157,7 +154,6 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         lastDocID = values.docID();
         int count = values.docValueCount();
         assert count > 0;
-        valueCount += count;
         long previous = Long.MIN_VALUE;
         for (int i = 0; i < count; i++) {
           long nextValue = values.nextValue();
@@ -185,14 +181,12 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         lastValue = BytesRef.deepCopyOf(b);
       }
 
-      int docCount = 0;
       LongBitSet seenOrds = new LongBitSet(valueCount);
       while (true) {
         int docID = values.nextDoc();
         if (docID == NO_MORE_DOCS) {
           break;
         }
-        docCount++;
 
         long lastOrd = -1;
         while (true) {
@@ -232,8 +226,6 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
       this.creationThread = Thread.currentThread();
       // do a few simple checks on init
       assert toString() != null;
-      assert ramBytesUsed() >= 0;
-      assert getChildResources() != null;
     }
 
     @Override
@@ -295,20 +287,6 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     public void close() throws IOException {
       in.close();
       in.close(); // close again
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long v = in.ramBytesUsed();
-      assert v >= 0;
-      return v;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      Collection<Accountable> res = in.getChildResources();
-      TestUtil.checkReadOnly(res);
-      return res;
     }
 
     @Override

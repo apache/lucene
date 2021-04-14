@@ -73,6 +73,7 @@ enum WordCase {
         return seenUpper ? MIXED : LOWER;
       case UPPER:
         return !seenLower ? UPPER : TITLE;
+      case NEUTRAL:
       default:
         return seenLower ? LOWER : seenUpper ? UPPER : NEUTRAL;
     }

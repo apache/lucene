@@ -25,7 +25,7 @@ import org.apache.lucene.util.AttributeReflector;
  *
  * @lucene.experimental
  */
-public class ReadingAttributeImpl extends AttributeImpl implements ReadingAttribute, Cloneable {
+public class ReadingAttributeImpl extends AttributeImpl implements ReadingAttribute {
   private Token token;
 
   @Override

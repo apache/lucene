@@ -71,7 +71,7 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
       tablePos = df.parse(stripPrefix(scratch, TABLEPOS)).longValue();
     } catch (ParseException e) {
       throw new CorruptIndexException(
-          "can't parse CFS trailer, got: " + scratch.get().utf8ToString(), in);
+          "can't parse CFS trailer, got: " + scratch.get().utf8ToString(), in, e);
     }
 
     // seek to TOC and read it

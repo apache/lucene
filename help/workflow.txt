@@ -27,11 +27,6 @@ local maven repository for inspection:
 gradlew mavenLocal
 ls -R build/maven-local/
 
-Put together Solr distribution:
-gradlew -p solr/packaging assemble
-ls solr/packaging/build/distributions/solr-* # release archives
-ls solr/packaging/build/solr-*               # expanded directory
-
 
 Other validation and checks
 ===========================

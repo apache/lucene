@@ -199,6 +199,11 @@ public class TestDoubleValuesSource extends LuceneTestCase {
           case SCORE:
             mutated[i] = DoubleValuesSource.SCORES.getSortField(reverse);
             break;
+          case CUSTOM:
+          case DOC:
+          case REWRITEABLE:
+          case STRING:
+          case STRING_VAL:
           default:
             mutated[i] = original[i];
         }

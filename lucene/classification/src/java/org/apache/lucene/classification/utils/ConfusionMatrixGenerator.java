@@ -135,7 +135,9 @@ public class ConfusionMatrixGenerator {
                   }
                 }
               }
-            } catch (TimeoutException timeoutException) {
+            } catch (
+                @SuppressWarnings("unused")
+                TimeoutException timeoutException) {
               // add classification timeout
               time += 5000;
             } catch (ExecutionException | InterruptedException executionException) {

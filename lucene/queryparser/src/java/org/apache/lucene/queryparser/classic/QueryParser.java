@@ -81,7 +81,7 @@ import org.apache.lucene.queryparser.charstream.FastCharStream;
  * the same syntax as this class, but is more modular,
  * enabling substantial customization to how a query is created.
  */
-public class QueryParser extends QueryParserBase implements QueryParserConstants {
+@SuppressWarnings({"unused","null"}) public class QueryParser extends QueryParserBase implements QueryParserConstants {
   /** The default operator for parsing queries.
    * Use {@link QueryParserBase#setDefaultOperator} to change it.
    */
@@ -219,7 +219,7 @@ ret = MOD_NOT;
 }
 
 // This makes sure that there is no garbage after the query string
-  final public Query TopLevelQuery(String field) throws ParseException {Query q;
+  @Override final public Query TopLevelQuery(String field) throws ParseException {Query q;
     q = Query(field);
     jj_consume_token(0);
 {if ("" != null) return q;}
@@ -813,7 +813,7 @@ if (splitOnWhitespace == false) {
   }
 
   /** Reinitialise. */
-  public void ReInit(CharStream stream) {
+  @Override public void ReInit(CharStream stream) {
      token_source.ReInit(stream);
      token = new Token();
      jj_ntk = -1;

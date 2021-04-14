@@ -170,7 +170,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
    *
    * <p>WARNING: can make tests very slow.
    */
-  public static enum Throttling {
+  public enum Throttling {
     /** always emulate a slow hard disk. could be very slow! */
     ALWAYS,
     /** sometimes (0.5% of the time) emulate a slow hard disk. */
@@ -512,7 +512,9 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     for (Closeable f : m.keySet()) {
       try {
         f.close();
-      } catch (Exception ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception ignored) {
       }
     }
     corruptFiles(unSyncedFiles);
@@ -756,7 +758,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     return maybeThrottle(name, io);
   }
 
-  private static enum Handle {
+  private enum Handle {
     Input,
     Output,
     Slice

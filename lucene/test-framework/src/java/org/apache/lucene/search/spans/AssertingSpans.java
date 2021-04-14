@@ -26,7 +26,7 @@ class AssertingSpans extends Spans {
   int doc = -1;
 
   /** tracks current state of this spans */
-  static enum State {
+  enum State {
     /** document iteration has not yet begun ({@link #docID()} = -1) */
     DOC_START,
 

@@ -31,7 +31,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
- * Lucene 8.7 stored fields format.
+ * Lucene 9.0 stored fields format.
  *
  * <p><b>Principle</b>
  *
@@ -103,7 +103,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
 public class Lucene90StoredFieldsFormat extends StoredFieldsFormat {
 
   /** Configuration option for stored fields. */
-  public static enum Mode {
+  public enum Mode {
     /** Trade compression ratio for retrieval speed. */
     BEST_SPEED,
     /** Trade retrieval speed for compression ratio. */
@@ -158,10 +158,10 @@ public class Lucene90StoredFieldsFormat extends StoredFieldsFormat {
     switch (mode) {
       case BEST_SPEED:
         return new Lucene90CompressingStoredFieldsFormat(
-            "Lucene87StoredFieldsFastData", BEST_SPEED_MODE, BEST_SPEED_BLOCK_LENGTH, 1024, 10);
+            "Lucene90StoredFieldsFastData", BEST_SPEED_MODE, BEST_SPEED_BLOCK_LENGTH, 1024, 10);
       case BEST_COMPRESSION:
         return new Lucene90CompressingStoredFieldsFormat(
-            "Lucene87StoredFieldsHighData",
+            "Lucene90StoredFieldsHighData",
             BEST_COMPRESSION_MODE,
             BEST_COMPRESSION_BLOCK_LENGTH,
             4096,

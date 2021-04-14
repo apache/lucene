@@ -98,7 +98,6 @@ public class TestIndexedDISI extends LuceneTestCase {
   private void assertAdvanceBeyondEnd(BitSet set, Directory dir) throws IOException {
     final int cardinality = set.cardinality();
     final byte denseRankPower = 9; // Not tested here so fixed to isolate factors
-    long length;
     int jumpTableentryCount;
     try (IndexOutput out = dir.createOutput("bar", IOContext.DEFAULT)) {
       jumpTableentryCount =
@@ -398,26 +397,19 @@ public class TestIndexedDISI extends LuceneTestCase {
 
     // Illegal values
     for (byte denseRankPower : new byte[] {-2, 0, 1, 6, 16}) {
-      try {
-        createAndOpenDISI(
-            denseRankPower, (byte) 8); // Illegal write, legal read (should not reach read)
-        fail(
-            "Trying to create an IndexedDISI data stream with denseRankPower-read "
-                + denseRankPower
-                + " and denseRankPower-write 8 should fail");
-      } catch (IllegalArgumentException e) {
-        // Expected
-      }
-      try {
-        createAndOpenDISI(
-            (byte) 8, denseRankPower); // Legal write, illegal read (should reach read)
-        fail(
-            "Trying to create an IndexedDISI data stream with denseRankPower-write 8 and denseRankPower-read "
-                + denseRankPower
-                + " should fail");
-      } catch (IllegalArgumentException e) {
-        // Expected
-      }
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> {
+            createAndOpenDISI(
+                denseRankPower, (byte) 8); // Illegal write, legal read (should not reach read)
+          });
+
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> {
+            createAndOpenDISI(
+                (byte) 8, denseRankPower); // Legal write, illegal read (should reach read)
+          });
     }
   }
 
@@ -435,9 +427,7 @@ public class TestIndexedDISI extends LuceneTestCase {
         length = out.getFilePointer();
       }
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
-        IndexedDISI disi =
-            new IndexedDISI(
-                in, 0L, length, jumpTableEntryCount, denseRankPowerRead, set.cardinality());
+        new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPowerRead, set.cardinality());
       }
       // This tests the legality of the denseRankPower only, so we don't do anything with the disi
     }

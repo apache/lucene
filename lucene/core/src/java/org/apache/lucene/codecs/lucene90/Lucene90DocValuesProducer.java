@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,19 +45,17 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.compress.LZ4;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectReader;
 
 /** reader for {@link Lucene90DocValuesFormat} */
-final class Lucene90DocValuesProducer extends DocValuesProducer implements Closeable {
+final class Lucene90DocValuesProducer extends DocValuesProducer {
   private final Map<String, NumericEntry> numerics = new HashMap<>();
   private final Map<String, BinaryEntry> binaries = new HashMap<>();
   private final Map<String, SortedEntry> sorted = new HashMap<>();
   private final Map<String, SortedSetEntry> sortedSets = new HashMap<>();
   private final Map<String, SortedNumericEntry> sortedNumerics = new HashMap<>();
-  private long ramBytesUsed;
   private final IndexInput data;
   private final int maxDoc;
   private int version = -1;
@@ -74,7 +71,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer implements Close
     String metaName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
     this.maxDoc = state.segmentInfo.maxDoc();
-    ramBytesUsed = RamUsageEstimator.shallowSizeOfInstance(getClass());
 
     // read in the entries from the metadata file.
     try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName, state.context)) {
@@ -185,7 +181,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer implements Close
     }
     if (tableSize >= 0) {
       entry.table = new long[tableSize];
-      ramBytesUsed += RamUsageEstimator.sizeOf(entry.table);
       for (int i = 0; i < tableSize; ++i) {
         entry.table[i] = meta.readLong();
       }
@@ -230,7 +225,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer implements Close
 
       final int blockShift = meta.readVInt();
       entry.addressesMeta = DirectMonotonicReader.loadMeta(meta, numAddresses, blockShift);
-      ramBytesUsed += entry.addressesMeta.ramBytesUsed();
       entry.addressesLength = meta.readLong();
     }
     return entry;
@@ -274,7 +268,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer implements Close
     final int blockShift = meta.readVInt();
     entry.addressesMeta =
         DirectMonotonicReader.loadMeta(meta, entry.numDocsWithField + 1, blockShift);
-    ramBytesUsed += entry.addressesMeta.ramBytesUsed();
     entry.addressesLength = meta.readLong();
     readTermDict(meta, entry);
     return entry;
@@ -323,7 +316,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer implements Close
       final int blockShift = meta.readVInt();
       entry.addressesMeta =
           DirectMonotonicReader.loadMeta(meta, entry.numDocsWithField + 1, blockShift);
-      ramBytesUsed += entry.addressesMeta.ramBytesUsed();
       entry.addressesLength = meta.readLong();
     }
     return entry;
@@ -420,11 +412,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer implements Close
     DirectMonotonicReader.Meta addressesMeta;
     long addressesOffset;
     long addressesLength;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return ramBytesUsed;
   }
 
   @Override
@@ -1109,6 +1096,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer implements Close
       switch (status) {
         case FOUND:
           return Math.toIntExact(termsEnum.ord());
+        case NOT_FOUND:
+        case END:
         default:
           return Math.toIntExact(-1L - termsEnum.ord());
       }
@@ -1149,6 +1138,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer implements Close
       switch (status) {
         case FOUND:
           return termsEnum.ord();
+        case NOT_FOUND:
+        case END:
         default:
           return -1L - termsEnum.ord();
       }

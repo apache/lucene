@@ -124,6 +124,7 @@ class MockVectorValues extends VectorValues
     return advance(pos + 1);
   }
 
+  @Override
   public int advance(int target) {
     while (++pos < values.length) {
       if (seek(pos)) {
