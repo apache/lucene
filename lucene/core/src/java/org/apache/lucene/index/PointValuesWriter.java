@@ -80,6 +80,7 @@ class PointValuesWriter {
     PointValues points =
         new MutablePointValues() {
           final int[] ords = new int[numPoints];
+          int[] temp;
 
           {
             for (int i = 0; i < numPoints; ++i) {
@@ -162,6 +163,21 @@ class PointValuesWriter {
           public byte getByteAt(int i, int k) {
             final long offset = (long) packedBytesLength * ords[i] + k;
             return bytes.readByte(offset);
+          }
+
+          @Override
+          public void assign(int from, int to) {
+            if (temp == null) {
+              temp = new int[ords.length];
+            }
+            temp[to] = ords[from];
+          }
+
+          @Override
+          public void finalizeAssign(int from, int to) {
+            if (temp != null) {
+              System.arraycopy(temp, from, ords, from, to - from);
+            }
           }
         };
 

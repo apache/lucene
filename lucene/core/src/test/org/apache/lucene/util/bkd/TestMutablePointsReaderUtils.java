@@ -28,16 +28,22 @@ import org.apache.lucene.util.TestUtil;
 public class TestMutablePointsReaderUtils extends LuceneTestCase {
 
   public void testSort() {
-    for (int iter = 0; iter < 5; ++iter) {
-      doTestSort();
+    for (int iter = 0; iter < 10; ++iter) {
+      doTestSort(false);
     }
   }
 
-  private void doTestSort() {
+  public void testSortWithIncrementalDocId() {
+    for (int iter = 0; iter < 10; ++iter) {
+      doTestSort(true);
+    }
+  }
+
+  private void doTestSort(boolean isDocIdIncremental) {
     final int bytesPerDim = TestUtil.nextInt(random(), 1, 16);
     final int maxDoc = TestUtil.nextInt(random(), 1, 1 << random().nextInt(30));
     BKDConfig config = new BKDConfig(1, 1, bytesPerDim, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-    Point[] points = createRandomPoints(config, maxDoc, new int[1]);
+    Point[] points = createRandomPoints(config, maxDoc, new int[1], isDocIdIncremental);
     DummyPointsReader reader = new DummyPointsReader(points);
     MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, points.length);
     Arrays.sort(
@@ -66,7 +72,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     BKDConfig config = createRandomConfig();
     final int maxDoc = TestUtil.nextInt(random(), 1, 1 << random().nextInt(30));
     int[] commonPrefixLengths = new int[config.numDims];
-    Point[] points = createRandomPoints(config, maxDoc, commonPrefixLengths);
+    Point[] points = createRandomPoints(config, maxDoc, commonPrefixLengths, false);
     DummyPointsReader reader = new DummyPointsReader(points);
     final int sortedDim = random().nextInt(config.numIndexDims);
     MutablePointsReaderUtils.sortByDim(
@@ -119,7 +125,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     BKDConfig config = createRandomConfig();
     int[] commonPrefixLengths = new int[config.numDims];
     final int maxDoc = TestUtil.nextInt(random(), 1, 1 << random().nextInt(30));
-    Point[] points = createRandomPoints(config, maxDoc, commonPrefixLengths);
+    Point[] points = createRandomPoints(config, maxDoc, commonPrefixLengths, false);
     final int splitDim = random().nextInt(config.numIndexDims);
     DummyPointsReader reader = new DummyPointsReader(points);
     final int pivot = TestUtil.nextInt(random(), 0, points.length - 1);
@@ -180,15 +186,16 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
   }
 
   private static Point[] createRandomPoints(
-      BKDConfig config, int maxDoc, int[] commonPrefixLengths) {
+      BKDConfig config, int maxDoc, int[] commonPrefixLengths, boolean isDocIdIncremental) {
     assertTrue(commonPrefixLengths.length == config.numDims);
     final int numPoints = TestUtil.nextInt(random(), 1, 100000);
     Point[] points = new Point[numPoints];
-    if (random().nextInt(5) != 0) {
+    if (random().nextInt(10) != 0) {
       for (int i = 0; i < numPoints; ++i) {
         byte[] value = new byte[config.packedBytesLength];
         random().nextBytes(value);
-        points[i] = new Point(value, random().nextInt(maxDoc));
+        points[i] =
+            new Point(value, isDocIdIncremental ? Math.min(i, maxDoc) : random().nextInt(maxDoc));
       }
       for (int i = 0; i < config.numDims; ++i) {
         commonPrefixLengths[i] = TestUtil.nextInt(random(), 0, config.bytesPerDim);
@@ -218,7 +225,8 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
         random().nextBytes(dataDims);
         System.arraycopy(
             dataDims, 0, value, config.packedIndexBytesLength, numDataDims * config.bytesPerDim);
-        points[i] = new Point(value, random().nextInt(maxDoc));
+        points[i] =
+            new Point(value, isDocIdIncremental ? Math.min(i, maxDoc) : random().nextInt(maxDoc));
       }
       for (int i = 0; i < config.numIndexDims; ++i) {
         commonPrefixLengths[i] = config.bytesPerDim;
@@ -280,6 +288,8 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
   private static class DummyPointsReader extends MutablePointValues {
 
     private final Point[] points;
+
+    private Point[] temp;
 
     DummyPointsReader(Point[] points) {
       this.points = points.clone();
@@ -351,6 +361,21 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     @Override
     public int getDocCount() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void assign(int from, int to) {
+      if (temp == null) {
+        temp = new Point[points.length];
+      }
+      temp[to] = points[from];
+    }
+
+    @Override
+    public void finalizeAssign(int from, int to) {
+      if (temp != null) {
+        System.arraycopy(temp, from, points, from, to - from);
+      }
     }
   }
 }

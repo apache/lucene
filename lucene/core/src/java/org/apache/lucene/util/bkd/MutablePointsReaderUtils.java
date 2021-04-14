@@ -19,11 +19,13 @@ package org.apache.lucene.util.bkd;
 import java.util.Arrays;
 import org.apache.lucene.codecs.MutablePointValues;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntroSorter;
-import org.apache.lucene.util.MSBRadixSorter;
 import org.apache.lucene.util.RadixSelector;
 import org.apache.lucene.util.Selector;
+import org.apache.lucene.util.Sorter;
+import org.apache.lucene.util.StableMSBRadixSorter;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -39,11 +41,21 @@ public final class MutablePointsReaderUtils {
   public static void sort(
       BKDConfig config, int maxDoc, MutablePointValues reader, int from, int to) {
     final int bitsPerDocId = PackedInts.bitsRequired(maxDoc - 1);
-    new MSBRadixSorter(config.packedBytesLength + (bitsPerDocId + 7) / 8) {
+    new StableMSBRadixSorter(config.packedBytesLength + (bitsPerDocId + 7) / 8) {
 
       @Override
       protected void swap(int i, int j) {
         reader.swap(i, j);
+      }
+
+      @Override
+      protected void assign(int from, int to) {
+        reader.assign(from, to);
+      }
+
+      @Override
+      protected void finalizeAssign(int from, int to) {
+        reader.finalizeAssign(from, to);
       }
 
       @Override
@@ -57,43 +69,87 @@ public final class MutablePointsReaderUtils {
       }
 
       @Override
-      protected org.apache.lucene.util.Sorter getFallbackSorter(int k) {
-        return new IntroSorter() {
-
-          final BytesRef pivot = new BytesRef();
-          final BytesRef scratch = new BytesRef();
-          int pivotDoc;
-
-          @Override
-          protected void swap(int i, int j) {
-            reader.swap(i, j);
+      protected boolean isEnableStableSort(int from, int to) {
+        if (to < from) {
+          return false;
+        }
+        // make sure DocIds are monotonically increasing
+        for (int i = from + 1; i < to; i++) {
+          if (reader.getDocID(i - 1) > reader.getDocID(i)) {
+            return false;
           }
+        }
+        return true;
+      }
 
-          @Override
-          protected void setPivot(int i) {
-            reader.getValue(i, pivot);
-            pivotDoc = reader.getDocID(i);
-          }
+      @Override
+      protected void doClosureIfStableSortEnabled() {
+        maxLength -= ((bitsPerDocId + 7) / 8);
+        commonPrefix = new int[Math.min(24, maxLength)];
+      }
 
-          @Override
-          protected int comparePivot(int j) {
-            if (k < config.packedBytesLength) {
-              reader.getValue(j, scratch);
-              int cmp =
-                  Arrays.compareUnsigned(
-                      pivot.bytes,
-                      pivot.offset + k,
-                      pivot.offset + k + config.packedBytesLength - k,
-                      scratch.bytes,
-                      scratch.offset + k,
-                      scratch.offset + k + config.packedBytesLength - k);
-              if (cmp != 0) {
-                return cmp;
+      @Override
+      protected Sorter getFallbackSorter(int k) {
+        Sorter introSorter =
+            new IntroSorter() {
+
+              final BytesRef pivot = new BytesRef();
+              final BytesRef scratch = new BytesRef();
+              int pivotDoc;
+
+              @Override
+              protected void swap(int i, int j) {
+                reader.swap(i, j);
               }
-            }
-            return pivotDoc - reader.getDocID(j);
-          }
-        };
+
+              @Override
+              protected void setPivot(int i) {
+                reader.getValue(i, pivot);
+                pivotDoc = reader.getDocID(i);
+              }
+
+              @Override
+              protected int comparePivot(int j) {
+                if (k < config.packedBytesLength) {
+                  reader.getValue(j, scratch);
+                  int cmp =
+                      Arrays.compareUnsigned(
+                          pivot.bytes,
+                          pivot.offset + k,
+                          pivot.offset + k + config.packedBytesLength - k,
+                          scratch.bytes,
+                          scratch.offset + k,
+                          scratch.offset + k + config.packedBytesLength - k);
+                  if (cmp != 0) {
+                    return cmp;
+                  }
+                }
+                return pivotDoc - reader.getDocID(j);
+              }
+            };
+        Sorter stableSorter =
+            new InPlaceMergeSorter() {
+
+              @Override
+              protected int compare(final int i, final int j) {
+                for (int o = k; o < config.packedBytesLength; ++o) {
+                  final int b1 = byteAt(i, o);
+                  final int b2 = byteAt(j, o);
+                  if (b1 != b2) {
+                    return b1 - b2;
+                  } else if (b1 == -1) {
+                    break;
+                  }
+                }
+                return 0;
+              }
+
+              @Override
+              protected void swap(final int i, final int j) {
+                reader.swap(i, j);
+              }
+            };
+        return useStableSort ? stableSorter : introSorter;
       }
     }.sort(from, to);
   }
