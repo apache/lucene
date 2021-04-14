@@ -16,18 +16,23 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter.Foldings;
 
 /**
  * Factory for {@link org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter}.
+ * Use parameter "foldings" to control which of the five available foldings aa, ao, ae, oe and oo
+ * to apply. The input is a comma separate list, e.g. for Norwegian it makes sense with <code>foldings="ae,aa,ao"</code>.
  *
  * <pre class="prettyprint">
  * &lt;fieldType name="text_scandnorm" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
- *     &lt;filter class="solr.ScandinavianNormalizationFilterFactory"/&gt;
+ *     &lt;filter class="solr.ScandinavianNormalizationFilterFactory" foldings="ae,aa,ao"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
  *
@@ -38,9 +43,18 @@ public class ScandinavianNormalizationFilterFactory extends TokenFilterFactory {
 
   /** SPI name */
   public static final String NAME = "scandinavianNormalization";
+  private static final String FOLDINGS_KEY = "foldings";
+  private final Set<Foldings> foldings;
 
   public ScandinavianNormalizationFilterFactory(Map<String, String> args) {
     super(args);
+    String foldingsStr = get(args, FOLDINGS_KEY);
+    if (foldingsStr != null) {
+      foldings = Arrays.stream(foldingsStr.split(", *"))
+          .map(s -> Foldings.valueOf(s.toUpperCase(Locale.ROOT))).collect(Collectors.toSet());
+    } else {
+      foldings = Collections.emptySet();
+    }
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -53,11 +67,16 @@ public class ScandinavianNormalizationFilterFactory extends TokenFilterFactory {
 
   @Override
   public ScandinavianNormalizationFilter create(TokenStream input) {
-    return new ScandinavianNormalizationFilter(input);
+    if (foldings.isEmpty()) {
+      return new ScandinavianNormalizationFilter(input);
+    } else {
+      return new ScandinavianNormalizationFilter(input, foldings);
+    }
   }
 
   @Override
   public TokenStream normalize(TokenStream input) {
     return create(input);
   }
+
 }

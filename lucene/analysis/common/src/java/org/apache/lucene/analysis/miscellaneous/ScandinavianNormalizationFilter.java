@@ -17,6 +17,8 @@
 package org.apache.lucene.analysis.miscellaneous;
 
 import java.io.IOException;
+import java.util.Set;
+
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -33,12 +35,26 @@ import org.apache.lucene.analysis.util.StemmerUtil;
  * <p>blåbærsyltetøj == blåbärsyltetöj == blaabaarsyltetoej but not blabarsyltetoj räksmörgås ==
  * ræksmørgås == ræksmörgaos == raeksmoergaas but not raksmorgas
  *
+ * You can choose which of the foldings to apply (aa, ao, ae, oe, oo) through a parameter.
+ *
  * @see ScandinavianFoldingFilter
  */
 public final class ScandinavianNormalizationFilter extends TokenFilter {
 
+  public static final Set<Foldings> ALL_FOLDINGS = Set.of(Foldings.AA, Foldings.AO, Foldings.OO, Foldings.AE, Foldings.OE);
+
   public ScandinavianNormalizationFilter(TokenStream input) {
     super(input);
+    this.foldings = ALL_FOLDINGS;
+  }
+
+  public ScandinavianNormalizationFilter(TokenStream input, Set<Foldings> foldings) {
+    super(input);
+    this.foldings = foldings;
+  }
+
+  public enum Foldings {
+    AA, AO, AE, OE, OO
   }
 
   private final CharTermAttribute charTermAttribute = addAttribute(CharTermAttribute.class);
@@ -53,6 +69,8 @@ public final class ScandinavianNormalizationFilter extends TokenFilter {
   private static final char oe = '\u00F8'; // ø
   private static final char OE_se = '\u00D6'; // Ö
   private static final char oe_se = '\u00F6'; // ö
+
+  private final Set<Foldings> foldings;
 
   @Override
   public boolean incrementToken() throws IOException {
@@ -81,42 +99,34 @@ public final class ScandinavianNormalizationFilter extends TokenFilter {
       } else if (length - 1 > i) {
 
         if (buffer[i] == 'a'
-            && (buffer[i + 1] == 'a'
-                || buffer[i + 1] == 'o'
-                || buffer[i + 1] == 'A'
-                || buffer[i + 1] == 'O')) {
+            && (foldings.contains(Foldings.AA) && (buffer[i + 1] == 'a' || buffer[i + 1] == 'A')
+                || foldings.contains(Foldings.AO) && (buffer[i + 1] == 'o' || buffer[i + 1] == 'O'))) {
           length = StemmerUtil.delete(buffer, i + 1, length);
           buffer[i] = aa;
 
         } else if (buffer[i] == 'A'
-            && (buffer[i + 1] == 'a'
-                || buffer[i + 1] == 'A'
-                || buffer[i + 1] == 'o'
-                || buffer[i + 1] == 'O')) {
+            && (foldings.contains(Foldings.AA) && (buffer[i + 1] == 'a' || buffer[i + 1] == 'A')
+                || foldings.contains(Foldings.AO) && (buffer[i + 1] == 'o' || buffer[i + 1] == 'O'))) {
           length = StemmerUtil.delete(buffer, i + 1, length);
           buffer[i] = AA;
 
-        } else if (buffer[i] == 'a' && (buffer[i + 1] == 'e' || buffer[i + 1] == 'E')) {
+        } else if (buffer[i] == 'a' && foldings.contains(Foldings.AE) && (buffer[i + 1] == 'e' || buffer[i + 1] == 'E')) {
           length = StemmerUtil.delete(buffer, i + 1, length);
           buffer[i] = ae;
 
-        } else if (buffer[i] == 'A' && (buffer[i + 1] == 'e' || buffer[i + 1] == 'E')) {
+        } else if (buffer[i] == 'A' && foldings.contains(Foldings.AE) && (buffer[i + 1] == 'e' || buffer[i + 1] == 'E')) {
           length = StemmerUtil.delete(buffer, i + 1, length);
           buffer[i] = AE;
 
         } else if (buffer[i] == 'o'
-            && (buffer[i + 1] == 'e'
-                || buffer[i + 1] == 'E'
-                || buffer[i + 1] == 'o'
-                || buffer[i + 1] == 'O')) {
+            && (foldings.contains(Foldings.OE) && (buffer[i + 1] == 'e' || buffer[i + 1] == 'E')
+                || foldings.contains(Foldings.OO) && (buffer[i + 1] == 'o' || buffer[i + 1] == 'O'))) {
           length = StemmerUtil.delete(buffer, i + 1, length);
           buffer[i] = oe;
 
         } else if (buffer[i] == 'O'
-            && (buffer[i + 1] == 'e'
-                || buffer[i + 1] == 'E'
-                || buffer[i + 1] == 'o'
-                || buffer[i + 1] == 'O')) {
+            && (foldings.contains(Foldings.OE) && (buffer[i + 1] == 'e' || buffer[i + 1] == 'E')
+                || foldings.contains(Foldings.OO) && (buffer[i + 1] == 'o' || buffer[i + 1] == 'O'))) {
           length = StemmerUtil.delete(buffer, i + 1, length);
           buffer[i] = OE;
         }
