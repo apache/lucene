@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import java.util.Collections;
+import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.MockTokenizer;
@@ -23,9 +25,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.junit.Test;
-
-import java.util.Collections;
-import java.util.Set;
 
 public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase {
   public void testDefault() throws Exception {
@@ -133,7 +132,7 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
   }
 
   @Test
-  public void testOeFolding() throws Exception  {
+  public void testOeFolding() throws Exception {
     Analyzer analyzer = createAnalyzer(Set.of(ScandinavianNormalizationFilter.Foldings.OE));
     checkOneTerm(analyzer, "aa", "aa");
     checkOneTerm(analyzer, "ao", "ao");
@@ -147,7 +146,7 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
   }
 
   @Test
-  public void testOoFolding() throws Exception  {
+  public void testOoFolding() throws Exception {
     Analyzer analyzer = createAnalyzer(Set.of(ScandinavianNormalizationFilter.Foldings.OO));
     checkOneTerm(analyzer, "aa", "aa");
     checkOneTerm(analyzer, "ao", "ao");
@@ -161,7 +160,7 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
   }
 
   @Test
-  public void testAoFolding() throws Exception  {
+  public void testAoFolding() throws Exception {
     Analyzer analyzer = createAnalyzer(Set.of(ScandinavianNormalizationFilter.Foldings.AO));
     checkOneTerm(analyzer, "aa", "aa");
     checkOneTerm(analyzer, "ao", "å");

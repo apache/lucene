@@ -41,6 +41,7 @@ public class TestScandinavianNormalizationFilterFactory extends BaseTokenStreamF
             () -> {
               tokenFilterFactory("ScandinavianNormalization", "bogusArg", "bogusValue");
             });
-    assertTrue("Got " + expected.getMessage(), expected.getMessage().contains("Unknown parameters"));
+    assertTrue(
+        "Got " + expected.getMessage(), expected.getMessage().contains("Unknown parameters"));
   }
 }

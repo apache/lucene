@@ -18,15 +18,15 @@ package org.apache.lucene.analysis.miscellaneous;
 
 import java.util.*;
 import java.util.stream.Collectors;
-
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter.Foldings;
 
 /**
- * Factory for {@link org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter}.
- * Use parameter "foldings" to control which of the five available foldings aa, ao, ae, oe and oo
- * to apply. The input is a comma separate list, e.g. for Norwegian it makes sense with <code>foldings="ae,aa,ao"</code>.
+ * Factory for {@link org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter}. Use
+ * parameter "foldings" to control which of the five available foldings aa, ao, ae, oe and oo to
+ * apply. The input is a comma separate list, e.g. for Norwegian it makes sense with <code>
+ * foldings="ae,aa,ao"</code>.
  *
  * <pre class="prettyprint">
  * &lt;fieldType name="text_scandnorm" class="solr.TextField" positionIncrementGap="100"&gt;
@@ -43,6 +43,7 @@ public class ScandinavianNormalizationFilterFactory extends TokenFilterFactory {
 
   /** SPI name */
   public static final String NAME = "scandinavianNormalization";
+
   private static final String FOLDINGS_KEY = "foldings";
   private final Set<Foldings> foldings;
 
@@ -50,8 +51,10 @@ public class ScandinavianNormalizationFilterFactory extends TokenFilterFactory {
     super(args);
     String foldingsStr = get(args, FOLDINGS_KEY);
     if (foldingsStr != null) {
-      foldings = Arrays.stream(foldingsStr.split(", *"))
-          .map(s -> Foldings.valueOf(s.toUpperCase(Locale.ROOT))).collect(Collectors.toSet());
+      foldings =
+          Arrays.stream(foldingsStr.split(", *"))
+              .map(s -> Foldings.valueOf(s.toUpperCase(Locale.ROOT)))
+              .collect(Collectors.toSet());
     } else {
       foldings = Collections.emptySet();
     }
@@ -78,5 +81,4 @@ public class ScandinavianNormalizationFilterFactory extends TokenFilterFactory {
   public TokenStream normalize(TokenStream input) {
     return create(input);
   }
-
 }
