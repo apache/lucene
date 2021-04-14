@@ -22,6 +22,8 @@ import java.util.List;
 /** A Scorer for OR like queries, counterpart of <code>ConjunctionScorer</code>. */
 final class DisjunctionSumScorer extends DisjunctionScorer {
   private final List<Scorer> subScorers;
+  private final MaxScoreSumPropagator maxScoreSumPropagator;
+  private ScoreMode scoreMode;
 
   /**
    * Construct a <code>DisjunctionScorer</code>.
@@ -33,6 +35,12 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
       throws IOException {
     super(weight, subScorers, scoreMode);
     this.subScorers = subScorers;
+    this.scoreMode = scoreMode;
+    if (this.scoreMode == ScoreMode.TOP_SCORES) {
+      this.maxScoreSumPropagator = new MaxScoreSumPropagator(subScorers);
+    } else {
+      this.maxScoreSumPropagator = null;
+    }
   }
 
   @Override
@@ -47,18 +55,23 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    double sum = 0;
-    for (Scorer scorer : subScorers) {
-      sum += scorer.getMaxScore(upTo);
-    }
-    return (float) sum;
+    return maxScoreSumPropagator.getMaxScore(upTo);
   }
 
   @Override
   public void setMinCompetitiveScore(float minScore) throws IOException {
-    super.setMinCompetitiveScore(minScore);
-    for (Scorer scorer : subScorers) {
-      scorer.setMinCompetitiveScore(minScore);
+    getBlockMaxApprox().setMinCompetitiveScore(minScore);
+    maxScoreSumPropagator.setMinCompetitiveScore(minScore);
+  }
+
+  @Override
+  public int advanceShallow(int target) throws IOException {
+    int upTo = DocIdSetIterator.NO_MORE_DOCS;
+
+    for (Scorer s : subScorers) {
+      upTo = Math.min(upTo, s.advanceShallow(target));
     }
+
+    return upTo;
   }
 }

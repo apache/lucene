@@ -31,7 +31,6 @@ abstract class DisjunctionScorer extends Scorer {
   private final DocIdSetIterator approximation;
   private final BlockMaxDISI blockMaxApprox;
   private final TwoPhase twoPhase;
-  protected final DisjunctionScoreBlockBoundaryPropagator disjunctionBlockPropagator;
 
   protected DisjunctionScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
       throws IOException {
@@ -52,11 +51,9 @@ abstract class DisjunctionScorer extends Scorer {
       this.blockMaxApprox =
           new BlockMaxDISI(new DisjunctionDISIApproximation(this.subScorers), this);
       this.approximation = blockMaxApprox;
-      this.disjunctionBlockPropagator = new DisjunctionScoreBlockBoundaryPropagator(subScorers);
     } else {
       this.approximation = new DisjunctionDISIApproximation(this.subScorers);
       this.blockMaxApprox = null;
-      this.disjunctionBlockPropagator = null;
     }
 
     boolean hasApproximation = false;
@@ -179,6 +176,10 @@ abstract class DisjunctionScorer extends Scorer {
     return subScorers.top().doc;
   }
 
+  BlockMaxDISI getBlockMaxApprox() {
+    return blockMaxApprox;
+  }
+
   DisiWrapper getSubMatches() throws IOException {
     if (twoPhase == null) {
       return subScorers.topList();
@@ -202,16 +203,5 @@ abstract class DisjunctionScorer extends Scorer {
       children.add(new ChildScorable(scorer.scorer, "SHOULD"));
     }
     return children;
-  }
-
-  @Override
-  public int advanceShallow(int target) throws IOException {
-    return disjunctionBlockPropagator.advanceShallow(target);
-  }
-
-  @Override
-  public void setMinCompetitiveScore(float minScore) throws IOException {
-    blockMaxApprox.setMinCompetitiveScore(minScore);
-    disjunctionBlockPropagator.setMinCompetitiveScore(minScore);
   }
 }
