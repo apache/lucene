@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_codecs.lucene50;
 
+import java.io.IOException;
 import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseTermVectorsFormatTestCase;
@@ -25,5 +26,11 @@ public class TestLucene50TermVectorsFormat extends BaseTermVectorsFormatTestCase
   @Override
   protected Codec getCodec() {
     return new Lucene87RWCodec();
+  }
+
+  @Override
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9334")
+  public void testMerge() throws IOException {
+    super.testMerge();
   }
 }
