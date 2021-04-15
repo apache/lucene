@@ -67,10 +67,9 @@ public final class BKDPointValues extends PointValues {
       }
     }
     if (index.moveToChild()) {
-      addAll(visitor, index, grown);
-      while (index.moveToSibling()) {
+      do {
         addAll(visitor, index, grown);
-      }
+      } while (index.moveToSibling());
       index.moveToParent();
     } else {
       assert grown;
@@ -90,10 +89,9 @@ public final class BKDPointValues extends PointValues {
       // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
       // through and do full filtering:
     } else if (index.moveToChild()) {
-      intersect(visitor, index);
-      while (index.moveToSibling()) {
+      do {
         intersect(visitor, index);
-      }
+      } while (index.moveToSibling());
       index.moveToParent();
     } else {
       // TODO: we can assert that the first value here in fact matches what the index claimed?
@@ -112,10 +110,10 @@ public final class BKDPointValues extends PointValues {
     } else if (r == Relation.CELL_INSIDE_QUERY) {
       return index.size();
     } else if (index.moveToChild()) {
-      long cost = estimatePointCount(visitor, index);
-      while (index.moveToSibling()) {
+      long cost = 0;
+      do {
         cost += estimatePointCount(visitor, index);
-      }
+      } while (index.moveToSibling());
       index.moveToParent();
       return cost;
     } else {
