@@ -30,10 +30,10 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.bkd.BKDConfig;
-import org.apache.lucene.util.bkd.BKDPointValues;
+import org.apache.lucene.util.bkd.BKDDefaultReader;
 import org.apache.lucene.util.bkd.BKDReader;
 
-/** Forked from {@link BKDPointValues} and simplified/specialized for SimpleText's usage */
+/** Forked from {@link BKDDefaultReader} and simplified/specialized for SimpleText's usage */
 final class SimpleTextBKDReader implements BKDReader {
   // Packed array of byte[] holding all split values in the full binary tree:
   private final byte[] splitPackedValues;
@@ -278,12 +278,12 @@ final class SimpleTextBKDReader implements BKDReader {
 
     @Override
     public byte[] getMinPackedValue() {
-      return minPackedValue;
+      return minPackedValue.clone();
     }
 
     @Override
     public byte[] getMaxPackedValue() {
-      return maxPackedValue;
+      return maxPackedValue.clone();
     }
 
     @Override

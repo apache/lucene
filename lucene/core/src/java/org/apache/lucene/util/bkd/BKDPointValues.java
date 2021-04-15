@@ -126,12 +126,12 @@ public final class BKDPointValues extends PointValues {
 
   @Override
   public byte[] getMinPackedValue() {
-    return in.getMinPackedValue().clone();
+    return in.getMinPackedValue();
   }
 
   @Override
   public byte[] getMaxPackedValue() {
-    return in.getMaxPackedValue().clone();
+    return in.getMaxPackedValue();
   }
 
   @Override

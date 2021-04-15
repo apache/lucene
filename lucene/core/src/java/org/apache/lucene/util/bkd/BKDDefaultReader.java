@@ -121,12 +121,12 @@ public class BKDDefaultReader implements BKDReader {
 
   @Override
   public byte[] getMinPackedValue() {
-    return minPackedValue;
+    return minPackedValue.clone();
   }
 
   @Override
   public byte[] getMaxPackedValue() {
-    return maxPackedValue;
+    return maxPackedValue.clone();
   }
 
   @Override
