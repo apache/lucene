@@ -224,6 +224,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   private final ByteBuffersDataOutput payloadBytes; // buffered term payloads
   private final BlockPackedWriter writer;
   private final int maxDocsPerChunk; // hard limit on number of docs per chunk
+  private final ByteBuffersDataOutput scratchBuffer = ByteBuffersDataOutput.newResettableInstance();
 
   /** Sole constructor. */
   Lucene90CompressingTermVectorsWriter(
@@ -479,9 +480,10 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   private void flushFields(int totalFields, int[] fieldNums) throws IOException {
+    scratchBuffer.reset();
     final DirectWriter writer =
         DirectWriter.getInstance(
-            vectorsStream, totalFields, DirectWriter.bitsRequired(fieldNums.length - 1));
+            scratchBuffer, totalFields, DirectWriter.bitsRequired(fieldNums.length - 1));
     for (DocData dd : pendingDocs) {
       for (FieldData fd : dd.fields) {
         final int fieldNumIndex = Arrays.binarySearch(fieldNums, fd.fieldNum);
@@ -490,6 +492,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       }
     }
     writer.finish();
+    vectorsStream.writeVLong(scratchBuffer.size());
+    scratchBuffer.copyTo(vectorsStream);
   }
 
   private void flushFlags(int totalFields, int[] fieldNums) throws IOException {
@@ -514,23 +518,29 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     if (nonChangingFlags) {
       // write one flag per field num
       vectorsStream.writeVInt(0);
+      scratchBuffer.reset();
       final DirectWriter writer =
-          DirectWriter.getInstance(vectorsStream, fieldFlags.length, FLAGS_BITS);
+          DirectWriter.getInstance(scratchBuffer, fieldFlags.length, FLAGS_BITS);
       for (int flags : fieldFlags) {
         assert flags >= 0;
         writer.add(flags);
       }
       writer.finish();
+      vectorsStream.writeVInt(Math.toIntExact(scratchBuffer.size()));
+      scratchBuffer.copyTo(vectorsStream);
     } else {
       // write one flag for every field instance
       vectorsStream.writeVInt(1);
-      final DirectWriter writer = DirectWriter.getInstance(vectorsStream, totalFields, FLAGS_BITS);
+      scratchBuffer.reset();
+      final DirectWriter writer = DirectWriter.getInstance(scratchBuffer, totalFields, FLAGS_BITS);
       for (DocData dd : pendingDocs) {
         for (FieldData fd : dd.fields) {
           writer.add(fd.flags);
         }
       }
       writer.finish();
+      vectorsStream.writeVInt(Math.toIntExact(scratchBuffer.size()));
+      scratchBuffer.copyTo(vectorsStream);
     }
   }
 
@@ -543,13 +553,16 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     }
     final int bitsRequired = DirectWriter.bitsRequired(maxNumTerms);
     vectorsStream.writeVInt(bitsRequired);
-    final DirectWriter writer = DirectWriter.getInstance(vectorsStream, totalFields, bitsRequired);
+    scratchBuffer.reset();
+    final DirectWriter writer = DirectWriter.getInstance(scratchBuffer, totalFields, bitsRequired);
     for (DocData dd : pendingDocs) {
       for (FieldData fd : dd.fields) {
         writer.add(fd.numTerms);
       }
     }
     writer.finish();
+    vectorsStream.writeVInt(Math.toIntExact(scratchBuffer.size()));
+    scratchBuffer.copyTo(vectorsStream);
   }
 
   private void flushTermLengths() throws IOException {

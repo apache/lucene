@@ -300,13 +300,36 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return new Lucene90CompressingTermVectorsReader(this);
   }
 
-  private static LongValues getLongValues(IndexInput input, int values, int bitsPerValue)
-      throws IOException {
-    final long offset = input.getFilePointer();
-    final long length = (long) Math.ceil((double) values * bitsPerValue / 8) + 3;
-    final RandomAccessInput slice = input.randomAccessSlice(offset, length);
-    input.seek(offset + length);
-    return DirectReader.getInstance(slice, bitsPerValue);
+  private static RandomAccessInput slice(IndexInput in) throws IOException {
+    final int length = in.readVInt();
+    final byte[] bytes = new byte[length];
+    in.readBytes(bytes, 0, length);
+    final ByteArrayDataInput input = new ByteArrayDataInput(bytes);
+    return new RandomAccessInput() {
+      @Override
+      public byte readByte(long pos) {
+        input.setPosition(Math.toIntExact(pos));
+        return input.readByte();
+      }
+
+      @Override
+      public short readShort(long pos) {
+        input.setPosition(Math.toIntExact(pos));
+        return input.readShort();
+      }
+
+      @Override
+      public int readInt(long pos) {
+        input.setPosition(Math.toIntExact(pos));
+        return input.readInt();
+      }
+
+      @Override
+      public long readLong(long pos) {
+        input.setPosition(Math.toIntExact(pos));
+        return input.readLong();
+      }
+    };
   }
 
   @Override
@@ -385,12 +408,11 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     final LongValues flags;
     {
       final int bitsPerOff = DirectWriter.bitsRequired(fieldNums.length - 1);
-      final LongValues allFieldNumOffs = getLongValues(vectorsStream, totalFields, bitsPerOff);
+      final LongValues allFieldNumOffs = DirectReader.getInstance(slice(vectorsStream), bitsPerOff);
       switch (vectorsStream.readVInt()) {
         case 0:
-          final LongValues fieldFlags = getLongValues(vectorsStream, fieldNums.length, FLAGS_BITS);
-          final long expectedSize = (long) Math.ceil((double) totalFields * FLAGS_BITS / 8) + 3;
-          final ByteBuffersDataOutput out = new ByteBuffersDataOutput(expectedSize);
+          final LongValues fieldFlags = DirectReader.getInstance(slice(vectorsStream), FLAGS_BITS);
+          final ByteBuffersDataOutput out = new ByteBuffersDataOutput();
           final DirectWriter writer = DirectWriter.getInstance(out, totalFields, FLAGS_BITS);
           for (int i = 0; i < totalFields; ++i) {
             final int fieldNumOff = (int) allFieldNumOffs.get(i);
@@ -401,7 +423,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
           flags = DirectReader.getInstance(out.toDataInput(), FLAGS_BITS);
           break;
         case 1:
-          flags = getLongValues(vectorsStream, totalFields, FLAGS_BITS);
+          flags = DirectReader.getInstance(slice(vectorsStream), FLAGS_BITS);
           break;
         default:
           throw new AssertionError();
@@ -416,7 +438,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     final int totalTerms;
     {
       final int bitsRequired = vectorsStream.readVInt();
-      numTerms = getLongValues(vectorsStream, totalFields, bitsRequired);
+      numTerms = DirectReader.getInstance(slice(vectorsStream), bitsRequired);
       int sum = 0;
       for (int i = 0; i < totalFields; ++i) {
         sum += numTerms.get(i);
