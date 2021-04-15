@@ -30,6 +30,8 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingT
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VERSION_START;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import org.apache.lucene.codecs.CodecUtil;
@@ -50,6 +52,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
@@ -304,32 +307,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     final int length = in.readVInt();
     final byte[] bytes = new byte[length];
     in.readBytes(bytes, 0, length);
-    final ByteArrayDataInput input = new ByteArrayDataInput(bytes);
-    return new RandomAccessInput() {
-      @Override
-      public byte readByte(long pos) {
-        input.setPosition(Math.toIntExact(pos));
-        return input.readByte();
-      }
-
-      @Override
-      public short readShort(long pos) {
-        input.setPosition(Math.toIntExact(pos));
-        return input.readShort();
-      }
-
-      @Override
-      public int readInt(long pos) {
-        input.setPosition(Math.toIntExact(pos));
-        return input.readInt();
-      }
-
-      @Override
-      public long readLong(long pos) {
-        input.setPosition(Math.toIntExact(pos));
-        return input.readLong();
-      }
-    };
+    return new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(bytes)));
   }
 
   @Override

@@ -956,7 +956,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         + payloadLengthsBuf.length
         + termSuffixes.ramBytesUsed()
         + payloadBytes.ramBytesUsed()
-        + lastTerm.bytes.length;
+        + lastTerm.bytes.length
+        + scratchBuffer.ramBytesUsed();
   }
 
   @Override
