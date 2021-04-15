@@ -26,8 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.LeafReader;
@@ -38,7 +37,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.NamedThreadFactory;
 
 /**
  * A Monitor contains a set of {@link Query} objects with associated IDs, and efficiently matches
@@ -55,7 +53,7 @@ public class Monitor implements Closeable {
 
   private final long commitBatchSize;
 
-  private final ScheduledExecutorService purgeExecutor;
+  private final PurgeScheduledTask purgeScheduledTask;
 
   private long lastPurged = -1;
 
@@ -103,19 +101,19 @@ public class Monitor implements Closeable {
     this.queryIndex = new QueryIndex(configuration, presearcher);
 
     long purgeFrequency = configuration.getPurgeFrequency();
-    this.purgeExecutor =
-        Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("cache-purge"));
-    this.purgeExecutor.scheduleAtFixedRate(
-        () -> {
-          try {
-            purgeCache();
-          } catch (Throwable e) {
-            listeners.forEach(l -> l.onPurgeError(e));
-          }
-        },
-        purgeFrequency,
-        purgeFrequency,
-        configuration.getPurgeFrequencyUnits());
+    TimeUnit purgeFrequencyUnits = configuration.getPurgeFrequencyUnits();
+    PurgeScheduler purgeScheduler = configuration.getPurgeScheduler();
+    this.purgeScheduledTask =
+        purgeScheduler.schedule(
+            () -> {
+              try {
+                purgeCache();
+              } catch (Throwable e) {
+                listeners.forEach(l -> l.onPurgeError(e));
+              }
+            },
+            purgeFrequency,
+            purgeFrequencyUnits);
 
     this.commitBatchSize = configuration.getQueryUpdateBufferSize();
   }
@@ -169,7 +167,7 @@ public class Monitor implements Closeable {
 
   @Override
   public void close() throws IOException {
-    purgeExecutor.shutdown();
+    purgeScheduledTask.stop();
     queryIndex.close();
   }
 

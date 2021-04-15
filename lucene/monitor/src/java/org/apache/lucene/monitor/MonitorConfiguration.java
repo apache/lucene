@@ -34,6 +34,7 @@ public class MonitorConfiguration {
   private int queryUpdateBufferSize = 5000;
   private long purgeFrequency = 5;
   private TimeUnit purgeFrequencyUnits = TimeUnit.MINUTES;
+  private PurgeScheduler purgeScheduler = new SimplePurgeScheduler();
   private QueryDecomposer queryDecomposer = new QueryDecomposer();
   private Path indexPath = null;
   private MonitorQuerySerializer serializer;
@@ -104,6 +105,22 @@ public class MonitorConfiguration {
   /** @return Get the units of the Monitor's querycache garbage-collection frequency */
   public TimeUnit getPurgeFrequencyUnits() {
     return purgeFrequencyUnits;
+  }
+
+  /**
+   * Set the PurgeScheduler to be used by the Monitor
+   *
+   * @param purgeScheduler the PurgeScheduler to be used by the Monitor
+   * @return the current configuration
+   */
+  public MonitorConfiguration setPurgeScheduler(PurgeScheduler purgeScheduler) {
+    this.purgeScheduler = purgeScheduler;
+    return this;
+  }
+
+  /** @return the PurgeScheduler used by the Monitor */
+  public PurgeScheduler getPurgeScheduler() {
+    return purgeScheduler;
   }
 
   /**
