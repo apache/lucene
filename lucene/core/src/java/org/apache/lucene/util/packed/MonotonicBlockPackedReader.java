@@ -22,7 +22,11 @@ import static org.apache.lucene.util.packed.PackedInts.checkBlockSize;
 import static org.apache.lucene.util.packed.PackedInts.numBlocks;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -42,18 +46,17 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
   final long valueCount;
   final long[] minValues;
   final float[] averages;
-  final PackedInts.Reader[] subReaders;
+  final LongValues[] subReaders;
+  final long bytesUsed;
   final long sumBPV;
 
   /** Sole constructor. */
   public static MonotonicBlockPackedReader of(
-      IndexInput in, int packedIntsVersion, int blockSize, long valueCount, boolean direct)
-      throws IOException {
-    return new MonotonicBlockPackedReader(in, packedIntsVersion, blockSize, valueCount, direct);
+      IndexInput in, int blockSize, long valueCount, boolean direct) throws IOException {
+    return new MonotonicBlockPackedReader(in, blockSize, valueCount, direct);
   }
 
-  private MonotonicBlockPackedReader(
-      IndexInput in, int packedIntsVersion, int blockSize, long valueCount, boolean direct)
+  private MonotonicBlockPackedReader(IndexInput in, int blockSize, long valueCount, boolean direct)
       throws IOException {
     this.valueCount = valueCount;
     blockShift = checkBlockSize(blockSize, MIN_BLOCK_SIZE, MAX_BLOCK_SIZE);
@@ -61,8 +64,9 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
     final int numBlocks = numBlocks(valueCount, blockSize);
     minValues = new long[numBlocks];
     averages = new float[numBlocks];
-    subReaders = new PackedInts.Reader[numBlocks];
+    subReaders = new LongValues[numBlocks];
     long sumBPV = 0;
+    long bytesUsed = 0;
     for (int i = 0; i < numBlocks; ++i) {
       minValues[i] = in.readZLong();
       averages[i] = Float.intBitsToFloat(in.readInt());
@@ -72,23 +76,26 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
         throw new IOException("Corrupted");
       }
       if (bitsPerValue == 0) {
-        subReaders[i] = new PackedInts.NullReader(blockSize);
+        subReaders[i] = LongValues.ZEROES;
       } else {
-        final int size = (int) Math.min(blockSize, valueCount - (long) i * blockSize);
+        final int length = in.readVInt();
         if (direct) {
           final long pointer = in.getFilePointer();
-          subReaders[i] =
-              PackedInts.getDirectReaderNoHeader(
-                  in, PackedInts.Format.PACKED, packedIntsVersion, size, bitsPerValue);
-          in.seek(
-              pointer + PackedInts.Format.PACKED.byteCount(packedIntsVersion, size, bitsPerValue));
+          final RandomAccessInput slice = in.randomAccessSlice(pointer, length);
+          subReaders[i] = DirectReader.getInstance(slice, bitsPerValue);
+          in.seek(pointer + length);
         } else {
-          subReaders[i] =
-              PackedInts.getReaderNoHeader(
-                  in, PackedInts.Format.PACKED, packedIntsVersion, size, bitsPerValue);
+          bytesUsed += length;
+          final byte[] bytes = new byte[Math.toIntExact(length)];
+          in.readBytes(bytes, 0, length);
+          final ByteBuffersDataInput input =
+              new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(bytes)));
+          subReaders[i] = DirectReader.getInstance(input, bitsPerValue);
+          bytesUsed += input.ramBytesUsed();
         }
       }
     }
+    this.bytesUsed = bytesUsed;
     this.sumBPV = sumBPV;
   }
 
@@ -110,9 +117,7 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
     long sizeInBytes = 0;
     sizeInBytes += RamUsageEstimator.sizeOf(minValues);
     sizeInBytes += RamUsageEstimator.sizeOf(averages);
-    for (PackedInts.Reader reader : subReaders) {
-      sizeInBytes += reader.ramBytesUsed();
-    }
+    sizeInBytes += bytesUsed;
     return sizeInBytes;
   }
 

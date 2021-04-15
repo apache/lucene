@@ -31,7 +31,6 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.packed.MonotonicBlockPackedWriter;
-import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * Selects every Nth term as and index term, and hold term bytes (mostly) fully expanded in memory.
@@ -75,7 +74,6 @@ public class FixedGapTermsIndexWriter extends TermsIndexWriterBase {
       CodecUtil.writeIndexHeader(
           out, CODEC_NAME, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       out.writeVInt(termIndexInterval);
-      out.writeVInt(PackedInts.VERSION_CURRENT);
       out.writeVInt(BLOCKSIZE);
       success = true;
     } finally {
