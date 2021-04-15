@@ -16,11 +16,10 @@
  */
 package org.apache.lucene.backward_codecs.lucene50;
 
+import java.io.IOException;
 import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseTermVectorsFormatTestCase;
-
-import java.io.IOException;
 
 public class TestLucene50TermVectorsFormat extends BaseTermVectorsFormatTestCase {
 
