@@ -16,7 +16,18 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.DOC;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.FIELD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.NAME;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.TYPE;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.TYPE_BINARY;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.TYPE_DOUBLE;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.TYPE_FLOAT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.TYPE_INT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.TYPE_LONG;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.TYPE_STRING;
+import static org.apache.lucene.codecs.simpletext.SimpleTextStoredFieldsWriter.VALUE;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,10 +47,8 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 
 /**
@@ -50,11 +59,6 @@ import org.apache.lucene.util.StringHelper;
  * @lucene.experimental
  */
 public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
-
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextStoredFieldsReader.class)
-          + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class)
-          + RamUsageEstimator.shallowSizeOfInstance(CharsRef.class);
 
   private long offsets[]; /* docid -> offset in .fld file */
   private IndexInput in;
@@ -77,7 +81,9 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
       if (!success) {
         try {
           close();
-        } catch (Throwable t) {
+        } catch (
+            @SuppressWarnings("unused")
+            Throwable t) {
         } // ensure we throw our original exception
       }
     }
@@ -219,14 +225,6 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
             b.bytes,
             b.offset + bOffset,
             b.offset + b.length);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED
-        + RamUsageEstimator.sizeOf(offsets)
-        + RamUsageEstimator.sizeOf(scratch.bytes())
-        + RamUsageEstimator.sizeOf(scratchUTF16.chars());
   }
 
   @Override

@@ -38,7 +38,7 @@ public class TestOrdinalMap extends LuceneTestCase {
     try {
       ORDINAL_MAP_OWNER_FIELD = OrdinalMap.class.getDeclaredField("owner");
     } catch (Exception e) {
-      throw new Error();
+      throw new Error(e);
     }
   }
 

@@ -124,6 +124,12 @@ public class SortedNumericSortField extends SortField {
           case DOUBLE:
             sf.setMissingValue(NumericUtils.sortableLongToDouble(in.readLong()));
             break;
+          case CUSTOM:
+          case DOC:
+          case REWRITEABLE:
+          case STRING_VAL:
+          case SCORE:
+          case STRING:
           default:
             throw new AssertionError();
         }
@@ -170,6 +176,12 @@ public class SortedNumericSortField extends SortField {
         case DOUBLE:
           out.writeLong(NumericUtils.doubleToSortableLong((double) missingValue));
           break;
+        case CUSTOM:
+        case DOC:
+        case REWRITEABLE:
+        case STRING_VAL:
+        case SCORE:
+        case STRING:
         default:
           throw new AssertionError();
       }
@@ -291,6 +303,12 @@ public class SortedNumericSortField extends SortField {
             };
           }
         };
+      case CUSTOM:
+      case DOC:
+      case REWRITEABLE:
+      case STRING_VAL:
+      case SCORE:
+      case STRING:
       default:
         throw new AssertionError();
     }
@@ -316,6 +334,12 @@ public class SortedNumericSortField extends SortField {
       case FLOAT:
         return new IndexSorter.FloatSorter(
             Provider.NAME, (Float) missingValue, reverse, this::getValue);
+      case CUSTOM:
+      case DOC:
+      case REWRITEABLE:
+      case STRING_VAL:
+      case STRING:
+      case SCORE:
       default:
         throw new AssertionError();
     }

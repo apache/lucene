@@ -368,6 +368,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
         coefficient = 1. / Math.pow((position + 1.0), exponent);
         break;
 
+      case CUSTOM:
       default:
         coefficient = 1;
     }

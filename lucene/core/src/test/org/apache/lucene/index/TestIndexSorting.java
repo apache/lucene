@@ -2824,7 +2824,9 @@ public class TestIndexSorting extends LuceneTestCase {
         w.addDocument(doc);
         doc.add(dvs.get(j));
         exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
-        assertThat(exc.getMessage(), containsString("cannot change DocValues type"));
+        assertEquals(
+            "Inconsistency of field data structures across documents for field [field] of doc [2].",
+            exc.getMessage());
         w.rollback();
         IOUtils.close(w);
       }

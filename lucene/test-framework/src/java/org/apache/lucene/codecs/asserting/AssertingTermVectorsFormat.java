@@ -58,8 +58,6 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
       this.in = in;
       // do a few simple checks on init
       assert toString() != null;
-      assert ramBytesUsed() >= 0;
-      assert getChildResources() != null;
     }
 
     @Override
@@ -77,20 +75,6 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
     @Override
     public TermVectorsReader clone() {
       return new AssertingTermVectorsReader(in.clone());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long v = in.ramBytesUsed();
-      assert v >= 0;
-      return v;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      Collection<Accountable> res = in.getChildResources();
-      TestUtil.checkReadOnly(res);
-      return res;
     }
 
     @Override

@@ -121,7 +121,9 @@ public final class OfflinePointReader implements PointReader {
           countLeft = 0;
         }
         this.offset = 0;
-      } catch (EOFException eofe) {
+      } catch (
+          @SuppressWarnings("unused")
+          EOFException eofe) {
         assert countLeft == -1;
         return false;
       }

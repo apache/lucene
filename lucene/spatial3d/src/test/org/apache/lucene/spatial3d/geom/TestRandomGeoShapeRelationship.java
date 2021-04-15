@@ -17,11 +17,13 @@
 
 package org.apache.lucene.spatial3d.geom;
 
+import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
+
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Random test to check relationship between GeoAreaShapes and GeoShapes. */
-public class TestRandomGeoShapeRelationship extends RandomGeo3dShapeGenerator {
-
+public class TestRandomGeoShapeRelationship extends LuceneTestCase {
   /**
    * Test for WITHIN points. We build a WITHIN shape with respect the geoAreaShape and create a
    * point WITHIN the shape. The resulting shape should be WITHIN the original shape.

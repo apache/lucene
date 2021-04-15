@@ -284,7 +284,9 @@ final class IndexFileDeleter implements Closeable {
         try {
           maxSegmentGen =
               Math.max(SegmentInfos.generationFromSegmentsFileName(fileName), maxSegmentGen);
-        } catch (NumberFormatException ignore) {
+        } catch (
+            @SuppressWarnings("unused")
+            NumberFormatException ignore) {
           // trash file: we have to handle this since we allow anything starting with 'segments'
           // here
         }
@@ -294,7 +296,9 @@ final class IndexFileDeleter implements Closeable {
               Math.max(
                   SegmentInfos.generationFromSegmentsFileName(fileName.substring(8)),
                   maxSegmentGen);
-        } catch (NumberFormatException ignore) {
+        } catch (
+            @SuppressWarnings("unused")
+            NumberFormatException ignore) {
           // trash file: we have to handle this since we allow anything starting with
           // 'pending_segments' here
         }
@@ -317,7 +321,9 @@ final class IndexFileDeleter implements Closeable {
 
         try {
           curGen = Math.max(curGen, IndexFileNames.parseGeneration(fileName));
-        } catch (NumberFormatException ignore) {
+        } catch (
+            @SuppressWarnings("unused")
+            NumberFormatException ignore) {
           // trash file: we have to handle this since codec regex is only so good
         }
         maxPerSegmentGen.put(segmentName, curGen);
@@ -400,7 +406,9 @@ final class IndexFileDeleter implements Closeable {
     try {
       ensureOpen();
       return false;
-    } catch (AlreadyClosedException ace) {
+    } catch (
+        @SuppressWarnings("unused")
+        AlreadyClosedException ace) {
       return true;
     }
   }

@@ -95,7 +95,9 @@ public class DirectIODirectory extends FilterDirectory {
               .filter(e -> e.toString().equalsIgnoreCase("DIRECT"))
               .findFirst()
               .orElse(null);
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
       option = null;
     }
     ExtendedOpenOption_DIRECT = option;

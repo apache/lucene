@@ -52,6 +52,8 @@ public class TestIndexWriterOnOldIndex extends LuceneTestCase {
               Version.LATEST.major,
               SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
           break;
+        case APPEND:
+        case CREATE_OR_APPEND:
         default:
           assertEquals(
               7

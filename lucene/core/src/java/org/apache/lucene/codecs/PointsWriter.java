@@ -62,11 +62,6 @@ public abstract class PointsWriter implements Closeable {
         new PointsReader() {
 
           @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
-
-          @Override
           public void close() throws IOException {}
 
           @Override

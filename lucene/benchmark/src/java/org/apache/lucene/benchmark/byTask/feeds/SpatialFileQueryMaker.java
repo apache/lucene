@@ -82,7 +82,9 @@ public class SpatialFileQueryMaker extends AbstractQueryMaker {
           i--; // skip
         }
       }
-    } catch (NoMoreDataException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        NoMoreDataException e) {
       // all-done
     } finally {
       src.close();

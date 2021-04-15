@@ -76,7 +76,9 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
             public void run() {
               try {
                 Thread.sleep(crashTime);
-              } catch (InterruptedException e) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  InterruptedException e) {
               }
               crashJRE();
             }

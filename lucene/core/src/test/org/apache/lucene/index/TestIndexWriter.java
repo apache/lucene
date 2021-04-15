@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.index.DocHelper.TEXT_TYPE_STORED_WITH_TVS;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -950,7 +952,9 @@ public class TestIndexWriter extends LuceneTestCase {
               // w.rollback();
               try {
                 w.close();
-              } catch (AlreadyClosedException ace) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  AlreadyClosedException ace) {
                 // OK
               }
               w = null;
@@ -2006,7 +2010,7 @@ public class TestIndexWriter extends LuceneTestCase {
         NullPointerException.class,
         () -> {
           Document broke = new Document();
-          broke.add(newTextField("test", "broken", Field.Store.NO));
+          broke.add(new Field("test", "broken", TEXT_TYPE_STORED_WITH_TVS));
           iw.addDocument(broke);
         });
 
@@ -2567,7 +2571,9 @@ public class TestIndexWriter extends LuceneTestCase {
     startCommit.await();
     try {
       iw.close();
-    } catch (IllegalStateException ise) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
       // OK, but not required (depends on thread scheduling)
     }
     finishCommit.await();
@@ -2816,16 +2822,16 @@ public class TestIndexWriter extends LuceneTestCase {
       IndexWriter w = new IndexWriter(dir, iwc);
       Document d = new Document();
       d.add(new StringField("id", "1", Field.Store.YES));
-      d.add(new NumericDocValuesField("id", 1));
+      d.add(new NumericDocValuesField("nvd", 1));
       w.addDocument(d);
       d = new Document();
       d.add(new StringField("id", "2", Field.Store.YES));
-      d.add(new NumericDocValuesField("id", 2));
+      d.add(new NumericDocValuesField("nvd", 2));
       w.addDocument(d);
       w.flush();
       d = new Document();
       d.add(new StringField("id", "1", Field.Store.YES));
-      d.add(new NumericDocValuesField("id", 1));
+      d.add(new NumericDocValuesField("nvd", 1));
       w.updateDocument(new Term("id", "1"), d);
       w.commit();
       Set<String> files = new HashSet<>(Arrays.asList(dir.listAll()));
@@ -2834,12 +2840,12 @@ public class TestIndexWriter extends LuceneTestCase {
         if (random().nextBoolean()) {
           d = new Document();
           d.add(new StringField("id", "1", Field.Store.YES));
-          d.add(new NumericDocValuesField("id", 1));
+          d.add(new NumericDocValuesField("nvd", 1));
           w.updateDocument(new Term("id", "1"), d);
         } else if (random().nextBoolean()) {
           w.deleteDocuments(new Term("id", "2"));
         } else {
-          w.updateNumericDocValue(new Term("id", "1"), "id", 2);
+          w.updateNumericDocValue(new Term("id", "1"), "nvd", 2);
         }
         w.prepareCommit();
         List<String> newFiles = new ArrayList<>(Arrays.asList(dir.listAll()));
@@ -3005,7 +3011,7 @@ public class TestIndexWriter extends LuceneTestCase {
     try {
       dir.openInput(tempName, IOContext.DEFAULT);
       fail("did not hit exception");
-    } catch (FileNotFoundException | NoSuchFileException e) {
+    } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
       // expected
     }
     w.close();
@@ -4017,7 +4023,9 @@ public class TestIndexWriter extends LuceneTestCase {
                   indexedDocs.release(1);
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (AlreadyClosedException ignored) {
+                } catch (
+                    @SuppressWarnings("unused")
+                    AlreadyClosedException ignored) {
                   return;
                 }
               }
@@ -4032,7 +4040,9 @@ public class TestIndexWriter extends LuceneTestCase {
                   sm.maybeRefreshBlocking();
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (AlreadyClosedException ignored) {
+                } catch (
+                    @SuppressWarnings("unused")
+                    AlreadyClosedException ignored) {
                   return;
                 }
               }
@@ -4105,8 +4115,10 @@ public class TestIndexWriter extends LuceneTestCase {
                 try {
                   queue.processEvents();
                 } catch (IOException e) {
-                  throw new AssertionError();
-                } catch (AlreadyClosedException ex) {
+                  throw new AssertionError(e);
+                } catch (
+                    @SuppressWarnings("unused")
+                    AlreadyClosedException ex) {
                   // possible
                 }
               });

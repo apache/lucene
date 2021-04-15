@@ -122,7 +122,9 @@ public class TestWindowsFS extends MockFileSystemTestCase {
                   Files.move(file, target);
                   Files.delete(target);
                 }
-              } catch (IOException ex) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  IOException ignored) {
                 // continue
               }
             }
@@ -138,7 +140,7 @@ public class TestWindowsFS extends MockFileSystemTestCase {
           opened = true;
           stream.write(0);
           // just create
-        } catch (FileNotFoundException | NoSuchFileException ex) {
+        } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException ex) {
           assertEquals(
               "File handle leaked - file is closed but still registered",
               0,

@@ -109,7 +109,9 @@ public class ConcurrentQueryLoader implements Closeable {
     this.executor.shutdown();
     try {
       this.shutdownLatch.await();
-    } catch (InterruptedException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        InterruptedException e) {
       // fine
     }
     if (errors.size() > 0) {
@@ -143,7 +145,9 @@ public class ConcurrentQueryLoader implements Closeable {
         }
       } catch (IOException e) {
         errors.add(e);
-      } catch (InterruptedException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          InterruptedException e) {
         Thread.currentThread().interrupt();
       } finally {
         shutdownLatch.countDown();

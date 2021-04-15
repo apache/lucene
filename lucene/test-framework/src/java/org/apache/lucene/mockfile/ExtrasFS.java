@@ -66,7 +66,9 @@ public class ExtrasFS extends FilterFileSystemProvider {
         } else {
           Files.createFile(target);
         }
-      } catch (Exception ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception ignored) {
         // best effort
       }
     }

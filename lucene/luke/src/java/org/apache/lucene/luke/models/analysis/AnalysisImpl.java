@@ -93,7 +93,9 @@ public final class AnalysisImpl implements Analysis {
           // add to presets if no args constructor is available
           clazz.getConstructor();
           types.add(clazz);
-        } catch (NoSuchMethodException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            NoSuchMethodException e) {
         }
       }
       presetAnalyzerTypes = List.copyOf(types);
@@ -281,14 +283,18 @@ public final class AnalysisImpl implements Analysis {
             new NamedTokens(TokenFilterFactory.findSPIName(tokenFilterFactory.getClass()), tokens));
         try {
           listBasedTokenStream.close();
-        } catch (IOException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            IOException e) {
           // do nothing;
         }
         listBasedTokenStream = new ListBasedTokenStream(listBasedTokenStream, attributeSources);
       }
       try {
         listBasedTokenStream.close();
-      } catch (IOException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException e) {
         // do nothing.
       } finally {
         reader.close();

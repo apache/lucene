@@ -141,7 +141,9 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
           }
           try {
             return builder.build();
-          } catch (IllegalArgumentException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IllegalArgumentException e) {
             // This is what happens when we create a shape that is invalid.  Although it is
             // conceivable that there are cases where
             // the exception is thrown incorrectly, we aren't going to be able to do that in this
@@ -184,7 +186,9 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
           builder.buffer(width);
           try {
             return builder.build();
-          } catch (IllegalArgumentException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IllegalArgumentException e) {
             // This is what happens when we create a shape that is invalid.  Although it is
             // conceivable that there are cases where
             // the exception is thrown incorrectly, we aren't going to be able to do that in this

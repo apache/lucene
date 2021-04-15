@@ -39,8 +39,6 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -358,20 +356,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     @Override
     public void close() throws IOException {
       IOUtils.close(formats.values());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long size = 0;
-      for (Map.Entry<String, DocValuesProducer> entry : formats.entrySet()) {
-        size += (entry.getKey().length() * Character.BYTES) + entry.getValue().ramBytesUsed();
-      }
-      return size;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      return Accountables.namedAccountables("format", formats);
     }
 
     @Override

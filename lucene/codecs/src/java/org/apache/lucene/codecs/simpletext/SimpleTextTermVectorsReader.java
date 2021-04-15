@@ -43,10 +43,8 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 
 /**
@@ -57,11 +55,6 @@ import org.apache.lucene.util.StringHelper;
  * @lucene.experimental
  */
 public class SimpleTextTermVectorsReader extends TermVectorsReader {
-
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextTermVectorsReader.class)
-          + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class)
-          + RamUsageEstimator.shallowSizeOfInstance(CharsRef.class);
 
   private long offsets[]; /* docid -> offset in .vec file */
   private IndexInput in;
@@ -80,7 +73,9 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
       if (!success) {
         try {
           close();
-        } catch (Throwable t) {
+        } catch (
+            @SuppressWarnings("unused")
+            Throwable t) {
         } // ensure we throw our original exception
       }
     }
@@ -579,11 +574,6 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
     public long cost() {
       return 1;
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(offsets);
   }
 
   @Override

@@ -277,6 +277,11 @@ public class Lucene70SegmentInfoFormat extends SegmentInfoFormat {
               }
               missingValue = Float.intBitsToFloat(input.readInt());
               break;
+            case CUSTOM:
+            case DOC:
+            case REWRITEABLE:
+            case STRING_VAL:
+            case SCORE:
             default:
               throw new AssertionError("unhandled sortType=" + sortType);
           }

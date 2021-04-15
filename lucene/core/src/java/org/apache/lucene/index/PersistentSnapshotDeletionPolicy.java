@@ -120,7 +120,9 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
       if (!success) {
         try {
           super.release(ic);
-        } catch (Exception e) {
+        } catch (
+            @SuppressWarnings("unused")
+            Exception e) {
           // Suppress so we keep throwing original exception
         }
       }
@@ -145,7 +147,9 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
       if (!success) {
         try {
           incRef(commit);
-        } catch (Exception e) {
+        } catch (
+            @SuppressWarnings("unused")
+            Exception e) {
           // Suppress so we keep throwing original exception
         }
       }

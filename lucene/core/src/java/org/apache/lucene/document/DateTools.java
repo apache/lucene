@@ -116,7 +116,9 @@ public class DateTools {
     try {
       return TL_FORMATS.get()[dateString.length()].parse(dateString);
     } catch (Exception e) {
-      throw new ParseException("Input is not a valid date string: " + dateString, 0);
+      ParseException ex = new ParseException("Input is not a valid date string: " + dateString, 0);
+      ex.initCause(e);
+      throw ex;
     }
   }
 

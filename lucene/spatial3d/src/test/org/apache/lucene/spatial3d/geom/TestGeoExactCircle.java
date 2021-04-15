@@ -17,11 +17,14 @@
 
 package org.apache.lucene.spatial3d.geom;
 
+import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
+
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Tests for GeoExactCircle. */
-public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
+public class TestGeoExactCircle extends LuceneTestCase {
 
   @Test
   public void testExactCircle() {
@@ -78,8 +81,7 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
   @Repeat(iterations = 100)
   public void RandomPointBearingWGS84Test() {
     PlanetModel planetModel = PlanetModel.WGS84;
-    RandomGeo3dShapeGenerator generator = new RandomGeo3dShapeGenerator();
-    GeoPoint center = generator.randomGeoPoint(planetModel);
+    GeoPoint center = randomGeoPoint(planetModel);
     double radius = random().nextDouble() * Math.PI;
     checkBearingPoint(planetModel, center, radius, 0);
     checkBearingPoint(planetModel, center, radius, 0.5 * Math.PI);
@@ -144,34 +146,30 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
 
   @Test
   public void exactCircleLargeTest() {
-    boolean success = true;
-    try {
-      GeoCircleFactory.makeExactGeoCircle(
-          new PlanetModel(0.99, 1.05), 0.25 * Math.PI, 0, 0.35 * Math.PI, 1e-12);
-    } catch (IllegalArgumentException e) {
-      success = false;
-    }
-    assertTrue(success);
-    success = false;
-    try {
-      GeoCircleFactory.makeExactGeoCircle(
-          PlanetModel.WGS84, 0.25 * Math.PI, 0, 0.9996 * Math.PI, 1e-12);
-    } catch (IllegalArgumentException e) {
-      success = true;
-    }
-    assertTrue(success);
+    // should not throw exception
+    GeoCircleFactory.makeExactGeoCircle(
+        new PlanetModel(0.99, 1.05), 0.25 * Math.PI, 0, 0.35 * Math.PI, 1e-12);
+    // should throw exception
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          GeoCircleFactory.makeExactGeoCircle(
+              PlanetModel.WGS84, 0.25 * Math.PI, 0, 0.9996 * Math.PI, 1e-12);
+        });
   }
 
   @Test
   public void testExactCircleDoesNotFit() {
-    boolean exception = false;
-    try {
-      GeoCircleFactory.makeExactGeoCircle(
-          PlanetModel.WGS84, 1.5633796542562415, -1.0387149580695152, 3.1409865861032844, 1e-12);
-    } catch (IllegalArgumentException e) {
-      exception = true;
-    }
-    assertTrue(exception);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          GeoCircleFactory.makeExactGeoCircle(
+              PlanetModel.WGS84,
+              1.5633796542562415,
+              -1.0387149580695152,
+              3.1409865861032844,
+              1e-12);
+        });
   }
 
   public void testBigCircleInSphere() {
@@ -197,7 +195,8 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
   @Repeat(iterations = 100)
   public void testRandomLUCENE8054() {
     PlanetModel planetModel = randomPlanetModel();
-    GeoCircle circle1 = (GeoCircle) randomGeoAreaShape(EXACT_CIRCLE, planetModel);
+    GeoCircle circle1 =
+        (GeoCircle) randomGeoAreaShape(RandomGeo3dShapeGenerator.EXACT_CIRCLE, planetModel);
     // new radius, a bit smaller than the generated one!
     double radius = circle1.getRadius() * (1 - 0.01 * random().nextDouble());
     // circle with same center and new radius
@@ -306,13 +305,11 @@ public class TestGeoExactCircle extends RandomGeo3dShapeGenerator {
 
   public void testLUCENE8080() {
     PlanetModel planetModel = new PlanetModel(1.6304230055804751, 1.0199671157571204);
-    boolean fail = false;
-    try {
-      GeoCircleFactory.makeExactGeoCircle(
-          planetModel, 0.8853814403571284, 0.9784990176851283, 0.9071033527030907, 1e-11);
-    } catch (IllegalArgumentException e) {
-      fail = true;
-    }
-    assertTrue(fail);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          GeoCircleFactory.makeExactGeoCircle(
+              planetModel, 0.8853814403571284, 0.9784990176851283, 0.9071033527030907, 1e-11);
+        });
   }
 }

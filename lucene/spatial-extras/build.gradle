@@ -27,6 +27,7 @@ dependencies {
   api 'io.sgr:s2-geometry-library-java'
 
   testImplementation project(':lucene:test-framework')
+  testImplementation testFixtures(project(':lucene:spatial3d'))
 
   testImplementation 'org.locationtech.jts:jts-core'
   testImplementation 'org.locationtech.spatial4j:spatial4j::tests'

@@ -371,7 +371,9 @@ public class TestSegmentInfos extends LuceneTestCase {
             System.out.println("TEST: Altering the file did not update the checksum, aborting...");
           }
           return;
-        } catch (CorruptIndexException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            CorruptIndexException e) {
           // ok
         }
         corrupt = true;

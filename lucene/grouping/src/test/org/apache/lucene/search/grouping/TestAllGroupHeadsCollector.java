@@ -578,6 +578,10 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
       case SORTED:
         valuesField = new SortedDocValuesField(groupField, new BytesRef(value));
         break;
+      case NONE:
+      case NUMERIC:
+      case SORTED_SET:
+      case SORTED_NUMERIC:
       default:
         fail("unhandled type");
     }

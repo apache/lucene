@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.memory;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
@@ -42,7 +41,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -147,21 +145,6 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
     @Override
     public void close() {}
-
-    @Override
-    public long ramBytesUsed() {
-      long sizeInBytes = 0;
-      for (Map.Entry<String, DirectField> entry : fields.entrySet()) {
-        sizeInBytes += entry.getKey().length() * Character.BYTES;
-        sizeInBytes += entry.getValue().ramBytesUsed();
-      }
-      return sizeInBytes;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      return Accountables.namedAccountables("field", fields);
-    }
 
     @Override
     public void checkIntegrity() throws IOException {
@@ -1932,7 +1915,9 @@ public final class DirectPostingsFormat extends PostingsFormat {
       upto++;
       try {
         return docID = docIDs[upto];
-      } catch (ArrayIndexOutOfBoundsException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          ArrayIndexOutOfBoundsException e) {
       }
       return docID = NO_MORE_DOCS;
     }

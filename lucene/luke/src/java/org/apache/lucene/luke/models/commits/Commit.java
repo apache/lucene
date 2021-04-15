@@ -39,7 +39,9 @@ public final class Commit {
     commit.segCount = ic.getSegmentCount();
     try {
       commit.userData = IndexUtils.getCommitUserData(ic);
-    } catch (IOException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
     }
     return commit;
   }

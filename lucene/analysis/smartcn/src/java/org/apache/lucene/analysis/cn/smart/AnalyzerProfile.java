@@ -80,7 +80,9 @@ public class AnalyzerProfile {
     try (BufferedReader reader = Files.newBufferedReader(propFile, StandardCharsets.UTF_8)) {
       prop.load(reader);
       return prop.getProperty("analysis.data.dir", "");
-    } catch (IOException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
       return "";
     }
   }

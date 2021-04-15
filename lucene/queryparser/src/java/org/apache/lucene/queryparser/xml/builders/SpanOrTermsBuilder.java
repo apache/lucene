@@ -61,7 +61,7 @@ public class SpanOrTermsBuilder extends SpanBuilderBase {
       float boost = DOMUtils.getAttribute(e, "boost", 1.0f);
       return new SpanBoostQuery(soq, boost);
     } catch (IOException ioe) {
-      throw new ParserException("IOException parsing value:" + value);
+      throw new ParserException("IOException parsing value:" + value, ioe);
     }
   }
 }

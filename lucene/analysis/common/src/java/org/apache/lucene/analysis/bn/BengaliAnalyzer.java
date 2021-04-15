@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.bn;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.StopFilter;
@@ -68,7 +69,7 @@ public final class BengaliAnalyzer extends StopwordAnalyzerBase {
         DEFAULT_STOP_SET =
             loadStopwordSet(false, BengaliAnalyzer.class, DEFAULT_STOPWORD_FILE, STOPWORDS_COMMENT);
       } catch (IOException ex) {
-        throw new RuntimeException("Unable to load default stopword set");
+        throw new UncheckedIOException("Unable to load default stopword set", ex);
       }
     }
   }

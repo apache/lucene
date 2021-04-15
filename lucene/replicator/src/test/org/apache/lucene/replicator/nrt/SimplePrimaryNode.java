@@ -533,7 +533,9 @@ class SimplePrimaryNode extends PrimaryNode {
       byte cmd;
       try {
         cmd = in.readByte();
-      } catch (EOFException eofe) {
+      } catch (
+          @SuppressWarnings("unused")
+          EOFException eofe) {
         // done
         return;
       }
@@ -675,7 +677,9 @@ class SimplePrimaryNode extends PrimaryNode {
 
       try {
         cmd = in.readByte();
-      } catch (EOFException eofe) {
+      } catch (
+          @SuppressWarnings("unused")
+          EOFException eofe) {
         break;
       }
 

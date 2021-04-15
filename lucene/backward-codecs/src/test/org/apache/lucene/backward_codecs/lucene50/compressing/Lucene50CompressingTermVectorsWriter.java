@@ -791,7 +791,9 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (SecurityException ignored) {
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException ignored) {
     }
     BULK_MERGE_ENABLED = v;
   }

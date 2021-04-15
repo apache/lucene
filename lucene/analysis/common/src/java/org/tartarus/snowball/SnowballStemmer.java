@@ -10,13 +10,13 @@ modification, are permitted provided that the following conditions
 are met:
 
   1. Redistributions of source code must retain the above copyright notice,
-   this list of conditions and the following disclaimer.
+     this list of conditions and the following disclaimer.
   2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
   3. Neither the name of the Snowball project nor the names of its contributors
-   may be used to endorse or promote products derived from this software
-   without specific prior written permission.
+     may be used to endorse or promote products derived from this software
+     without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -32,11 +32,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.tartarus.snowball;
 
-/**
- * Parent class of all snowball stemmers, which must implement <code>stem</code>
- */
+/** Parent class of all snowball stemmers, which must implement <code>stem</code> */
 public abstract class SnowballStemmer extends SnowballProgram {
   public abstract boolean stem();
 
   static final long serialVersionUID = 2016072500L;
-};
+}
+;

@@ -188,6 +188,11 @@ public class SortField {
           case DOUBLE:
             sf.setMissingValue(NumericUtils.sortableLongToDouble(in.readLong()));
             break;
+          case CUSTOM:
+          case DOC:
+          case REWRITEABLE:
+          case STRING_VAL:
+          case SCORE:
           default:
             throw new IllegalArgumentException("Cannot deserialize sort of type " + sf.type);
         }
@@ -206,7 +211,7 @@ public class SortField {
     try {
       return Type.valueOf(type);
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Can't deserialize SortField - unknown type " + type);
+      throw new IllegalArgumentException("Can't deserialize SortField - unknown type " + type, e);
     }
   }
 
@@ -241,6 +246,11 @@ public class SortField {
         case DOUBLE:
           out.writeLong(NumericUtils.doubleToSortableLong((double) missingValue));
           break;
+        case CUSTOM:
+        case DOC:
+        case REWRITEABLE:
+        case STRING_VAL:
+        case SCORE:
         default:
           throw new IllegalArgumentException("Cannot serialize SortField of type " + type);
       }
@@ -583,6 +593,11 @@ public class SortField {
             (Float) missingValue,
             reverse,
             reader -> DocValues.getNumeric(reader, field));
+      case CUSTOM:
+      case DOC:
+      case REWRITEABLE:
+      case STRING_VAL:
+      case SCORE:
       default:
         return null;
     }

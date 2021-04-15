@@ -344,6 +344,9 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     switch (context.context) {
       case MERGE:
         return MERGE_BUFFER_SIZE;
+      case DEFAULT:
+      case FLUSH:
+      case READ:
       default:
         return BUFFER_SIZE;
     }

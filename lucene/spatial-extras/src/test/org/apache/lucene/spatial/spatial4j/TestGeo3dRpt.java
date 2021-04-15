@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.spatial.spatial4j;
 
+import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
 import static org.locationtech.spatial4j.distance.DistanceUtils.DEGREES_TO_RADIANS;
 
 import java.io.IOException;
@@ -39,7 +40,6 @@ import org.apache.lucene.spatial3d.geom.GeoPoint;
 import org.apache.lucene.spatial3d.geom.GeoPointShape;
 import org.apache.lucene.spatial3d.geom.GeoPolygonFactory;
 import org.apache.lucene.spatial3d.geom.PlanetModel;
-import org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator;
 import org.junit.Test;
 import org.locationtech.spatial4j.shape.Rectangle;
 import org.locationtech.spatial4j.shape.Shape;
@@ -47,7 +47,6 @@ import org.locationtech.spatial4j.shape.Shape;
 public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
 
   private PlanetModel planetModel;
-  private RandomGeo3dShapeGenerator shapeGenerator;
   private SpatialPrefixTree grid;
   private RecursivePrefixTreeStrategy rptStrategy;
 
@@ -73,8 +72,7 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
   }
 
   private void setupStrategy() {
-    shapeGenerator = new RandomGeo3dShapeGenerator();
-    planetModel = shapeGenerator.randomPlanetModel();
+    planetModel = randomPlanetModel();
     Geo3dSpatialContextFactory factory = new Geo3dSpatialContextFactory();
     factory.planetModel = planetModel;
     ctx = factory.newSpatialContext();
@@ -135,8 +133,8 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
 
   @Override
   protected Shape randomIndexedShape() {
-    int type = shapeGenerator.randomShapeType();
-    GeoAreaShape areaShape = shapeGenerator.randomGeoAreaShape(type, planetModel);
+    int type = randomShapeType();
+    GeoAreaShape areaShape = randomGeoAreaShape(type, planetModel);
     if (areaShape instanceof GeoPointShape) {
       return new Geo3dPointShape((GeoPointShape) areaShape, ctx);
     }
@@ -145,8 +143,8 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
 
   @Override
   protected Shape randomQueryShape() {
-    int type = shapeGenerator.randomShapeType();
-    GeoAreaShape areaShape = shapeGenerator.randomGeoAreaShape(type, planetModel);
+    int type = randomShapeType();
+    GeoAreaShape areaShape = randomGeoAreaShape(type, planetModel);
     return new Geo3dShape<>(areaShape, ctx);
   }
 

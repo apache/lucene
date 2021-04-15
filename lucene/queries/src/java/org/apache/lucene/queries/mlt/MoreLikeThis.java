@@ -606,7 +606,9 @@ public final class MoreLikeThis {
 
       try {
         query.add(tq, BooleanClause.Occur.SHOULD);
-      } catch (IndexSearcher.TooManyClauses ignore) {
+      } catch (
+          @SuppressWarnings("unused")
+          IndexSearcher.TooManyClauses ignore) {
         break;
       }
     }

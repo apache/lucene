@@ -520,7 +520,14 @@ public class Hunspell {
     return suggest(word, SUGGEST_TIME_LIMIT);
   }
 
-  List<String> suggest(String word, long timeLimitMs) throws SuggestionTimeoutException {
+  /**
+   * @param word the misspelled word to calculate suggestions for
+   * @param timeLimitMs the duration limit in milliseconds, after which the associated {@link
+   *     TimeoutPolicy}'s effects (exception or partial result) may kick in
+   * @throws SuggestionTimeoutException if the computation takes too long and {@link
+   *     TimeoutPolicy#THROW_EXCEPTION} was specified in the constructor
+   */
+  public List<String> suggest(String word, long timeLimitMs) throws SuggestionTimeoutException {
     checkCanceled.run();
     if (word.length() >= 100) return Collections.emptyList();
 

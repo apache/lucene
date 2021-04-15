@@ -121,7 +121,9 @@ public class TestIndexReplicationClient extends ReplicatorTestCase {
         } finally {
           reader.close();
         }
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         // we can hit IndexNotFoundException or e.g. EOFException (on
         // segments_N) because it is being copied at the same time it is read by
         // DirectoryReader.open().

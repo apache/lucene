@@ -139,7 +139,7 @@ public final class RamUsageEstimator {
             compressedOops =
                 Boolean.parseBoolean(
                     vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
-          } catch (ReflectiveOperationException | RuntimeException e) {
+          } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
             isHotspot = false;
           }
           try {
@@ -147,11 +147,11 @@ public final class RamUsageEstimator {
             objectAlignment =
                 Integer.parseInt(
                     vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
-          } catch (ReflectiveOperationException | RuntimeException e) {
+          } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
             isHotspot = false;
           }
         }
-      } catch (ReflectiveOperationException | RuntimeException e) {
+      } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
         isHotspot = false;
       }
       JVM_IS_HOTSPOT_64BIT = isHotspot;
@@ -453,9 +453,9 @@ public final class RamUsageEstimator {
     } else if (o instanceof Query) {
       size = sizeOf((Query) o, defSize);
     } else if (o instanceof Map) {
-      size = sizeOfMap((Map) o, ++depth, defSize);
+      size = sizeOfMap((Map<?, ?>) o, ++depth, defSize);
     } else if (o instanceof Collection) {
-      size = sizeOfCollection((Collection) o, ++depth, defSize);
+      size = sizeOfCollection((Collection<?>) o, ++depth, defSize);
     } else {
       if (defSize > 0) {
         size = defSize;

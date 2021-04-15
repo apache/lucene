@@ -370,7 +370,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   public BytesRef next() throws IOException {
     try {
       return _next();
-    } catch (NoMoreTermsException eoi) {
+    } catch (
+        @SuppressWarnings("unused")
+        NoMoreTermsException eoi) {
       // Provoke NPE if we are (illegally!) called again:
       currentFrame = null;
       return null;
