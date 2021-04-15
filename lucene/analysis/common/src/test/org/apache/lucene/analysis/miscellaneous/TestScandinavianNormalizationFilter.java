@@ -16,19 +16,12 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-import java.util.Collections;
-import java.util.Set;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
-import org.junit.Test;
 
 public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase {
   public void testDefault() throws Exception {
-    Analyzer analyzer = createAnalyzer(ScandinavianNormalizationFilter.ALL_FOLDINGS);
+    Analyzer analyzer = createAnalyzer();
 
     checkOneTerm(analyzer, "aeäaeeea", "æææeea"); // should not cause ArrayIndexOutOfBoundsException
 
@@ -92,87 +85,6 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
     analyzer.close();
   }
 
-  @Test
-  public void testNoFoldings() throws Exception {
-    Analyzer analyzer = createAnalyzer(Collections.emptySet());
-    checkOneTerm(analyzer, "aa", "aa");
-    checkOneTerm(analyzer, "ao", "ao");
-    checkOneTerm(analyzer, "ae", "ae");
-    checkOneTerm(analyzer, "oo", "oo");
-    checkOneTerm(analyzer, "oe", "oe");
-    analyzer.close();
-  }
-
-  @Test
-  public void testAeFolding() throws Exception {
-    Analyzer analyzer = createAnalyzer(Set.of(ScandinavianNormalizationFilter.Foldings.AE));
-    checkOneTerm(analyzer, "aa", "aa");
-    checkOneTerm(analyzer, "ao", "ao");
-    checkOneTerm(analyzer, "ae", "æ");
-    checkOneTerm(analyzer, "aE", "æ");
-    checkOneTerm(analyzer, "Ae", "Æ");
-    checkOneTerm(analyzer, "AE", "Æ");
-    checkOneTerm(analyzer, "oo", "oo");
-    checkOneTerm(analyzer, "oe", "oe");
-    analyzer.close();
-  }
-
-  @Test
-  public void testAaFolding() throws Exception {
-    Analyzer analyzer = createAnalyzer(Set.of(ScandinavianNormalizationFilter.Foldings.AA));
-    checkOneTerm(analyzer, "aa", "å");
-    checkOneTerm(analyzer, "aA", "å");
-    checkOneTerm(analyzer, "Aa", "Å");
-    checkOneTerm(analyzer, "AA", "Å");
-    checkOneTerm(analyzer, "ao", "ao");
-    checkOneTerm(analyzer, "ae", "ae");
-    checkOneTerm(analyzer, "oo", "oo");
-    checkOneTerm(analyzer, "oe", "oe");
-    analyzer.close();
-  }
-
-  @Test
-  public void testOeFolding() throws Exception {
-    Analyzer analyzer = createAnalyzer(Set.of(ScandinavianNormalizationFilter.Foldings.OE));
-    checkOneTerm(analyzer, "aa", "aa");
-    checkOneTerm(analyzer, "ao", "ao");
-    checkOneTerm(analyzer, "ae", "ae");
-    checkOneTerm(analyzer, "oo", "oo");
-    checkOneTerm(analyzer, "oe", "ø");
-    checkOneTerm(analyzer, "oE", "ø");
-    checkOneTerm(analyzer, "Oe", "Ø");
-    checkOneTerm(analyzer, "OE", "Ø");
-    analyzer.close();
-  }
-
-  @Test
-  public void testOoFolding() throws Exception {
-    Analyzer analyzer = createAnalyzer(Set.of(ScandinavianNormalizationFilter.Foldings.OO));
-    checkOneTerm(analyzer, "aa", "aa");
-    checkOneTerm(analyzer, "ao", "ao");
-    checkOneTerm(analyzer, "ae", "ae");
-    checkOneTerm(analyzer, "oo", "ø");
-    checkOneTerm(analyzer, "oO", "ø");
-    checkOneTerm(analyzer, "Oo", "Ø");
-    checkOneTerm(analyzer, "OO", "Ø");
-    checkOneTerm(analyzer, "oe", "oe");
-    analyzer.close();
-  }
-
-  @Test
-  public void testAoFolding() throws Exception {
-    Analyzer analyzer = createAnalyzer(Set.of(ScandinavianNormalizationFilter.Foldings.AO));
-    checkOneTerm(analyzer, "aa", "aa");
-    checkOneTerm(analyzer, "ao", "å");
-    checkOneTerm(analyzer, "aO", "å");
-    checkOneTerm(analyzer, "Ao", "Å");
-    checkOneTerm(analyzer, "AO", "Å");
-    checkOneTerm(analyzer, "ae", "ae");
-    checkOneTerm(analyzer, "oo", "oo");
-    checkOneTerm(analyzer, "oe", "oe");
-    analyzer.close();
-  }
-
   /** check that the empty string doesn't cause issues */
   public void testEmptyTerm() throws Exception {
     Analyzer a =
@@ -190,17 +102,17 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
 
   /** blast some random strings through the analyzer */
   public void testRandomData() throws Exception {
-    Analyzer analyzer = createAnalyzer(ScandinavianNormalizationFilter.ALL_FOLDINGS);
+    Analyzer analyzer = createAnalyzer();
     checkRandomData(random(), analyzer, 200 * RANDOM_MULTIPLIER);
     analyzer.close();
   }
 
-  private Analyzer createAnalyzer(Set<ScandinavianNormalizationFilter.Foldings> foldings) {
+  private Analyzer createAnalyzer() {
     return new Analyzer() {
       @Override
       protected TokenStreamComponents createComponents(String field) {
         final Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-        final TokenStream stream = new ScandinavianNormalizationFilter(tokenizer, foldings);
+        final TokenStream stream = new ScandinavianNormalizationFilter(tokenizer);
         return new TokenStreamComponents(tokenizer, stream);
       }
     };

@@ -21,25 +21,16 @@ import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 
 /**
- * Factory for {@link org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter}.
+ * Factory for {@link NorwegianNormalizationFilter}.
  *
- * <pre class="prettyprint">
- * &lt;fieldType name="text_scandnorm" class="solr.TextField" positionIncrementGap="100"&gt;
- *   &lt;analyzer&gt;
- *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
- *     &lt;filter class="solr.ScandinavianNormalizationFilterFactory"/&gt;
- *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
- *
- * @since 4.4.0
  * @lucene.spi {@value #NAME}
  */
-public class ScandinavianNormalizationFilterFactory extends TokenFilterFactory {
+public class NorwegianNormalizationFilterFactory extends TokenFilterFactory {
 
   /** SPI name */
-  public static final String NAME = "scandinavianNormalization";
+  public static final String NAME = "norwegianNormalization";
 
-  public ScandinavianNormalizationFilterFactory(Map<String, String> args) {
+  public NorwegianNormalizationFilterFactory(Map<String, String> args) {
     super(args);
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
@@ -47,13 +38,13 @@ public class ScandinavianNormalizationFilterFactory extends TokenFilterFactory {
   }
 
   /** Default ctor for compatibility with SPI */
-  public ScandinavianNormalizationFilterFactory() {
+  public NorwegianNormalizationFilterFactory() {
     throw defaultCtorException();
   }
 
   @Override
-  public ScandinavianNormalizationFilter create(TokenStream input) {
-    return new ScandinavianNormalizationFilter(input);
+  public NorwegianNormalizationFilter create(TokenStream input) {
+    return new NorwegianNormalizationFilter(input);
   }
 
   @Override

@@ -27,12 +27,6 @@ public class TestScandinavianNormalizationFilterFactory extends BaseTokenStreamF
     assertTokenStreamContents(stream, new String[] {"ræksmørgås_æ_ø_å_ø_å_Æ_Ø_Å_Ø_Å"});
   }
 
-  public void testWithFoldings() throws Exception {
-    TokenStream stream = whitespaceMockTokenizer("raeksmoergaas_oo_ao");
-    stream = tokenFilterFactory("ScandinavianNormalization", "foldings", "ae,oe,aa").create(stream);
-    assertTokenStreamContents(stream, new String[] {"ræksmørgås_oo_ao"});
-  }
-
   /** Test that bogus arguments result in exception */
   public void testBogusArguments() throws Exception {
     IllegalArgumentException expected =
