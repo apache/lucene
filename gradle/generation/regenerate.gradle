@@ -168,7 +168,7 @@ configure([
           mustRunInOrder deps
 
           doFirst {
-            if (checksumLoadTask.checksumMatch) {
+            if (checksumLoadTask.checksumMatch && !sourceTask.didWork) {
               logger.lifecycle("Checksums consistent with sources, skipping task: ${sourceTask.path}")
             }
           }
