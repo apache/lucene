@@ -77,15 +77,16 @@ gradlew -p lucene/analysis/common tasks --group generation
 
 which displays (at the moment of writing):
 
-generateClassicTokenizerIfChanged - Regenerate ClassicTokenizerImpl.java (if sources changed)
-generateHTMLStripCharFilterIfChanged - Regenerate HTMLStripCharFilter.java (if sources changed)
-generateTldsIfChanged - Regenerate top-level domain jflex macros and tests (if sources changed)
-generateUAX29URLEmailTokenizerIfChanged - Regenerate UAX29URLEmailTokenizerImpl.java (if sources changed)
-generateWikipediaTokenizerIfChanged - Regenerate WikipediaTokenizerImpl.java (if sources changed)
+generateClassicTokenizer - Regenerate ClassicTokenizerImpl.java (if sources changed)
+generateHTMLStripCharFilter - Regenerate HTMLStripCharFilter.java (if sources changed)
+generateTlds - Regenerate top-level domain jflex macros and tests (if sources changed)
+generateUAX29URLEmailTokenizer - Regenerate UAX29URLEmailTokenizerImpl.java (if sources changed)
+generateWikipediaTokenizer - Regenerate WikipediaTokenizerImpl.java (if sources changed)
 regenerate - Rerun any code or static data generation tasks.
 snowball - Regenerates snowball stemmers.
 
-You may wonder what all those *IfChanged tasks are...
+You may wonder why none of these tasks actually exist in gradle source files (identically
+named tasks with a suffix "Internal" exist).
 
 
 Resource checksums, incremental generation and advanced topics
@@ -101,14 +102,13 @@ plain console, for example:
 gradlew -p lucene/analysis/common regenerate --console=plain
 
 ...
-> Task :lucene:analysis:common:generateUnicodePropsIfChanged
-Checksums consistent with sources, skipping task: :lucene:analysis:common:generateUnicodeProps
+> Task :lucene:analysis:common:generateUnicodeProps
+Checksums consistent with sources, skipping task: :lucene:analysis:common:generateUnicodePropsInternal
 ...
 
-This shouldn't worry you at all. The "*IfChanged" tasks wrap the actual generation
-tasks and verify whether the inputs and outputs of a task have changed. If so, the task
-is run (and follow-up task such as tidy are scheduled). If the checksums are identical to
-what was previously saved, the regeneration task is skipped.
+This shouldn't worry you at all - the internal tasks are skipped by wrappers
+if the inputs and outputs of the internal task have not changed. If they have changed,
+the task is re-run and followed up by other tasks, such as code-formatting (tidy).
 
 Of course, sometimes you may want to *force* the regeneration task to run, even if the
 checksums indicate nothing has changed. This may happen because of several reasons:
@@ -130,12 +130,12 @@ gradlew -p lucene/analysis/common regenerate --rerun-tasks
 
 Scoping the call to a particular task will also work:
 
-gradlew -p lucene/analysis/common generateUnicodePropsIfChanged --rerun-tasks
+gradlew -p lucene/analysis/common generateUnicodeProps --rerun-tasks
 
 You *should not* call the underlying generation task directly; this is possible
 but discouraged:
 
-gradlew -p lucene/analysis/common generateUnicodeProps --rerun-tasks
+gradlew -p lucene/analysis/common generateUnicodePropsInternal --rerun-tasks
 
 The reason is that some of these generation tasks require follow-up (for example
 source code tidying) and, more importantly, the checksums for these 
@@ -145,4 +145,4 @@ with checksum mismatches).
 Finally, if you do feel like force-regenerating everything, remember to exclude this 
 monster...
 
-gradlew regenerate -x generateUAX29URLEmailTokenizer --rerun-tasks
+gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks

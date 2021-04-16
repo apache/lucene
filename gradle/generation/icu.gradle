@@ -69,7 +69,7 @@ configure(project(":lucene:analysis:icu")) {
 
   def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
 
-  task genUtr30DataFiles() {
+  task genUtr30DataFilesInternal() {
     dependsOn icuCompileTask
 
     // May be undefined yet, so use a provider.
@@ -119,7 +119,7 @@ configure(project(":lucene:analysis:icu")) {
     }
   }
 
-  task genRbbi() {
+  task genRbbiInternal() {
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
 
@@ -141,8 +141,8 @@ configure(project(":lucene:analysis:icu")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFiles, [ ignoreWithSource: icuCompileTask ])
-  regenerate.dependsOn wrapWithPersistentChecksums(genRbbi)
+  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFilesInternal, [ ignoreWithSource: icuCompileTask ])
+  regenerate.dependsOn wrapWithPersistentChecksums(genRbbiInternal)
 
   task compileIcuWindows() {
     doFirst {
@@ -236,7 +236,7 @@ configure(project(":lucene:analysis:icu")) {
 
 // Regenerates UnicodeProps.java
 configure(project(":lucene:analysis:common")) {
-  task generateUnicodeProps() {
+  task generateUnicodePropsInternal() {
     def icuConfig = rootProject.configurations.icu_68
     def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
 
@@ -260,13 +260,13 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodeProps, [ andThenTasks: "spotlessApply" ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [ andThenTasks: "spotlessApply" ])
 }
 
 
 // UnicodeEmojiProperties.jflex
 configure(project(":lucene:core")) {
-  task generateEmojiProperties() {
+  task generateEmojiPropertiesInternal() {
     def icuConfig = rootProject.configurations.icu_62
     def outputFile = file("src/data/jflex/UnicodeEmojiProperties.jflex")
 
@@ -290,5 +290,5 @@ configure(project(":lucene:core")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiProperties)
+  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiPropertiesInternal)
 }
