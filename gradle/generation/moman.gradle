@@ -38,7 +38,7 @@ configure(project(":lucene:core")) {
     }
   }
 
-  task utilGenPacked(dependsOn: installMoman) {
+  task utilGenPackedInternal(dependsOn: installMoman) {
     def targetDir = file("src/java/org/apache/lucene/util/packed")
 
     inputs.property("source", momanSource)
@@ -66,7 +66,7 @@ configure(project(":lucene:core")) {
     }
   }
 
-  task utilGenLev(dependsOn: installMoman) {
+  task utilGenLevInternal(dependsOn: installMoman) {
     def targetDir = file("src/java/org/apache/lucene/util/automaton")
 
     inputs.property("source", momanSource)
@@ -99,8 +99,8 @@ configure(project(":lucene:core")) {
     description "Regenerate Moman-based sources."
     group "generation"
 
-    dependsOn wrapWithPersistentChecksums(utilGenPacked, [ andThenTasks: "spotlessApply" ])
-    dependsOn wrapWithPersistentChecksums(utilGenLev, [ andThenTasks: "spotlessApply" ])
+    dependsOn wrapWithPersistentChecksums(utilGenPackedInternal, [ andThenTasks: "spotlessApply" ])
+    dependsOn wrapWithPersistentChecksums(utilGenLevInternal, [ andThenTasks: "spotlessApply" ])
   }
 
   regenerate.dependsOn moman

@@ -38,18 +38,18 @@ configure([
       // This utility method implements the logic required for "persistent" incremental
       // source-generating tasks. The idea is simple, the implementation quite complex.
       //
-      // The idea is that, given source-generating task "sourceTask" we create
-      // a bunch of other tasks that perform checksum generation, validation and sourceTask
-      // skipping; example:
+      // The idea is that, given source-generating task "sourceTaskInternal" (note the suffix),
+      // we create a bunch of other tasks that perform checksum generation, validation and
+      // source task skipping; example (sourceTask has Internal suffix stripped)
       //
       // ${sourceTask}ChecksumLoad
       // ${sourceTask}ChecksumSave
       // ${sourceTask}ChecksumCheck (fails if checksums are inconsistent)
-      // maybe${sourceTask} dependsOn [checksum-load, sourceTask, checksum-save]
+      // ${sourceTask} dependsOn [checksum-load, ${sourceTask}Internal, checksum-save]
       //
       // Checksums are persisted and computed from sourceTask's inputs/outputs. If the
-      // persisted checksums are identical to current checksums, sourceTask
-      // is skipped (via sourceTask.onlyIf { false }).
+      // persisted checksums are identical to current checksums, source task
+      // is skipped (via sourceTaskInternal.onlyIf { false }).
       //
       // Implementation-wise things get complicated because gradle doesn't have the notion
       // of "ordered" task execution with respect to task AND its dependencies (we can add
@@ -60,6 +60,12 @@ configure([
       //   andThenTasks: other tasks that should be scheduled to run after source task and
       //     before checksum calculation.
       wrapWithPersistentChecksums = { Task sourceTask, Map<String, Object> extraConfig = [:] ->
+        if (!sourceTask.name.endsWith("Internal")) {
+          throw new GradleException("Wrapped task must follow the convention name of *Internal: ${sourceTask.name}")
+        }
+
+        String sourceTaskName = sourceTask.name.replaceAll('Internal$', '')
+
         def toList = { value ->
           if (value instanceof List) {
             return value
@@ -74,7 +80,7 @@ configure([
         List<Object> ignoreWithSource =  toList(extraConfig.get("ignoreWithSource"))
 
         // Create checksum-loader task.
-        Task checksumLoadTask = tasks.create("${sourceTask.name}ChecksumLoad", {
+        Task checksumLoadTask = tasks.create("${sourceTaskName}ChecksumLoad", {
           ext {
             checksumMatch = true
           }
@@ -94,7 +100,7 @@ configure([
             ext.actualChecksums = actualChecksums
 
             // Load any previously written checksums
-            ext.checksumsFile = project.file("src/generated/checksums/${sourceTask.name}.json")
+            ext.checksumsFile = project.file("src/generated/checksums/${sourceTaskName}.json")
             Map<String, String> savedChecksums = [:]
             if (checksumsFile.exists()) {
               savedChecksums = new JsonSlurper().parse(checksumsFile) as Map
@@ -105,7 +111,7 @@ configure([
           }
         })
 
-        Task checksumCheckTask = tasks.create("${sourceTask.name}ChecksumCheck", {
+        Task checksumCheckTask = tasks.create("${sourceTaskName}ChecksumCheck", {
           dependsOn checksumLoadTask
 
           doFirst {
@@ -119,7 +125,7 @@ configure([
               expected = expected - same
 
               throw new GradleException("Checksums mismatch for derived resources; you might have" +
-                  " modified a generated resource (regenerate task: ${sourceTask.path}IfChanged):\n" +
+                  " modified a generated resource (regenerate task: ${sourceTask.name}):\n" +
                   "Actual:\n  ${actual.entrySet().join('\n  ')}\n\n" +
                   "Expected:\n  ${expected.entrySet().join('\n  ')}"
               )
@@ -128,7 +134,7 @@ configure([
         })
         check.dependsOn checksumCheckTask
 
-        Task checksumSaveTask = tasks.create("${sourceTask.name}ChecksumSave", {
+        Task checksumSaveTask = tasks.create("${sourceTaskName}ChecksumSave", {
           dependsOn checksumLoadTask
 
           doFirst {
@@ -150,7 +156,7 @@ configure([
           }
         })
 
-        Task conditionalTask = tasks.create("${sourceTask.name}IfChanged", {
+        Task conditionalTask = tasks.create("${sourceTaskName}", {
           def deps = [
               checksumLoadTask,
               sourceTask,
@@ -162,7 +168,7 @@ configure([
           mustRunInOrder deps
 
           doFirst {
-            if (checksumLoadTask.checksumMatch) {
+            if (checksumLoadTask.checksumMatch && !sourceTask.didWork) {
               logger.lifecycle("Checksums consistent with sources, skipping task: ${sourceTask.path}")
             }
           }
