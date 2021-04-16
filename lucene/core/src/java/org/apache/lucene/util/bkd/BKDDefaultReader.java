@@ -17,7 +17,6 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
@@ -140,7 +139,7 @@ public class BKDDefaultReader implements BKDReader {
   }
 
   @Override
-  public BKDReader.IndexTree getIndexTree() {
+  public BKDReader.IndexTree getIndexTree() throws IOException {
     return new IndexTree(
         packedIndex.clone(),
         this.in.clone(),
@@ -199,7 +198,8 @@ public class BKDDefaultReader implements BKDReader {
         int numLeaves,
         int version,
         byte[] minPackedValue,
-        byte[] maxPackedValue) {
+        byte[] maxPackedValue)
+        throws IOException {
       this(
           innerNodes,
           leafNodes,
@@ -253,7 +253,8 @@ public class BKDDefaultReader implements BKDReader {
       rightNodePositions = new int[treeDepth + 1];
       splitDims = new int[treeDepth + 1];
       negativeDeltas = new boolean[config.numIndexDims * (treeDepth + 1)];
-      // scratch objects, reused between clones
+      // scratch objects, reused between clones so NN search are not creating those objects
+      // in every clone.
       this.scratchIterator = scratchIterator;
       this.commonPrefixLengths = commonPrefixLengths;
       this.scratchDataPackedValue = scratchDataPackedValue;
@@ -306,7 +307,7 @@ public class BKDDefaultReader implements BKDReader {
     }
 
     @Override
-    public boolean moveToChild() {
+    public boolean moveToChild() throws IOException {
       if (isLeafNode()) {
         return false;
       }
@@ -314,7 +315,7 @@ public class BKDDefaultReader implements BKDReader {
       return true;
     }
 
-    private void pushLeft() {
+    private void pushLeft() throws IOException {
       final int splitDimPos = splitDims[level] * config.bytesPerDim;
       if (splitDimValueStack[level] == null) {
         splitDimValueStack[level] = new byte[config.bytesPerDim];
@@ -338,19 +339,15 @@ public class BKDDefaultReader implements BKDReader {
               + config.numIndexDims
               + " config.numDims="
               + config.numDims;
-      nodeID *= 2;
-      level++;
       // add the split dim value:
       System.arraycopy(
-          splitValuesStack[level - 1],
-          splitDimPos,
-          maxPackedValue,
-          splitDimPos,
-          config.bytesPerDim);
+          splitValuesStack[level], splitDimPos, maxPackedValue, splitDimPos, config.bytesPerDim);
+      nodeID *= 2;
+      level++;
       readNodeData(true);
     }
 
-    private void pushRight() {
+    private void pushRight() throws IOException {
       final int splitDimPos = splitDims[level] * config.bytesPerDim;
       // we should have already visit the left node
       assert splitDimValueStack[level] != null;
@@ -376,25 +373,17 @@ public class BKDDefaultReader implements BKDReader {
       final int nodePosition = rightNodePositions[level];
       assert nodePosition >= innerNodes.getFilePointer()
           : "nodePosition = " + nodePosition + " < currentPosition=" + innerNodes.getFilePointer();
-      try {
-        innerNodes.seek(nodePosition);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-      nodeID = 2 * nodeID + 1;
-      level++;
+      innerNodes.seek(nodePosition);
       // add the split dim value:
       System.arraycopy(
-          splitValuesStack[level - 1],
-          splitDimPos,
-          minPackedValue,
-          splitDimPos,
-          config.bytesPerDim);
+          splitValuesStack[level], splitDimPos, minPackedValue, splitDimPos, config.bytesPerDim);
+      nodeID = 2 * nodeID + 1;
+      level++;
       readNodeData(false);
     }
 
     @Override
-    public boolean moveToSibling() {
+    public boolean moveToSibling() throws IOException {
       if (nodeID != nodeRoot && (nodeID & 1) == 0) {
         pop(true);
         pushRight();
@@ -416,7 +405,6 @@ public class BKDDefaultReader implements BKDReader {
             splitDims[level] * config.bytesPerDim,
             config.bytesPerDim);
       } else {
-
         System.arraycopy(
             splitDimValueStack[level],
             0,
@@ -536,69 +524,65 @@ public class BKDDefaultReader implements BKDReader {
       }
     }
 
-    private void readNodeData(boolean isLeft) {
-      try {
-        leafBlockFPStack[level] = leafBlockFPStack[level - 1];
-        if (isLeft == false) {
-          // read leaf block FP delta
-          leafBlockFPStack[level] += innerNodes.readVLong();
-        }
+    private void readNodeData(boolean isLeft) throws IOException {
+      leafBlockFPStack[level] = leafBlockFPStack[level - 1];
+      if (isLeft == false) {
+        // read leaf block FP delta
+        leafBlockFPStack[level] += innerNodes.readVLong();
+      }
 
-        if (isLeafNode() == false) {
+      if (isLeafNode() == false) {
+        System.arraycopy(
+            negativeDeltas,
+            (level - 1) * config.numIndexDims,
+            negativeDeltas,
+            level * config.numIndexDims,
+            config.numIndexDims);
+        negativeDeltas[level * config.numIndexDims + splitDims[level - 1]] = isLeft;
+
+        if (splitValuesStack[level] == null) {
+          splitValuesStack[level] = splitValuesStack[level - 1].clone();
+        } else {
           System.arraycopy(
-              negativeDeltas,
-              (level - 1) * config.numIndexDims,
-              negativeDeltas,
-              level * config.numIndexDims,
-              config.numIndexDims);
-          negativeDeltas[level * config.numIndexDims + splitDims[level - 1]] = isLeft;
-
-          if (splitValuesStack[level] == null) {
-            splitValuesStack[level] = splitValuesStack[level - 1].clone();
-          } else {
-            System.arraycopy(
-                splitValuesStack[level - 1],
-                0,
-                splitValuesStack[level],
-                0,
-                config.packedIndexBytesLength);
-          }
-
-          // read split dim, prefix, firstDiffByteDelta encoded as int:
-          int code = innerNodes.readVInt();
-          splitDims[level] = code % config.numIndexDims;
-          code /= config.numIndexDims;
-          int prefix = code % (1 + config.bytesPerDim);
-          int suffix = config.bytesPerDim - prefix;
-
-          if (suffix > 0) {
-            int firstDiffByteDelta = code / (1 + config.bytesPerDim);
-            if (negativeDeltas[level * config.numIndexDims + splitDims[level]]) {
-              firstDiffByteDelta = -firstDiffByteDelta;
-            }
-            int oldByte =
-                splitValuesStack[level][splitDims[level] * config.bytesPerDim + prefix] & 0xFF;
-            splitValuesStack[level][splitDims[level] * config.bytesPerDim + prefix] =
-                (byte) (oldByte + firstDiffByteDelta);
-            innerNodes.readBytes(
-                splitValuesStack[level],
-                splitDims[level] * config.bytesPerDim + prefix + 1,
-                suffix - 1);
-          } else {
-            // our split value is == last split value in this dim, which can happen when there are
-            // many duplicate values
-          }
-
-          int leftNumBytes;
-          if (nodeID * 2 < leafNodeOffset) {
-            leftNumBytes = innerNodes.readVInt();
-          } else {
-            leftNumBytes = 0;
-          }
-          rightNodePositions[level] = Math.toIntExact(innerNodes.getFilePointer()) + leftNumBytes;
+              splitValuesStack[level - 1],
+              0,
+              splitValuesStack[level],
+              0,
+              config.packedIndexBytesLength);
         }
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
+
+        // read split dim, prefix, firstDiffByteDelta encoded as int:
+        int code = innerNodes.readVInt();
+        splitDims[level] = code % config.numIndexDims;
+        code /= config.numIndexDims;
+        int prefix = code % (1 + config.bytesPerDim);
+        int suffix = config.bytesPerDim - prefix;
+
+        if (suffix > 0) {
+          int firstDiffByteDelta = code / (1 + config.bytesPerDim);
+          if (negativeDeltas[level * config.numIndexDims + splitDims[level]]) {
+            firstDiffByteDelta = -firstDiffByteDelta;
+          }
+          int oldByte =
+              splitValuesStack[level][splitDims[level] * config.bytesPerDim + prefix] & 0xFF;
+          splitValuesStack[level][splitDims[level] * config.bytesPerDim + prefix] =
+              (byte) (oldByte + firstDiffByteDelta);
+          innerNodes.readBytes(
+              splitValuesStack[level],
+              splitDims[level] * config.bytesPerDim + prefix + 1,
+              suffix - 1);
+        } else {
+          // our split value is == last split value in this dim, which can happen when there are
+          // many duplicate values
+        }
+
+        int leftNumBytes;
+        if (nodeID * 2 < leafNodeOffset) {
+          leftNumBytes = innerNodes.readVInt();
+        } else {
+          leftNumBytes = 0;
+        }
+        rightNodePositions[level] = Math.toIntExact(innerNodes.getFilePointer()) + leftNumBytes;
       }
     }
 

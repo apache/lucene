@@ -42,7 +42,7 @@ public interface BKDReader {
   int getDocCount();
 
   /** Create a new {@link IndexTree} to navigate the index */
-  IndexTree getIndexTree();
+  IndexTree getIndexTree() throws IOException;
 
   /** Basic operations to read the BKD tree. */
   interface IndexTree extends Cloneable {
@@ -55,19 +55,19 @@ public interface BKDReader {
      * leaf nodes and {@code true} otherwise. Should not be called if the current node has already
      * called this method.
      */
-    boolean moveToChild();
+    boolean moveToChild() throws IOException;
 
     /**
      * Move to the next sibling node and return {@code true} upon success. Returns {@code false} if
      * the current node has no more siblings.
      */
-    boolean moveToSibling();
+    boolean moveToSibling() throws IOException;
 
     /**
      * Move to the parent node and return {@code true} upon success. Returns {@code false} for the
      * root node and {@code true} otherwise.
      */
-    boolean moveToParent();
+    boolean moveToParent() throws IOException;
 
     /** Return the minimum packed value of the current node. */
     byte[] getMinPackedValue();

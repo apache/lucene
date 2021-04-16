@@ -17,6 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import org.apache.lucene.index.PointValues;
 
 /**
@@ -34,7 +35,7 @@ public final class BKDPointValues extends PointValues {
   }
 
   /** Create a new {@link BKDReader.IndexTree} */
-  public BKDReader.IndexTree getIndexTree() {
+  public BKDReader.IndexTree getIndexTree() throws IOException {
     return in.getIndexTree();
   }
 
@@ -47,10 +48,14 @@ public final class BKDPointValues extends PointValues {
 
   @Override
   public long estimatePointCount(IntersectVisitor visitor) {
-    final BKDReader.IndexTree indexTree = in.getIndexTree();
-    final long count = estimatePointCount(visitor, indexTree);
-    assert indexTree.moveToParent() == false;
-    return count;
+    try {
+      final BKDReader.IndexTree indexTree = in.getIndexTree();
+      final long count = estimatePointCount(visitor, indexTree);
+      assert indexTree.moveToParent() == false;
+      return count;
+    } catch (IOException ioe) {
+      throw new UncheckedIOException(ioe);
+    }
   }
 
   /** Fast path: this is called when the query box fully encompasses all cells under this node. */
@@ -100,7 +105,8 @@ public final class BKDPointValues extends PointValues {
     }
   }
 
-  private long estimatePointCount(IntersectVisitor visitor, BKDReader.IndexTree index) {
+  private long estimatePointCount(IntersectVisitor visitor, BKDReader.IndexTree index)
+      throws IOException {
 
     Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
 
