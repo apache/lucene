@@ -142,6 +142,12 @@ public class SimpleTextVectorReader extends VectorReader {
   }
 
   @Override
+  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+    VectorValues vectorValues = getVectorValues(field);
+    return vectorValues.search(target, k, fanout);
+  }
+
+  @Override
   public void checkIntegrity() throws IOException {
     IndexInput clone = dataIn.clone();
     clone.seek(0);

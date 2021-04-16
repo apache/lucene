@@ -40,6 +40,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
@@ -1355,6 +1357,11 @@ public class MemoryIndex {
     @Override
     public VectorValues getVectorValues(String fieldName) {
       return VectorValues.EMPTY;
+    }
+
+    @Override
+    public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
     }
 
     @Override

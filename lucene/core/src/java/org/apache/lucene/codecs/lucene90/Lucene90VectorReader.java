@@ -38,6 +38,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -236,6 +237,15 @@ public final class Lucene90VectorReader extends VectorReader {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     return new OffHeapVectorValues(fieldEntry, bytesSlice);
+  }
+
+  @Override
+  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+    VectorValues vectorValues = getVectorValues(field);
+    if (vectorValues == null) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    return vectorValues.search(target, k, fanout);
   }
 
   public KnnGraphValues getGraphValues(String field) throws IOException {
