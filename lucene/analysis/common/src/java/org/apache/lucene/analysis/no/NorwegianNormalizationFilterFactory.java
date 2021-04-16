@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.miscellaneous;
+package org.apache.lucene.analysis.no;
 
 import java.util.Map;
 import org.apache.lucene.analysis.TokenFilterFactory;
