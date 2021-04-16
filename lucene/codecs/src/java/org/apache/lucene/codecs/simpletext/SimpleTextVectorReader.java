@@ -143,8 +143,7 @@ public class SimpleTextVectorReader extends VectorReader {
 
   @Override
   public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
-    VectorValues vectorValues = getVectorValues(field);
-    return vectorValues.search(target, k, fanout);
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -338,11 +337,6 @@ public class SimpleTextVectorReader extends VectorReader {
 
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public TopDocs search(float[] target, int k, int fanout) throws IOException {
       throw new UnsupportedOperationException();
     }
   }

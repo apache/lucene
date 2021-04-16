@@ -30,7 +30,6 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
@@ -244,11 +243,6 @@ public abstract class VectorWriter implements Closeable {
     @Override
     public SearchStrategy searchStrategy() {
       return subs.get(0).values.searchStrategy();
-    }
-
-    @Override
-    public TopDocs search(float[] target, int k, int fanout) throws IOException {
-      throw new UnsupportedOperationException();
     }
 
     class MergerRandomAccess implements RandomAccessVectorValues {

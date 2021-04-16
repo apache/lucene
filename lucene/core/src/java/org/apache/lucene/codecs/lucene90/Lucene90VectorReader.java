@@ -38,7 +38,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -234,6 +233,11 @@ public final class Lucene90VectorReader extends VectorReader {
               + " * 4 = "
               + numBytes);
     }
+
+    return getOffHeapVectorValues(fieldEntry);
+  }
+
+  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     return new OffHeapVectorValues(fieldEntry, bytesSlice);
@@ -241,11 +245,39 @@ public final class Lucene90VectorReader extends VectorReader {
 
   @Override
   public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
-    VectorValues vectorValues = getVectorValues(field);
-    if (vectorValues == null) {
-      return TopDocsCollector.EMPTY_TOPDOCS;
+    FieldInfo info = fieldInfos.fieldInfo(field);
+    if (info == null) {
+      return null;
     }
-    return vectorValues.search(target, k, fanout);
+    FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null) {
+      // There is a FieldInfo, but no vectors. Should we have deleted the FieldInfo?
+      return null;
+    }
+
+    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+
+    // use a seed that is fixed for the index so we get reproducible results for the same query
+    final Random random = new Random(checksumSeed);
+    NeighborQueue results =
+        HnswGraph.search(target, k, k + fanout, vectorValues, getGraphValues(fieldEntry), random);
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
+    boolean reversed = fieldEntry.searchStrategy.reversed;
+    while (results.size() > 0) {
+      int node = results.topNode();
+      float score = results.topScore();
+      results.pop();
+      if (reversed) {
+        score = (float) Math.exp(-score / target.length);
+      }
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
+    }
+    // always return >= the case where we can assert == is only when there are fewer than topK
+    // vectors in the index
+    return new TopDocs(
+        new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
+        scoreDocs);
   }
 
   public KnnGraphValues getGraphValues(String field) throws IOException {
@@ -416,32 +448,6 @@ public final class Lucene90VectorReader extends VectorReader {
     @Override
     public RandomAccessVectorValues randomAccess() {
       return new OffHeapVectorValues(fieldEntry, dataIn.clone());
-    }
-
-    @Override
-    public TopDocs search(float[] vector, int topK, int fanout) throws IOException {
-      // use a seed that is fixed for the index so we get reproducible results for the same query
-      final Random random = new Random(checksumSeed);
-      NeighborQueue results =
-          HnswGraph.search(
-              vector, topK, topK + fanout, randomAccess(), getGraphValues(fieldEntry), random);
-      int i = 0;
-      ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), topK)];
-      boolean reversed = searchStrategy().reversed;
-      while (results.size() > 0) {
-        int node = results.topNode();
-        float score = results.topScore();
-        results.pop();
-        if (reversed) {
-          score = (float) Math.exp(-score / vector.length);
-        }
-        scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
-      }
-      // always return >= the case where we can assert == is only when there are fewer than topK
-      // vectors in the index
-      return new TopDocs(
-          new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
-          scoreDocs);
     }
 
     @Override

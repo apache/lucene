@@ -39,7 +39,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -345,11 +344,6 @@ public class TestHnsw extends LuceneTestCase {
 
     @Override
     public BytesRef binaryValue(int ord) {
-      return null;
-    }
-
-    @Override
-    public TopDocs search(float[] target, int k, int fanout) {
       return null;
     }
   }

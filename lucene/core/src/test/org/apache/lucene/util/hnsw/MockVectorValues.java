@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -97,11 +96,6 @@ class MockVectorValues extends VectorValues
 
   @Override
   public BytesRef binaryValue(int targetOrd) {
-    return null;
-  }
-
-  @Override
-  public TopDocs search(float[] target, int k, int fanout) {
     return null;
   }
 

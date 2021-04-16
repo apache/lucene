@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorValues;
@@ -46,10 +47,10 @@ import org.apache.lucene.util.SparseFixedBitSet;
  *       searching the graph for each newly inserted node.
  *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the later paper; it controls
  *       how many of the <code>efConst</code> neighbors are connected to the new node
- *   <li><code>fanout</code> the fanout parameter of {@link VectorValues#search(float[], int, int)}
- *       is used to control the values of <code>numSeed</code> and <code>topK</code> that are passed
- *       to this API. Thus <code>fanout</code> is like a combination of <code>ef</code> (search beam
- *       width) from the 2016 paper and <code>m</code> from the 2014 paper.
+ *   <li><code>fanout</code> the fanout parameter of {@link VectorReader#search(String, float[],
+ *       int, int)} is used to control the values of <code>numSeed</code> and <code>topK</code> that
+ *       are passed to this API. Thus <code>fanout</code> is like a combination of <code>ef</code>
+ *       (search beam width) from the 2016 paper and <code>m</code> from the 2014 paper.
  * </ul>
  *
  * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
