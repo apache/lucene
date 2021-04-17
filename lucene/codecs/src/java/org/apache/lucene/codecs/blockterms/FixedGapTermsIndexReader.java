@@ -50,6 +50,7 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
   // places (error prone), we use long here:
   private final long indexInterval;
 
+  private final int packedIntsVersion;
   private final int blocksize;
 
   private static final int PAGED_BYTES_BITS = 15;
@@ -87,7 +88,7 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
       if (indexInterval < 1) {
         throw new CorruptIndexException("invalid indexInterval: " + indexInterval, in);
       }
-
+      packedIntsVersion = in.readVInt();
       blocksize = in.readVInt();
 
       seekDir(in);
@@ -276,10 +277,12 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
         termBytes.copy(clone, numTermBytes);
 
         // records offsets into main terms dict file
-        termsDictOffsets = MonotonicBlockPackedReader.of(clone, blocksize, numIndexTerms, false);
+        termsDictOffsets =
+            MonotonicBlockPackedReader.of(clone, packedIntsVersion, blocksize, numIndexTerms);
 
         // records offsets into byte[] term data
-        termOffsets = MonotonicBlockPackedReader.of(clone, blocksize, 1 + numIndexTerms, false);
+        termOffsets =
+            MonotonicBlockPackedReader.of(clone, packedIntsVersion, blocksize, 1 + numIndexTerms);
       } finally {
         clone.close();
       }

@@ -19,7 +19,6 @@ package org.apache.lucene.util.packed;
 import static org.apache.lucene.util.packed.MonotonicBlockPackedReader.expected;
 
 import java.io.IOException;
-import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BitUtil;
 
@@ -53,7 +52,6 @@ import org.apache.lucene.util.BitUtil;
  */
 public final class MonotonicBlockPackedWriter extends AbstractBlockPackedWriter {
 
-  private final ByteBuffersDataOutput scratchBuffer = ByteBuffersDataOutput.newResettableInstance();
   /**
    * Sole constructor.
    *
@@ -95,16 +93,9 @@ public final class MonotonicBlockPackedWriter extends AbstractBlockPackedWriter 
     if (maxDelta == 0) {
       out.writeVInt(0);
     } else {
-      final int bitsRequired = DirectWriter.bitsRequired(maxDelta);
+      final int bitsRequired = PackedInts.bitsRequired(maxDelta);
       out.writeVInt(bitsRequired);
-      scratchBuffer.reset();
-      final DirectWriter encoder = DirectWriter.getInstance(scratchBuffer, off, bitsRequired);
-      for (int i = 0; i < off; i++) {
-        encoder.add(values[i]);
-      }
-      encoder.finish();
-      out.writeVInt(Math.toIntExact(scratchBuffer.size()));
-      scratchBuffer.copyTo(out);
+      writeValues(bitsRequired);
     }
 
     off = 0;

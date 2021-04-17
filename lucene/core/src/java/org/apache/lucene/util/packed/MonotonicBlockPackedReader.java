@@ -22,11 +22,7 @@ import static org.apache.lucene.util.packed.PackedInts.checkBlockSize;
 import static org.apache.lucene.util.packed.PackedInts.numBlocks;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -42,22 +38,26 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
     return origin + (long) (average * (long) index);
   }
 
+  private static final int BLOCK_SIZE = Byte.SIZE; // #bits in a block
+  private static final int BLOCK_BITS = 3; // The #bits representing BLOCK_SIZE
+  private static final int MOD_MASK = BLOCK_SIZE - 1; // x % BLOCK_SIZE
+
   final int blockShift, blockMask;
   final long valueCount;
   final long[] minValues;
   final float[] averages;
   final LongValues[] subReaders;
-  final long bytesUsed;
   final long sumBPV;
+  final long blocksSize;
 
   /** Sole constructor. */
   public static MonotonicBlockPackedReader of(
-      IndexInput in, int blockSize, long valueCount, boolean direct) throws IOException {
-    return new MonotonicBlockPackedReader(in, blockSize, valueCount, direct);
+      IndexInput in, int packedIntsVersion, int blockSize, long valueCount) throws IOException {
+    return new MonotonicBlockPackedReader(in, packedIntsVersion, blockSize, valueCount);
   }
 
-  private MonotonicBlockPackedReader(IndexInput in, int blockSize, long valueCount, boolean direct)
-      throws IOException {
+  private MonotonicBlockPackedReader(
+      IndexInput in, int packedIntsVersion, int blockSize, long valueCount) throws IOException {
     this.valueCount = valueCount;
     blockShift = checkBlockSize(blockSize, MIN_BLOCK_SIZE, MAX_BLOCK_SIZE);
     blockMask = blockSize - 1;
@@ -65,8 +65,7 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
     minValues = new long[numBlocks];
     averages = new float[numBlocks];
     subReaders = new LongValues[numBlocks];
-    long sumBPV = 0;
-    long bytesUsed = 0;
+    long sumBPV = 0, blocksSize = 0;
     for (int i = 0; i < numBlocks; ++i) {
       minValues[i] = in.readZLong();
       averages[i] = Float.intBitsToFloat(in.readInt());
@@ -78,25 +77,42 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
       if (bitsPerValue == 0) {
         subReaders[i] = LongValues.ZEROES;
       } else {
-        final int length = in.readVInt();
-        if (direct) {
-          final long pointer = in.getFilePointer();
-          final RandomAccessInput slice = in.randomAccessSlice(pointer, length);
-          subReaders[i] = DirectReader.getInstance(slice, bitsPerValue);
-          in.seek(pointer + length);
-        } else {
-          bytesUsed += length;
-          final byte[] bytes = new byte[Math.toIntExact(length)];
-          in.readBytes(bytes, 0, length);
-          final ByteBuffersDataInput input =
-              new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(bytes)));
-          subReaders[i] = DirectReader.getInstance(input, bitsPerValue);
-          bytesUsed += input.ramBytesUsed();
-        }
+        final int size = (int) Math.min(blockSize, valueCount - (long) i * blockSize);
+        blocksSize += size;
+        final int byteCount =
+            Math.toIntExact(
+                PackedInts.Format.PACKED.byteCount(packedIntsVersion, size, bitsPerValue));
+        final byte[] blocks = new byte[byteCount];
+        in.readBytes(blocks, 0, byteCount);
+        final long maskRight = ((1L << bitsPerValue) - 1);
+        final int bpvMinusBlockSize = bitsPerValue - BLOCK_SIZE;
+        subReaders[i] =
+            new LongValues() {
+              @Override
+              public long get(long index) {
+                // The abstract index in a bit stream
+                final long majorBitPos = index * bitsPerValue;
+                // The offset of the first block in the backing byte-array
+                int blockOffset = (int) (majorBitPos >>> BLOCK_BITS);
+                // The number of value-bits after the first byte
+                long endBits = (majorBitPos & MOD_MASK) + bpvMinusBlockSize;
+                if (endBits <= 0) {
+                  // Single block
+                  return ((blocks[blockOffset] & 0xFFL) >>> -endBits) & maskRight;
+                }
+                // Multiple blocks
+                long value = ((blocks[blockOffset++] & 0xFFL) << endBits) & maskRight;
+                while (endBits > BLOCK_SIZE) {
+                  endBits -= BLOCK_SIZE;
+                  value |= (blocks[blockOffset++] & 0xFFL) << endBits;
+                }
+                return value | ((blocks[blockOffset] & 0xFFL) >>> (BLOCK_SIZE - endBits));
+              }
+            };
       }
     }
-    this.bytesUsed = bytesUsed;
     this.sumBPV = sumBPV;
+    this.blocksSize = blocksSize;
   }
 
   @Override
@@ -117,7 +133,7 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
     long sizeInBytes = 0;
     sizeInBytes += RamUsageEstimator.sizeOf(minValues);
     sizeInBytes += RamUsageEstimator.sizeOf(averages);
-    sizeInBytes += bytesUsed;
+    sizeInBytes += blocksSize;
     return sizeInBytes;
   }
 
