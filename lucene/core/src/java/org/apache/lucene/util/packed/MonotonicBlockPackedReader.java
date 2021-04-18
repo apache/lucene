@@ -48,7 +48,7 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
   final float[] averages;
   final LongValues[] subReaders;
   final long sumBPV;
-  final long blocksSize;
+  final long totalByteCount;
 
   /** Sole constructor. */
   public static MonotonicBlockPackedReader of(
@@ -65,7 +65,7 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
     minValues = new long[numBlocks];
     averages = new float[numBlocks];
     subReaders = new LongValues[numBlocks];
-    long sumBPV = 0, blocksSize = 0;
+    long sumBPV = 0, totalByteCount = 0;
     for (int i = 0; i < numBlocks; ++i) {
       minValues[i] = in.readZLong();
       averages[i] = Float.intBitsToFloat(in.readInt());
@@ -78,10 +78,10 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
         subReaders[i] = LongValues.ZEROES;
       } else {
         final int size = (int) Math.min(blockSize, valueCount - (long) i * blockSize);
-        blocksSize += size;
         final int byteCount =
             Math.toIntExact(
                 PackedInts.Format.PACKED.byteCount(packedIntsVersion, size, bitsPerValue));
+        totalByteCount += byteCount;
         final byte[] blocks = new byte[byteCount];
         in.readBytes(blocks, 0, byteCount);
         final long maskRight = ((1L << bitsPerValue) - 1);
@@ -112,7 +112,7 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
       }
     }
     this.sumBPV = sumBPV;
-    this.blocksSize = blocksSize;
+    this.totalByteCount = totalByteCount;
   }
 
   @Override
@@ -133,7 +133,7 @@ public class MonotonicBlockPackedReader extends LongValues implements Accountabl
     long sizeInBytes = 0;
     sizeInBytes += RamUsageEstimator.sizeOf(minValues);
     sizeInBytes += RamUsageEstimator.sizeOf(averages);
-    sizeInBytes += blocksSize;
+    sizeInBytes += totalByteCount;
     return sizeInBytes;
   }
 
