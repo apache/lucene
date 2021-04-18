@@ -435,6 +435,12 @@ public class TieredMergePolicy extends MergePolicy {
         mergeContext,
         mergingBytes >= maxMergedSegmentBytes);
   }
+  
+  private boolean checkForBigSegmentMerge(SegmentSizeAndDocs segSizeDocs) {
+    double deletePct = 100.0d*segSizeDocs.delCount/segSizeDocs.maxDoc;
+    double bytesThisSegment = 1.0d*segSizeDocs.sizeInBytes;
+    return deletePct > forceMergeDeletesPctAllowed && (bytesThisSegment > forceMergeDeletesPctAllowed*maxMergedSegmentBytes/2);
+  }
 
   private MergeSpecification doFindMerges(
       List<SegmentSizeAndDocs> sortedEligibleInfos,
@@ -482,10 +488,18 @@ public class TieredMergePolicy extends MergePolicy {
       // Remove ineligible segments. These are either already being merged or already picked by
       // prior iterations
       Iterator<SegmentSizeAndDocs> iter = sortedEligible.iterator();
+      List<SegmentCommitInfo> bigSegment = null;
       while (iter.hasNext()) {
         SegmentSizeAndDocs segSizeDocs = iter.next();
         if (toBeMerged.contains(segSizeDocs.segInfo)) {
           iter.remove();
+        } else {
+          if (bigSegment == null) {
+            if (checkForBigSegmentMerge(segSizeDocs)) {
+              bigSegment = new ArrayList<>();
+              bigSegment.add(segSizeDocs.segInfo);
+            }
+          }
         }
       }
 
@@ -509,6 +523,13 @@ public class TieredMergePolicy extends MergePolicy {
       if (mergeType == MERGE_TYPE.NATURAL
           && sortedEligible.size() <= allowedSegCount
           && remainingDelCount <= allowedDelCount) {
+        if (bigSegment != null) {
+          if (spec == null) {
+            spec = new MergeSpecification();
+          }
+          final OneMerge merge = new OneMerge(bigSegment);
+          spec.add(merge);
+        }
         return spec;
       }
 
