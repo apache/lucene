@@ -198,12 +198,6 @@ abstract class Packed64SingleBlock extends PackedInts.MutableImpl {
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected PackedInts.Format getFormat() {
-    return PackedInts.Format.PACKED_SINGLE_BLOCK;
-  }
-
-  @Override
   public String toString() {
     return getClass().getSimpleName()
         + "(bitsPerValue="
