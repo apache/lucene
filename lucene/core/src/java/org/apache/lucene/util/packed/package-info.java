@@ -83,7 +83,6 @@
  *             Reader.
  *       </ul>
  *   <li><b>{@link org.apache.lucene.util.packed.BlockPackedWriter}, {@link
- *       org.apache.lucene.util.packed.BlockPackedReader}, {@link
  *       org.apache.lucene.util.packed.BlockPackedReaderIterator}</b>
  *       <ul>
  *         <li>Splits the stream into fixed-size blocks.
