@@ -21,6 +21,47 @@ import org.apache.commons.codec.digest.DigestUtils
 
 // Create common 'regenerate' task sub-tasks can hook into.
 
+/**
+ * Compute all "checksummed" key-value pairs.
+ */
+def computeChecksummedEntries = { Task sourceTask ->
+  // An flat ordered map of key-value pairs.
+  Map<String, String> allEntries = new TreeMap<>()
+
+  // Make sure all input properties are either simple strings
+  // or closures returning simple strings.
+  //
+  // Don't overcomplicate things with other serializable types.
+  Map<String, Object> props = sourceTask.inputs.properties
+  props.forEach { key, val ->
+    // Handle closures and other lazy providers.
+    if (val instanceof Provider<?>) {
+      val = val.get()
+    }
+    if (val instanceof Closure<?>) {
+      val = val.call()
+    }
+
+    if (!(val instanceof String)) {
+      throw new GradleException("Input properties of wrapped tasks must all be " +
+          "strings: ${key} in ${sourceTask.name} is not.")
+    }
+    allEntries.put("property:" + key, (String) val)
+  }
+
+  // Collect all of task inputs/ output files and compute their checksums.
+  FileCollection allFiles = sourceTask.inputs.files + sourceTask.outputs.files
+
+  // Compute checksums for root-project relative paths
+  allFiles.files.forEach { file ->
+    allEntries.put(
+        sourceTask.project.rootDir.relativePath(file),
+        file.exists() ? new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() : "--")
+  }
+
+  return allEntries
+}
+
 configure([
         project(":lucene:analysis:common"),
         project(":lucene:core"),
@@ -86,28 +127,18 @@ configure([
           }
 
           doFirst {
-            // Collect all of task inputs/ outputs.
-            FileCollection allFiles = sourceTask.inputs.files + sourceTask.outputs.files
-            ext.allFiles = allFiles
-
-            // Compute checksums for root-project relative paths
-            Map<String, String> actualChecksums = allFiles.files.collectEntries { file ->
-              [
-                  sourceTask.project.rootDir.relativePath(file),
-                  file.exists() ? new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() : "--"
-              ]
-            }
-            ext.actualChecksums = actualChecksums
+            // Current persisted task input/outputs (file checksums, properties)
+            ext.currentChecksums = computeChecksummedEntries(sourceTask)
 
             // Load any previously written checksums
+            ext.savedChecksums = new TreeMap<>()
             ext.checksumsFile = project.file("src/generated/checksums/${sourceTaskName}.json")
-            Map<String, String> savedChecksums = [:]
             if (checksumsFile.exists()) {
-              savedChecksums = new JsonSlurper().parse(checksumsFile) as Map
+              savedChecksums.putAll(new JsonSlurper().parse(checksumsFile) as Map)
             }
-            ext.savedChecksums = savedChecksums
 
-            ext.checksumMatch = (savedChecksums.equals(actualChecksums))
+            // Compare saved and current checksums for subsequent tasks.
+            ext.checksumMatch = (savedChecksums.equals(currentChecksums))
           }
         })
 
@@ -117,16 +148,16 @@ configure([
           doFirst {
             if (!checksumLoadTask.checksumMatch) {
               // This can be made prettier but leave it verbose for now:
-              Map<String, String> actual = checksumLoadTask.actualChecksums
+              Map<String, String> current = checksumLoadTask.currentChecksums
               Map<String, String> expected = checksumLoadTask.savedChecksums
 
-              def same = actual.intersect(expected)
-              actual = actual - same
+              def same = current.intersect(expected)
+              current = current - same
               expected = expected - same
 
               throw new GradleException("Checksums mismatch for derived resources; you might have" +
                   " modified a generated resource (regenerate task: ${sourceTask.name}):\n" +
-                  "Actual:\n  ${actual.entrySet().join('\n  ')}\n\n" +
+                  "Current:\n  ${current.entrySet().join('\n  ')}\n\n" +
                   "Expected:\n  ${expected.entrySet().join('\n  ')}"
               )
             }
@@ -141,16 +172,10 @@ configure([
             File checksumsFile = checksumLoadTask.ext.checksumsFile
             checksumsFile.parentFile.mkdirs()
 
-            // Recompute checksums for root-project relative paths
-            Map<String, String> actualChecksums = checksumLoadTask.ext.allFiles.files.collectEntries { file ->
-              [
-                  sourceTask.project.rootDir.relativePath(file),
-                  new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim()
-              ]
-            }
-
+            // Recompute checksums after the task has completed and write them.
+            def updatedChecksums = computeChecksummedEntries(sourceTask)
             checksumsFile.setText(
-                JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String, String>(actualChecksums))), "UTF-8")
+                JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String, String>(updatedChecksums))), "UTF-8")
 
             logger.warn("Updated generated file checksums for task ${sourceTask.path}.")
           }

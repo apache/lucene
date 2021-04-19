@@ -67,6 +67,11 @@ configure(project(":lucene:analysis:icu")) {
     icupkg = file("${icuBinDir}/icupkg")
   }
 
+  // Resolve version lazily (can't resolve at configuration time).
+  def icu4jVersionProvider = project.provider { getVersion('com.ibm.icu', 'icu4j') }
+  // lazy gstring with ICU version.
+  def icu4jVersion = "${-> icu4jVersionProvider.get()}"
+
   def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
 
   task genUtr30DataFilesInternal() {
@@ -80,11 +85,11 @@ configure(project(":lucene:analysis:icu")) {
     def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
 
     inputs.files inputFiles
+    inputs.property "icu4j", icu4jVersionProvider
     outputs.file outputFile
 
     doFirst {
       // all these steps must be done sequentially: it's a pipeline resulting in utr30.nrm
-      def v = getVersion('com.ibm.icu', 'icu4j');
       project.javaexec {
         main = "org.apache.lucene.analysis.icu.GenerateUTR30DataFiles"
         classpath = sourceSets.tools.runtimeClasspath
@@ -92,7 +97,7 @@ configure(project(":lucene:analysis:icu")) {
         ignoreExitValue false
         workingDir utr30DataDir
         args = [
-            "release-${v.replace(".", "-")}"
+            "release-${icu4jVersion.replace(".", "-")}"
         ]
       }
 
@@ -127,6 +132,7 @@ configure(project(":lucene:analysis:icu")) {
     def targetDir = file("src/resources/org/apache/lucene/analysis/icu/segmentation")
 
     inputs.files fileTree(dir: sourceDir, include: "*.rbbi")
+    inputs.property "icu4j", icu4jVersionProvider
     outputs.files fileTree(dir: targetDir, include: "*.brk")
 
     doFirst {
@@ -146,8 +152,7 @@ configure(project(":lucene:analysis:icu")) {
 
   task compileIcuWindows() {
     doFirst {
-      def v = getVersion('com.ibm.icu', 'icu4j');
-
+      def v = icu4jVersion
       def icuBinZip = file("${icuBuildDir}/icu4c-${v.replace(".", "_")}.zip")
       if (!icuBinZip.exists()) {
         icuBuildDir.mkdirs()
@@ -175,7 +180,7 @@ configure(project(":lucene:analysis:icu")) {
         throw new GradleException("ICU compilation not supported on Windows.")
       }
 
-      def v = getVersion('com.ibm.icu', 'icu4j');
+      def v = icu4jVersion
       def icuSrcTgz = file("${icuBuildDir}/icu4c-${v.replace(".", "_")}-src.tgz")
 
       // Download sources for version matching icu4j version in version.props
@@ -244,6 +249,8 @@ configure(project(":lucene:analysis:common")) {
     group "generation"
 
     dependsOn icuConfig
+
+    inputs.property "icuConfig", icuConfig.name
     outputs.file outputFile
 
     doFirst {
@@ -274,6 +281,8 @@ configure(project(":lucene:core")) {
     group "generation"
 
     dependsOn icuConfig
+
+    inputs.property "icuConfig", icuConfig.name
     outputs.file outputFile
 
     doFirst {
