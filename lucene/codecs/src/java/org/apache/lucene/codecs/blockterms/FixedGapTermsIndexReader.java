@@ -278,13 +278,11 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
 
         // records offsets into main terms dict file
         termsDictOffsets =
-            MonotonicBlockPackedReader.of(
-                clone, packedIntsVersion, blocksize, numIndexTerms, false);
+            MonotonicBlockPackedReader.of(clone, packedIntsVersion, blocksize, numIndexTerms);
 
         // records offsets into byte[] term data
         termOffsets =
-            MonotonicBlockPackedReader.of(
-                clone, packedIntsVersion, blocksize, 1 + numIndexTerms, false);
+            MonotonicBlockPackedReader.of(clone, packedIntsVersion, blocksize, 1 + numIndexTerms);
       } finally {
         clone.close();
       }
