@@ -1324,15 +1324,6 @@ public class TestPackedInts extends LuceneTestCase {
           () -> {
             it2.skip(1);
           });
-
-      in1.seek(0L);
-      final BlockPackedReader reader =
-          new BlockPackedReader(
-              in1, PackedInts.VERSION_CURRENT, blockSize, valueCount, random().nextBoolean());
-      assertEquals(in1.getFilePointer(), in1.length());
-      for (i = 0; i < valueCount; ++i) {
-        assertEquals("i=" + i, values[i], reader.get(i));
-      }
       in1.close();
       dir.close();
     }
@@ -1412,19 +1403,6 @@ public class TestPackedInts extends LuceneTestCase {
         new BlockPackedReaderIterator(in, PackedInts.VERSION_CURRENT, blockSize, valueCount);
     it.skip(valueOffset);
     assertEquals(value, it.next());
-    in.seek(0L);
-    final BlockPackedReader reader =
-        new BlockPackedReader(
-            in, PackedInts.VERSION_CURRENT, blockSize, valueCount, random().nextBoolean());
-    assertEquals(value, reader.get(valueOffset));
-    for (int i = 0; i < 5; ++i) {
-      final long offset = TestUtil.nextLong(random(), 0, valueCount - 1);
-      if (offset == valueOffset) {
-        assertEquals(value, reader.get(offset));
-      } else {
-        assertEquals(0, reader.get(offset));
-      }
-    }
     in.close();
     dir.close();
   }
