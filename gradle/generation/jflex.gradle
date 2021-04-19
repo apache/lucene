@@ -1,3 +1,5 @@
+import java.nio.file.Files
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -63,9 +65,13 @@ configure(project(":lucene:analysis:common")) {
 
     dependsOn { sourceSets.tools.runtimeClasspath }
 
+    inputs.property "tldZones", tldZones
     outputs.files jflexMacro, tldList
 
     doFirst {
+      File tmpJflexMacro = File.createTempFile(jflexMacro.getName(), ".tmp", getTemporaryDir())
+      File tmpTldList = File.createTempFile(tldList.getName(), ".tmp", getTemporaryDir())
+
       project.javaexec {
         main = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
         classpath = sourceSets.tools.runtimeClasspath
@@ -73,12 +79,30 @@ configure(project(":lucene:analysis:common")) {
         ignoreExitValue false
         args = [
             tldZones,
-            jflexMacro,
-            tldList
+            tmpJflexMacro,
+            tmpTldList
         ]
       }
 
-      logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
+      // LUCENE-9926: tldZones is regenerated daily. Compare the generated content (excluding comments) so that
+      // we only update actual output files if non-comments have changed.
+      def contentLines = { File file ->
+        if (file.exists()) {
+          List<String> lines = file.readLines("UTF-8")
+          lines.removeIf { line -> line.isBlank() || line.startsWith("//") }
+          return lines
+        } else {
+          return []
+        }
+      }
+
+      if (contentLines(tmpTldList).equals(contentLines(tldList))) {
+        logger.lifecycle("Generated TLD content identical as before, not updating.")
+      } else {
+        tldList.setBytes tmpTldList.bytes
+        jflexMacro.setBytes tmpJflexMacro.bytes
+        logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
+      }
     }
   }
 
