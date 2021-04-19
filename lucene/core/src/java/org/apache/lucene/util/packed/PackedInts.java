@@ -502,25 +502,6 @@ public class PackedInts {
     public void clear() {
       fill(0, size(), 0);
     }
-
-    /**
-     * Save this mutable into <code>out</code>. This method does not write any metadata to the
-     * stream, meaning that it is your responsibility to store it somewhere else in order to be able
-     * to recover data from the stream later on.
-     */
-    public void save(DataOutput out) throws IOException {
-      Writer writer =
-          getWriterNoHeader(out, getFormat(), size(), getBitsPerValue(), DEFAULT_BUFFER_SIZE);
-      for (int i = 0; i < size(); ++i) {
-        writer.add(get(i));
-      }
-      writer.finish();
-    }
-
-    /** The underlying format. */
-    Format getFormat() {
-      return Format.PACKED;
-    }
   }
 
   /**

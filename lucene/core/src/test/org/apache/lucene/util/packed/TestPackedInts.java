@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -862,48 +861,6 @@ public class TestPackedInts extends LuceneTestCase {
       } else {
         assertEquals(0, writer.get(idx));
       }
-    }
-  }
-
-  public void testSave() throws IOException {
-    final int valueCount = TestUtil.nextInt(random(), 1, 2048);
-    for (int bpv = 1; bpv <= 64; ++bpv) {
-      final int maxValue = (int) Math.min(PackedInts.maxValue(31), PackedInts.maxValue(bpv));
-      final Directory directory = new ByteBuffersDirectory();
-      List<PackedInts.Mutable> packedInts = createPackedInts(valueCount, bpv);
-      for (PackedInts.Mutable mutable : packedInts) {
-        for (int i = 0; i < mutable.size(); ++i) {
-          mutable.set(i, random().nextInt(maxValue));
-        }
-
-        IndexOutput out = directory.createOutput("packed-ints.bin", IOContext.DEFAULT);
-        mutable.save(out);
-        out.close();
-
-        IndexInput in = directory.openInput("packed-ints.bin", IOContext.DEFAULT);
-        PackedInts.Reader reader =
-            PackedInts.getReaderNoHeader(
-                in,
-                mutable.getFormat(),
-                PackedInts.VERSION_CURRENT,
-                mutable.size(),
-                mutable.getBitsPerValue());
-        assertEquals(valueCount, reader.size());
-        if (mutable instanceof Packed64SingleBlock) {
-          // make sure that we used the right format so that the reader has
-          // the same performance characteristics as the mutable that has been
-          // serialized
-          assertTrue(reader instanceof Packed64SingleBlock);
-        } else {
-          assertFalse(reader instanceof Packed64SingleBlock);
-        }
-        for (int i = 0; i < valueCount; ++i) {
-          assertEquals(mutable.get(i), reader.get(i));
-        }
-        in.close();
-        directory.deleteFile("packed-ints.bin");
-      }
-      directory.close();
     }
   }
 
