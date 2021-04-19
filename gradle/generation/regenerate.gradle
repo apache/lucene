@@ -62,13 +62,6 @@ def computeChecksummedEntries = { Task sourceTask ->
   return allEntries
 }
 
-task foo {}
-allprojects {
-  tasks.matching { it.name.endsWith("ChecksumSave") }.all {
-    foo.dependsOn it
-  }
-}
-
 configure([
         project(":lucene:analysis:common"),
         project(":lucene:core"),
