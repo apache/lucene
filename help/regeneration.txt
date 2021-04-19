@@ -146,3 +146,7 @@ Finally, if you do feel like force-regenerating everything, remember to exclude 
 monster...
 
 gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
+
+and on Windows, exclude snowball regeneration (requires bash):
+
+gradlew regenerate -x generateUAX29URLEmailTokenizerInternal -x snowball --rerun-tasks
