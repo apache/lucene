@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
-import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.DataInput;
@@ -103,14 +102,9 @@ public class TestPackedInts extends LuceneTestCase {
         final Directory d = newDirectory();
 
         IndexOutput out = d.createOutput("out.bin", newIOContext(random()));
-        final float acceptableOverhead;
-        if (iter == 0) {
-          // have the first iteration go through exact nbits
-          acceptableOverhead = 0.0f;
-        } else {
-          acceptableOverhead = random().nextFloat();
-        }
-        PackedInts.Writer w = PackedInts.getWriter(out, valueCount, nbits, acceptableOverhead);
+        final int mem = random().nextInt(2 * PackedInts.DEFAULT_BUFFER_SIZE);
+        PackedInts.Writer w =
+            PackedInts.getWriterNoHeader(out, PackedInts.Format.PACKED, valueCount, nbits, mem);
         final long startFp = out.getFilePointer();
 
         final int actualValueCount =
@@ -133,24 +127,11 @@ public class TestPackedInts extends LuceneTestCase {
             w.getFormat().byteCount(PackedInts.VERSION_CURRENT, valueCount, w.bitsPerValue);
         assertEquals(bytes, fp - startFp);
 
-        { // test header
-          IndexInput in = d.openInput("out.bin", newIOContext(random()));
-          // header = codec header | bitsPerValue | valueCount | format
-          CodecUtil.checkHeader(
-              in,
-              PackedInts.CODEC_NAME,
-              PackedInts.VERSION_START,
-              PackedInts.VERSION_CURRENT); // codec header
-          assertEquals(w.bitsPerValue, in.readVInt());
-          assertEquals(valueCount, in.readVInt());
-          assertEquals(w.getFormat().getId(), in.readVInt());
-          assertEquals(startFp, in.getFilePointer());
-          in.close();
-        }
-
         { // test reader
           IndexInput in = d.openInput("out.bin", newIOContext(random()));
-          PackedInts.Reader r = PackedInts.getReader(in);
+          PackedInts.Reader r =
+              PackedInts.getReaderNoHeader(
+                  in, PackedInts.Format.PACKED, PackedInts.VERSION_CURRENT, valueCount, nbits);
           assertEquals(fp, in.getFilePointer());
           for (int i = 0; i < valueCount; i++) {
             assertEquals(
@@ -177,7 +158,14 @@ public class TestPackedInts extends LuceneTestCase {
 
         { // test reader iterator next
           IndexInput in = d.openInput("out.bin", newIOContext(random()));
-          PackedInts.ReaderIterator r = PackedInts.getReaderIterator(in, bufferSize);
+          PackedInts.ReaderIterator r =
+              PackedInts.getReaderIteratorNoHeader(
+                  in,
+                  PackedInts.Format.PACKED,
+                  PackedInts.VERSION_CURRENT,
+                  valueCount,
+                  nbits,
+                  bufferSize);
           for (int i = 0; i < valueCount; i++) {
             assertEquals(
                 "index="
@@ -198,7 +186,14 @@ public class TestPackedInts extends LuceneTestCase {
 
         { // test reader iterator bulk next
           IndexInput in = d.openInput("out.bin", newIOContext(random()));
-          PackedInts.ReaderIterator r = PackedInts.getReaderIterator(in, bufferSize);
+          PackedInts.ReaderIterator r =
+              PackedInts.getReaderIteratorNoHeader(
+                  in,
+                  PackedInts.Format.PACKED,
+                  PackedInts.VERSION_CURRENT,
+                  valueCount,
+                  nbits,
+                  bufferSize);
           int i = 0;
           while (i < valueCount) {
             final int count = TestUtil.nextInt(random(), 1, 95);
@@ -218,27 +213,6 @@ public class TestPackedInts extends LuceneTestCase {
             }
             i += next.length;
           }
-          assertEquals(fp, in.getFilePointer());
-          in.close();
-        }
-
-        { // test direct reader get
-          IndexInput in = d.openInput("out.bin", newIOContext(random()));
-          PackedInts.Reader intsEnum = PackedInts.getDirectReader(in);
-          for (int i = 0; i < valueCount; i++) {
-            final String msg =
-                "index="
-                    + i
-                    + " valueCount="
-                    + valueCount
-                    + " nbits="
-                    + nbits
-                    + " for "
-                    + intsEnum.getClass().getSimpleName();
-            final int index = random().nextInt(valueCount);
-            assertEquals(msg, values[index], intsEnum.get(index));
-          }
-          intsEnum.get(intsEnum.size() - 1);
           assertEquals(fp, in.getFilePointer());
           in.close();
         }
@@ -286,13 +260,6 @@ public class TestPackedInts extends LuceneTestCase {
           for (int i = 0; i < valueCount; ++i) {
             it.next();
           }
-          assertEquals(msg, byteCount, in.getFilePointer());
-
-          // test direct reader
-          in.seek(0L);
-          final PackedInts.Reader directReader =
-              PackedInts.getDirectReaderNoHeader(in, format, version, valueCount, bpv);
-          directReader.get(valueCount - 1);
           assertEquals(msg, byteCount, in.getFilePointer());
 
           // test reader
@@ -480,7 +447,9 @@ public class TestPackedInts extends LuceneTestCase {
     for (int bitsPerValue = 1; bitsPerValue <= 64; ++bitsPerValue) {
       Directory dir = newDirectory();
       IndexOutput out = dir.createOutput("out", newIOContext(random()));
-      PackedInts.Writer w = PackedInts.getWriter(out, 1, bitsPerValue, PackedInts.DEFAULT);
+      PackedInts.Writer w =
+          PackedInts.getWriterNoHeader(
+              out, PackedInts.Format.PACKED, 1, bitsPerValue, PackedInts.DEFAULT_BUFFER_SIZE);
       long value = 17L & PackedInts.maxValue(bitsPerValue);
       w.add(value);
       w.finish();
@@ -488,7 +457,9 @@ public class TestPackedInts extends LuceneTestCase {
       out.close();
 
       IndexInput in = dir.openInput("out", newIOContext(random()));
-      Reader reader = PackedInts.getReader(in);
+      Reader reader =
+          PackedInts.getReaderNoHeader(
+              in, PackedInts.Format.PACKED, PackedInts.VERSION_CURRENT, 1, bitsPerValue);
       String msg = "Impl=" + w.getClass().getSimpleName() + ", bitsPerValue=" + bitsPerValue;
       assertEquals(msg, 1, reader.size());
       assertEquals(msg, value, reader.get(0));
@@ -910,7 +881,13 @@ public class TestPackedInts extends LuceneTestCase {
         out.close();
 
         IndexInput in = directory.openInput("packed-ints.bin", IOContext.DEFAULT);
-        PackedInts.Reader reader = PackedInts.getReader(in);
+        PackedInts.Reader reader =
+            PackedInts.getReaderNoHeader(
+                in,
+                mutable.getFormat(),
+                PackedInts.VERSION_CURRENT,
+                mutable.size(),
+                mutable.getBitsPerValue());
         assertEquals(valueCount, reader.size());
         if (mutable instanceof Packed64SingleBlock) {
           // make sure that we used the right format so that the reader has
