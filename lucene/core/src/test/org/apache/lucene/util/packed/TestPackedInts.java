@@ -126,35 +126,6 @@ public class TestPackedInts extends LuceneTestCase {
             w.getFormat().byteCount(PackedInts.VERSION_CURRENT, valueCount, w.bitsPerValue);
         assertEquals(bytes, fp - startFp);
 
-        { // test reader
-          IndexInput in = d.openInput("out.bin", newIOContext(random()));
-          PackedInts.Reader r =
-              PackedInts.getReaderNoHeader(
-                  in, PackedInts.Format.PACKED, PackedInts.VERSION_CURRENT, valueCount, nbits);
-          assertEquals(fp, in.getFilePointer());
-          for (int i = 0; i < valueCount; i++) {
-            assertEquals(
-                "index="
-                    + i
-                    + " valueCount="
-                    + valueCount
-                    + " nbits="
-                    + nbits
-                    + " for "
-                    + r.getClass().getSimpleName(),
-                values[i],
-                r.get(i));
-          }
-          in.close();
-
-          final long expectedBytesUsed = RamUsageTester.sizeOf(r);
-          final long computedBytesUsed = r.ramBytesUsed();
-          assertEquals(
-              r.getClass() + "expected " + expectedBytesUsed + ", got: " + computedBytesUsed,
-              expectedBytesUsed,
-              computedBytesUsed);
-        }
-
         { // test reader iterator next
           IndexInput in = d.openInput("out.bin", newIOContext(random()));
           PackedInts.ReaderIterator r =
@@ -259,11 +230,6 @@ public class TestPackedInts extends LuceneTestCase {
           for (int i = 0; i < valueCount; ++i) {
             it.next();
           }
-          assertEquals(msg, byteCount, in.getFilePointer());
-
-          // test reader
-          in.seek(0L);
-          PackedInts.getReaderNoHeader(in, format, version, valueCount, bpv);
           assertEquals(msg, byteCount, in.getFilePointer());
         }
       }
@@ -439,33 +405,6 @@ public class TestPackedInts extends LuceneTestCase {
             base.get(i),
             packedInts.get(j).get(i));
       }
-    }
-  }
-
-  public void testSingleValue() throws Exception {
-    for (int bitsPerValue = 1; bitsPerValue <= 64; ++bitsPerValue) {
-      Directory dir = newDirectory();
-      IndexOutput out = dir.createOutput("out", newIOContext(random()));
-      PackedInts.Writer w =
-          PackedInts.getWriterNoHeader(
-              out, PackedInts.Format.PACKED, 1, bitsPerValue, PackedInts.DEFAULT_BUFFER_SIZE);
-      long value = 17L & PackedInts.maxValue(bitsPerValue);
-      w.add(value);
-      w.finish();
-      final long end = out.getFilePointer();
-      out.close();
-
-      IndexInput in = dir.openInput("out", newIOContext(random()));
-      Reader reader =
-          PackedInts.getReaderNoHeader(
-              in, PackedInts.Format.PACKED, PackedInts.VERSION_CURRENT, 1, bitsPerValue);
-      String msg = "Impl=" + w.getClass().getSimpleName() + ", bitsPerValue=" + bitsPerValue;
-      assertEquals(msg, 1, reader.size());
-      assertEquals(msg, value, reader.get(0));
-      assertEquals(msg, end, in.getFilePointer());
-      in.close();
-
-      dir.close();
     }
   }
 

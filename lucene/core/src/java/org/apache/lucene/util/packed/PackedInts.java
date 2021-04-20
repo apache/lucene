@@ -659,35 +659,6 @@ public class PackedInts {
   }
 
   /**
-   * Expert: Restore a {@link Reader} from a stream without reading metadata at the beginning of the
-   * stream. This method is useful to restore data from streams which have been created using {@link
-   * PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)}.
-   *
-   * @param in the stream to read data from, positioned at the beginning of the packed values
-   * @param format the format used to serialize
-   * @param version the version used to serialize the data
-   * @param valueCount how many values the stream holds
-   * @param bitsPerValue the number of bits per value
-   * @return a Reader
-   * @throws IOException If there is a low-level I/O error
-   * @see PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)
-   * @lucene.internal
-   */
-  public static Reader getReaderNoHeader(
-      DataInput in, Format format, int version, int valueCount, int bitsPerValue)
-      throws IOException {
-    checkVersion(version);
-    switch (format) {
-      case PACKED_SINGLE_BLOCK:
-        return Packed64SingleBlock.create(in, valueCount, bitsPerValue);
-      case PACKED:
-        return new Packed64(version, in, valueCount, bitsPerValue);
-      default:
-        throw new AssertionError("Unknown Writer format: " + format);
-    }
-  }
-
-  /**
    * Expert: Restore a {@link ReaderIterator} from a stream without reading metadata at the
    * beginning of the stream. This method is useful to restore data from streams which have been
    * created using {@link PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)}.
@@ -788,7 +759,6 @@ public class PackedInts {
    * @param mem how much memory (in bytes) can be used to speed up serialization
    * @return a Writer
    * @see PackedInts#getReaderIteratorNoHeader(DataInput, Format, int, int, int, int)
-   * @see PackedInts#getReaderNoHeader(DataInput, Format, int, int, int)
    * @lucene.internal
    */
   public static Writer getWriterNoHeader(
