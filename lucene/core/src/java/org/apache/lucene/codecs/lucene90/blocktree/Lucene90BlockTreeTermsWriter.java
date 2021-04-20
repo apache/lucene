@@ -142,7 +142,7 @@ import org.apache.lucene.util.fst.Util;
  *       these contain arbitrary per-file data (such as parameters or versioning information) and
  *       per-term data (such as pointers to inverted files).
  *   <li>For inner nodes of the tree, every entry will steal one bit to mark whether it points to
- *       child nodes(sub-block). If so, the corresponding TermStats and TermMetaData are omitted
+ *       child nodes(sub-block). If so, the corresponding TermStats and TermMetaData are omitted.
  * </ul>
  *
  * <p><a id="Termmetadata"></a>
