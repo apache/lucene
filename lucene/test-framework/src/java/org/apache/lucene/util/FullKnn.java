@@ -103,12 +103,10 @@ public class FullKnn {
     for (int i = 0; i < numQueries; i++) {
       queries.get(query);
       long totalBytes = (long) numDocs * dim * Float.BYTES;
-      int
-          blockSize =
-              (int)
-                  Math.min(
-                      totalBytes, (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES)),
-          offset = 0;
+      int blockSize =
+          (int)
+              Math.min(totalBytes, (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES));
+      int offset = 0;
       int j = 0;
       LongHeap queue = null;
       if (searchStrategy.reversed) {
