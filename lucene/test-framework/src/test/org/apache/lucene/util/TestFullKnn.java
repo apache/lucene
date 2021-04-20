@@ -119,7 +119,6 @@ public class TestFullKnn extends LuceneTestCase {
         fullKnn.doFullKnn(
             2,
             1,
-            1,
             new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
             new SimpleBufferProvider(floatArrayToByteBuffer(vec1)));
 
@@ -129,7 +128,6 @@ public class TestFullKnn extends LuceneTestCase {
         fullKnn.doFullKnn(
             2,
             1,
-            2,
             new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
             new SimpleBufferProvider(floatArrayToByteBuffer(vec0)));
 
@@ -138,7 +136,6 @@ public class TestFullKnn extends LuceneTestCase {
     float[] twoQueries = joinArrays(vec1, vec0);
     result =
         fullKnn.doFullKnn(
-            2,
             2,
             2,
             new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
@@ -150,7 +147,6 @@ public class TestFullKnn extends LuceneTestCase {
         fullKnn.doFullKnn(
             3,
             3,
-            3,
             new SimpleBufferProvider(floatArrayToByteBuffer(threeDocs)),
             new SimpleBufferProvider(floatArrayToByteBuffer(threeQueries)));
 
@@ -159,7 +155,6 @@ public class TestFullKnn extends LuceneTestCase {
     FullKnn full3nn = new FullKnn(5, 3, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, true);
     result =
         full3nn.doFullKnn(
-            3,
             3,
             3,
             new SimpleBufferProvider(floatArrayToByteBuffer(threeDocs)),
@@ -178,7 +173,6 @@ public class TestFullKnn extends LuceneTestCase {
           full3nn.doFullKnn(
               2,
               1,
-              1,
               new SimpleBufferProvider(floatArrayToByteBuffer(twoDocs)),
               new SimpleBufferProvider(floatArrayToByteBuffer(vec1)));
         });
@@ -196,7 +190,6 @@ public class TestFullKnn extends LuceneTestCase {
         full3nn.doFullKnn(
             noOfVectors,
             noOfVectors,
-            Runtime.getRuntime().availableProcessors(),
             new SimpleBufferProvider(byteBuffer),
             new SimpleBufferProvider(byteBuffer.duplicate()));
 
