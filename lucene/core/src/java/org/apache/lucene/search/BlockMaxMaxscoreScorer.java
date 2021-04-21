@@ -77,8 +77,9 @@ public class BlockMaxMaxscoreScorer extends Scorer {
     essentialsScorers = new DisiPriorityQueue(scorers.size());
     nonEssentialScorers = new LinkedList<>();
 
-    // Use a scaling factor of 0 if all max scores are either 0 or +Infty
-    this.scalingFactor = calculateScalingFactor(scorers).orElse(0);
+    // For some reason the following scaling factor calcualtin from WANDScorer would fail luceneutil benchmark
+    // this.scalingFactor = calculateScalingFactor(scorers).orElse(0);
+    this.scalingFactor = 0;
 
     maxScoreSumPropagator = new MaxScoreSumPropagator(scorers);
 
@@ -87,21 +88,21 @@ public class BlockMaxMaxscoreScorer extends Scorer {
     }
   }
 
-  private OptionalInt calculateScalingFactor(List<Scorer> scorers) throws IOException {
-    OptionalInt scalingFactor = OptionalInt.empty();
-    for (Scorer scorer : scorers) {
-      scorer.advanceShallow(0);
-      float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
-      if (maxScore != 0 && Float.isFinite(maxScore)) {
-        // 0 and +Infty should not impact the scale
-        scalingFactor =
-            OptionalInt.of(
-                Math.min(
-                    scalingFactor.orElse(Integer.MAX_VALUE), WANDScorer.scalingFactor(maxScore)));
-      }
-    }
-    return scalingFactor;
-  }
+//  private OptionalInt calculateScalingFactor(List<Scorer> scorers) throws IOException {
+//    OptionalInt scalingFactor = OptionalInt.empty();
+//    for (Scorer scorer : scorers) {
+//      scorer.advanceShallow(0);
+//      float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
+//      if (maxScore != 0 && Float.isFinite(maxScore)) {
+//        // 0 and +Infty should not impact the scale
+//        scalingFactor =
+//            OptionalInt.of(
+//                Math.min(
+//                    scalingFactor.orElse(Integer.MAX_VALUE), WANDScorer.scalingFactor(maxScore)));
+//      }
+//    }
+//    return scalingFactor;
+//  }
 
   @Override
   public DocIdSetIterator iterator() {

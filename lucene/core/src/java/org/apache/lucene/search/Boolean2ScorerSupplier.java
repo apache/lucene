@@ -238,8 +238,18 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
       //
       // However, as WANDScorer uses more complex algorithm and data structure, we would like to
       // still use DisjunctionSumScorer to handle exhaustive pure disjunctions, which may be faster
+      boolean isPureDisjunction =
+          subs.get(Occur.FILTER).isEmpty()
+              && subs.get(Occur.MUST).isEmpty()
+              && subs.get(Occur.MUST_NOT).isEmpty();
 
-      if (scoreMode == ScoreMode.TOP_SCORES && minShouldMatch <= 1) {
+      boolean allTermScorers =
+          optionalScorers.stream().allMatch(scorer -> scorer instanceof TermScorer);
+
+      if (scoreMode == ScoreMode.TOP_SCORES
+          && minShouldMatch <= 1
+          && isPureDisjunction
+          && allTermScorers) {
         // have looser conditions above temporarily to allow more tests (especially the ones from
         // TestWANDScorer) to test BlockMaxMaxscoreScorer
         return new BlockMaxMaxscoreScorer(weight, optionalScorers, scoreMode);
