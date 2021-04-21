@@ -73,7 +73,7 @@ public final class MutablePointsReaderUtils {
         if (to < from) {
           return false;
         }
-        // make sure DocIds are monotonically increasing
+        // make sure DocIds are in ascending order
         for (int i = from + 1; i < to; i++) {
           if (reader.getDocID(i - 1) > reader.getDocID(i)) {
             return false;

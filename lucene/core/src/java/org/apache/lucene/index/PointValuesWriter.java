@@ -303,5 +303,15 @@ class PointValuesWriter {
     public void swap(int i, int j) {
       in.swap(i, j);
     }
+
+    @Override
+    public void assign(int from, int to) {
+      in.assign(from, to);
+    }
+
+    @Override
+    public void finalizeAssign(int from, int to) {
+      in.finalizeAssign(from, to);
+    }
   }
 }

@@ -1698,6 +1698,16 @@ public class TestBKD extends LuceneTestCase {
           public byte getByteAt(int i, int k) {
             throw new UnsupportedOperationException();
           }
+
+          @Override
+          public void assign(int from, int to) {
+            // do nothing
+          }
+
+          @Override
+          public void finalizeAssign(int from, int to) {
+            // do nothing
+          }
         };
 
     BKDWriter w =
@@ -1838,6 +1848,16 @@ public class TestBKD extends LuceneTestCase {
           @Override
           public int getDocCount() {
             return 11;
+          }
+
+          @Override
+          public void assign(int from, int to) {
+            throw new UnsupportedOperationException("not implement");
+          }
+
+          @Override
+          public void finalizeAssign(int from, int to) {
+            throw new UnsupportedOperationException("not implement");
           }
         };
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {

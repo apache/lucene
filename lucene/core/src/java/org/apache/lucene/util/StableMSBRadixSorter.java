@@ -62,21 +62,13 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
     sort(from, to, 0, 0);
   }
 
-  @Override
-  protected void reorder(int from, int to, int[] startOffsets, int[] endOffsets, int k) {
-    if (useStableSort) {
-      stableReorder(from, to, startOffsets, endOffsets, k);
-    } else {
-      super.reorder(from, to, startOffsets, endOffsets, k);
-    }
-  }
-
   /**
    * Reorder elements in stable way, since Dutch sort does not guarantee ordering for same values.
    *
    * <p>When this method returns, startOffsets and endOffsets are equal.
    */
-  protected void stableReorder(int from, int to, int[] startOffsets, int[] endOffsets, int k) {
+  @Override
+  protected void reorder(int from, int to, int[] startOffsets, int[] endOffsets, int k) {
     int[] assignPos = ArrayUtil.copyOfSubArray(startOffsets, 0, startOffsets.length);
     for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
       final int limit = endOffsets[i];

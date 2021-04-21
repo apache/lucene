@@ -49,7 +49,7 @@ import org.apache.lucene.util.LuceneTestCase;
  * </pre>
  */
 @TimeoutSuite(millis = Integer.MAX_VALUE)
-@LuceneTestCase.Monster("takes minutes to finish")
+// @LuceneTestCase.Monster("takes minutes to finish")
 public class TestBKDDisableSortDocId extends LuceneTestCase {
 
   private List<Integer> docIdList = new ArrayList<>();
@@ -71,7 +71,31 @@ public class TestBKDDisableSortDocId extends LuceneTestCase {
     System.out.println(" -------------------------------------------------");
   }
 
+  public void testBenchmarkWithLeadingZeroBytes() throws Exception {
+    System.out.println("warm up");
+    doTestBenchmark(4, false);
+    doTestBenchmark(4, true);
+
+    int bytesPerDim = 4;
+    int[] leadingZeroByteNum = {1, 2, 3};
+    System.out.println("start benchmark");
+    System.out.println("bytesPerDim=" + bytesPerDim + ", leadingZeroByteNum=[1,2,3]");
+    System.out.println(" -------------------------------------------------");
+    System.out.println("| bytesPerDim | isDocIdIncremental | avg time(us) |");
+    System.out.println(" -------------------------------------------------");
+    for (int i = 0; i < leadingZeroByteNum.length; i++) {
+      doTestBenchmark(bytesPerDim, false, leadingZeroByteNum[i]);
+      doTestBenchmark(bytesPerDim, true, leadingZeroByteNum[i]);
+    }
+    System.out.println(" -------------------------------------------------");
+  }
+
   public void doTestBenchmark(int bytesPerDim, boolean isDocIdIncremental) throws Exception {
+    doTestBenchmark(bytesPerDim, isDocIdIncremental, 0);
+  }
+
+  public void doTestBenchmark(int bytesPerDim, boolean isDocIdIncremental, int leadingZeroByteNum)
+      throws Exception {
     int runTimes = 10;
     int docNum = 2000000;
 
@@ -80,7 +104,7 @@ public class TestBKDDisableSortDocId extends LuceneTestCase {
 
     long sortDocIdTotalTime = 0L;
     for (int i = 0; i < runTimes; i++) {
-      sortDocIdTotalTime += doTestSort(bytesPerDim, docNum, isDocIdIncremental);
+      sortDocIdTotalTime += doTestSort(bytesPerDim, docNum, isDocIdIncremental, leadingZeroByteNum);
       Thread.sleep(1000);
     }
 
@@ -99,26 +123,31 @@ public class TestBKDDisableSortDocId extends LuceneTestCase {
     int bytesPerDim = 3;
     int docNum = 2000000;
     for (int i = 0; i < runTimes; i++) {
-      doTestSort(bytesPerDim, docNum, isDocIdIncremental);
+      doTestSort(bytesPerDim, docNum, isDocIdIncremental, 0);
     }
   }
 
-  private long doTestSort(int bytesPerDim, int docNum, boolean isDocIdIncremental) {
+  private long doTestSort(
+      int bytesPerDim, int docNum, boolean isDocIdIncremental, int leadingZeroByteNum) {
     final int maxDoc = docNum;
-
     BKDConfig config = new BKDConfig(1, 1, bytesPerDim, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-    Point[] points = createRandomPoints(config, maxDoc, new int[1], isDocIdIncremental);
+    Point[] points =
+        createRandomPoints(config, maxDoc, new int[1], isDocIdIncremental, leadingZeroByteNum);
     DummyPointsReader reader = new DummyPointsReader(points);
     long start = System.nanoTime();
     MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, points.length);
     long end = System.nanoTime();
-    // System.out.println("time used: " + (end - start));
     return end - start;
   }
 
   private Point[] createRandomPoints(
-      BKDConfig config, int maxDoc, int[] commonPrefixLengths, boolean isDocIdIncremental) {
+      BKDConfig config,
+      int maxDoc,
+      int[] commonPrefixLengths,
+      boolean isDocIdIncremental,
+      int leadingZeroByteNum) {
     assertTrue(commonPrefixLengths.length == config.numDims);
+    assertTrue(leadingZeroByteNum < config.packedBytesLength);
     final int numPoints = maxDoc;
     Point[] points = new Point[numPoints];
     if (docIdList.isEmpty()) {
@@ -129,7 +158,13 @@ public class TestBKDDisableSortDocId extends LuceneTestCase {
     Collections.shuffle(docIdList, random());
     for (int i = 0; i < numPoints; ++i) {
       byte[] value = new byte[config.packedBytesLength];
-      random().nextBytes(value);
+      if (leadingZeroByteNum == 0) {
+        random().nextBytes(value);
+      } else {
+        byte[] suffix = new byte[config.packedBytesLength - leadingZeroByteNum];
+        random().nextBytes(suffix);
+        System.arraycopy(suffix, 0, value, leadingZeroByteNum, suffix.length);
+      }
       points[i] = new Point(value, isDocIdIncremental ? i : docIdList.get(i));
     }
     return points;

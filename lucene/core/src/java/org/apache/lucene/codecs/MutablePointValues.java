@@ -43,12 +43,8 @@ public abstract class MutablePointValues extends PointValues {
   public abstract void swap(int i, int j);
 
   /** Assign the from-th value to to-th position in another array which used temporarily. */
-  public void assign(int from, int to) {
-    throw new UnsupportedOperationException();
-  }
+  public abstract void assign(int from, int to);
 
   /** Finalize assign operation, to switch array. */
-  public void finalizeAssign(int from, int to) {
-    throw new UnsupportedOperationException();
-  }
+  public abstract void finalizeAssign(int from, int to);
 }
