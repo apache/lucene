@@ -361,7 +361,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       out.writeByte((byte) (0x80 | (1 + intVal)));
     } else if ((floatBits >>> 31) == 0) {
       // other positive floats: 4 bytes
-      out.writeInt(floatBits);
+      out.writeByte((byte) (floatBits >> 24));
+      out.writeShort((short) (floatBits >>> 8));
+      out.writeByte((byte) floatBits);
     } else {
       // other negative float: 5 bytes
       out.writeByte((byte) 0xFF);
@@ -399,7 +401,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       out.writeInt(Float.floatToIntBits((float) d));
     } else if ((doubleBits >>> 63) == 0) {
       // other positive doubles: 8 bytes
-      out.writeLong(doubleBits);
+      out.writeByte((byte) (doubleBits >> 56));
+      out.writeInt((int) (doubleBits >>> 24));
+      out.writeShort((short) (doubleBits >>> 8));
+      out.writeByte((byte) (doubleBits));
     } else {
       // other negative doubles: 9 bytes
       out.writeByte((byte) 0xFF);

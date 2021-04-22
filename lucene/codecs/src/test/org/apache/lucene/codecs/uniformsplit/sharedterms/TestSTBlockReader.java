@@ -89,11 +89,6 @@ public class TestSTBlockReader extends LuceneTestCase {
           public IndexDictionary.Browser get() throws IOException {
             return indexDictionary.browser();
           }
-
-          @Override
-          public long ramBytesUsed() {
-            return indexDictionary.ramBytesUsed();
-          }
         };
   }
 
@@ -304,11 +299,6 @@ public class TestSTBlockReader extends LuceneTestCase {
 
         @Override
         public void close() {}
-
-        @Override
-        public long ramBytesUsed() {
-          return 0;
-        }
       };
     }
 

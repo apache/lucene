@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.asserting;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Collection;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
@@ -28,7 +27,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.TestUtil;
 
 /** Just like the default but with additional asserts. */
@@ -95,8 +93,6 @@ public class AssertingNormsFormat extends NormsFormat {
       this.creationThread = Thread.currentThread();
       // do a few simple checks on init
       assert toString() != null;
-      assert ramBytesUsed() >= 0;
-      assert getChildResources() != null;
     }
 
     @Override
@@ -114,20 +110,6 @@ public class AssertingNormsFormat extends NormsFormat {
     public void close() throws IOException {
       in.close();
       in.close(); // close again
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long v = in.ramBytesUsed();
-      assert v >= 0;
-      return v;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      Collection<Accountable> res = in.getChildResources();
-      TestUtil.checkReadOnly(res);
-      return res;
     }
 
     @Override

@@ -70,7 +70,6 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -82,7 +81,6 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.SlowCodecReaderWrapper;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -373,16 +371,6 @@ public final class TestUtil {
 
     if (LuceneTestCase.INFOSTREAM) {
       System.out.println(bos.toString(IOUtils.UTF_8));
-    }
-
-    LeafReader unwrapped = FilterLeafReader.unwrap(reader);
-    if (unwrapped instanceof SegmentReader) {
-      SegmentReader sr = (SegmentReader) unwrapped;
-      long bytesUsed = sr.ramBytesUsed();
-      if (sr.ramBytesUsed() < 0) {
-        throw new IllegalStateException("invalid ramBytesUsed for reader: " + bytesUsed);
-      }
-      assert Accountables.toString(sr) != null;
     }
 
     // FieldInfos should be cached at the reader and always return the same instance

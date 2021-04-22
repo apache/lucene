@@ -127,7 +127,6 @@ public class GenerateJflexTLDMacros {
     getIANATLDDatabase();
     partitionTLDprefixesBySuffixLength();
     writeOutput();
-    System.out.println("Wrote TLD macros to '" + jflexMacroFile + "':");
     int totalDomains = 0;
     for (int suffixLength = 0; suffixLength < TLDsBySuffixLength.size(); ++suffixLength) {
       int domainsAtThisSuffixLength = TLDsBySuffixLength.get(suffixLength).size();

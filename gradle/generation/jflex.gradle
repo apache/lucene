@@ -1,3 +1,5 @@
+import java.nio.file.Files
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -32,7 +34,7 @@ def skeletonDefault = file("${resources}/skeleton.default.txt")
 def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expansion.txt")
 
 configure(project(":lucene:core")) {
-  task generateStandardTokenizer(type: JFlexTask) {
+  task generateStandardTokenizerInternal(type: JFlexTask) {
     description "Regenerate StandardTokenizerImpl.java"
     group "generation"
 
@@ -49,11 +51,11 @@ configure(project(":lucene:core")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateStandardTokenizer, [ andThenTasks: "spotlessApply" ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateStandardTokenizerInternal, [ andThenTasks: "spotlessApply" ])
 }
 
 configure(project(":lucene:analysis:common")) {
-  task generateTlds() {
+  task generateTldsInternal() {
     def tldZones = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
     def jflexMacro = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex")
     def tldList = file("src/test/org/apache/lucene/analysis/email/TLDs.txt")
@@ -63,9 +65,13 @@ configure(project(":lucene:analysis:common")) {
 
     dependsOn { sourceSets.tools.runtimeClasspath }
 
+    inputs.property "tldZones", tldZones
     outputs.files jflexMacro, tldList
 
     doFirst {
+      File tmpJflexMacro = File.createTempFile(jflexMacro.getName(), ".tmp", getTemporaryDir())
+      File tmpTldList = File.createTempFile(tldList.getName(), ".tmp", getTemporaryDir())
+
       project.javaexec {
         main = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
         classpath = sourceSets.tools.runtimeClasspath
@@ -73,16 +79,34 @@ configure(project(":lucene:analysis:common")) {
         ignoreExitValue false
         args = [
             tldZones,
-            jflexMacro,
-            tldList
+            tmpJflexMacro,
+            tmpTldList
         ]
       }
 
-      logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
+      // LUCENE-9926: tldZones is regenerated daily. Compare the generated content (excluding comments) so that
+      // we only update actual output files if non-comments have changed.
+      def contentLines = { File file ->
+        if (file.exists()) {
+          List<String> lines = file.readLines("UTF-8")
+          lines.removeIf { line -> line.isBlank() || line.startsWith("//") }
+          return lines
+        } else {
+          return []
+        }
+      }
+
+      if (contentLines(tmpTldList).equals(contentLines(tldList))) {
+        logger.lifecycle("Generated TLD content identical as before, not updating.")
+      } else {
+        tldList.setBytes tmpTldList.bytes
+        jflexMacro.setBytes tmpJflexMacro.bytes
+        logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
+      }
     }
   }
 
-  task generateWikipediaTokenizer(type: JFlexTask) {
+  task generateWikipediaTokenizerInternal(type: JFlexTask) {
     description "Regenerate WikipediaTokenizerImpl.java"
     group "generation"
 
@@ -90,7 +114,7 @@ configure(project(":lucene:analysis:common")) {
     skeleton = skeletonDefault
   }
 
-  task generateClassicTokenizer(type: JFlexTask) {
+  task generateClassicTokenizerInternal(type: JFlexTask) {
     description "Regenerate ClassicTokenizerImpl.java"
     group "generation"
 
@@ -98,7 +122,7 @@ configure(project(":lucene:analysis:common")) {
     skeleton = skeletonDefault
   }
 
-  task generateUAX29URLEmailTokenizer(type: JFlexTask) {
+  task generateUAX29URLEmailTokenizerInternal(type: JFlexTask) {
     description "Regenerate UAX29URLEmailTokenizerImpl.java"
     group "generation"
 
@@ -108,7 +132,7 @@ configure(project(":lucene:analysis:common")) {
 
     // Don't enforce strict dependency (although it would make sense to regenerate both).
     // Just ensure we run after TLD regeneration, if it runs too.
-    mustRunAfter generateTlds
+    mustRunAfter generateTldsInternal
 
     // Additional input (included by the source jflex file)
     inputs.file file('src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex')
@@ -127,7 +151,7 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  task generateHTMLStripCharFilter(type: JFlexTask) {
+  task generateHTMLStripCharFilterInternal(type: JFlexTask) {
     description "Regenerate HTMLStripCharFilter.java"
     group "generation"
 
@@ -154,11 +178,11 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizer, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateClassicTokenizer, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateUAX29URLEmailTokenizer, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateHTMLStripCharFilter, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateTlds, [ andThenTasks: "spotlessApply" ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateClassicTokenizerInternal, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: "spotlessApply" ]),
+      wrapWithPersistentChecksums(generateTldsInternal, [ andThenTasks: "spotlessApply" ])
 }
 
 class JFlexTask extends DefaultTask {

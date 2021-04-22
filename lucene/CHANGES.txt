@@ -101,6 +101,15 @@ API Changes
 * LUCENE-9853: JapaneseAnalyzer should use CJKWidthCharFilter for full-width and half-width character normalization.
   (Tomoko Uchida)
 
+* LUCENE-9387: Removed CodecReader#ramBytesUsed. (Adrien Grand)
+
+* LUCENE-9334: Require consistency between data-structures on a per-field basis.
+  A field across all documents within an index must be indexed with the same index
+  options and data-structures. As a consequence of this, doc values updates are
+  only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
+  Adrien Grand, Simon Willnauer)
+
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
@@ -208,6 +217,8 @@ Improvements
 * LUCENE-9898: Removes no longer used scorePayload method from BM25Similarity
   (Pieter van Boxtel)
 
+* LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
+
 Bug fixes
 
 
@@ -288,6 +299,9 @@ Other
  
 * LUCENE-9705: Make new versions of all index formats for the Lucene90 codec and move 
   the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)  
+  
+* LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
+  method to backwards codec. (Ignacio Vera)   
 
 ======================= Lucene 8.9.0 =======================
 

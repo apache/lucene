@@ -561,6 +561,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     taxoWriter.close();
 
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(dir);
+    taxoReader.getParallelTaxonomyArrays(); // increases memory usage as a side-effect
     assertTrue(taxoReader.ramBytesUsed() > 0);
     assertTrue(taxoReader.getChildResources().size() > 0);
     taxoReader.close();

@@ -179,11 +179,6 @@ public abstract class NormsConsumer implements Closeable {
 
           @Override
           public void close() {}
-
-          @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
         });
   }
 }

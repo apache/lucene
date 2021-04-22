@@ -18,9 +18,8 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.util.Accountable;
 
-abstract class FieldsIndex implements Accountable, Cloneable, Closeable {
+abstract class FieldsIndex implements Cloneable, Closeable {
 
   /** Get the start pointer for the block that contains the given docID. */
   abstract long getStartPointer(int docID);

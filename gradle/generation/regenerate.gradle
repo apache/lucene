@@ -21,6 +21,47 @@ import org.apache.commons.codec.digest.DigestUtils
 
 // Create common 'regenerate' task sub-tasks can hook into.
 
+/**
+ * Compute all "checksummed" key-value pairs.
+ */
+def computeChecksummedEntries = { Task sourceTask ->
+  // An flat ordered map of key-value pairs.
+  Map<String, String> allEntries = new TreeMap<>()
+
+  // Make sure all input properties are either simple strings
+  // or closures returning simple strings.
+  //
+  // Don't overcomplicate things with other serializable types.
+  Map<String, Object> props = sourceTask.inputs.properties
+  props.forEach { key, val ->
+    // Handle closures and other lazy providers.
+    if (val instanceof Provider<?>) {
+      val = val.get()
+    }
+    if (val instanceof Closure<?>) {
+      val = val.call()
+    }
+
+    if (!(val instanceof String)) {
+      throw new GradleException("Input properties of wrapped tasks must all be " +
+          "strings: ${key} in ${sourceTask.name} is not.")
+    }
+    allEntries.put("property:" + key, (String) val)
+  }
+
+  // Collect all of task inputs/ output files and compute their checksums.
+  FileCollection allFiles = sourceTask.inputs.files + sourceTask.outputs.files
+
+  // Compute checksums for root-project relative paths
+  allFiles.files.forEach { file ->
+    allEntries.put(
+        sourceTask.project.rootDir.relativePath(file),
+        file.exists() ? new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() : "--")
+  }
+
+  return allEntries
+}
+
 configure([
         project(":lucene:analysis:common"),
         project(":lucene:core"),
@@ -38,18 +79,18 @@ configure([
       // This utility method implements the logic required for "persistent" incremental
       // source-generating tasks. The idea is simple, the implementation quite complex.
       //
-      // The idea is that, given source-generating task "sourceTask" we create
-      // a bunch of other tasks that perform checksum generation, validation and sourceTask
-      // skipping; example:
+      // The idea is that, given source-generating task "sourceTaskInternal" (note the suffix),
+      // we create a bunch of other tasks that perform checksum generation, validation and
+      // source task skipping; example (sourceTask has Internal suffix stripped)
       //
       // ${sourceTask}ChecksumLoad
       // ${sourceTask}ChecksumSave
       // ${sourceTask}ChecksumCheck (fails if checksums are inconsistent)
-      // maybe${sourceTask} dependsOn [checksum-load, sourceTask, checksum-save]
+      // ${sourceTask} dependsOn [checksum-load, ${sourceTask}Internal, checksum-save]
       //
       // Checksums are persisted and computed from sourceTask's inputs/outputs. If the
-      // persisted checksums are identical to current checksums, sourceTask
-      // is skipped (via sourceTask.onlyIf { false }).
+      // persisted checksums are identical to current checksums, source task
+      // is skipped (via sourceTaskInternal.onlyIf { false }).
       //
       // Implementation-wise things get complicated because gradle doesn't have the notion
       // of "ordered" task execution with respect to task AND its dependencies (we can add
@@ -60,6 +101,12 @@ configure([
       //   andThenTasks: other tasks that should be scheduled to run after source task and
       //     before checksum calculation.
       wrapWithPersistentChecksums = { Task sourceTask, Map<String, Object> extraConfig = [:] ->
+        if (!sourceTask.name.endsWith("Internal")) {
+          throw new GradleException("Wrapped task must follow the convention name of *Internal: ${sourceTask.name}")
+        }
+
+        String sourceTaskName = sourceTask.name.replaceAll('Internal$', '')
+
         def toList = { value ->
           if (value instanceof List) {
             return value
@@ -74,53 +121,43 @@ configure([
         List<Object> ignoreWithSource =  toList(extraConfig.get("ignoreWithSource"))
 
         // Create checksum-loader task.
-        Task checksumLoadTask = tasks.create("${sourceTask.name}ChecksumLoad", {
+        Task checksumLoadTask = tasks.create("${sourceTaskName}ChecksumLoad", {
           ext {
             checksumMatch = true
           }
 
           doFirst {
-            // Collect all of task inputs/ outputs.
-            FileCollection allFiles = sourceTask.inputs.files + sourceTask.outputs.files
-            ext.allFiles = allFiles
-
-            // Compute checksums for root-project relative paths
-            Map<String, String> actualChecksums = allFiles.files.collectEntries { file ->
-              [
-                  sourceTask.project.rootDir.relativePath(file),
-                  file.exists() ? new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() : "--"
-              ]
-            }
-            ext.actualChecksums = actualChecksums
+            // Current persisted task input/outputs (file checksums, properties)
+            ext.currentChecksums = computeChecksummedEntries(sourceTask)
 
             // Load any previously written checksums
-            ext.checksumsFile = project.file("src/generated/checksums/${sourceTask.name}.json")
-            Map<String, String> savedChecksums = [:]
+            ext.savedChecksums = new TreeMap<>()
+            ext.checksumsFile = project.file("src/generated/checksums/${sourceTaskName}.json")
             if (checksumsFile.exists()) {
-              savedChecksums = new JsonSlurper().parse(checksumsFile) as Map
+              savedChecksums.putAll(new JsonSlurper().parse(checksumsFile) as Map)
             }
-            ext.savedChecksums = savedChecksums
 
-            ext.checksumMatch = (savedChecksums.equals(actualChecksums))
+            // Compare saved and current checksums for subsequent tasks.
+            ext.checksumMatch = (savedChecksums.equals(currentChecksums))
           }
         })
 
-        Task checksumCheckTask = tasks.create("${sourceTask.name}ChecksumCheck", {
+        Task checksumCheckTask = tasks.create("${sourceTaskName}ChecksumCheck", {
           dependsOn checksumLoadTask
 
           doFirst {
             if (!checksumLoadTask.checksumMatch) {
               // This can be made prettier but leave it verbose for now:
-              Map<String, String> actual = checksumLoadTask.actualChecksums
+              Map<String, String> current = checksumLoadTask.currentChecksums
               Map<String, String> expected = checksumLoadTask.savedChecksums
 
-              def same = actual.intersect(expected)
-              actual = actual - same
+              def same = current.intersect(expected)
+              current = current - same
               expected = expected - same
 
               throw new GradleException("Checksums mismatch for derived resources; you might have" +
-                  " modified a generated resource (regenerate task: ${sourceTask.path}IfChanged):\n" +
-                  "Actual:\n  ${actual.entrySet().join('\n  ')}\n\n" +
+                  " modified a generated resource (regenerate task: ${sourceTask.name}):\n" +
+                  "Current:\n  ${current.entrySet().join('\n  ')}\n\n" +
                   "Expected:\n  ${expected.entrySet().join('\n  ')}"
               )
             }
@@ -128,29 +165,23 @@ configure([
         })
         check.dependsOn checksumCheckTask
 
-        Task checksumSaveTask = tasks.create("${sourceTask.name}ChecksumSave", {
+        Task checksumSaveTask = tasks.create("${sourceTaskName}ChecksumSave", {
           dependsOn checksumLoadTask
 
           doFirst {
             File checksumsFile = checksumLoadTask.ext.checksumsFile
             checksumsFile.parentFile.mkdirs()
 
-            // Recompute checksums for root-project relative paths
-            Map<String, String> actualChecksums = checksumLoadTask.ext.allFiles.files.collectEntries { file ->
-              [
-                  sourceTask.project.rootDir.relativePath(file),
-                  new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim()
-              ]
-            }
-
+            // Recompute checksums after the task has completed and write them.
+            def updatedChecksums = computeChecksummedEntries(sourceTask)
             checksumsFile.setText(
-                JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String, String>(actualChecksums))), "UTF-8")
+                JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String, String>(updatedChecksums))), "UTF-8")
 
             logger.warn("Updated generated file checksums for task ${sourceTask.path}.")
           }
         })
 
-        Task conditionalTask = tasks.create("${sourceTask.name}IfChanged", {
+        Task conditionalTask = tasks.create("${sourceTaskName}", {
           def deps = [
               checksumLoadTask,
               sourceTask,
@@ -162,7 +193,7 @@ configure([
           mustRunInOrder deps
 
           doFirst {
-            if (checksumLoadTask.checksumMatch) {
+            if (checksumLoadTask.checksumMatch && !sourceTask.didWork) {
               logger.lifecycle("Checksums consistent with sources, skipping task: ${sourceTask.path}")
             }
           }
