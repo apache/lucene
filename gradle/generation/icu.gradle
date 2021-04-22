@@ -200,7 +200,7 @@ configure(project(":lucene:analysis:icu")) {
         executable "tar"
         workingDir icuBuildDir
         args = [
-            "-zxvf",
+            "-zxf",
             icuSrcTgz
         ]
       }
@@ -210,6 +210,8 @@ configure(project(":lucene:analysis:icu")) {
         executable "sh"
 
         workingDir icuSrcDir
+        environment("CFLAGS", "-O0")
+        environment("CXXFLAGS", "-O0")
         args = [
             "configure",
             "--prefix=${icuSrcDir}",
@@ -221,7 +223,7 @@ configure(project(":lucene:analysis:icu")) {
         executable "make"
         workingDir icuSrcDir
         args = [
-            "-j4"
+            "-j${propertyOrDefault('tests.jvms', '4')}"
         ]
       }
 
