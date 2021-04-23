@@ -208,6 +208,8 @@ public abstract class LeafReader extends IndexReader {
   /**
    * Returns {@link VectorValues} for this field, or null if no {@link VectorValues} were indexed.
    * The returned instance should only be used by a single thread.
+   *
+   * @lucene.experimental
    */
   public abstract VectorValues getVectorValues(String field) throws IOException;
 
@@ -223,6 +225,8 @@ public abstract class LeafReader extends IndexReader {
    * @param fanout control the accuracy/speed tradeoff - larger values give better recall at higher
    *     cost
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
+   *
+   * @lucene.experimental
    */
   public abstract TopDocs searchNearestVectors(String field, float[] target, int k, int fanout)
       throws IOException;
