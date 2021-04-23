@@ -91,9 +91,11 @@ public class TieredMergePolicy extends MergePolicy {
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 33.0;
 
-  // 记录每次merge大段的时间戳，控制大段merge的频率
+  // record the last big segment merge timestamp
   private static Long bigSegmentTimestamp = 0L;
+  // wait for 20 mins to do next merge for big segment
   private int waitMergeBigSegmentMills = 20*60*1000;
+
   /** Sole constructor, setting all settings to their defaults. */
   public TieredMergePolicy() {
     super(DEFAULT_NO_CFS_RATIO, MergePolicy.DEFAULT_MAX_CFS_SEGMENT_SIZE);
