@@ -38,6 +38,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -154,7 +155,36 @@ public final class Lucene90VectorReader extends VectorReader {
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      fields.put(info.name, readField(meta));
+
+      FieldEntry fieldEntry = readField(meta);
+      validateFieldEntry(info, fieldEntry);
+      fields.put(info.name, fieldEntry);
+    }
+  }
+
+  private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
+    int dimension = info.getVectorDimension();
+    if (dimension != fieldEntry.dimension) {
+      throw new IllegalStateException(
+          "Inconsistent vector dimension for field=\""
+              + info.name
+              + "\"; "
+              + dimension
+              + " != "
+              + fieldEntry.dimension);
+    }
+
+    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
+    if (numBytes != fieldEntry.vectorDataLength) {
+      throw new IllegalStateException(
+          "Vector data length "
+              + fieldEntry.vectorDataLength
+              + " not matching size="
+              + fieldEntry.size()
+              + " * dim="
+              + dimension
+              + " * 4 = "
+              + numBytes);
     }
   }
 
@@ -199,60 +229,25 @@ public final class Lucene90VectorReader extends VectorReader {
 
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      return null;
-    }
-    int dimension = info.getVectorDimension();
-    if (dimension == 0) {
-      return VectorValues.EMPTY;
-    }
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null) {
-      // There is a FieldInfo, but no vectors. Should we have deleted the FieldInfo?
       return null;
     }
-    if (dimension != fieldEntry.dimension) {
-      throw new IllegalStateException(
-          "Inconsistent vector dimension for field=\""
-              + field
-              + "\"; "
-              + dimension
-              + " != "
-              + fieldEntry.dimension);
-    }
-    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
-    if (numBytes != fieldEntry.vectorDataLength) {
-      throw new IllegalStateException(
-          "Vector data length "
-              + fieldEntry.vectorDataLength
-              + " not matching size="
-              + fieldEntry.size()
-              + " * dim="
-              + dimension
-              + " * 4 = "
-              + numBytes);
+    if (fieldEntry.dimension == 0) {
+      return VectorValues.EMPTY;
     }
 
     return getOffHeapVectorValues(fieldEntry);
   }
 
-  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
-    IndexInput bytesSlice =
-        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new OffHeapVectorValues(fieldEntry, bytesSlice);
-  }
-
   @Override
   public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      return null;
-    }
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null) {
-      // There is a FieldInfo, but no vectors. Should we have deleted the FieldInfo?
       return null;
+    }
+    if (fieldEntry.dimension == 0) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
     }
 
     OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
@@ -278,6 +273,12 @@ public final class Lucene90VectorReader extends VectorReader {
     return new TopDocs(
         new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
         scoreDocs);
+  }
+
+  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
+    IndexInput bytesSlice =
+        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
+    return new OffHeapVectorValues(fieldEntry, bytesSlice);
   }
 
   public KnnGraphValues getGraphValues(String field) throws IOException {
