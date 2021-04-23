@@ -91,6 +91,9 @@ public class TieredMergePolicy extends MergePolicy {
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 33.0;
 
+  // 记录每次merge大段的时间戳，控制大段merge的频率
+  private static Long bigSegmentTimestamp = 0L;
+  private int waitMergeBigSegmentMills = 20*60*1000;
   /** Sole constructor, setting all settings to their defaults. */
   public TieredMergePolicy() {
     super(DEFAULT_NO_CFS_RATIO, MergePolicy.DEFAULT_MAX_CFS_SEGMENT_SIZE);
@@ -380,10 +383,16 @@ public class TieredMergePolicy extends MergePolicy {
     // 1> Overall percent deleted docs relatively small and this segment is larger than 50%
     // maxSegSize
     // 2> overall percent deleted docs large and this segment is large and has few deleted docs
-
+    boolean isFirstBigSegment = true;
     while (iter.hasNext()) {
       SegmentSizeAndDocs segSizeDocs = iter.next();
       double segDelPct = 100 * (double) segSizeDocs.delCount / (double) segSizeDocs.maxDoc;
+      // If there is no other segment currently being merged, select a large segment that meets the conditions to merge
+      if (isFirstBigSegment && merging.size() <= 0 
+          && checkForBigSegmentMerge(segSizeDocs)) {
+        isFirstBigSegment = false;
+        continue;
+      }
       if (segSizeDocs.sizeInBytes > maxMergedSegmentBytes / 2
           && (totalDelPct <= deletesPctAllowed || segDelPct <= deletesPctAllowed)) {
         iter.remove();
@@ -439,7 +448,15 @@ public class TieredMergePolicy extends MergePolicy {
   private boolean checkForBigSegmentMerge(SegmentSizeAndDocs segSizeDocs) {
     double deletePct = 100.0d*segSizeDocs.delCount/segSizeDocs.maxDoc;
     double bytesThisSegment = 1.0d*segSizeDocs.sizeInBytes;
-    return deletePct > forceMergeDeletesPctAllowed && (bytesThisSegment > forceMergeDeletesPctAllowed*maxMergedSegmentBytes/2);
+    boolean ret = deletePct > forceMergeDeletesPctAllowed && bytesThisSegment > forceMergeDeletesPctAllowed*maxMergedSegmentBytes/200;
+    if (ret) {
+      // check一下merge大段的时机
+      Long currentTimestamp = System.currentTimeMillis();
+      if (bigSegmentTimestamp > 0L && currentTimestamp - bigSegmentTimestamp < waitMergeBigSegmentMills) {
+        return false;
+      }
+    }
+    return ret;
   }
 
   private MergeSpecification doFindMerges(
@@ -495,7 +512,8 @@ public class TieredMergePolicy extends MergePolicy {
           iter.remove();
         } else {
           if (bigSegment == null) {
-            if (checkForBigSegmentMerge(segSizeDocs)) {
+            // pick up the first large segment to merge
+            if (checkForBigSegmentMerge(segSizeDocs) && !maxMergeIsRunning) {
               bigSegment = new ArrayList<>();
               bigSegment.add(segSizeDocs.segInfo);
             }
@@ -524,6 +542,9 @@ public class TieredMergePolicy extends MergePolicy {
           && sortedEligible.size() <= allowedSegCount
           && remainingDelCount <= allowedDelCount) {
         if (bigSegment != null) {
+          // do the large segment merge and update the lastest merge timestamp，then wait for waitMergeBigSegmentMills to do the next.
+          bigSegmentTimestamp = System.currentTimeMillis();
+          logger.info(String.format("liuwei do big segment merge and update bigSegmentTimestamp=%d", bigSegmentTimestamp));
           if (spec == null) {
             spec = new MergeSpecification();
           }
