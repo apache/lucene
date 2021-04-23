@@ -28,8 +28,9 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
 /**
- * This testcase will benchmark with different bytesPerDim and isDocIdIncremental parameters, report
- * will be generated like below:
+ * This testcase will benchmark {@link MutablePointsReaderUtils#sort(BKDConfig, int,
+ * MutablePointValues, int, int)} by using <code>StableMSBRadixSort</code> with different
+ * bytesPerDim and isDocIdIncremental parameters, report will be generated like below.
  *
  * <pre>
  *  -------------------------------------------------
@@ -49,7 +50,7 @@ import org.apache.lucene.util.LuceneTestCase;
  * </pre>
  */
 @TimeoutSuite(millis = Integer.MAX_VALUE)
-// @LuceneTestCase.Monster("takes minutes to finish")
+@LuceneTestCase.Monster("takes minutes to finish")
 public class TestBKDDisableSortDocId extends LuceneTestCase {
 
   private List<Integer> docIdList = new ArrayList<>();
@@ -115,16 +116,6 @@ public class TestBKDDisableSortDocId extends LuceneTestCase {
             bytesPerDim,
             (isDocIdIncremental ? "Y" : "N"),
             sortDocIdTotalTime * 1.0f / runTimes / 1000.0f));
-  }
-
-  public void testLongRunBenchmark() throws Exception {
-    boolean isDocIdIncremental = true;
-    int runTimes = 100;
-    int bytesPerDim = 3;
-    int docNum = 2000000;
-    for (int i = 0; i < runTimes; i++) {
-      doTestSort(bytesPerDim, docNum, isDocIdIncremental, 0);
-    }
   }
 
   private long doTestSort(

@@ -37,11 +37,14 @@ public final class MutablePointsReaderUtils {
 
   MutablePointsReaderUtils() {}
 
-  /** Sort the given {@link MutablePointValues} based on its packed value then doc ID. */
+  /**
+   * Sort the given {@link MutablePointValues} based on its packed value, note that doc ID is not
+   * taken into sorting algorithm, since if they are already in ascending order, stable sort is able
+   * to maintain the ordering of doc ID.
+   */
   public static void sort(
       BKDConfig config, int maxDoc, MutablePointValues reader, int from, int to) {
-    final int bitsPerDocId = PackedInts.bitsRequired(maxDoc - 1);
-    new StableMSBRadixSorter(config.packedBytesLength + (bitsPerDocId + 7) / 8) {
+    new StableMSBRadixSorter(config.packedBytesLength) {
 
       @Override
       protected void swap(int i, int j) {
@@ -60,96 +63,36 @@ public final class MutablePointsReaderUtils {
 
       @Override
       protected int byteAt(int i, int k) {
-        if (k < config.packedBytesLength) {
-          return Byte.toUnsignedInt(reader.getByteAt(i, k));
-        } else {
-          final int shift = bitsPerDocId - ((k - config.packedBytesLength + 1) << 3);
-          return (reader.getDocID(i) >>> Math.max(0, shift)) & 0xff;
+        if (k >= config.packedBytesLength) {
+          throw new IllegalStateException(
+              "k should be less than packedBytesLength " + config.packedBytesLength);
         }
-      }
-
-      @Override
-      protected boolean isEnableStableSort(int from, int to) {
-        if (to < from) {
-          return false;
-        }
-        // make sure DocIds are in ascending order
-        for (int i = from + 1; i < to; i++) {
-          if (reader.getDocID(i - 1) > reader.getDocID(i)) {
-            return false;
-          }
-        }
-        return true;
-      }
-
-      @Override
-      protected void doClosureIfStableSortEnabled() {
-        maxLength -= ((bitsPerDocId + 7) / 8);
-        commonPrefix = new int[Math.min(24, maxLength)];
+        return Byte.toUnsignedInt(reader.getByteAt(i, k));
       }
 
       @Override
       protected Sorter getFallbackSorter(int k) {
-        Sorter introSorter =
-            new IntroSorter() {
+        return new InPlaceMergeSorter() {
 
-              final BytesRef pivot = new BytesRef();
-              final BytesRef scratch = new BytesRef();
-              int pivotDoc;
-
-              @Override
-              protected void swap(int i, int j) {
-                reader.swap(i, j);
+          @Override
+          protected int compare(final int i, final int j) {
+            for (int o = k; o < config.packedBytesLength; ++o) {
+              final int b1 = byteAt(i, o);
+              final int b2 = byteAt(j, o);
+              if (b1 != b2) {
+                return b1 - b2;
+              } else if (b1 == -1) {
+                break;
               }
+            }
+            return 0;
+          }
 
-              @Override
-              protected void setPivot(int i) {
-                reader.getValue(i, pivot);
-                pivotDoc = reader.getDocID(i);
-              }
-
-              @Override
-              protected int comparePivot(int j) {
-                if (k < config.packedBytesLength) {
-                  reader.getValue(j, scratch);
-                  int cmp =
-                      Arrays.compareUnsigned(
-                          pivot.bytes,
-                          pivot.offset + k,
-                          pivot.offset + k + config.packedBytesLength - k,
-                          scratch.bytes,
-                          scratch.offset + k,
-                          scratch.offset + k + config.packedBytesLength - k);
-                  if (cmp != 0) {
-                    return cmp;
-                  }
-                }
-                return pivotDoc - reader.getDocID(j);
-              }
-            };
-        Sorter stableSorter =
-            new InPlaceMergeSorter() {
-
-              @Override
-              protected int compare(final int i, final int j) {
-                for (int o = k; o < config.packedBytesLength; ++o) {
-                  final int b1 = byteAt(i, o);
-                  final int b2 = byteAt(j, o);
-                  if (b1 != b2) {
-                    return b1 - b2;
-                  } else if (b1 == -1) {
-                    break;
-                  }
-                }
-                return 0;
-              }
-
-              @Override
-              protected void swap(final int i, final int j) {
-                reader.swap(i, j);
-              }
-            };
-        return useStableSort ? stableSorter : introSorter;
+          @Override
+          protected void swap(final int i, final int j) {
+            reader.swap(i, j);
+          }
+        };
       }
     }.sort(from, to);
   }

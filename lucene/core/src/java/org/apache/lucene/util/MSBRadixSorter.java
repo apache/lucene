@@ -31,18 +31,18 @@ public abstract class MSBRadixSorter extends Sorter {
   // this is used as a protection against the fact that radix sort performs
   // worse when there are long common prefixes (probably because of cache
   // locality)
-  protected static final int LEVEL_THRESHOLD = 8;
+  private static final int LEVEL_THRESHOLD = 8;
   // size of histograms: 256 + 1 to indicate that the string is finished
   protected static final int HISTOGRAM_SIZE = 257;
   // buckets below this size will be sorted with introsort
-  protected static final int LENGTH_THRESHOLD = 100;
+  private static final int LENGTH_THRESHOLD = 100;
 
   // we store one histogram per recursion level
-  protected final int[][] histograms = new int[LEVEL_THRESHOLD][];
-  protected final int[] endOffsets = new int[HISTOGRAM_SIZE];
-  protected int[] commonPrefix;
+  private final int[][] histograms = new int[LEVEL_THRESHOLD][];
+  private final int[] endOffsets = new int[HISTOGRAM_SIZE];
+  private final int[] commonPrefix;
 
-  protected int maxLength;
+  private final int maxLength;
 
   /**
    * Sole constructor.

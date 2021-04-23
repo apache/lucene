@@ -59,7 +59,10 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
           }
         });
     assertNotSame(points, reader.points);
-    assertArrayEquals(points, reader.points);
+    assertEquals(points.length, reader.points.length);
+    for (int i = 0; i < points.length; i++) {
+      assertEquals(points[i].packedValue, reader.points[i].packedValue);
+    }
   }
 
   public void testSortByDim() {

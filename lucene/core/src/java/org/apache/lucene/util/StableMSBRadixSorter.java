@@ -17,9 +17,7 @@
 package org.apache.lucene.util;
 
 /**
- * Stable radix sorter for variable-length strings. It has to check data beforehand to see if stable
- * sort can be enabled or not. If not applicable, it works the same way as its parent class {@link
- * MSBRadixSorter}.
+ * Stable radix sorter for variable-length strings.
  *
  * @lucene.internal
  */
@@ -31,35 +29,14 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
     super(maxLength);
   }
 
-  /** Check if stable sort can be enabled or not. */
-  protected boolean isEnableStableSort(int from, int to) {
-    return false;
-  }
-
-  /**
-   * If stable sort is applicable, do some closure logic, which might update some of the internal
-   * variable.
-   */
-  protected void doClosureIfStableSortEnabled() {}
-
   /** Assign the from-th value to to-th position in another array which used temporarily. */
   protected void assign(int from, int to) {
-    throw new UnsupportedOperationException("not implement");
+    throw new UnsupportedOperationException();
   }
 
   /** Finalize assign operation, to switch array. */
   protected void finalizeAssign(int from, int to) {
-    throw new UnsupportedOperationException("not implement");
-  }
-
-  @Override
-  public void sort(int from, int to) {
-    checkRange(from, to);
-    useStableSort = isEnableStableSort(from, to);
-    if (useStableSort) {
-      doClosureIfStableSortEnabled();
-    }
-    sort(from, to, 0, 0);
+    throw new UnsupportedOperationException();
   }
 
   /**
