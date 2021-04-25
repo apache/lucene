@@ -87,16 +87,16 @@ public class TestPerFieldConsistency extends LuceneTestCase {
   }
 
   private static Field randomVectorField(Random random, String fieldName) {
-    VectorValues.SearchStrategy searchStrategy =
-        RandomPicks.randomFrom(random, VectorValues.SearchStrategy.values());
-    while (searchStrategy == VectorValues.SearchStrategy.NONE) {
-      searchStrategy = RandomPicks.randomFrom(random, VectorValues.SearchStrategy.values());
+    VectorValues.SimilarityFunction similarityFunction =
+        RandomPicks.randomFrom(random, VectorValues.SimilarityFunction.values());
+    while (similarityFunction == VectorValues.SimilarityFunction.NONE) {
+      similarityFunction = RandomPicks.randomFrom(random, VectorValues.SimilarityFunction.values());
     }
     float[] values = new float[randomIntBetween(1, 10)];
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();
     }
-    return new VectorField(fieldName, values, searchStrategy);
+    return new VectorField(fieldName, values, similarityFunction);
   }
 
   private static Field[] randomFieldsWithTheSameName(String fieldName) {

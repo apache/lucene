@@ -54,7 +54,7 @@ public final class HnswGraphBuilder {
   private final int beamWidth;
   private final NeighborArray scratch;
 
-  private final VectorValues.SearchStrategy searchStrategy;
+  private final VectorValues.SimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
   private final Random random;
   private final BoundsChecker bound;
@@ -87,8 +87,8 @@ public final class HnswGraphBuilder {
       RandomAccessVectorValuesProducer vectors, int maxConn, int beamWidth, long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
-    searchStrategy = vectorValues.searchStrategy();
-    if (searchStrategy == VectorValues.SearchStrategy.NONE) {
+    similarityFunction = vectorValues.similarityFunction();
+    if (similarityFunction == VectorValues.SimilarityFunction.NONE) {
       throw new IllegalStateException("No distance function");
     }
     if (maxConn <= 0) {
@@ -100,7 +100,7 @@ public final class HnswGraphBuilder {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     this.hnsw = new HnswGraph(maxConn);
-    bound = BoundsChecker.create(searchStrategy.reversed);
+    bound = BoundsChecker.create(similarityFunction.reversed);
     random = new Random(seed);
     scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
@@ -232,7 +232,7 @@ public final class HnswGraphBuilder {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
       float diversityCheck =
-          searchStrategy.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
+          similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
       if (bound.check(diversityCheck) == false) {
         return false;
       }
@@ -269,7 +269,7 @@ public final class HnswGraphBuilder {
       float[] nbrVector = vectorValues.vectorValue(nbrNode);
       for (int j = maxConn; j > i; j--) {
         float diversityCheck =
-            searchStrategy.compare(nbrVector, buildVectors.vectorValue(neighbors.node[j]));
+            similarityFunction.compare(nbrVector, buildVectors.vectorValue(neighbors.node[j]));
         if (bound.check(diversityCheck) == false) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]

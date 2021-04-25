@@ -70,8 +70,8 @@ public class KnnGraphTester {
 
   private static final String KNN_FIELD = "knn";
   private static final String ID_FIELD = "id";
-  private static final VectorValues.SearchStrategy SEARCH_STRATEGY =
-      VectorValues.SearchStrategy.DOT_PRODUCT_HNSW;
+  private static final VectorValues.SimilarityFunction SIMILARITY_FUNCTION =
+      VectorValues.SimilarityFunction.DOT_PRODUCT;
 
   private int numDocs;
   private int dim;
@@ -542,10 +542,10 @@ public class KnnGraphTester {
                   .order(ByteOrder.LITTLE_ENDIAN)
                   .asFloatBuffer();
           offset += blockSize;
-          NeighborQueue queue = new NeighborQueue(topK, SEARCH_STRATEGY.reversed);
+          NeighborQueue queue = new NeighborQueue(topK, SIMILARITY_FUNCTION.reversed);
           for (; j < numDocs && vectors.hasRemaining(); j++) {
             vectors.get(vector);
-            float d = SEARCH_STRATEGY.compare(query, vector);
+            float d = SIMILARITY_FUNCTION.compare(query, vector);
             queue.insertWithOverflow(j, d);
           }
           result[i] = new int[topK];
@@ -572,7 +572,7 @@ public class KnnGraphTester {
 
     FieldType fieldType =
         VectorField.createHnswType(
-            dim, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, maxConn, beamWidth);
+            dim, VectorValues.SimilarityFunction.DOT_PRODUCT, maxConn, beamWidth);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
@@ -667,8 +667,8 @@ public class KnnGraphTester {
       }
 
       @Override
-      public VectorValues.SearchStrategy searchStrategy() {
-        return SEARCH_STRATEGY;
+      public VectorValues.SimilarityFunction similarityFunction() {
+        return SIMILARITY_FUNCTION;
       }
 
       @Override

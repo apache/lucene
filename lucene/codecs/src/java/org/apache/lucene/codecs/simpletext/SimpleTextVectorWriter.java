@@ -98,7 +98,7 @@ public class SimpleTextVectorWriter extends VectorWriter {
       throws IOException {
     writeField(meta, FIELD_NUMBER, field.number);
     writeField(meta, FIELD_NAME, field.name);
-    writeField(meta, SCORE_FUNCTION, field.getVectorSearchStrategy().name());
+    writeField(meta, SCORE_FUNCTION, field.getVectorSimilarityFunction().name());
     writeField(meta, VECTOR_DATA_OFFSET, vectorDataOffset);
     writeField(meta, VECTOR_DATA_LENGTH, vectorDataLength);
     writeField(meta, VECTOR_DIMENSION, field.getVectorDimension());
