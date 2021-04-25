@@ -38,6 +38,8 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.lucene90.Lucene90VectorReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
@@ -2335,6 +2337,29 @@ public final class CheckIndex implements Closeable {
                       + " but when iterated, returns "
                       + docCount
                       + " docs with values");
+            }
+            VectorReader vectorReader = reader.getVectorReader();
+            if (vectorReader instanceof Lucene90VectorReader) {
+              KnnGraphValues graphValues =
+                  ((Lucene90VectorReader) vectorReader).getGraphValues(fieldInfo.name);
+              int size = graphValues.size();
+              for (int i = 0; i < size; i++) {
+                graphValues.seek(i);
+                for (int neighbor = graphValues.nextNeighbor();
+                    neighbor != NO_MORE_DOCS;
+                    neighbor = graphValues.nextNeighbor()) {
+                  if (neighbor < 0 || neighbor >= size) {
+                    throw new RuntimeException(
+                        "Field \""
+                            + fieldInfo.name
+                            + "\" has an invalid neighbor ordinal: "
+                            + neighbor
+                            + " which should be in [0,"
+                            + size
+                            + ")");
+                  }
+                }
+              }
             }
             status.totalVectorValues += docCount;
           }

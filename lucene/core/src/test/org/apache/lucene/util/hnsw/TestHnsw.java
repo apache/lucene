@@ -73,7 +73,7 @@ public class TestHnsw extends LuceneTestCase {
             indexedDoc++;
           }
           Document doc = new Document();
-          doc.add(new VectorField("field", v2.vectorValue(), v2.searchStrategy));
+          doc.add(new VectorField("field", v2.vectorValue(), v2.similarityFunction));
           doc.add(new StoredField("id", v2.docID()));
           iw.addDocument(doc);
           nVec++;
@@ -83,7 +83,7 @@ public class TestHnsw extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
           VectorValues values = ctx.reader().getVectorValues("field");
-          assertEquals(vectors.searchStrategy, values.searchStrategy());
+          assertEquals(vectors.similarityFunction, values.similarityFunction());
           assertEquals(dim, values.dimension());
           assertEquals(nVec, values.size());
           assertEquals(indexedDoc, ctx.reader().maxDoc());
@@ -164,7 +164,7 @@ public class TestHnsw extends LuceneTestCase {
     // Some carefully checked test cases with simple 2d vectors on the unit circle:
     MockVectorValues vectors =
         new MockVectorValues(
-            VectorValues.SearchStrategy.DOT_PRODUCT_HNSW,
+            VectorValues.SimilarityFunction.DOT_PRODUCT,
             new float[][] {
               unitVector2d(0.5),
               unitVector2d(0.75),
@@ -236,12 +236,12 @@ public class TestHnsw extends LuceneTestCase {
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual = HnswGraph.search(query, topK, 100, vectors, hnsw, random());
-      NeighborQueue expected = new NeighborQueue(topK, vectors.searchStrategy.reversed);
+      NeighborQueue expected = new NeighborQueue(topK, vectors.similarityFunction.reversed);
       for (int j = 0; j < size; j++) {
         float[] v = vectors.vectorValue(j);
         if (v != null) {
           expected.insertWithOverflow(
-              j, vectors.searchStrategy.compare(query, vectors.vectorValue(j)));
+              j, vectors.similarityFunction.compare(query, vectors.vectorValue(j)));
         }
       }
       assertEquals(topK, actual.size());
@@ -288,8 +288,8 @@ public class TestHnsw extends LuceneTestCase {
     }
 
     @Override
-    public SearchStrategy searchStrategy() {
-      return SearchStrategy.DOT_PRODUCT_HNSW;
+    public SimilarityFunction similarityFunction() {
+      return SimilarityFunction.DOT_PRODUCT;
     }
 
     @Override
@@ -393,12 +393,12 @@ public class TestHnsw extends LuceneTestCase {
 
     RandomVectorValues(int size, int dimension, Random random) {
       super(
-          SearchStrategy.values()[random.nextInt(SearchStrategy.values().length - 1) + 1],
+          SimilarityFunction.values()[random.nextInt(SimilarityFunction.values().length - 1) + 1],
           createRandomVectors(size, dimension, random));
     }
 
     RandomVectorValues(RandomVectorValues other) {
-      super(other.searchStrategy, other.values);
+      super(other.similarityFunction, other.values);
     }
 
     @Override

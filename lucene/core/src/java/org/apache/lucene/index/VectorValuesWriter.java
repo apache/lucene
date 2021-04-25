@@ -29,7 +29,11 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
 
-/** Buffers up pending vector value(s) per doc, then flushes when segment flushes. */
+/**
+ * Buffers up pending vector value(s) per doc, then flushes when segment flushes.
+ *
+ * @lucene.experimental
+ */
 class VectorValuesWriter {
 
   private final FieldInfo fieldInfo;
@@ -108,7 +112,7 @@ class VectorValuesWriter {
             docsWithField,
             vectors,
             fieldInfo.getVectorDimension(),
-            fieldInfo.getVectorSearchStrategy());
+            fieldInfo.getVectorSimilarityFunction());
     if (sortMap != null) {
       vectorWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
     } else {
@@ -186,8 +190,8 @@ class VectorValuesWriter {
     }
 
     @Override
-    public SearchStrategy searchStrategy() {
-      return delegate.searchStrategy();
+    public SimilarityFunction similarityFunction() {
+      return delegate.similarityFunction();
     }
 
     @Override
@@ -220,8 +224,8 @@ class VectorValuesWriter {
         }
 
         @Override
-        public SearchStrategy searchStrategy() {
-          return delegateRA.searchStrategy();
+        public SimilarityFunction similarityFunction() {
+          return delegateRA.similarityFunction();
         }
 
         @Override
@@ -244,7 +248,7 @@ class VectorValuesWriter {
 
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<float[]> vectors;
-    final SearchStrategy searchStrategy;
+    final SimilarityFunction similarityFunction;
     final int dimension;
 
     final ByteBuffer buffer;
@@ -259,11 +263,11 @@ class VectorValuesWriter {
         DocsWithFieldSet docsWithField,
         List<float[]> vectors,
         int dimension,
-        SearchStrategy searchStrategy) {
+        SimilarityFunction similarityFunction) {
       this.docsWithField = docsWithField;
       this.vectors = vectors;
       this.dimension = dimension;
-      this.searchStrategy = searchStrategy;
+      this.similarityFunction = similarityFunction;
       buffer = ByteBuffer.allocate(dimension * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
       binaryValue = new BytesRef(buffer.array());
       raBuffer = ByteBuffer.allocate(dimension * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -273,7 +277,7 @@ class VectorValuesWriter {
 
     @Override
     public RandomAccessVectorValues randomAccess() {
-      return new BufferedVectorValues(docsWithField, vectors, dimension, searchStrategy);
+      return new BufferedVectorValues(docsWithField, vectors, dimension, similarityFunction);
     }
 
     @Override
@@ -287,8 +291,8 @@ class VectorValuesWriter {
     }
 
     @Override
-    public SearchStrategy searchStrategy() {
-      return searchStrategy;
+    public SimilarityFunction similarityFunction() {
+      return similarityFunction;
     }
 
     @Override

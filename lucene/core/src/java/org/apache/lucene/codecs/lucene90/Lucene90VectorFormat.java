@@ -50,7 +50,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * <ul>
  *   <li><b>[int32]</b> field number
- *   <li><b>[int32]</b> vector search strategy ordinal
+ *   <li><b>[int32]</b> vector similarity function ordinal
  *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
  *   <li><b>[vlong]</b> offset to this field's index in the .vex file

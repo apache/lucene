@@ -121,7 +121,7 @@ public final class Lucene90VectorWriter extends VectorWriter {
     long[] offsets = new long[count];
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    if (vectors.searchStrategy().isHnsw()) {
+    if (vectors.similarityFunction().isHnsw()) {
       if (vectors instanceof RandomAccessVectorValuesProducer) {
         writeGraph(
             vectorIndex,
@@ -146,7 +146,7 @@ public final class Lucene90VectorWriter extends VectorWriter {
           vectorIndexLength,
           count,
           docIds);
-      if (vectors.searchStrategy().isHnsw()) {
+      if (vectors.similarityFunction().isHnsw()) {
         writeGraphOffsets(meta, offsets);
       }
     }
@@ -162,7 +162,7 @@ public final class Lucene90VectorWriter extends VectorWriter {
       int[] docIds)
       throws IOException {
     meta.writeInt(field.number);
-    meta.writeInt(field.getVectorSearchStrategy().ordinal());
+    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
     meta.writeVLong(indexDataOffset);

@@ -34,7 +34,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.VectorField;
-import org.apache.lucene.index.VectorValues.SearchStrategy;
+import org.apache.lucene.index.VectorValues.SimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -53,7 +53,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static int maxConn = HnswGraphBuilder.DEFAULT_MAX_CONN;
 
-  private SearchStrategy searchStrategy;
+  private SimilarityFunction similarityFunction;
 
   @Before
   public void setup() {
@@ -61,8 +61,8 @@ public class TestKnnGraph extends LuceneTestCase {
     if (random().nextBoolean()) {
       maxConn = random().nextInt(256) + 3;
     }
-    int strategy = random().nextInt(SearchStrategy.values().length - 1) + 1;
-    searchStrategy = SearchStrategy.values()[strategy];
+    int similarity = random().nextInt(SimilarityFunction.values().length - 1) + 1;
+    similarityFunction = SimilarityFunction.values()[similarity];
   }
 
   @After
@@ -212,7 +212,7 @@ public class TestKnnGraph extends LuceneTestCase {
   /** Verify that searching does something reasonable */
   public void testSearch() throws Exception {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
-    searchStrategy = SearchStrategy.EUCLIDEAN_HNSW;
+    similarityFunction = SimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
     config.setCodec(Codec.forName("Lucene90")); // test is not compatible with simpletext
     try (Directory dir = newDirectory();
@@ -434,16 +434,16 @@ public class TestKnnGraph extends LuceneTestCase {
   }
 
   private void add(IndexWriter iw, int id, float[] vector) throws IOException {
-    add(iw, id, vector, searchStrategy);
+    add(iw, id, vector, similarityFunction);
   }
 
-  private void add(IndexWriter iw, int id, float[] vector, SearchStrategy searchStrategy)
+  private void add(IndexWriter iw, int id, float[] vector, SimilarityFunction similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
       FieldType fieldType =
           VectorField.createHnswType(
-              vector.length, searchStrategy, maxConn, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+              vector.length, similarityFunction, maxConn, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
       doc.add(new VectorField(KNN_GRAPH_FIELD, vector, fieldType));
     }
     String idString = Integer.toString(id);

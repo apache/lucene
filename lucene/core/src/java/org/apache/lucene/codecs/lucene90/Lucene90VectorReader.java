@@ -187,24 +187,28 @@ public final class Lucene90VectorReader extends VectorReader {
     }
   }
 
-  private VectorValues.SearchStrategy readSearchStrategy(DataInput input) throws IOException {
-    int searchStrategyId = input.readInt();
-    if (searchStrategyId < 0 || searchStrategyId >= VectorValues.SearchStrategy.values().length) {
-      throw new CorruptIndexException("Invalid search strategy id: " + searchStrategyId, input);
+  private VectorValues.SimilarityFunction readSimilarityFunction(DataInput input)
+      throws IOException {
+    int similarityFunctionId = input.readInt();
+    if (similarityFunctionId < 0
+        || similarityFunctionId >= VectorValues.SimilarityFunction.values().length) {
+      throw new CorruptIndexException(
+          "Invalid similarity function id: " + similarityFunctionId, input);
     }
-    return VectorValues.SearchStrategy.values()[searchStrategyId];
+    return VectorValues.SimilarityFunction.values()[similarityFunctionId];
   }
 
   private FieldEntry readField(DataInput input) throws IOException {
-    VectorValues.SearchStrategy searchStrategy = readSearchStrategy(input);
-    switch (searchStrategy) {
+    VectorValues.SimilarityFunction similarityFunction = readSimilarityFunction(input);
+    switch (similarityFunction) {
       case NONE:
-        return new FieldEntry(input, searchStrategy);
-      case DOT_PRODUCT_HNSW:
-      case EUCLIDEAN_HNSW:
-        return new HnswGraphFieldEntry(input, searchStrategy);
+        return new FieldEntry(input, similarityFunction);
+      case DOT_PRODUCT:
+      case EUCLIDEAN:
+        return new HnswGraphFieldEntry(input, similarityFunction);
       default:
-        throw new CorruptIndexException("Unknown vector search strategy: " + searchStrategy, input);
+        throw new CorruptIndexException(
+            "Unknown vector similarity function: " + similarityFunction, input);
     }
   }
 
@@ -288,7 +292,7 @@ public final class Lucene90VectorReader extends VectorReader {
   }
 
   private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
-    if (entry.searchStrategy.isHnsw()) {
+    if (entry.similarityFunction.isHnsw()) {
       HnswGraphFieldEntry graphEntry = (HnswGraphFieldEntry) entry;
       IndexInput bytesSlice =
           vectorIndex.slice("graph-data", entry.indexDataOffset, entry.indexDataLength);
@@ -306,7 +310,7 @@ public final class Lucene90VectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SearchStrategy searchStrategy;
+    final VectorValues.SimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -314,8 +318,9 @@ public final class Lucene90VectorReader extends VectorReader {
     final long indexDataLength;
     final int[] ordToDoc;
 
-    FieldEntry(DataInput input, VectorValues.SearchStrategy searchStrategy) throws IOException {
-      this.searchStrategy = searchStrategy;
+    FieldEntry(DataInput input, VectorValues.SimilarityFunction similarityFunction)
+        throws IOException {
+      this.similarityFunction = similarityFunction;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
       indexDataOffset = input.readVLong();
@@ -338,9 +343,9 @@ public final class Lucene90VectorReader extends VectorReader {
 
     final long[] ordOffsets;
 
-    HnswGraphFieldEntry(DataInput input, VectorValues.SearchStrategy searchStrategy)
+    HnswGraphFieldEntry(DataInput input, VectorValues.SimilarityFunction similarityFunction)
         throws IOException {
-      super(input, searchStrategy);
+      super(input, similarityFunction);
       ordOffsets = new long[size()];
       long offset = 0;
       for (int i = 0; i < ordOffsets.length; i++) {
@@ -385,8 +390,8 @@ public final class Lucene90VectorReader extends VectorReader {
     }
 
     @Override
-    public SearchStrategy searchStrategy() {
-      return fieldEntry.searchStrategy;
+    public SimilarityFunction similarityFunction() {
+      return fieldEntry.similarityFunction;
     }
 
     @Override
@@ -425,7 +430,7 @@ public final class Lucene90VectorReader extends VectorReader {
       if (ord < 0) {
         ord = -(ord + 1);
       }
-      assert ord >= 0 && ord <= fieldEntry.ordToDoc.length;
+      assert ord <= fieldEntry.ordToDoc.length;
       if (ord == fieldEntry.ordToDoc.length) {
         doc = NO_MORE_DOCS;
       } else {

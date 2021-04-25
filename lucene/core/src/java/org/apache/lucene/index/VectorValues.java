@@ -51,8 +51,8 @@ public abstract class VectorValues extends DocIdSetIterator {
    */
   public abstract int size();
 
-  /** Return the search strategy used to compare these vectors */
-  public abstract SearchStrategy searchStrategy();
+  /** Return the similarity function used to compare these vectors */
+  public abstract SimilarityFunction similarityFunction();
 
   /**
    * Return the vector value for the current document ID. It is illegal to call this method when the
@@ -76,35 +76,36 @@ public abstract class VectorValues extends DocIdSetIterator {
   }
 
   /**
-   * Search strategy. This is a label describing the method used during indexing and searching of
-   * the vectors in order to determine the nearest neighbors.
+   * Vector similarity function; used in search to return top K most similar vectors to a target
+   * vector. This is a label describing the method used during indexing and searching of the vectors
+   * in order to determine the nearest neighbors.
    */
-  public enum SearchStrategy {
+  public enum SimilarityFunction {
 
     /**
-     * No search strategy is provided. Note: {@link VectorReader#search(String, float[], int, int)}
-     * is not supported for fields specifying this strategy.
+     * No similarity function is provided. Note: {@link VectorReader#search(float[], int, int)} is
+     * not supported for fields specifying this.
      */
     NONE,
 
     /** HNSW graph built using Euclidean distance */
-    EUCLIDEAN_HNSW(true),
+    EUCLIDEAN(true),
 
     /** HNSW graph buit using dot product */
-    DOT_PRODUCT_HNSW;
+    DOT_PRODUCT;
 
     /**
-     * If true, the scores associated with vector comparisons in this strategy are in reverse order;
-     * that is, lower scores represent more similar vectors. Otherwise, if false, higher scores
-     * represent more similar vectors.
+     * If true, the scores associated with vector comparisons are in reverse order; that is, lower
+     * scores represent more similar vectors. Otherwise, if false, higher scores represent more
+     * similar vectors.
      */
     public final boolean reversed;
 
-    SearchStrategy(boolean reversed) {
+    SimilarityFunction(boolean reversed) {
       this.reversed = reversed;
     }
 
-    SearchStrategy() {
+    SimilarityFunction() {
       reversed = false;
     }
 
@@ -113,25 +114,25 @@ public abstract class VectorValues extends DocIdSetIterator {
      *
      * @param v1 a vector
      * @param v2 another vector, of the same dimension
-     * @return the value of the strategy's score function applied to the two vectors
+     * @return the value of the similarity function applied to the two vectors
      */
     public float compare(float[] v1, float[] v2) {
       switch (this) {
-        case EUCLIDEAN_HNSW:
+        case EUCLIDEAN:
           return squareDistance(v1, v2);
-        case DOT_PRODUCT_HNSW:
+        case DOT_PRODUCT:
           return dotProduct(v1, v2);
         case NONE:
         default:
-          throw new IllegalStateException("Incomparable search strategy: " + this);
+          throw new IllegalStateException("Incomparable similarity function: " + this);
       }
     }
 
-    /** Return true if vectors indexed using this strategy will be indexed using an HNSW graph */
+    /** Return true if vectors indexed using this similarity will be indexed using an HNSW graph */
     public boolean isHnsw() {
       switch (this) {
-        case EUCLIDEAN_HNSW:
-        case DOT_PRODUCT_HNSW:
+        case EUCLIDEAN:
+        case DOT_PRODUCT:
           return true;
         case NONE:
         default:
@@ -158,8 +159,8 @@ public abstract class VectorValues extends DocIdSetIterator {
         }
 
         @Override
-        public SearchStrategy searchStrategy() {
-          return SearchStrategy.NONE;
+        public SimilarityFunction similarityFunction() {
+          return SimilarityFunction.NONE;
         }
 
         @Override

@@ -99,11 +99,11 @@ public final class HnswGraph extends KnnGraphValues {
       KnnGraphValues graphValues,
       Random random)
       throws IOException {
-    VectorValues.SearchStrategy searchStrategy = vectors.searchStrategy();
+    VectorValues.SimilarityFunction similarityFunction = vectors.similarityFunction();
     int size = graphValues.size();
 
     // MIN heap, holding the top results
-    NeighborQueue results = new NeighborQueue(numSeed, searchStrategy.reversed);
+    NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
 
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
     SparseFixedBitSet visited = new SparseFixedBitSet(size);
@@ -114,17 +114,17 @@ public final class HnswGraph extends KnnGraphValues {
       if (visited.get(entryPoint) == false) {
         visited.set(entryPoint);
         // explore the topK starting points of some random numSeed probes
-        results.add(entryPoint, searchStrategy.compare(query, vectors.vectorValue(entryPoint)));
+        results.add(entryPoint, similarityFunction.compare(query, vectors.vectorValue(entryPoint)));
       }
     }
 
     // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = results.copy(!searchStrategy.reversed);
+    NeighborQueue candidates = results.copy(!similarityFunction.reversed);
 
     // Set the bound to the worst current result and below reject any newly-generated candidates
     // failing
     // to exceed this bound
-    BoundsChecker bound = BoundsChecker.create(searchStrategy.reversed);
+    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
     bound.set(results.topScore());
     while (candidates.size() > 0) {
       // get the best candidate (closest or best scoring)
@@ -143,7 +143,7 @@ public final class HnswGraph extends KnnGraphValues {
           continue;
         }
         visited.set(friendOrd);
-        float score = searchStrategy.compare(query, vectors.vectorValue(friendOrd));
+        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         if (results.insertWithOverflow(friendOrd, score)) {
           candidates.add(friendOrd, score);
           bound.set(results.topScore());

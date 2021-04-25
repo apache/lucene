@@ -68,18 +68,18 @@ public abstract class VectorWriter implements Closeable {
     }
     List<VectorValuesSub> subs = new ArrayList<>();
     int dimension = -1;
-    VectorValues.SearchStrategy searchStrategy = null;
+    VectorValues.SimilarityFunction similarityFunction = null;
     int nonEmptySegmentIndex = 0;
     for (int i = 0; i < mergeState.vectorReaders.length; i++) {
       VectorReader vectorReader = mergeState.vectorReaders[i];
       if (vectorReader != null) {
         if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
           int segmentDimension = mergeFieldInfo.getVectorDimension();
-          VectorValues.SearchStrategy segmentSearchStrategy =
-              mergeFieldInfo.getVectorSearchStrategy();
+          VectorValues.SimilarityFunction segmentSimilarityFunction =
+              mergeFieldInfo.getVectorSimilarityFunction();
           if (dimension == -1) {
             dimension = segmentDimension;
-            searchStrategy = mergeFieldInfo.getVectorSearchStrategy();
+            similarityFunction = mergeFieldInfo.getVectorSimilarityFunction();
           } else if (dimension != segmentDimension) {
             throw new IllegalStateException(
                 "Varying dimensions for vector-valued field "
@@ -88,14 +88,14 @@ public abstract class VectorWriter implements Closeable {
                     + dimension
                     + "!="
                     + segmentDimension);
-          } else if (searchStrategy != segmentSearchStrategy) {
+          } else if (similarityFunction != segmentSimilarityFunction) {
             throw new IllegalStateException(
-                "Varying search strategys for vector-valued field "
+                "Varying similarity functions for vector-valued field "
                     + mergeFieldInfo.name
                     + ": "
-                    + searchStrategy
+                    + similarityFunction
                     + "!="
-                    + segmentSearchStrategy);
+                    + segmentSimilarityFunction);
           }
           VectorValues values = vectorReader.getVectorValues(mergeFieldInfo.name);
           if (values != null) {
@@ -241,8 +241,8 @@ public abstract class VectorWriter implements Closeable {
     }
 
     @Override
-    public SearchStrategy searchStrategy() {
-      return subs.get(0).values.searchStrategy();
+    public SimilarityFunction similarityFunction() {
+      return subs.get(0).values.similarityFunction();
     }
 
     class MergerRandomAccess implements RandomAccessVectorValues {
@@ -272,8 +272,8 @@ public abstract class VectorWriter implements Closeable {
       }
 
       @Override
-      public SearchStrategy searchStrategy() {
-        return VectorValuesMerger.this.searchStrategy();
+      public SimilarityFunction similarityFunction() {
+        return VectorValuesMerger.this.similarityFunction();
       }
 
       @Override

@@ -30,13 +30,13 @@ class MockVectorValues extends VectorValues
   protected final int dimension;
   protected final float[][] denseValues;
   protected final float[][] values;
-  protected final SearchStrategy searchStrategy;
+  protected final SimilarityFunction similarityFunction;
   private final int numVectors;
 
   private int pos = -1;
 
-  MockVectorValues(SearchStrategy searchStrategy, float[][] values) {
-    this.searchStrategy = searchStrategy;
+  MockVectorValues(SimilarityFunction similarityFunction, float[][] values) {
+    this.similarityFunction = similarityFunction;
     this.dimension = values[0].length;
     this.values = values;
     int maxDoc = values.length;
@@ -52,7 +52,7 @@ class MockVectorValues extends VectorValues
   }
 
   public MockVectorValues copy() {
-    return new MockVectorValues(searchStrategy, values);
+    return new MockVectorValues(similarityFunction, values);
   }
 
   @Override
@@ -61,8 +61,8 @@ class MockVectorValues extends VectorValues
   }
 
   @Override
-  public SearchStrategy searchStrategy() {
-    return searchStrategy;
+  public SimilarityFunction similarityFunction() {
+    return similarityFunction;
   }
 
   @Override
