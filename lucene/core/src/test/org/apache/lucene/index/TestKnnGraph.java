@@ -27,7 +27,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene90.Lucene90VectorReader;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -171,8 +171,9 @@ public class TestKnnGraph extends LuceneTestCase {
         iw.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
-        Lucene90VectorReader vectorReader =
-            ((Lucene90VectorReader) ((CodecReader) getOnlyLeafReader(reader)).getVectorReader());
+        Lucene90HnswVectorReader vectorReader =
+            ((Lucene90HnswVectorReader)
+                ((CodecReader) getOnlyLeafReader(reader)).getVectorReader());
         graph = copyGraph(vectorReader.getGraphValues(KNN_GRAPH_FIELD));
       }
     }
@@ -309,8 +310,8 @@ public class TestKnnGraph extends LuceneTestCase {
       for (LeafReaderContext ctx : dr.leaves()) {
         LeafReader reader = ctx.reader();
         VectorValues vectorValues = reader.getVectorValues(KNN_GRAPH_FIELD);
-        Lucene90VectorReader vectorReader =
-            ((Lucene90VectorReader) ((CodecReader) reader).getVectorReader());
+        Lucene90HnswVectorReader vectorReader =
+            ((Lucene90HnswVectorReader) ((CodecReader) reader).getVectorReader());
         if (vectorReader == null) {
           continue;
         }

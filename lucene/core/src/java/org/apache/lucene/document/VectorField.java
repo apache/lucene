@@ -78,9 +78,8 @@ public class VectorField extends Field {
       throw new IllegalArgumentException(
           "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
     }
-    if (similarityFunction == null || !similarityFunction.isHnsw()) {
-      throw new IllegalArgumentException(
-          "similarity function must not be null, received: " + similarityFunction);
+    if (similarityFunction == null || similarityFunction == VectorValues.SimilarityFunction.NONE) {
+      throw new IllegalArgumentException("similarity function must not be: " + similarityFunction);
     }
     FieldType type = new FieldType();
     type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);

@@ -53,7 +53,7 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public final class Lucene90VectorReader extends VectorReader {
+public final class Lucene90HnswVectorReader extends VectorReader {
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
@@ -61,10 +61,10 @@ public final class Lucene90VectorReader extends VectorReader {
   private final IndexInput vectorIndex;
   private final long checksumSeed;
 
-  Lucene90VectorReader(SegmentReadState state) throws IOException {
+  Lucene90HnswVectorReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
 
-    int versionMeta = readMetadata(state, Lucene90VectorFormat.META_EXTENSION);
+    int versionMeta = readMetadata(state, Lucene90HnswVectorFormat.META_EXTENSION);
     long[] checksumRef = new long[1];
     boolean success = false;
     try {
@@ -72,15 +72,15 @@ public final class Lucene90VectorReader extends VectorReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene90VectorFormat.VECTOR_DATA_EXTENSION,
-              Lucene90VectorFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene90HnswVectorFormat.VECTOR_DATA_EXTENSION,
+              Lucene90HnswVectorFormat.VECTOR_DATA_CODEC_NAME,
               checksumRef);
       vectorIndex =
           openDataInput(
               state,
               versionMeta,
-              Lucene90VectorFormat.VECTOR_INDEX_EXTENSION,
-              Lucene90VectorFormat.VECTOR_INDEX_CODEC_NAME,
+              Lucene90HnswVectorFormat.VECTOR_INDEX_EXTENSION,
+              Lucene90HnswVectorFormat.VECTOR_INDEX_CODEC_NAME,
               checksumRef);
       success = true;
     } finally {
@@ -101,9 +101,9 @@ public final class Lucene90VectorReader extends VectorReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene90VectorFormat.META_CODEC_NAME,
-                Lucene90VectorFormat.VERSION_START,
-                Lucene90VectorFormat.VERSION_CURRENT,
+                Lucene90HnswVectorFormat.META_CODEC_NAME,
+                Lucene90HnswVectorFormat.VERSION_START,
+                Lucene90HnswVectorFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -130,8 +130,8 @@ public final class Lucene90VectorReader extends VectorReader {
         CodecUtil.checkIndexHeader(
             in,
             codecName,
-            Lucene90VectorFormat.VERSION_START,
-            Lucene90VectorFormat.VERSION_CURRENT,
+            Lucene90HnswVectorFormat.VERSION_START,
+            Lucene90HnswVectorFormat.VERSION_CURRENT,
             state.segmentInfo.getId(),
             state.segmentSuffix);
     if (versionMeta != versionVectorData) {
@@ -214,7 +214,7 @@ public final class Lucene90VectorReader extends VectorReader {
 
   @Override
   public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90VectorReader.class);
+    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90HnswVectorReader.class);
     totalBytes +=
         RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
@@ -255,7 +255,7 @@ public final class Lucene90VectorReader extends VectorReader {
         HnswGraph.search(target, k, k + fanout, vectorValues, getGraphValues(fieldEntry), random);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    boolean reversed = fieldEntry.searchStrategy.reversed;
+    boolean reversed = fieldEntry.similarityFunction.reversed;
     while (results.size() > 0) {
       int node = results.topNode();
       float score = results.topScore();
@@ -292,7 +292,7 @@ public final class Lucene90VectorReader extends VectorReader {
   }
 
   private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
-    if (entry.similarityFunction.isHnsw()) {
+    if (entry.similarityFunction != VectorValues.SimilarityFunction.NONE) {
       HnswGraphFieldEntry graphEntry = (HnswGraphFieldEntry) entry;
       IndexInput bytesSlice =
           vectorIndex.slice("graph-data", entry.indexDataOffset, entry.indexDataLength);

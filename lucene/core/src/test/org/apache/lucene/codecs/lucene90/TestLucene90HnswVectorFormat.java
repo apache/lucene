@@ -20,7 +20,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseVectorFormatTestCase;
 import org.apache.lucene.util.TestUtil;
 
-public class TestLucene90VectorFormat extends BaseVectorFormatTestCase {
+public class TestLucene90HnswVectorFormat extends BaseVectorFormatTestCase {
 
   @Override
   protected Codec getCodec() {

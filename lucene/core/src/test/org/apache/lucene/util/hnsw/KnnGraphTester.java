@@ -35,7 +35,7 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
-import org.apache.lucene.codecs.lucene90.Lucene90VectorReader;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
@@ -237,7 +237,7 @@ public class KnnGraphTester {
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leafReader = context.reader();
         KnnGraphValues knnValues =
-            ((Lucene90VectorReader) ((CodecReader) leafReader).getVectorReader())
+            ((Lucene90HnswVectorReader) ((CodecReader) leafReader).getVectorReader())
                 .getGraphValues(KNN_FIELD);
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());

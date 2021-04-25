@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.index;
 
 import static org.apache.lucene.util.VectorUtil.dotProduct;
@@ -83,8 +82,8 @@ public abstract class VectorValues extends DocIdSetIterator {
   public enum SimilarityFunction {
 
     /**
-     * No similarity function is provided. Note: {@link VectorReader#search(float[], int, int)} is
-     * not supported for fields specifying this.
+     * No similarity function is provided. Note: {@link VectorReader#search(String, float[], int,
+     * int)} is not supported for fields specifying this.
      */
     NONE,
 
@@ -125,18 +124,6 @@ public abstract class VectorValues extends DocIdSetIterator {
         case NONE:
         default:
           throw new IllegalStateException("Incomparable similarity function: " + this);
-      }
-    }
-
-    /** Return true if vectors indexed using this similarity will be indexed using an HNSW graph */
-    public boolean isHnsw() {
-      switch (this) {
-        case EUCLIDEAN:
-        case DOT_PRODUCT:
-          return true;
-        case NONE:
-        default:
-          return false;
       }
     }
   }
