@@ -40,32 +40,32 @@ import org.apache.lucene.util.hnsw.NeighborArray;
  *
  * @lucene.experimental
  */
-public final class Lucene90VectorWriter extends VectorWriter {
+public final class Lucene90HnswVectorWriter extends VectorWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
 
   private boolean finished;
 
-  Lucene90VectorWriter(SegmentWriteState state) throws IOException {
+  Lucene90HnswVectorWriter(SegmentWriteState state) throws IOException {
     assert state.fieldInfos.hasVectorValues();
     segmentWriteState = state;
 
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene90VectorFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90VectorFormat.VECTOR_DATA_EXTENSION);
+            Lucene90HnswVectorFormat.VECTOR_DATA_EXTENSION);
 
     String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90VectorFormat.VECTOR_INDEX_EXTENSION);
+            Lucene90HnswVectorFormat.VECTOR_INDEX_EXTENSION);
 
     boolean success = false;
     try {
@@ -75,20 +75,20 @@ public final class Lucene90VectorWriter extends VectorWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene90VectorFormat.META_CODEC_NAME,
-          Lucene90VectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorFormat.META_CODEC_NAME,
+          Lucene90HnswVectorFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene90VectorFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene90VectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene90HnswVectorFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
-          Lucene90VectorFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene90VectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorFormat.VECTOR_INDEX_CODEC_NAME,
+          Lucene90HnswVectorFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;
@@ -121,7 +121,7 @@ public final class Lucene90VectorWriter extends VectorWriter {
     long[] offsets = new long[count];
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    if (vectors.similarityFunction().isHnsw()) {
+    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
       if (vectors instanceof RandomAccessVectorValuesProducer) {
         writeGraph(
             vectorIndex,
@@ -146,7 +146,7 @@ public final class Lucene90VectorWriter extends VectorWriter {
           vectorIndexLength,
           count,
           docIds);
-      if (vectors.similarityFunction().isHnsw()) {
+      if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
         writeGraphOffsets(meta, offsets);
       }
     }

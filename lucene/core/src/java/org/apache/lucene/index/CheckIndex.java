@@ -39,7 +39,7 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.lucene90.Lucene90VectorReader;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
@@ -2339,9 +2339,9 @@ public final class CheckIndex implements Closeable {
                       + " docs with values");
             }
             VectorReader vectorReader = reader.getVectorReader();
-            if (vectorReader instanceof Lucene90VectorReader) {
+            if (vectorReader instanceof Lucene90HnswVectorReader) {
               KnnGraphValues graphValues =
-                  ((Lucene90VectorReader) vectorReader).getGraphValues(fieldInfo.name);
+                  ((Lucene90HnswVectorReader) vectorReader).getGraphValues(fieldInfo.name);
               int size = graphValues.size();
               for (int i = 0; i < size; i++) {
                 graphValues.seek(i);

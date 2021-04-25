@@ -141,18 +141,6 @@ public abstract class VectorValues extends DocIdSetIterator {
           throw new IllegalStateException("Incomparable similarity function: " + this);
       }
     }
-
-    /** Return true if vectors indexed using this similarity will be indexed using an HNSW graph */
-    public boolean isHnsw() {
-      switch (this) {
-        case EUCLIDEAN:
-        case DOT_PRODUCT:
-          return true;
-        case NONE:
-        default:
-          return false;
-      }
-    }
   }
 
   /**
