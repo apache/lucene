@@ -21,8 +21,8 @@ import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -76,28 +76,14 @@ public abstract class VectorValues extends DocIdSetIterator {
   }
 
   /**
-   * Return the k nearest neighbor documents as determined by comparison of their vector values for
-   * this field, to the given vector, by the field's search strategy. If the search strategy is
-   * reversed, lower values indicate nearer vectors, otherwise higher scores indicate nearer
-   * vectors. Unlike relevance scores, vector scores may be negative.
-   *
-   * @param target the vector-valued query
-   * @param k the number of docs to return
-   * @param fanout control the accuracy/speed tradeoff - larger values give better recall at higher
-   *     cost
-   * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
-   */
-  public abstract TopDocs search(float[] target, int k, int fanout) throws IOException;
-
-  /**
    * Search strategy. This is a label describing the method used during indexing and searching of
    * the vectors in order to determine the nearest neighbors.
    */
   public enum SearchStrategy {
 
     /**
-     * No search strategy is provided. Note: {@link VectorValues#search(float[], int, int)} is not
-     * supported for fields specifying this strategy.
+     * No search strategy is provided. Note: {@link VectorReader#search(String, float[], int, int)}
+     * is not supported for fields specifying this strategy.
      */
     NONE,
 
@@ -180,11 +166,6 @@ public abstract class VectorValues extends DocIdSetIterator {
         public float[] vectorValue() {
           throw new IllegalStateException(
               "Attempt to get vectors from EMPTY values (which was not advanced)");
-        }
-
-        @Override
-        public TopDocs search(float[] target, int k, int fanout) {
-          throw new UnsupportedOperationException();
         }
 
         @Override

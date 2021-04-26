@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -207,8 +208,27 @@ public abstract class LeafReader extends IndexReader {
   /**
    * Returns {@link VectorValues} for this field, or null if no {@link VectorValues} were indexed.
    * The returned instance should only be used by a single thread.
+   *
+   * @lucene.experimental
    */
   public abstract VectorValues getVectorValues(String field) throws IOException;
+
+  /**
+   * Return the k nearest neighbor documents as determined by comparison of their vector values for
+   * this field, to the given vector, by the field's search strategy. If the search strategy is
+   * reversed, lower values indicate nearer vectors, otherwise higher scores indicate nearer
+   * vectors. Unlike relevance scores, vector scores may be negative.
+   *
+   * @param field the vector field to search
+   * @param target the vector-valued query
+   * @param k the number of docs to return
+   * @param fanout control the accuracy/speed tradeoff - larger values give better recall at higher
+   *     cost
+   * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
+   * @lucene.experimental
+   */
+  public abstract TopDocs searchNearestVectors(String field, float[] target, int k, int fanout)
+      throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

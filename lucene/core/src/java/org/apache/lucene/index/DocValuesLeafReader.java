@@ -18,6 +18,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
 abstract class DocValuesLeafReader extends LeafReader {
@@ -48,6 +49,12 @@ abstract class DocValuesLeafReader extends LeafReader {
 
   @Override
   public final VectorValues getVectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 

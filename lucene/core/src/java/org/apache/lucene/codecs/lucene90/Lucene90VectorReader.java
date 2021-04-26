@@ -154,7 +154,36 @@ public final class Lucene90VectorReader extends VectorReader {
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      fields.put(info.name, readField(meta));
+
+      FieldEntry fieldEntry = readField(meta);
+      validateFieldEntry(info, fieldEntry);
+      fields.put(info.name, fieldEntry);
+    }
+  }
+
+  private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
+    int dimension = info.getVectorDimension();
+    if (dimension != fieldEntry.dimension) {
+      throw new IllegalStateException(
+          "Inconsistent vector dimension for field=\""
+              + info.name
+              + "\"; "
+              + dimension
+              + " != "
+              + fieldEntry.dimension);
+    }
+
+    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
+    if (numBytes != fieldEntry.vectorDataLength) {
+      throw new IllegalStateException(
+          "Vector data length "
+              + fieldEntry.vectorDataLength
+              + " not matching size="
+              + fieldEntry.size()
+              + " * dim="
+              + dimension
+              + " * 4 = "
+              + numBytes);
     }
   }
 
@@ -199,40 +228,47 @@ public final class Lucene90VectorReader extends VectorReader {
 
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      return null;
-    }
-    int dimension = info.getVectorDimension();
-    if (dimension == 0) {
-      return VectorValues.EMPTY;
-    }
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
-      // There is a FieldInfo, but no vectors. Should we have deleted the FieldInfo?
+    if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
     }
-    if (dimension != fieldEntry.dimension) {
-      throw new IllegalStateException(
-          "Inconsistent vector dimension for field=\""
-              + field
-              + "\"; "
-              + dimension
-              + " != "
-              + fieldEntry.dimension);
+
+    return getOffHeapVectorValues(fieldEntry);
+  }
+
+  @Override
+  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+    FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null || fieldEntry.dimension == 0) {
+      return null;
     }
-    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
-    if (numBytes != fieldEntry.vectorDataLength) {
-      throw new IllegalStateException(
-          "Vector data length "
-              + fieldEntry.vectorDataLength
-              + " not matching size="
-              + fieldEntry.size()
-              + " * dim="
-              + dimension
-              + " * 4 = "
-              + numBytes);
+
+    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+
+    // use a seed that is fixed for the index so we get reproducible results for the same query
+    final Random random = new Random(checksumSeed);
+    NeighborQueue results =
+        HnswGraph.search(target, k, k + fanout, vectorValues, getGraphValues(fieldEntry), random);
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
+    boolean reversed = fieldEntry.searchStrategy.reversed;
+    while (results.size() > 0) {
+      int node = results.topNode();
+      float score = results.topScore();
+      results.pop();
+      if (reversed) {
+        score = (float) Math.exp(-score / target.length);
+      }
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
     }
+    // always return >= the case where we can assert == is only when there are fewer than topK
+    // vectors in the index
+    return new TopDocs(
+        new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
+        scoreDocs);
+  }
+
+  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     return new OffHeapVectorValues(fieldEntry, bytesSlice);
@@ -406,32 +442,6 @@ public final class Lucene90VectorReader extends VectorReader {
     @Override
     public RandomAccessVectorValues randomAccess() {
       return new OffHeapVectorValues(fieldEntry, dataIn.clone());
-    }
-
-    @Override
-    public TopDocs search(float[] vector, int topK, int fanout) throws IOException {
-      // use a seed that is fixed for the index so we get reproducible results for the same query
-      final Random random = new Random(checksumSeed);
-      NeighborQueue results =
-          HnswGraph.search(
-              vector, topK, topK + fanout, randomAccess(), getGraphValues(fieldEntry), random);
-      int i = 0;
-      ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), topK)];
-      boolean reversed = searchStrategy().reversed;
-      while (results.size() > 0) {
-        int node = results.topNode();
-        float score = results.topScore();
-        results.pop();
-        if (reversed) {
-          score = (float) Math.exp(-score / vector.length);
-        }
-        scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
-      }
-      // always return >= the case where we can assert == is only when there are fewer than topK
-      // vectors in the index
-      return new TopDocs(
-          new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
-          scoreDocs);
     }
 
     @Override

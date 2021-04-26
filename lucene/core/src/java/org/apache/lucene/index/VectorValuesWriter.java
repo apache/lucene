@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.VectorWriter;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
@@ -197,11 +196,6 @@ class VectorValuesWriter {
     }
 
     @Override
-    public TopDocs search(float[] target, int k, int fanout) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public long cost() {
       return size();
     }
@@ -341,11 +335,6 @@ class VectorValuesWriter {
     @Override
     public long cost() {
       return docsWithFieldIter.cost();
-    }
-
-    @Override
-    public TopDocs search(float[] target, int k, int fanout) throws IOException {
-      throw new UnsupportedOperationException();
     }
   }
 }

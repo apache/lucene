@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -200,6 +201,12 @@ class MergeReaderWrapper extends LeafReader {
   @Override
   public VectorValues getVectorValues(String fieldName) throws IOException {
     return in.getVectorValues(fieldName);
+  }
+
+  @Override
+  public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout)
+      throws IOException {
+    return in.searchNearestVectors(field, target, k, fanout);
   }
 
   @Override
