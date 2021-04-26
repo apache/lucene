@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.backward_codecs.store.DirectoryUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -64,16 +65,16 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
             LegacyDirectMonotonicWriter.MAX_BLOCK_SHIFT);
 
     final long dataLength;
-    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = DirectoryUtil.createOutput(dir, "meta", IOContext.DEFAULT);
+        IndexOutput dataOut = DirectoryUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicWriter w =
           LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, 0, blockShift);
       w.finish();
       dataLength = dataOut.getFilePointer();
     }
 
-    try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+    try (IndexInput metaIn = DirectoryUtil.openInput(dir, "meta", IOContext.READONCE);
+        IndexInput dataIn = DirectoryUtil.openInput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, 0, blockShift);
       LegacyDirectMonotonicReader.getInstance(meta, dataIn.randomAccessSlice(0, dataLength));
@@ -91,8 +92,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     final int numValues = actualValues.size();
 
     final long dataLength;
-    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = DirectoryUtil.createOutput(dir, "meta", IOContext.DEFAULT);
+        IndexOutput dataOut = DirectoryUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicWriter w =
           LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
       for (long v : actualValues) {
@@ -102,8 +103,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
       dataLength = dataOut.getFilePointer();
     }
 
-    try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+    try (IndexInput metaIn = DirectoryUtil.openInput(dir, "meta", IOContext.READONCE);
+        IndexInput dataIn = DirectoryUtil.openInput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
       LongValues values =
@@ -134,8 +135,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     }
 
     final long dataLength;
-    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = DirectoryUtil.createOutput(dir, "meta", IOContext.DEFAULT);
+        IndexOutput dataOut = DirectoryUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicWriter w =
           LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
       for (long v : actualValues) {
@@ -145,8 +146,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
       dataLength = dataOut.getFilePointer();
     }
 
-    try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+    try (IndexInput metaIn = DirectoryUtil.openInput(dir, "meta", IOContext.READONCE);
+        IndexInput dataIn = DirectoryUtil.openInput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
       LongValues values =
@@ -191,8 +192,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
       }
 
       final long dataLength;
-      try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-          IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+      try (IndexOutput metaOut = DirectoryUtil.createOutput(dir, "meta", IOContext.DEFAULT);
+          IndexOutput dataOut = DirectoryUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
         LegacyDirectMonotonicWriter w =
             LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
         for (long v : actualValues) {
@@ -202,8 +203,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
         dataLength = dataOut.getFilePointer();
       }
 
-      try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-          IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+      try (IndexInput metaIn = DirectoryUtil.openInput(dir, "meta", IOContext.READONCE);
+          IndexInput dataIn = DirectoryUtil.openInput(dir, "data", IOContext.DEFAULT)) {
         LegacyDirectMonotonicReader.Meta meta =
             LegacyDirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
         LongValues values =
@@ -243,8 +244,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
 
   private void doTestMonotonicBinarySearchAgainstLongArray(
       Directory dir, long[] array, int blockShift) throws IOException {
-    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = DirectoryUtil.createOutput(dir, "meta", IOContext.DEFAULT);
+        IndexOutput dataOut = DirectoryUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicWriter writer =
           LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, array.length, blockShift);
       for (long l : array) {
@@ -253,8 +254,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
       writer.finish();
     }
 
-    try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-        IndexInput dataIn = dir.openInput("data", IOContext.READ)) {
+    try (IndexInput metaIn = DirectoryUtil.openInput(dir, "meta", IOContext.READONCE);
+        IndexInput dataIn = DirectoryUtil.openInput(dir, "data", IOContext.READ)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, array.length, blockShift);
       LegacyDirectMonotonicReader reader =

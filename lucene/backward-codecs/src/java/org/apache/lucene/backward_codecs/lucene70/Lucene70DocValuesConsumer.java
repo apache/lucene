@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicWriter;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectWriter;
+import org.apache.lucene.backward_codecs.store.DirectoryUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -71,7 +72,7 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
       String dataName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, dataExtension);
-      data = state.directory.createOutput(dataName, state.context);
+      data = DirectoryUtil.createOutput(state.directory, dataName, state.context);
       CodecUtil.writeIndexHeader(
           data,
           dataCodec,
@@ -81,7 +82,7 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
       String metaName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, metaExtension);
-      meta = state.directory.createOutput(metaName, state.context);
+      meta = DirectoryUtil.createOutput(state.directory, metaName, state.context);
       CodecUtil.writeIndexHeader(
           meta,
           metaCodec,

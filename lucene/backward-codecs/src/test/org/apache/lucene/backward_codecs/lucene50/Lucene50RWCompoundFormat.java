@@ -17,6 +17,7 @@
 package org.apache.lucene.backward_codecs.lucene50;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.store.DirectoryUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.codecs.CompoundFormat;
@@ -89,8 +90,8 @@ public final class Lucene50RWCompoundFormat extends CompoundFormat {
     String dataFile = IndexFileNames.segmentFileName(si.name, "", DATA_EXTENSION);
     String entriesFile = IndexFileNames.segmentFileName(si.name, "", ENTRIES_EXTENSION);
 
-    try (IndexOutput data = dir.createOutput(dataFile, context);
-        IndexOutput entries = dir.createOutput(entriesFile, context)) {
+    try (IndexOutput data = DirectoryUtil.createOutput(dir, dataFile, context);
+        IndexOutput entries = DirectoryUtil.createOutput(dir, entriesFile, context)) {
       CodecUtil.writeIndexHeader(data, DATA_CODEC, VERSION_CURRENT, si.getId(), "");
       CodecUtil.writeIndexHeader(entries, ENTRY_CODEC, VERSION_CURRENT, si.getId(), "");
 
@@ -108,7 +109,7 @@ public final class Lucene50RWCompoundFormat extends CompoundFormat {
     for (String file : si.files()) {
       // write bytes for file
       long startOffset = data.getFilePointer();
-      try (ChecksumIndexInput in = dir.openChecksumInput(file, IOContext.READONCE)) {
+      try (ChecksumIndexInput in = DirectoryUtil.openChecksumInput(dir, file, IOContext.READONCE)) {
 
         // just copies the index header, verifying that its id matches what we expect
         CodecUtil.verifyAndCopyIndexHeader(in, data, si.getId());

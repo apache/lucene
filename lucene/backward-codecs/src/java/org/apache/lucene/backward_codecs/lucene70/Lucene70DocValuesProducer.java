@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicReader;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectReader;
+import org.apache.lucene.backward_codecs.store.DirectoryUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
@@ -71,7 +72,8 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
     int version = -1;
 
     // read in the entries from the metadata file.
-    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName, state.context)) {
+    try (ChecksumIndexInput in =
+        DirectoryUtil.openChecksumInput(state.directory, metaName, state.context)) {
       Throwable priorE = null;
       try {
         version =
@@ -92,7 +94,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
 
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
-    this.data = state.directory.openInput(dataName, state.context);
+    this.data = DirectoryUtil.openInput(state.directory, dataName, state.context);
     boolean success = false;
     try {
       final int version2 =

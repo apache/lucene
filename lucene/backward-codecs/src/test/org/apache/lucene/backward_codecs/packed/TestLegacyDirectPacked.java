@@ -17,6 +17,7 @@
 package org.apache.lucene.backward_codecs.packed;
 
 import java.util.Random;
+import org.apache.lucene.backward_codecs.store.DirectoryUtil;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -32,7 +33,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
   public void testSimple() throws Exception {
     Directory dir = newDirectory();
     int bitsPerValue = LegacyDirectWriter.bitsRequired(2);
-    IndexOutput output = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput output = DirectoryUtil.createOutput(dir, "foo", IOContext.DEFAULT);
     LegacyDirectWriter writer = LegacyDirectWriter.getInstance(output, 5, bitsPerValue);
     writer.add(1);
     writer.add(0);
@@ -41,7 +42,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
     writer.add(2);
     writer.finish();
     output.close();
-    IndexInput input = dir.openInput("foo", IOContext.DEFAULT);
+    IndexInput input = DirectoryUtil.openInput(dir, "foo", IOContext.DEFAULT);
     LongValues reader =
         LegacyDirectReader.getInstance(input.randomAccessSlice(0, input.length()), bitsPerValue, 0);
     assertEquals(1, reader.get(0));
@@ -57,7 +58,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
   public void testNotEnoughValues() throws Exception {
     Directory dir = newDirectory();
     int bitsPerValue = LegacyDirectWriter.bitsRequired(2);
-    IndexOutput output = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput output = DirectoryUtil.createOutput(dir, "foo", IOContext.DEFAULT);
     LegacyDirectWriter writer = LegacyDirectWriter.getInstance(output, 5, bitsPerValue);
     writer.add(1);
     writer.add(0);
@@ -99,7 +100,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
       long original[] = randomLongs(random, bpv);
       int bitsRequired = bpv == 64 ? 64 : LegacyDirectWriter.bitsRequired(1L << (bpv - 1));
       String name = "bpv" + bpv + "_" + i;
-      IndexOutput output = directory.createOutput(name, IOContext.DEFAULT);
+      IndexOutput output = DirectoryUtil.createOutput(directory, name, IOContext.DEFAULT);
       for (long j = 0; j < offset; ++j) {
         output.writeByte((byte) random.nextInt());
       }
@@ -110,7 +111,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
       }
       writer.finish();
       output.close();
-      IndexInput input = directory.openInput(name, IOContext.DEFAULT);
+      IndexInput input = DirectoryUtil.openInput(directory, name, IOContext.DEFAULT);
       LongValues reader =
           LegacyDirectReader.getInstance(
               input.randomAccessSlice(0, input.length()), bitsRequired, offset);
