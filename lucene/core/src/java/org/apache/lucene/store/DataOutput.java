@@ -70,10 +70,10 @@ public abstract class DataOutput {
    * @see DataInput#readInt()
    */
   public void writeInt(int i) throws IOException {
-    writeByte((byte) (i >> 24));
-    writeByte((byte) (i >> 16));
-    writeByte((byte) (i >> 8));
     writeByte((byte) i);
+    writeByte((byte) (i >> 8));
+    writeByte((byte) (i >> 16));
+    writeByte((byte) (i >> 24));
   }
 
   /**
@@ -82,8 +82,8 @@ public abstract class DataOutput {
    * @see DataInput#readShort()
    */
   public void writeShort(short i) throws IOException {
-    writeByte((byte) (i >> 8));
     writeByte((byte) i);
+    writeByte((byte) (i >> 8));
   }
 
   /**
@@ -188,6 +188,8 @@ public abstract class DataOutput {
    *
    * <p>This provides compression while still being efficient to decode.
    *
+   * <p>This provides compression while still being efficient to decode.
+   *
    * @param i Smaller values take fewer bytes. Negative numbers are supported, but should be
    *     avoided.
    * @throws IOException If there is an I/O error writing to the underlying medium.
@@ -220,8 +222,8 @@ public abstract class DataOutput {
    * @see DataInput#readLong()
    */
   public void writeLong(long i) throws IOException {
-    writeInt((int) (i >> 32));
     writeInt((int) i);
+    writeInt((int) (i >> 32));
   }
 
   /**

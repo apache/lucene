@@ -426,15 +426,15 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
         new MMapDirectory(createTempDir("testLittleEndianLongsCrossBoundary"), 16)) {
       try (IndexOutput out = dir.createOutput("littleEndianLongs", newIOContext(random()))) {
         out.writeByte((byte) 2);
-        out.writeLong(Long.reverseBytes(3L));
-        out.writeLong(Long.reverseBytes(Long.MAX_VALUE));
-        out.writeLong(Long.reverseBytes(-3L));
+        out.writeLong(3L);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(-3L);
       }
       try (IndexInput input = dir.openInput("littleEndianLongs", newIOContext(random()))) {
         assertEquals(25, input.length());
         assertEquals(2, input.readByte());
         long[] l = new long[4];
-        input.readLELongs(l, 1, 3);
+        input.readLongs(l, 1, 3);
         assertArrayEquals(new long[] {0L, 3L, Long.MAX_VALUE, -3L}, l);
         assertEquals(25, input.getFilePointer());
       }
@@ -445,15 +445,15 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
     try (Directory dir = new MMapDirectory(createTempDir("testFloatsCrossBoundary"), 8)) {
       try (IndexOutput out = dir.createOutput("Floats", newIOContext(random()))) {
         out.writeByte((byte) 2);
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(3f)));
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(Float.MAX_VALUE)));
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(-3f)));
+        out.writeInt(Float.floatToIntBits(3f));
+        out.writeInt(Float.floatToIntBits(Float.MAX_VALUE));
+        out.writeInt(Float.floatToIntBits(-3f));
       }
       try (IndexInput input = dir.openInput("Floats", newIOContext(random()))) {
         assertEquals(13, input.length());
         assertEquals(2, input.readByte());
         float[] ff = new float[4];
-        input.readLEFloats(ff, 1, 3);
+        input.readFloats(ff, 1, 3);
         assertArrayEquals(new float[] {0, 3f, Float.MAX_VALUE, -3f}, ff, 0);
         assertEquals(13, input.getFilePointer());
       }

@@ -72,7 +72,7 @@ class StoredFieldsInts {
                 | ((long) values[step + 80 + i] << 16)
                 | ((long) values[step + 96 + i] << 8)
                 | (long) values[step + 112 + i];
-        out.writeLong(Long.reverseBytes(l));
+        out.writeLong(l);
       }
     }
     for (; k < count; k++) {
@@ -91,7 +91,7 @@ class StoredFieldsInts {
                 | ((long) values[step + 32 + i] << 32)
                 | ((long) values[step + 64 + i] << 16)
                 | (long) values[step + 96 + i];
-        out.writeLong(Long.reverseBytes(l));
+        out.writeLong(l);
       }
     }
     for (; k < count; k++) {
@@ -106,7 +106,7 @@ class StoredFieldsInts {
       int step = offset + k;
       for (int i = 0; i < 64; ++i) {
         long l = ((long) values[step + i] << 32) | (long) values[step + 64 + i];
-        out.writeLong(Long.reverseBytes(l));
+        out.writeLong(l);
       }
     }
     for (; k < count; k++) {
@@ -140,7 +140,7 @@ class StoredFieldsInts {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       final int step = offset + k;
-      in.readLELongs(values, step, 16);
+      in.readLongs(values, step, 16);
       for (int i = 0; i < 16; ++i) {
         final long l = values[step + i];
         values[step + i] = (l >>> 56) & 0xFFL;
@@ -163,7 +163,7 @@ class StoredFieldsInts {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       int step = offset + k;
-      in.readLELongs(values, step, 32);
+      in.readLongs(values, step, 32);
       for (int i = 0; i < 32; ++i) {
         final long l = values[step + i];
         values[step + i] = (l >>> 48) & 0xFFFFL;
@@ -182,7 +182,7 @@ class StoredFieldsInts {
     int k = 0;
     for (; k < count - BLOCK_SIZE_MINUS_ONE; k += BLOCK_SIZE) {
       final int step = offset + k;
-      in.readLELongs(values, step, 64);
+      in.readLongs(values, step, 64);
       for (int i = 0; i < 64; ++i) {
         final long l = values[step + i];
         values[step + i] = l >>> 32;
