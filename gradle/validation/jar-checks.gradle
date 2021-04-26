@@ -125,7 +125,6 @@ subprojects {
                   jarName        : file.toPath().getFileName().toString(),
                   path           : file,
                   module         : resolvedArtifact.moduleVersion,
-                  checksum       : provider { new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() },
                   // We keep track of the files referenced by this dependency (sha, license, notice, etc.)
                   // so that we can determine unused dangling files later on.
                   referencedFiles: []
@@ -137,41 +136,6 @@ subprojects {
 
       project.ext.jarInfos = infos.sort {a, b -> "${a.module}".compareTo("${b.module}")}
       // jarInfos.each { info -> println "${info.module}" }
-    }
-  }
-
-  // Verifies that each JAR has a corresponding checksum and that it matches actual JAR available for this dependency.
-  task validateJarChecksums() {
-    group = 'Dependency validation'
-    description = "Validate checksums of dependencies"
-    dependsOn collectJarInfos
-
-    doLast {
-      def errors = []
-      jarInfos.each { dep ->
-        def expectedChecksumFile = file("${licensesDir}/${dep.jarName}.sha1")
-        if (!expectedChecksumFile.exists()) {
-          errors << "Dependency checksum missing ('${dep.module}'), expected it at: ${expectedChecksumFile}"
-        } else {
-          dep.referencedFiles += expectedChecksumFile
-          def expected = expectedChecksumFile.getText("UTF-8").trim()
-          def actual = dep.checksum.get()
-          if (expected.compareToIgnoreCase(actual) != 0) {
-            errors << "Dependency checksum mismatch ('${dep.module}'), expected it to be: ${expected}, but was: ${actual}"
-          } else {
-            logger.log(LogLevel.INFO, "Dependency checksum OK ('${dep.module}')")
-          }
-        }
-      }
-
-      if (errors) {
-        def msg = "Dependency checksum validation failed:\n  - " + errors.join("\n  - ")
-        if (failOnError) {
-          throw new GradleException(msg)
-        } else {
-          logger.log(LogLevel.WARN, "WARNING: ${msg}")
-        }
-      }
     }
   }
 
@@ -242,7 +206,7 @@ subprojects {
     }
   }
 
-  licenses.dependsOn validateJarChecksums, validateJarLicenses
+  licenses.dependsOn validateJarLicenses
 }
 
 // Add top-project level tasks validating dangling files
@@ -250,54 +214,6 @@ subprojects {
 
 configure(project(":lucene")) {
   def validationTasks = subprojects.collectMany { it.tasks.matching { it.name == "licenses" } }
-  def jarInfoTasks = subprojects.collectMany { it.tasks.matching { it.name == "collectJarInfos" } }
-
-  // Update dependency checksums.
-  task updateLicenses() {
-    group = 'Dependency validation'
-    description = "Write or update checksums of dependencies. May need to run gradlew --write-locks first if changing dependency versions"
-    dependsOn jarInfoTasks
-
-    doLast {
-      licensesDir.mkdirs()
-
-      // Clean any previous checksums. In theory we wouldn't have to do it --
-      // dangling files from any previous JARs would be reported;
-      // it automates the process of updating versions and makes it easier though so
-      // why not.
-      project.delete fileTree(licensesDir, {
-        include "*.sha1"
-        exclude checkDanglingLicenseFiles.ext.exclude
-      })
-
-      def updated = []
-      jarInfoTasks.collectMany { task -> task.project.jarInfos }.each { dep ->
-        def expectedChecksumFile = file("${licensesDir}/${dep.jarName}.sha1")
-        def actual = dep.checksum.get()
-        if (expectedChecksumFile.exists()) {
-          def expected = expectedChecksumFile.getText("UTF-8").trim()
-          if (expected.compareToIgnoreCase(actual) == 0) {
-            return;
-          }
-        }
-
-        updated += "Updated checksum ('${dep.module}'): ${expectedChecksumFile}"
-        expectedChecksumFile.write(actual + "\n", "UTF-8")
-      }
-
-      updated.sort().each { line -> logger.log(LogLevel.LIFECYCLE, line) }
-    }
-  }
-
-  // Any validation task must run after all updates have been applied.
-  // We add an ordering constraint that any validation task (or its dependency subgraph)
-  // must run after updateLicenses
-  validationTasks
-      .collectMany { task -> [task, task.dependsOn]}
-      .flatten()
-      .each { task ->
-        task.mustRunAfter updateLicenses
-      }
 
   // Check for dangling files in the licenses folder.
   task checkDanglingLicenseFiles() {
