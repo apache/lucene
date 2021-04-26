@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicWriter;
+import org.apache.lucene.backward_codecs.packed.LegacyDirectWriter;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -49,8 +51,6 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.packed.DirectMonotonicWriter;
-import org.apache.lucene.util.packed.DirectWriter;
 
 /** writer for {@link Lucene70DocValuesFormat} */
 final class Lucene70DocValuesConsumer extends DocValuesConsumer {
@@ -159,7 +159,7 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
     /** Update the required space. */
     void finish() {
       if (max > min) {
-        spaceInBits += DirectWriter.unsignedBitsRequired(max - min) * numValues;
+        spaceInBits += LegacyDirectWriter.unsignedBitsRequired(max - min) * numValues;
       }
     }
 
@@ -238,9 +238,9 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
     } else {
       if (uniqueValues != null
           && uniqueValues.size() > 1
-          && DirectWriter.unsignedBitsRequired(uniqueValues.size() - 1)
-              < DirectWriter.unsignedBitsRequired((max - min) / gcd)) {
-        numBitsPerValue = DirectWriter.unsignedBitsRequired(uniqueValues.size() - 1);
+          && LegacyDirectWriter.unsignedBitsRequired(uniqueValues.size() - 1)
+              < LegacyDirectWriter.unsignedBitsRequired((max - min) / gcd)) {
+        numBitsPerValue = LegacyDirectWriter.unsignedBitsRequired(uniqueValues.size() - 1);
         final Long[] sortedUniqueValues = uniqueValues.toArray(new Long[0]);
         Arrays.sort(sortedUniqueValues);
         meta.writeInt(sortedUniqueValues.length);
@@ -262,11 +262,11 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
           numBitsPerValue = 0xFF;
           meta.writeInt(-2 - NUMERIC_BLOCK_SHIFT);
         } else {
-          numBitsPerValue = DirectWriter.unsignedBitsRequired((max - min) / gcd);
+          numBitsPerValue = LegacyDirectWriter.unsignedBitsRequired((max - min) / gcd);
           if (gcd == 1
               && min > 0
-              && DirectWriter.unsignedBitsRequired(max)
-                  == DirectWriter.unsignedBitsRequired(max - min)) {
+              && LegacyDirectWriter.unsignedBitsRequired(max)
+                  == LegacyDirectWriter.unsignedBitsRequired(max - min)) {
             min = 0;
           }
           meta.writeInt(-1);
@@ -298,7 +298,7 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
       long gcd,
       Map<Long, Integer> encode)
       throws IOException {
-    DirectWriter writer = DirectWriter.getInstance(data, numValues, numBitsPerValue);
+    LegacyDirectWriter writer = LegacyDirectWriter.getInstance(data, numValues, numBitsPerValue);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       for (int i = 0, count = values.docValueCount(); i < count; ++i) {
         long v = values.nextValue();
@@ -346,10 +346,10 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
       data.writeByte((byte) 0);
       data.writeLong(min);
     } else {
-      final int bitsPerValue = DirectWriter.unsignedBitsRequired(max - min);
+      final int bitsPerValue = LegacyDirectWriter.unsignedBitsRequired(max - min);
       buffer.reset();
       assert buffer.size() == 0;
-      final DirectWriter w = DirectWriter.getInstance(buffer, length, bitsPerValue);
+      final LegacyDirectWriter w = LegacyDirectWriter.getInstance(buffer, length, bitsPerValue);
       for (int i = 0; i < length; ++i) {
         w.add((values[i] - min) / gcd);
       }
@@ -405,8 +405,8 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
       meta.writeLong(start);
       meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
 
-      final DirectMonotonicWriter writer =
-          DirectMonotonicWriter.getInstance(
+      final LegacyDirectMonotonicWriter writer =
+          LegacyDirectMonotonicWriter.getInstance(
               meta, data, numDocsWithField + 1, DIRECT_MONOTONIC_BLOCK_SHIFT);
       long addr = 0;
       writer.add(addr);
@@ -457,11 +457,12 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
       meta.writeLong(0L);
       meta.writeLong(0L);
     } else {
-      int numberOfBitsPerOrd = DirectWriter.unsignedBitsRequired(values.getValueCount() - 1);
+      int numberOfBitsPerOrd = LegacyDirectWriter.unsignedBitsRequired(values.getValueCount() - 1);
       meta.writeByte((byte) numberOfBitsPerOrd);
       long start = data.getFilePointer();
       meta.writeLong(start);
-      DirectWriter writer = DirectWriter.getInstance(data, numDocsWithField, numberOfBitsPerOrd);
+      LegacyDirectWriter writer =
+          LegacyDirectWriter.getInstance(data, numDocsWithField, numberOfBitsPerOrd);
       values = valuesProducer.getSorted(field);
       for (int doc = values.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
@@ -487,8 +488,8 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
     long numBlocks =
         (size + Lucene70DocValuesFormat.TERMS_DICT_BLOCK_MASK)
             >>> Lucene70DocValuesFormat.TERMS_DICT_BLOCK_SHIFT;
-    DirectMonotonicWriter writer =
-        DirectMonotonicWriter.getInstance(
+    LegacyDirectMonotonicWriter writer =
+        LegacyDirectMonotonicWriter.getInstance(
             meta, addressIndexOut, numBlocks, DIRECT_MONOTONIC_BLOCK_SHIFT);
 
     BytesRefBuilder previous = new BytesRefBuilder();
@@ -544,8 +545,8 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
     ByteBuffersDataOutput addressBuffer = new ByteBuffersDataOutput();
     ByteBuffersIndexOutput addressIndexOut =
         new ByteBuffersIndexOutput(addressBuffer, "temp", "temp");
-    DirectMonotonicWriter writer =
-        DirectMonotonicWriter.getInstance(
+    LegacyDirectMonotonicWriter writer =
+        LegacyDirectMonotonicWriter.getInstance(
             meta, addressIndexOut, numBlocks, DIRECT_MONOTONIC_BLOCK_SHIFT);
 
     TermsEnum iterator = values.termsEnum();
@@ -597,8 +598,8 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
       meta.writeLong(start);
       meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
 
-      final DirectMonotonicWriter addressesWriter =
-          DirectMonotonicWriter.getInstance(
+      final LegacyDirectMonotonicWriter addressesWriter =
+          LegacyDirectMonotonicWriter.getInstance(
               meta, data, numDocsWithField + 1L, DIRECT_MONOTONIC_BLOCK_SHIFT);
       long addr = 0;
       addressesWriter.add(addr);
@@ -659,11 +660,11 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
       meta.writeLong(data.getFilePointer() - offset);
     }
 
-    int numberOfBitsPerOrd = DirectWriter.unsignedBitsRequired(values.getValueCount() - 1);
+    int numberOfBitsPerOrd = LegacyDirectWriter.unsignedBitsRequired(values.getValueCount() - 1);
     meta.writeByte((byte) numberOfBitsPerOrd);
     long start = data.getFilePointer();
     meta.writeLong(start);
-    DirectWriter writer = DirectWriter.getInstance(data, numOrds, numberOfBitsPerOrd);
+    LegacyDirectWriter writer = LegacyDirectWriter.getInstance(data, numOrds, numberOfBitsPerOrd);
     values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       for (long ord = values.nextOrd();
@@ -680,8 +681,8 @@ final class Lucene70DocValuesConsumer extends DocValuesConsumer {
     meta.writeLong(start);
     meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
 
-    final DirectMonotonicWriter addressesWriter =
-        DirectMonotonicWriter.getInstance(
+    final LegacyDirectMonotonicWriter addressesWriter =
+        LegacyDirectMonotonicWriter.getInstance(
             meta, data, numDocsWithField + 1, DIRECT_MONOTONIC_BLOCK_SHIFT);
     long addr = 0;
     addressesWriter.add(addr);
