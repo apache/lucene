@@ -123,9 +123,9 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
         // this is poached from CodecUtil.writeFooter, but we need to use our own checksum, not
         // data.getChecksum(), but I think
         // adding a public method to CodecUtil to do that is somewhat dangerous:
-        data.writeInt(CodecUtil.FOOTER_MAGIC);
-        data.writeInt(0);
-        data.writeLong(checksum);
+        CodecUtil.writeInt(data, CodecUtil.FOOTER_MAGIC);
+        CodecUtil.writeInt(data, 0);
+        CodecUtil.writeLong(data, checksum);
       }
       long endOffset = data.getFilePointer();
 
