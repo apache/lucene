@@ -38,7 +38,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -230,11 +229,8 @@ public final class Lucene90VectorReader extends VectorReader {
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
+    if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
-    }
-    if (fieldEntry.dimension == 0) {
-      return VectorValues.EMPTY;
     }
 
     return getOffHeapVectorValues(fieldEntry);
@@ -243,11 +239,8 @@ public final class Lucene90VectorReader extends VectorReader {
   @Override
   public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
+    if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
-    }
-    if (fieldEntry.dimension == 0) {
-      return TopDocsCollector.EMPTY_TOPDOCS;
     }
 
     OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
