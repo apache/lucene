@@ -29,8 +29,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.index.VectorValues.SearchStrategy;
+import org.apache.lucene.index.VectorValues.SimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -103,8 +102,8 @@ import org.apache.lucene.store.IndexOutput;
  *   <li>VectorDistFunction: a byte containing distance function used for similarity calculation.
  *       <ul>
  *         <li>0: no distance function is defined for this field.
- *         <li>1: EUCLIDEAN_HNSW distance. ({@link SearchStrategy#EUCLIDEAN_HNSW})
- *         <li>2: DOT_PRODUCT_HNSW score. ({@link SearchStrategy#DOT_PRODUCT_HNSW})
+ *         <li>1: EUCLIDEAN_HNSW distance. ({@link SimilarityFunction#EUCLIDEAN})
+ *         <li>2: DOT_PRODUCT_HNSW score. ({@link SimilarityFunction#DOT_PRODUCT})
  *       </ul>
  * </ul>
  *
@@ -173,7 +172,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
             pointNumBytes = 0;
           }
           final int vectorDimension = input.readVInt();
-          final VectorValues.SearchStrategy vectorDistFunc = getDistFunc(input, input.readByte());
+          final SimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
 
           try {
             infos[i] =
@@ -254,12 +253,11 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  private static VectorValues.SearchStrategy getDistFunc(IndexInput input, byte b)
-      throws IOException {
-    if (b < 0 || b >= VectorValues.SearchStrategy.values().length) {
+  private static SimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
+    if (b < 0 || b >= SimilarityFunction.values().length) {
       throw new CorruptIndexException("invalid distance function: " + b, input);
     }
-    return VectorValues.SearchStrategy.values()[b];
+    return SimilarityFunction.values()[b];
   }
 
   static {
@@ -348,7 +346,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
           output.writeVInt(fi.getPointNumBytes());
         }
         output.writeVInt(fi.getVectorDimension());
-        output.writeByte((byte) fi.getVectorSearchStrategy().ordinal());
+        output.writeByte((byte) fi.getVectorSimilarityFunction().ordinal());
       }
       CodecUtil.writeFooter(output);
     }

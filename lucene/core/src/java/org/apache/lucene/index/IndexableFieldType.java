@@ -101,8 +101,8 @@ public interface IndexableFieldType {
   /** The number of dimensions of the field's vector value */
   int vectorDimension();
 
-  /** The {@link VectorValues.SearchStrategy} of the field's vector value */
-  VectorValues.SearchStrategy vectorSearchStrategy();
+  /** The {@link VectorValues.SimilarityFunction} of the field's vector value */
+  VectorValues.SimilarityFunction vectorSimilarityFunction();
 
   /**
    * Attributes for the field type.

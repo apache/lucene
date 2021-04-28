@@ -33,8 +33,8 @@ public interface RandomAccessVectorValues {
   /** Return the dimension of the returned vector values */
   int dimension();
 
-  /** Return the search strategy used to compare these vectors */
-  VectorValues.SearchStrategy searchStrategy();
+  /** Return the similarity function used to compare these vectors */
+  VectorValues.SimilarityFunction similarityFunction();
 
   /**
    * Return the vector value indexed at the given ordinal. The provided floating point array may be

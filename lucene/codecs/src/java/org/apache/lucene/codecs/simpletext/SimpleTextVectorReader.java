@@ -82,8 +82,8 @@ public class SimpleTextVectorReader extends VectorReader {
       while (fieldNumber != -1) {
         String fieldName = readString(in, FIELD_NAME);
         String scoreFunctionName = readString(in, SCORE_FUNCTION);
-        VectorValues.SearchStrategy searchStrategy =
-            VectorValues.SearchStrategy.valueOf(scoreFunctionName);
+        VectorValues.SimilarityFunction similarityFunction =
+            VectorValues.SimilarityFunction.valueOf(scoreFunctionName);
         long vectorDataOffset = readLong(in, VECTOR_DATA_OFFSET);
         long vectorDataLength = readLong(in, VECTOR_DATA_LENGTH);
         int dimension = readInt(in, VECTOR_DIMENSION);
@@ -95,7 +95,8 @@ public class SimpleTextVectorReader extends VectorReader {
         assert fieldEntries.containsKey(fieldName) == false;
         fieldEntries.put(
             fieldName,
-            new FieldEntry(dimension, searchStrategy, vectorDataOffset, vectorDataLength, docIds));
+            new FieldEntry(
+                dimension, similarityFunction, vectorDataOffset, vectorDataLength, docIds));
         fieldNumber = readInt(in, FIELD_NUMBER);
       }
       SimpleTextUtil.checkFooter(in);
@@ -139,6 +140,11 @@ public class SimpleTextVectorReader extends VectorReader {
     IndexInput bytesSlice =
         dataIn.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     return new SimpleTextVectorValues(fieldEntry, bytesSlice);
+  }
+
+  @Override
+  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -199,7 +205,7 @@ public class SimpleTextVectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SearchStrategy searchStrategy;
+    final VectorValues.SimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -207,12 +213,12 @@ public class SimpleTextVectorReader extends VectorReader {
 
     FieldEntry(
         int dimension,
-        VectorValues.SearchStrategy searchStrategy,
+        VectorValues.SimilarityFunction similarityFunction,
         long vectorDataOffset,
         long vectorDataLength,
         int[] ordToDoc) {
       this.dimension = dimension;
-      this.searchStrategy = searchStrategy;
+      this.similarityFunction = similarityFunction;
       this.vectorDataOffset = vectorDataOffset;
       this.vectorDataLength = vectorDataLength;
       this.ordToDoc = ordToDoc;
@@ -255,8 +261,8 @@ public class SimpleTextVectorReader extends VectorReader {
     }
 
     @Override
-    public SearchStrategy searchStrategy() {
-      return entry.searchStrategy;
+    public SimilarityFunction similarityFunction() {
+      return entry.similarityFunction;
     }
 
     @Override
@@ -332,11 +338,6 @@ public class SimpleTextVectorReader extends VectorReader {
 
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public TopDocs search(float[] target, int k, int fanout) throws IOException {
       throw new UnsupportedOperationException();
     }
   }

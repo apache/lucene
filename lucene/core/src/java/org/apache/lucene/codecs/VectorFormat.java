@@ -21,6 +21,8 @@ import java.io.IOException;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
 
 /**
  * Encodes/decodes per-document vector and any associated indexing structures required to support
@@ -61,7 +63,12 @@ public abstract class VectorFormat {
             }
 
             @Override
-            public void close() throws IOException {}
+            public TopDocs search(String field, float[] target, int k, int fanout) {
+              return TopDocsCollector.EMPTY_TOPDOCS;
+            }
+
+            @Override
+            public void close() {}
 
             @Override
             public long ramBytesUsed() {

@@ -25,15 +25,17 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
  * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
  * {@link VectorValues}, which is a forward-only docID-based iterator and also offers random-access
- * by dense ordinal (not docId). VectorValues.SearchStrategys may be used to compare vectors at
+ * by dense ordinal (not docId). VectorValues.SearchSimlarity may be used to compare vectors at
  * query time (for example as part of result ranking). A VectorField may be associated with a search
- * strategy that defines the metric used for nearest-neighbor search among vectors of that field,
- * but at the moment this association is purely nominal: it is intended for future use by the
- * to-be-implemented nearest neighbors search.
+ * similarity function defining the metric used for nearest-neighbor search among vectors of that
+ * field.
+ *
+ * @lucene.experimental
  */
 public class VectorField extends Field {
 
-  private static FieldType createType(float[] v, VectorValues.SearchStrategy searchStrategy) {
+  private static FieldType createType(
+      float[] v, VectorValues.SimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -45,11 +47,11 @@ public class VectorField extends Field {
       throw new IllegalArgumentException(
           "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
     }
-    if (searchStrategy == null) {
-      throw new IllegalArgumentException("search strategy must not be null");
+    if (similarityFunction == null) {
+      throw new IllegalArgumentException("similarity function must not be null");
     }
     FieldType type = new FieldType();
-    type.setVectorDimensionsAndSearchStrategy(dimension, searchStrategy);
+    type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
     type.freeze();
     return type;
   }
@@ -59,13 +61,16 @@ public class VectorField extends Field {
    * parameters that would be used by HnswGraphBuilder while constructing HNSW graph.
    *
    * @param dimension dimension of vectors
-   * @param searchStrategy a function defining vector proximity.
+   * @param similarityFunction a function defining vector proximity.
    * @param maxConn max-connections at each HNSW graph node
    * @param beamWidth size of list to be used while constructing HNSW graph
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createHnswType(
-      int dimension, VectorValues.SearchStrategy searchStrategy, int maxConn, int beamWidth) {
+      int dimension,
+      VectorValues.SimilarityFunction similarityFunction,
+      int maxConn,
+      int beamWidth) {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
@@ -73,12 +78,11 @@ public class VectorField extends Field {
       throw new IllegalArgumentException(
           "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
     }
-    if (searchStrategy == null || !searchStrategy.isHnsw()) {
-      throw new IllegalArgumentException(
-          "search strategy must not be null or non HNSW type, received: " + searchStrategy);
+    if (similarityFunction == null || similarityFunction == VectorValues.SimilarityFunction.NONE) {
+      throw new IllegalArgumentException("similarity function must not be: " + similarityFunction);
     }
     FieldType type = new FieldType();
-    type.setVectorDimensionsAndSearchStrategy(dimension, searchStrategy);
+    type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
     type.putAttribute(HnswGraphBuilder.HNSW_MAX_CONN_ATTRIBUTE_KEY, String.valueOf(maxConn));
     type.putAttribute(HnswGraphBuilder.HNSW_BEAM_WIDTH_ATTRIBUTE_KEY, String.valueOf(beamWidth));
     type.freeze();
@@ -87,25 +91,26 @@ public class VectorField extends Field {
 
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
-   * no value. Vectors of a single field share the same dimension and search strategy. Note that
+   * no value. Vectors of a single field share the same dimension and similarity function. Note that
    * some strategies (notably dot-product) require values to be unit-length, which can be enforced
    * using VectorUtil.l2Normalize(float[]).
    *
    * @param name field name
    * @param vector value
-   * @param searchStrategy a function defining vector proximity.
+   * @param similarityFunction a function defining vector proximity.
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector, VectorValues.SearchStrategy searchStrategy) {
-    super(name, createType(vector, searchStrategy));
+  public VectorField(
+      String name, float[] vector, VectorValues.SimilarityFunction similarityFunction) {
+    super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }
 
   /**
-   * Creates a numeric vector field with the default EUCLIDEAN_HNSW (L2) search strategy. Fields are
+   * Creates a numeric vector field with the default EUCLIDEAN_HNSW (L2) similarity. Fields are
    * single-valued: each document has either one value or no value. Vectors of a single field share
-   * the same dimension and search strategy.
+   * the same dimension and similarity function.
    *
    * @param name field name
    * @param vector value
@@ -113,12 +118,12 @@ public class VectorField extends Field {
    *     dimension &gt; 1024.
    */
   public VectorField(String name, float[] vector) {
-    this(name, vector, VectorValues.SearchStrategy.EUCLIDEAN_HNSW);
+    this(name, vector, VectorValues.SimilarityFunction.EUCLIDEAN);
   }
 
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
-   * no value. Vectors of a single field share the same dimension and search strategy.
+   * no value. Vectors of a single field share the same dimension and similarity function.
    *
    * @param name field name
    * @param vector value

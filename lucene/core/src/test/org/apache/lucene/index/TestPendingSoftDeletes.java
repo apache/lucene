@@ -17,7 +17,7 @@
 
 package org.apache.lucene.index;
 
-import static org.apache.lucene.index.VectorValues.SearchStrategy.NONE;
+import static org.apache.lucene.index.VectorValues.SimilarityFunction.NONE;
 
 import java.io.IOException;
 import java.util.Arrays;
