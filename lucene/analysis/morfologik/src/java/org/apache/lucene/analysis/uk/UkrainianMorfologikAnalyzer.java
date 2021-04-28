@@ -42,10 +42,30 @@ import org.apache.lucene.util.IOUtils;
  * @since 6.2.0
  */
 public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
+
   private final CharArraySet stemExclusionSet;
 
   /** File containing default Ukrainian stopwords. */
   public static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
+
+  private static final NormalizeCharMap NORMALIZER_MAP;
+
+  static {
+    NormalizeCharMap.Builder builder = new NormalizeCharMap.Builder();
+    // different apostrophes
+    builder.add("\u2019", "'");
+    builder.add("\u2018", "'");
+    builder.add("\u02BC", "'");
+    builder.add("`", "'");
+    builder.add("´", "'");
+    // ignored characters
+    builder.add("\u0301", "");
+    builder.add("\u00AD", "");
+    builder.add("ґ", "г");
+    builder.add("Ґ", "Г");
+
+    NORMALIZER_MAP = builder.build();
+  }
 
   /**
    * Returns an unmodifiable instance of the default stop words set.
@@ -57,11 +77,12 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
   }
 
   /**
-   * Atomically loads the DEFAULT_STOP_SET in a lazy fashion once the outer class accesses the
-   * static final set the first time.;
+   * Atomically loads the DEFAULT_STOP_SET and DICTIONARY in a lazy fashion once the outer class
+   * accesses the static final set the first time.;
    */
   private static class DefaultSetHolder {
     static final CharArraySet DEFAULT_STOP_SET;
+    static final Dictionary DICTIONARY;
 
     static {
       try {
@@ -71,10 +92,15 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
                     UkrainianMorfologikAnalyzer.class,
                     DEFAULT_STOPWORD_FILE,
                     StandardCharsets.UTF_8));
+        DICTIONARY =
+            Dictionary.read(
+                UkrainianMorfologikAnalyzer.class
+                    .getClassLoader()
+                    .getResource("ua/net/nlp/ukrainian.dict"));
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)
-        throw new UncheckedIOException("Unable to load default stopword set", ex);
+        throw new UncheckedIOException("Unable to load analyzer resources", ex);
       }
     }
   }
@@ -107,22 +133,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
 
   @Override
   protected Reader initReader(String fieldName, Reader reader) {
-    NormalizeCharMap.Builder builder = new NormalizeCharMap.Builder();
-    // different apostrophes
-    builder.add("\u2019", "'");
-    builder.add("\u2018", "'");
-    builder.add("\u02BC", "'");
-    builder.add("`", "'");
-    builder.add("´", "'");
-    // ignored characters
-    builder.add("\u0301", "");
-    builder.add("\u00AD", "");
-    builder.add("ґ", "г");
-    builder.add("Ґ", "Г");
-
-    NormalizeCharMap normMap = builder.build();
-    reader = new MappingCharFilter(normMap, reader);
-    return reader;
+    return new MappingCharFilter(NORMALIZER_MAP, reader);
   }
 
   /**
@@ -144,18 +155,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
       result = new SetKeywordMarkerFilter(result, stemExclusionSet);
     }
 
-    result = new MorfologikFilter(result, getDictionary());
+    result = new MorfologikFilter(result, DefaultSetHolder.DICTIONARY);
     return new TokenStreamComponents(source, result);
-  }
-
-  private static Dictionary getDictionary() {
-    try {
-      return Dictionary.read(
-          UkrainianMorfologikAnalyzer.class
-              .getClassLoader()
-              .getResource("ua/net/nlp/ukrainian.dict"));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 }
