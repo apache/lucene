@@ -182,9 +182,9 @@ public class TestCodecUtil extends LuceneTestCase {
     IndexOutput output = new ByteBuffersIndexOutput(out, "temp", "temp");
     CodecUtil.writeHeader(output, "FooBar", 5);
     output.writeString("this is the data");
-    CodecUtil.writeInt(output, CodecUtil.FOOTER_MAGIC);
-    CodecUtil.writeInt(output, 0);
-    CodecUtil.writeLong(output, 1234567); // write a bogus checksum
+    CodecUtil.writeBEInt(output, CodecUtil.FOOTER_MAGIC);
+    CodecUtil.writeBEInt(output, 0);
+    CodecUtil.writeBELong(output, 1234567); // write a bogus checksum
     output.close();
 
     ChecksumIndexInput input =
@@ -265,10 +265,10 @@ public class TestCodecUtil extends LuceneTestCase {
   public void testReadBogusCRC() throws Exception {
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     IndexOutput output = new ByteBuffersIndexOutput(out, "temp", "temp");
-    CodecUtil.writeLong(output, -1L); // bad
-    CodecUtil.writeLong(output, 1L << 32); // bad
-    CodecUtil.writeLong(output, -(1L << 32)); // bad);
-    CodecUtil.writeLong(output, (1L << 32) - 1); // ok
+    CodecUtil.writeBELong(output, -1L); // bad
+    CodecUtil.writeBELong(output, 1L << 32); // bad
+    CodecUtil.writeBELong(output, -(1L << 32)); // bad);
+    CodecUtil.writeBELong(output, (1L << 32) - 1); // ok
     output.close();
     IndexInput input =
         new BufferedChecksumIndexInput(new ByteBuffersIndexInput(out.toDataInput(), "temp"));

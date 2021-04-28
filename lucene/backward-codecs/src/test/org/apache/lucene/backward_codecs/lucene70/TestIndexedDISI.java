@@ -19,7 +19,7 @@ package org.apache.lucene.backward_codecs.lucene70;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -100,11 +100,12 @@ public class TestIndexedDISI extends LuceneTestCase {
       // we set MAX_ARRAY_LENGTH bits so the encoding will be sparse
       set.set(start, start + IndexedDISI.MAX_ARRAY_LENGTH);
       long length;
-      try (IndexOutput out = DirectoryUtil.createOutput(dir, "sparse", IOContext.DEFAULT)) {
+      try (IndexOutput out =
+          EndiannessReverserUtil.createOutput(dir, "sparse", IOContext.DEFAULT)) {
         IndexedDISI.writeBitSet(new BitSetIterator(set, IndexedDISI.MAX_ARRAY_LENGTH), out);
         length = out.getFilePointer();
       }
-      try (IndexInput in = DirectoryUtil.openInput(dir, "sparse", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "sparse", IOContext.DEFAULT)) {
         IndexedDISI disi = new IndexedDISI(in, 0L, length, IndexedDISI.MAX_ARRAY_LENGTH);
         assertEquals(start, disi.nextDoc());
         assertEquals(IndexedDISI.Method.SPARSE, disi.method);
@@ -113,11 +114,11 @@ public class TestIndexedDISI extends LuceneTestCase {
 
       // now we set one more bit so the encoding will be dense
       set.set(start + IndexedDISI.MAX_ARRAY_LENGTH + random().nextInt(100));
-      try (IndexOutput out = DirectoryUtil.createOutput(dir, "bar", IOContext.DEFAULT)) {
+      try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "bar", IOContext.DEFAULT)) {
         IndexedDISI.writeBitSet(new BitSetIterator(set, IndexedDISI.MAX_ARRAY_LENGTH + 1), out);
         length = out.getFilePointer();
       }
-      try (IndexInput in = DirectoryUtil.openInput(dir, "bar", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "bar", IOContext.DEFAULT)) {
         IndexedDISI disi = new IndexedDISI(in, 0L, length, IndexedDISI.MAX_ARRAY_LENGTH + 1);
         assertEquals(start, disi.nextDoc());
         assertEquals(IndexedDISI.Method.DENSE, disi.method);
@@ -183,12 +184,12 @@ public class TestIndexedDISI extends LuceneTestCase {
   private void doTest(FixedBitSet set, Directory dir) throws IOException {
     final int cardinality = set.cardinality();
     long length;
-    try (IndexOutput out = DirectoryUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
+    try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
       IndexedDISI.writeBitSet(new BitSetIterator(set, cardinality), out);
       length = out.getFilePointer();
     }
 
-    try (IndexInput in = DirectoryUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
+    try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
       IndexedDISI disi = new IndexedDISI(in, 0L, length, cardinality);
       BitSetIterator disi2 = new BitSetIterator(set, cardinality);
       int i = 0;
@@ -200,7 +201,7 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
 
     for (int step : new int[] {1, 10, 100, 1000, 10000, 100000}) {
-      try (IndexInput in = DirectoryUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         IndexedDISI disi = new IndexedDISI(in, 0L, length, cardinality);
         BitSetIterator disi2 = new BitSetIterator(set, cardinality);
         int index = -1;
@@ -221,7 +222,7 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
 
     for (int step : new int[] {10, 100, 1000, 10000, 100000}) {
-      try (IndexInput in = DirectoryUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         IndexedDISI disi = new IndexedDISI(in, 0L, length, cardinality);
         BitSetIterator disi2 = new BitSetIterator(set, cardinality);
         int index = -1;

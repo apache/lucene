@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Objects;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicReader;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.store.Directory;
@@ -66,7 +66,7 @@ final class FieldsIndexReader extends FieldsIndex {
     maxPointer = metaIn.readLong();
 
     indexInput =
-        DirectoryUtil.openInput(
+        EndiannessReverserUtil.openInput(
             dir, IndexFileNames.segmentFileName(name, suffix, extension), IOContext.READ);
     boolean success = false;
     try {

@@ -19,7 +19,7 @@ package org.apache.lucene.backward_codecs.lucene60;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
@@ -130,7 +130,8 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
       throws IOException {
     final String fileName =
         IndexFileNames.segmentFileName(segmentInfo.name, segmentSuffix, EXTENSION);
-    try (ChecksumIndexInput input = DirectoryUtil.openChecksumInput(directory, fileName, context)) {
+    try (ChecksumIndexInput input =
+        EndiannessReverserUtil.openChecksumInput(directory, fileName, context)) {
       Throwable priorE = null;
       FieldInfo[] infos = null;
       try {
@@ -327,7 +328,7 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
       throws IOException {
     final String fileName =
         IndexFileNames.segmentFileName(segmentInfo.name, segmentSuffix, EXTENSION);
-    try (IndexOutput output = DirectoryUtil.createOutput(directory, fileName, context)) {
+    try (IndexOutput output = EndiannessReverserUtil.createOutput(directory, fileName, context)) {
       CodecUtil.writeIndexHeader(
           output,
           Lucene60FieldInfosFormat.CODEC_NAME,

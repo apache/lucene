@@ -178,7 +178,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   @Override
   public final void readFloats(float[] floats, int offset, int len) throws IOException {
-    // See notes about readELongs above
+    // See notes about readLongs above
     if (curFloatBufferViews == null) {
       curFloatBufferViews = new FloatBuffer[Float.BYTES];
       for (int i = 0; i < Float.BYTES; ++i) {

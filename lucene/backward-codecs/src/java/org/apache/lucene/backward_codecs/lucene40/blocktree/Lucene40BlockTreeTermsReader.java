@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -132,7 +132,7 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
     try {
       String termsName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_EXTENSION);
-      termsIn = DirectoryUtil.openInput(state.directory, termsName, state.context);
+      termsIn = EndiannessReverserUtil.openInput(state.directory, termsName, state.context);
       version =
           CodecUtil.checkIndexHeader(
               termsIn,
@@ -144,7 +144,7 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
 
       String indexName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
-      indexIn = DirectoryUtil.openInput(state.directory, indexName, state.context);
+      indexIn = EndiannessReverserUtil.openInput(state.directory, indexName, state.context);
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
@@ -172,7 +172,7 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
       long indexLength = -1, termsLength = -1;
       try (ChecksumIndexInput metaIn =
           version >= VERSION_META_FILE
-              ? DirectoryUtil.openChecksumInput(state.directory, metaName, state.context)
+              ? EndiannessReverserUtil.openChecksumInput(state.directory, metaName, state.context)
               : null) {
         try {
           final IndexInput indexMetaIn, termsMetaIn;

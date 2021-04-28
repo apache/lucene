@@ -29,7 +29,7 @@ import static org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat.
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat.IntBlockTermState;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -77,7 +77,7 @@ public final class Lucene84PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene84PostingsFormat.DOC_EXTENSION);
     try {
-      docIn = DirectoryUtil.openInput(state.directory, docName, state.context);
+      docIn = EndiannessReverserUtil.openInput(state.directory, docName, state.context);
       version =
           CodecUtil.checkIndexHeader(
               docIn,
@@ -92,7 +92,7 @@ public final class Lucene84PostingsReader extends PostingsReaderBase {
         String proxName =
             IndexFileNames.segmentFileName(
                 state.segmentInfo.name, state.segmentSuffix, Lucene84PostingsFormat.POS_EXTENSION);
-        posIn = DirectoryUtil.openInput(state.directory, proxName, state.context);
+        posIn = EndiannessReverserUtil.openInput(state.directory, proxName, state.context);
         CodecUtil.checkIndexHeader(
             posIn, POS_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
         CodecUtil.retrieveChecksum(posIn);
@@ -103,7 +103,7 @@ public final class Lucene84PostingsReader extends PostingsReaderBase {
                   state.segmentInfo.name,
                   state.segmentSuffix,
                   Lucene84PostingsFormat.PAY_EXTENSION);
-          payIn = DirectoryUtil.openInput(state.directory, payName, state.context);
+          payIn = EndiannessReverserUtil.openInput(state.directory, payName, state.context);
           CodecUtil.checkIndexHeader(
               payIn, PAY_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
           CodecUtil.retrieveChecksum(payIn);

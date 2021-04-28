@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicWriter;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectWriter;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -90,7 +90,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
       String dataName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, dataExtension);
-      data = DirectoryUtil.createOutput(state.directory, dataName, state.context);
+      data = EndiannessReverserUtil.createOutput(state.directory, dataName, state.context);
       CodecUtil.writeIndexHeader(
           data,
           dataCodec,
@@ -100,7 +100,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
       String metaName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, metaExtension);
-      meta = DirectoryUtil.createOutput(state.directory, metaName, state.context);
+      meta = EndiannessReverserUtil.createOutput(state.directory, metaName, state.context);
       CodecUtil.writeIndexHeader(
           meta,
           metaCodec,
@@ -418,7 +418,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
 
     public CompressedBinaryBlockWriter() throws IOException {
       tempBinaryOffsets =
-          DirectoryUtil.createTempOutput(
+          EndiannessReverserUtil.createTempOutput(
               state.directory, state.segmentInfo.name, "binary_pointers", state.context);
       boolean success = false;
       try {
@@ -503,7 +503,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
       IOUtils.close(tempBinaryOffsets);
       // write the compressed block offsets info to the meta file by reading from temp file
       try (ChecksumIndexInput filePointersIn =
-          DirectoryUtil.openChecksumInput(
+          EndiannessReverserUtil.openChecksumInput(
               state.directory, tempBinaryOffsets.getName(), IOContext.READONCE)) {
         CodecUtil.checkHeader(
             filePointersIn,

@@ -19,7 +19,7 @@ package org.apache.lucene.backward_codecs.lucene86;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.index.CorruptIndexException;
@@ -60,7 +60,8 @@ public class Lucene86PointsReader extends PointsReader {
 
     boolean success = false;
     try {
-      indexIn = DirectoryUtil.openInput(readState.directory, indexFileName, readState.context);
+      indexIn =
+          EndiannessReverserUtil.openInput(readState.directory, indexFileName, readState.context);
       CodecUtil.checkIndexHeader(
           indexIn,
           Lucene86PointsFormat.INDEX_CODEC_NAME,
@@ -69,7 +70,8 @@ public class Lucene86PointsReader extends PointsReader {
           readState.segmentInfo.getId(),
           readState.segmentSuffix);
 
-      dataIn = DirectoryUtil.openInput(readState.directory, dataFileName, readState.context);
+      dataIn =
+          EndiannessReverserUtil.openInput(readState.directory, dataFileName, readState.context);
       CodecUtil.checkIndexHeader(
           dataIn,
           Lucene86PointsFormat.DATA_CODEC_NAME,
@@ -80,7 +82,8 @@ public class Lucene86PointsReader extends PointsReader {
 
       long indexLength = -1, dataLength = -1;
       try (ChecksumIndexInput metaIn =
-          DirectoryUtil.openChecksumInput(readState.directory, metaFileName, readState.context)) {
+          EndiannessReverserUtil.openChecksumInput(
+              readState.directory, metaFileName, readState.context)) {
         Throwable priorE = null;
         try {
           CodecUtil.checkIndexHeader(

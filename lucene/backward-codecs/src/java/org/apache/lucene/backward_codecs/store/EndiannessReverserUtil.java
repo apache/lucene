@@ -30,9 +30,9 @@ import org.apache.lucene.store.IndexOutput;
  *
  * @lucene.internal
  */
-public final class DirectoryUtil {
+public final class EndiannessReverserUtil {
 
-  private DirectoryUtil() {
+  private EndiannessReverserUtil() {
     // no instances
   }
 

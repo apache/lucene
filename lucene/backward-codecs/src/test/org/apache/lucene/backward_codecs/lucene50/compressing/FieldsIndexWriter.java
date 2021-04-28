@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicReader;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicWriter;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
@@ -80,12 +80,14 @@ public final class FieldsIndexWriter implements Closeable {
     this.id = id;
     this.blockShift = blockShift;
     this.ioContext = ioContext;
-    this.docsOut = DirectoryUtil.createTempOutput(dir, name, codecName + "-doc_ids", ioContext);
+    this.docsOut =
+        EndiannessReverserUtil.createTempOutput(dir, name, codecName + "-doc_ids", ioContext);
     boolean success = false;
     try {
       CodecUtil.writeHeader(docsOut, codecName + "Docs", VERSION_CURRENT);
       filePointersOut =
-          DirectoryUtil.createTempOutput(dir, name, codecName + "file_pointers", ioContext);
+          EndiannessReverserUtil.createTempOutput(
+              dir, name, codecName + "file_pointers", ioContext);
       CodecUtil.writeHeader(filePointersOut, codecName + "FilePointers", VERSION_CURRENT);
       success = true;
     } finally {
@@ -113,7 +115,7 @@ public final class FieldsIndexWriter implements Closeable {
     IOUtils.close(docsOut, filePointersOut);
 
     try (IndexOutput dataOut =
-        DirectoryUtil.createOutput(
+        EndiannessReverserUtil.createOutput(
             dir, IndexFileNames.segmentFileName(name, suffix, extension), ioContext)) {
       CodecUtil.writeIndexHeader(dataOut, codecName + "Idx", VERSION_CURRENT, id, suffix);
 
@@ -123,7 +125,7 @@ public final class FieldsIndexWriter implements Closeable {
       metaOut.writeLong(dataOut.getFilePointer());
 
       try (ChecksumIndexInput docsIn =
-          DirectoryUtil.openChecksumInput(dir, docsOut.getName(), IOContext.READONCE)) {
+          EndiannessReverserUtil.openChecksumInput(dir, docsOut.getName(), IOContext.READONCE)) {
         CodecUtil.checkHeader(docsIn, codecName + "Docs", VERSION_CURRENT, VERSION_CURRENT);
         Throwable priorE = null;
         try {
@@ -151,7 +153,8 @@ public final class FieldsIndexWriter implements Closeable {
 
       metaOut.writeLong(dataOut.getFilePointer());
       try (ChecksumIndexInput filePointersIn =
-          DirectoryUtil.openChecksumInput(dir, filePointersOut.getName(), IOContext.READONCE)) {
+          EndiannessReverserUtil.openChecksumInput(
+              dir, filePointersOut.getName(), IOContext.READONCE)) {
         CodecUtil.checkHeader(
             filePointersIn, codecName + "FilePointers", VERSION_CURRENT, VERSION_CURRENT);
         Throwable priorE = null;

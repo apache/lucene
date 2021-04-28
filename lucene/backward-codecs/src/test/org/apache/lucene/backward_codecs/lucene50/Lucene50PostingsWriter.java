@@ -28,7 +28,7 @@ import static org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat.
 
 import java.io.IOException;
 import org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat.IntBlockTermState;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
@@ -109,7 +109,7 @@ public final class Lucene50PostingsWriter extends PushPostingsWriterBase {
     String docFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene50PostingsFormat.DOC_EXTENSION);
-    docOut = DirectoryUtil.createOutput(state.directory, docFileName, state.context);
+    docOut = EndiannessReverserUtil.createOutput(state.directory, docFileName, state.context);
     IndexOutput posOut = null;
     IndexOutput payOut = null;
     boolean success = false;
@@ -122,7 +122,7 @@ public final class Lucene50PostingsWriter extends PushPostingsWriterBase {
         String posFileName =
             IndexFileNames.segmentFileName(
                 state.segmentInfo.name, state.segmentSuffix, Lucene50PostingsFormat.POS_EXTENSION);
-        posOut = DirectoryUtil.createOutput(state.directory, posFileName, state.context);
+        posOut = EndiannessReverserUtil.createOutput(state.directory, posFileName, state.context);
         CodecUtil.writeIndexHeader(
             posOut, POS_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
 
@@ -148,7 +148,7 @@ public final class Lucene50PostingsWriter extends PushPostingsWriterBase {
                   state.segmentInfo.name,
                   state.segmentSuffix,
                   Lucene50PostingsFormat.PAY_EXTENSION);
-          payOut = DirectoryUtil.createOutput(state.directory, payFileName, state.context);
+          payOut = EndiannessReverserUtil.createOutput(state.directory, payFileName, state.context);
           CodecUtil.writeIndexHeader(
               payOut, PAY_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
         }

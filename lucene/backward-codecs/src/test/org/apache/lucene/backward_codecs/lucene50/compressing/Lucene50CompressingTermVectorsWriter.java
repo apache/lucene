@@ -37,7 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
@@ -245,7 +245,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
     boolean success = false;
     try {
       metaStream =
-          DirectoryUtil.createOutput(
+          EndiannessReverserUtil.createOutput(
               directory,
               IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION),
               context);
@@ -259,7 +259,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
           == metaStream.getFilePointer();
 
       vectorsStream =
-          DirectoryUtil.createOutput(
+          EndiannessReverserUtil.createOutput(
               directory,
               IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION),
               context);

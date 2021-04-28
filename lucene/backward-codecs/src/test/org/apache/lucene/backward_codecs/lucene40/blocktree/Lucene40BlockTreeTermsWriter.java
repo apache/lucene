@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -252,7 +252,7 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
             state.segmentInfo.name,
             state.segmentSuffix,
             Lucene40BlockTreeTermsReader.TERMS_EXTENSION);
-    termsOut = DirectoryUtil.createOutput(state.directory, termsName, state.context);
+    termsOut = EndiannessReverserUtil.createOutput(state.directory, termsName, state.context);
     boolean success = false;
     IndexOutput metaOut = null, indexOut = null;
     try {
@@ -268,7 +268,7 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
               state.segmentInfo.name,
               state.segmentSuffix,
               Lucene40BlockTreeTermsReader.TERMS_INDEX_EXTENSION);
-      indexOut = DirectoryUtil.createOutput(state.directory, indexName, state.context);
+      indexOut = EndiannessReverserUtil.createOutput(state.directory, indexName, state.context);
       CodecUtil.writeIndexHeader(
           indexOut,
           Lucene40BlockTreeTermsReader.TERMS_INDEX_CODEC_NAME,
@@ -282,7 +282,7 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
               state.segmentInfo.name,
               state.segmentSuffix,
               Lucene40BlockTreeTermsReader.TERMS_META_EXTENSION);
-      metaOut = DirectoryUtil.createOutput(state.directory, metaName, state.context);
+      metaOut = EndiannessReverserUtil.createOutput(state.directory, metaName, state.context);
       CodecUtil.writeIndexHeader(
           metaOut,
           Lucene40BlockTreeTermsReader.TERMS_META_CODEC_NAME,

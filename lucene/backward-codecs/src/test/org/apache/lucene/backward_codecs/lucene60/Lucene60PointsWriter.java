@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.MutablePointValues;
 import org.apache.lucene.codecs.PointsReader;
@@ -67,7 +67,8 @@ public class Lucene60PointsWriter extends PointsWriter {
             writeState.segmentInfo.name,
             writeState.segmentSuffix,
             Lucene60PointsFormat.DATA_EXTENSION);
-    dataOut = DirectoryUtil.createOutput(writeState.directory, dataFileName, writeState.context);
+    dataOut =
+        EndiannessReverserUtil.createOutput(writeState.directory, dataFileName, writeState.context);
     boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
@@ -271,7 +272,8 @@ public class Lucene60PointsWriter extends PointsWriter {
             Lucene60PointsFormat.INDEX_EXTENSION);
     // Write index file
     try (IndexOutput indexOut =
-        DirectoryUtil.createOutput(writeState.directory, indexFileName, writeState.context)) {
+        EndiannessReverserUtil.createOutput(
+            writeState.directory, indexFileName, writeState.context)) {
       CodecUtil.writeIndexHeader(
           indexOut,
           Lucene60PointsFormat.META_CODEC_NAME,

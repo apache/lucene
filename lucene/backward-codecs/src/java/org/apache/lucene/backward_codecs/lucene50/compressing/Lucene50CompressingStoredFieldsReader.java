@@ -19,7 +19,7 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.backward_codecs.store.DirectoryUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -144,7 +144,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      fieldsStream = DirectoryUtil.openInput(d, fieldsStreamFN, context);
+      fieldsStream = EndiannessReverserUtil.openInput(d, fieldsStreamFN, context);
       version =
           CodecUtil.checkIndexHeader(
               fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -154,7 +154,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
       if (version >= VERSION_OFFHEAP_INDEX) {
         final String metaStreamFN =
             IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION);
-        metaIn = DirectoryUtil.openChecksumInput(d, metaStreamFN, IOContext.READONCE);
+        metaIn = EndiannessReverserUtil.openChecksumInput(d, metaStreamFN, IOContext.READONCE);
         CodecUtil.checkIndexHeader(
             metaIn,
             INDEX_CODEC_NAME + "Meta",
@@ -188,7 +188,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
         // Load the index into memory
         final String indexName = IndexFileNames.segmentFileName(segment, segmentSuffix, "fdx");
         try (ChecksumIndexInput indexStream =
-            DirectoryUtil.openChecksumInput(d, indexName, context)) {
+            EndiannessReverserUtil.openChecksumInput(d, indexName, context)) {
           Throwable priorE = null;
           try {
             assert formatName.endsWith("Data");
@@ -685,7 +685,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
       }
 
       return new SerializedDocument(
-          DirectoryUtil.wrapDataInput(documentInput), length, numStoredFields);
+          EndiannessReverserUtil.wrapDataInput(documentInput), length, numStoredFields);
     }
   }
 
