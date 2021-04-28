@@ -30,7 +30,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConjunctionDISI;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -164,7 +164,7 @@ public class LongValueFacetCounts extends Facets {
 
   private void countOneSegment(NumericDocValues values, MatchingDocs hits) throws IOException {
     DocIdSetIterator it =
-        ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), values));
+        ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), values));
 
     for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
       increment(values.longValue());
@@ -189,7 +189,7 @@ public class LongValueFacetCounts extends Facets {
       } else {
 
         DocIdSetIterator it =
-            ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), values));
+            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), values));
 
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           int limit = values.docValueCount();

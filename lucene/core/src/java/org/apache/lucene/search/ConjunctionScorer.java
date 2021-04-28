@@ -31,11 +31,10 @@ class ConjunctionScorer extends Scorer {
    * Create a new {@link ConjunctionScorer}, note that {@code scorers} must be a subset of {@code
    * required}.
    */
-  ConjunctionScorer(Weight weight, Collection<Scorer> required, Collection<Scorer> scorers)
-      throws IOException {
+  ConjunctionScorer(Weight weight, Collection<Scorer> required, Collection<Scorer> scorers) {
     super(weight);
     assert required.containsAll(scorers);
-    this.disi = ConjunctionDISI.intersectScorers(required);
+    this.disi = ConjunctionUtils.intersectScorers(required);
     this.scorers = scorers.toArray(new Scorer[scorers.size()]);
     this.required = required;
   }
