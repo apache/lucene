@@ -243,6 +243,9 @@ Bug fixes
 * LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon
   splitting. (Ignacio Vera)
 
+* LUCENE-9930: The Ukrainian analyzer was reloading its dictionary for every new
+  TokenStreamComponents, which could lead to memory leaks. (Alan Woodward)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
