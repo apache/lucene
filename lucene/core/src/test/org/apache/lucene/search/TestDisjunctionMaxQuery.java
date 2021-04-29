@@ -496,11 +496,21 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     Query sub2 = tq("hed", "elephant");
     DisjunctionMaxQuery q = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 1.0f);
     Query rewritten = s.rewrite(q);
-    assertTrue(rewritten instanceof BooleanQuery);
-    BooleanQuery bq = (BooleanQuery) rewritten;
-    assertEquals(bq.clauses().size(), 2);
-    assertEquals(bq.clauses().get(0), new BooleanClause(sub1, BooleanClause.Occur.SHOULD));
-    assertEquals(bq.clauses().get(1), new BooleanClause(sub2, BooleanClause.Occur.SHOULD));
+    Query expected =
+        new BooleanQuery.Builder()
+            .add(sub1, BooleanClause.Occur.SHOULD)
+            .add(sub2, BooleanClause.Occur.SHOULD)
+            .build();
+    assertEquals(expected, rewritten);
+  }
+
+  public void testDisjunctOrderAndEquals() throws Exception {
+    // the order that disjuncts are provided in should not matter for equals() comparisons
+    Query sub1 = tq("hed", "albino");
+    Query sub2 = tq("hed", "elephant");
+    Query q1 = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 1.0f);
+    Query q2 = new DisjunctionMaxQuery(Arrays.asList(sub2, sub1), 1.0f);
+    assertEquals(q1, q2);
   }
 
   public void testRandomTopDocs() throws Exception {

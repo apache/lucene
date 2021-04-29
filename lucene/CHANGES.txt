@@ -109,7 +109,6 @@ API Changes
   only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
   Adrien Grand, Simon Willnauer)
 
-
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
@@ -245,6 +244,9 @@ Bug fixes
 
 * LUCENE-9930: The Ukrainian analyzer was reloading its dictionary for every new
   TokenStreamComponents, which could lead to memory leaks. (Alan Woodward)
+
+* LUCENE-9940: The order of disjuncts in DisjunctionMaxQuery does not matter
+  for equality checks (Alan Woodward)
 
 Changes in Backwards Compatibility Policy
 
