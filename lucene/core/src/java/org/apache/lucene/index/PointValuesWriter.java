@@ -166,17 +166,17 @@ class PointValuesWriter {
           }
 
           @Override
-          public void assign(int from, int to) {
+          public void save(int i, int j) {
             if (temp == null) {
               temp = new int[ords.length];
             }
-            temp[to] = ords[from];
+            temp[j] = ords[i];
           }
 
           @Override
-          public void finalizeAssign(int from, int to) {
+          public void restore(int i, int j) {
             if (temp != null) {
-              System.arraycopy(temp, from, ords, from, to - from);
+              System.arraycopy(temp, i, ords, i, j - i);
             }
           }
         };
@@ -305,13 +305,13 @@ class PointValuesWriter {
     }
 
     @Override
-    public void assign(int from, int to) {
-      in.assign(from, to);
+    public void save(int i, int j) {
+      in.save(i, j);
     }
 
     @Override
-    public void finalizeAssign(int from, int to) {
-      in.finalizeAssign(from, to);
+    public void restore(int i, int j) {
+      in.restore(i, j);
     }
   }
 }

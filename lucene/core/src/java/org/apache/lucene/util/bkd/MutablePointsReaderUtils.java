@@ -52,13 +52,13 @@ public final class MutablePointsReaderUtils {
       }
 
       @Override
-      protected void assign(int from, int to) {
-        reader.assign(from, to);
+      protected void save(int i, int j) {
+        reader.save(i, j);
       }
 
       @Override
-      protected void finalizeAssign(int from, int to) {
-        reader.finalizeAssign(from, to);
+      protected void restore(int i, int j) {
+        reader.restore(i, j);
       }
 
       @Override

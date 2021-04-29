@@ -1700,13 +1700,13 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public void assign(int from, int to) {
-            // do nothing
+          public void save(int i, int j) {
+            throw new UnsupportedOperationException();
           }
 
           @Override
-          public void finalizeAssign(int from, int to) {
-            // do nothing
+          public void restore(int i, int j) {
+            throw new UnsupportedOperationException();
           }
         };
 
@@ -1851,13 +1851,13 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public void assign(int from, int to) {
-            throw new UnsupportedOperationException("not implement");
+          public void save(int i, int j) {
+            throw new UnsupportedOperationException();
           }
 
           @Override
-          public void finalizeAssign(int from, int to) {
-            throw new UnsupportedOperationException("not implement");
+          public void restore(int i, int j) {
+            throw new UnsupportedOperationException();
           }
         };
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {

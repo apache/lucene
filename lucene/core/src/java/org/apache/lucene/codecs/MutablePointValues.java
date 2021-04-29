@@ -42,9 +42,9 @@ public abstract class MutablePointValues extends PointValues {
   /** Swap the i-th and j-th values. */
   public abstract void swap(int i, int j);
 
-  /** Assign the from-th value to to-th position in another array which used temporarily. */
-  public abstract void assign(int from, int to);
+  /** Save the i-th value into the j-th position in temporary storage. */
+  public abstract void save(int i, int j);
 
-  /** Finalize assign operation, to switch array. */
-  public abstract void finalizeAssign(int from, int to);
+  /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
+  public abstract void restore(int i, int j);
 }

@@ -23,21 +23,15 @@ package org.apache.lucene.util;
  */
 public abstract class StableMSBRadixSorter extends MSBRadixSorter {
 
-  protected boolean useStableSort;
-
   public StableMSBRadixSorter(int maxLength) {
     super(maxLength);
   }
 
-  /** Assign the from-th value to to-th position in another array which used temporarily. */
-  protected void assign(int from, int to) {
-    throw new UnsupportedOperationException();
-  }
+  /** Save the i-th value into the j-th position in temporary storage. */
+  protected abstract void save(int from, int to);
 
-  /** Finalize assign operation, to switch array. */
-  protected void finalizeAssign(int from, int to) {
-    throw new UnsupportedOperationException();
-  }
+  /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
+  protected abstract void restore(int from, int to);
 
   /**
    * Reorder elements in stable way, since Dutch sort does not guarantee ordering for same values.
@@ -52,9 +46,9 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
       for (int h1 = assignPos[i]; h1 < limit; h1++) {
         final int b = getBucket(from + h1, k);
         final int h2 = startOffsets[b]++;
-        assign(from + h1, from + h2);
+        save(from + h1, from + h2);
       }
     }
-    finalizeAssign(from, to);
+    restore(from, to);
   }
 }

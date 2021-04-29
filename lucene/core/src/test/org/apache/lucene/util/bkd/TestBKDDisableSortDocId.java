@@ -273,17 +273,17 @@ public class TestBKDDisableSortDocId extends LuceneTestCase {
     }
 
     @Override
-    public void assign(int from, int to) {
+    public void save(int i, int j) {
       if (temp == null) {
         temp = new Point[points.length];
       }
-      temp[to] = points[from];
+      temp[j] = points[i];
     }
 
     @Override
-    public void finalizeAssign(int from, int to) {
+    public void restore(int i, int j) {
       if (temp != null) {
-        System.arraycopy(temp, from, points, from, to - from);
+        System.arraycopy(temp, i, points, i, j - i);
       }
     }
   }
