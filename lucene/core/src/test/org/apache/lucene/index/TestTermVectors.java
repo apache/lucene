@@ -124,7 +124,6 @@ public class TestTermVectors extends LuceneTestCase {
    * payloads for this field.
    */
   public void testMergeWithPayloads() throws Exception {
-
     final FieldType ft1 = new FieldType(TextField.TYPE_NOT_STORED);
     ft1.setStoreTermVectors(true);
     ft1.setStoreTermVectorOffsets(true);
@@ -132,42 +131,44 @@ public class TestTermVectors extends LuceneTestCase {
     ft1.setStoreTermVectorPayloads(true);
     ft1.freeze();
 
-    Directory dir = newDirectory();
     final int numDocsInSegment = 10;
-    IndexWriterConfig indexWriterConfig =
-        new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(numDocsInSegment);
-    IndexWriter writer = new IndexWriter(dir, indexWriterConfig);
+    for (boolean hasPayloads : new boolean[] {false, true}) {
+      Directory dir = newDirectory();
+      IndexWriterConfig indexWriterConfig =
+          new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(numDocsInSegment);
+      IndexWriter writer = new IndexWriter(dir, indexWriterConfig);
+      TokenStreamGenerator tkg1 = new TokenStreamGenerator(hasPayloads);
+      TokenStreamGenerator tkg2 = new TokenStreamGenerator(!hasPayloads);
 
-    boolean hasPayloads1 = random().nextBoolean();
-    boolean hasPayloads2 = !hasPayloads1;
-    TokenStreamGenerator tkg1 = new TokenStreamGenerator(hasPayloads1);
-    TokenStreamGenerator tkg2 = new TokenStreamGenerator(hasPayloads2);
-    // create one segment with payloads, and another without payloads
-    for (int i = 0; i < numDocsInSegment; i++) {
-      Document doc = new Document();
-      doc.add(new Field("c", tkg1.newTokenStream(), ft1));
-      writer.addDocument(doc);
+      // create one segment with payloads, and another without payloads
+      for (int i = 0; i < numDocsInSegment; i++) {
+        Document doc = new Document();
+        doc.add(new Field("c", tkg1.newTokenStream(), ft1));
+        writer.addDocument(doc);
+      }
+      for (int i = 0; i < numDocsInSegment; i++) {
+        Document doc = new Document();
+        doc.add(new Field("c", tkg2.newTokenStream(), ft1));
+        writer.addDocument(doc);
+      }
+
+      IndexReader reader1 = writer.getReader();
+      assertEquals(2, reader1.leaves().size());
+      assertEquals(
+          hasPayloads,
+          reader1.leaves().get(0).reader().getFieldInfos().fieldInfo("c").hasPayloads());
+      assertNotEquals(
+          hasPayloads,
+          reader1.leaves().get(1).reader().getFieldInfos().fieldInfo("c").hasPayloads());
+
+      writer.forceMerge(1);
+      IndexReader reader2 = writer.getReader();
+      assertEquals(1, reader2.leaves().size());
+      // assert that in the merged segments payloads set up for the field
+      assertTrue(reader2.leaves().get(0).reader().getFieldInfos().fieldInfo("c").hasPayloads());
+
+      IOUtils.close(writer, reader1, reader2, dir);
     }
-    for (int i = 0; i < numDocsInSegment; i++) {
-      Document doc = new Document();
-      doc.add(new Field("c", tkg2.newTokenStream(), ft1));
-      writer.addDocument(doc);
-    }
-
-    IndexReader reader1 = writer.getReader();
-    assertEquals(
-        hasPayloads1,
-        reader1.leaves().get(0).reader().getFieldInfos().fieldInfo("c").hasPayloads());
-    assertEquals(
-        hasPayloads2,
-        reader1.leaves().get(1).reader().getFieldInfos().fieldInfo("c").hasPayloads());
-
-    writer.forceMerge(1);
-    IndexReader reader2 = writer.getReader();
-    // assert that in the merged segments payloads set up for the field
-    assertTrue(reader2.leaves().get(0).reader().getFieldInfos().fieldInfo("c").hasPayloads());
-
-    IOUtils.close(writer, reader1, reader2, dir);
   }
 
   /** A generator for token streams with optional null payloads */
