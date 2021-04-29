@@ -24,6 +24,12 @@ import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.spans.SpanBoostQuery;
+import org.apache.lucene.queries.spans.SpanNearQuery;
+import org.apache.lucene.queries.spans.SpanNotQuery;
+import org.apache.lucene.queries.spans.SpanOrQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause;
@@ -38,12 +44,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.spans.SpanBoostQuery;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanNotQuery;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 
 /**
  * QueryParser which permits complex phrase query syntax eg "(john jon jonathan~) peters*".

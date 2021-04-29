@@ -23,12 +23,12 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.spans.SpanBoostQuery;
+import org.apache.lucene.queries.spans.SpanOrQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.queryparser.xml.DOMUtils;
 import org.apache.lucene.queryparser.xml.ParserException;
-import org.apache.lucene.search.spans.SpanBoostQuery;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.util.BytesRef;
 import org.w3c.dom.Element;
 
