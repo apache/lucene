@@ -33,6 +33,10 @@ import org.apache.lucene.index.SegmentWriteState;
  */
 public final class SimpleTextVectorFormat extends VectorFormat {
 
+  public SimpleTextVectorFormat() {
+    super("SimpleTextVectorFormat");
+  }
+
   @Override
   public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new SimpleTextVectorWriter(state);

@@ -26,6 +26,7 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
+import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.VectorField;
@@ -90,7 +91,10 @@ public class TestHnsw extends LuceneTestCase {
           assertEquals(indexedDoc, ctx.reader().numDocs());
           assertVectorsEqual(v3, values);
           KnnGraphValues graphValues =
-              ((Lucene90HnswVectorReader) ((CodecReader) ctx.reader()).getVectorReader())
+              ((Lucene90HnswVectorReader)
+                      ((PerFieldVectorFormat.FieldsReader)
+                              ((CodecReader) ctx.reader()).getVectorReader())
+                          .getFieldReader("field"))
                   .getGraphValues("field");
           assertGraphEqual(hnsw, graphValues, nVec);
         }
