@@ -192,7 +192,7 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
             final String fieldName = fi.name;
             final String formatName = fi.getAttribute(PER_FIELD_FORMAT_KEY);
             if (formatName != null) {
-              // null formatName means the field is in fieldInfos, but has no docvalues!
+              // null formatName means the field is in fieldInfos, but has no vectors!
               final String suffix = fi.getAttribute(PER_FIELD_SUFFIX_KEY);
               if (suffix == null) {
                 throw new IllegalStateException(

@@ -44,8 +44,8 @@ public abstract class VectorFormat implements NamedSPILoader.NamedSPI {
     static NamedSPILoader<VectorFormat> getLoader() {
       if (LOADER == null) {
         throw new IllegalStateException(
-            "You tried to lookup a DocValuesFormat by name before all formats could be initialized. "
-                + "This likely happens if you call DocValuesFormat#forName from a DocValuesFormat's ctor.");
+            "You tried to lookup a VectorFormat name before all formats could be initialized. "
+                + "This likely happens if you call VectorFormat#forName from a VectorFormat's ctor.");
       }
       return LOADER;
     }
