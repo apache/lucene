@@ -16,9 +16,7 @@
  */
 package org.apache.lucene.util.packed;
 
-import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -59,40 +57,6 @@ class Packed64 extends PackedInts.MutableImpl {
     final PackedInts.Format format = PackedInts.Format.PACKED;
     final int longCount = format.longCount(PackedInts.VERSION_CURRENT, valueCount, bitsPerValue);
     this.blocks = new long[longCount];
-    maskRight = ~0L << (BLOCK_SIZE - bitsPerValue) >>> (BLOCK_SIZE - bitsPerValue);
-    bpvMinusBlockSize = bitsPerValue - BLOCK_SIZE;
-  }
-
-  /**
-   * Creates an array with content retrieved from the given DataInput.
-   *
-   * @param in a DataInput, positioned at the start of Packed64-content.
-   * @param valueCount the number of elements.
-   * @param bitsPerValue the number of bits available for any given value.
-   * @throws java.io.IOException if the values for the backing array could not be retrieved.
-   */
-  public Packed64(int packedIntsVersion, DataInput in, int valueCount, int bitsPerValue)
-      throws IOException {
-    super(valueCount, bitsPerValue);
-    final PackedInts.Format format = PackedInts.Format.PACKED;
-    final long byteCount =
-        format.byteCount(packedIntsVersion, valueCount, bitsPerValue); // to know how much to read
-    final int longCount =
-        format.longCount(PackedInts.VERSION_CURRENT, valueCount, bitsPerValue); // to size the array
-    blocks = new long[longCount];
-    // read as many longs as we can
-    for (int i = 0; i < byteCount / 8; ++i) {
-      blocks[i] = in.readLong();
-    }
-    final int remaining = (int) (byteCount % 8);
-    if (remaining != 0) {
-      // read the last bytes
-      long lastLong = 0;
-      for (int i = 0; i < remaining; ++i) {
-        lastLong |= (in.readByte() & 0xFFL) << (56 - i * 8);
-      }
-      blocks[blocks.length - 1] = lastLong;
-    }
     maskRight = ~0L << (BLOCK_SIZE - bitsPerValue) >>> (BLOCK_SIZE - bitsPerValue);
     bpvMinusBlockSize = bitsPerValue - BLOCK_SIZE;
   }

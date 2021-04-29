@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 import static org.apache.lucene.util.BitUtil.zigZagDecode;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.packed.LegacyPackedInts;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.IndexInput;
@@ -74,7 +75,7 @@ final class LegacyFieldsIndexReader extends FieldsIndex {
             "Corrupted bitsPerDocBase: " + bitsPerDocBase, fieldsIndexIn);
       }
       docBasesDeltas[blockCount] =
-          PackedInts.getReaderNoHeader(
+          LegacyPackedInts.getReaderNoHeader(
               fieldsIndexIn,
               PackedInts.Format.PACKED,
               packedIntsVersion,
@@ -90,7 +91,7 @@ final class LegacyFieldsIndexReader extends FieldsIndex {
             "Corrupted bitsPerStartPointer: " + bitsPerStartPointer, fieldsIndexIn);
       }
       startPointersDeltas[blockCount] =
-          PackedInts.getReaderNoHeader(
+          LegacyPackedInts.getReaderNoHeader(
               fieldsIndexIn,
               PackedInts.Format.PACKED,
               packedIntsVersion,

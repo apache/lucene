@@ -93,6 +93,7 @@ import org.apache.lucene.util.fst.Util;
  *
  * <ul>
  *   <li><code>.tim</code>: <a href="#Termdictionary">Term Dictionary</a>
+ *   <li><code>.tmd</code>: <a href="#Termmetadata">Term Metadata</a>
  *   <li><code>.tip</code>: <a href="#Termindex">Term Index</a>
  * </ul>
  *
@@ -113,7 +114,7 @@ import org.apache.lucene.util.fst.Util;
  *
  * <ul>
  *   <li>TermsDict (.tim) --&gt; Header, <i>PostingsHeader</i>, NodeBlock<sup>NumBlocks</sup>,
- *       FieldSummary, DirOffset, Footer
+ *       Footer
  *   <li>NodeBlock --&gt; (OuterNode | InnerNode)
  *   <li>OuterNode --&gt; EntryCount, SuffixLength, Byte<sup>SuffixLength</sup>, StatsLength, &lt;
  *       TermStats &gt;<sup>EntryCount</sup>, MetaLength,
@@ -122,16 +123,10 @@ import org.apache.lucene.util.fst.Util;
  *       &lt; TermStats ? &gt;<sup>EntryCount</sup>, MetaLength, &lt;<i>TermMetadata ?
  *       </i>&gt;<sup>EntryCount</sup>
  *   <li>TermStats --&gt; DocFreq, TotalTermFreq
- *   <li>FieldSummary --&gt; NumFields, &lt;FieldNumber, NumTerms, RootCodeLength,
- *       Byte<sup>RootCodeLength</sup>, SumTotalTermFreq?, SumDocFreq, DocCount, LongsSize, MinTerm,
- *       MaxTerm&gt;<sup>NumFields</sup>
  *   <li>Header --&gt; {@link CodecUtil#writeHeader CodecHeader}
- *   <li>DirOffset --&gt; {@link DataOutput#writeLong Uint64}
- *   <li>MinTerm,MaxTerm --&gt; {@link DataOutput#writeVInt VInt} length followed by the byte[]
- *   <li>EntryCount,SuffixLength,StatsLength,DocFreq,MetaLength,NumFields,
- *       FieldNumber,RootCodeLength,DocCount,LongsSize --&gt; {@link DataOutput#writeVInt VInt}
- *   <li>TotalTermFreq,NumTerms,SumTotalTermFreq,SumDocFreq --&gt; {@link DataOutput#writeVLong
- *       VLong}
+ *   <li>EntryCount,SuffixLength,StatsLength,DocFreq,MetaLength --&gt; {@link DataOutput#writeVInt
+ *       VInt}
+ *   <li>TotalTermFreq --&gt; {@link DataOutput#writeVLong VLong}
  *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  * </ul>
  *
@@ -140,24 +135,48 @@ import org.apache.lucene.util.fst.Util;
  * <ul>
  *   <li>Header is a {@link CodecUtil#writeHeader CodecHeader} storing the version information for
  *       the BlockTree implementation.
- *   <li>DirOffset is a pointer to the FieldSummary section.
  *   <li>DocFreq is the count of documents which contain the term.
  *   <li>TotalTermFreq is the total number of occurrences of the term. This is encoded as the
  *       difference between the total number of occurrences and the DocFreq.
+ *   <li>PostingsHeader and TermMetadata are plugged into by the specific postings implementation:
+ *       these contain arbitrary per-file data (such as parameters or versioning information) and
+ *       per-term data (such as pointers to inverted files).
+ *   <li>For inner nodes of the tree, every entry will steal one bit to mark whether it points to
+ *       child nodes(sub-block). If so, the corresponding TermStats and TermMetaData are omitted.
+ * </ul>
+ *
+ * <p><a id="Termmetadata"></a>
+ *
+ * <h2>Term Metadata</h2>
+ *
+ * <p>The .tmd file contains the list of term metadata (such as FST index metadata) and field level
+ * statistics (such as sum of total term freq).
+ *
+ * <ul>
+ *   <li>TermsMeta (.tmd) --&gt; Header, NumFields, &lt;FieldStats&gt;<sup>NumFields</sup>,
+ *       TermIndexLength, TermDictLength, Footer
+ *   <li>FieldStats --&gt; FieldNumber, NumTerms, RootCodeLength, Byte<sup>RootCodeLength</sup>,
+ *       SumTotalTermFreq?, SumDocFreq, DocCount, MinTerm, MaxTerm, IndexStartFP, FSTHeader,
+ *       <i>FSTMetadata</i>
+ *   <li>Header,FSTHeader --&gt; {@link CodecUtil#writeHeader CodecHeader}
+ *   <li>TermIndexLength, TermDictLength --&gt; {@link DataOutput#writeLong Uint64}
+ *   <li>MinTerm,MaxTerm --&gt; {@link DataOutput#writeVInt VInt} length followed by the byte[]
+ *   <li>NumFields,FieldNumber,RootCodeLength,DocCount --&gt; {@link DataOutput#writeVInt VInt}
+ *   <li>NumTerms,SumTotalTermFreq,SumDocFreq,IndexStartFP --&gt; {@link DataOutput#writeVLong
+ *       VLong}
+ *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
+ * </ul>
+ *
+ * <p>Notes:
+ *
+ * <ul>
  *   <li>FieldNumber is the fields number from {@link FieldInfos}. (.fnm)
  *   <li>NumTerms is the number of unique terms for the field.
  *   <li>RootCode points to the root block for the field.
  *   <li>SumDocFreq is the total number of postings, the number of term-document pairs across the
  *       entire field.
  *   <li>DocCount is the number of documents that have at least one posting for this field.
- *   <li>LongsSize records how many long values the postings writer/reader record per term (e.g., to
- *       hold freq/prox/doc file offsets).
  *   <li>MinTerm, MaxTerm are the lowest and highest term in this field.
- *   <li>PostingsHeader and TermMetadata are plugged into by the specific postings implementation:
- *       these contain arbitrary per-file data (such as parameters or versioning information) and
- *       per-term data (such as pointers to inverted files).
- *   <li>For inner nodes of the tree, every entry will steal one bit to mark whether it points to
- *       child nodes(sub-block). If so, the corresponding TermStats and TermMetaData are omitted
  * </ul>
  *
  * <a id="Termindex"></a>
@@ -169,11 +188,8 @@ import org.apache.lucene.util.fst.Util;
  * saving a disk seek.
  *
  * <ul>
- *   <li>TermsIndex (.tip) --&gt; Header, FSTIndex<sup>NumFields</sup>
- *       &lt;IndexStartFP&gt;<sup>NumFields</sup>, DirOffset, Footer
+ *   <li>TermsIndex (.tip) --&gt; Header, FSTIndex<sup>NumFields</sup>Footer
  *   <li>Header --&gt; {@link CodecUtil#writeHeader CodecHeader}
- *   <li>DirOffset --&gt; {@link DataOutput#writeLong Uint64}
- *   <li>IndexStartFP --&gt; {@link DataOutput#writeVLong VLong}
  *       <!-- TODO: better describe FST output here -->
  *   <li>FSTIndex --&gt; {@link FST FST&lt;byte[]&gt;}
  *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
@@ -185,7 +201,6 @@ import org.apache.lucene.util.fst.Util;
  *   <li>The .tip file contains a separate FST for each field. The FST maps a term prefix to the
  *       on-disk block that holds all terms starting with that prefix. Each field's IndexStartFP
  *       points to its FST.
- *   <li>DirOffset is a pointer to the start of the IndexStartFPs for all fields
  *   <li>It's possible that an on-disk block would contain too many terms (more than the allowed
  *       maximum (default: 48)). When this happens, the block is sub-divided into new blocks (called
  *       "floor blocks"), and then the output in the FST for the block's prefix encodes the leading

@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import org.apache.lucene.backward_codecs.packed.LegacyPackedInts;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -403,12 +404,12 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     {
       final int bitsPerOff = PackedInts.bitsRequired(fieldNums.length - 1);
       final PackedInts.Reader allFieldNumOffs =
-          PackedInts.getReaderNoHeader(
+          LegacyPackedInts.getReaderNoHeader(
               vectorsStream, PackedInts.Format.PACKED, packedIntsVersion, totalFields, bitsPerOff);
       switch (vectorsStream.readVInt()) {
         case 0:
           final PackedInts.Reader fieldFlags =
-              PackedInts.getReaderNoHeader(
+              LegacyPackedInts.getReaderNoHeader(
                   vectorsStream,
                   PackedInts.Format.PACKED,
                   packedIntsVersion,
@@ -425,7 +426,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
           break;
         case 1:
           flags =
-              PackedInts.getReaderNoHeader(
+              LegacyPackedInts.getReaderNoHeader(
                   vectorsStream,
                   PackedInts.Format.PACKED,
                   packedIntsVersion,
@@ -446,7 +447,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     {
       final int bitsRequired = vectorsStream.readVInt();
       numTerms =
-          PackedInts.getReaderNoHeader(
+          LegacyPackedInts.getReaderNoHeader(
               vectorsStream,
               PackedInts.Format.PACKED,
               packedIntsVersion,

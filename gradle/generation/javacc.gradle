@@ -107,7 +107,7 @@ def commonCleanups = { FileTree generatedFiles ->
 }
 
 configure(project(":lucene:queryparser")) {
-  task javaccParserClassic(type: JavaCCTask) {
+  task javaccParserClassicInternal(type: JavaCCTask) {
     description "Regenerate classic query parser from lucene/queryparser/classic/QueryParser.jj"
     group "generation"
 
@@ -144,7 +144,7 @@ configure(project(":lucene:queryparser")) {
     }
   }
 
-  task javaccParserSurround(type: JavaCCTask) {
+  task javaccParserSurroundInternal(type: JavaCCTask) {
     description "Regenerate surround query parser from lucene/queryparser/surround/parser/QueryParser.jj"
     group "generation"
 
@@ -169,7 +169,7 @@ configure(project(":lucene:queryparser")) {
     }
   }
 
-  task javaccParserFlexible(type: JavaCCTask) {
+  task javaccParserFlexibleInternal(type: JavaCCTask) {
     description "Regenerate flexible query parser from queryparser/flexible/standard/parser/StandardSyntaxParser.jj"
     group "generation"
 
@@ -252,9 +252,9 @@ configure(project(":lucene:queryparser")) {
     description "Regenerate query parsers (javacc syntax definitions)."
     group "generation"
 
-    dependsOn wrapWithPersistentChecksums(javaccParserClassic, [ andThenTasks: "spotlessApply" ]),
-        wrapWithPersistentChecksums(javaccParserSurround, [ andThenTasks: "spotlessApply" ]),
-        wrapWithPersistentChecksums(javaccParserFlexible, [ andThenTasks: "spotlessApply" ])
+    dependsOn wrapWithPersistentChecksums(javaccParserClassicInternal, [ andThenTasks: "spotlessApply" ]),
+        wrapWithPersistentChecksums(javaccParserSurroundInternal, [ andThenTasks: "spotlessApply" ]),
+        wrapWithPersistentChecksums(javaccParserFlexibleInternal, [ andThenTasks: "spotlessApply" ])
   }
 
   regenerate.dependsOn javacc
