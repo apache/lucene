@@ -329,6 +329,38 @@ final class BooleanWeight extends Weight {
 
   @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+    boolean isPureDisjunction = true;
+    boolean isTermQuery = true;
+    for (WeightedBooleanClause wbc : weightedClauses) {
+      BooleanClause bc = wbc.clause;
+      Query query = bc.getQuery();
+      if (!(query instanceof TermQuery)) {
+        isTermQuery = false;
+      }
+
+      if (bc.getOccur() != Occur.SHOULD) {
+        isPureDisjunction = false;
+      }
+    }
+
+    if (isPureDisjunction
+        && isTermQuery
+        && scoreMode == ScoreMode.TOP_SCORES
+        && query.getMinimumNumberShouldMatch() <= 1
+        && weightedClauses.size() > 1) {
+      List<Scorer> optionalScorers = new ArrayList<>();
+      for (WeightedBooleanClause wc : weightedClauses) {
+        Scorer scorer = wc.weight.scorer(context);
+        if (scorer != null) {
+          optionalScorers.add(scorer);
+        }
+      }
+
+      if (optionalScorers.size() > 0) {
+        return new BMMBulkScorer(this, optionalScorers, scoreMode);
+      }
+    }
+
     if (scoreMode == ScoreMode.TOP_SCORES) {
       // If only the top docs are requested, use the default bulk scorer
       // so that we can dynamically prune non-competitive hits.
