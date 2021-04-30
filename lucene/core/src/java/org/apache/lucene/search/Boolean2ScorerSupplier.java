@@ -238,22 +238,37 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
       //
       // However, as WANDScorer uses more complex algorithm and data structure, we would like to
       // still use DisjunctionSumScorer to handle exhaustive pure disjunctions, which may be faster
-      boolean isPureDisjunction =
-          subs.get(Occur.FILTER).isEmpty()
-              && subs.get(Occur.MUST).isEmpty()
-              && subs.get(Occur.MUST_NOT).isEmpty();
+      if (weight instanceof BooleanWeight) {
+        boolean isPureDisjunction = true;
+        boolean isTermQuery = true;
 
-      boolean allTermScorers =
-          optionalScorers.stream().allMatch(scorer -> scorer instanceof TermScorer);
+        BooleanWeight bw = (BooleanWeight) weight;
+        for (BooleanWeight.WeightedBooleanClause wbc : bw.weightedClauses) {
+          BooleanClause bc = wbc.clause;
+          Query query = bc.getQuery();
+          if (!(query instanceof TermQuery)) {
+            isTermQuery = false;
+            break;
+          }
 
-      if (scoreMode == ScoreMode.TOP_SCORES
-          && minShouldMatch <= 1
-          && isPureDisjunction
-          && allTermScorers) {
-        // have looser conditions above temporarily to allow more tests (especially the ones from
-        // TestWANDScorer) to test BlockMaxMaxscoreScorer
-        return new BlockMaxMaxscoreScorer(weight, optionalScorers, scoreMode);
-      } else if (scoreMode == ScoreMode.TOP_SCORES || minShouldMatch > 1) {
+          if (bc.getOccur() != Occur.SHOULD) {
+            isPureDisjunction = false;
+            break;
+          }
+        }
+
+        if (isPureDisjunction
+            && isTermQuery
+            && scoreMode == ScoreMode.TOP_SCORES
+            && minShouldMatch <= 1
+            && bw.weightedClauses.size() > 1) {
+          // have looser conditions above temporarily to allow more tests (especially the ones from
+          // TestWANDScorer) to test BlockMaxMaxscoreScorer
+          return new BlockMaxMaxscoreScorer(weight, optionalScorers, scoreMode);
+        }
+      }
+
+      if (scoreMode == ScoreMode.TOP_SCORES || minShouldMatch > 1) {
         return new WANDScorer(weight, optionalScorers, minShouldMatch, scoreMode);
       } else {
         return new DisjunctionSumScorer(weight, optionalScorers, scoreMode);
