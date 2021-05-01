@@ -54,7 +54,7 @@ configure(project(":lucene:core")) {
     }
   }
 
-  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [ andThenTasks: "spotlessApply" ])
+  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
   configure(generateStandardTokenizer) {
     // StandardTokenizerImpl.jflex includes UnicodeEmojiProperties.jflex so we make sure it's up to date.
     dependsOn ":lucene:core:generateEmojiProperties"
@@ -157,7 +157,7 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: "spotlessApply" ])
+  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
   configure (generateUAX29URLEmailTokenizer) {
     // UAX29URLEmailTokenizerImpl.jflex includes: UnicodeEmojiProperties.jflex and ASCIITLD.jflex
     // so we make sure both are up to date.
@@ -201,18 +201,18 @@ configure(project(":lucene:analysis:common")) {
     skeleton = skeletonDefault
   }
 
-  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: "spotlessApply" ])
+  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
   configure(generateHTMLStripCharFilter) {
     // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
     dependsOn "generateHTMLCharacterEntities"
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateClassicTokenizerInternal, [ andThenTasks: "spotlessApply" ]),
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+      wrapWithPersistentChecksums(generateClassicTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
       generateUAX29URLEmailTokenizer,
       wrapWithPersistentChecksums(generateHTMLCharacterEntitiesInternal),
       generateHTMLStripCharFilter,
-      wrapWithPersistentChecksums(generateTldsInternal, [ andThenTasks: "spotlessApply" ])
+      wrapWithPersistentChecksums(generateTldsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
 }
 
 class JFlexTask extends DefaultTask {
