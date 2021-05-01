@@ -15,18 +15,49 @@
  * limitations under the License.
  */
 
-if (Boolean.parseBoolean(propertyOrDefault("tests.coverage", "false"))) {
+// This adds jacoco code coverage to tests.
+
+// Run with jacoco if either 'coverage' is passed as a task on input or
+// tests.coverage property is true.
+def withCoverage = gradle.startParameter.taskNames.contains("coverage") ||
+    Boolean.parseBoolean(propertyOrDefault("tests.coverage", "false"))
+
+if (withCoverage) {
   allprojects {
-    apply plugin: "jacoco"
-    tasks.withType(Test) {
-      // XXX: too many things called "workingDir" in gradle!
-      def targetDir = "${buildDir}/tmp/tests-cwd"
-      jacoco {
-        destinationFile = file("${targetDir}/jacoco.db")
+    plugins.withType(JavaPlugin) {
+      // Apply jacoco once we know the project has a Java plugin too.
+      project.plugins.apply("jacoco")
+
+      // Synthetic task to enable test coverage (and reports).
+      task coverage() {
+        dependsOn jacocoTestReport
       }
-      doFirst {
-        // delete any previous results
-        project.delete fileTree(dir: targetDir, include: 'jacoco.db')
+
+      // Deletes jacoco database prior to any tests.
+      task deleteCoverage(type: Delete) {
+      }
+
+      tasks.withType(Test) { Task testTask ->
+        // Configure jacoco destination file to be within the test
+        // task's working directory - this is related to security
+        // manager permissions (access to this file from within test jvm).
+        def jacocodb = file("${testTask.workingDir}/jacoco.exec")
+        jacoco {
+          destinationFile = jacocodb
+        }
+
+        // Register the database file for deletion. This ensures
+        // it's deleted once, before any test task runs.
+        deleteCoverage.delete jacocodb
+
+        // Test reports, if any, must be preceded by test execution.
+        jacocoTestReport.dependsOn testTask
+      }
+
+      configure(jacocoTestReport) {
+        doLast {
+          logger.lifecycle("Code coverage report at: ${reports.html.destination}.\n")
+        }
       }
     }
   }

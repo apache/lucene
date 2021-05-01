@@ -70,7 +70,7 @@ grant {
 // Permissions for jacoco code coverage
 grant {
   // permission to write the per-jvm code coverage output
-  permission java.io.FilePermission "${user.dir}${/}jacoco.db", "write";
+  permission java.io.FilePermission "${user.dir}${/}jacoco.exec", "write";
   // needed by jacoco to dump coverage on shutdown
   permission java.lang.RuntimePermission "shutdownHooks";
   // needed by jacoco to instrument classes
