@@ -156,6 +156,16 @@ to increase the top-N count:
 
 gradlew -p lucene/core test -Ptests.profile=true -Ptests.profile.count=100
 
+Generating Coverage Reports
+------------------------------
+
+Adding the property "tests.coverage=true" will run the tests with instrumentation to
+record coverage. The "jacocoTestReport" target will generate a report from those files.
+
+Example:
+
+gradlew -p lucene/core -Ptests.coverage=true test jacocoTestReport
+open lucene/core/build/reports/jacoco/test/html/index.html
 
 External data sets
 ------------------
