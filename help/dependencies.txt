@@ -133,9 +133,9 @@ files are missing:
 
 gradlew licenses
 
-To update JAR (and other artifact) checksums use:
+To update JAR (and other plugin) checksums use:
 
-gradlew --write-verification-metadata sha256 help
+gradlew --write-verification-metadata sha256 check
 
 This will detect dependencies, calculate their checksums and add them
 to the auto-generated verification-metadata.xml file.
