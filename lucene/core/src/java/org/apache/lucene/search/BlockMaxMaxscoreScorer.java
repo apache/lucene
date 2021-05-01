@@ -94,6 +94,8 @@ public class BlockMaxMaxscoreScorer extends Scorer {
   public TwoPhaseIterator twoPhaseIterator() {
     DocIdSetIterator approximation =
         new DocIdSetIterator() {
+          private long lastMinCompetitiveScore;
+
           @Override
           public int docID() {
             return doc;
@@ -122,7 +124,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
             // scorers
 
             // If the next candidate doc id is still within interval boundary,
-            if (target <= upTo) {
+            if (lastMinCompetitiveScore == minCompetitiveScore && target <= upTo) {
               while (essentialsScorers.top().doc < target) {
                 DisiWrapper w = essentialsScorers.pop();
                 w.doc = w.iterator.advance(target);
@@ -139,7 +141,9 @@ public class BlockMaxMaxscoreScorer extends Scorer {
                 doc = upTo + 1;
               }
             } else {
-              // Next candidate doc id is above interval boundary...find next interval boundary.
+              lastMinCompetitiveScore = minCompetitiveScore;
+              // Next candidate doc id is above interval boundary, or minCompetitive has increased.
+              // Find next interval boundary.
               // Block boundary alignment strategy is adapted from "Optimizing Top-k Document
               // Retrieval Strategies for Block-Max Indexes" by Dimopoulos, Nepomnyachiy and Suel.
               // Find the block interval boundary that is the minimum of all participating scorer's
@@ -174,19 +178,29 @@ public class BlockMaxMaxscoreScorer extends Scorer {
               nonEssentialScorers.add(essentialsScorers.pop());
             }
 
-            int nextIntervalBoundary = DocIdSetIterator.NO_MORE_DOCS;
+            // reset upTo
+            upTo = DocIdSetIterator.NO_MORE_DOCS;
             for (DisiWrapper w : nonEssentialScorers) {
               if (w.doc < target) {
-                nextIntervalBoundary =
-                    Math.min(w.scorer.advanceShallow(target), nextIntervalBoundary);
-                w.doc = w.scorer.iterator().advance(target);
+                upTo = Math.min(w.scorer.advanceShallow(target), upTo);
               } else {
-                nextIntervalBoundary =
-                    Math.min(w.scorer.advanceShallow(w.doc), nextIntervalBoundary);
+                upTo = Math.min(w.scorer.advanceShallow(w.doc), upTo);
               }
-              w.maxScore = WANDScorer.scaleMaxScore(w.scorer.getMaxScore(w.doc), scalingFactor);
             }
-            upTo = nextIntervalBoundary;
+            assert target <= upTo;
+
+            for (DisiWrapper w : nonEssentialScorers) {
+              if (w.doc <= upTo) {
+                w.maxScore = WANDScorer.scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
+              } else {
+                // This scorer won't be able to contribute to match for target, setting its maxScore
+                // to 0 so it goes into nonEssentialList
+                w.maxScore = 0;
+              }
+              if (w.doc < target) {
+                w.doc = w.iterator.advance(target);
+              }
+            }
           }
 
           private void repartitionLists() {
