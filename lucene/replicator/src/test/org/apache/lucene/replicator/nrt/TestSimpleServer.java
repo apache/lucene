@@ -46,8 +46,11 @@ import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.TestRuleIgnoreTestSuites;
 import org.apache.lucene.util.TestUtil;
+import org.junit.Assume;
 import org.junit.AssumptionViolatedException;
+import org.junit.BeforeClass;
 
 /**
  * Child process with silly naive TCP socket server to handle between-node commands, launched for
@@ -56,7 +59,7 @@ import org.junit.AssumptionViolatedException;
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
 @SuppressForbidden(reason = "We need Unsafe to actually crush :-)")
-public class SimpleServer extends LuceneTestCase {
+public class TestSimpleServer extends LuceneTestCase {
 
   static final Set<Thread> clientThreads = Collections.synchronizedSet(new HashSet<>());
   static final AtomicBoolean stop = new AtomicBoolean();
@@ -220,6 +223,11 @@ public class SimpleServer extends LuceneTestCase {
     long primaryGen = in.readVLong();
 
     return new CopyState(files, version, gen, infosBytes, completedMergeFiles, primaryGen, null);
+  }
+
+  @BeforeClass
+  public static void ensureNested() {
+    Assume.assumeTrue(TestRuleIgnoreTestSuites.isRunningNested());
   }
 
   @SuppressWarnings("try")

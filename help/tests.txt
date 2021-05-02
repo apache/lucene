@@ -117,6 +117,7 @@ won't be the case (all tasks will use exactly the same starting seed):
 
 gradlew -p lucene/core beast -Ptests.dups=10 --tests TestPerFieldDocValuesFormat -Dtests.seed=deadbeef
 
+
 Verbose mode and debugging
 --------------------------
 
@@ -155,6 +156,18 @@ Using these additional options will make the results more sparse, so it may be u
 to increase the top-N count:
 
 gradlew -p lucene/core test -Ptests.profile=true -Ptests.profile.count=100
+
+
+Generating Coverage Reports
+------------------------------
+
+Running the "coverage" task (or setting the property "tests.coverage" to true)
+will run the tests with instrumentation to record code coverage.
+
+Example:
+
+gradlew -p lucene/core coverage
+open lucene/core/build/reports/jacoco/test/html/index.html
 
 
 External data sets
