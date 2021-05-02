@@ -33,22 +33,13 @@ if (withCoverage) {
         dependsOn jacocoTestReport
       }
 
-      // Deletes jacoco database prior to any tests.
-      task deleteCoverage(type: Delete) {
-      }
-
       tasks.withType(Test) { Task testTask ->
         // Configure jacoco destination file to be within the test
         // task's working directory - this is related to security
         // manager permissions (access to this file from within test jvm).
-        def jacocodb = file("${testTask.workingDir}/jacoco.exec")
         jacoco {
-          destinationFile = jacocodb
+          destinationFile = file("${testTask.workingDir}/jacoco.exec")
         }
-
-        // Register the database file for deletion. This ensures
-        // it's deleted once, before any test task runs.
-        deleteCoverage.delete jacocodb
 
         // Test reports, if any, must be preceded by test execution.
         jacocoTestReport.dependsOn testTask
