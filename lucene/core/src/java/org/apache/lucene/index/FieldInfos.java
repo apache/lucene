@@ -654,6 +654,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
         if (fi.attributes() != null) {
           fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
         }
+        if (fi.hasPayloads()) {
+          curFi.setStorePayloads();
+        }
         return curFi;
       }
       // This field wasn't yet added to this in-RAM segment's FieldInfo,

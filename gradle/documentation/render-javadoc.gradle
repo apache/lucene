@@ -255,6 +255,10 @@ configure(subprojects) {
   }
 }
 
+configure(project(':lucene:luke')) {
+  project.tasks.matching { it.name == 'renderSiteJavadoc' }.configureEach { it.enabled = false }
+}
+
 class RenderJavadocTask extends DefaultTask {
   @InputFiles
   @SkipWhenEmpty

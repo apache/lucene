@@ -164,6 +164,7 @@ apply from: file('gradle/testing/slowest-tests-at-end.gradle')
 apply from: file('gradle/testing/failed-tests-at-end.gradle')
 apply from: file('gradle/testing/profiling.gradle')
 apply from: file('gradle/testing/beasting.gradle')
+apply from: file('gradle/testing/coverage.gradle')
 apply from: file('gradle/help.gradle')
 
 apply from: file('gradle/documentation/documentation.gradle')

@@ -14,16 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.backward_codecs.lucene50;
+package org.apache.lucene.benchmark.byTask.tasks;
 
-import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseTermVectorsFormatTestCase;
+import org.apache.lucene.benchmark.byTask.PerfRunData;
+import org.apache.lucene.index.IndexWriter;
 
-public class TestLucene50TermVectorsFormat extends BaseTermVectorsFormatTestCase {
+/** Flush Index Task uses flushNextBuffer() to flush documents at thread level */
+public class FlushIndexTask extends PerfTask {
+
+  public FlushIndexTask(PerfRunData runData) {
+    super(runData);
+  }
 
   @Override
-  protected Codec getCodec() {
-    return new Lucene87RWCodec();
+  public int doLogic() throws Exception {
+    IndexWriter iw = getRunData().getIndexWriter();
+    if (iw != null) {
+      iw.flushNextBuffer();
+    }
+    return 1;
   }
 }

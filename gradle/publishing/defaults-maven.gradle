@@ -44,7 +44,6 @@ configure(rootProject) {
         ":lucene:grouping",
         ":lucene:highlighter",
         ":lucene:join",
-        ":lucene:luke",
         ":lucene:memory",
         ":lucene:misc",
         ":lucene:monitor",
