@@ -82,10 +82,7 @@ public class LongValueFacetCounts extends Facets {
     if (valueSource != null) {
       count(valueSource, hits.getMatchingDocs());
     } else {
-      // nocommit: this behavior has changed subtly. previously, it would assume the field should
-      // be single-valued, and would skip counting if they weren't. now it will count single- or
-      // multi-valued fields automatically based on what's indexed. does this matter?
-      count(field, hits.getMatchingDocs(), null);
+      count(field, hits.getMatchingDocs());
     }
   }
 
@@ -106,63 +103,11 @@ public class LongValueFacetCounts extends Facets {
   public LongValueFacetCounts(String field, LongValuesSource valueSource, IndexReader reader)
       throws IOException {
     this.field = field;
-    // nocommit: this behavior has changed subtly. previously, it would only count using the value
-    // source. now it will use the value source if non-null, and fall back to using the field
-    // otherwise. (the old behavior would just NPE if the value source was null). the new behavior
-    // is more consistent with the other ctors. is this ok?
     if (valueSource != null) {
       countAll(reader, valueSource);
     } else {
-      countAll(reader, field, null);
+      countAll(reader, field);
     }
-  }
-
-  /**
-   * Create {@code LongValueFacetCounts}, using either single-valued {@link NumericDocValues} or
-   * multi-valued {@link SortedNumericDocValues} from the specified field.
-   *
-   * @deprecated
-   */
-  @Deprecated
-  public LongValueFacetCounts(String field, FacetsCollector hits, boolean multiValued)
-      throws IOException {
-    this(field, null, hits, multiValued);
-  }
-
-  /**
-   * Create {@code LongValueFacetCounts}, using the provided {@link LongValuesSource}. random access
-   * (implement {@link org.apache.lucene.search.DocIdSet#bits}).
-   *
-   * @deprecated
-   */
-  @Deprecated
-  public LongValueFacetCounts(
-      String field, LongValuesSource valueSource, FacetsCollector hits, boolean multiValued)
-      throws IOException {
-    this.field = field;
-    if (valueSource == null) {
-      count(field, hits.getMatchingDocs(), multiValued);
-    } else {
-      // value source is always single valued
-      if (multiValued) {
-        throw new IllegalArgumentException(
-            "can only compute multi-valued facets directly from doc values (when valueSource is null)");
-      }
-      count(valueSource, hits.getMatchingDocs());
-    }
-  }
-
-  /**
-   * Counts all facet values for this reader. This produces the same result as computing facets on a
-   * {@link org.apache.lucene.search.MatchAllDocsQuery}, but is more efficient.
-   *
-   * @deprecated
-   */
-  @Deprecated
-  public LongValueFacetCounts(String field, IndexReader reader, boolean multiValued)
-      throws IOException {
-    this.field = field;
-    countAll(reader, field, multiValued);
   }
 
   /** Counts from the provided valueSource. */
@@ -192,8 +137,7 @@ public class LongValueFacetCounts extends Facets {
   }
 
   /** Counts from the field's indexed doc values. */
-  private void count(String field, List<MatchingDocs> matchingDocs, Boolean expectMultiValued)
-      throws IOException {
+  private void count(String field, List<MatchingDocs> matchingDocs) throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
 
@@ -201,14 +145,6 @@ public class LongValueFacetCounts extends Facets {
       NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
 
       if (singleValues != null) {
-
-        // remain backwards-compatible with older behavior for now. if the user explicitly told
-        // us to expect a multi-valued field but it was single-valued, just skip it in counting.
-        // TODO: remove this when removing the deprecated ctors
-        // nocommit: do we care about maintaining this backwards-compat functionality?
-        if (expectMultiValued != null && expectMultiValued == true) {
-          continue;
-        }
 
         DocIdSetIterator it =
             ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), singleValues));
@@ -218,14 +154,6 @@ public class LongValueFacetCounts extends Facets {
           totCount++;
         }
       } else {
-
-        // remain backwards-compatible with older behavior for now. if the user explicitly told
-        // us to expect a single-valued field but it was multi-valued, just skip it in counting.
-        // TODO: remove this when removing the deprecated ctors
-        // nocommit: do we care about maintaining this backwards-compat functionality?
-        if (expectMultiValued != null && expectMultiValued == false) {
-          continue;
-        }
 
         DocIdSetIterator it =
             ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), multiValues));
@@ -259,8 +187,7 @@ public class LongValueFacetCounts extends Facets {
   }
 
   /** Count everything in the specified field. */
-  private void countAll(IndexReader reader, String field, Boolean expectMultiValued)
-      throws IOException {
+  private void countAll(IndexReader reader, String field) throws IOException {
 
     for (LeafReaderContext context : reader.leaves()) {
 
@@ -269,27 +196,11 @@ public class LongValueFacetCounts extends Facets {
 
       if (singleValues != null) {
 
-        // remain backwards-compatible with older behavior for now. if the user explicitly told
-        // us to expect a multi-valued field but it was single-valued, just skip it in counting.
-        // TODO: remove this when removing the deprecated ctors
-        // nocommit: do we care about maintaining this backwards-compat functionality?
-        if (expectMultiValued != null && expectMultiValued == true) {
-          continue;
-        }
-
         while (singleValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
           totCount++;
           increment(singleValues.longValue());
         }
       } else {
-
-        // remain backwards-compatible with older behavior for now. if the user explicitly told
-        // us to expect a single-valued field but it was multi-valued, just skip it in counting.
-        // TODO: remove this when removing the deprecated ctors
-        // nocommit: do we care about maintaining this backwards-compat functionality?
-        if (expectMultiValued != null && expectMultiValued == false) {
-          continue;
-        }
 
         while (multiValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
           int limit = multiValues.docValueCount();
@@ -331,7 +242,7 @@ public class LongValueFacetCounts extends Facets {
   /** Returns the specified top number of facets, sorted by count. */
   public FacetResult getTopChildrenSortByCount(int topN) {
     PriorityQueue<Entry> pq =
-        new PriorityQueue<Entry>(Math.min(topN, counts.length + hashCounts.size())) {
+        new PriorityQueue<>(Math.min(topN, counts.length + hashCounts.size())) {
           @Override
           protected boolean lessThan(Entry a, Entry b) {
             // sort by count descending, breaking ties by value ascending:
@@ -446,13 +357,13 @@ public class LongValueFacetCounts extends Facets {
   }
 
   @Override
-  public Number getSpecificValue(String dim, String... path) throws IOException {
+  public Number getSpecificValue(String dim, String... path) {
     // TODO: should we impl this?
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public List<FacetResult> getAllDims(int topN) throws IOException {
+  public List<FacetResult> getAllDims(int topN) {
     return Collections.singletonList(getTopChildren(topN, field));
   }
 
