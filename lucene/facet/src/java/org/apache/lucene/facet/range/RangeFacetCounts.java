@@ -22,7 +22,15 @@ import java.util.List;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.LabelAndValue;
+import org.apache.lucene.index.IndexReaderContext;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Weight;
 
 /**
  * Base class for range faceting.
@@ -55,6 +63,29 @@ abstract class RangeFacetCounts extends Facets {
     this.ranges = ranges;
     this.fastMatchQuery = fastMatchQuery;
     counts = new int[ranges.length];
+  }
+
+  /**
+   * Create a {@link org.apache.lucene.search.DocIdSetIterator} of {@code fastMatchQuery} for the
+   * provided {@code context}. A null response indicates no documents will match. Note that invoking
+   * this when fastMatchQuery is null will result in a null response as well.
+   */
+  protected DocIdSetIterator createFastMatchDisi(LeafReaderContext context) throws IOException {
+    assert context != null : "context must not be null";
+    if (fastMatchQuery == null) {
+      return null;
+    }
+    final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
+    final IndexSearcher searcher = new IndexSearcher(topLevelContext);
+    searcher.setQueryCache(null);
+    final Weight fastMatchWeight =
+        searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
+    final Scorer s = fastMatchWeight.scorer(context);
+    if (s == null) {
+      return null;
+    } else {
+      return s.iterator();
+    }
   }
 
   @Override

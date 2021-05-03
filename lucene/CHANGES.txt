@@ -223,6 +223,9 @@ Improvements
 
 * LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
 
+* LUCENE-9946: Support for multi-value fields in LongRangeFacetCounts and
+  DoubleRangeFacetCounts. (Greg Miller)
+
 Bug fixes
 
 

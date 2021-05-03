@@ -17,26 +17,153 @@
 package org.apache.lucene.facet.range;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Counts how many times each range was seen; per-hit it's just a binary search ({@link #add})
- * against the elementary intervals, and in the end we rollup back to the original ranges.
+ * Segment tree for counting numeric ranges. Works for both single- and multi-valued cases (assuming
+ * you use it correctly).
+ *
+ * <p>Usage notes: For counting against a single value field/source, callers should call add() for
+ * each value and then call finish() after all documents have been processed. The call to finish()
+ * will inform the caller how many documents didn't match against any ranges. After finish() has
+ * been called, the caller-provided count buffer (passed into the ctor) will be populated with
+ * accurate range counts.
+ *
+ * <p>For counting against a multi-valued field, callers should call startDoc() at the beginning of
+ * processing each doc, followed by add() for each value, and then endDoc() at the end of the doc.
+ * The call to endDoc() will inform the caller if that document matched against any ranges. It is
+ * not necessary to call finish() for multi-valued cases. After each call to endDoc(), the
+ * caller-provided count buffer (passed into the ctor) will be populated with accurate range counts.
  */
 final class LongRangeCounter {
 
-  final LongRangeNode root;
-  final long[] boundaries;
-  final int[] leafCounts;
+  /** segment tree root node */
+  private final LongRangeNode root;
+  /** elementary segment boundaries used for efficient counting (bsearch to find interval) */
+  private final long[] boundaries;
+  /** accumulated counts for all of the ranges */
+  private final int[] countBuffer;
+  /** whether-or-not we're counting docs that could be multi-valued */
+  final boolean isMultiValued;
+
+  // Needed only for counting single-valued docs:
+  /** counts seen in each elementary interval leaf */
+  private final int[] singleValuedLeafCounts;
+
+  // Needed only for counting multi-valued docs:
+  /** whether-or-not an elementary interval has seen at least one match for a single doc */
+  private final boolean[] multiValuedDocLeafHits;
+  /** whether-or-not a range has seen at least one match for a single doc */
+  private final boolean[] multiValuedDocRangeHits;
 
   // Used during rollup
   private int leafUpto;
   private int missingCount;
 
-  public LongRangeCounter(LongRange[] ranges) {
+  LongRangeCounter(LongRange[] ranges, int[] countBuffer, boolean isMultiValued) {
+    // Whether-or-not we're processing docs that could be multi-valued:
+    this.isMultiValued = isMultiValued;
+
+    // We'll populate the user-provided count buffer with range counts:
+    this.countBuffer = countBuffer;
+
+    // Build elementary intervals:
+    List<InclusiveRange> elementaryIntervals = buildElementaryIntervals(ranges);
+
+    // Build binary tree on top of intervals:
+    root = split(0, elementaryIntervals.size(), elementaryIntervals);
+
+    // Set outputs, so we know which range to output for each node in the tree:
+    for (int i = 0; i < ranges.length; i++) {
+      root.addOutputs(i, ranges[i]);
+    }
+
+    // Set boundaries (ends of each elementary interval):
+    boundaries = new long[elementaryIntervals.size()];
+    for (int i = 0; i < boundaries.length; i++) {
+      boundaries[i] = elementaryIntervals.get(i).end;
+    }
+
+    // Setup to count:
+    if (isMultiValued == false) {
+      // Setup to count single-valued docs only:
+      singleValuedLeafCounts = new int[boundaries.length];
+      multiValuedDocLeafHits = null;
+      multiValuedDocRangeHits = null;
+    } else {
+      // Setup to count multi-valued docs:
+      singleValuedLeafCounts = null;
+      multiValuedDocLeafHits = new boolean[boundaries.length];
+      multiValuedDocRangeHits = new boolean[ranges.length];
+    }
+  }
+
+  /**
+   * Start processing a new doc. It's unnecessary to call this for single-value cases (but it
+   * doesn't cause problems if you do).
+   */
+  void startDoc() {
+    if (isMultiValued) {
+      Arrays.fill(multiValuedDocLeafHits, false);
+    }
+  }
+
+  /**
+   * Finish processing a new doc. Returns whether-or-not the document contributed a count to at
+   * least one range. It's unnecessary to call this for single-value cases, and the return value in
+   * such cases will always be {@code true} (but calling it doesn't cause any problems).
+   */
+  boolean endDoc() {
+    // Necessary to rollup after each doc for multi-valued case:
+    if (isMultiValued) {
+      leafUpto = 0;
+      Arrays.fill(multiValuedDocRangeHits, false);
+      rollupMultiValued(root);
+      boolean docContributedToAtLeastOneRange = false;
+      for (int i = 0; i < multiValuedDocRangeHits.length; i++) {
+        if (multiValuedDocRangeHits[i]) {
+          countBuffer[i]++;
+          docContributedToAtLeastOneRange = true;
+        }
+      }
+
+      return docContributedToAtLeastOneRange;
+    } else {
+      return true;
+    }
+  }
+
+  /** Count a value. */
+  void add(long v) {
+    if (isMultiValued) {
+      addMultiValued(v);
+    } else {
+      addSingleValued(v);
+    }
+  }
+
+  /**
+   * Finish processing all documents. This will return the number of docs that didn't contribute to
+   * any ranges. It's unnecessary to call this for multi-value cases, and the return value will
+   * always be zero.
+   */
+  int finish() {
+    if (isMultiValued == false) {
+      missingCount = 0;
+      leafUpto = 0;
+      rollupSingleValued(root, false);
+
+      return missingCount;
+    } else {
+      return 0;
+    }
+  }
+
+  private static List<InclusiveRange> buildElementaryIntervals(LongRange[] ranges) {
     // Maps all range inclusive endpoints to int flags; 1
     // = start of interval, 2 = end of interval.  We need to
     // track the start vs end case separately because if a
@@ -80,7 +207,6 @@ final class LongRangeCounter {
     while (upto0 < endsList.size()) {
       v = endsList.get(upto0);
       int flags = endsMap.get(v);
-      // System.out.println("  v=" + v + " flags=" + flags);
       if (flags == 3) {
         // This point is both an end and a start; we need to
         // separate it:
@@ -103,36 +229,26 @@ final class LongRangeCounter {
         elementaryIntervals.add(new InclusiveRange(prev, v));
         prev = v + 1;
       }
-      // System.out.println("    ints=" + elementaryIntervals);
       upto0++;
     }
 
-    // Build binary tree on top of intervals:
-    root = split(0, elementaryIntervals.size(), elementaryIntervals);
-
-    // Set outputs, so we know which range to output for
-    // each node in the tree:
-    for (int i = 0; i < ranges.length; i++) {
-      root.addOutputs(i, ranges[i]);
-    }
-
-    // Set boundaries (ends of each elementary interval):
-    boundaries = new long[elementaryIntervals.size()];
-    for (int i = 0; i < boundaries.length; i++) {
-      boundaries[i] = elementaryIntervals.get(i).end;
-    }
-
-    leafCounts = new int[boundaries.length];
-
-    // System.out.println("ranges: " + Arrays.toString(ranges));
-    // System.out.println("intervals: " + elementaryIntervals);
-    // System.out.println("boundaries: " + Arrays.toString(boundaries));
-    // System.out.println("root:\n" + root);
+    return elementaryIntervals;
   }
 
-  public void add(long v) {
-    // System.out.println("add v=" + v);
+  private static LongRangeNode split(int start, int end, List<InclusiveRange> elementaryIntervals) {
+    if (start == end - 1) {
+      // leaf
+      InclusiveRange range = elementaryIntervals.get(start);
+      return new LongRangeNode(range.start, range.end, null, null, start);
+    } else {
+      int mid = (start + end) >>> 1;
+      LongRangeNode left = split(start, mid, elementaryIntervals);
+      LongRangeNode right = split(mid, end, elementaryIntervals);
+      return new LongRangeNode(left.start, right.end, left, right, -1);
+    }
+  }
 
+  private void addSingleValued(long v) {
     // NOTE: this works too, but it's ~6% slower on a simple
     // test with a high-freq TermQuery w/ range faceting on
     // wikimediumall:
@@ -152,11 +268,9 @@ final class LongRangeCounter {
     int hi = boundaries.length - 1;
     while (true) {
       int mid = (lo + hi) >>> 1;
-      // System.out.println("  cycle lo=" + lo + " hi=" + hi + " mid=" + mid + " boundary=" +
-      // boundaries[mid] + " to " + boundaries[mid+1]);
       if (v <= boundaries[mid]) {
         if (mid == 0) {
-          leafCounts[0]++;
+          singleValuedLeafCounts[0]++;
           return;
         } else {
           hi = mid - 1;
@@ -164,34 +278,43 @@ final class LongRangeCounter {
       } else if (v > boundaries[mid + 1]) {
         lo = mid + 1;
       } else {
-        leafCounts[mid + 1]++;
-        // System.out.println("  incr @ " + (mid+1) + "; now " + leafCounts[mid+1]);
+        singleValuedLeafCounts[mid + 1]++;
         return;
       }
     }
   }
 
-  /**
-   * Fills counts corresponding to the original input ranges, returning the missing count (how many
-   * hits didn't match any ranges).
-   */
-  public int fillCounts(int[] counts) {
-    // System.out.println("  rollup");
-    missingCount = 0;
-    leafUpto = 0;
-    rollup(root, counts, false);
-    return missingCount;
+  private void addMultiValued(long v) {
+    int lo = 0;
+    int hi = boundaries.length - 1;
+    while (true) {
+      int mid = (lo + hi) >>> 1;
+      if (v <= boundaries[mid]) {
+        if (mid == 0) {
+          multiValuedDocLeafHits[0] = true;
+          return;
+        } else {
+          hi = mid - 1;
+        }
+      } else if (v > boundaries[mid + 1]) {
+        lo = mid + 1;
+      } else {
+        int idx = mid + 1;
+        multiValuedDocLeafHits[idx] = true;
+        return;
+      }
+    }
   }
 
-  private int rollup(LongRangeNode node, int[] counts, boolean sawOutputs) {
+  private int rollupSingleValued(LongRangeNode node, boolean sawOutputs) {
     int count;
     sawOutputs |= node.outputs != null;
     if (node.left != null) {
-      count = rollup(node.left, counts, sawOutputs);
-      count += rollup(node.right, counts, sawOutputs);
+      count = rollupSingleValued(node.left, sawOutputs);
+      count += rollupSingleValued(node.right, sawOutputs);
     } else {
       // Leaf:
-      count = leafCounts[leafUpto];
+      count = singleValuedLeafCounts[leafUpto];
       leafUpto++;
       if (!sawOutputs) {
         // This is a missing count (no output ranges were
@@ -201,24 +324,30 @@ final class LongRangeCounter {
     }
     if (node.outputs != null) {
       for (int rangeIndex : node.outputs) {
-        counts[rangeIndex] += count;
+        countBuffer[rangeIndex] += count;
       }
     }
-    // System.out.println("  rollup node=" + node.start + " to " + node.end + ": count=" + count);
+
     return count;
   }
 
-  private static LongRangeNode split(int start, int end, List<InclusiveRange> elementaryIntervals) {
-    if (start == end - 1) {
-      // leaf
-      InclusiveRange range = elementaryIntervals.get(start);
-      return new LongRangeNode(range.start, range.end, null, null, start);
+  private boolean rollupMultiValued(LongRangeNode node) {
+    boolean containedHit;
+    if (node.left != null) {
+      containedHit = rollupMultiValued(node.left);
+      containedHit |= rollupMultiValued(node.right);
     } else {
-      int mid = (start + end) >>> 1;
-      LongRangeNode left = split(start, mid, elementaryIntervals);
-      LongRangeNode right = split(mid, end, elementaryIntervals);
-      return new LongRangeNode(left.start, right.end, left, right, -1);
+      // Leaf:
+      containedHit = multiValuedDocLeafHits[leafUpto];
+      leafUpto++;
     }
+    if (containedHit && node.outputs != null) {
+      for (int rangeIndex : node.outputs) {
+        multiValuedDocRangeHits[rangeIndex] = true;
+      }
+    }
+
+    return containedHit;
   }
 
   private static final class InclusiveRange {

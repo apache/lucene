@@ -17,28 +17,27 @@
 package org.apache.lucene.facet.range;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
-import org.apache.lucene.index.IndexReaderContext;
-import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.ConjunctionDISI;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.NumericUtils;
 
 /**
- * {@link Facets} implementation that computes counts for dynamic double ranges from a provided
- * {@link DoubleValuesSource}. Use this for dimensions that change in real-time (e.g. a relative
- * time based dimension like "Past day", "Past 2 days", etc.) or that change for each request (e.g.
- * distance from the user's location, "&lt; 1 km", "&lt; 2 km", etc.).
+ * {@link Facets} implementation that computes counts for dynamic double ranges. Use this for
+ * dimensions that change in real-time (e.g. a relative time based dimension like "Past day", "Past
+ * 2 days", etc.) or that change for each request (e.g. distance from the user's location, "&lt; 1
+ * km", "&lt; 2 km", etc.).
  *
  * <p>If you have indexed your field using {@link FloatDocValuesField}, then you should use a
  * DoubleValuesSource generated from {@link DoubleValuesSource#fromFloatField(String)}.
@@ -48,18 +47,29 @@ import org.apache.lucene.util.NumericUtils;
 public class DoubleRangeFacetCounts extends RangeFacetCounts {
 
   /**
-   * Create {@code RangeFacetCounts}, using {@link DoubleValues} from the specified field.
+   * Create {@code RangeFacetCounts}, using double value from the specified field. The field may be
+   * single-valued ({@link NumericDocValues}) or multi-valued ({@link SortedNumericDocValues}), and
+   * will be interpreted as containing double values.
    *
    * <p>N.B This assumes that the field was indexed with {@link
    * org.apache.lucene.document.DoubleDocValuesField}. For float-valued fields, use {@link
    * #DoubleRangeFacetCounts(String, DoubleValuesSource, FacetsCollector, DoubleRange...)}
+   *
+   * <p>TODO: Extend multi-valued support to fields that have been indexed as float values
    */
   public DoubleRangeFacetCounts(String field, FacetsCollector hits, DoubleRange... ranges)
       throws IOException {
-    this(field, DoubleValuesSource.fromDoubleField(field), hits, ranges);
+    this(field, null, hits, ranges);
   }
 
-  /** Create {@code RangeFacetCounts} using the provided {@link DoubleValuesSource} */
+  /**
+   * Create {@code RangeFacetCounts}, using the provided {@link DoubleValuesSource} if non-null. If
+   * {@code valueSource} is null, doc values from the provided {@code field} will be used.
+   *
+   * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
+   * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
+   * field is indexed.
+   */
   public DoubleRangeFacetCounts(
       String field, DoubleValuesSource valueSource, FacetsCollector hits, DoubleRange... ranges)
       throws IOException {
@@ -67,9 +77,15 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
   }
 
   /**
-   * Create {@code RangeFacetCounts}, using the provided {@link DoubleValuesSource}, and using the
-   * provided Query as a fastmatch: only documents matching the query are checked for the matching
-   * ranges.
+   * Create {@code RangeFacetCounts}, using the provided {@link DoubleValuesSource} if non-null. If
+   * {@code valueSource} is null, doc values from the provided {@code field} will be used. Use the
+   * provided {@code Query} as a fastmatch: only documents passing the filter are checked for the
+   * matching ranges, which is helpful when the provided {@link DoubleValuesSource} is costly
+   * per-document, such as a geo distance.
+   *
+   * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
+   * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
+   * field is indexed.
    */
   public DoubleRangeFacetCounts(
       String field,
@@ -79,14 +95,138 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
       DoubleRange... ranges)
       throws IOException {
     super(field, ranges, fastMatchQuery);
-    count(valueSource, hits.getMatchingDocs());
+    // use the provided valueSource if non-null, otherwise use the doc values associated with the
+    // field
+    if (valueSource != null) {
+      count(valueSource, hits.getMatchingDocs());
+    } else {
+      count(field, hits.getMatchingDocs());
+    }
   }
 
+  /** Counts from the provided valueSource. */
   private void count(DoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
-    DoubleRange[] ranges = (DoubleRange[]) this.ranges;
+    LongRange[] longRanges = createLongRanges();
 
+    LongRangeCounter counter = new LongRangeCounter(longRanges, counts, false);
+
+    int missingCount = 0;
+    for (MatchingDocs hits : matchingDocs) {
+      DoubleValues fv = valueSource.getValues(hits.context, null);
+      totCount += hits.totalHits;
+
+      final DocIdSetIterator it;
+      if (fastMatchQuery != null) {
+        DocIdSetIterator fastMatchDocs = createFastMatchDisi(hits.context);
+        if (fastMatchDocs == null) {
+          continue;
+        } else {
+          it =
+              ConjunctionDISI.intersectIterators(
+                  Arrays.asList(hits.bits.iterator(), fastMatchDocs));
+        }
+      } else {
+        it = hits.bits.iterator();
+      }
+
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+        // Skip missing docs:
+        if (fv.advanceExact(doc)) {
+          counter.add(NumericUtils.doubleToSortableLong(fv.doubleValue()));
+        } else {
+          missingCount++;
+        }
+
+        doc = it.nextDoc();
+      }
+    }
+
+    missingCount += counter.finish();
+    totCount -= missingCount;
+  }
+
+  /** Counts from the provided field. */
+  private void count(String field, List<MatchingDocs> matchingDocs) throws IOException {
+
+    LongRange[] longRanges = createLongRanges();
+
+    LongRangeCounter counter = null;
+
+    int missingCount = 0;
+
+    for (MatchingDocs hits : matchingDocs) {
+
+      final DocIdSetIterator it;
+      if (fastMatchQuery != null) {
+        DocIdSetIterator fastMatchDocs = createFastMatchDisi(hits.context);
+        if (fastMatchDocs == null) {
+          continue;
+        } else {
+          it =
+              ConjunctionDISI.intersectIterators(
+                  Arrays.asList(hits.bits.iterator(), fastMatchDocs));
+        }
+      } else {
+        it = hits.bits.iterator();
+      }
+
+      SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
+      NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
+
+      if (singleValues != null) {
+
+        if (counter == null) {
+          counter = new LongRangeCounter(longRanges, counts, false);
+        }
+        assert counter.isMultiValued == false;
+
+        totCount += hits.totalHits;
+        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+          // Skip missing docs:
+          if (singleValues.advanceExact(doc)) {
+            counter.add(NumericUtils.sortableDoubleBits(singleValues.longValue()));
+          } else {
+            missingCount++;
+          }
+
+          doc = it.nextDoc();
+        }
+      } else {
+
+        if (counter == null) {
+          counter = new LongRangeCounter(longRanges, counts, true);
+        }
+        assert counter.isMultiValued == true;
+
+        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+          // Skip missing docs:
+          if (multiValues.advanceExact(doc)) {
+            int limit = multiValues.docValueCount();
+            counter.startDoc();
+            for (int i = 0; i < limit; i++) {
+              counter.add(NumericUtils.sortableDoubleBits(multiValues.nextValue()));
+            }
+            if (counter.endDoc()) {
+              totCount++;
+            }
+          }
+
+          doc = it.nextDoc();
+        }
+      }
+    }
+
+    if (counter != null && counter.isMultiValued == false) {
+      missingCount += counter.finish();
+      totCount -= missingCount;
+    }
+  }
+
+  /** Create long ranges from the double ranges. */
+  private LongRange[] createLongRanges() {
+    DoubleRange[] ranges = (DoubleRange[]) this.ranges;
     LongRange[] longRanges = new LongRange[ranges.length];
     for (int i = 0; i < ranges.length; i++) {
       DoubleRange range = ranges[i];
@@ -99,56 +239,6 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
               true);
     }
 
-    LongRangeCounter counter = new LongRangeCounter(longRanges);
-
-    int missingCount = 0;
-    for (MatchingDocs hits : matchingDocs) {
-      DoubleValues fv = valueSource.getValues(hits.context, null);
-
-      totCount += hits.totalHits;
-      final DocIdSetIterator fastMatchDocs;
-      if (fastMatchQuery != null) {
-        final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(hits.context);
-        final IndexSearcher searcher = new IndexSearcher(topLevelContext);
-        searcher.setQueryCache(null);
-        final Weight fastMatchWeight =
-            searcher.createWeight(
-                searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
-        Scorer s = fastMatchWeight.scorer(hits.context);
-        if (s == null) {
-          continue;
-        }
-        fastMatchDocs = s.iterator();
-      } else {
-        fastMatchDocs = null;
-      }
-
-      DocIdSetIterator docs = hits.bits.iterator();
-
-      for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
-        if (fastMatchDocs != null) {
-          int fastMatchDoc = fastMatchDocs.docID();
-          if (fastMatchDoc < doc) {
-            fastMatchDoc = fastMatchDocs.advance(doc);
-          }
-
-          if (doc != fastMatchDoc) {
-            doc = docs.advance(fastMatchDoc);
-            continue;
-          }
-        }
-        // Skip missing docs:
-        if (fv.advanceExact(doc)) {
-          counter.add(NumericUtils.doubleToSortableLong(fv.doubleValue()));
-        } else {
-          missingCount++;
-        }
-
-        doc = docs.nextDoc();
-      }
-    }
-
-    missingCount += counter.fillCounts(counts);
-    totCount -= missingCount;
+    return longRanges;
   }
 }
