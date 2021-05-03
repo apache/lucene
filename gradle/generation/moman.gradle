@@ -99,8 +99,8 @@ configure(project(":lucene:core")) {
     description "Regenerate Moman-based sources."
     group "generation"
 
-    dependsOn wrapWithPersistentChecksums(utilGenPackedInternal, [ andThenTasks: "spotlessApply" ])
-    dependsOn wrapWithPersistentChecksums(utilGenLevInternal, [ andThenTasks: "spotlessApply" ])
+    dependsOn wrapWithPersistentChecksums(utilGenPackedInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+    dependsOn wrapWithPersistentChecksums(utilGenLevInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
   }
 
   regenerate.dependsOn moman

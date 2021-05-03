@@ -33,6 +33,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
@@ -112,16 +113,20 @@ public final class Lucene50CompressingStoredFieldsWriter extends StoredFieldsWri
     boolean success = false;
     try {
       metaStream =
-          directory.createOutput(
-              IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION), context);
+          EndiannessReverserUtil.createOutput(
+              directory,
+              IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION),
+              context);
       CodecUtil.writeIndexHeader(
           metaStream, INDEX_CODEC_NAME + "Meta", VERSION_CURRENT, si.getId(), segmentSuffix);
       assert CodecUtil.indexHeaderLength(INDEX_CODEC_NAME + "Meta", segmentSuffix)
           == metaStream.getFilePointer();
 
       fieldsStream =
-          directory.createOutput(
-              IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION), context);
+          EndiannessReverserUtil.createOutput(
+              directory,
+              IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION),
+              context);
       CodecUtil.writeIndexHeader(
           fieldsStream, formatName, VERSION_CURRENT, si.getId(), segmentSuffix);
       assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)
@@ -325,11 +330,11 @@ public final class Lucene50CompressingStoredFieldsWriter extends StoredFieldsWri
       if (number instanceof Byte || number instanceof Short || number instanceof Integer) {
         bufferedDocs.writeZInt(number.intValue());
       } else if (number instanceof Long) {
-        writeTLong(bufferedDocs, number.longValue());
+        writeTLong(EndiannessReverserUtil.wrapDataOutput(bufferedDocs), number.longValue());
       } else if (number instanceof Float) {
-        writeZFloat(bufferedDocs, number.floatValue());
+        writeZFloat(EndiannessReverserUtil.wrapDataOutput(bufferedDocs), number.floatValue());
       } else if (number instanceof Double) {
-        writeZDouble(bufferedDocs, number.doubleValue());
+        writeZDouble(EndiannessReverserUtil.wrapDataOutput(bufferedDocs), number.doubleValue());
       } else {
         throw new AssertionError("Cannot get here");
       }

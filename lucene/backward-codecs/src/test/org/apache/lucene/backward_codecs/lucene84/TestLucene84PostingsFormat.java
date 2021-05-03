@@ -24,6 +24,7 @@ import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.backward_codecs.lucene40.blocktree.FieldReader;
 import org.apache.lucene.backward_codecs.lucene40.blocktree.Stats;
 import org.apache.lucene.backward_codecs.lucene84.Lucene84ScoreSkipReader.MutableImpactList;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.document.Document;
@@ -114,10 +115,10 @@ public class TestLucene84PostingsFormat extends BasePostingsFormatTestCase {
       acc.add(impact.freq, impact.norm);
     }
     try (Directory dir = newDirectory()) {
-      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+      try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
         Lucene84SkipWriter.writeImpacts(acc, out);
       }
-      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         byte[] b = new byte[Math.toIntExact(in.length())];
         in.readBytes(b, 0, b.length);
         List<Impact> impacts2 =

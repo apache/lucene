@@ -17,6 +17,7 @@
 package org.apache.lucene.backward_codecs.lucene70;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.packed.LegacyDirectWriter;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -26,7 +27,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.SmallFloat;
-import org.apache.lucene.util.packed.DirectWriter;
 
 /**
  * Lucene 7.0 DocValues format.
@@ -64,11 +64,11 @@ import org.apache.lucene.util.packed.DirectWriter;
  *
  * <ul>
  *   <li>Delta-compressed: per-document integers written as deltas from the minimum value,
- *       compressed with bitpacking. For more information, see {@link DirectWriter}.
+ *       compressed with bitpacking. For more information, see {@link LegacyDirectWriter}.
  *   <li>Table-compressed: when the number of unique values is very small (&lt; 256), and when there
  *       are unused "gaps" in the range of values used (such as {@link SmallFloat}), a lookup table
  *       is written instead. Each per-document entry is instead the ordinal to this table, and those
- *       ordinals are compressed with bitpacking ({@link DirectWriter}).
+ *       ordinals are compressed with bitpacking ({@link LegacyDirectWriter}).
  *   <li>GCD-compressed: when all numbers share a common divisor, such as dates, the greatest common
  *       denominator (GCD) is computed, and quotients are stored using Delta-compressed Numerics.
  *   <li>Monotonic-compressed: when all numbers are monotonically increasing offsets, they are

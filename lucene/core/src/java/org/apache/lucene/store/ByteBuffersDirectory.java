@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
@@ -65,7 +66,9 @@ public final class ByteBuffersDirectory extends BaseDirectory {
   public static final BiFunction<String, ByteBuffersDataOutput, IndexInput> OUTPUT_AS_ONE_BUFFER =
       (fileName, output) -> {
         ByteBuffersDataInput dataInput =
-            new ByteBuffersDataInput(Arrays.asList(ByteBuffer.wrap(output.toArrayCopy())));
+            new ByteBuffersDataInput(
+                Arrays.asList(
+                    ByteBuffer.wrap(output.toArrayCopy()).order(ByteOrder.LITTLE_ENDIAN)));
         String inputName =
             String.format(
                 Locale.ROOT,
@@ -83,7 +86,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
       OUTPUT_AS_MANY_BUFFERS_LUCENE =
           (fileName, output) -> {
             List<ByteBuffer> bufferList = output.toBufferList();
-            bufferList.add(ByteBuffer.allocate(0));
+            bufferList.add(ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN));
 
             int chunkSizePower;
             int blockSize = ByteBuffersDataInput.determineBlockPage(bufferList);

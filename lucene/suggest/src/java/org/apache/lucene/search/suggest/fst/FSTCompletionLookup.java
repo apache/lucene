@@ -183,7 +183,12 @@ public class FSTCompletionLookup extends Lookup {
         }
 
         output.reset(buffer);
-        output.writeInt(encodeWeight(iterator.weight()));
+        final int encodedWeight = encodeWeight(iterator.weight());
+        // write bytes for comparing in lexicographically order
+        output.writeByte((byte) (encodedWeight >> 24));
+        output.writeByte((byte) (encodedWeight >> 16));
+        output.writeByte((byte) (encodedWeight >> 8));
+        output.writeByte((byte) encodedWeight);
         output.writeBytes(spare.bytes, spare.offset, spare.length);
         writer.write(buffer, 0, output.getPosition());
         inputLineCount++;

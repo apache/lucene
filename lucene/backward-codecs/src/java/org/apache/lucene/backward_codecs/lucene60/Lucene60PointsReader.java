@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene60;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.index.FieldInfo;
@@ -50,7 +51,8 @@ public class Lucene60PointsReader extends PointsReader {
 
     // Read index file
     try (ChecksumIndexInput indexIn =
-        readState.directory.openChecksumInput(indexFileName, readState.context)) {
+        EndiannessReverserUtil.openChecksumInput(
+            readState.directory, indexFileName, readState.context)) {
       Throwable priorE = null;
       try {
         CodecUtil.checkIndexHeader(
@@ -79,7 +81,7 @@ public class Lucene60PointsReader extends PointsReader {
             readState.segmentSuffix,
             Lucene60PointsFormat.DATA_EXTENSION);
     boolean success = false;
-    dataIn = readState.directory.openInput(dataFileName, readState.context);
+    dataIn = EndiannessReverserUtil.openInput(readState.directory, dataFileName, readState.context);
     try {
 
       CodecUtil.checkIndexHeader(

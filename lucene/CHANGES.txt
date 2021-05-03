@@ -109,6 +109,8 @@ API Changes
   only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
   Adrien Grand, Simon Willnauer)
 
+* LUCENE-9047: Directory API is now little endian. (Ignacio Vera, Adrien Grand)  
+
 * LUCENE-9948: No longer require the user to specify whether-or-not a field is multi-valued in
   LongValueFacetCounts (detect automatically based on what is indexed). (Greg Miller)
 

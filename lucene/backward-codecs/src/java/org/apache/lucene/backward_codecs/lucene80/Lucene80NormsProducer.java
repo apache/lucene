@@ -22,6 +22,7 @@ import static org.apache.lucene.backward_codecs.lucene80.Lucene80NormsFormat.VER
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.CorruptIndexException;
@@ -60,7 +61,8 @@ final class Lucene80NormsProducer extends NormsProducer implements Cloneable {
     int version = -1;
 
     // read in the entries from the metadata file.
-    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName, state.context)) {
+    try (ChecksumIndexInput in =
+        EndiannessReverserUtil.openChecksumInput(state.directory, metaName, state.context)) {
       Throwable priorE = null;
       try {
         version =
@@ -81,7 +83,7 @@ final class Lucene80NormsProducer extends NormsProducer implements Cloneable {
 
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
-    data = state.directory.openInput(dataName, state.context);
+    data = EndiannessReverserUtil.openInput(state.directory, dataName, state.context);
     boolean success = false;
     try {
       final int version2 =

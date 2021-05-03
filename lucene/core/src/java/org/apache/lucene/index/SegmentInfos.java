@@ -319,7 +319,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     try {
       // NOTE: as long as we want to throw indexformattooold (vs corruptindexexception), we need
       // to read the magic ourselves.
-      int magic = input.readInt();
+      int magic = CodecUtil.readBEInt(input);
       if (magic != CodecUtil.CODEC_MAGIC) {
         throw new IndexFormatTooOldException(
             input, magic, CodecUtil.CODEC_MAGIC, CodecUtil.CODEC_MAGIC);
@@ -377,14 +377,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   private static void parseSegmentInfos(
       Directory directory, DataInput input, SegmentInfos infos, int format) throws IOException {
-    infos.version = input.readLong();
+    infos.version = CodecUtil.readBELong(input);
     // System.out.println("READ sis version=" + infos.version);
     if (format > VERSION_70) {
       infos.counter = input.readVLong();
     } else {
-      infos.counter = input.readInt();
+      infos.counter = CodecUtil.readBEInt(input);
     }
-    int numSegments = input.readInt();
+    int numSegments = CodecUtil.readBEInt(input);
     if (numSegments < 0) {
       throw new CorruptIndexException("invalid segment count: " + numSegments, input);
     }
@@ -406,15 +406,15 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
           codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READ);
       info.setCodec(codec);
       totalDocs += info.maxDoc();
-      long delGen = input.readLong();
-      int delCount = input.readInt();
+      long delGen = CodecUtil.readBELong(input);
+      int delCount = CodecUtil.readBEInt(input);
       if (delCount < 0 || delCount > info.maxDoc()) {
         throw new CorruptIndexException(
             "invalid deletion count: " + delCount + " vs maxDoc=" + info.maxDoc(), input);
       }
-      long fieldInfosGen = input.readLong();
-      long dvGen = input.readLong();
-      int softDelCount = format > VERSION_72 ? input.readInt() : 0;
+      long fieldInfosGen = CodecUtil.readBELong(input);
+      long dvGen = CodecUtil.readBELong(input);
+      int softDelCount = format > VERSION_72 ? CodecUtil.readBEInt(input) : 0;
       if (softDelCount < 0 || softDelCount > info.maxDoc()) {
         throw new CorruptIndexException(
             "invalid deletion count: " + softDelCount + " vs maxDoc=" + info.maxDoc(), input);
@@ -446,13 +446,13 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
           new SegmentCommitInfo(info, delCount, softDelCount, delGen, fieldInfosGen, dvGen, sciId);
       siPerCommit.setFieldInfosFiles(input.readSetOfStrings());
       final Map<Integer, Set<String>> dvUpdateFiles;
-      final int numDVFields = input.readInt();
+      final int numDVFields = CodecUtil.readBEInt(input);
       if (numDVFields == 0) {
         dvUpdateFiles = Collections.emptyMap();
       } else {
         Map<Integer, Set<String>> map = new HashMap<>(numDVFields);
         for (int i = 0; i < numDVFields; i++) {
-          map.put(input.readInt(), input.readSetOfStrings());
+          map.put(CodecUtil.readBEInt(input), input.readSetOfStrings());
         }
         dvUpdateFiles = Collections.unmodifiableMap(map);
       }
@@ -589,9 +589,9 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
     out.writeVInt(indexCreatedVersionMajor);
 
-    out.writeLong(version);
+    CodecUtil.writeBELong(out, version);
     out.writeVLong(counter); // write counter
-    out.writeInt(size());
+    CodecUtil.writeBEInt(out, size());
 
     if (size() > 0) {
 
@@ -630,7 +630,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       }
       out.writeBytes(segmentID, segmentID.length);
       out.writeString(si.getCodec().getName());
-      out.writeLong(siPerCommit.getDelGen());
+
+      CodecUtil.writeBELong(out, siPerCommit.getDelGen());
       int delCount = siPerCommit.getDelCount();
       if (delCount < 0 || delCount > si.maxDoc()) {
         throw new IllegalStateException(
@@ -641,9 +642,9 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
                 + " delCount="
                 + delCount);
       }
-      out.writeInt(delCount);
-      out.writeLong(siPerCommit.getFieldInfosGen());
-      out.writeLong(siPerCommit.getDocValuesGen());
+      CodecUtil.writeBEInt(out, delCount);
+      CodecUtil.writeBELong(out, siPerCommit.getFieldInfosGen());
+      CodecUtil.writeBELong(out, siPerCommit.getDocValuesGen());
       int softDelCount = siPerCommit.getSoftDelCount();
       if (softDelCount < 0 || softDelCount > si.maxDoc()) {
         throw new IllegalStateException(
@@ -654,7 +655,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
                 + " softDelCount="
                 + softDelCount);
       }
-      out.writeInt(softDelCount);
+      CodecUtil.writeBEInt(out, softDelCount);
       // we ensure that there is a valid ID for this SCI just in case
       // this is manually upgraded outside of IW
       byte[] sciId = siPerCommit.getId();
@@ -669,9 +670,9 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
       out.writeSetOfStrings(siPerCommit.getFieldInfosFiles());
       final Map<Integer, Set<String>> dvUpdatesFiles = siPerCommit.getDocValuesUpdatesFiles();
-      out.writeInt(dvUpdatesFiles.size());
+      CodecUtil.writeBEInt(out, dvUpdatesFiles.size());
       for (Entry<Integer, Set<String>> e : dvUpdatesFiles.entrySet()) {
-        out.writeInt(e.getKey());
+        CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
       }
     }
