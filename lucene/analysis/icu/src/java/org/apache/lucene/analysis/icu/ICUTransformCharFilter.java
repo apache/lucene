@@ -58,10 +58,11 @@ import org.apache.lucene.util.ArrayUtil;
  * For more details, see the <a href="http://userguide.icu-project.org/transforms/general">ICU User
  * Guide</a>.
  */
-public final class ICUTransformCharFilter extends BaseCharFilter {
+public final class ICUTransformCharFilter extends BaseCharFilter implements ICUBypassCharFilter.FilterAware {
 
   // Transliterator to transform the text
   private final Transliterator transform;
+  private final int maximumContextLength;
 
   // Reusable position object
   private final Position position = new Position();
@@ -91,6 +92,19 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
 
   static final boolean DEFAULT_FAIL_ON_ROLLBACK_BUFFER_OVERFLOW = true;
   private final boolean failOnRollbackBufferOverflow;
+
+  @Override
+  public void clearState(int offsetBypass) {
+    inputFinished = false;
+    rollbackBufferSize = 0;
+    outputCursor = 0;
+    buffer.setLength(0);
+    position.contextStart = 0;
+    position.start = 0;
+    position.limit = 0;
+    position.contextLimit = 0;
+    charCount += offsetBypass;
+  }
 
   ICUTransformCharFilter(Reader in, Transliterator transform) {
     this(
@@ -151,6 +165,8 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
         this.rollbackBuffer = new char[DEFAULT_INITIAL_ROLLBACK_BUFFER_CAPACITY];
       }
     }
+    maximumContextLength = this.transform.getMaximumContextLength();
+    this.bufferSuffixSnapshot = new char[maximumContextLength];
   }
 
   /**
@@ -191,6 +207,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
           }
           position.contextLimit = preLimit;
           position.limit = preLimit;
+          snapshotBufferSuffix();
           transform.finishTransliteration(replaceable, position);
         } else if (offsetDiffAdjust == 0) {
           break;
@@ -203,6 +220,38 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
 
     return -1;
   }
+
+  /**
+   * In the (frequent) event that incremental transliteration advances `position.start` _beyond_ the
+   * text that has actually changed, we want offset boundary resolution to be recorded wrt the last
+   * _changed_ offset. This _still_ may be imperfect, but it improves results (and importantly, yields
+   * consistency between "optimized" (unicode norm externalized) and "non-optimized" instances).
+   *
+   * NOTE: it's tempting to think that this case might be better handled by advancing
+   * `position.contextLimit` as far as possible ahead of `position.limit` (up to
+   * `getMaximumContextLength()`) ... but that does _not_ in fact avoid the need for manual suffix
+   * boundary correction. Because the `Transliterator.transliterate*(...)` methods advance
+   * `position.limit` regardless of whether content has changed (as designed), we have to do this
+   * suffix boundary correction anyway, to get the offset correction boundary as close as possible
+   * to content that has actually changed.
+   */
+  private int suffixBoundaryCorrect() {
+    int bufferIdx = position.start;
+    final int lastSnapshotIdx = snapshotLen - 1;
+    for (int i = lastSnapshotIdx; i >= 0 && bufferIdx-- > 0; i--) {
+      if (bufferSuffixSnapshot[i] != buffer.charAt(bufferIdx)) {
+        return lastSnapshotIdx - i;
+      }
+    }
+    return snapshotLen;
+  }
+  private void snapshotBufferSuffix() {
+    int srcBegin = Math.max(position.start, position.limit - bufferSuffixSnapshot.length);
+    snapshotLen = position.limit - srcBegin;
+    buffer.getChars(srcBegin, position.limit, bufferSuffixSnapshot, 0);
+  }
+  private int snapshotLen;
+  private final char[] bufferSuffixSnapshot;
 
   private void rollback(int preStart, int preLimit) {
     buffer.delete(preStart, position.limit); // delete uncommitted chars
@@ -288,6 +337,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       position.limit += nextCharLength;
       preLimit = position.limit;
       position.contextLimit = preLimit;
+      snapshotBufferSuffix();
       transform.filteredTransliterate(replaceable, position, true);
       boolean rollbackSizeWithinBounds = true;
       if (rollbackBuffer != null
@@ -316,7 +366,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
           //         index.contextStart = Math.max(index.start - getMaximumContextLength(),
           //                                       originalStart);
           position.contextStart =
-              Math.max(position.start - transform.getMaximumContextLength(), preStart);
+              Math.max(position.start - maximumContextLength, 0);
           preStart = position.start;
           if (!rollbackSizeWithinBounds) {
             // prepopulate newly cleared rollback buffer with all top-level uncommitted characters
@@ -368,14 +418,16 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       System.arraycopy(rollbackBuffer, shift, rollbackBuffer, 0, rollbackBufferSize);
     }
     position.start += shift; // mock transliterator advance
+    this.snapshotLen = 0; // prevent suffix boundary correction for forceAdvance
     cursorAdvanced(preStart, preLimit);
     position.contextStart =
-        Math.max(position.start - transform.getMaximumContextLength(), preStart);
+        Math.max(position.start - maximumContextLength, 0);
     return position.start;
   }
 
   private void cursorAdvanced(int preStart, int preLimit) {
-    final int outputLength = position.start - preStart;
+    int suffixBoundaryCorrect = suffixBoundaryCorrect();
+    final int outputLength = position.start - preStart - suffixBoundaryCorrect;
     final int diff = preLimit - position.limit + offsetDiffAdjust;
     offsetDiffAdjust = 0;
     if (diff == 0) {
@@ -388,17 +440,18 @@ public final class ICUTransformCharFilter extends BaseCharFilter {
       // of granularity that's available to us via the Transliterator API.
       recordOffsetDiff(diff, outputLength);
     }
+    charCount += suffixBoundaryCorrect;
   }
 
   private void recordOffsetDiff(int diff, int outputLength) {
     final int cumuDiff = getLastCumulativeDiff();
     if (diff < 0) {
-      // positive diff indicates an increase in character count wrt input
+      // negative diff indicates an increase in character count wrt input
       for (int i = 1; i <= -diff; ++i) {
         addOffCorrectMap(charCount + i, cumuDiff - i);
       }
     } else {
-      // positive diff indicates an decrease in character count wrt input
+      // positive diff indicates a decrease in character count wrt input
       addOffCorrectMap(charCount + outputLength, cumuDiff + diff);
     }
     charCount += outputLength;

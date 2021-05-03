@@ -17,11 +17,16 @@
 package org.apache.lucene.analysis.icu;
 
 import com.ibm.icu.impl.Utility;
+import com.ibm.icu.text.FilteredNormalizer2;
 import com.ibm.icu.text.Normalizer2;
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.UTF16;
+import com.ibm.icu.text.UnicodeFilter;
+import com.ibm.icu.text.UnicodeSet;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.lucene.analysis.CharFilterFactory;
@@ -47,6 +52,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   static final String MAX_ROLLBACK_BUFFER_CAPACITY_ARGNAME = "maxRollbackBufferCapacity";
   static final String FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME = "failOnRollbackBufferOverflow";
+  private final UnicodeSet filter;
   private final NormType leading;
   private final Transliterator transliterator;
   private final NormType trailing;
@@ -56,12 +62,14 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
   // TODO: add support for custom rules
   /** Creates a new ICUTransformFilterFactory */
   public ICUTransformCharFilterFactory(Map<String, String> args) {
-    this(args, false);
+    this(args, false, null);
   }
 
   /** package access, to allow tests to suppress unicode normalization externalization */
   ICUTransformCharFilterFactory(
-      Map<String, String> args, boolean suppressUnicodeNormalizationExternalization) {
+      Map<String, String> args,
+      boolean suppressUnicodeNormalizationExternalization,
+      String rules) {
     super(args);
     String id = require(args, "id");
     String direction =
@@ -78,13 +86,22 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
             args,
             FAIL_ON_ROLLBACK_BUFFER_OVERFLOW_ARGNAME,
             ICUTransformCharFilter.DEFAULT_FAIL_ON_ROLLBACK_BUFFER_OVERFLOW);
-    Transliterator stockTransliterator = Transliterator.getInstance(id, dir);
+    final Transliterator stockTransliterator;
+    if (rules == null) {
+      // the usual case, retrieving a pre-packaged Transliterator
+      stockTransliterator = Transliterator.getInstance(id, dir);
+    } else {
+      // build a Transliterator based on custom rules
+      stockTransliterator = Transliterator.createFromRules(id, rules, dir);
+    }
     if (suppressUnicodeNormalizationExternalization) {
+      this.filter = null;
       this.leading = null;
       this.transliterator = stockTransliterator;
       this.trailing = null;
     } else {
       ExternalNormalization ext = externalizeUnicodeNormalization(stockTransliterator);
+      this.filter = ext.filter;
       this.leading = ext.leading;
       this.transliterator = ext.t;
       this.trailing = ext.trailing;
@@ -101,22 +118,35 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     return leading != null || trailing != null;
   }
 
-  private static final Reader wrapReader(NormType normType, Reader r) {
-    if (normType == null) {
+  private static final Reader wrapReader(
+      NormType normType,
+      Reader r,
+      boolean leading,
+      List<ICUBypassCharFilter.FilterAware> toReset) {
+    if (normType == null || (leading && normType == lookupNormTypeByInput(r))) {
+      // either no normType, or redundant (already normalized upstream)
       return r;
     }
+    final Normalizer2 normalizer;
     switch (normType) {
       case NFC:
-        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFCInstance());
+        normalizer = Normalizer2.getNFCInstance();
+        break;
       case NFD:
-        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFDInstance());
+        normalizer = Normalizer2.getNFDInstance();
+        break;
       case NFKC:
-        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKCInstance());
+        normalizer = Normalizer2.getNFKCInstance();
+        break;
       case NFKD:
-        return new ICUNormalizer2CharFilter(r, Normalizer2.getNFKDInstance());
+        normalizer = Normalizer2.getNFKDInstance();
+        break;
       default:
         throw new UnsupportedOperationException("normType \"" + normType + "\" not supported");
     }
+    ICUNormalizer2CharFilter ret = new ICUNormalizer2CharFilter(r, normalizer);
+    toReset.add(ret);
+    return ret;
   }
 
   /** Default ctor for compatibility with SPI */
@@ -126,11 +156,25 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   @Override
   public Reader create(Reader input) {
-    input = wrapReader(leading, input);
-    input =
+    if (!externalizedUnicodeNormalization()) {
+      // simple case
+      return new ICUTransformCharFilter(
+          input, transliterator, maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
+    }
+    ICUBypassCharFilter.Pre pre = null;
+    if (filter != null) {
+      pre = new ICUBypassCharFilter.Pre(input, filter);
+      input = pre;
+    }
+    List<ICUBypassCharFilter.FilterAware> toReset = new ArrayList<>(3);
+    input = wrapReader(leading, input, true, toReset);
+    ICUTransformCharFilter coreTransform =
         new ICUTransformCharFilter(
             input, transliterator, maxRollbackBufferCapacity, failOnRollbackBufferOverflow);
-    return wrapReader(trailing, input);
+    toReset.add(coreTransform);
+    input = coreTransform;
+    input = wrapReader(trailing, input, false, toReset);
+    return filter == null ? input : new ICUBypassCharFilter.Post(input, pre, toReset);
   }
 
   private static final boolean ESCAPE_UNPRINTABLE = true;
@@ -158,7 +202,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     final NormType leading;
     final NormType trailing;
     if (trans.length == 1) {
-      return new ExternalNormalization(null, t, null);
+      return new ExternalNormalization(null, null, t, null);
     } else {
       final int lastIndex;
       if ((leading = unicodeNormalizationType(trans[0].getID())) != null) {
@@ -173,7 +217,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
         start = 0;
         limit = lastIndex;
       } else {
-        return new ExternalNormalization(null, t, null);
+        return new ExternalNormalization(null, null, t, null);
       }
     }
     // We do NOT call toRules() on our component transliterators, in
@@ -227,15 +271,26 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     String modId = baseId.concat(baseId.lastIndexOf('/') < 0 ? "/X_NO_NORM_IO" : "_X_NO_NORM_IO");
     Transliterator replacement =
         Transliterator.createFromRules(modId, modifiedRules, Transliterator.FORWARD);
-    return new ExternalNormalization(leading, replacement, trailing);
+    final UnicodeFilter f = t.getFilter();
+    final UnicodeSet filterAsSet;
+    if (f == null) {
+      filterAsSet = null;
+    } else {
+      filterAsSet = new UnicodeSet();
+      f.addMatchSetTo(filterAsSet);
+      filterAsSet.freeze();
+    }
+    return new ExternalNormalization(filterAsSet, leading, replacement, trailing);
   }
 
   static class ExternalNormalization {
+    private final UnicodeSet filter;
     private final NormType leading;
     private final Transliterator t;
     private final NormType trailing;
 
-    private ExternalNormalization(NormType leading, Transliterator t, NormType trailing) {
+    private ExternalNormalization(UnicodeSet filter, NormType leading, Transliterator t, NormType trailing) {
+      this.filter = filter;
       this.leading = leading;
       this.t = t;
       this.trailing = trailing;
@@ -251,22 +306,56 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
    * not be optimized)
    */
   enum NormType {
-    NFC,
-    NFD,
-    NFKC,
-    NFKD
+    NFD(Normalizer2.getNFDInstance()),
+    NFKD(Normalizer2.getNFKDInstance()),
+    NFKC(Normalizer2.getNFKCInstance()),
+    NFC(Normalizer2.getNFCInstance());
+
+    // these are static instances, so we cache them here (mainly for purpose of comparison)
+    final Normalizer2 instance;
+    NormType(Normalizer2 instance) {
+      this.instance = instance;
+    }
   }
 
   private static final NormType[] NORM_TYPE_VALUES;
   private static final String[] NORM_ID_PREFIXES;
+  private static final Normalizer2[] NORM_INSTANCES;
 
   static {
     NORM_TYPE_VALUES = NormType.values();
     NORM_ID_PREFIXES = new String[NORM_TYPE_VALUES.length];
+    NORM_INSTANCES = new Normalizer2[NORM_TYPE_VALUES.length];
+
     int i = 0;
     for (NormType n : NORM_TYPE_VALUES) {
+      NORM_INSTANCES[i] = n.instance;
       NORM_ID_PREFIXES[i++] = n.name();
     }
+  }
+
+  static NormType lookupNormTypeByInput(Reader in) {
+    final Normalizer2 instance;
+    if (in instanceof ICUNormalizer2CharFilter) {
+      instance = ((ICUNormalizer2CharFilter) in).normalizer;
+      if (instance instanceof FilteredNormalizer2) {
+        return null;
+      }
+    } else {
+      return null;
+    }
+    return lookupNormTypeByInstance(instance);
+  }
+
+  static NormType lookupNormTypeByInstance(Normalizer2 instance) {
+    int i = NORM_INSTANCES.length - 1;
+    do {
+      if (NORM_INSTANCES[i] == instance) {
+        return NORM_TYPE_VALUES[i];
+      }
+    } while (i-- > 0);
+    assert false : "unexpected norm instance";
+    return null;
   }
 
   /**

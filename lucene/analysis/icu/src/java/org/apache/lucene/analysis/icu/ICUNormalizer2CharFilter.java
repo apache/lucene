@@ -24,9 +24,9 @@ import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
 
 /** Normalize token text with ICU's {@link Normalizer2}. */
-public final class ICUNormalizer2CharFilter extends BaseCharFilter {
+public final class ICUNormalizer2CharFilter extends BaseCharFilter implements ICUBypassCharFilter.FilterAware {
 
-  private final Normalizer2 normalizer;
+  final Normalizer2 normalizer;
   private final StringBuilder inputBuffer = new StringBuilder();
   private final StringBuilder resultBuffer = new StringBuilder();
 
@@ -34,6 +34,15 @@ public final class ICUNormalizer2CharFilter extends BaseCharFilter {
   private boolean afterQuickCheckYes;
   private int checkedInputBoundary;
   private int charCount;
+
+  public void clearState(int offsetBypass) {
+    inputFinished = false;
+    inputBuffer.setLength(0);
+    resultBuffer.setLength(0);
+    afterQuickCheckYes = false;
+    checkedInputBoundary = 0;
+    charCount += offsetBypass;
+  }
 
   /**
    * Create a new Normalizer2CharFilter that combines NFKC normalization, Case Folding, and removes

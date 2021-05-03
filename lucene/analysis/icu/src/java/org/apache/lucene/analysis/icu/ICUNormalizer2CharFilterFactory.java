@@ -49,6 +49,7 @@ public class ICUNormalizer2CharFilterFactory extends CharFilterFactory {
   /** SPI name */
   public static final String NAME = "icuNormalizer2";
 
+  private final ICUTransformCharFilterFactory.NormType normType;
   private final Normalizer2 normalizer;
 
   /** Creates a new ICUNormalizer2CharFilterFactory */
@@ -63,7 +64,10 @@ public class ICUNormalizer2CharFilterFactory extends CharFilterFactory {
             "compose".equals(mode) ? Normalizer2.Mode.COMPOSE : Normalizer2.Mode.DECOMPOSE);
 
     String filter = get(args, "filter");
-    if (filter != null) {
+    if (filter == null) {
+      normType = ICUTransformCharFilterFactory.lookupNormTypeByInstance(normalizer);
+    } else {
+      normType = null;
       UnicodeSet set = new UnicodeSet(filter);
       if (!set.isEmpty()) {
         set.freeze();
@@ -83,6 +87,10 @@ public class ICUNormalizer2CharFilterFactory extends CharFilterFactory {
 
   @Override
   public Reader create(Reader input) {
+    if (normType != null && normType == ICUTransformCharFilterFactory.lookupNormTypeByInput(input)) {
+      // wrapping this would be redundant (upstream is already normalized)
+      return input;
+    }
     return new ICUNormalizer2CharFilter(input, normalizer);
   }
 
