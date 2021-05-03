@@ -719,10 +719,198 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     checkOffsetDiscrepancies(offsetDiscrepancies, "offset discrepancies for Thai-Latin", false);
   }
 
+  @Nightly
+  public void testPerfDecomposed() throws Exception {
+    final int restore = ICUTransform2CharFilter.BATCH_BUFFER_SIZE;
+    ICUTransform2CharFilter.BATCH_BUFFER_SIZE = ICUTransform2CharFilter.DEFAULT_BATCH_BUFFER_SIZE;
+    try {
+      perfTestLoop(Type.DECOMPOSED);
+    } finally {
+      ICUTransform2CharFilter.BATCH_BUFFER_SIZE = restore;
+    }
+  }
+  @Nightly
+  public void testPerfRollback() throws Exception {
+    perfTestLoop(Type.ROLLBACK);
+  }
+  @Nightly
+  public void testPerfTokenFilter() throws Exception {
+    perfTestLoop(Type.TOKEN_FILTER);
+  }
+  @Nightly
+  public void testPerfBareTranslit() throws Exception {
+    perfTestLoop(Type.BARE_TRANSLIT);
+  }
+
+  private void perfTestLoop(Type type) throws Exception {
+    Random loopRandom = new Random(testPerfSeed);
+    long seed = loopRandom.nextLong();
+    long start = System.currentTimeMillis();
+    for (int i = 0; i < PERF_TEST_LOOP_ITERATIONS; i++) {
+      final long runSeed = seed;
+      naivePerformanceTest(new Random(runSeed), type);
+      final long post = System.currentTimeMillis();
+      System.err.println(type+" round "+i+" ("+(post - start)+"ms) -- seed="+Long.toHexString(seed));
+      start = post;
+      if (!PERF_TEST_SAME_SEED) {
+        seed = loopRandom.nextLong();
+      }
+    }
+  }
+
+  private static final boolean PERF_TEST_SAME_SEED = false;
+  private static final int PERF_TEST_ITERATIONS = 20;
+  private static final int PERF_TEST_MAX_WORD_LENGTH = 1000;
+  private static int PERF_TEST_LOOP_ITERATIONS = 5;
+
+  private void naivePerformanceTest(Random textGenRandom, Type type) throws Exception {
+    Enumeration<String> ids = Transliterator.getAvailableIDs();
+    int size = 0;
+    while (ids.hasMoreElements()) {
+      String id = ids.nextElement();
+      if (!"AnyTransliterator".equals(Transliterator.getInstance(id).getClass().getSimpleName())) {
+        try {
+          size += naivePerformanceTest(textGenRandom, id, type, PERF_TEST_ITERATIONS, PERF_TEST_MAX_WORD_LENGTH);
+        } catch (AssertionError er) {
+          if (type == Type.ROLLBACK) {
+            // swallow this; we know there are occasional issues here
+          } else {
+            throw er;
+          }
+        }
+      }
+    }
+    assertTrue(size > 0);
+  }
+
+  private enum Type { DECOMPOSED, ROLLBACK, TOKEN_FILTER, BARE_TRANSLIT }
+  private int naivePerformanceTest(Random textGenRandom, String id, Type type, int iterations, int maxWordLength) throws Exception {
+    Transliterator t = null;
+    Analyzer a;
+    switch (type) {
+      case DECOMPOSED:
+        t = Transliterator.getInstance(id);
+        a = analyzerFromCharFilterFactory(new ICUTransform2CharFilterFactory(t));
+        break;
+      case ROLLBACK:
+        Map<String, String> args = new HashMap<>();
+        args.put("id", id);
+        CharFilterFactory f = new ICUTransformCharFilterFactory(args, true, null);
+        a = analyzerFromCharFilterFactory(f);
+        break;
+      case TOKEN_FILTER:
+        a = new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new MockTokenizer(TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY, MockTokenizer.WHITESPACE,
+                false, MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
+            return new TokenStreamComponents(tokenizer, new ICUTransformFilter(tokenizer, Transliterator.getInstance(id)));
+          }
+        };
+        break;
+      case BARE_TRANSLIT:
+        return runBareTranslit(Transliterator.getInstance(id), iterations, maxWordLength);
+      default:
+        throw new IllegalArgumentException();
+    }
+    CircularReplaceable.introducedUnpairedSurrogate(); // clear any leftover status
+    int size = 0;
+    try {
+      for (int i = iterations; i > 0; i--) {
+        String text = TestUtil.randomAnalysisString(textGenRandom, maxWordLength, false);
+        CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES = false; // first ensure that expected exception is thrown
+        boolean done = false;
+        do {
+          TokenStream ts = a.tokenStream("dummy", new StringReader(text));
+          CharTermAttribute termAtt = ts.getAttribute(CharTermAttribute.class);
+          ts.reset();
+          try {
+            while (ts.incrementToken()) {
+              size += termAtt.length();
+            }
+            ts.end();
+            ts.close();
+          } catch (IllegalStateException ex) {
+            String exMsg = ex.getMessage();
+            if (exMsg == null || !exMsg.startsWith("unpaired ")) {
+              throw ex;
+            }
+            if (type != Type.DECOMPOSED) {
+              System.err.println(ex);
+              // swallow this; only DECOMPOSED is capable of mitigating introduced unpaired surrogates
+            }
+            String msg = CircularReplaceable.introducedUnpairedSurrogate();
+            assertNotNull(msg);
+            // recover
+            System.err.println("recover id "+id+", "+msg+", text='"+escape(text)+"'");
+            a = analyzerFromCharFilterFactory(new ICUTransform2CharFilterFactory(t));
+            CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES = true; // ensure that auto-fix has intended effect
+            continue;
+          } catch (Exception ex) {
+            if (type == Type.ROLLBACK) {
+              System.err.println(ex);
+              // swallow this; we _know_ there are problems with ROLLBACK, and we're not going to fix them.
+            }
+            throw new RuntimeException("id="+id+", text='"+escape(text)+"'", ex);
+          }
+          String msg = CircularReplaceable.introducedUnpairedSurrogate();
+          if (msg != null) {
+            System.err.println("caught id "+id+", fix="+CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES+", "+msg+", text='"+escape(text)+"'");
+            assertTrue(CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES);
+          }
+          done = true;
+        } while (!done);
+      }
+    } finally {
+      CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES = true;
+    }
+    return size;
+  }
+
+  private static int runBareTranslit(Transliterator t, int iterations, int maxWordLength) {
+    Random r = random();
+    Transliterator.Position p = new Transliterator.Position();
+    int size = 0;
+    for (int i = iterations; i > 0; i--) {
+      String text = TestUtil.randomAnalysisString(r, maxWordLength, false);
+      Replaceable replaceable = new ReplaceableString(text);
+      p.contextStart = p.start = 0;
+      p.limit = p.contextLimit = text.length();
+      t.filteredTransliterate(replaceable, p, false);
+      size += replaceable.length();
+    }
+    return size;
+  }
+
+  private static Analyzer analyzerFromCharFilterFactory(CharFilterFactory f) {
+    return new Analyzer() {
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer tokenizer = new MockTokenizer(TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY, MockTokenizer.WHITESPACE,
+            false, MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
+        return new TokenStreamComponents(tokenizer, tokenizer);
+      }
+
+      @Override
+      protected Reader initReader(String fieldName, Reader reader) {
+        return super.initReader(
+            fieldName, f.create(reader));
+      }
+
+      @Override
+      protected Reader initReaderForNormalization(String fieldName, Reader reader) {
+        return super.initReaderForNormalization(
+            fieldName, f.create(reader));
+      }
+    };
+  }
+
+  private static long testPerfSeed;
   private static int restoreBatchBufferSize;
 
   @BeforeClass
   public static void beforeClass() throws Exception {
+    testPerfSeed = random().nextLong();
     restoreBatchBufferSize = ICUTransform2CharFilter.BATCH_BUFFER_SIZE;
     ICUTransform2CharFilter.BATCH_BUFFER_SIZE = random().nextInt(33);
   }
