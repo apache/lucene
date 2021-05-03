@@ -17,14 +17,15 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.facet.DrillSidewaysScorer.DocsAndCost;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
@@ -40,21 +41,65 @@ import org.apache.lucene.search.Weight;
 // TODO change the way DrillSidewaysScorer is used, this query does not work
 // with filter caching
 class DrillSidewaysQuery extends Query {
+
   final Query baseQuery;
-  final Collector drillDownCollector;
-  final Collector[] drillSidewaysCollectors;
+
+  // The caller must either directly provide FacetsCollectors for the drill down and sideways
+  // collecting, or provide FacetsCollectorManagers used to create the FacetsCollectors. If
+  // this query will be executed concurrently, FacetsCollectorManagers should be used to ensure
+  // multiple threads aren't collecting into the same FacetsCollector.
+  final FacetsCollector drillDownCollector;
+  final FacetsCollector[] drillSidewaysCollectors;
+  final FacetsCollectorManager drillDownCollectorManager;
+  final FacetsCollectorManager[] drillSidewaysCollectorManagers;
+  final List<FacetsCollector> managedDrillDownCollectors;
+  final List<FacetsCollector[]> managedDrillSidewaysCollectors;
+
   final Query[] drillDownQueries;
+
   final boolean scoreSubDocsAtOnce;
 
+  /**
+   * Construct a new {@code DrillSidewaysQuery} that will directly use the provided {@link
+   * FacetsCollector}s. Use this if you're certain that the query will not be executed concurrently.
+   */
   DrillSidewaysQuery(
       Query baseQuery,
-      Collector drillDownCollector,
-      Collector[] drillSidewaysCollectors,
+      FacetsCollector drillDownCollector,
+      FacetsCollector[] drillSidewaysCollectors,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
     this.baseQuery = Objects.requireNonNull(baseQuery);
     this.drillDownCollector = drillDownCollector;
     this.drillSidewaysCollectors = drillSidewaysCollectors;
+    this.drillDownCollectorManager = null;
+    this.drillSidewaysCollectorManagers = null;
+    this.managedDrillDownCollectors = null;
+    this.managedDrillSidewaysCollectors = null;
+    this.drillDownQueries = drillDownQueries;
+    this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
+  }
+
+  /**
+   * Construct a new {@code DrillSidewaysQuery} that will create new {@link FacetsCollector}s for
+   * each {@link LeafReaderContext} using the provided {@link FacetsCollectorManager}s. Use this if
+   * the query will be executed concurrently to ensure multiple threads don't collect into the same
+   * {@link FacetsCollector} instances. The caller can access the created {@link FacetsCollector}s
+   * through {@link #managedDrillDownCollectors} and {@link #managedDrillSidewaysCollectors}.
+   */
+  DrillSidewaysQuery(
+      Query baseQuery,
+      FacetsCollectorManager drillDownCollectorManager,
+      FacetsCollectorManager[] drillSidewaysCollectorManagers,
+      Query[] drillDownQueries,
+      boolean scoreSubDocsAtOnce) {
+    this.baseQuery = Objects.requireNonNull(baseQuery);
+    this.drillDownCollector = null;
+    this.drillSidewaysCollectors = null;
+    this.drillDownCollectorManager = drillDownCollectorManager;
+    this.drillSidewaysCollectorManagers = drillSidewaysCollectorManagers;
+    this.managedDrillDownCollectors = new ArrayList<>();
+    this.managedDrillSidewaysCollectors = new ArrayList<>();
     this.drillDownQueries = drillDownQueries;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
@@ -77,12 +122,21 @@ class DrillSidewaysQuery extends Query {
     if (newQuery == baseQuery) {
       return super.rewrite(reader);
     } else {
-      return new DrillSidewaysQuery(
-          newQuery,
-          drillDownCollector,
-          drillSidewaysCollectors,
-          drillDownQueries,
-          scoreSubDocsAtOnce);
+      if (drillDownCollector != null) {
+        return new DrillSidewaysQuery(
+            newQuery,
+            drillDownCollector,
+            drillSidewaysCollectors,
+            drillDownQueries,
+            scoreSubDocsAtOnce);
+      } else {
+        return new DrillSidewaysQuery(
+            newQuery,
+            drillDownCollectorManager,
+            drillSidewaysCollectorManagers,
+            drillDownQueries,
+            scoreSubDocsAtOnce);
+      }
     }
   }
 
@@ -131,8 +185,24 @@ class DrillSidewaysQuery extends Query {
       public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
         Scorer baseScorer = baseWeight.scorer(context);
 
+        int drillDownCount = drillDowns.length;
+
+        // TODO: If the caller provided a FacetsCollectorManager instead of directly providing
+        // FacetsCollectors, we assume this will be invoked during a concurrent search. Ideally
+        // we'd only create new FacetsCollectors for each "leaf slice" that will be concurrently
+        // searched, as opposed to each actual leaf, but we don't have that information at this
+        // level so we always provide a new FacetsCollector. There might be a better way to
+        // refactor this logic.
+        FacetsCollector[] sidewaysCollectors = null;
+        if (drillSidewaysCollectors == null) {
+          assert managedDrillSidewaysCollectors != null;
+          sidewaysCollectors = new FacetsCollector[drillDownCount];
+          managedDrillSidewaysCollectors.add(sidewaysCollectors);
+        }
+
         DrillSidewaysScorer.DocsAndCost[] dims =
-            new DrillSidewaysScorer.DocsAndCost[drillDowns.length];
+            new DrillSidewaysScorer.DocsAndCost[drillDownCount];
+
         int nullCount = 0;
         for (int dim = 0; dim < dims.length; dim++) {
           Scorer scorer = drillDowns[dim].scorer(context);
@@ -142,7 +212,19 @@ class DrillSidewaysQuery extends Query {
                 new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
           }
 
-          dims[dim] = new DrillSidewaysScorer.DocsAndCost(scorer, drillSidewaysCollectors[dim]);
+          // If the caller directly provided FacetsCollectors to use for the sideways dimensions,
+          // go ahead and use them. Otherwise, create new ones from the provided
+          // FacetsCollectorManager and keep track of them.
+          FacetsCollector sidewaysCollector;
+          if (drillSidewaysCollectors != null) {
+            sidewaysCollector = drillSidewaysCollectors[dim];
+          } else {
+            assert drillSidewaysCollectorManagers != null;
+            sidewaysCollector = drillSidewaysCollectorManagers[dim].newCollector();
+            sidewaysCollectors[dim] = sidewaysCollector;
+          }
+
+          dims[dim] = new DrillSidewaysScorer.DocsAndCost(scorer, sidewaysCollector);
         }
 
         // If more than one dim has no matches, then there
@@ -168,8 +250,19 @@ class DrillSidewaysQuery extends Query {
           return null;
         }
 
-        return new DrillSidewaysScorer(
-            context, baseScorer, drillDownCollector, dims, scoreSubDocsAtOnce);
+        // If the caller directly provided a FacetsCollector for the drill downs, go ahead and
+        // use it. Otherwise, create a new one from the provided FacetsCollectorManager and
+        // keep track of it.
+        FacetsCollector ddc;
+        if (drillDownCollector != null) {
+          ddc = drillDownCollector;
+        } else {
+          assert drillDownCollectorManager != null && managedDrillDownCollectors != null;
+          ddc = drillDownCollectorManager.newCollector();
+          managedDrillDownCollectors.add(ddc);
+        }
+
+        return new DrillSidewaysScorer(context, baseScorer, ddc, dims, scoreSubDocsAtOnce);
       }
     };
   }
@@ -182,8 +275,10 @@ class DrillSidewaysQuery extends Query {
     int result = classHash();
     result = prime * result + Objects.hashCode(baseQuery);
     result = prime * result + Objects.hashCode(drillDownCollector);
+    result = prime * result + Objects.hashCode(drillDownCollectorManager);
     result = prime * result + Arrays.hashCode(drillDownQueries);
     result = prime * result + Arrays.hashCode(drillSidewaysCollectors);
+    result = prime * result + Arrays.hashCode(drillSidewaysCollectorManagers);
     return result;
   }
 
@@ -195,7 +290,9 @@ class DrillSidewaysQuery extends Query {
   private boolean equalsTo(DrillSidewaysQuery other) {
     return Objects.equals(baseQuery, other.baseQuery)
         && Objects.equals(drillDownCollector, other.drillDownCollector)
+        && Objects.equals(drillDownCollectorManager, other.drillDownCollectorManager)
         && Arrays.equals(drillDownQueries, other.drillDownQueries)
-        && Arrays.equals(drillSidewaysCollectors, other.drillSidewaysCollectors);
+        && Arrays.equals(drillSidewaysCollectors, other.drillSidewaysCollectors)
+        && Arrays.equals(drillSidewaysCollectorManagers, other.drillSidewaysCollectorManagers);
   }
 }

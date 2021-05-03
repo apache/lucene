@@ -225,6 +225,9 @@ Improvements
 * LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
   it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
 
+* LUCENE-9944: Allow DrillSideways users to provide their own CollectorManager without also requiring
+  them to provide an ExecutorService. (Greg Miller)
+
 Bug fixes
 
 
