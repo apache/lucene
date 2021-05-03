@@ -42,7 +42,8 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
-  private VectorValues.SearchStrategy vectorSearchStrategy = VectorValues.SearchStrategy.NONE;
+  private VectorValues.SimilarityFunction vectorSimilarityFunction =
+      VectorValues.SimilarityFunction.NONE;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -60,7 +61,7 @@ public class FieldType implements IndexableFieldType {
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
     this.vectorDimension = ref.vectorDimension();
-    this.vectorSearchStrategy = ref.vectorSearchStrategy();
+    this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
     }
@@ -369,8 +370,8 @@ public class FieldType implements IndexableFieldType {
   }
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
-  public void setVectorDimensionsAndSearchStrategy(
-      int numDimensions, VectorValues.SearchStrategy distFunc) {
+  public void setVectorDimensionsAndSimilarityFunction(
+      int numDimensions, VectorValues.SimilarityFunction distFunc) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
@@ -383,7 +384,7 @@ public class FieldType implements IndexableFieldType {
               + numDimensions);
     }
     this.vectorDimension = numDimensions;
-    this.vectorSearchStrategy = distFunc;
+    this.vectorSimilarityFunction = distFunc;
   }
 
   @Override
@@ -392,8 +393,8 @@ public class FieldType implements IndexableFieldType {
   }
 
   @Override
-  public VectorValues.SearchStrategy vectorSearchStrategy() {
-    return vectorSearchStrategy;
+  public VectorValues.SimilarityFunction vectorSimilarityFunction() {
+    return vectorSimilarityFunction;
   }
 
   /**

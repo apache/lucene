@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene86;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.MutablePointValues;
 import org.apache.lucene.codecs.PointsReader;
@@ -61,7 +62,8 @@ public class Lucene86PointsWriter extends PointsWriter {
             writeState.segmentInfo.name,
             writeState.segmentSuffix,
             Lucene86PointsFormat.DATA_EXTENSION);
-    dataOut = writeState.directory.createOutput(dataFileName, writeState.context);
+    dataOut =
+        EndiannessReverserUtil.createOutput(writeState.directory, dataFileName, writeState.context);
     boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
@@ -76,7 +78,9 @@ public class Lucene86PointsWriter extends PointsWriter {
               writeState.segmentInfo.name,
               writeState.segmentSuffix,
               Lucene86PointsFormat.META_EXTENSION);
-      metaOut = writeState.directory.createOutput(metaFileName, writeState.context);
+      metaOut =
+          EndiannessReverserUtil.createOutput(
+              writeState.directory, metaFileName, writeState.context);
       CodecUtil.writeIndexHeader(
           metaOut,
           Lucene86PointsFormat.META_CODEC_NAME,
@@ -89,7 +93,9 @@ public class Lucene86PointsWriter extends PointsWriter {
               writeState.segmentInfo.name,
               writeState.segmentSuffix,
               Lucene86PointsFormat.INDEX_EXTENSION);
-      indexOut = writeState.directory.createOutput(indexFileName, writeState.context);
+      indexOut =
+          EndiannessReverserUtil.createOutput(
+              writeState.directory, indexFileName, writeState.context);
       CodecUtil.writeIndexHeader(
           indexOut,
           Lucene86PointsFormat.INDEX_CODEC_NAME,

@@ -185,14 +185,14 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testAlignedLittleEndianLongs() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testAlignedLittleEndianLongs"))) {
       try (IndexOutput out = dir.createOutput("littleEndianLongs", newIOContext(random()))) {
-        out.writeLong(Long.reverseBytes(3L));
-        out.writeLong(Long.reverseBytes(Long.MAX_VALUE));
-        out.writeLong(Long.reverseBytes(-3L));
+        out.writeLong(3L);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(-3L);
       }
       try (IndexInput input = dir.openInput("littleEndianLongs", newIOContext(random()))) {
         assertEquals(24, input.length());
         long[] l = new long[4];
-        input.readLELongs(l, 1, 3);
+        input.readLongs(l, 1, 3);
         assertArrayEquals(new long[] {0L, 3L, Long.MAX_VALUE, -3L}, l);
         assertEquals(24, input.getFilePointer());
       }
@@ -203,15 +203,15 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     try (Directory dir = getDirectory(createTempDir("testUnalignedLittleEndianLongs"))) {
       try (IndexOutput out = dir.createOutput("littleEndianLongs", newIOContext(random()))) {
         out.writeByte((byte) 2);
-        out.writeLong(Long.reverseBytes(3L));
-        out.writeLong(Long.reverseBytes(Long.MAX_VALUE));
-        out.writeLong(Long.reverseBytes(-3L));
+        out.writeLong(3L);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(-3L);
       }
       try (IndexInput input = dir.openInput("littleEndianLongs", newIOContext(random()))) {
         assertEquals(25, input.length());
         assertEquals(2, input.readByte());
         long[] l = new long[4];
-        input.readLELongs(l, 1, 3);
+        input.readLongs(l, 1, 3);
         assertArrayEquals(new long[] {0L, 3L, Long.MAX_VALUE, -3L}, l);
         assertEquals(25, input.getFilePointer());
       }
@@ -230,7 +230,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       }
       try (IndexInput input = dir.openInput("littleEndianLongs", newIOContext(random()))) {
         input.seek(offset);
-        expectThrows(EOFException.class, () -> input.readLELongs(new long[length], 0, length));
+        expectThrows(EOFException.class, () -> input.readLongs(new long[length], 0, length));
       }
     }
   }
@@ -238,14 +238,14 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testAlignedFloats() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testAlignedFloats"))) {
       try (IndexOutput out = dir.createOutput("Floats", newIOContext(random()))) {
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(3f)));
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(Float.MAX_VALUE)));
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(-3f)));
+        out.writeInt(Float.floatToIntBits(3f));
+        out.writeInt(Float.floatToIntBits(Float.MAX_VALUE));
+        out.writeInt(Float.floatToIntBits(-3f));
       }
       try (IndexInput input = dir.openInput("Floats", newIOContext(random()))) {
         assertEquals(12, input.length());
         float[] ff = new float[4];
-        input.readLEFloats(ff, 1, 3);
+        input.readFloats(ff, 1, 3);
         assertArrayEquals(new float[] {0, 3f, Float.MAX_VALUE, -3f}, ff, 0);
         assertEquals(12, input.getFilePointer());
       }
@@ -259,9 +259,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         for (int i = 0; i < padding; i++) {
           out.writeByte((byte) 2);
         }
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(3f)));
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(Float.MAX_VALUE)));
-        out.writeInt(Integer.reverseBytes(Float.floatToIntBits(-3f)));
+        out.writeInt(Float.floatToIntBits(3f));
+        out.writeInt(Float.floatToIntBits(Float.MAX_VALUE));
+        out.writeInt(Float.floatToIntBits(-3f));
       }
       try (IndexInput input = dir.openInput("Floats", newIOContext(random()))) {
         assertEquals(12 + padding, input.length());
@@ -269,7 +269,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           assertEquals(2, input.readByte());
         }
         float[] ff = new float[4];
-        input.readLEFloats(ff, 1, 3);
+        input.readFloats(ff, 1, 3);
         assertArrayEquals(new float[] {0, 3f, Float.MAX_VALUE, -3f}, ff, 0);
         assertEquals(12 + padding, input.getFilePointer());
       }
@@ -288,7 +288,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       }
       try (IndexInput input = dir.openInput("Floats", newIOContext(random()))) {
         input.seek(offset);
-        expectThrows(EOFException.class, () -> input.readLEFloats(new float[length], 0, length));
+        expectThrows(EOFException.class, () -> input.readFloats(new float[length], 0, length));
       }
     }
   }

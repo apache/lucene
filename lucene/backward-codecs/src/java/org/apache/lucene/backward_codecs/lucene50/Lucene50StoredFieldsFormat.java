@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene50;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingStoredFieldsFormat;
+import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicWriter;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
@@ -28,7 +29,6 @@ import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
  * Lucene 5.0 stored fields format.
@@ -85,7 +85,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  *       </ul>
  *   <li><a id="field_index"></a>
  *       <p>A fields index file (extension <code>.fdx</code>). This file stores two {@link
- *       DirectMonotonicWriter monotonic arrays}, one for the first doc IDs of each block of
+ *       LegacyDirectMonotonicWriter monotonic arrays}, one for the first doc IDs of each block of
  *       compressed documents, and another one for the corresponding offsets on disk. At search
  *       time, the array containing doc IDs is binary-searched in order to find the block that
  *       contains the expected doc ID, and the associated offset on disk is retrieved from the

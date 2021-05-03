@@ -56,7 +56,7 @@ public final class FieldInfo {
 
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
-  private final VectorValues.SearchStrategy vectorSearchStrategy;
+  private final VectorValues.SimilarityFunction vectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -80,7 +80,7 @@ public final class FieldInfo {
       int pointIndexDimensionCount,
       int pointNumBytes,
       int vectorDimension,
-      VectorValues.SearchStrategy vectorSearchStrategy,
+      VectorValues.SimilarityFunction vectorSimilarityFunction,
       boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
@@ -105,7 +105,7 @@ public final class FieldInfo {
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
-    this.vectorSearchStrategy = vectorSearchStrategy;
+    this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.checkConsistency();
   }
@@ -194,18 +194,18 @@ public final class FieldInfo {
               + "')");
     }
 
-    if (vectorSearchStrategy == null) {
+    if (vectorSimilarityFunction == null) {
       throw new IllegalArgumentException(
-          "Vector search strategy must not be null (field: '" + name + "')");
+          "Vector similarity function must not be null (field: '" + name + "')");
     }
     if (vectorDimension < 0) {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
-    if (vectorDimension == 0 && vectorSearchStrategy != VectorValues.SearchStrategy.NONE) {
+    if (vectorDimension == 0 && vectorSimilarityFunction != VectorValues.SimilarityFunction.NONE) {
       throw new IllegalArgumentException(
-          "vector search strategy must be NONE when dimension = 0; got "
-              + vectorSearchStrategy
+          "vector similarity function must be NONE when dimension = 0; got "
+              + vectorSimilarityFunction
               + " (field: '"
               + name
               + "')");
@@ -237,9 +237,9 @@ public final class FieldInfo {
     verifySameVectorOptions(
         fieldName,
         this.vectorDimension,
-        this.vectorSearchStrategy,
+        this.vectorSimilarityFunction,
         o.vectorDimension,
-        o.vectorSearchStrategy);
+        o.vectorSimilarityFunction);
   }
 
   /**
@@ -355,21 +355,21 @@ public final class FieldInfo {
   static void verifySameVectorOptions(
       String fieldName,
       int vd1,
-      VectorValues.SearchStrategy vst1,
+      VectorValues.SimilarityFunction vsf1,
       int vd2,
-      VectorValues.SearchStrategy vst2) {
-    if (vd1 != vd2 || vst1 != vst2) {
+      VectorValues.SimilarityFunction vsf2) {
+    if (vd1 != vd2 || vsf1 != vsf2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
               + "\" from vector dimension="
               + vd1
-              + ", vector search strategy="
-              + vst1
+              + ", vector similarity function="
+              + vsf1
               + " to inconsistent vector dimension="
               + vd2
-              + ", vector search strategy="
-              + vst2);
+              + ", vector similarity function="
+              + vsf2);
     }
   }
 
@@ -478,9 +478,9 @@ public final class FieldInfo {
     return vectorDimension;
   }
 
-  /** Returns {@link VectorValues.SearchStrategy} for the field */
-  public VectorValues.SearchStrategy getVectorSearchStrategy() {
-    return vectorSearchStrategy;
+  /** Returns {@link VectorValues.SimilarityFunction} for the field */
+  public VectorValues.SimilarityFunction getVectorSimilarityFunction() {
+    return vectorSimilarityFunction;
   }
 
   /** Record that this field is indexed with docvalues, with the specified type */
@@ -552,8 +552,7 @@ public final class FieldInfo {
   }
 
   void setStorePayloads() {
-    if (indexOptions != IndexOptions.NONE
-        && indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+    if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
       storePayloads = true;
     }
     this.checkConsistency();

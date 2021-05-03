@@ -24,7 +24,9 @@ import java.nio.ByteOrder;
 /** Base implementation class for buffered {@link IndexInput}. */
 public abstract class BufferedIndexInput extends IndexInput implements RandomAccessInput {
 
-  private static final ByteBuffer EMPTY_BYTEBUFFER = ByteBuffer.allocate(0);
+  private static final ByteBuffer EMPTY_BYTEBUFFER =
+      ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
+  ;
 
   /** Default buffer size set to {@value #BUFFER_SIZE}. */
   public static final int BUFFER_SIZE = 1024;
@@ -279,7 +281,8 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     if (newLength <= 0) throw new EOFException("read past EOF: " + this);
 
     if (buffer == EMPTY_BYTEBUFFER) {
-      buffer = ByteBuffer.allocate(bufferSize); // allocate buffer lazily
+      buffer =
+          ByteBuffer.allocate(bufferSize).order(ByteOrder.LITTLE_ENDIAN); // allocate buffer lazily
       seekInternal(bufferStart);
     }
     buffer.position(0);
@@ -287,7 +290,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     bufferStart = start;
     readInternal(buffer);
     // Make sure sub classes don't mess up with the buffer.
-    assert buffer.order() == ByteOrder.BIG_ENDIAN : buffer.order();
+    assert buffer.order() == ByteOrder.LITTLE_ENDIAN : buffer.order();
     assert buffer.remaining() == 0 : "should have thrown EOFException";
     assert buffer.position() == newLength;
     buffer.flip();

@@ -53,7 +53,7 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public final class Lucene90VectorReader extends VectorReader {
+public final class Lucene90HnswVectorReader extends VectorReader {
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
@@ -61,10 +61,10 @@ public final class Lucene90VectorReader extends VectorReader {
   private final IndexInput vectorIndex;
   private final long checksumSeed;
 
-  Lucene90VectorReader(SegmentReadState state) throws IOException {
+  Lucene90HnswVectorReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
 
-    int versionMeta = readMetadata(state, Lucene90VectorFormat.META_EXTENSION);
+    int versionMeta = readMetadata(state, Lucene90HnswVectorFormat.META_EXTENSION);
     long[] checksumRef = new long[1];
     boolean success = false;
     try {
@@ -72,15 +72,15 @@ public final class Lucene90VectorReader extends VectorReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene90VectorFormat.VECTOR_DATA_EXTENSION,
-              Lucene90VectorFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene90HnswVectorFormat.VECTOR_DATA_EXTENSION,
+              Lucene90HnswVectorFormat.VECTOR_DATA_CODEC_NAME,
               checksumRef);
       vectorIndex =
           openDataInput(
               state,
               versionMeta,
-              Lucene90VectorFormat.VECTOR_INDEX_EXTENSION,
-              Lucene90VectorFormat.VECTOR_INDEX_CODEC_NAME,
+              Lucene90HnswVectorFormat.VECTOR_INDEX_EXTENSION,
+              Lucene90HnswVectorFormat.VECTOR_INDEX_CODEC_NAME,
               checksumRef);
       success = true;
     } finally {
@@ -101,9 +101,9 @@ public final class Lucene90VectorReader extends VectorReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene90VectorFormat.META_CODEC_NAME,
-                Lucene90VectorFormat.VERSION_START,
-                Lucene90VectorFormat.VERSION_CURRENT,
+                Lucene90HnswVectorFormat.META_CODEC_NAME,
+                Lucene90HnswVectorFormat.VERSION_START,
+                Lucene90HnswVectorFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -130,8 +130,8 @@ public final class Lucene90VectorReader extends VectorReader {
         CodecUtil.checkIndexHeader(
             in,
             codecName,
-            Lucene90VectorFormat.VERSION_START,
-            Lucene90VectorFormat.VERSION_CURRENT,
+            Lucene90HnswVectorFormat.VERSION_START,
+            Lucene90HnswVectorFormat.VERSION_CURRENT,
             state.segmentInfo.getId(),
             state.segmentSuffix);
     if (versionMeta != versionVectorData) {
@@ -154,34 +154,67 @@ public final class Lucene90VectorReader extends VectorReader {
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      fields.put(info.name, readField(meta));
+
+      FieldEntry fieldEntry = readField(meta);
+      validateFieldEntry(info, fieldEntry);
+      fields.put(info.name, fieldEntry);
     }
   }
 
-  private VectorValues.SearchStrategy readSearchStrategy(DataInput input) throws IOException {
-    int searchStrategyId = input.readInt();
-    if (searchStrategyId < 0 || searchStrategyId >= VectorValues.SearchStrategy.values().length) {
-      throw new CorruptIndexException("Invalid search strategy id: " + searchStrategyId, input);
+  private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
+    int dimension = info.getVectorDimension();
+    if (dimension != fieldEntry.dimension) {
+      throw new IllegalStateException(
+          "Inconsistent vector dimension for field=\""
+              + info.name
+              + "\"; "
+              + dimension
+              + " != "
+              + fieldEntry.dimension);
     }
-    return VectorValues.SearchStrategy.values()[searchStrategyId];
+
+    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
+    if (numBytes != fieldEntry.vectorDataLength) {
+      throw new IllegalStateException(
+          "Vector data length "
+              + fieldEntry.vectorDataLength
+              + " not matching size="
+              + fieldEntry.size()
+              + " * dim="
+              + dimension
+              + " * 4 = "
+              + numBytes);
+    }
+  }
+
+  private VectorValues.SimilarityFunction readSimilarityFunction(DataInput input)
+      throws IOException {
+    int similarityFunctionId = input.readInt();
+    if (similarityFunctionId < 0
+        || similarityFunctionId >= VectorValues.SimilarityFunction.values().length) {
+      throw new CorruptIndexException(
+          "Invalid similarity function id: " + similarityFunctionId, input);
+    }
+    return VectorValues.SimilarityFunction.values()[similarityFunctionId];
   }
 
   private FieldEntry readField(DataInput input) throws IOException {
-    VectorValues.SearchStrategy searchStrategy = readSearchStrategy(input);
-    switch (searchStrategy) {
+    VectorValues.SimilarityFunction similarityFunction = readSimilarityFunction(input);
+    switch (similarityFunction) {
       case NONE:
-        return new FieldEntry(input, searchStrategy);
-      case DOT_PRODUCT_HNSW:
-      case EUCLIDEAN_HNSW:
-        return new HnswGraphFieldEntry(input, searchStrategy);
+        return new FieldEntry(input, similarityFunction);
+      case DOT_PRODUCT:
+      case EUCLIDEAN:
+        return new HnswGraphFieldEntry(input, similarityFunction);
       default:
-        throw new CorruptIndexException("Unknown vector search strategy: " + searchStrategy, input);
+        throw new CorruptIndexException(
+            "Unknown vector similarity function: " + similarityFunction, input);
     }
   }
 
   @Override
   public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90VectorReader.class);
+    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90HnswVectorReader.class);
     totalBytes +=
         RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
@@ -199,40 +232,47 @@ public final class Lucene90VectorReader extends VectorReader {
 
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      return null;
-    }
-    int dimension = info.getVectorDimension();
-    if (dimension == 0) {
-      return VectorValues.EMPTY;
-    }
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
-      // There is a FieldInfo, but no vectors. Should we have deleted the FieldInfo?
+    if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
     }
-    if (dimension != fieldEntry.dimension) {
-      throw new IllegalStateException(
-          "Inconsistent vector dimension for field=\""
-              + field
-              + "\"; "
-              + dimension
-              + " != "
-              + fieldEntry.dimension);
+
+    return getOffHeapVectorValues(fieldEntry);
+  }
+
+  @Override
+  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+    FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null || fieldEntry.dimension == 0) {
+      return null;
     }
-    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
-    if (numBytes != fieldEntry.vectorDataLength) {
-      throw new IllegalStateException(
-          "Vector data length "
-              + fieldEntry.vectorDataLength
-              + " not matching size="
-              + fieldEntry.size()
-              + " * dim="
-              + dimension
-              + " * 4 = "
-              + numBytes);
+
+    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+
+    // use a seed that is fixed for the index so we get reproducible results for the same query
+    final Random random = new Random(checksumSeed);
+    NeighborQueue results =
+        HnswGraph.search(target, k, k + fanout, vectorValues, getGraphValues(fieldEntry), random);
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
+    boolean reversed = fieldEntry.similarityFunction.reversed;
+    while (results.size() > 0) {
+      int node = results.topNode();
+      float score = results.topScore();
+      results.pop();
+      if (reversed) {
+        score = (float) Math.exp(-score / target.length);
+      }
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
     }
+    // always return >= the case where we can assert == is only when there are fewer than topK
+    // vectors in the index
+    return new TopDocs(
+        new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
+        scoreDocs);
+  }
+
+  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     return new OffHeapVectorValues(fieldEntry, bytesSlice);
@@ -252,7 +292,7 @@ public final class Lucene90VectorReader extends VectorReader {
   }
 
   private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
-    if (entry.searchStrategy.isHnsw()) {
+    if (entry.similarityFunction != VectorValues.SimilarityFunction.NONE) {
       HnswGraphFieldEntry graphEntry = (HnswGraphFieldEntry) entry;
       IndexInput bytesSlice =
           vectorIndex.slice("graph-data", entry.indexDataOffset, entry.indexDataLength);
@@ -270,7 +310,7 @@ public final class Lucene90VectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SearchStrategy searchStrategy;
+    final VectorValues.SimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -278,8 +318,9 @@ public final class Lucene90VectorReader extends VectorReader {
     final long indexDataLength;
     final int[] ordToDoc;
 
-    FieldEntry(DataInput input, VectorValues.SearchStrategy searchStrategy) throws IOException {
-      this.searchStrategy = searchStrategy;
+    FieldEntry(DataInput input, VectorValues.SimilarityFunction similarityFunction)
+        throws IOException {
+      this.similarityFunction = similarityFunction;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
       indexDataOffset = input.readVLong();
@@ -302,9 +343,9 @@ public final class Lucene90VectorReader extends VectorReader {
 
     final long[] ordOffsets;
 
-    HnswGraphFieldEntry(DataInput input, VectorValues.SearchStrategy searchStrategy)
+    HnswGraphFieldEntry(DataInput input, VectorValues.SimilarityFunction similarityFunction)
         throws IOException {
-      super(input, searchStrategy);
+      super(input, similarityFunction);
       ordOffsets = new long[size()];
       long offset = 0;
       for (int i = 0; i < ordOffsets.length; i++) {
@@ -349,14 +390,14 @@ public final class Lucene90VectorReader extends VectorReader {
     }
 
     @Override
-    public SearchStrategy searchStrategy() {
-      return fieldEntry.searchStrategy;
+    public SimilarityFunction similarityFunction() {
+      return fieldEntry.similarityFunction;
     }
 
     @Override
     public float[] vectorValue() throws IOException {
       dataIn.seek((long) ord * byteSize);
-      dataIn.readLEFloats(value, 0, value.length);
+      dataIn.readFloats(value, 0, value.length);
       return value;
     }
 
@@ -389,7 +430,7 @@ public final class Lucene90VectorReader extends VectorReader {
       if (ord < 0) {
         ord = -(ord + 1);
       }
-      assert ord >= 0 && ord <= fieldEntry.ordToDoc.length;
+      assert ord <= fieldEntry.ordToDoc.length;
       if (ord == fieldEntry.ordToDoc.length) {
         doc = NO_MORE_DOCS;
       } else {
@@ -409,35 +450,9 @@ public final class Lucene90VectorReader extends VectorReader {
     }
 
     @Override
-    public TopDocs search(float[] vector, int topK, int fanout) throws IOException {
-      // use a seed that is fixed for the index so we get reproducible results for the same query
-      final Random random = new Random(checksumSeed);
-      NeighborQueue results =
-          HnswGraph.search(
-              vector, topK, topK + fanout, randomAccess(), getGraphValues(fieldEntry), random);
-      int i = 0;
-      ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), topK)];
-      boolean reversed = searchStrategy().reversed;
-      while (results.size() > 0) {
-        int node = results.topNode();
-        float score = results.topScore();
-        results.pop();
-        if (reversed) {
-          score = (float) Math.exp(-score / vector.length);
-        }
-        scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
-      }
-      // always return >= the case where we can assert == is only when there are fewer than topK
-      // vectors in the index
-      return new TopDocs(
-          new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
-          scoreDocs);
-    }
-
-    @Override
     public float[] vectorValue(int targetOrd) throws IOException {
       dataIn.seek((long) targetOrd * byteSize);
-      dataIn.readLEFloats(value, 0, value.length);
+      dataIn.readFloats(value, 0, value.length);
       return value;
     }
 

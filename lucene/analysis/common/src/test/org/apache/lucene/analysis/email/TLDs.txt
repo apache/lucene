@@ -624,7 +624,6 @@ istanbul
 it
 itau
 itv
-iveco
 jaguar
 java
 jcb
@@ -831,7 +830,6 @@ na
 nab
 nagoya
 name
-nationwide
 natura
 navy
 nba
@@ -891,7 +889,6 @@ one
 ong
 onl
 online
-onyourside
 ooo
 open
 oracle
@@ -1124,7 +1121,6 @@ spa
 space
 sport
 spot
-spreadbetting
 sr
 srl
 ss

@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 
@@ -389,6 +390,14 @@ public class ParallelLeafReader extends LeafReader {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null ? null : reader.getVectorValues(fieldName);
+  }
+
+  @Override
+  public TopDocs searchNearestVectors(String fieldName, float[] target, int k, int fanout)
+      throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(fieldName);
+    return reader == null ? null : reader.searchNearestVectors(fieldName, target, k, fanout);
   }
 
   @Override

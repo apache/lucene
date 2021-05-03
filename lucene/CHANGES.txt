@@ -109,7 +109,8 @@ API Changes
   only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
   Adrien Grand, Simon Willnauer)
 
-
+* LUCENE-9047: Directory API is now little endian. (Ignacio Vera, Adrien Grand)  
+  
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
@@ -243,6 +244,12 @@ Bug fixes
 * LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon
   splitting. (Ignacio Vera)
 
+* LUCENE-9930: The Ukrainian analyzer was reloading its dictionary for every new
+  TokenStreamComponents, which could lead to memory leaks. (Alan Woodward)
+
+* LUCENE-9940: The order of disjuncts in DisjunctionMaxQuery does not matter
+  for equality checks (Alan Woodward)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
@@ -299,6 +306,9 @@ Other
  
 * LUCENE-9705: Make new versions of all index formats for the Lucene90 codec and move 
   the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)  
+  
+* LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
+  method to backwards codec. (Ignacio Vera)   
 
 ======================= Lucene 8.9.0 =======================
 
@@ -311,6 +321,11 @@ API Changes
 
 New Features
 ---------------------
+
+* LUCENE-9572: TypeAsSynonymFilter has been enhanced support ignoring some types, and to allow
+  the generated synonyms to copy some or all flags from the original token (Gus Heck).
+
+* LUCENE-9574 A token filter to drop tokens that match all specified flags. (Gus Heck, Uwe Schindler)
 
 * LUCENE-9537:  Added smoothingScore method and default implementation to
   Scorable abstract class.  The smoothing score allows scorers to calculate a
@@ -391,12 +406,6 @@ Bug Fixes
 
 New Features
 ---------------------
-
-* LUCENE-9574 A token filter to drop tokens that match all specified flags. (Gus Heck, Uwe Schindler)
-
-* LUCENE-9572: TypeAsSynonymFilter has been enhanced support ignoring some types, and to allow
-  the generated synonyms to copy some or all flags from the original token (Gus Heck).
-
 
 * LUCENE-9552: New LatLonPoint query that accepts an array of LatLonGeometries. (Ignacio Vera)
 

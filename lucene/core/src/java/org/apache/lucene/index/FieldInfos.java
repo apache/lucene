@@ -299,11 +299,11 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   static final class FieldVectorProperties {
     final int numDimensions;
-    final VectorValues.SearchStrategy searchStrategy;
+    final VectorValues.SimilarityFunction similarityFunction;
 
-    FieldVectorProperties(int numDimensions, VectorValues.SearchStrategy searchStrategy) {
+    FieldVectorProperties(int numDimensions, VectorValues.SimilarityFunction similarityFunction) {
       this.numDimensions = numDimensions;
-      this.searchStrategy = searchStrategy;
+      this.similarityFunction = similarityFunction;
     }
   }
 
@@ -384,7 +384,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 fi.getPointNumBytes()));
         vectorProps.put(
             fieldName,
-            new FieldVectorProperties(fi.getVectorDimension(), fi.getVectorSearchStrategy()));
+            new FieldVectorProperties(fi.getVectorDimension(), fi.getVectorSimilarityFunction()));
       }
       return fieldNumber.intValue();
     }
@@ -442,9 +442,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
       verifySameVectorOptions(
           fieldName,
           props.numDimensions,
-          props.searchStrategy,
+          props.similarityFunction,
           fi.getVectorDimension(),
-          fi.getVectorSearchStrategy());
+          fi.getVectorSimilarityFunction());
     }
 
     /**
@@ -486,7 +486,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   0,
                   0,
-                  VectorValues.SearchStrategy.NONE,
+                  VectorValues.SimilarityFunction.NONE,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
           addOrGet(fi);
         }
@@ -567,7 +567,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           0,
           0,
-          VectorValues.SearchStrategy.NONE,
+          VectorValues.SimilarityFunction.NONE,
           isSoftDeletesField);
     }
 
@@ -654,6 +654,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
         if (fi.attributes() != null) {
           fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
         }
+        if (fi.hasPayloads()) {
+          curFi.setStorePayloads();
+        }
         return curFi;
       }
       // This field wasn't yet added to this in-RAM segment's FieldInfo,
@@ -678,7 +681,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getPointIndexDimensionCount(),
               fi.getPointNumBytes(),
               fi.getVectorDimension(),
-              fi.getVectorSearchStrategy(),
+              fi.getVectorSimilarityFunction(),
               fi.isSoftDeletesField());
       byName.put(fiNew.getName(), fiNew);
       return fiNew;

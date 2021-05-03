@@ -50,7 +50,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * <ul>
  *   <li><b>[int32]</b> field number
- *   <li><b>[int32]</b> vector search strategy ordinal
+ *   <li><b>[int32]</b> vector similarity function ordinal
  *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
  *   <li><b>[vlong]</b> offset to this field's index in the .vex file
@@ -64,11 +64,11 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-public final class Lucene90VectorFormat extends VectorFormat {
+public final class Lucene90HnswVectorFormat extends VectorFormat {
 
-  static final String META_CODEC_NAME = "Lucene90VectorFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene90VectorFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "Lucene90VectorFormatIndex";
+  static final String META_CODEC_NAME = "Lucene90HnswVectorFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene90HnswVectorFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "Lucene90HnswVectorFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -77,15 +77,15 @@ public final class Lucene90VectorFormat extends VectorFormat {
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Sole constructor */
-  public Lucene90VectorFormat() {}
+  public Lucene90HnswVectorFormat() {}
 
   @Override
   public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90VectorWriter(state);
+    return new Lucene90HnswVectorWriter(state);
   }
 
   @Override
   public VectorReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene90VectorReader(state);
+    return new Lucene90HnswVectorReader(state);
   }
 }
