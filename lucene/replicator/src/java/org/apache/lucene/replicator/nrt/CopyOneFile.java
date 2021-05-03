@@ -20,7 +20,6 @@ package org.apache.lucene.replicator.nrt;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Locale;
-
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
