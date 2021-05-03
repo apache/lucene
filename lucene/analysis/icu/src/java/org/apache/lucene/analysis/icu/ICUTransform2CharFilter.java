@@ -34,6 +34,11 @@ import org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegist
 /**
  * A {@link CharFilter} that transforms text with ICU.
  *
+ * This is similar to {@link ICUTransformFilter}, but is capable of operating on pre-tokenized input,
+ * which can be particularly useful in cases where tokenization may be affected by transliteration.
+ * This class invokes the {@link Transliterator} API in a way that supports truly streaming
+ * transliteration.
+ *
  * <p>ICU provides text-transformation functionality via its Transliteration API. Although script
  * conversion is its most common use, a Transliterator can actually perform a more general class of
  * tasks. In fact, Transliterator defines a very general API which specifies only that a segment of

@@ -22,12 +22,33 @@ import static com.ibm.icu.text.UTF16.isLeadSurrogate;
 import static com.ibm.icu.text.UTF16.LEAD_SURROGATE_MAX_VALUE;
 
 import com.ibm.icu.text.Replaceable;
+import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.UTF16;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.util.function.IntBinaryOperator;
 
+/**
+ * An implementation of {@link Replaceable} that leverages {@link Replaceable}'s "metadata" concept
+ * to integrally track (and correct) offset changes.
+ *
+ * This decouples external invocation of
+ * {@link Transliterator#filteredTransliterate(Replaceable, Transliterator.Position, boolean)}
+ * methods from granular tracking of offset diffs, which allows composite Transliterators to be
+ * separated into constituent components, each with its own dedicated section of the buffer (at
+ * any given point in time), without any compromise in terms of the accuracy/granularity of
+ * offset diff tracking and correction.
+ *
+ * This abstraction is a reasonably good fit, but is a little bit awkward at times because offsets
+ * are relative, so offset context can't be trivially "copied" to different places within the
+ * Replaceable buffer in the same way that, e.g., style/formatting data can. The awkwardness
+ * of this mainly manifests in the need to jump through hoops to ensure parity between simple
+ * "non-complex" String-replace operations and "complex" operations in which icu StringReplacer
+ * copies buffer contents and context to the end of the buffer and manipulates it there before
+ * copying it back into position and deleting. See {@link #complexCopyAsReplace(int, int)}, and
+ * related comments, etc.
+ */
 public class CircularReplaceable implements Replaceable {
 
   // These *FLOOR_CHAR_COUNT vars are temporarily set artificially low in order to evaluate

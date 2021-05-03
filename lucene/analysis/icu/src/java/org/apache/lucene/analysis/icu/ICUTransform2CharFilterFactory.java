@@ -109,6 +109,11 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
 
   public static final CircularReplaceable.OffsetCorrectionRegistrar DEV_NULL_REGISTRAR = new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> 0);
 
+  /**
+   * This class is useful for streaming transliteration of documents outside of the context
+   * of Lucene analysis. For that reason we provide a trivial main method to stream
+   * transliteration from stdin to stdout.
+   */
   public static void main(String[] args) throws IOException {
     Reader r = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
     Writer w = new BufferedWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8));
