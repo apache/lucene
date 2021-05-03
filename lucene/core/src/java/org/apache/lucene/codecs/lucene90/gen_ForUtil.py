@@ -229,7 +229,7 @@ final class ForUtil {
     for (int i = 0; i < numLongsPerShift; ++i) {
       // Java longs are big endian and we want to read little endian longs, so we need to reverse
       // bytes
-      long l = Long.reverseBytes(tmp[i]);
+      long l = tmp[i];
       out.writeLong(l);
     }
   }
@@ -242,7 +242,7 @@ final class ForUtil {
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
       throws IOException {
     final int numLongs = bitsPerValue << 1;
-    in.readLELongs(tmp, 0, numLongs);
+    in.readLongs(tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
     int longsIdx = 0;
     int shift = 32 - bitsPerValue;
@@ -346,9 +346,9 @@ def writeDecode(bpv, f):
   f.write('  private static void decode%d(DataInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
   num_values_per_long = 64 / next_primitive
   if bpv == next_primitive:
-    f.write('    in.readLELongs(longs, 0, %d);\n' %(bpv*2))
+    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
   else:
-    f.write('    in.readLELongs(tmp, 0, %d);\n' %(bpv*2))
+    f.write('    in.readLongs(tmp, 0, %d);\n' %(bpv*2))
     shift = next_primitive - bpv
     o = 0
     while shift >= 0:

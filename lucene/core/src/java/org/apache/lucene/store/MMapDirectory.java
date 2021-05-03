@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.channels.FileChannel;
@@ -263,6 +264,7 @@ public class MMapDirectory extends FSDirectory {
       MappedByteBuffer buffer;
       try {
         buffer = fc.map(MapMode.READ_ONLY, offset + bufferStart, bufSize);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
       } catch (IOException ioe) {
         throw convertMapFailedIOException(ioe, resourceDescription, bufSize);
       }

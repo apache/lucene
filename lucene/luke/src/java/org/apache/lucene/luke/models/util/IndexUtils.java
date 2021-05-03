@@ -311,7 +311,7 @@ public final class IndexUtils {
       protected String doBody(String segmentFileName) throws IOException {
         String format = "unknown";
         try (IndexInput in = dir.openInput(segmentFileName, IOContext.READ)) {
-          if (CodecUtil.CODEC_MAGIC == in.readInt()) {
+          if (CodecUtil.CODEC_MAGIC == CodecUtil.readBEInt(in)) {
             int actualVersion =
                 CodecUtil.checkHeaderNoMagic(
                     in, "segments", SegmentInfos.VERSION_70, Integer.MAX_VALUE);
