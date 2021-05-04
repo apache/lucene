@@ -31,6 +31,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
@@ -132,7 +133,9 @@ public class TestPerFieldConsistency extends LuceneTestCase {
 
   public void testDocWithMissingSchemaOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig()); ) {
+        IndexWriter writer =
+            new IndexWriter(
+                dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE)); ) {
       final Field[] fields = randomFieldsWithTheSameName("myfield");
       final Document doc0 = new Document();
       for (Field field : fields) {
@@ -154,6 +157,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       }
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
+        assertEquals(1, reader.leaves().size());
         assertEquals(1, reader.leaves().get(0).reader().numDocs());
         assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedDocs());
       }
@@ -168,6 +172,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.addDocument(doc0); // add document with correct data structures
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
+        assertEquals(2, reader.leaves().size());
         assertEquals(1, reader.leaves().get(1).reader().numDocs());
         assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedDocs());
       }
@@ -176,7 +181,9 @@ public class TestPerFieldConsistency extends LuceneTestCase {
 
   public void testDocWithExtraSchemaOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+        IndexWriter writer =
+            new IndexWriter(
+                dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE)); ) {
       final Field[] fields = randomFieldsWithTheSameName("myfield");
       final Document doc0 = new Document();
       int existingFieldIdx = randomIntBetween(0, fields.length - 1);
@@ -198,6 +205,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       }
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
+        assertEquals(1, reader.leaves().size());
         assertEquals(1, reader.leaves().get(0).reader().numDocs());
         assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedDocs());
       }
@@ -216,6 +224,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.addDocument(doc0); // add document with correct data structures
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
+        assertEquals(2, reader.leaves().size());
         assertEquals(1, reader.leaves().get(1).reader().numDocs());
         assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedDocs());
       }
