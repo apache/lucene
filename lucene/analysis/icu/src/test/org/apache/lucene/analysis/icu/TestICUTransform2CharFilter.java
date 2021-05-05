@@ -185,7 +185,6 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke10() throws Exception {
     System.err.println("BEGIN testBespoke10");
-    //print(Transliterator.getInstance("cy-cy_FONIPA"), "");
     multiCheck("cy-cy_FONIPA",
         "vhguj",
         "vhˈɡɨ̞d͡ʒ");
@@ -202,7 +201,6 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     // I think the fix here is to block advancing t idx beyond upstream transliterator's
     // _context_; we already block advancing t idx beyond upstream transliterator's
     // `committedTo`, so this shouldn't too challenging.
-    //print(Transliterator.getInstance("es-zh"), "");
     String input = "f gnfg";
     input = "f gnfg";
     Replaceable r = new ReplaceableString(input);
@@ -242,23 +240,13 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke13() throws Exception {
     System.err.println("BEGIN testBespoke13");
-    //print(Transliterator.getInstance("eo-chr"), "");
-    try {
-      multiCheck("eo-chr",
-          "\ucec6A\udae9\udc82\u0362\u0170 <!--< \u0a53",
-          "ᎠᎤ̋  ");
-    } catch (AssertionError er) {
-      // this example throws a spurious "offset discrepancy" error; ignore it.
-      String msg = er.getMessage();
-      if (msg == null || !msg.startsWith(OFFSET_DISCREPANCY_MSG_PREFIX)) {
-        throw er;
-      }
-    }
+    multiCheck("eo-chr",
+        "\ucec6A\udae9\udc82\u0362\u0170 <!--< \u0a53",
+        "ᎠᎤ̋  ");
   }
 
   public void testBespoke14() throws Exception {
     System.err.println("BEGIN testBespoke14");
-    //print(Transliterator.getInstance("Latn-Hebr"), "");
     multiCheck("Latn-Hebr",
         "lj N\u7b04\u0010\u0518\ueb99\ufdf0\u808d",
         "\u05dc\u05d6 \u05e0\u7b04\u0010\u0518\ueb99\ufdf0\u808d");
@@ -266,7 +254,6 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke14_2() throws Exception {
     System.err.println("BEGIN testBespoke14_2");
-    //print(Transliterator.getInstance("Latn-Hebr"), "");
     multiCheck("Latn-Hebr",
         "qqfzrsksg \u00ea\ueeb5\u0a51\u0145\u0767\u0114",
         "\u05e7\u05e7\u05e4\u05d6\u05e8\u05e1\u05db\u05e1\u05d2 \u05b6\u05c2\ueeb5\u0a51\u05e0\u0327\u0767\u05b0");
@@ -305,17 +292,9 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke18() throws Exception {
     System.err.println("BEGIN testBespoke18");
-    try {
-      multiCheck("ch-chr",
-          "\u2321 \ud860\udecc gtyey zmibo",
-          "  \u13a9\u13d8\u13e4\u13e5 \u13cd\u13bb\u13c9");
-    } catch (AssertionError er) {
-      // this example throws a spurious "offset discrepancy" error; ignore it.
-      String msg = er.getMessage();
-      if (msg == null || !msg.startsWith(OFFSET_DISCREPANCY_MSG_PREFIX)) {
-        throw er;
-      }
-    }
+    multiCheck("ch-chr",
+        "\u2321 \ud860\udecc gtyey zmibo",
+        "  \u13a9\u13d8\u13e4\u13e5 \u13cd\u13bb\u13c9");
   }
 
   public void testBespoke19() throws Exception {
@@ -965,43 +944,5 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       t = Transliterator.createFromRules(id, rules, Transliterator.FORWARD);
     }
     return ICUTransform2CharFilterFactory.wrap(r, t);
-  }
-  public void assertEquals(AnalysisResult expected, AnalysisResult actual, boolean tolerateNullPositions) {
-    granularAssertEquals("tokens '"+escape(expected.text)+"'", expected.tokens, actual.tokens);
-    assertEquals("type", expected.types, actual.types);
-    if (!tolerateNullPositions || !(expected.positions == null ^ actual.positions == null)) {
-      assertEquals("positions '"+escape(expected.text)+"'", expected.positions, actual.positions);
-    }
-    assertEquals("positionLengths", expected.positionLengths, actual.positionLengths);
-    assertEquals(formatOffsetMsg("Start", expected, actual), expected.startOffsets, actual.startOffsets);
-    assertEquals(formatOffsetMsg("End", expected, actual), expected.endOffsets, actual.endOffsets);
-  }
-
-  private static void granularAssertEquals(String msg, List<String> expected, List<String> actual) {
-    if (expected == null || actual == null || expected.size() != actual.size()) {
-      assertEquals(msg, expected, actual);
-    } else {
-      Iterator<String> e = expected.iterator();
-      Iterator<String> a = actual.iterator();
-      while (e.hasNext()) {
-        assertEquals(msg+" e="+expected+", a="+actual, e.next(), a.next());
-      }
-    }
-  }
-
-  private static final String OFFSET_DISCREPANCY_MSG_PREFIX = "offsetDiscrepancy";
-  private static String formatOffsetMsg(String type, AnalysisResult expected, AnalysisResult actual) {
-    StringBuilder sb = new StringBuilder();
-    sb.append(OFFSET_DISCREPANCY_MSG_PREFIX+type+" input='"+escape(expected.text)+"'");
-    Iterator<Integer> esIter = expected.startOffsets.iterator();
-    Iterator<Integer> eeIter = expected.endOffsets.iterator();
-    Iterator<Integer> asIter = actual.startOffsets.iterator();
-    Iterator<Integer> aeIter = actual.endOffsets.iterator();
-    for (String s : expected.tokens) {
-      sb.append("\n\tt='").append(escape(s)).append("'; ");
-      sb.append("expected=[").append(esIter.next()).append(", ").append(eeIter.next()).append("]; ");
-      sb.append("actual=[").append(asIter.next()).append(", ").append(aeIter.next()).append("]");
-    }
-    return sb.toString();
   }
 }
