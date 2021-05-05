@@ -242,7 +242,8 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke15() throws Exception {
     // fails for maxContextLength=4; bump ICUTransform2CharFilterFactory.MAX_CONTEXT_LENGTH_FLOOR to
-    // `5`; reducing to `3` also works, but this appears to be a different issue than `testBespoke16`
+    // `5`; reducing to `3` also works, but this appears to be a different issue than
+    // `testBespoke16`
     multiCheck("cy-cy_FONIPA", "\u2407 JWOb", "\u2407 d\u0361\u0292w\u0254b");
   }
 
@@ -862,14 +863,14 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
    * Transliterators. The three user-level input characters here are each handled differently in
    * illustrative ways:
    *
-   * 1. composed input "â" matches the top-level filter, is decomposed, its ascii "a" is mapped to
-   * ascii "i", and "i\u0302" (the decomposed product of composed input entirely matched by top-level
-   * filter) is composed into "î"
+   * <p>1. composed input "â" matches the top-level filter, is decomposed, its ascii "a" is mapped
+   * to ascii "i", and "i\u0302" (the decomposed product of composed input entirely matched by
+   * top-level filter) is composed into "î"
    *
-   * 2. for decomposed input "a\u0302", only ascii "a" matches the top-level filter; it is mapped,
-   * but is _not_ composed with input "\u0302", which did _not_ match the top-level filter
+   * <p>2. for decomposed input "a\u0302", only ascii "a" matches the top-level filter; it is
+   * mapped, but is _not_ composed with input "\u0302", which did _not_ match the top-level filter
    *
-   * 3. decomposed input "i\u0302" is completely ignored (no part matches top-level filter)
+   * <p>3. decomposed input "i\u0302" is completely ignored (no part matches top-level filter)
    */
   public void testParityWithFilter3() throws Exception {
     final String id = "X_SIMPLE";

@@ -383,7 +383,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     assertEquals("abcdefghijTSRQPONMLKJIHGabcd", r.toString());
 
     // target key "NM" is both prefix and suffix of replacement val
-    r.replace( 16, 18, "NMLKJIHGFEDCBAZYXWVUTSRQPONM");
+    r.replace(16, 18, "NMLKJIHGFEDCBAZYXWVUTSRQPONM");
 
     charSink = new char[r.length()];
     int[] offsets2 = new int[r.length()];

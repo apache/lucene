@@ -233,8 +233,8 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
       for (; ; ) {
         position.limit = ++preLimit;
         position.contextLimit = preLimit;
-        String prePos = REPORT ? position.toString() : null;
-        String pre = REPORT ? toString(buf, preStart, preLimit) : null;
+        // String prePos = REPORT ? position.toString() : null;
+        // String pre = REPORT ? toString(buf, preStart, preLimit) : null;
         final boolean incremental = !(inputFinished && preLimit == buf.length());
         leaf.filteredTransliterate(buf, position, incremental);
         // if (REPORT) System.err.println("XXX"+i+": \""+pre+"\" => \""+toString(buf, preStart,
@@ -318,7 +318,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     return raw.substring(start - adjust, end - adjust);
   }
 
-  private static final boolean REPORT = false;
+  // private static final boolean REPORT = false;
 
   private int commit(int i, int preLimit, int bypass) {
     final int diff;
@@ -485,8 +485,8 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     // suspect, considering that we're passing `incremental=false`, which one would
     // think should prevent such blocking? But it's guaranteed to be safe when used
     // in a "bypass" situation, because we know that `bypass <= buf.length()`
-    String prePos = REPORT ? position.toString() : null;
-    String pre = REPORT ? toString(buf, preStart, preLimit) : null;
+    // String prePos = REPORT ? position.toString() : null;
+    // String pre = REPORT ? toString(buf, preStart, preLimit) : null;
     t.filteredTransliterate(buf, position, false); // equivalent to `finishTransliteration(...)`
     // if (REPORT) System.err.println("YYY"+i+": \""+pre+"\" => \""+toString(buf,
     // preStart, position.limit)+"\" ("+prePos+"=>"+position+")");

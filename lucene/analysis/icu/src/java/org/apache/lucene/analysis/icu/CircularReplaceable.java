@@ -144,34 +144,34 @@ public class CircularReplaceable implements Replaceable {
     // Arrays.fill(offsetCorrect, 0);
   }
 
-//  2> copy acadae/1/2/6 => acadaec
-//  2>   StringReplacer.replace(StringReplacer.java:159) (copy lead context codepoint)
-//  2>         OR replace acadae/6/6/\uFFFF        :162) (copy initial lead pseudo-codepoint)
-//  2>   StringReplacer.replace(StringReplacer.java:159) (copy lead context codepoint)
-//  2> copy acadaec/3/4/7 => acadaecd
-//  2>   StringReplacer.replace(StringReplacer.java:187) (copy trail context codepoint)
-//  2> replace acadaecd/7/7/b => acadaecbd
-//  2>       rule filters from original source offset to dest by means of "replace". This
-//  2>       carries no offset metadata, but we're no worse off than if this were executed
-//  2>       directly via in-place "replace".
-//  2>   StringReplacer.replace(StringReplacer.java:212)
-//  2> copy acadaecbd/7/8/2 => acbadaecbd
-//  2>   StringReplacer.replace(StringReplacer.java:223) (copy from tmp buf to inline offset)
-//  2> replace acbadaecbd/7/10/ => acbadae
-//  2>   StringReplacer.replace(StringReplacer.java:224) (delete temp buffer)
-//  2> replace acbadae/3/4/ => acbdae
-//  2>   StringReplacer.replace(StringReplacer.java:227) (delete original key)
-//
-// The above sequence can be easily and unambiguously recognized in its entirety as distinct
-// from any other type of manipulation, and handled as a special case that avoids needless
-// shifting and, more importantly, preserves integrity of headDiff without jumping through a
-// bunch of convoluted hoops.
-//
-// As explained in `StringReplacer.replace(...)`, in most cases, this more complex sequence
-// is only executed the first time a transliteration rule is encountered (StringReplacer
-// instances are static and reused); Subsequent executions in many (most?) cases use inline
-// "replace". Unless handled carefully, this situation has the potential to result in
-// inconsistent (and stateful!) behavior out of an ostensibly stateless component.
+  //  2> copy acadae/1/2/6 => acadaec
+  //  2>   StringReplacer.replace(StringReplacer.java:159) (copy lead context codepoint)
+  //  2>         OR replace acadae/6/6/\uFFFF        :162) (copy initial lead pseudo-codepoint)
+  //  2>   StringReplacer.replace(StringReplacer.java:159) (copy lead context codepoint)
+  //  2> copy acadaec/3/4/7 => acadaecd
+  //  2>   StringReplacer.replace(StringReplacer.java:187) (copy trail context codepoint)
+  //  2> replace acadaecd/7/7/b => acadaecbd
+  //  2>       rule filters from original source offset to dest by means of "replace". This
+  //  2>       carries no offset metadata, but we're no worse off than if this were executed
+  //  2>       directly via in-place "replace".
+  //  2>   StringReplacer.replace(StringReplacer.java:212)
+  //  2> copy acadaecbd/7/8/2 => acbadaecbd
+  //  2>   StringReplacer.replace(StringReplacer.java:223) (copy from tmp buf to inline offset)
+  //  2> replace acbadaecbd/7/10/ => acbadae
+  //  2>   StringReplacer.replace(StringReplacer.java:224) (delete temp buffer)
+  //  2> replace acbadae/3/4/ => acbdae
+  //  2>   StringReplacer.replace(StringReplacer.java:227) (delete original key)
+  //
+  // The above sequence can be easily and unambiguously recognized in its entirety as distinct
+  // from any other type of manipulation, and handled as a special case that avoids needless
+  // shifting and, more importantly, preserves integrity of headDiff without jumping through a
+  // bunch of convoluted hoops.
+  //
+  // As explained in `StringReplacer.replace(...)`, in most cases, this more complex sequence
+  // is only executed the first time a transliteration rule is encountered (StringReplacer
+  // instances are static and reused); Subsequent executions in many (most?) cases use inline
+  // "replace". Unless handled carefully, this situation has the potential to result in
+  // inconsistent (and stateful!) behavior out of an ostensibly stateless component.
 
   int headDiff() {
     return offsetCorrect[head & mask];
@@ -446,9 +446,9 @@ public class CircularReplaceable implements Replaceable {
    * "functionally superfluous" nature of this optimization specifically called out here for the
    * sake of clarity.
    *
-   * <p>NOTE: by contrast, common-suffix trimming _is_ functionally significant,
-   * because it can change the basis for offset correction, on both removal _and_ insertion of
-   * characters, potentially increasing the accuracy of offset resolution.
+   * <p>NOTE: by contrast, common-suffix trimming _is_ functionally significant, because it can
+   * change the basis for offset correction, on both removal _and_ insertion of characters,
+   * potentially increasing the accuracy of offset resolution.
    */
   private static final boolean TRIM_PREFIXES = true;
 
@@ -605,9 +605,9 @@ public class CircularReplaceable implements Replaceable {
         // source in its entirety is (the same as or) a suffix of replacement.
         // the offset of the first char in the dest range should already hold the original offset of
         // the source key, so don't overwrite it! We increment `checkSrcIdx` and `checkDestIdx` in
-        // order to re-associate the remaining suffix offsets with their corresponding "replacements";
-        // the remainder of the offsets in the "dest" (replacement) range should already hold `-1`
-        // from the "insert" operation, so we're done.
+        // order to re-associate the remaining suffix offsets with their corresponding
+        // "replacements"; the remainder of the offsets in the "dest" (replacement) range should
+        // already hold `-1` from the "insert" operation, so we're done.
         checkSrcIdx += 2; // 1 to get to suffix start, 1 to not overwrite original source offset
         checkDestIdx += 2;
         trimmedLimit = checkSrcIdx - 1;
@@ -651,9 +651,9 @@ public class CircularReplaceable implements Replaceable {
     if (collapsedOffsets > 0) {
       int i = Math.max(srcStart - (srcLimit - trimmedLimit), watchKeyOriginalOffset + 1);
       // NOTE: see below. Arguably the "copy" approach is more appropriate, because after the first
-      // replace, "A" inherits from "e", and "Z" points to the same position as "A". After the second
-      // replace, "A" inherits from "c", and "Z" still points to the same position as "A" -- i.e.,
-      // `-1` offset correction
+      // replace, "A" inherits from "e", and "Z" points to the same position as "A". After the
+      // second replace, "A" inherits from "c", and "Z" still points to the same position as "A" --
+      // i.e., `-1` offset correction
       // 2> Stage1: abcde => abcdAZYX (AZYX)
       // 2> Stage2: abcdAZYX => aBAZYX (BAZ)
       // 2> mid-r:[0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -1352,8 +1352,7 @@ public class CircularReplaceable implements Replaceable {
           System.arraycopy(
               offsetCorrect, tailOldMask, newOffsetCorrect, tailNewMask, tailSectionLength);
           // `len+1` to include headDiff
-          System.arraycopy(
-              offsetCorrect, 0, newOffsetCorrect, 0, headOldMask + 1);
+          System.arraycopy(offsetCorrect, 0, newOffsetCorrect, 0, headOldMask + 1);
         }
       }
     }
