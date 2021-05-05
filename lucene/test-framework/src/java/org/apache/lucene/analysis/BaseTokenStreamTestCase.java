@@ -1075,50 +1075,18 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     return sb.toString();
   }
 
-  public static AnalysisResult checkAnalysisConsistency(
+  public static void checkAnalysisConsistency(
       Random random, Analyzer a, boolean useCharFilter, String text) throws IOException {
-    return checkAnalysisConsistency(random, a, useCharFilter, text, true);
+    checkAnalysisConsistency(random, a, useCharFilter, text, true);
   }
 
-  public static class AnalysisResult {
-    public final AttributeFactory attributeFactory;
-    public final String text;
-    public final List<String> tokens;
-    public final List<String> types;
-    public final List<Integer> positions;
-    public final List<Integer> positionLengths;
-    public final List<Integer> startOffsets;
-    public final List<Integer> endOffsets;
-
-    public AnalysisResult(
-        AttributeFactory attributeFactory, String text,
-        List<String> tokens, TypeAttribute typeAtt, List<String> types,
-        PositionIncrementAttribute posIncAtt, List<Integer> positions,
-        PositionLengthAttribute posLengthAtt, List<Integer> positionLengths,
-        OffsetAttribute offsetAtt, List<Integer> startOffsets, List<Integer> endOffsets) {
-      this.attributeFactory = attributeFactory;
-      this.text = text;
-      this.tokens = tokens;
-      this.types = typeAtt == null ? null : types;
-      this.positions = posIncAtt == null ? null : positions;
-      this.positionLengths = posLengthAtt == null ? null : positionLengths;
-      if (offsetAtt == null) {
-        this.startOffsets = null;
-        this.endOffsets = null;
-      } else {
-        this.startOffsets = startOffsets;
-        this.endOffsets = endOffsets;
-      }
-    }
-  }
-
-  public static AnalysisResult checkAnalysisConsistency(
+  public static void checkAnalysisConsistency(
       Random random, Analyzer a, boolean useCharFilter, String text, boolean graphOffsetsAreCorrect)
       throws IOException {
-    return checkAnalysisConsistency(random, a, useCharFilter, text, graphOffsetsAreCorrect, null);
+    checkAnalysisConsistency(random, a, useCharFilter, text, graphOffsetsAreCorrect, null);
   }
 
-  private static AnalysisResult checkAnalysisConsistency(
+  private static void checkAnalysisConsistency(
       Random random,
       Analyzer a,
       boolean useCharFilter,
@@ -1165,9 +1133,6 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     }
     ts.end();
     ts.close();
-
-    AnalysisResult ret = new AnalysisResult(ts.getAttributeFactory(), text, tokens, typeAtt, types,
-        posIncAtt, positions, posLengthAtt, positionLengths, offsetAtt, startOffsets, endOffsets);
 
     // verify reusing is "reproducable" and also get the normal tokenstream sanity checks
     if (!tokens.isEmpty()) {
@@ -1366,7 +1331,6 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
 
       field.setReaderValue(useCharFilter ? new MockCharFilter(reader, remainder) : reader);
     }
-    return ret;
   }
 
   protected String toDot(Analyzer a, String inputText) throws IOException {
