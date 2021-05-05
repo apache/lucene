@@ -90,14 +90,30 @@ public class TestCodecs extends LuceneTestCase {
       this.omitTF = omitTF;
       this.storePayloads = storePayloads;
       // TODO: change this test to use all three
-      fieldInfo = fieldInfos.getOrAdd(name);
-      if (omitTF) {
-        fieldInfo.setIndexOptions(IndexOptions.DOCS);
+      FieldInfo fieldInfo0 = fieldInfos.fieldInfo(name);
+      if (fieldInfo0 != null) {
+        fieldInfo = fieldInfo0;
       } else {
-        fieldInfo.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-      }
-      if (storePayloads) {
-        fieldInfo.setStorePayloads();
+        IndexOptions indexOptions =
+            omitTF ? IndexOptions.DOCS : IndexOptions.DOCS_AND_FREQS_AND_POSITIONS;
+        fieldInfo =
+            fieldInfos.add(
+                new FieldInfo(
+                    name,
+                    -1,
+                    false,
+                    false,
+                    storePayloads,
+                    indexOptions,
+                    DocValuesType.NONE,
+                    -1,
+                    new HashMap<>(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    VectorValues.SimilarityFunction.NONE,
+                    false));
       }
       this.terms = terms;
       for (int i = 0; i < terms.length; i++) terms[i].field = this;
@@ -436,7 +452,9 @@ public class TestCodecs extends LuceneTestCase {
         try {
           termsEnum.seekExact(idx);
           success = true;
-        } catch (UnsupportedOperationException uoe) {
+        } catch (
+            @SuppressWarnings("unused")
+            UnsupportedOperationException uoe) {
           // ok -- skip it
         }
         if (success) {
@@ -488,7 +506,9 @@ public class TestCodecs extends LuceneTestCase {
             termsEnum.seekExact(i);
             assertEquals(field.terms[i].docs.length, termsEnum.docFreq());
             assertTrue(termsEnum.term().bytesEquals(new BytesRef(field.terms[i].text2)));
-          } catch (UnsupportedOperationException uoe) {
+          } catch (
+              @SuppressWarnings("unused")
+              UnsupportedOperationException uoe) {
           }
         }
 
@@ -829,11 +849,6 @@ public class TestCodecs extends LuceneTestCase {
     FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(state);
     NormsProducer fakeNorms =
         new NormsProducer() {
-
-          @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
 
           @Override
           public void close() throws IOException {}

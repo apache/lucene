@@ -47,7 +47,7 @@ import java.util.function.IntBinaryOperator;
  * copying it back into position and deleting. See {@link #complexCopyAsReplace(int, int)}, and
  * related comments, etc.
  */
-public class CircularReplaceable implements Replaceable {
+class CircularReplaceable implements Replaceable {
 
   // These *FLOOR_CHAR_COUNT vars are temporarily set artificially low in order to evaluate
   // buffer growing. For working buffer, should be at least 2 because this affects the code

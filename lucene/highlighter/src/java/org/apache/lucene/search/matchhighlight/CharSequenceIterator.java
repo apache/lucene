@@ -32,11 +32,13 @@ final class CharSequenceIterator implements CharacterIterator {
     this.end = text.length();
   }
 
+  @Override
   public char first() {
     pos = begin;
     return current();
   }
 
+  @Override
   public char last() {
     if (end != begin) {
       pos = end - 1;
@@ -46,12 +48,14 @@ final class CharSequenceIterator implements CharacterIterator {
     return current();
   }
 
+  @Override
   public char setIndex(int p) {
     if (p < begin || p > end) throw new IllegalArgumentException("Invalid index");
     pos = p;
     return current();
   }
 
+  @Override
   public char current() {
     if (pos >= begin && pos < end) {
       return text.charAt(pos);
@@ -60,6 +64,7 @@ final class CharSequenceIterator implements CharacterIterator {
     }
   }
 
+  @Override
   public char next() {
     if (pos < end - 1) {
       pos++;
@@ -70,6 +75,7 @@ final class CharSequenceIterator implements CharacterIterator {
     }
   }
 
+  @Override
   public char previous() {
     if (pos > begin) {
       pos--;
@@ -79,14 +85,17 @@ final class CharSequenceIterator implements CharacterIterator {
     }
   }
 
+  @Override
   public int getBeginIndex() {
     return begin;
   }
 
+  @Override
   public int getEndIndex() {
     return end;
   }
 
+  @Override
   public int getIndex() {
     return pos;
   }

@@ -141,7 +141,7 @@
  * <p>Each segment index maintains the following:
  *
  * <ul>
- *   <li>{@link org.apache.lucene.codecs.lucene86.Lucene86SegmentInfoFormat Segment info}. This
+ *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90SegmentInfoFormat Segment info}. This
  *       contains metadata about a segment, such as the number of documents, what files it uses, and
  *       information about how the segment is sorted
  *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90FieldInfosFormat Field names}. This
@@ -176,13 +176,13 @@
  *       factors.
  *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90LiveDocsFormat Live documents}. An
  *       optional file indicating which documents are live.
- *   <li>{@link org.apache.lucene.codecs.lucene86.Lucene86PointsFormat Point values}. Optional pair
+ *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90PointsFormat Point values}. Optional pair
  *       of files, recording dimensionally indexed fields, to enable fast numeric range filtering
  *       and large numeric values like BigInteger and BigDecimal (1D) and geographic shape
  *       intersection (2D, 3D).
- *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90VectorFormat Vector values}. The vector
- *       format stores numeric vectors in a format optimized for random access and computation,
- *       supporting high-dimensional nearest-neighbor search.
+ *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90HnswVectorFormat Vector values}. The
+ *       vector format stores numeric vectors in a format optimized for random access and
+ *       computation, supporting high-dimensional nearest-neighbor search.
  * </ul>
  *
  * <p>Details on each of these are provided in their linked pages. </div> <a id="File_Naming"></a>
@@ -229,7 +229,7 @@
  * file.</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene86.Lucene86SegmentInfoFormat Segment Info}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90SegmentInfoFormat Segment Info}</td>
  * <td>.si</td>
  * <td>Stores metadata about a segment</td>
  * </tr>
@@ -305,12 +305,12 @@
  * <td>Info about what documents are live</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene86.Lucene86PointsFormat Point values}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90PointsFormat Point values}</td>
  * <td>.dii, .dim</td>
  * <td>Holds indexed points</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90VectorFormat Vector values}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90HnswVectorFormat Vector values}</td>
  * <td>.vec, .vem</td>
  * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data, and
  * <code>.vem</code> the vector metadata</td>

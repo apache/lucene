@@ -128,7 +128,7 @@ public class TestFactories extends BaseTokenStreamTestCase {
     try {
       ctor = factoryClazz.getConstructor(Map.class);
     } catch (Exception e) {
-      throw new RuntimeException("factory '" + factoryClazz + "' does not have a proper ctor!");
+      throw new RuntimeException("factory '" + factoryClazz + "' does not have a proper ctor!", e);
     }
 
     AbstractAnalysisFactory factory = null;
@@ -146,9 +146,13 @@ public class TestFactories extends BaseTokenStreamTestCase {
     if (factory instanceof ResourceLoaderAware) {
       try {
         ((ResourceLoaderAware) factory).inform(new StringMockResourceLoader(""));
-      } catch (IOException ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException ignored) {
         // it's ok if the right files arent available or whatever to throw this
-      } catch (IllegalArgumentException ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException ignored) {
         // is this ok? I guess so
       }
     }

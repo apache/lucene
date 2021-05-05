@@ -1,3 +1,5 @@
+import java.nio.file.Files
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -15,7 +17,6 @@
  * limitations under the License.
  */
 
-
 // Add a top-level pseudo-task to which we will attach individual regenerate tasks.
 
 configure(rootProject) {
@@ -28,16 +29,206 @@ configure(rootProject) {
   }
 }
 
-// We always regenerate, no need to declare outputs.
+def resources = scriptResources(buildscript)
+def skeletonDefault = file("${resources}/skeleton.default.txt")
+def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expansion.txt")
+
+configure(project(":lucene:core")) {
+  task generateStandardTokenizerInternal(type: JFlexTask) {
+    description "Regenerate StandardTokenizerImpl.java"
+    group "generation"
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
+    skeleton = skeletonNoBufferExpansion
+
+    // Add included files as inputs.
+    inputs.file project(":lucene:core").file('src/data/jflex/UnicodeEmojiProperties.jflex')
+
+    doLast {
+      ant.replace(
+          file: file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java'),
+          encoding: "UTF-8",
+          token: "private static final int ZZ_BUFFERSIZE =",
+          value: "private int ZZ_BUFFERSIZE ="
+      )
+    }
+  }
+
+  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  configure(generateStandardTokenizer) {
+    // StandardTokenizerImpl.jflex includes UnicodeEmojiProperties.jflex so we make sure it's up to date.
+    dependsOn ":lucene:core:generateEmojiProperties"
+  }
+
+  regenerate.dependsOn generateStandardTokenizer
+}
+
+configure(project(":lucene:analysis:common")) {
+  task generateTldsInternal() {
+    def tldZones = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
+    def jflexMacro = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex")
+    def tldList = file("src/test/org/apache/lucene/analysis/email/TLDs.txt")
+
+    description "Regenerate top-level domain jflex macros and tests"
+    group "generation"
+
+    dependsOn { sourceSets.tools.runtimeClasspath }
+
+    inputs.property "tldZones", tldZones
+    outputs.files jflexMacro, tldList
+
+    doFirst {
+      File tmpJflexMacro = File.createTempFile(jflexMacro.getName(), ".tmp", getTemporaryDir())
+      File tmpTldList = File.createTempFile(tldList.getName(), ".tmp", getTemporaryDir())
+
+      project.javaexec {
+        main = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
+        classpath = sourceSets.tools.runtimeClasspath
+
+        ignoreExitValue false
+        args = [
+            tldZones,
+            tmpJflexMacro,
+            tmpTldList
+        ]
+      }
+
+      // LUCENE-9926: tldZones is regenerated daily. Compare the generated content (excluding comments) so that
+      // we only update actual output files if non-comments have changed.
+      def contentLines = { File file ->
+        if (file.exists()) {
+          List<String> lines = file.readLines("UTF-8")
+          lines.removeIf { line -> line.isBlank() || line.startsWith("//") }
+          return lines
+        } else {
+          return []
+        }
+      }
+
+      if (contentLines(tmpTldList).equals(contentLines(tldList))) {
+        logger.lifecycle("Generated TLD content identical as before, not updating.")
+      } else {
+        tldList.setBytes tmpTldList.bytes
+        jflexMacro.setBytes tmpJflexMacro.bytes
+        logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
+      }
+    }
+  }
+
+  task generateWikipediaTokenizerInternal(type: JFlexTask) {
+    description "Regenerate WikipediaTokenizerImpl.java"
+    group "generation"
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex')
+    skeleton = skeletonDefault
+  }
+
+  task generateClassicTokenizerInternal(type: JFlexTask) {
+    description "Regenerate ClassicTokenizerImpl.java"
+    group "generation"
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/classic/ClassicTokenizerImpl.jflex')
+    skeleton = skeletonDefault
+  }
+
+  task generateUAX29URLEmailTokenizerInternal(type: JFlexTask) {
+    description "Regenerate UAX29URLEmailTokenizerImpl.java"
+    group "generation"
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
+    skeleton = skeletonNoBufferExpansion
+    heapSize = "12g"
+
+    // Add included files as inputs.
+    inputs.file file('src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex')
+    inputs.file project(":lucene:core").file('src/data/jflex/UnicodeEmojiProperties.jflex')
+
+    doFirst {
+      logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
+    }
+
+    doLast {
+      ant.replace(
+          file: file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java'),
+          encoding: "UTF-8",
+          token: "private static final int ZZ_BUFFERSIZE =",
+          value: "private int ZZ_BUFFERSIZE ="
+      )
+    }
+  }
+
+  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  configure (generateUAX29URLEmailTokenizer) {
+    // UAX29URLEmailTokenizerImpl.jflex includes: UnicodeEmojiProperties.jflex and ASCIITLD.jflex
+    // so we make sure both are up to date.
+    dependsOn ":lucene:core:generateEmojiProperties", "generateTlds"
+  }
+
+  task generateHTMLCharacterEntitiesInternal() {
+    def target = file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
+    def script = file("${resources}/htmlentity.py")
+
+    outputs.files target
+    inputs.file script
+
+    doFirst {
+      quietExec {
+        executable = project.externalTool("python3")
+        workingDir = target.parentFile
+        args += [
+            "-B", // don't write any bytecode cache
+            script,
+            target
+        ]
+      }
+
+      project.ant.fixcrlf(
+          file: target,
+          encoding: "UTF-8",
+          eol: "lf"
+      )
+    }
+  }
+
+  task generateHTMLStripCharFilterInternal(type: JFlexTask) {
+    description "Regenerate HTMLStripCharFilter.java"
+    group "generation"
+
+    // Add included files as inputs.
+    inputs.file file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex')
+    skeleton = skeletonDefault
+  }
+
+  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  configure(generateHTMLStripCharFilter) {
+    // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
+    dependsOn "generateHTMLCharacterEntities"
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+      wrapWithPersistentChecksums(generateClassicTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+      generateUAX29URLEmailTokenizer,
+      wrapWithPersistentChecksums(generateHTMLCharacterEntitiesInternal),
+      generateHTMLStripCharFilter,
+      wrapWithPersistentChecksums(generateTldsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+}
+
 class JFlexTask extends DefaultTask {
-  @Input
+  @InputFile
   File jflexFile
 
-  @Input
+  @InputFile
   File skeleton
 
   @Optional
   String heapSize
+
+  @OutputFile
+  File getGeneratedFile() {
+    return project.file(jflexFile.absolutePath.replace(".jflex", ".java"))
+  }
 
   JFlexTask() {
     dependsOn(project.rootProject.configurations.jflex)
@@ -46,16 +237,18 @@ class JFlexTask extends DefaultTask {
   @TaskAction
   def generate() {
     if (!jflexFile || !jflexFile.exists()) {
-      throw new RuntimeException("JFlex file does not exist: ${jflexFile}")
+      throw new GradleException("JFlex file does not exist: ${jflexFile}")
     }
-    def targetDir = jflexFile.parentFile
-    def target = jflexFile.absolutePath.replace(".jflex", ".java")
 
-    logger.lifecycle("Regenerating JFlex:\n  from: ${jflexFile}\n    to: ${target}")
+    def target = project.file(jflexFile.absolutePath.replace(".jflex", ".java"))
+
+    logger.lifecycle("Recompiling JFlex: ${project.rootDir.relativePath(jflexFile)}")
+
     project.javaexec {
       classpath {
         project.rootProject.configurations.jflex
       }
+
       main = "jflex.Main"
       args += [
           "-nobak",
@@ -72,8 +265,8 @@ class JFlexTask extends DefaultTask {
       }
 
       args += [
-        "-d", targetDir.absolutePath,
-        jflexFile
+          "-d", target.parentFile.absolutePath,
+          jflexFile
       ]
     }
 
@@ -84,102 +277,4 @@ class JFlexTask extends DefaultTask {
         eol: "lf"
     )
   }
-}
-
-configure(project(":lucene:core")) {
-  task jflexStandardTokenizerImpl(type: JFlexTask) {
-    description "Regenerate StandardTokenizerImpl.java"
-    group "generation"
-
-    jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
-    skeleton = file("src/data/jflex/skeleton.disable.buffer.expansion.txt")
-
-    doLast {
-      ant.replace(
-          file: file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java'),
-          encoding: "UTF-8",
-          token: "private static final int ZZ_BUFFERSIZE =",
-          value: "private int ZZ_BUFFERSIZE ="
-      )
-    }
-  }
-
-  regenerate.dependsOn jflexStandardTokenizerImpl, "tidy"
-}
-
-configure(project(":lucene:analysis:common")) {
-
-  task jflexWikipediaTokenizerImpl(type: JFlexTask) {
-    description "Regenerate WikipediaTokenizerImpl.java"
-    group "generation"
-
-    jflexFile = file('src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
-  }
-
-  task jflexClassicTokenizerImpl(type: JFlexTask) {
-    description "Regenerate ClassicTokenizerImpl.java"
-    group "generation"
-
-    jflexFile = file('src/java/org/apache/lucene/analysis/classic/ClassicTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
-  }
-
-  task jflexUAX29URLEmailTokenizerImpl(type: JFlexTask) {
-    description "Regenerate UAX29URLEmailTokenizerImpl.java"
-    group "generation"
-
-    jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.disable.buffer.expansion.txt")
-    heapSize = "12g"
-
-    doFirst {
-      logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
-    }
-
-    doLast {
-      ant.replace(
-          file: file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java'),
-          encoding: "UTF-8",
-          token: "private static final int ZZ_BUFFERSIZE =",
-          value: "private int ZZ_BUFFERSIZE ="
-      )
-    }
-  }
-
-  task jflexHTMLStripCharFilter(type: JFlexTask) {
-    description "Regenerate HTMLStripCharFilter.java"
-    group "generation"
-
-    jflexFile = file('src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex')
-    skeleton = project(":lucene:core").file("src/data/jflex/skeleton.default")
-
-    doFirst {
-      // Regenerate HTMLCharacterEntities.jflex first.
-      def target = file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
-      target.withOutputStream { output ->
-        project.exec {
-          executable = project.externalTool("python3")
-          workingDir = target.parentFile
-          standardOutput = output
-          args += [
-              "-B", // don't write any bytecode cache
-              "htmlentity.py"
-          ]
-        }
-      }
-
-      project.ant.fixcrlf(
-          file: target,
-          encoding: "UTF-8",
-          eol: "lf"
-      )
-    }
-  }
-
-  regenerate.dependsOn jflexUAX29URLEmailTokenizerImpl,
-          jflexHTMLStripCharFilter,
-          jflexClassicTokenizerImpl,
-          jflexWikipediaTokenizerImpl,
-          "tidy"
 }

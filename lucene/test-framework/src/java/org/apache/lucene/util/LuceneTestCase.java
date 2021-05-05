@@ -1444,7 +1444,9 @@ public abstract class LuceneTestCase extends Assert {
     try {
       try {
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
-      } catch (ClassCastException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          ClassCastException e) {
         // TEST_DIRECTORY is not a sub-class of FSDirectory, so draw one at random
         fsdirClass = RandomPicks.randomFrom(random(), FS_DIRECTORIES);
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
@@ -1557,22 +1559,6 @@ public abstract class LuceneTestCase extends Assert {
     return newField(random(), name, value, type);
   }
 
-  /** Returns a FieldType derived from newType but whose term vector options match the old type */
-  private static FieldType mergeTermVectorOptions(FieldType newType, FieldType oldType) {
-    if (newType.indexOptions() != IndexOptions.NONE
-        && oldType.storeTermVectors() == true
-        && newType.storeTermVectors() == false) {
-      newType = new FieldType(newType);
-      newType.setStoreTermVectors(oldType.storeTermVectors());
-      newType.setStoreTermVectorPositions(oldType.storeTermVectorPositions());
-      newType.setStoreTermVectorOffsets(oldType.storeTermVectorOffsets());
-      newType.setStoreTermVectorPayloads(oldType.storeTermVectorPayloads());
-      newType.freeze();
-    }
-
-    return newType;
-  }
-
   // TODO: if we can pull out the "make term vector options
   // consistent across all instances of the same field name"
   // write-once schema sort of helper class then we can
@@ -1586,16 +1572,9 @@ public abstract class LuceneTestCase extends Assert {
     name = new String(name);
 
     FieldType prevType = fieldToType.get(name);
-
-    if (usually(random) || type.indexOptions() == IndexOptions.NONE || prevType != null) {
-      // most of the time, don't modify the params
-      if (prevType == null) {
-        fieldToType.put(name, new FieldType(type));
-      } else {
-        type = mergeTermVectorOptions(type, prevType);
-      }
-
-      return createField(name, value, type);
+    if (prevType != null) {
+      // always use the same fieldType for the same field name
+      return createField(name, value, prevType);
     }
 
     // TODO: once all core & test codecs can index
@@ -1606,27 +1585,24 @@ public abstract class LuceneTestCase extends Assert {
     if (!newType.stored() && random.nextBoolean()) {
       newType.setStored(true); // randomly store it
     }
-
-    // Randomly turn on term vector options, but always do
-    // so consistently for the same field name:
-    if (!newType.storeTermVectors() && random.nextBoolean()) {
-      newType.setStoreTermVectors(true);
-      if (!newType.storeTermVectorPositions()) {
-        newType.setStoreTermVectorPositions(random.nextBoolean());
-
-        if (newType.storeTermVectorPositions()) {
-          if (!newType.storeTermVectorPayloads()) {
-            newType.setStoreTermVectorPayloads(random.nextBoolean());
+    if (newType.indexOptions() != IndexOptions.NONE) {
+      if (!newType.storeTermVectors() && random.nextBoolean()) {
+        newType.setStoreTermVectors(true);
+        if (!newType.storeTermVectorPositions()) {
+          newType.setStoreTermVectorPositions(random.nextBoolean());
+          if (newType.storeTermVectorPositions()) {
+            if (!newType.storeTermVectorPayloads()) {
+              newType.setStoreTermVectorPayloads(random.nextBoolean());
+            }
           }
         }
-      }
+        if (!newType.storeTermVectorOffsets()) {
+          newType.setStoreTermVectorOffsets(random.nextBoolean());
+        }
 
-      if (!newType.storeTermVectorOffsets()) {
-        newType.setStoreTermVectorOffsets(random.nextBoolean());
-      }
-
-      if (VERBOSE) {
-        System.out.println("NOTE: LuceneTestCase: upgrade name=" + name + " type=" + newType);
+        if (VERBOSE) {
+          System.out.println("NOTE: LuceneTestCase: upgrade name=" + name + " type=" + newType);
+        }
       }
     }
     newType.freeze();
@@ -1738,7 +1714,9 @@ public abstract class LuceneTestCase extends Assert {
             clazz.getConstructor(Path.class, LockFactory.class);
         final Path dir = createTempDir("index");
         return pathCtor.newInstance(dir, lf);
-      } catch (NoSuchMethodException nsme) {
+      } catch (
+          @SuppressWarnings("unused")
+          NoSuchMethodException nsme) {
         // Ignore
       }
 
@@ -1748,7 +1726,9 @@ public abstract class LuceneTestCase extends Assert {
         // try ctor with only LockFactory
         try {
           return clazz.getConstructor(LockFactory.class).newInstance(lf);
-        } catch (NoSuchMethodException nsme) {
+        } catch (
+            @SuppressWarnings("unused")
+            NoSuchMethodException nsme) {
           // Ignore
         }
       }
@@ -2071,7 +2051,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       return Paths.get(this.getClass().getResource(name).toURI());
     } catch (Exception e) {
-      throw new IOException("Cannot find resource: " + name);
+      throw new IOException("Cannot find resource: " + name, e);
     }
   }
 
@@ -3060,7 +3040,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       dir.openInput(fileName, IOContext.DEFAULT).close();
       return true;
-    } catch (NoSuchFileException | FileNotFoundException e) {
+    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
       return false;
     }
   }

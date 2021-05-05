@@ -205,7 +205,9 @@ public class FileDictionary implements Dictionary {
       // keep reading floats for bw compat
       try {
         curWeight = Long.parseLong(weight);
-      } catch (NumberFormatException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          NumberFormatException e) {
         curWeight = (long) Double.parseDouble(weight);
       }
     }

@@ -615,7 +615,9 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
         long ord;
         try {
           ord = termsEnum.ord();
-        } catch (UnsupportedOperationException uoe) {
+        } catch (
+            @SuppressWarnings("unused")
+            UnsupportedOperationException uoe) {
           supportsOrds = false;
           ord = -1;
         }

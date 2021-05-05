@@ -89,10 +89,12 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
             return Relation.CELL_CROSSES_QUERY;
           }
 
+          @Override
           public void visit(int docID) {
             throw new IllegalStateException();
           }
 
+          @Override
           public void visit(int docID, byte[] packedValue) {
             seen.set(docID);
             assertEquals(docID, NumericUtils.sortableBytesToInt(packedValue, 0));
@@ -133,10 +135,12 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
             return Relation.CELL_CROSSES_QUERY;
           }
 
+          @Override
           public void visit(int docID) {
             throw new IllegalStateException();
           }
 
+          @Override
           public void visit(int docID, byte[] packedValue) {
             seen.set(docID);
             assertEquals(docID, NumericUtils.sortableBytesToInt(packedValue, 0));
@@ -195,10 +199,12 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
                 return Relation.CELL_CROSSES_QUERY;
               }
 
+              @Override
               public void visit(int docID) {
                 throw new IllegalStateException();
               }
 
+              @Override
               public void visit(int docID, byte[] packedValue) {
                 if (liveDocs.get(docID)) {
                   seen.set(docID);
@@ -1158,26 +1164,104 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   // LUCENE-7491
-  public void testMixedSchema() throws Exception {
+  public void testMergeMissing() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
     iwc.setMaxBufferedDocs(2);
     for (int i = 0; i < 2; i++) {
       Document doc = new Document();
-      doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
       doc.add(new IntPoint("int", i));
       w.addDocument(doc);
     }
-    // index has 1 segment now (with 2 docs) and that segment does have points, but the "id" field
-    // in particular does NOT
+    // index has 1 segment now (with 2 docs) and that segment does have points
 
     Document doc = new Document();
     doc.add(new IntPoint("id", 0));
     w.addDocument(doc);
     // now we write another segment where the id field does have points:
-
     w.forceMerge(1);
     IOUtils.close(w, dir);
+  }
+
+  public void testDocCountEdgeCases() {
+    PointValues values = getPointValues(Long.MAX_VALUE, 1, Long.MAX_VALUE);
+    long docs = values.estimateDocCount(null);
+    assertEquals(1, docs);
+    values = getPointValues(Long.MAX_VALUE, 1, 1);
+    docs = values.estimateDocCount(null);
+    assertEquals(1, docs);
+    values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, Long.MAX_VALUE);
+    docs = values.estimateDocCount(null);
+    assertEquals(Integer.MAX_VALUE, docs);
+    values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, Long.MAX_VALUE / 2);
+    docs = values.estimateDocCount(null);
+    assertEquals(Integer.MAX_VALUE, docs);
+    values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, 1);
+    docs = values.estimateDocCount(null);
+    assertEquals(1, docs);
+  }
+
+  public void testRandomDocCount() {
+    for (int i = 0; i < 100; i++) {
+      long size = TestUtil.nextLong(random(), 1, Long.MAX_VALUE);
+      int maxDoc = (size > Integer.MAX_VALUE) ? Integer.MAX_VALUE : Math.toIntExact(size);
+      int docCount = TestUtil.nextInt(random(), 1, maxDoc);
+      long estimatedPointCount = TestUtil.nextLong(random(), 0, size);
+      PointValues values = getPointValues(size, docCount, estimatedPointCount);
+      long docs = values.estimateDocCount(null);
+      assertTrue(docs <= estimatedPointCount);
+      assertTrue(docs <= maxDoc);
+      assertTrue(docs >= estimatedPointCount / (size / docCount));
+    }
+  }
+
+  private PointValues getPointValues(long size, int docCount, long estimatedPointCount) {
+    return new PointValues() {
+      @Override
+      public void intersect(IntersectVisitor visitor) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public long estimatePointCount(IntersectVisitor visitor) {
+        return estimatedPointCount;
+      }
+
+      @Override
+      public byte[] getMinPackedValue() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public byte[] getMaxPackedValue() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int getNumDimensions() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int getNumIndexDimensions() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int getBytesPerDimension() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public long size() {
+        return size;
+      }
+
+      @Override
+      public int getDocCount() {
+        return docCount;
+      }
+    };
   }
 }

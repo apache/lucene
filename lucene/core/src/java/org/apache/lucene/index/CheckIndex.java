@@ -53,7 +53,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -638,7 +637,6 @@ public final class CheckIndex implements Closeable {
       int toLoseDocCount = info.info.maxDoc();
 
       SegmentReader reader = null;
-      Sort previousIndexSort = null;
 
       try {
         msg(infoStream, "    version=" + (version == null ? "3.0" : version));
@@ -652,14 +650,6 @@ public final class CheckIndex implements Closeable {
         Sort indexSort = info.info.getIndexSort();
         if (indexSort != null) {
           msg(infoStream, "    sort=" + indexSort);
-          if (previousIndexSort != null) {
-            if (previousIndexSort.equals(indexSort) == false) {
-              throw new RuntimeException(
-                  "index sort changed from " + previousIndexSort + " to " + indexSort);
-            }
-          } else {
-            previousIndexSort = indexSort;
-          }
         }
         segInfoStat.numFiles = info.files().size();
         segInfoStat.sizeMB = info.sizeInBytes() / (1024. * 1024.);
@@ -798,11 +788,6 @@ public final class CheckIndex implements Closeable {
           checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
         }
         msg(infoStream, "");
-
-        if (verbose) {
-          msg(infoStream, "detailed segment RAM usage: ");
-          msg(infoStream, Accountables.toString(reader));
-        }
 
       } catch (Throwable t) {
         if (failFast) {
@@ -1333,7 +1318,9 @@ public final class CheckIndex implements Closeable {
           long ord = -1;
           try {
             ord = termsEnum.ord();
-          } catch (UnsupportedOperationException uoe) {
+          } catch (
+              @SuppressWarnings("unused")
+              UnsupportedOperationException uoe) {
             hasOrd = false;
           }
 
@@ -3240,6 +3227,7 @@ public final class CheckIndex implements Closeable {
         checkDVIterator(fi, maxDoc, dvReader::getNumeric);
         checkNumericDocValues(fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi));
         break;
+      case NONE:
       default:
         throw new AssertionError();
     }

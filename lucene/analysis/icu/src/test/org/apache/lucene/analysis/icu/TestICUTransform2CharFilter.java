@@ -435,6 +435,8 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
         Transliterator.createFromRules(
             "X_ROUND_TRIP", "a > bc; ::Null; bc > a;", Transliterator.FORWARD);
     String in = "a a a a a ";
+    @SuppressWarnings("unused")
+    // TODO: what is this
     int[] expectedOffsets = new int[0];
     checkToken2(t, new StringReader(in), in, expectedOffsets);
   }
@@ -444,6 +446,8 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
         Transliterator.createFromRules("X_EXPAND", "a > bc;", Transliterator.FORWARD);
     String in = "a a a a a ";
     String expected = "bc bc bc bc bc ";
+    @SuppressWarnings("unused")
+    // TODO: what is this
     int[] expectedOffsets = new int[] {1, -1, 4, -2, 7, -3, 10, -4, 13, -5};
     checkToken2(t, new StringReader(in), expected, expectedOffsets);
   }
@@ -824,7 +828,10 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
         try {
           checkToken(id, text, "N/A (should throw exception)", null);
           assertTrue("expected exception to be thrown", false);
-        } catch (IllegalStateException ex1) {
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalStateException ex1) {
+          // TODO: this looks buggy, should be using 'ex1'
           assertEquals("Illegal codepoint", ex.getMessage());
           return;
         }

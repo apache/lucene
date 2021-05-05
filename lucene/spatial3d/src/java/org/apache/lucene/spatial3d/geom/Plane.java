@@ -287,6 +287,7 @@ public class Plane extends Vector {
    *
    * @return the normalized plane object, or null if the plane is indeterminate.
    */
+  @Override
   public Plane normalize() {
     Vector normVect = super.normalize();
     if (normVect == null) return null;

@@ -179,7 +179,8 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
     return t;
   }
 
-  static CharFilter wrap(Reader input, Transliterator t) {
+  /** Wraps reader with an ICU transform */
+  public static CharFilter wrap(Reader input, Transliterator t) {
     return wrap(input, t, null);
   }
 

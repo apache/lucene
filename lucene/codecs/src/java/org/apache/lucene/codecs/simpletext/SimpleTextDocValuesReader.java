@@ -38,25 +38,27 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.IntFunction;
 import org.apache.lucene.codecs.DocValuesProducer;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 
 class SimpleTextDocValuesReader extends DocValuesProducer {
 
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextDocValuesReader.class)
-          + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class);
-
   static class OneField {
-    private static final long BASE_RAM_BYTES_USED =
-        RamUsageEstimator.shallowSizeOfInstance(OneField.class);
     long dataStartFilePointer;
     String pattern;
     String ordPattern;
@@ -782,14 +784,6 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
   private String stripPrefix(BytesRef prefix) {
     return new String(
         scratch.bytes(), prefix.length, scratch.length() - prefix.length, StandardCharsets.UTF_8);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED
-        + RamUsageEstimator.sizeOf(scratch.bytes())
-        + fields.size()
-            * (RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L + OneField.BASE_RAM_BYTES_USED);
   }
 
   @Override

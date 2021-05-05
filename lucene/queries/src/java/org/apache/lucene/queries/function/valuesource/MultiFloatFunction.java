@@ -83,6 +83,7 @@ public abstract class MultiFloatFunction extends ValueSource {
         return func(doc, valsArr);
       }
 
+      @Override
       public boolean exists(int doc) throws IOException {
         return MultiFloatFunction.this.exists(doc, valsArr);
       }

@@ -65,7 +65,9 @@ class BigramDictionary extends AbstractDictionary {
         try {
           singleInstance.load(dictRoot);
         } catch (IOException ioe) {
-          throw new RuntimeException(ioe);
+          RuntimeException ex = new RuntimeException(ioe);
+          ex.addSuppressed(e);
+          throw ex;
         }
       } catch (ClassNotFoundException e) {
         throw new RuntimeException(e);

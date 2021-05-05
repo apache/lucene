@@ -101,7 +101,7 @@ public class SrndTruncQuery extends SimpleTerm {
         }
 
         while (text != null) {
-          if (text != null && StringHelper.startsWith(text, prefixRef)) {
+          if (StringHelper.startsWith(text, prefixRef)) {
             String textString = text.utf8ToString();
             matcher.reset(textString.substring(prefixLength));
             if (matcher.matches()) {

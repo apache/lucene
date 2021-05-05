@@ -56,7 +56,7 @@ import org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegist
  *
  * <blockquote>
  *
- * stream = new ICUTransform2CharFilter(reader,
+ * stream = ICUTransform2CharFilterFactory.wrap(reader,
  * Transliterator.getInstance("Traditional-Simplified"));
  *
  * </blockquote>
@@ -64,6 +64,8 @@ import org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegist
  * <br>
  * For more details, see the <a href="http://userguide.icu-project.org/transforms/general">ICU User
  * Guide</a>.
+ *
+ * @see ICUTransform2CharFilterFactory#wrap(Reader, Transliterator)
  */
 public final class ICUTransform2CharFilter extends BaseCharFilter {
 
@@ -164,6 +166,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
   static final int DEFAULT_BATCH_BUFFER_SIZE = 16;
 
   static {
+    // TODO: remove this system property, it isn't needed and will cause security issues
     String batchProp = System.getProperty("icu.batchBufferSize");
     BATCH_BUFFER_SIZE = batchProp == null ? DEFAULT_BATCH_BUFFER_SIZE : Integer.parseInt(batchProp);
   }

@@ -50,7 +50,6 @@ import org.apache.lucene.store.DataOutput;
  * </ul>
  *
  * @see BlockPackedReaderIterator
- * @see BlockPackedReader
  * @lucene.internal
  */
 public final class BlockPackedWriter extends AbstractBlockPackedWriter {
@@ -64,6 +63,7 @@ public final class BlockPackedWriter extends AbstractBlockPackedWriter {
     super(out, blockSize);
   }
 
+  @Override
   protected void flush() throws IOException {
     assert off > 0;
     long min = Long.MAX_VALUE, max = Long.MIN_VALUE;

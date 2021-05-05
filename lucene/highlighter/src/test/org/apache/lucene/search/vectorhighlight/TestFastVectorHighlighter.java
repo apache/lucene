@@ -901,6 +901,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
         fieldAnalyzers.get("field")); // This is required even though we provide a token stream
     Analyzer analyzer =
         new DelegatingAnalyzerWrapper(Analyzer.PER_FIELD_REUSE_STRATEGY) {
+          @Override
           public Analyzer getWrappedAnalyzer(String fieldName) {
             return fieldAnalyzers.get(fieldName);
           }

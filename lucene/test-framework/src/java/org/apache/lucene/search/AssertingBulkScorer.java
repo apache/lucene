@@ -62,7 +62,9 @@ final class AssertingBulkScorer extends BulkScorer {
       try {
         final int next = score(collector, acceptDocs, 0, PostingsEnum.NO_MORE_DOCS);
         assert next == DocIdSetIterator.NO_MORE_DOCS;
-      } catch (UnsupportedOperationException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          UnsupportedOperationException e) {
         in.score(collector, acceptDocs);
       }
     } else {

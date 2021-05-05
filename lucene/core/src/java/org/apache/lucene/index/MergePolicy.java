@@ -380,7 +380,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (ExecutionException | TimeoutException e) {
+      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
         return false;
       }
     }
@@ -471,7 +471,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (ExecutionException | TimeoutException e) {
+      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
         return false;
       }
     }

@@ -364,6 +364,25 @@ Sorting on a numeric field that is indexed with both doc values and points may u
 optimization to skip non-competitive documents. This optimization relies on the assumption
 that the same data is stored in these points and doc values.
 
+### Require consistency between data-structures on a per-field basis
+
+The per field data-structures are implicitly defined by the first document 
+indexed that contains a certain field. Once defined, the per field 
+data-structures are not changeable for the whole index. For example, if you 
+first index a document where a certain field is indexed with doc values and 
+points, all subsequent documents containing this field must also have this
+field indexed with only doc values and points.
+
+This also means that an index created in the previous version that doesn't 
+satisfy this requirement can not be updated. 
+
+### Doc values updates are allowed only for doc values only fields
+
+Previously IndexWriter could update doc values for a binary or numeric docValue 
+field that was also indexed with other data structures (e.g. postings, vectors 
+etc). This is not allowed anymore. A field must be indexed with only doc values 
+to be allowed for doc values updates in IndexWriter.
+
 ## SortedDocValues no longer extends BinaryDocValues (LUCENE-9796)
 
 SortedDocValues no longer extends BinaryDocValues: SortedDocValues do not have a per-document
@@ -376,3 +395,14 @@ better to use the ordinal alone (integer-based datastructures) for per-document 
 call lookupOrd() a few times at the end (e.g. for the hits you want to display). Otherwise, if you
 really don't want per-document ordinals, but instead a per-document `byte[]`, use a BinaryDocValues
 field.
+
+## Removed CodecReader.ramBytesUsed() (LUCENE-9387)
+
+Lucene index readers are now using so little memory with the default codec that
+it was decided to remove the ability to estimate their RAM usage.
+
+## LongValueFacetCounts no longer accepts multiValued param in constructors (LUCENE-9948)
+
+LongValueFacetCounts will now automatically detect whether-or-not an indexed field is single- or
+multi-valued. The user no longer needs to provide this information to the ctors. Migrating should
+be as simple as no longer providing this boolean.

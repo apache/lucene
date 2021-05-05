@@ -19,7 +19,7 @@ plugins {
   id "java"
 }
 
-description = 'System for benchmarking Lucene'
+description = 'Lucene benchmarking module'
 
 dependencies {  
   implementation project(':lucene:core')
@@ -43,9 +43,15 @@ dependencies {
   testImplementation project(':lucene:test-framework')
 }
 
+// We add 'conf' to resources because we validate *.alg script correctness in one of the tests.
+sourceSets {
+  test.resources.srcDirs += ['conf']
+}
+
 task run(type: JavaExec) {
   description "Run a perf test (optional: -PtaskAlg=conf/your-algorithm-file -PmaxHeapSize=1G)"
   main 'org.apache.lucene.benchmark.byTask.Benchmark'
+
   classpath sourceSets.main.runtimeClasspath
   // allow these to be specified on the CLI via -PtaskAlg=  for example
   args = [propertyOrDefault('taskAlg', 'conf/micro-standard.alg')]

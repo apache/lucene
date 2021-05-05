@@ -81,7 +81,9 @@ public class TestHardLinkCopyDirectoryWrapper extends BaseDirectoryTestCase {
         assumeTrue(
             "hardlinks are not supported",
             destAttr.fileKey() != null && destAttr.fileKey().equals(sourceAttr.fileKey()));
-      } catch (UnsupportedOperationException ex) {
+      } catch (
+          @SuppressWarnings("unused")
+          UnsupportedOperationException ex) {
         assumeFalse("hardlinks are not supported", true);
       }
 

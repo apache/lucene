@@ -44,8 +44,10 @@ import org.apache.lucene.util.TestUtil;
 /** Base test case for testing geospatial indexing and search functionality * */
 public abstract class BaseLatLonSpatialTestCase extends BaseSpatialTestCase {
 
+  @Override
   protected abstract ShapeType getShapeType();
 
+  @Override
   protected Object nextShape() {
     return getShapeType().nextShape();
   }
@@ -181,29 +183,35 @@ public abstract class BaseLatLonSpatialTestCase extends BaseSpatialTestCase {
   /** internal shape type for testing different shape types */
   protected enum ShapeType {
     POINT() {
+      @Override
       public Point nextShape() {
         return GeoTestUtil.nextPoint();
       }
     },
     LINE() {
+      @Override
       public Line nextShape() {
         return GeoTestUtil.nextLine();
       }
     },
     POLYGON() {
+      @Override
       public Polygon nextShape() {
         while (true) {
           Polygon p = GeoTestUtil.nextPolygon();
           try {
             Tessellator.tessellate(p);
             return p;
-          } catch (IllegalArgumentException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IllegalArgumentException e) {
             // if we can't tessellate; then random polygon generator created a malformed shape
           }
         }
       }
     },
     MIXED() {
+      @Override
       public Object nextShape() {
         return RandomPicks.randomFrom(random(), subList).nextShape();
       }

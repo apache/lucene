@@ -20,6 +20,7 @@ package org.apache.lucene.replicator.nrt;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Locale;
+import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
@@ -82,6 +83,7 @@ public class CopyOneFile implements Closeable {
     this.buffer = other.buffer;
   }
 
+  @Override
   public void close() throws IOException {
     out.close();
     dest.finishCopyFile(name);
@@ -110,7 +112,7 @@ public class CopyOneFile implements Closeable {
         // Paranoia: make sure the primary node is not smoking crack, by somehow sending us an
         // already corrupted file whose checksum (in its
         // footer) disagrees with reality:
-        long actualChecksumIn = in.readLong();
+        long actualChecksumIn = CodecUtil.readBELong(in);
         if (actualChecksumIn != checksum) {
           dest.message(
               "file "
@@ -121,7 +123,7 @@ public class CopyOneFile implements Closeable {
                   + actualChecksumIn);
           throw new IOException("file " + name + ": checksum mismatch after file copy");
         }
-        out.writeLong(checksum);
+        CodecUtil.writeBELong(out, checksum);
         bytesCopied += Long.BYTES;
         close();
 

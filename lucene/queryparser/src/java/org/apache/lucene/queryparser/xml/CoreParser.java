@@ -166,7 +166,9 @@ public class CoreParser implements SpanQueryBuilder {
     dbf.setValidating(false);
     try {
       dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-    } catch (ParserConfigurationException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        ParserConfigurationException e) {
       // ignore since all implementations are required to support the
       // {@link javax.xml.XMLConstants#FEATURE_SECURE_PROCESSING} feature
     }
@@ -185,6 +187,7 @@ public class CoreParser implements SpanQueryBuilder {
     }
   }
 
+  @Override
   public Query getQuery(Element e) throws ParserException {
     return queryFactory.getQuery(e);
   }

@@ -140,9 +140,13 @@ public class Diff {
         }
         pos--;
       }
-    } catch (StringIndexOutOfBoundsException x) {
+    } catch (
+        @SuppressWarnings("unused")
+        StringIndexOutOfBoundsException x) {
       // x.printStackTrace();
-    } catch (ArrayIndexOutOfBoundsException x) {
+    } catch (
+        @SuppressWarnings("unused")
+        ArrayIndexOutOfBoundsException x) {
       // x.printStackTrace();
     }
   }

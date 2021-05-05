@@ -216,6 +216,11 @@ public class QueryUtils {
       }
 
       @Override
+      public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout) {
+        return null;
+      }
+
+      @Override
       public FieldInfos getFieldInfos() {
         return FieldInfos.EMPTY;
       }

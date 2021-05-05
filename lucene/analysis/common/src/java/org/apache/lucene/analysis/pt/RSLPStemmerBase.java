@@ -87,8 +87,6 @@ import org.apache.lucene.analysis.CharArraySet;
  *       completely as an optimization.
  * </ul>
  *
- * <p>
- *
  * @see <a href="http://www.inf.ufrgs.br/~viviane/rslp/index.htm">RSLP description</a>
  * @lucene.internal
  */

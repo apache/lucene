@@ -35,7 +35,7 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
-import org.apache.lucene.codecs.lucene90.Lucene90VectorReader;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
@@ -70,8 +70,8 @@ public class KnnGraphTester {
 
   private static final String KNN_FIELD = "knn";
   private static final String ID_FIELD = "id";
-  private static final VectorValues.SearchStrategy SEARCH_STRATEGY =
-      VectorValues.SearchStrategy.DOT_PRODUCT_HNSW;
+  private static final VectorValues.SimilarityFunction SIMILARITY_FUNCTION =
+      VectorValues.SimilarityFunction.DOT_PRODUCT;
 
   private int numDocs;
   private int dim;
@@ -237,7 +237,7 @@ public class KnnGraphTester {
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leafReader = context.reader();
         KnnGraphValues knnValues =
-            ((Lucene90VectorReader) ((CodecReader) leafReader).getVectorReader())
+            ((Lucene90HnswVectorReader) ((CodecReader) leafReader).getVectorReader())
                 .getGraphValues(KNN_FIELD);
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());
@@ -420,7 +420,7 @@ public class KnnGraphTester {
       IndexReader reader, String field, float[] vector, int k, int fanout) throws IOException {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      results[ctx.ord] = ctx.reader().getVectorValues(field).search(vector, k, fanout);
+      results[ctx.ord] = ctx.reader().searchNearestVectors(field, vector, k, fanout);
       int docBase = ctx.docBase;
       for (ScoreDoc scoreDoc : results[ctx.ord].scoreDocs) {
         scoreDoc.doc += docBase;
@@ -542,10 +542,10 @@ public class KnnGraphTester {
                   .order(ByteOrder.LITTLE_ENDIAN)
                   .asFloatBuffer();
           offset += blockSize;
-          NeighborQueue queue = new NeighborQueue(topK, SEARCH_STRATEGY.reversed);
+          NeighborQueue queue = new NeighborQueue(topK, SIMILARITY_FUNCTION.reversed);
           for (; j < numDocs && vectors.hasRemaining(); j++) {
             vectors.get(vector);
-            float d = SEARCH_STRATEGY.compare(query, vector);
+            float d = SIMILARITY_FUNCTION.compare(query, vector);
             queue.insertWithOverflow(j, d);
           }
           result[i] = new int[topK];
@@ -572,7 +572,7 @@ public class KnnGraphTester {
 
     FieldType fieldType =
         VectorField.createHnswType(
-            dim, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, maxConn, beamWidth);
+            dim, VectorValues.SimilarityFunction.DOT_PRODUCT, maxConn, beamWidth);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
@@ -667,8 +667,8 @@ public class KnnGraphTester {
       }
 
       @Override
-      public VectorValues.SearchStrategy searchStrategy() {
-        return SEARCH_STRATEGY;
+      public VectorValues.SimilarityFunction similarityFunction() {
+        return SIMILARITY_FUNCTION;
       }
 
       @Override

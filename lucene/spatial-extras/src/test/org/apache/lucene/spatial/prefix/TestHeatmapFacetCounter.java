@@ -52,6 +52,7 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
   int cellValidatedNonZero;
 
   @Before
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     cellsValidated = cellValidatedNonZero = 0;

@@ -496,7 +496,9 @@ public abstract class QueryParserBase extends QueryBuilder
 
     try {
       part1 = DateTools.dateToString(df.parse(part1), resolution);
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
     }
 
     try {
@@ -514,7 +516,9 @@ public abstract class QueryParserBase extends QueryBuilder
         d2 = cal.getTime();
       }
       part2 = DateTools.dateToString(d2, resolution);
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
     }
 
     return newRangeQuery(field, part1, part2, startInclusive, endInclusive);
@@ -812,7 +816,9 @@ public abstract class QueryParserBase extends QueryBuilder
     float fms = fuzzyMinSim;
     try {
       fms = Float.parseFloat(fuzzySlop.image.substring(1));
-    } catch (Exception ignored) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception ignored) {
     }
     if (fms < 0.0f) {
       throw new ParseException(
@@ -830,7 +836,9 @@ public abstract class QueryParserBase extends QueryBuilder
     if (fuzzySlop != null) {
       try {
         s = (int) Float.parseFloat(fuzzySlop.image.substring(1));
-      } catch (Exception ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception ignored) {
       }
     }
     return getFieldQuery(
@@ -843,7 +851,9 @@ public abstract class QueryParserBase extends QueryBuilder
       float f = (float) 1.0;
       try {
         f = Float.parseFloat(boost.image);
-      } catch (Exception ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception ignored) {
         /* Should this be handled somehow? (defaults to "no boost", if
          * boost number is invalid)
          */

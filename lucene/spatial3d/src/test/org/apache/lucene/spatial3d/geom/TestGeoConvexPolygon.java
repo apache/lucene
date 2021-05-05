@@ -16,13 +16,10 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
-public class TestGeoConvexPolygon {
+public class TestGeoConvexPolygon extends LuceneTestCase {
 
   @Test
   public void testPolygonPointWithin() {

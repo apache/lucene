@@ -146,6 +146,22 @@ public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {
     a.close();
   }
 
+  public void testCharWidthNormalization() throws Exception {
+    final Analyzer a =
+        new JapaneseAnalyzer(
+            TestJapaneseTokenizer.readDict(),
+            Mode.SEARCH,
+            JapaneseAnalyzer.getDefaultStopSet(),
+            JapaneseAnalyzer.getDefaultStopTags());
+    assertTokenStreamContents(
+        a.tokenStream("foo", "新橋６－２０－１"),
+        new String[] {"新橋", "6", "20", "1"},
+        new int[] {0, 2, 4, 7},
+        new int[] {2, 3, 6, 8},
+        8);
+    a.close();
+  }
+
   // LUCENE-3897: this string (found by running all jawiki
   // XML through JapaneseAnalyzer) caused AIOOBE
   public void testCuriousString() throws Exception {

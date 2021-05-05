@@ -46,7 +46,7 @@ import org.apache.lucene.queryparser.charstream.FastCharStream;
  *  to two terms may appear between a and b.  </p>
  */
 
-@SuppressWarnings("unused") public class QueryParser implements QueryParserConstants {
+@SuppressWarnings({"unused","null"}) public class QueryParser implements QueryParserConstants {
   static final int MINIMUM_PREFIX_LENGTH = 3;
   static final int MINIMUM_CHARS_IN_TRUNC = 3;
   static final String TRUNCATION_ERROR_MESSAGE = "Too unrestrictive truncation: ";

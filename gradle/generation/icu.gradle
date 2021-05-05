@@ -1,5 +1,4 @@
 import org.apache.tools.ant.taskdefs.condition.Os
-
 import java.nio.file.Files
 
 /*
@@ -19,12 +18,37 @@ import java.nio.file.Files
  * limitations under the License.
  */
 
-/* Regenerates ICU data files.
+def resources = scriptResources(buildscript)
+
+/*
+ * Regenerates ICU-related data files.
+ *
+ * This build file contains regeneration code utilizing both icu4j and icu4c.
  *
  * The icu4c version must match exactly the icu4j version in version.props:
  * The one on your system is probably different. This script will attempt to
  * download and compile a matching icu4c version automatically.
  */
+
+// Configure different icu4j dependencies.
+configure(rootProject) {
+  configurations {
+    icu_62
+    icu_68
+  }
+
+  dependencies {
+    icu_62 "com.ibm.icu:icu4j:62.2"
+    icu_68 "com.ibm.icu:icu4j:68.2"
+  }
+
+  // Exclude ICU config from palantir's version unification.
+  versionRecommendations {
+    excludeConfigurations "icu_68", "icu_62"
+  }
+}
+
+
 configure(project(":lucene:analysis:icu")) {
   def utr30DataDir = file("src/data/utr30")
 
@@ -43,15 +67,29 @@ configure(project(":lucene:analysis:icu")) {
     icupkg = file("${icuBinDir}/icupkg")
   }
 
-  task genUtr30DataFiles() {
-    dependsOn Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
+  // Resolve version lazily (can't resolve at configuration time).
+  def icu4jVersionProvider = project.provider { getVersion('com.ibm.icu', 'icu4j') }
+  // lazy gstring with ICU version.
+  def icu4jVersion = "${-> icu4jVersionProvider.get()}"
+
+  def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
+
+  task genUtr30DataFilesInternal() {
+    dependsOn icuCompileTask
 
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
 
+    // gennorm generates file order-dependent output, so make it constant here.
+    def inputFiles = fileTree(dir: utr30DataDir, include: "*.txt").asList().toSorted(Comparator.comparing { File f -> f.name })
+    def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
+
+    inputs.files inputFiles
+    inputs.property "icu4j", icu4jVersionProvider
+    outputs.file outputFile
+
     doFirst {
       // all these steps must be done sequentially: it's a pipeline resulting in utr30.nrm
-      def v = getVersion('com.ibm.icu', 'icu4j');
       project.javaexec {
         main = "org.apache.lucene.analysis.icu.GenerateUTR30DataFiles"
         classpath = sourceSets.tools.runtimeClasspath
@@ -59,39 +97,43 @@ configure(project(":lucene:analysis:icu")) {
         ignoreExitValue false
         workingDir utr30DataDir
         args = [
-            "release-${v.replace(".", "-")}"
+            "release-${icu4jVersion.replace(".", "-")}"
         ]
       }
 
-      project.exec {
+      project.quietExec {
         executable gennorm
-        ignoreExitValue = false
         args = [
             "-v",
             "-s",
             utr30DataDir,
             "-o",
             "${buildDir}/utr30.tmp",
-            "nfc.txt", "nfkc.txt", "nfkc_cf.txt", "BasicFoldings.txt",
-            "DiacriticFolding.txt", "DingbatFolding.txt", "HanRadicalFolding.txt",
-            "NativeDigitFolding.txt"
+            *(inputFiles.collect { it.name })
         ]
       }
-      project.exec {
+
+      project.quietExec {
         executable icupkg
-        ignoreExitValue = false
         args = [
             "-tb",
             "${buildDir}/utr30.tmp",
-            "src/resources/org/apache/lucene/analysis/icu/utr30.nrm"
+            outputFile
         ]
       }
     }
   }
 
-  task genRbbi() {
+  task genRbbiInternal() {
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
+
+    def sourceDir = file("src/data/uax29")
+    def targetDir = file("src/resources/org/apache/lucene/analysis/icu/segmentation")
+
+    inputs.files fileTree(dir: sourceDir, include: "*.rbbi")
+    inputs.property "icu4j", icu4jVersionProvider
+    outputs.files fileTree(dir: targetDir, include: "*.brk")
 
     doFirst {
       project.javaexec {
@@ -100,20 +142,17 @@ configure(project(":lucene:analysis:icu")) {
 
         ignoreExitValue false
         enableAssertions true
-        args = [
-            "src/data/uax29",
-            "src/resources/org/apache/lucene/analysis/icu/segmentation"
-        ]
+        args = [ sourceDir, targetDir ]
       }
     }
   }
 
-  regenerate.dependsOn genUtr30DataFiles, genRbbi
+  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFilesInternal, [ ignoreWithSource: icuCompileTask ])
+  regenerate.dependsOn wrapWithPersistentChecksums(genRbbiInternal)
 
   task compileIcuWindows() {
     doFirst {
-      def v = getVersion('com.ibm.icu', 'icu4j');
-
+      def v = icu4jVersion
       def icuBinZip = file("${icuBuildDir}/icu4c-${v.replace(".", "_")}.zip")
       if (!icuBinZip.exists()) {
         icuBuildDir.mkdirs()
@@ -141,7 +180,7 @@ configure(project(":lucene:analysis:icu")) {
         throw new GradleException("ICU compilation not supported on Windows.")
       }
 
-      def v = getVersion('com.ibm.icu', 'icu4j');
+      def v = icu4jVersion
       def icuSrcTgz = file("${icuBuildDir}/icu4c-${v.replace(".", "_")}-src.tgz")
 
       // Download sources for version matching icu4j version in version.props
@@ -157,23 +196,22 @@ configure(project(":lucene:analysis:icu")) {
       project.delete icuSrcDir
 
       // Extract the tgz
-      project.exec {
+      project.quietExec {
         executable "tar"
-        ignoreExitValue false
-
         workingDir icuBuildDir
         args = [
-            "-zxvf",
+            "-zxf",
             icuSrcTgz
         ]
       }
 
       // Compile: (cd icu/source && ./configure --prefix=$(pwd) --enable-rpath && make -j4)
-      project.exec {
+      project.quietExec {
         executable "sh"
-        ignoreExitValue false
 
         workingDir icuSrcDir
+        environment("CFLAGS", "-O0")
+        environment("CXXFLAGS", "-O0")
         args = [
             "configure",
             "--prefix=${icuSrcDir}",
@@ -181,20 +219,18 @@ configure(project(":lucene:analysis:icu")) {
         ]
       }
 
-      project.exec {
+      project.quietExec {
         executable "make"
-        ignoreExitValue false
         workingDir icuSrcDir
         args = [
-            "-j4"
+            "-j${propertyOrDefault('tests.jvms', '4')}"
         ]
       }
 
       // Test that the binaries work:  derb -V
       logger.lifecycle("Compiled ICU, checking...")
-      project.exec {
+      project.quietExec {
         executable "./derb"
-        ignoreExitValue false
         workingDir icuBinDir
         args = [
             "-V"
@@ -202,4 +238,68 @@ configure(project(":lucene:analysis:icu")) {
       }
     }
   }
+}
+
+
+// Regenerates UnicodeProps.java
+configure(project(":lucene:analysis:common")) {
+  task generateUnicodePropsInternal() {
+    def icuConfig = rootProject.configurations.icu_68
+    def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
+
+    description "Regenerate ${outputFile} (with ${icuConfig.name})"
+    group "generation"
+
+    dependsOn icuConfig
+
+    inputs.property "icuConfig", icuConfig.name
+    outputs.file outputFile
+
+    doFirst {
+      project.javaexec {
+        main "groovy.lang.GroovyShell"
+        classpath icuConfig, rootProject.configurations.groovy
+
+        args = [
+            "--encoding", "UTF-8",
+            file("${resources}/GenerateUnicodeProps.groovy"),
+            outputFile
+        ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+}
+
+
+// UnicodeEmojiProperties.jflex
+configure(project(":lucene:core")) {
+  task generateEmojiPropertiesInternal() {
+    def icuConfig = rootProject.configurations.icu_62
+    def outputFile = file("src/data/jflex/UnicodeEmojiProperties.jflex")
+
+    description "Regenerate ${outputFile} (with ${icuConfig.name})"
+    group "generation"
+
+    dependsOn icuConfig
+
+    inputs.property "icuConfig", icuConfig.name
+    outputs.file outputFile
+
+    doFirst {
+      project.javaexec {
+        main "groovy.lang.GroovyShell"
+        classpath icuConfig, rootProject.configurations.groovy
+
+        args = [
+            "--encoding", "UTF-8",
+            file("${resources}/GenerateEmojiProperties.groovy"),
+            outputFile
+        ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiPropertiesInternal)
 }

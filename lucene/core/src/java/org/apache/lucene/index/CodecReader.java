@@ -17,10 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -29,11 +25,10 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
+import org.apache.lucene.search.TopDocs;
 
 /** LeafReader implemented by codec APIs. */
-public abstract class CodecReader extends LeafReader implements Accountable {
+public abstract class CodecReader extends LeafReader {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected CodecReader() {}
@@ -225,88 +220,20 @@ public abstract class CodecReader extends LeafReader implements Accountable {
   }
 
   @Override
+  public final TopDocs searchNearestVectors(String field, float[] target, int k, int fanout)
+      throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      // Field does not exist or does not index vectors
+      return null;
+    }
+
+    return getVectorReader().search(field, target, k, fanout);
+  }
+
+  @Override
   protected void doClose() throws IOException {}
-
-  @Override
-  public long ramBytesUsed() {
-    ensureOpen();
-
-    // terms/postings
-    long ramBytesUsed = getPostingsReader().ramBytesUsed();
-
-    // norms
-    if (getNormsReader() != null) {
-      ramBytesUsed += getNormsReader().ramBytesUsed();
-    }
-
-    // docvalues
-    if (getDocValuesReader() != null) {
-      ramBytesUsed += getDocValuesReader().ramBytesUsed();
-    }
-
-    // stored fields
-    if (getFieldsReader() != null) {
-      ramBytesUsed += getFieldsReader().ramBytesUsed();
-    }
-
-    // term vectors
-    if (getTermVectorsReader() != null) {
-      ramBytesUsed += getTermVectorsReader().ramBytesUsed();
-    }
-
-    // points
-    if (getPointsReader() != null) {
-      ramBytesUsed += getPointsReader().ramBytesUsed();
-    }
-
-    // vectors
-    if (getVectorReader() != null) {
-      ramBytesUsed += getVectorReader().ramBytesUsed();
-    }
-
-    return ramBytesUsed;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    ensureOpen();
-    final List<Accountable> resources = new ArrayList<>(6);
-
-    // terms/postings
-    resources.add(Accountables.namedAccountable("postings", getPostingsReader()));
-
-    // norms
-    if (getNormsReader() != null) {
-      resources.add(Accountables.namedAccountable("norms", getNormsReader()));
-    }
-
-    // docvalues
-    if (getDocValuesReader() != null) {
-      resources.add(Accountables.namedAccountable("docvalues", getDocValuesReader()));
-    }
-
-    // stored fields
-    if (getFieldsReader() != null) {
-      resources.add(Accountables.namedAccountable("stored fields", getFieldsReader()));
-    }
-
-    // term vectors
-    if (getTermVectorsReader() != null) {
-      resources.add(Accountables.namedAccountable("term vectors", getTermVectorsReader()));
-    }
-
-    // points
-    if (getPointsReader() != null) {
-      resources.add(Accountables.namedAccountable("points", getPointsReader()));
-    }
-
-    // vectors
-    if (getVectorReader() != null) {
-      resources.add(Accountables.namedAccountable("vectors", getVectorReader()));
-    }
-
-    return Collections.unmodifiableList(resources);
-  }
 
   @Override
   public void checkIntegrity() throws IOException {

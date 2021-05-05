@@ -195,6 +195,7 @@ public class XYZBounds implements Bounds {
    * @param bounds are the constraints on the plane.
    * @return updated Bounds object.
    */
+  @Override
   public Bounds addHorizontalPlane(
       final PlanetModel planetModel,
       final double latitude,
@@ -213,6 +214,7 @@ public class XYZBounds implements Bounds {
    * @param bounds are the constraints on the plane.
    * @return updated Bounds object.
    */
+  @Override
   public Bounds addVerticalPlane(
       final PlanetModel planetModel,
       final double longitude,

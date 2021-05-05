@@ -67,6 +67,7 @@ public class SimpleMergedSegmentWarmer implements IndexReaderWarmer {
           case SORTED_SET:
             reader.getSortedSetDocValues(info.name);
             break;
+          case NONE:
           default:
             assert false; // unknown dv type
         }

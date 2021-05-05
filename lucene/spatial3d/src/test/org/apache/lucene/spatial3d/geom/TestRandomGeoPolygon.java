@@ -16,15 +16,17 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
+import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
+
 import com.carrotsearch.randomizedtesting.generators.BiasedNumbers;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Random test for polygons. */
-public class TestRandomGeoPolygon extends RandomGeo3dShapeGenerator {
-
+public class TestRandomGeoPolygon extends LuceneTestCase {
   @Test
   public void testRandomLUCENE8157() {
     final PlanetModel planetModel = randomPlanetModel();
@@ -45,7 +47,9 @@ public class TestRandomGeoPolygon extends RandomGeo3dShapeGenerator {
     try {
       GeoPolygon polygon = GeoPolygonFactory.makeGeoPolygon(planetModel, points);
       assertTrue(polygon != null);
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
       fail(points.toString());
     }
   }
@@ -62,7 +66,9 @@ public class TestRandomGeoPolygon extends RandomGeo3dShapeGenerator {
     points.add(point4);
     try {
       GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
       fail(points.toString());
     }
   }

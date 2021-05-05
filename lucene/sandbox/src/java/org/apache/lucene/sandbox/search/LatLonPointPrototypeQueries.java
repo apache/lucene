@@ -19,7 +19,7 @@ package org.apache.lucene.sandbox.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.codecs.lucene86.Lucene86PointsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
 import org.apache.lucene.document.LatLonDocValuesField;
 import org.apache.lucene.document.LatLonPoint;
 import org.apache.lucene.geo.GeoUtils;
@@ -54,7 +54,7 @@ public class LatLonPointPrototypeQueries {
    *
    * <p>This is functionally equivalent to running {@link MatchAllDocsQuery} with a {@link
    * LatLonDocValuesField#newDistanceSort}, but is far more efficient since it takes advantage of
-   * properties the indexed BKD tree. Currently this only works with {@link Lucene86PointsFormat}
+   * properties the indexed BKD tree. Currently this only works with {@link Lucene90PointsFormat}
    * (used by the default codec). Multi-valued fields are currently not de-duplicated, so if a
    * document had multiple instances of the specified field that make it into the top n, that
    * document will appear more than once.
@@ -102,11 +102,9 @@ public class LatLonPointPrototypeQueries {
         }
         totalHits += points.getDocCount();
         BKDReader reader = (BKDReader) points;
-        if (reader != null) {
-          readers.add(reader);
-          docBases.add(leaf.docBase);
-          liveDocs.add(leaf.reader().getLiveDocs());
-        }
+        readers.add(reader);
+        docBases.add(leaf.docBase);
+        liveDocs.add(leaf.reader().getLiveDocs());
       }
     }
 

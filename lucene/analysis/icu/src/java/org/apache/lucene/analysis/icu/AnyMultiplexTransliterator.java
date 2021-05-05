@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * This is like an AnyTransliterator, but it doesn't actually _do_ anything; just blocks on "COMMON"
  * or "INHERITED" characters until we know which
  */
-public class AnyMultiplexTransliterator extends Transliterator {
+class AnyMultiplexTransliterator extends Transliterator {
 
   private static final int MAX_CONTEXT_LENGTH = 5;
 
@@ -75,31 +75,31 @@ public class AnyMultiplexTransliterator extends Transliterator {
     String variant = "";
 
     int sep = id.indexOf(TARGET_SEP);
-    int v = id.indexOf(VARIANT_SEP);
-    if (v < 0) {
-      v = id.length();
+    int varPos = id.indexOf(VARIANT_SEP);
+    if (varPos < 0) {
+      varPos = id.length();
     }
     boolean isSourcePresent = false;
 
     if (sep < 0) {
       // Form: T/V or T (or /V)
-      target = id.substring(0, v);
-      variant = id.substring(v);
-    } else if (sep < v) {
+      target = id.substring(0, varPos);
+      variant = id.substring(varPos);
+    } else if (sep < varPos) {
       // Form: S-T/V or S-T (or -T/V or -T)
       if (sep > 0) {
         source = id.substring(0, sep);
         isSourcePresent = true;
       }
-      target = id.substring(++sep, v);
-      variant = id.substring(v);
+      target = id.substring(++sep, varPos);
+      variant = id.substring(varPos);
     } else {
       // Form: (S/V-T or /V-T)
-      if (v > 0) {
-        source = id.substring(0, v);
+      if (varPos > 0) {
+        source = id.substring(0, varPos);
         isSourcePresent = true;
       }
-      variant = id.substring(v, sep++);
+      variant = id.substring(varPos, sep++);
       target = id.substring(sep);
     }
 
@@ -116,7 +116,9 @@ public class AnyMultiplexTransliterator extends Transliterator {
     try {
       int[] codes = UScript.getCode(name);
       return codes != null ? codes[0] : UScript.INVALID_CODE;
-    } catch (MissingResourceException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        MissingResourceException e) {
       return UScript.INVALID_CODE;
     }
   }

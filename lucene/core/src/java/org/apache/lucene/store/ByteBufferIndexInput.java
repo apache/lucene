@@ -89,7 +89,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   public final byte readByte() throws IOException {
     try {
       return guard.getByte(curBuf);
-    } catch (BufferUnderflowException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
       do {
         curBufIndex++;
         if (curBufIndex >= buffers.length) {
@@ -99,7 +101,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         curBuf.position(0);
       } while (!curBuf.hasRemaining());
       return guard.getByte(curBuf);
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -108,7 +112,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   public final void readBytes(byte[] b, int offset, int len) throws IOException {
     try {
       guard.getBytes(curBuf, b, offset, len);
-    } catch (BufferUnderflowException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
       int curAvail = curBuf.remaining();
       while (len > curAvail) {
         guard.getBytes(curBuf, b, offset, curAvail);
@@ -123,13 +129,15 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         curAvail = curBuf.remaining();
       }
       guard.getBytes(curBuf, b, offset, len);
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
 
   @Override
-  public void readLELongs(long[] dst, int offset, int length) throws IOException {
+  public void readLongs(long[] dst, int offset, int length) throws IOException {
     // ByteBuffer#getLong could work but it has some per-long overhead and there
     // is no ByteBuffer#getLongs to read multiple longs at once. So we use the
     // below trick in order to be able to leverage LongBuffer#get(long[]) to
@@ -157,16 +165,20 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
           curLongBufferViews[position & 0x07].position(position >>> 3), dst, offset, length);
       // if the above call succeeded, then we know the below sum cannot overflow
       curBuf.position(position + (length << 3));
-    } catch (BufferUnderflowException e) {
-      super.readLELongs(dst, offset, length);
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
+      super.readLongs(dst, offset, length);
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
 
   @Override
-  public final void readLEFloats(float[] floats, int offset, int len) throws IOException {
-    // See notes about readELongs above
+  public final void readFloats(float[] floats, int offset, int len) throws IOException {
+    // See notes about readLongs above
     if (curFloatBufferViews == null) {
       curFloatBufferViews = new FloatBuffer[Float.BYTES];
       for (int i = 0; i < Float.BYTES; ++i) {
@@ -187,9 +199,13 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       guard.getFloats(floatBuffer, floats, offset, len);
       // if the above call succeeded, then we know the below sum cannot overflow
       curBuf.position(position + (len << 2));
-    } catch (BufferUnderflowException e) {
-      super.readLEFloats(floats, offset, len);
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
+      super.readFloats(floats, offset, len);
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -198,9 +214,13 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   public final short readShort() throws IOException {
     try {
       return guard.getShort(curBuf);
-    } catch (BufferUnderflowException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
       return super.readShort();
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -209,9 +229,13 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   public final int readInt() throws IOException {
     try {
       return guard.getInt(curBuf);
-    } catch (BufferUnderflowException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
       return super.readInt();
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -220,9 +244,13 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   public final long readLong() throws IOException {
     try {
       return guard.getLong(curBuf);
-    } catch (BufferUnderflowException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
       return super.readLong();
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -231,7 +259,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   public long getFilePointer() {
     try {
       return (((long) curBufIndex) << chunkSizePower) + curBuf.position();
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -251,9 +281,13 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         this.curBufIndex = bi;
         setCurBuf(b);
       }
-    } catch (ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+    } catch (@SuppressWarnings("unused")
+        ArrayIndexOutOfBoundsException
+        | IllegalArgumentException e) {
       throw new EOFException("seek past EOF: " + this);
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -263,9 +297,13 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     try {
       final int bi = (int) (pos >> chunkSizePower);
       return guard.getByte(buffers[bi], (int) (pos & chunkSizeMask));
-    } catch (IndexOutOfBoundsException ioobe) {
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException ioobe) {
       throw new EOFException("seek past EOF: " + this);
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -277,9 +315,13 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       b.position((int) (pos & chunkSizeMask));
       this.curBufIndex = bi;
       setCurBuf(b);
-    } catch (ArrayIndexOutOfBoundsException | IllegalArgumentException aioobe) {
+    } catch (@SuppressWarnings("unused")
+        ArrayIndexOutOfBoundsException
+        | IllegalArgumentException aioobe) {
       throw new EOFException("seek past EOF: " + this);
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -289,11 +331,15 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     final int bi = (int) (pos >> chunkSizePower);
     try {
       return guard.getShort(buffers[bi], (int) (pos & chunkSizeMask));
-    } catch (IndexOutOfBoundsException ioobe) {
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException ioobe) {
       // either it's a boundary, or read past EOF, fall back:
       setPos(pos, bi);
       return readShort();
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -303,11 +349,15 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     final int bi = (int) (pos >> chunkSizePower);
     try {
       return guard.getInt(buffers[bi], (int) (pos & chunkSizeMask));
-    } catch (IndexOutOfBoundsException ioobe) {
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException ioobe) {
       // either it's a boundary, or read past EOF, fall back:
       setPos(pos, bi);
       return readInt();
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -317,11 +367,15 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     final int bi = (int) (pos >> chunkSizePower);
     try {
       return guard.getLong(buffers[bi], (int) (pos & chunkSizeMask));
-    } catch (IndexOutOfBoundsException ioobe) {
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException ioobe) {
       // either it's a boundary, or read past EOF, fall back:
       setPos(pos, bi);
       return readLong();
-    } catch (NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -391,7 +445,11 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     if (newBuffers.length == 1) {
       newBuffers[0].position(offset);
       return new SingleBufferImpl(
-          newResourceDescription, newBuffers[0].slice(), length, chunkSizePower, this.guard);
+          newResourceDescription,
+          newBuffers[0].slice().order(ByteOrder.LITTLE_ENDIAN),
+          length,
+          chunkSizePower,
+          this.guard);
     } else {
       return new MultiBufferImpl(
           newResourceDescription, newBuffers, offset, length, chunkSizePower, guard);
@@ -412,7 +470,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     final ByteBuffer slices[] = new ByteBuffer[endIndex - startIndex + 1];
 
     for (int i = 0; i < slices.length; i++) {
-      slices[i] = buffers[startIndex + i].duplicate();
+      slices[i] = buffers[startIndex + i].duplicate().order(ByteOrder.LITTLE_ENDIAN);
     }
 
     // set the last buffer's limit for the sliced view.
@@ -458,6 +516,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         ByteBufferGuard guard) {
       super(resourceDescription, new ByteBuffer[] {buffer}, length, chunkSizePower, guard);
       this.curBufIndex = 0;
+      assert buffer.order() == ByteOrder.LITTLE_ENDIAN;
       setCurBuf(buffer);
       buffer.position(0);
     }
@@ -474,7 +533,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         } else {
           throw new EOFException("seek past EOF: " + this);
         }
-      } catch (NullPointerException npe) {
+      } catch (
+          @SuppressWarnings("unused")
+          NullPointerException npe) {
         throw new AlreadyClosedException("Already closed: " + this);
       }
     }
@@ -483,7 +544,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     public long getFilePointer() {
       try {
         return curBuf.position();
-      } catch (NullPointerException npe) {
+      } catch (
+          @SuppressWarnings("unused")
+          NullPointerException npe) {
         throw new AlreadyClosedException("Already closed: " + this);
       }
     }
@@ -498,7 +561,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         } else {
           throw new EOFException("seek past EOF: " + this);
         }
-      } catch (NullPointerException npe) {
+      } catch (
+          @SuppressWarnings("unused")
+          NullPointerException npe) {
         throw new AlreadyClosedException("Already closed: " + this);
       }
     }
@@ -513,7 +578,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         } else {
           throw new EOFException("seek past EOF: " + this);
         }
-      } catch (NullPointerException npe) {
+      } catch (
+          @SuppressWarnings("unused")
+          NullPointerException npe) {
         throw new AlreadyClosedException("Already closed: " + this);
       }
     }
@@ -528,7 +595,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         } else {
           throw new EOFException("seek past EOF: " + this);
         }
-      } catch (NullPointerException npe) {
+      } catch (
+          @SuppressWarnings("unused")
+          NullPointerException npe) {
         throw new AlreadyClosedException("Already closed: " + this);
       }
     }
@@ -543,7 +612,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         } else {
           throw new EOFException("seek past EOF: " + this);
         }
-      } catch (NullPointerException npe) {
+      } catch (
+          @SuppressWarnings("unused")
+          NullPointerException npe) {
         throw new AlreadyClosedException("Already closed: " + this);
       }
     }

@@ -17,6 +17,8 @@
 
 import org.apache.tools.ant.taskdefs.condition.Os
 
+def resources = scriptResources(buildscript)
+
 apply plugin: "de.undercouch.download"
 
 configure(project(":lucene:analysis:common")) {
@@ -34,8 +36,8 @@ configure(project(":lucene:analysis:common")) {
     snowballWebsiteDir = file("${snowballWorkDir}/website-${snowballWebsiteCommit}")
     snowballDataDir    = file("${snowballWorkDir}/data-${snowballDataCommit}")
 
-    snowballPatchFile  = rootProject.file("gradle/generation/snowball.patch")
-    snowballScript     = rootProject.file("gradle/generation/snowball.sh")
+    snowballPatchFile  = file("${resources}/snowball.patch")
+    snowballScript     = file("${resources}/snowball.sh")
   }
 
   def unpackFromZip = { zipFile, targetDir ->
@@ -90,15 +92,32 @@ configure(project(":lucene:analysis:common")) {
   }
 
   // runs shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
-  task snowball() {
-    description "Regenerates snowball stemmers."
+  task snowballInternal() {
+    description "Regenerate snowball stemmers."
     group "generation"
+
+    inputs.files fileTree(
+        dir: "src/java/org/tartarus/snowball",
+        include: [
+            "Among.java",
+            "SnowballStemmer.java",
+            "SnowballProgram.java",
+            "ext/*Stemmer.java"
+        ])
+
+    inputs.files fileTree(
+        dir: "src/resources/org/apache/lucene/analysis/snowball",
+        include: "*_stop.txt")
+
+    inputs.files fileTree(
+        dir: "src/test/org/apache/lucene/analysis/snowball",
+        include: "*.zip")
 
     // Don't even bother adding dependencies on Windows.
     if (Os.isFamily(Os.FAMILY_WINDOWS)) {
       doFirst {
-        // Just emit a big fat error message but don't fail the build.
-        logger.error("Snowball generation does not work on Windows (patch and bash must be available).")
+        // Just emit a big fat error message. Fail the build so that checksums are not regenerated.
+        throw new GradleException("Snowball generation does not work on Windows (patch and bash must be available).")
       }
     } else {
       dependsOn downloadSnowballStemmers
@@ -106,7 +125,7 @@ configure(project(":lucene:analysis:common")) {
       dependsOn downloadSnowballData
 
       doFirst {
-        project.exec {
+        project.quietExec {
           executable "bash"
           args = [snowballScript, snowballStemmerDir, snowballWebsiteDir, snowballDataDir, projectDir]
         }
@@ -114,5 +133,5 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn snowball, "tidy"
+  regenerate.dependsOn wrapWithPersistentChecksums(snowballInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"], ignoreWithSource: [downloadSnowballStemmers, downloadSnowballWebsite, downloadSnowballData] ])
 }

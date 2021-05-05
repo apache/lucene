@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -31,13 +30,13 @@ class MockVectorValues extends VectorValues
   protected final int dimension;
   protected final float[][] denseValues;
   protected final float[][] values;
-  protected final SearchStrategy searchStrategy;
+  protected final SimilarityFunction similarityFunction;
   private final int numVectors;
 
   private int pos = -1;
 
-  MockVectorValues(SearchStrategy searchStrategy, float[][] values) {
-    this.searchStrategy = searchStrategy;
+  MockVectorValues(SimilarityFunction similarityFunction, float[][] values) {
+    this.similarityFunction = similarityFunction;
     this.dimension = values[0].length;
     this.values = values;
     int maxDoc = values.length;
@@ -53,7 +52,7 @@ class MockVectorValues extends VectorValues
   }
 
   public MockVectorValues copy() {
-    return new MockVectorValues(searchStrategy, values);
+    return new MockVectorValues(similarityFunction, values);
   }
 
   @Override
@@ -62,8 +61,8 @@ class MockVectorValues extends VectorValues
   }
 
   @Override
-  public SearchStrategy searchStrategy() {
-    return searchStrategy;
+  public SimilarityFunction similarityFunction() {
+    return similarityFunction;
   }
 
   @Override
@@ -100,11 +99,6 @@ class MockVectorValues extends VectorValues
     return null;
   }
 
-  @Override
-  public TopDocs search(float[] target, int k, int fanout) {
-    return null;
-  }
-
   private boolean seek(int target) {
     if (target >= 0 && target < values.length && values[target] != null) {
       pos = target;
@@ -124,6 +118,7 @@ class MockVectorValues extends VectorValues
     return advance(pos + 1);
   }
 
+  @Override
   public int advance(int target) {
     while (++pos < values.length) {
       if (seek(pos)) {

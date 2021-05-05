@@ -75,6 +75,10 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
       switch (scoreMode) {
         case Avg:
           return new MV.Avg(sortedSetDocValues(field));
+        case Max:
+        case Min:
+        case None:
+        case Total:
         default:
           return new MV(sortedSetDocValues(field), scoreMode);
       }
@@ -82,6 +86,10 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
       switch (scoreMode) {
         case Avg:
           return new SV.Avg(sortedDocValues(field));
+        case Max:
+        case Min:
+        case None:
+        case Total:
         default:
           return new SV(sortedDocValues(field), scoreMode);
       }
@@ -137,6 +145,8 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
               scoreSums[ord] = current;
             }
             break;
+          case None:
+          case Avg:
           default:
             throw new AssertionError("unexpected: " + scoreMode);
         }
@@ -230,6 +240,8 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
             case Max:
               scoreSums[termID] = Math.max(scoreSums[termID], scorer.score());
               break;
+            case Avg:
+            case None:
             default:
               throw new AssertionError("unexpected: " + scoreMode);
           }

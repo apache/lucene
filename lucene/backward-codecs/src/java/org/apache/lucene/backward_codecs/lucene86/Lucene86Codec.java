@@ -38,8 +38,6 @@ import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.lucene86.Lucene86PointsFormat;
-import org.apache.lucene.codecs.lucene86.Lucene86SegmentInfoFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
@@ -50,7 +48,6 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *
  * @lucene.experimental
- * @see org.apache.lucene.codecs.lucene86 package documentation for file format details.
  */
 public class Lucene86Codec extends Codec {
   private final TermVectorsFormat vectorsFormat = new Lucene50TermVectorsFormat();
@@ -116,7 +113,7 @@ public class Lucene86Codec extends Codec {
   }
 
   @Override
-  public final SegmentInfoFormat segmentInfoFormat() {
+  public SegmentInfoFormat segmentInfoFormat() {
     return segmentInfosFormat;
   }
 
@@ -131,7 +128,7 @@ public class Lucene86Codec extends Codec {
   }
 
   @Override
-  public final PointsFormat pointsFormat() {
+  public PointsFormat pointsFormat() {
     return pointsFormat;
   }
 

@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.index.CorruptIndexException;
@@ -74,6 +75,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
     expectedLength += CodecUtil.footerLength();
 
     handle = directory.openInput(dataFileName, context);
+    // DirectoryUtil.openInput(directory, dataFileName, context);
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene50CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
@@ -105,7 +107,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
       byte[] segmentID, Directory dir, String entriesFileName) throws IOException {
     Map<String, FileEntry> mapping = null;
     try (ChecksumIndexInput entriesStream =
-        dir.openChecksumInput(entriesFileName, IOContext.READONCE)) {
+        EndiannessReverserUtil.openChecksumInput(dir, entriesFileName, IOContext.READONCE)) {
       Throwable priorE = null;
       try {
         version =

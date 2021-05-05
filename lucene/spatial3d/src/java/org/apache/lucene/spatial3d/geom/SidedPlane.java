@@ -220,7 +220,9 @@ public class SidedPlane extends Plane implements Membership {
       // To construct the plane, we now just need D, which is simply the negative of the evaluation
       // of the circle normal vector at one of the points.
       return new SidedPlane(insidePoint, newNormalVector, -newNormalVector.dotProduct(point1));
-    } catch (IllegalArgumentException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalArgumentException e) {
       return null;
     }
   }
@@ -230,19 +232,19 @@ public class SidedPlane extends Plane implements Membership {
       final Vector insidePoint, final Vector point1, final Vector point2, final Vector point3) {
     SidedPlane rval = null;
 
-    if (rval == null) {
-      try {
-        final Vector planeNormal =
-            new Vector(
-                point1.x - point2.x,
-                point1.y - point2.y,
-                point1.z - point2.z,
-                point2.x - point3.x,
-                point2.y - point3.y,
-                point2.z - point3.z);
-        rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point2));
-      } catch (IllegalArgumentException e) {
-      }
+    try {
+      final Vector planeNormal =
+          new Vector(
+              point1.x - point2.x,
+              point1.y - point2.y,
+              point1.z - point2.z,
+              point2.x - point3.x,
+              point2.y - point3.y,
+              point2.z - point3.z);
+      rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point2));
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalArgumentException e) {
     }
 
     if (rval == null) {
@@ -256,7 +258,9 @@ public class SidedPlane extends Plane implements Membership {
                 point3.y - point2.y,
                 point3.z - point2.z);
         rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point3));
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
       }
     }
 
@@ -271,7 +275,9 @@ public class SidedPlane extends Plane implements Membership {
                 point1.y - point2.y,
                 point1.z - point2.z);
         rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point1));
-      } catch (IllegalArgumentException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException e) {
       }
     }
 

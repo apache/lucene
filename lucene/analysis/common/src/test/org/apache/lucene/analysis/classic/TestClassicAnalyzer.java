@@ -125,15 +125,12 @@ public class TestClassicAnalyzer extends BaseTokenStreamTestCase {
     assertAnalyzesTo(a, "Excite@Home", new String[] {"excite@home"});
   }
 
+  // should not throw NPE
   public void testLucene1140() throws Exception {
-    try {
-      ClassicAnalyzer analyzer = new ClassicAnalyzer();
-      assertAnalyzesTo(
-          analyzer, "www.nutch.org.", new String[] {"www.nutch.org"}, new String[] {"<HOST>"});
-      analyzer.close();
-    } catch (NullPointerException e) {
-      fail("Should not throw an NPE and it did");
-    }
+    ClassicAnalyzer analyzer = new ClassicAnalyzer();
+    assertAnalyzesTo(
+        analyzer, "www.nutch.org.", new String[] {"www.nutch.org"}, new String[] {"<HOST>"});
+    analyzer.close();
   }
 
   public void testDomainNames() throws Exception {

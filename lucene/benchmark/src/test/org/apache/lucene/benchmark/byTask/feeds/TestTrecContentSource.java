@@ -424,7 +424,9 @@ public class TestTrecContentSource extends LuceneTestCase {
             assertTrue("Should never get here!", false);
         }
       }
-    } catch (NoMoreDataException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        NoMoreDataException e) {
       gotExpectedException = true;
     }
     assertTrue("Should have gotten NoMoreDataException!", gotExpectedException);

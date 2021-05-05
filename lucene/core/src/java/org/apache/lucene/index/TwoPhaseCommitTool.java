@@ -61,7 +61,9 @@ public final class TwoPhaseCommitTool {
       if (tpc != null) {
         try {
           tpc.rollback();
-        } catch (Throwable t) {
+        } catch (
+            @SuppressWarnings("unused")
+            Throwable t) {
         }
       }
     }

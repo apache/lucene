@@ -145,7 +145,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
               }
             }
 
-          } catch (IOException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException e) {
             // ignore
           }
 
@@ -172,7 +174,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
             assert hasNext == true;
             term = termAtt.toString();
 
-          } catch (IOException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException e) {
             // safe to ignore, because we know the number of tokens
           }
 
@@ -195,7 +199,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
                   assert hasNext == true;
                   term = termAtt.toString();
 
-                } catch (IOException e) {
+                } catch (
+                    @SuppressWarnings("unused")
+                    IOException e) {
                   // safe to ignore, because we know the number of tokens
                 }
 
@@ -212,7 +218,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
                   boolean hasNext = buffer.incrementToken();
                   assert hasNext == true;
                   term = termAtt.toString();
-                } catch (IOException e) {
+                } catch (
+                    @SuppressWarnings("unused")
+                    IOException e) {
                   // safe to ignore, because we know the number of tokens
                 }
                 if (posIncrAtt != null && posIncrAtt.getPositionIncrement() == 0) {
@@ -263,7 +271,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
                   positionIncrement = posIncrAtt.getPositionIncrement();
                 }
 
-              } catch (IOException e) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  IOException e) {
                 // safe to ignore, because we know the number of tokens
               }
 
@@ -325,7 +335,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
                 positionIncrement = posIncrAtt.getPositionIncrement();
               }
 
-            } catch (IOException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                IOException e) {
               // safe to ignore, because we know the number of tokens
             }
 
@@ -348,7 +360,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
         if (buffer != null) {
           try {
             buffer.close();
-          } catch (IOException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException e) {
             // safe to ignore
           }
         }

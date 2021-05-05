@@ -45,12 +45,14 @@ abstract class BoundsChecker {
       bound = Float.NEGATIVE_INFINITY;
     }
 
+    @Override
     void update(float sample) {
       if (sample > bound) {
         bound = sample;
       }
     }
 
+    @Override
     boolean check(float sample) {
       return sample < bound;
     }
@@ -62,12 +64,14 @@ abstract class BoundsChecker {
       bound = Float.POSITIVE_INFINITY;
     }
 
+    @Override
     void update(float sample) {
       if (sample < bound) {
         bound = sample;
       }
     }
 
+    @Override
     boolean check(float sample) {
       return sample > bound;
     }

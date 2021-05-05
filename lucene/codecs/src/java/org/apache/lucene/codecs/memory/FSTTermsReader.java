@@ -19,10 +19,8 @@ package org.apache.lucene.codecs.memory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.TreeMap;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
@@ -42,8 +40,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -173,10 +169,7 @@ public class FSTTermsReader extends FieldsProducer {
     }
   }
 
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(TermsReader.class);
-
-  final class TermsReader extends Terms implements Accountable {
+  final class TermsReader extends Terms {
 
     final FieldInfo fieldInfo;
     final long numTerms;
@@ -199,24 +192,6 @@ public class FSTTermsReader extends FieldsProducer {
       this.sumDocFreq = sumDocFreq;
       this.docCount = docCount;
       this.dict = new FST<>(in, in, new FSTTermOutputs(fieldInfo));
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long bytesUsed = BASE_RAM_BYTES_USED;
-      if (dict != null) {
-        bytesUsed += dict.ramBytesUsed();
-      }
-      return bytesUsed;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      if (dict == null) {
-        return Collections.emptyList();
-      } else {
-        return Collections.singletonList(Accountables.namedAccountable("terms", dict));
-      }
     }
 
     @Override
@@ -477,6 +452,7 @@ public class FSTTermsReader extends FieldsProducer {
           this.fsaState = -1;
         }
 
+        @Override
         public String toString() {
           return "arc=" + fstArc + " state=" + fsaState;
         }
@@ -793,22 +769,6 @@ public class FSTTermsReader extends FieldsProducer {
         }
       }
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long ramBytesUsed = postingsReader.ramBytesUsed();
-    for (TermsReader r : fields.values()) {
-      ramBytesUsed += r.ramBytesUsed();
-    }
-    return ramBytesUsed;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    List<Accountable> resources = new ArrayList<>(Accountables.namedAccountables("field", fields));
-    resources.add(Accountables.namedAccountable("delegate", postingsReader));
-    return Collections.unmodifiableCollection(resources);
   }
 
   @Override

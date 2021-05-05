@@ -35,7 +35,9 @@ public class Test2GBCharBlockArray extends LuceneTestCase {
       count++;
       try {
         array.append(chars, 0, size);
-      } catch (IllegalStateException ise) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalStateException ise) {
         assertTrue(count * (long) size + blockSize > Integer.MAX_VALUE);
         break;
       }

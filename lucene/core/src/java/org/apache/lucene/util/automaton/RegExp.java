@@ -1030,6 +1030,14 @@ public class RegExp {
       case REGEXP_AUTOMATON:
         set.add(s);
         break;
+      case REGEXP_ANYCHAR:
+      case REGEXP_ANYSTRING:
+      case REGEXP_CHAR:
+      case REGEXP_CHAR_RANGE:
+      case REGEXP_EMPTY:
+      case REGEXP_INTERVAL:
+      case REGEXP_PRE_CLASS:
+      case REGEXP_STRING:
       default:
     }
   }
@@ -1320,7 +1328,7 @@ public class RegExp {
           }
           return makeInterval(flags, imin, imax, digits);
         } catch (NumberFormatException e) {
-          throw new IllegalArgumentException("interval syntax error at position " + (pos - 1));
+          throw new IllegalArgumentException("interval syntax error at position " + (pos - 1), e);
         }
       }
     } else {

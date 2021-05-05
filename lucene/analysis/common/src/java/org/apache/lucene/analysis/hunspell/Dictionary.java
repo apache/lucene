@@ -551,8 +551,9 @@ public class Dictionary {
 
       @Override
       public List<String> getMorphologicalValues(int entryIndex, String key) {
-        assert key.length() == 3;
-        assert key.charAt(2) == ':';
+        assert key.length() == 3 && key.charAt(2) == ':'
+            : "A morphological data key should consist of two letters followed by a semicolon, found: "
+                + key;
 
         String fields = getMorphologicalData(entryIndex);
         if (fields.isEmpty() || !fields.contains(key)) return Collections.emptyList();
@@ -668,7 +669,9 @@ public class Dictionary {
     int numLines;
     try {
       numLines = Integer.parseInt(args[3]);
-    } catch (NumberFormatException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        NumberFormatException e) {
       return;
     }
     affixData = ArrayUtil.grow(affixData, currentAffix * 4 + numLines * 4);
@@ -1296,7 +1299,9 @@ public class Dictionary {
       try {
         int alias = Integer.parseInt(morphData.trim());
         morphData = morphAliases[alias - 1];
-      } catch (NumberFormatException ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          NumberFormatException ignored) {
       }
     }
     if (morphData.isBlank()) {

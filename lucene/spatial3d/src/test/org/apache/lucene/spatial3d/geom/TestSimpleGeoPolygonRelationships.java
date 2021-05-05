@@ -17,19 +17,17 @@
 
 package org.apache.lucene.spatial3d.geom;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /**
  * Check relationship between polygon and GeoShapes of basic polygons. Normally we construct the
  * convex, concave counterpart and the convex polygon as a complex polygon.
  */
-public class TestSimpleGeoPolygonRelationships {
+public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
 
   /** Test with two shapes with no crossing edges and no points in common in convex case. */
   @Test

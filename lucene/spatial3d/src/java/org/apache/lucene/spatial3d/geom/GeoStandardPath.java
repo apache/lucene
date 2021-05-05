@@ -119,9 +119,6 @@ class GeoStandardPath extends GeoBasePath {
     for (final GeoPoint end : points) {
       if (lastPoint != null) {
         final Plane normalizedConnectingPlane = new Plane(lastPoint, end);
-        if (normalizedConnectingPlane == null) {
-          continue;
-        }
         segments.add(
             new PathSegment(planetModel, lastPoint, end, normalizedConnectingPlane, cutoffOffset));
       }

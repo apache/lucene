@@ -82,6 +82,7 @@ public class BytesRefFieldSource extends FieldCacheSource {
           }
         }
 
+        @Override
         public String strVal(int doc) throws IOException {
           final BytesRefBuilder bytes = new BytesRefBuilder();
           return bytesVal(doc, bytes) ? bytes.get().utf8ToString() : null;

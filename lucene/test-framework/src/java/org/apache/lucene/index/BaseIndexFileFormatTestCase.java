@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -47,7 +46,6 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.codecs.mockrandom.MockRandomPostingsFormat;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -67,7 +65,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.RamUsageTester;
@@ -116,6 +113,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
       this.root = root;
     }
 
+    @Override
     public long accumulateObject(
         Object o,
         long shallowSize,
@@ -185,6 +183,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
   private Codec savedCodec;
 
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     // set the default codec, so adding test cases to this isn't fragile
@@ -192,6 +191,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     Codec.setDefault(getCodec());
   }
 
+  @Override
   public void tearDown() throws Exception {
     Codec.setDefault(savedCodec); // restore
     super.tearDown();
@@ -284,72 +284,6 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     return true;
   }
 
-  /** Test the accuracy of the ramBytesUsed estimations. */
-  @Nightly
-  public void testRamBytesUsed() throws IOException {
-    if (Codec.getDefault() instanceof RandomCodec) {
-      // this test relies on the fact that two segments will be written with
-      // the same codec so we need to disable MockRandomPF
-      final Set<String> avoidCodecs = new HashSet<>(((RandomCodec) Codec.getDefault()).avoidCodecs);
-      avoidCodecs.add(new MockRandomPostingsFormat().getName());
-      Codec.setDefault(new RandomCodec(random(), avoidCodecs));
-    }
-    Directory dir = applyCreatedVersionMajor(newDirectory());
-    IndexWriterConfig cfg = newIndexWriterConfig(new MockAnalyzer(random()));
-    IndexWriter w = new IndexWriter(dir, cfg);
-    // we need to index enough documents so that constant overhead doesn't dominate
-    final int numDocs = atLeast(10000);
-    LeafReader reader1 = null;
-    for (int i = 0; i < numDocs; ++i) {
-      Document d = new Document();
-      addRandomFields(d);
-      w.addDocument(d);
-      if (i == 100) {
-        w.forceMerge(1);
-        w.commit();
-        reader1 = getOnlyLeafReader(DirectoryReader.open(dir));
-      }
-    }
-    w.forceMerge(1);
-    w.commit();
-    w.close();
-
-    LeafReader reader2 = getOnlyLeafReader(DirectoryReader.open(dir));
-
-    for (LeafReader reader : Arrays.asList(reader1, reader2)) {
-      new SimpleMergedSegmentWarmer(InfoStream.NO_OUTPUT).warm(reader);
-    }
-
-    long act1 = RamUsageTester.sizeOf(reader2, new Accumulator(reader2));
-    long act2 = RamUsageTester.sizeOf(reader1, new Accumulator(reader1));
-    final long measuredBytes = act1 - act2;
-
-    long reported1 = ((SegmentReader) reader2).ramBytesUsed();
-    long reported2 = ((SegmentReader) reader1).ramBytesUsed();
-    final long reportedBytes = reported1 - reported2;
-
-    final long absoluteError = Math.abs(measuredBytes - reportedBytes);
-    final double relativeError = (double) absoluteError / measuredBytes;
-    final String message =
-        String.format(
-            Locale.ROOT,
-            "RamUsageTester reports %d bytes but ramBytesUsed() returned %d (%.1f error). "
-                + " [Measured: %d, %d. Reported: %d, %d]",
-            measuredBytes,
-            reportedBytes,
-            (100 * relativeError),
-            act1,
-            act2,
-            reported1,
-            reported2);
-
-    assertTrue(message, relativeError < 0.20d || absoluteError < 1000);
-
-    reader1.close();
-    reader2.close();
-    dir.close();
-  }
-
   /** Calls close multiple times on closeable codec apis */
   public void testMultiClose() throws IOException {
     // first make a one doc index
@@ -401,7 +335,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             proto.getPointIndexDimensionCount(),
             proto.getPointNumBytes(),
             proto.getVectorDimension(),
-            proto.getVectorSearchStrategy(),
+            proto.getVectorSimilarityFunction(),
             proto.isSoftDeletesField());
 
     FieldInfos fieldInfos = new FieldInfos(new FieldInfo[] {field});
@@ -418,11 +352,6 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
           @Override
           public void close() throws IOException {}
-
-          @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
 
           @Override
           public NumericDocValues getNorms(FieldInfo field) throws IOException {
@@ -582,11 +511,6 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
             @Override
             public void close() {}
-
-            @Override
-            public long ramBytesUsed() {
-              return 0;
-            }
           });
       IOUtils.close(consumer);
       IOUtils.close(consumer);
@@ -674,7 +598,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           iw.addDocument(doc);
           // we made it, sometimes delete our doc
           iw.deleteDocuments(new Term("id", Integer.toString(i)));
-        } catch (AlreadyClosedException ace) {
+        } catch (
+            @SuppressWarnings("unused")
+            AlreadyClosedException ace) {
           // OK: writer was closed by abort; we just reopen now:
           dir.setRandomIOExceptionRateOnOpen(
               0.0); // disable exceptions on openInput until next iteration
@@ -713,7 +639,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             if (DirectoryReader.indexExists(dir)) {
               TestUtil.checkIndex(dir);
             }
-          } catch (AlreadyClosedException ace) {
+          } catch (
+              @SuppressWarnings("unused")
+              AlreadyClosedException ace) {
             // OK: writer was closed by abort; we just reopen now:
             dir.setRandomIOExceptionRateOnOpen(
                 0.0); // disable exceptions on openInput until next iteration
@@ -741,7 +669,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         handleFakeIOException(e, exceptionStream);
         try {
           iw.rollback();
-        } catch (Throwable t) {
+        } catch (
+            @SuppressWarnings("unused")
+            Throwable t) {
         }
       }
       dir.close();

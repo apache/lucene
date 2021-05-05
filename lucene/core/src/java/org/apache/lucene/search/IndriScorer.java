@@ -40,6 +40,7 @@ public abstract class IndriScorer extends Scorer {
   @Override
   public abstract float score() throws IOException;
 
+  @Override
   public abstract float smoothingScore(int docId) throws IOException;
 
   @Override

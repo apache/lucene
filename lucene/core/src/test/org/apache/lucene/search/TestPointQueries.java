@@ -36,8 +36,8 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.codecs.lucene86.Lucene86PointsReader;
-import org.apache.lucene.codecs.lucene86.Lucene86PointsWriter;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
@@ -552,14 +552,10 @@ public class TestPointQueries extends LuceneTestCase {
                           + " TO "
                           + upper);
                   byte[] tmp = new byte[8];
-                  if (lower != null) {
-                    NumericUtils.longToSortableBytes(lower, tmp, 0);
-                    System.out.println("  lower bytes=" + Arrays.toString(tmp));
-                  }
-                  if (upper != null) {
-                    NumericUtils.longToSortableBytes(upper, tmp, 0);
-                    System.out.println("  upper bytes=" + Arrays.toString(tmp));
-                  }
+                  NumericUtils.longToSortableBytes(lower, tmp, 0);
+                  System.out.println("  lower bytes=" + Arrays.toString(tmp));
+                  NumericUtils.longToSortableBytes(upper, tmp, 0);
+                  System.out.println("  upper bytes=" + Arrays.toString(tmp));
                 }
 
                 if (random().nextBoolean()) {
@@ -1284,12 +1280,12 @@ public class TestPointQueries extends LuceneTestCase {
           return new PointsFormat() {
             @Override
             public PointsWriter fieldsWriter(SegmentWriteState writeState) throws IOException {
-              return new Lucene86PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap);
+              return new Lucene90PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap);
             }
 
             @Override
             public PointsReader fieldsReader(SegmentReadState readState) throws IOException {
-              return new Lucene86PointsReader(readState);
+              return new Lucene90PointsReader(readState);
             }
           };
         }

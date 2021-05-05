@@ -23,7 +23,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -104,11 +103,6 @@ public class BM25Similarity extends Similarity {
   /** Implemented as <code>log(1 + (docCount - docFreq + 0.5)/(docFreq + 0.5))</code>. */
   protected float idf(long docFreq, long docCount) {
     return (float) Math.log(1 + (docCount - docFreq + 0.5D) / (docFreq + 0.5D));
-  }
-
-  /** The default implementation returns <code>1</code> */
-  protected float scorePayload(int doc, int start, int end, BytesRef payload) {
-    return 1;
   }
 
   /** The default implementation computes the average as <code>sumTotalTermFreq / docCount</code> */

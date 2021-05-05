@@ -16,10 +16,13 @@
  */
 
 apply plugin: 'java-library'
+apply plugin: 'java-test-fixtures'
 
 description = '3D spatial planar geometry APIs'
 
 dependencies {
   api project(':lucene:core')
+
+  testFixturesApi project(':lucene:test-framework')
   testImplementation project(':lucene:test-framework')
 }

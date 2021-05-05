@@ -65,7 +65,9 @@ public class HighFreqTerms {
       } else {
         try {
           numTerms = Integer.parseInt(args[i]);
-        } catch (NumberFormatException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            NumberFormatException e) {
           field = args[i];
         }
       }

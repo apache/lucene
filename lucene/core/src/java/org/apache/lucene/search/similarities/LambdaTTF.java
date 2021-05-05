@@ -39,6 +39,7 @@ public class LambdaTTF extends Lambda {
     return lambda;
   }
 
+  @Override
   public final Explanation explain(BasicStats stats) {
     return Explanation.match(
         lambda(stats),

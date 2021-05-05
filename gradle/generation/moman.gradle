@@ -1,0 +1,107 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+apply plugin: "de.undercouch.download"
+
+def resources = scriptResources(buildscript)
+
+configure(project(":lucene:core")) {
+  ext {
+    momanSource = "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
+    momanDir = file("${buildDir}/moman")
+  }
+
+  task installMoman(type: Download) {
+    def momanZip = file("${momanDir}/moman.zip")
+
+    src momanSource
+    dest momanZip
+    onlyIfModified true
+
+    doLast {
+      ant.unzip(src: momanZip, dest: momanDir, overwrite: "true") {
+        ant.cutdirsmapper(dirs: "1")
+      }
+    }
+  }
+
+  task utilGenPackedInternal(dependsOn: installMoman) {
+    def targetDir = file("src/java/org/apache/lucene/util/packed")
+
+    inputs.property("source", momanSource)
+    outputs.files fileTree(dir: targetDir, includes: ["Packed64SingleBlock.java", "BulkOperation*.java"])
+
+    doLast {
+      [
+        file("${resources}/gen_BulkOperation.py"),
+        file("${resources}/gen_Packed64SingleBlock.py")
+      ].each { prog ->
+        logger.lifecycle("Executing: ${prog} in ${targetDir}")
+        quietExec {
+          workingDir targetDir
+          executable project.externalTool("python3")
+          args = ['-B', "${prog}"]
+        }
+      }
+      // Correct line endings for Windows.
+      project.ant.fixcrlf(
+          srcDir: targetDir,
+          includes: 'Packed64SingleBlock.java, BulkOperation*.java',
+          encoding: 'UTF-8',
+          eol: 'lf'
+      )
+    }
+  }
+
+  task utilGenLevInternal(dependsOn: installMoman) {
+    def targetDir = file("src/java/org/apache/lucene/util/automaton")
+
+    inputs.property("source", momanSource)
+    outputs.files fileTree(dir: targetDir, includes: ["*ParametricDescription.java"])
+
+    doLast {
+      ['1', '2'].each { num ->
+        ['True', 'False'].each { transpose ->
+          quietExec {
+            workingDir targetDir
+            executable project.externalTool("python3")
+            args = ['-B',
+                    file("${resources}/createLevAutomata.py").toString(),
+                    num,
+                    transpose,
+                    "${momanDir}/finenight/python"]
+          }
+        }
+      }
+      project.ant.fixcrlf(
+          srcDir: targetDir,
+          includes: '*ParametricDescription.java',
+          encoding: 'UTF-8',
+          eol: 'lf'
+      )
+    }
+  }
+
+  task moman()  {
+    description "Regenerate Moman-based sources."
+    group "generation"
+
+    dependsOn wrapWithPersistentChecksums(utilGenPackedInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+    dependsOn wrapWithPersistentChecksums(utilGenLevInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  }
+
+  regenerate.dependsOn moman
+}

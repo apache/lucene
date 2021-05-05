@@ -186,6 +186,7 @@ public final class FixedBitSet extends BitSet {
     return (bits[i] & bitmask) != 0;
   }
 
+  @Override
   public void set(int index) {
     assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
     int wordNum = index >> 6; // div 64
