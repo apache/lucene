@@ -77,7 +77,10 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
   private final int[] limitTo;
   private final int lastIdx;
   private final CircularReplaceable buf;
-  private int bufLimitAdjust; // usually `0`; `-1` (as in, `buf.length()-1`) when last char is a lead surrogate
+
+  // usually `0`; `-1` (as in, `buf.length()-1`) when last char is a lead surrogate
+  private int bufLimitAdjust;
+
   private final Position position = new Position();
   private final OffsetCorrectionRegistrar registrar;
   private boolean inputFinished = false;
@@ -234,7 +237,8 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
         String pre = REPORT ? toString(buf, preStart, preLimit) : null;
         final boolean incremental = !(inputFinished && preLimit == buf.length());
         leaf.filteredTransliterate(buf, position, incremental);
-        if (REPORT) System.err.println("XXX"+i+": \""+pre+"\" => \""+toString(buf, preStart, position.limit)+"\" (incremental="+incremental+", "+prePos+"=>"+position+")");
+        // if (REPORT) System.err.println("XXX"+i+": \""+pre+"\" => \""+toString(buf, preStart,
+        // position.limit)+"\" (incremental="+incremental+", "+prePos+"=>"+position+")");
         assert position.start <= position.limit;
         if (position.start == preStart) {
           // no advance at all
@@ -286,10 +290,10 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
           break;
         } else {
           if (position.start == 0 && preStart > 0) {
-            assert "com.ibm.icu.text.BreakTransliterator".equals(leaf.getClass().getCanonicalName());
-            // this is a bug in BreakTransliterator! For incremental runs where no boundaries are found,
-            // it sets position.start=0! Since no boundaries were found though, we can correct this by
-            // setting position.start = position.limit.
+            assert BT_CLASSNAME.equals(leaf.getClass().getCanonicalName());
+            // this is a bug in BreakTransliterator! For incremental runs where no boundaries are
+            // found, it sets position.start=0! Since no boundaries were found though, we can
+            // correct this by setting position.start = position.limit.
             if (MITIGATE_BREAK_TRANSLITERATOR_POSITION_BUG) {
               position.start = position.limit;
             }
@@ -302,6 +306,8 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
       // statements to `continue` to the outer loop (named loop)
     }
   }
+
+  private static final String BT_CLASSNAME = "com.ibm.icu.text.BreakTransliterator";
 
   /** Non-final, package access, for tests */
   static boolean MITIGATE_BREAK_TRANSLITERATOR_POSITION_BUG = true;
@@ -342,11 +348,12 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
   }
 
   private int advanceCeiling(int i) {
-    // NOTE: with the arbitrary MAX_CONTEXT_LENGTH_FLOOR universally applied by ICUTransform2CharFilterFactory
-    // (in support of quantifiers), the incorporation of `getMaximumContextLength()` here will in many cases
-    // be practically insignificant; but it is correct, in order to enforce a strict ordering of windows across
-    // different Transliterator leaves, and if more nuanced maxContextLength support is introduced, this will
-    // become definitely significant.
+    // NOTE: with the arbitrary MAX_CONTEXT_LENGTH_FLOOR universally applied by
+    // ICUTransform2CharFilterFactory (in support of quantifiers), the incorporation of
+    // `getMaximumContextLength()` here will in many cases be practically insignificant;
+    // but it is correct, in order to enforce a strict ordering of windows across
+    // different Transliterator leaves, and if more nuanced maxContextLength support
+    // is introduced, this will become definitely significant.
     final int preceding = i - 1;
     return committedTo[preceding] - mcls[preceding];
   }
@@ -390,7 +397,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
         if (!inputFinished) {
           return leaves.length;
         } else {
-          assert buf.length() == checkPosition : "buf.length()="+buf.length()+" != checkPosition="+checkPosition+" (idx="+i+")";
+          assert buf.length() == checkPosition;
           if (committedTo[i] < checkPosition) {
             limitTo[i] = bufMaxIdx;
             return i;
@@ -481,7 +488,8 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     String prePos = REPORT ? position.toString() : null;
     String pre = REPORT ? toString(buf, preStart, preLimit) : null;
     t.filteredTransliterate(buf, position, false); // equivalent to `finishTransliteration(...)`
-    if (REPORT) System.err.println("YYY"+i+": \""+pre+"\" => \""+toString(buf, preStart, position.limit)+"\" ("+prePos+"=>"+position+")");
+    // if (REPORT) System.err.println("YYY"+i+": \""+pre+"\" => \""+toString(buf,
+    // preStart, position.limit)+"\" ("+prePos+"=>"+position+")");
     return commit(i, preLimit, bypass);
   }
 

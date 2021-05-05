@@ -60,32 +60,32 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
   /**
    * maxContextLength does not appear to be set appropriately for some Transliterators (perhaps
    * especially `AnyTransliterator`s?). Until we can get a proper fix in place, simply set a static
-   * floor for maxContextLength
-   * NOTE: this was "initially" set to `2` during development, but had to be bumped to `4`
-   * see TestICUTransform2CharFilter.testBespoke10 for the example that motivated this increase
+   * floor for maxContextLength.
+   *
+   * <p>NOTE: this was "initially" set to `2` during development, but had to be bumped to `4` see
+   * TestICUTransform2CharFilter.testBespoke10 for the example that motivated this increase
    * (cy-cy_FONIPA, input '\u20f8\u20df\u20fd\u20f6\u20fe\u20e3 otfr \ufb9a vhguj')
    *
-   * (cy-cy_FONIPA again; input '\uaa63\uaa6d jbfbu'; bumped MCLF from 6 to 7)
+   * <p>(cy-cy_FONIPA again; input '\uaa63\uaa6d jbfbu'; bumped MCLF from 6 to 7)
    *
-   * cy-cy_FONIPA is a frequent problem because it makes use of (commonly-matched) quantifiers,
+   * <p>cy-cy_FONIPA is a frequent problem because it makes use of (commonly-matched) quantifiers,
    * and quantifiers are _not_ accounted for in {@link Transliterator#getMaximumContextLength()}.
    * Ideally we would be able to apply an arbitrary maxContextLength floor _only_ to leaf
    * transliterators that employ quantifiers. At the moment, it appears the only way to to do this
    * would be to re-parse rules and detect quantifiers ourselves (the ICU API apparently doesn't
    * offer a window into whether a Transliterator employs quantifiers).
    *
-   * For now, we'll set an arbitrary floor applicable across all Transliterators.
+   * <p>For now, we'll set an arbitrary floor applicable across all Transliterators.
    *
-   * TODO: don't apply this arbitrary floor to Transliterators that are known to _not_ use
-   *  quantifiers (e.g., NormalizationTransliterator, ...?)
+   * <p>TODO: don't apply this arbitrary floor to Transliterators that are known to _not_ use
+   * quantifiers (e.g., NormalizationTransliterator, ...?)
    *
-   * Applying this arbitrary floor effectively masks some potential issues. E.g., if selective
+   * <p>Applying this arbitrary floor effectively masks some potential issues. E.g., if selective
    * quantifier-Transliterator detection is implemented, it may (?) be crucial to insure that
-   * `ICUTransform2CharFilter#advanceCeiling(int)` should block advance based on the
-   * progression of the previous instance _and its anteContext_. This is done prospectively,
-   * but is practically obviated by the arbitrary across-the-board MAX_CONTEXT_LENGTH_FLOOR
-   * applied here. (See `TestICUTransform2CharFilter#testBespoke12()` for a possible example
-   * illustrating this case?)
+   * `ICUTransform2CharFilter#advanceCeiling(int)` should block advance based on the progression of
+   * the previous instance _and its anteContext_. This is done prospectively, but is practically
+   * obviated by the arbitrary across-the-board MAX_CONTEXT_LENGTH_FLOOR applied here. (See
+   * `TestICUTransform2CharFilter#testBespoke12()` for a possible example illustrating this case?)
    */
   private static final int MAX_CONTEXT_LENGTH_FLOOR = 7;
 
@@ -138,7 +138,8 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
     if (t == null) {
       t = parseTransliteratorFromArgs(args);
     }
-    List<TransliteratorEntry> decomposed = new ArrayList<>(); // contains only leaf-level Transliterators
+    // `decomposed` contains only leaf-level Transliterators
+    List<TransliteratorEntry> decomposed = new ArrayList<>();
     List<List<FilterBypassEntry>> bypassFilters = new ArrayList<>();
     final int[] maxKeepContext = new int[] {t.getMaximumContextLength(), 0, 0};
     UnicodeSet topLevelFilter =

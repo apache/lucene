@@ -87,8 +87,13 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
       int initCopy = random().nextInt(bound);
       int initReplace = random().nextInt(bound);
       int size = random().nextInt(bound);
-      int destOff = size == 0 ? 0 : random().nextInt(size); // negative offset, from `*.length()`
-      int destLimitOff = destOff == 0 ? 0 : random().nextInt(destOff); // negative offset of dest limit
+
+      // negative offset, from `*.length()`
+      int destOff = size == 0 ? 0 : random().nextInt(size);
+
+      // negative offset of dest limit
+      int destLimitOff = destOff == 0 ? 0 : random().nextInt(destOff);
+
       String replacement = getReplacementText(random().nextInt(size + 1));
       String replace1 = replacement;
       CRStruct copy = new CRStruct(initCopy, size);
@@ -376,7 +381,10 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     r = new CircularReplaceable("abcdefghijklmnopqrstuvwxyzabcd");
     r.replace(10, 26, "TSRQPONMLKJIHG");
     assertEquals("abcdefghijTSRQPONMLKJIHGabcd", r.toString());
-    r.replace(16, 18, "NMLKJIHGFEDCBAZYXWVUTSRQPONM"); // target key "NM" is both prefix and suffix of replacement val
+
+    // target key "NM" is both prefix and suffix of replacement val
+    r.replace( 16, 18, "NMLKJIHGFEDCBAZYXWVUTSRQPONM");
+
     charSink = new char[r.length()];
     int[] offsets2 = new int[r.length()];
     assertEquals("abcdefghijTSRQPONMLKJIHGFEDCBAZYXWVUTSRQPONMLKJIHGabcd", r.toString());
@@ -779,13 +787,19 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
       char[] actual = new char[expectedChars.length];
       final int[] counter = new int[1];
       final int[] offsetMetadata = new int[passExpectedOffsets.length];
-      r.flush(actual, 0, actual.length, len = r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-        // it's hard to correct expected diffs for multiple passes, so we pass a new registrar
-        // for each pass (thus we only need correction for _offsets_).
-        offsetMetadata[counter[0]++] = offset;
-        offsetMetadata[counter[0]++] = diff;
-        return 0;
-      }));
+      r.flush(
+          actual,
+          0,
+          actual.length,
+          len = r.length(),
+          new CircularReplaceable.OffsetCorrectionRegistrar(
+              (offset, diff) -> {
+                // it's hard to correct expected diffs for multiple passes, so we pass a new
+                // registrar for each pass (thus we only need correction for _offsets_).
+                offsetMetadata[counter[0]++] = offset;
+                offsetMetadata[counter[0]++] = diff;
+                return 0;
+              }));
       assertEquals(expectedHeadDiff, r.headDiff());
       assertArrayEquals(expectedChars, actual);
       assertArrayEquals(

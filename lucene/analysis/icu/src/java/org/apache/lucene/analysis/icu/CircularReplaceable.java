@@ -140,36 +140,38 @@ public class CircularReplaceable implements Replaceable {
     // we can't care about offsetCorrect, so we just ignore it (don't have to clear it).
     assert workingBuffer == null;
     head = 0;
-    tail= 0;
-    //Arrays.fill(offsetCorrect, 0);
+    tail = 0;
+    // Arrays.fill(offsetCorrect, 0);
   }
 
 //  2> copy acadae/1/2/6 => acadaec
-//  2>    com.ibm.icu.text.StringReplacer.replace(StringReplacer.java:159) (copy lead context codepoint)
-//  2>                           OR replace acadae/6/6/\uFFFF        :162) (copy initial lead pseudo-codepoint)
-//  2>    com.ibm.icu.text.StringReplacer.replace(StringReplacer.java:159) (copy lead context codepoint)
+//  2>   StringReplacer.replace(StringReplacer.java:159) (copy lead context codepoint)
+//  2>         OR replace acadae/6/6/\uFFFF        :162) (copy initial lead pseudo-codepoint)
+//  2>   StringReplacer.replace(StringReplacer.java:159) (copy lead context codepoint)
 //  2> copy acadaec/3/4/7 => acadaecd
-//  2>    com.ibm.icu.text.StringReplacer.replace(StringReplacer.java:187) (copy trail context codepoint)
+//  2>   StringReplacer.replace(StringReplacer.java:187) (copy trail context codepoint)
 //  2> replace acadaecd/7/7/b => acadaecbd
-//  2>       rule filters from original source offset to dest by means of "replace". This carries no offset
-//  2>       metadata, but we're no worse off than if this were executed directly via in-place "replace".
-//  2>    com.ibm.icu.text.StringReplacer.replace(StringReplacer.java:212)
+//  2>       rule filters from original source offset to dest by means of "replace". This
+//  2>       carries no offset metadata, but we're no worse off than if this were executed
+//  2>       directly via in-place "replace".
+//  2>   StringReplacer.replace(StringReplacer.java:212)
 //  2> copy acadaecbd/7/8/2 => acbadaecbd
-//  2>    com.ibm.icu.text.StringReplacer.replace(StringReplacer.java:223) (copy from tmp buffer to inline offset)
+//  2>   StringReplacer.replace(StringReplacer.java:223) (copy from tmp buf to inline offset)
 //  2> replace acbadaecbd/7/10/ => acbadae
-//  2>    com.ibm.icu.text.StringReplacer.replace(StringReplacer.java:224) (delete temp buffer)
+//  2>   StringReplacer.replace(StringReplacer.java:224) (delete temp buffer)
 //  2> replace acbadae/3/4/ => acbdae
-//  2>    com.ibm.icu.text.StringReplacer.replace(StringReplacer.java:227) (delete original key)
+//  2>   StringReplacer.replace(StringReplacer.java:227) (delete original key)
 //
-// The above sequence can be easily and unambiguously recognized in its entirety as distinct from any other
-// type of manipulation, and handled as a special case that avoids needless shifting and, more importantly,
-// preserves integrity of headDiff without jumping through a bunch of convoluted hoops.
+// The above sequence can be easily and unambiguously recognized in its entirety as distinct
+// from any other type of manipulation, and handled as a special case that avoids needless
+// shifting and, more importantly, preserves integrity of headDiff without jumping through a
+// bunch of convoluted hoops.
 //
-// As explained in `StringReplacer.replace(...)`, in most cases, this more complex sequence is only executed
-// the first time a transliteration rule is encountered (StringReplacer instances are static and reused);
-// Subsequent executions in many (most?) cases use inline "replace". Unless handled carefully, this situation
-// has the potential to result in inconsistent (and stateful!) behavior out of an ostensibly stateless
-// component.
+// As explained in `StringReplacer.replace(...)`, in most cases, this more complex sequence
+// is only executed the first time a transliteration rule is encountered (StringReplacer
+// instances are static and reused); Subsequent executions in many (most?) cases use inline
+// "replace". Unless handled carefully, this situation has the potential to result in
+// inconsistent (and stateful!) behavior out of an ostensibly stateless component.
 
   int headDiff() {
     return offsetCorrect[head & mask];
@@ -301,8 +303,9 @@ public class CircularReplaceable implements Replaceable {
         workingBuffer.getChars(srcStart - head, srcLimit - head, dst, dstStart);
         return;
       } else if (srcLimit > head) {
-        // handling this case is relatively complex; more importantly it should be completely unnecessary,
-        // given the assumptions regarding use of the workingBuffer; so enforce this assumption here.
+        // handling this case is relatively complex; more importantly it should be completely
+        // unnecessary, given the assumptions regarding use of the workingBuffer; so enforce
+        // this assumption here.
         throw new IllegalArgumentException("invalid assumption about use of workingBuffer?");
       }
     }
@@ -434,16 +437,18 @@ public class CircularReplaceable implements Replaceable {
   }
 
   /**
-   * We flag this here because, despite the fact that common-prefix trimming is prescribed by the `Replaceable`
-   * API docs for `replace(...)` methods, it serves no functional purpose for metadata consisting of _offsets_
-   * (as is the case in this class). The reason is that because of general "start offset affinity", common
-   * _prefixes_ are guaranteed to inherit extant offsets anyway, with or without special handling. We leave
-   * {@link #TRIM_PREFIXES} set to `true` here, because it could in principle shortcircuit superfluous operations;
-   * but it's useful to have the "functionally superfluous" nature of this optimization specifically called out
-   * here for the sake of clarity.
-   * NOTE: by contrast, common-suffix trimming _is_ functionally significant, because it can change the basis for
-   * offset correction, on both removal _and_ insertion of characters, potentially increasing the accuracy of
-   * offset resolution.
+   * We flag this here because, despite the fact that common-prefix trimming is prescribed by the
+   * `Replaceable` API docs for `replace(...)` methods, it serves no functional purpose for metadata
+   * consisting of _offsets_ (as is the case in this class). The reason is that because of general
+   * "start offset affinity", common _prefixes_ are guaranteed to inherit extant offsets anyway,
+   * with or without special handling. We leave {@link #TRIM_PREFIXES} set to `true` here, because
+   * it could in principle shortcircuit superfluous operations; but it's useful to have the
+   * "functionally superfluous" nature of this optimization specifically called out here for the
+   * sake of clarity.
+   *
+   * <p>NOTE: by contrast, common-suffix trimming _is_ functionally significant,
+   * because it can change the basis for offset correction, on both removal _and_ insertion of
+   * characters, potentially increasing the accuracy of offset resolution.
    */
   private static final boolean TRIM_PREFIXES = true;
 
@@ -598,11 +603,11 @@ public class CircularReplaceable implements Replaceable {
           && buf[checkSrcIdx & mask] == buf[checkDestIdx & mask]);
       if (checkSrcIdx + 1 == srcStart) {
         // source in its entirety is (the same as or) a suffix of replacement.
-        // the offset of the first char in the dest range should already hold the original offset of the
-        // source key, so don't overwrite it! We increment `checkSrcIdx` and `checkDestIdx` in order to
-        // re-associate the remaining suffix offsets with their corresponding "replacements"; the remainder
-        // of the offsets in the "dest" (replacement) range should already hold `-1` from the "insert"
-        // operation, so we're done.
+        // the offset of the first char in the dest range should already hold the original offset of
+        // the source key, so don't overwrite it! We increment `checkSrcIdx` and `checkDestIdx` in
+        // order to re-associate the remaining suffix offsets with their corresponding "replacements";
+        // the remainder of the offsets in the "dest" (replacement) range should already hold `-1`
+        // from the "insert" operation, so we're done.
         checkSrcIdx += 2; // 1 to get to suffix start, 1 to not overwrite original source offset
         checkDestIdx += 2;
         trimmedLimit = checkSrcIdx - 1;
@@ -645,9 +650,10 @@ public class CircularReplaceable implements Replaceable {
     transferOffsets(checkSrcIdx, head + 1, checkDestIdx);
     if (collapsedOffsets > 0) {
       int i = Math.max(srcStart - (srcLimit - trimmedLimit), watchKeyOriginalOffset + 1);
-      // NOTE: see below. Arguably the "copy" approach is more appropriate, because after the first replace,
-      // "A" inherits from "e", and "Z" points to the same position as "A". After the second replace, "A"
-      // inherits from "c", and "Z" still points to the same position as "A" -- i.e., `-1` offset correction
+      // NOTE: see below. Arguably the "copy" approach is more appropriate, because after the first
+      // replace, "A" inherits from "e", and "Z" points to the same position as "A". After the second
+      // replace, "A" inherits from "c", and "Z" still points to the same position as "A" -- i.e.,
+      // `-1` offset correction
       // 2> Stage1: abcde => abcdAZYX (AZYX)
       // 2> Stage2: abcdAZYX => aBAZYX (BAZ)
       // 2> mid-r:[0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -713,22 +719,24 @@ public class CircularReplaceable implements Replaceable {
         if (DETECT_INTRODUCED_UNPAIRED_SURROGATES) {
           // Not 100% certain of this diagnosis, but quick dump of my current thinking:
           // Because complex submatchers process 16-bit codepoints, but matchrules (esp. _negative_
-          // matchrules) can overreport their anteContext limit to accommodate 16- and 32-bit codepoints, it is
-          // possible for some matchrules to match too much antecontext; this is wrong, but relatively harmless
-          // unless in the case of a negative matchrule that matches on an unmatched surrogate boundary.
-          // We can mitigate this here, but I think it's an ICU problem. N.b., I think this only affects
-          // the _complex_ copy/replace/workingBuffer case.
-          // assume this was introduced erroneously, and remove it.
-          // in practice this should happen vanishingly infrequently.
-          // Unfortunately, we can't fix this by removing the offending character and shifting the contents
-          // of the buffer, because that would mess up ICU code position accounting. So we'll replace the
-          // offending character with the Unicode "replacement char"
+          // matchrules) can overreport their anteContext limit to accommodate 16- and 32-bit
+          // codepoints, it is possible for some matchrules to match too much antecontext; this
+          // is wrong, but relatively harmless unless in the case of a negative matchrule that
+          // matches on an unmatched surrogate boundary.
 
-          // NOTE: this code could very likely be optimized to only the cases that actually get triggered in
-          // practice (assuming that a full scan of the replacement may _not_ be necessary). But if fixed upstream
-          // in ICU4J, this entire block could just be removed, which would be preferable.
+          // We can mitigate this here, but I think it's an ICU problem. N.b., I think this only
+          // affects the _complex_ copy/replace/workingBuffer case. Assume this was introduced
+          // erroneously, and remove it. In practice this should happen vanishingly infrequently.
 
-          // System.err.println("blah("+watchKeyOriginalOffset+", "+start+", "+origLimit+")");
+          // Unfortunately, we can't fix this by removing the offending character and shifting the
+          // contents of the buffer, because that would mess up ICU code position accounting. So
+          // we'll replace the offending character with the Unicode "replacement char"
+
+          // NOTE: this code could very likely be optimized to only the cases that actually get
+          // triggered in practice (assuming that a full scan of the replacement may _not_ be
+          // necessary). But if fixed upstream in ICU4J, this entire block could just be removed,
+          // which would be preferable.
+
           int i = Math.max(watchKeyOriginalOffset - 1, 0);
           if (i < start - 1) {
             if (!UTF16.isLeadSurrogate(charAt(i))) {
@@ -746,8 +754,15 @@ public class CircularReplaceable implements Replaceable {
                 // found lead (high) surrogate
                 c = charAt(++i);
                 if (!UTF16.isTrailSurrogate(c)) {
-                  assert false : "we have not encountered this case in practice"; // simply for awareness
-                  assert (introducedUnpairedSurrogate = "found1 a lone (lead/high)! wkoo="+watchKeyOriginalOffset+", i="+(i - 1)+", start="+start) != null;
+                  assert false : "we have not encountered this case in practice";
+                  assert (introducedUnpairedSurrogate =
+                          "found1 a lone (lead/high)! wkoo="
+                              + watchKeyOriginalOffset
+                              + ", i="
+                              + (i - 1)
+                              + ", start="
+                              + start)
+                      != null;
                   if (FIX_INTRODUCED_UNPAIRED_SURROGATES) {
                     buf[(i - 1) & mask] = '\ufffd';
                   }
@@ -758,7 +773,14 @@ public class CircularReplaceable implements Replaceable {
                 // because of the direction of processing, the only way we get here is
                 // for an unpaired trail surrogate; so correct it
                 // Hiragana-Latin, wkoo=460, i=460, start=462
-                assert (introducedUnpairedSurrogate = "found1 a lone (trail/low)! wkoo="+watchKeyOriginalOffset+", i="+i+", start="+start) != null;
+                assert (introducedUnpairedSurrogate =
+                        "found1 a lone (trail/low)! wkoo="
+                            + watchKeyOriginalOffset
+                            + ", i="
+                            + i
+                            + ", start="
+                            + start)
+                    != null;
                 if (FIX_INTRODUCED_UNPAIRED_SURROGATES) {
                   buf[i & mask] = '\ufffd';
                 }
@@ -767,9 +789,9 @@ public class CircularReplaceable implements Replaceable {
             }
           }
           if (i == start) {
-            assert start == 0 : "instead start="+start+", i="+i+", wkoo="+watchKeyOriginalOffset;
+            assert start == 0;
           } else {
-            assert i == start - 1 : "instead start="+start+", i="+i+", wkoo="+watchKeyOriginalOffset;
+            assert i == start - 1;
             if (UTF16.isLeadSurrogate(charAt(i))) {
               // check that it does have a trail
               if (!UTF16.isTrailSurrogate(charAt(origLimit))) {
@@ -778,7 +800,16 @@ public class CircularReplaceable implements Replaceable {
                 // Kana-Latn, wkoo=239, i=239, start=240
                 // Hira-Latn, wkoo=44, i=44, start=45, origLimit=46
                 // Hiragana-Latin, wkoo=840, i=840, start=841, origLimit=842
-                assert (introducedUnpairedSurrogate = "found2 a lone (lead/high)! wkoo="+watchKeyOriginalOffset+", i="+i+", start="+start+", origLimit="+origLimit) != null;
+                assert (introducedUnpairedSurrogate =
+                        "found2 a lone (lead/high)! wkoo="
+                            + watchKeyOriginalOffset
+                            + ", i="
+                            + i
+                            + ", start="
+                            + start
+                            + ", origLimit="
+                            + origLimit)
+                    != null;
                 if (FIX_INTRODUCED_UNPAIRED_SURROGATES) {
                   buf[i & mask] = '\ufffd';
                 }
@@ -786,8 +817,15 @@ public class CircularReplaceable implements Replaceable {
             } else if (origLimit < head) {
               // check that it doesn't have a trail
               if (UTF16.isTrailSurrogate(charAt(origLimit))) {
-                assert false : "we have not encountered this case in practice"; // simply for awareness
-                assert (introducedUnpairedSurrogate = "found2 a lone (trail/low)! wkoo="+watchKeyOriginalOffset+", i="+origLimit+", start="+start) != null;
+                assert false : "we have not encountered this case in practice";
+                assert (introducedUnpairedSurrogate =
+                        "found2 a lone (trail/low)! wkoo="
+                            + watchKeyOriginalOffset
+                            + ", i="
+                            + origLimit
+                            + ", start="
+                            + start)
+                    != null;
                 if (FIX_INTRODUCED_UNPAIRED_SURROGATES) {
                   buf[origLimit & mask] = '\ufffd';
                 }
@@ -990,7 +1028,10 @@ public class CircularReplaceable implements Replaceable {
       int keepContext,
       OffsetCorrectionRegistrar registrar) {
     assert !wbActive;
-    final int oldTail = tail + flushKeepContext; // for output purposes, tail includes extant flushKeepContext
+
+    // for output purposes, tail includes extant flushKeepContext
+    final int oldTail = tail + flushKeepContext;
+
     if (toOffset <= oldTail) {
       return 0;
     }
@@ -1124,13 +1165,13 @@ public class CircularReplaceable implements Replaceable {
         if (i < shiftedEoAdjustIdx && offsetCorrect[iMask = (i & mask)] == -1) {
           // as long as we encounter a run of "inserted" characters, we first try to allow them to
           // "inherit" offsets from preceding adjustments. It's tempting to view this as weird and
-          // "special-casey", but in fact it's well-founded: inserted chars are defined as "inserted"
-          // relative to the preceding run of characters. When a chain of inserted characters follows
-          // a preceding run that has had characters _removed_, it should as far as possible inherit
-          // offsets from the removed characters, rather than "jump" the removal after the inserted
-          // chars. "As far as possible" here means that once we encounter a character that is _not_
-          // inserted (i.e., `offset != -1`), that character should be considered a boundary across
-          // which contiguous offsets should _not_ be inherited.
+          // "special-casey", but in fact it's well-founded: inserted chars are defined as
+          // "inserted" relative to the preceding run of characters. When a chain of inserted
+          // characters follows a preceding run that has had characters _removed_, it should as far
+          // as possible inherit offsets from the removed characters, rather than "jump" the removal
+          // after the inserted chars. "As far as possible" here means that once we encounter a
+          // character that is _not_ inserted (i.e., `offset != -1`), that character should be
+          // considered a boundary across which contiguous offsets should _not_ be inherited.
           do {
             offsetCorrect[iMask] = 0;
           } while (--externalOffsetAdjust > 0
@@ -1286,7 +1327,8 @@ public class CircularReplaceable implements Replaceable {
       final int len = head - tail;
       System.arraycopy(buf, tailOldMask, newBuf, tailNewMask, len);
       if (newOffsetCorrect != null) {
-        System.arraycopy(offsetCorrect, tailOldMask, newOffsetCorrect, tailNewMask, len + 1); // `len+1` to include headDiff
+        // `len+1` to include headDiff
+        System.arraycopy(offsetCorrect, tailOldMask, newOffsetCorrect, tailNewMask, len + 1);
       }
     } else {
       final int tailSectionLength = capacity - tailOldMask;
@@ -1296,16 +1338,22 @@ public class CircularReplaceable implements Replaceable {
         System.arraycopy(buf, tailOldMask, newBuf, tailNewMask, tailSectionLength);
         System.arraycopy(buf, 0, newBuf, newHeadSectionOffset, headOldMask);
         if (newOffsetCorrect != null) {
-          System.arraycopy(offsetCorrect, tailOldMask, newOffsetCorrect, tailNewMask, tailSectionLength);
-          System.arraycopy(offsetCorrect, 0, newOffsetCorrect, newHeadSectionOffset, headOldMask + 1); // `len+1` to include headDiff
+          System.arraycopy(
+              offsetCorrect, tailOldMask, newOffsetCorrect, tailNewMask, tailSectionLength);
+          // `len+1` to include headDiff
+          System.arraycopy(
+              offsetCorrect, 0, newOffsetCorrect, newHeadSectionOffset, headOldMask + 1);
         }
       } else {
         // new and old both wrap (but at the same boundary)
         System.arraycopy(buf, tailOldMask, newBuf, tailNewMask, tailSectionLength);
         System.arraycopy(buf, 0, newBuf, 0, headOldMask);
         if (newOffsetCorrect != null) {
-          System.arraycopy(offsetCorrect, tailOldMask, newOffsetCorrect, tailNewMask, tailSectionLength);
-          System.arraycopy(offsetCorrect, 0, newOffsetCorrect, 0, headOldMask + 1); // `len+1` to include headDiff
+          System.arraycopy(
+              offsetCorrect, tailOldMask, newOffsetCorrect, tailNewMask, tailSectionLength);
+          // `len+1` to include headDiff
+          System.arraycopy(
+              offsetCorrect, 0, newOffsetCorrect, 0, headOldMask + 1);
         }
       }
     }
