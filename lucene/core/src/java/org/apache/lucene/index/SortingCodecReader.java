@@ -33,6 +33,7 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -235,11 +236,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       public int size() {
         return postingsReader.size();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return postingsReader.ramBytesUsed();
-      }
     };
   }
 
@@ -269,11 +265,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }
@@ -306,11 +297,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
-      }
     };
   }
 
@@ -326,6 +312,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public VectorValues getVectorValues(String field) throws IOException {
         return new VectorValuesWriter.SortingVectorValues(delegate.getVectorValues(field), docMap);
+      }
+
+      @Override
+      public TopDocs search(String field, float[] target, int k, int fanout) {
+        throw new UnsupportedOperationException();
       }
 
       @Override
@@ -358,11 +349,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }
@@ -439,11 +425,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
-      }
     };
   }
 
@@ -485,11 +466,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }

@@ -16,14 +16,11 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Test basic plane functionality. */
-public class TestGeoModel {
+public class TestGeoModel extends LuceneTestCase {
 
   protected static final PlanetModel scaledModel = new PlanetModel(1.2, 1.5);
 

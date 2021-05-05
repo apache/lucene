@@ -1467,7 +1467,9 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
       // output token that also happens to be in the input:
       try {
         actual = Operations.determinize(actual, 50000);
-      } catch (TooComplexToDeterminizeException tctde) {
+      } catch (
+          @SuppressWarnings("unused")
+          TooComplexToDeterminizeException tctde) {
         // Unfortunately the syns can easily create difficult-to-determinize graphs:
         assertTrue(approxEquals(actual, expected));
         continue;
@@ -1475,7 +1477,9 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
 
       try {
         expected = Operations.determinize(expected, 50000);
-      } catch (TooComplexToDeterminizeException tctde) {
+      } catch (
+          @SuppressWarnings("unused")
+          TooComplexToDeterminizeException tctde) {
         // Unfortunately the syns can easily create difficult-to-determinize graphs:
         assertTrue(approxEquals(actual, expected));
         continue;

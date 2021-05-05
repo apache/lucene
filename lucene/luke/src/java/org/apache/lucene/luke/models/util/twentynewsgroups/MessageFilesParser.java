@@ -47,6 +47,7 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
     this.root = root;
   }
 
+  @Override
   public FileVisitResult visitFile(Path file, BasicFileAttributes attr) {
     try {
       if (attr.isRegularFile()) {
@@ -55,7 +56,9 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
           messages.add(parse(file));
         }
       }
-    } catch (IOException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
       log.warn("Invalid file? {}", file);
     }
     return FileVisitResult.CONTINUE;
@@ -96,7 +99,9 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
           case "Lines":
             try {
               message.setLines(Integer.parseInt(ary[1].trim()));
-            } catch (NumberFormatException e) {
+            } catch (
+                @SuppressWarnings("unused")
+                NumberFormatException e) {
             }
             break;
           default:

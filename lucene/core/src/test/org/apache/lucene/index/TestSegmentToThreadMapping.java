@@ -28,6 +28,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
@@ -106,6 +107,11 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
 
       @Override
       public VectorValues getVectorValues(String field) {
+        return null;
+      }
+
+      @Override
+      public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout) {
         return null;
       }
 

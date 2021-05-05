@@ -50,7 +50,29 @@ class DocIdsWriter {
       }
       if (max <= 0xffffff) {
         out.writeByte((byte) 24);
-        for (int i = 0; i < count; ++i) {
+        // write them the same way we are reading them.
+        int i;
+        for (i = 0; i < count - 7; i += 8) {
+          int doc1 = docIds[start + i];
+          int doc2 = docIds[start + i + 1];
+          int doc3 = docIds[start + i + 2];
+          int doc4 = docIds[start + i + 3];
+          int doc5 = docIds[start + i + 4];
+          int doc6 = docIds[start + i + 5];
+          int doc7 = docIds[start + i + 6];
+          int doc8 = docIds[start + i + 7];
+          long l1 = (doc1 & 0xffffffL) << 40 | (doc2 & 0xffffffL) << 16 | ((doc3 >>> 8) & 0xffffL);
+          long l2 =
+              (doc3 & 0xffL) << 56
+                  | (doc4 & 0xffffffL) << 32
+                  | (doc5 & 0xffffffL) << 8
+                  | ((doc6 >> 16) & 0xffL);
+          long l3 = (doc6 & 0xffffL) << 48 | (doc7 & 0xffffffL) << 24 | (doc8 & 0xffffffL);
+          out.writeLong(l1);
+          out.writeLong(l2);
+          out.writeLong(l3);
+        }
+        for (; i < count; ++i) {
           out.writeShort((short) (docIds[start + i] >>> 8));
           out.writeByte((byte) docIds[start + i]);
         }
@@ -89,7 +111,7 @@ class DocIdsWriter {
     }
   }
 
-  static <T> void readInts32(IndexInput in, int count, int[] docIDs) throws IOException {
+  private static void readInts32(IndexInput in, int count, int[] docIDs) throws IOException {
     for (int i = 0; i < count; i++) {
       docIDs[i] = in.readInt();
     }

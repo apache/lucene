@@ -23,6 +23,7 @@ class SpanPositionQueue extends PriorityQueue<Spans> {
     super(maxSize); // do not prepopulate
   }
 
+  @Override
   protected boolean lessThan(Spans s1, Spans s2) {
     int start1 = s1.startPosition();
     int start2 = s2.startPosition();

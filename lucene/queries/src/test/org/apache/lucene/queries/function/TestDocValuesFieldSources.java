@@ -63,6 +63,8 @@ public class TestDocValuesFieldSources extends LuceneTestCase {
       case SORTED_NUMERIC:
         f = new SortedNumericDocValuesField("dv", 0);
         break;
+      case NONE:
+      case SORTED_SET:
       default:
         throw new AssertionError();
     }
@@ -90,6 +92,8 @@ public class TestDocValuesFieldSources extends LuceneTestCase {
           vals[i] = (long) random().nextInt((int) PackedInts.maxValue(bitsPerValue));
           f.setLongValue((Long) vals[i]);
           break;
+        case NONE:
+        case SORTED_SET:
         default:
           throw new AssertionError();
       }
@@ -119,6 +123,8 @@ public class TestDocValuesFieldSources extends LuceneTestCase {
                   ? new MultiValuedLongFieldSource("dv", Type.MIN)
                   : new MultiValuedLongFieldSource("dv", Type.MAX);
           break;
+        case NONE:
+        case SORTED_SET:
         default:
           throw new AssertionError();
       }
@@ -153,6 +159,8 @@ public class TestDocValuesFieldSources extends LuceneTestCase {
           case SORTED_NUMERIC:
             assertEquals(((Number) expected).longValue(), values.longVal(i));
             break;
+          case NONE:
+          case SORTED_SET:
           default:
             throw new AssertionError();
         }

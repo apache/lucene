@@ -24,7 +24,7 @@ import org.apache.lucene.util.TestUtil;
 
 public class TestGeo3DDocValues extends LuceneTestCase {
 
-  public void testBasic() throws Exception {
+  public void testBasic() {
     checkPointEncoding(0.0, 0.0);
     checkPointEncoding(45.0, 72.0);
     checkPointEncoding(-45.0, -100.0);

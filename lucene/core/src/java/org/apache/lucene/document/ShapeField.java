@@ -457,6 +457,7 @@ public final class ShapeField {
     }
 
     /** pretty print the triangle vertices */
+    @Override
     public String toString() {
       String result =
           (aX + ", " + aY)

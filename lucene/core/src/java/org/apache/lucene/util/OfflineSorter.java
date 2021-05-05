@@ -579,6 +579,7 @@ public class OfflineSorter {
      *     sequence. Returns <code>true</code> otherwise.
      * @throws EOFException if the file ends before the full sequence is read.
      */
+    @Override
     public BytesRef next() throws IOException {
       if (in.getFilePointer() >= end) {
         return null;

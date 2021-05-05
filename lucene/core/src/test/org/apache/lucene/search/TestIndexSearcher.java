@@ -310,59 +310,72 @@ public class TestIndexSearcher extends LuceneTestCase {
 
   private static class RejectingMockExecutor implements ExecutorService {
 
+    @Override
     public void shutdown() {}
 
+    @Override
     public List<Runnable> shutdownNow() {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean isShutdown() {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean isTerminated() {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean awaitTermination(final long l, final TimeUnit timeUnit)
         throws InterruptedException {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> Future<T> submit(final Callable<T> tCallable) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> Future<T> submit(final Runnable runnable, final T t) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public Future<?> submit(final Runnable runnable) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> callables)
         throws InterruptedException {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> List<Future<T>> invokeAll(
         final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit)
         throws InterruptedException {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> T invokeAny(final Collection<? extends Callable<T>> callables)
         throws InterruptedException, ExecutionException {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> T invokeAny(
         final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit)
         throws InterruptedException, ExecutionException, TimeoutException {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public void execute(final Runnable runnable) {
       throw new RejectedExecutionException();
     }

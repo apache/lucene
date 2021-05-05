@@ -212,6 +212,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
             }
             break;
           }
+        case FILTER:
+        case MUST_NOT:
         default:
           {
             newQuery.add(clause);
@@ -454,6 +456,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
               case MUST_NOT:
                 builder.add(clause);
                 break;
+              case MUST:
+              case SHOULD:
               default:
                 // ignore
                 break;

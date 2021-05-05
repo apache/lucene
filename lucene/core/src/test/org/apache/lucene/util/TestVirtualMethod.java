@@ -17,17 +17,18 @@
 package org.apache.lucene.util;
 
 public class TestVirtualMethod extends LuceneTestCase {
+  private static final VirtualMethod<Base> publicTestMethod =
+      new VirtualMethod<>(Base.class, "publicTest", String.class);
+  private static final VirtualMethod<Base> protectedTestMethod =
+      new VirtualMethod<>(Base.class, "protectedTest", int.class);
 
-  private static final VirtualMethod<TestVirtualMethod> publicTestMethod =
-      new VirtualMethod<>(TestVirtualMethod.class, "publicTest", String.class);
-  private static final VirtualMethod<TestVirtualMethod> protectedTestMethod =
-      new VirtualMethod<>(TestVirtualMethod.class, "protectedTest", int.class);
+  static class Base {
+    public void publicTest(String test) {}
 
-  public void publicTest(String test) {}
+    protected void protectedTest(int test) {}
+  }
 
-  protected void protectedTest(int test) {}
-
-  static class TestClass1 extends TestVirtualMethod {
+  static class Nested1 extends Base {
     @Override
     public void publicTest(String test) {}
 
@@ -35,74 +36,73 @@ public class TestVirtualMethod extends LuceneTestCase {
     protected void protectedTest(int test) {}
   }
 
-  static class TestClass2 extends TestClass1 {
+  static class Nested2 extends Nested1 {
     @Override // make it public here
     public void protectedTest(int test) {}
   }
 
-  static class TestClass3 extends TestClass2 {
+  static class Nested3 extends Nested2 {
     @Override
     public void publicTest(String test) {}
   }
 
-  static class TestClass4 extends TestVirtualMethod {}
+  static class Nested4 extends Base {}
 
-  static class TestClass5 extends TestClass4 {}
+  static class Nested5 extends Nested4 {}
 
   public void testGeneral() {
-    assertEquals(0, publicTestMethod.getImplementationDistance(this.getClass()));
-    assertEquals(1, publicTestMethod.getImplementationDistance(TestClass1.class));
-    assertEquals(1, publicTestMethod.getImplementationDistance(TestClass2.class));
-    assertEquals(3, publicTestMethod.getImplementationDistance(TestClass3.class));
-    assertFalse(publicTestMethod.isOverriddenAsOf(TestClass4.class));
-    assertFalse(publicTestMethod.isOverriddenAsOf(TestClass5.class));
+    assertEquals(0, publicTestMethod.getImplementationDistance(Base.class));
+    assertEquals(1, publicTestMethod.getImplementationDistance(Nested1.class));
+    assertEquals(1, publicTestMethod.getImplementationDistance(Nested2.class));
+    assertEquals(3, publicTestMethod.getImplementationDistance(Nested3.class));
+    assertFalse(publicTestMethod.isOverriddenAsOf(Nested4.class));
+    assertFalse(publicTestMethod.isOverriddenAsOf(Nested5.class));
 
-    assertEquals(0, protectedTestMethod.getImplementationDistance(this.getClass()));
-    assertEquals(1, protectedTestMethod.getImplementationDistance(TestClass1.class));
-    assertEquals(2, protectedTestMethod.getImplementationDistance(TestClass2.class));
-    assertEquals(2, protectedTestMethod.getImplementationDistance(TestClass3.class));
-    assertFalse(protectedTestMethod.isOverriddenAsOf(TestClass4.class));
-    assertFalse(protectedTestMethod.isOverriddenAsOf(TestClass5.class));
+    assertEquals(0, protectedTestMethod.getImplementationDistance(Base.class));
+    assertEquals(1, protectedTestMethod.getImplementationDistance(Nested1.class));
+    assertEquals(2, protectedTestMethod.getImplementationDistance(Nested2.class));
+    assertEquals(2, protectedTestMethod.getImplementationDistance(Nested3.class));
+    assertFalse(protectedTestMethod.isOverriddenAsOf(Nested4.class));
+    assertFalse(protectedTestMethod.isOverriddenAsOf(Nested5.class));
 
     assertTrue(
         VirtualMethod.compareImplementationDistance(
-                TestClass3.class, publicTestMethod, protectedTestMethod)
+                Nested3.class, publicTestMethod, protectedTestMethod)
             > 0);
     assertEquals(
         0,
         VirtualMethod.compareImplementationDistance(
-            TestClass5.class, publicTestMethod, protectedTestMethod));
+            Nested5.class, publicTestMethod, protectedTestMethod));
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   public void testExceptions() {
-    // LuceneTestCase is not a subclass and can never override publicTest(String)
+    // Object is not a subclass and can never override publicTest(String)
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          // cast to Class to remove generics:
-          publicTestMethod.getImplementationDistance((Class) LuceneTestCase.class);
+          publicTestMethod.getImplementationDistance((Class) Object.class);
         });
 
     // Method bogus() does not exist, so IAE should be thrown
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          new VirtualMethod<>(TestVirtualMethod.class, "bogus");
+          new VirtualMethod<>(Base.class, "bogus");
         });
 
     // Method publicTest(String) is not declared in TestClass2, so IAE should be thrown
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          new VirtualMethod<>(TestClass2.class, "publicTest", String.class);
+          new VirtualMethod<>(Nested2.class, "publicTest", String.class);
         });
 
     // try to create a second instance of the same baseClass / method combination
     expectThrows(
         UnsupportedOperationException.class,
         () -> {
-          new VirtualMethod<>(TestVirtualMethod.class, "publicTest", String.class);
+          new VirtualMethod<>(Base.class, "publicTest", String.class);
         });
   }
 }

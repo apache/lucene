@@ -93,7 +93,9 @@ public abstract class CompletionQuery extends Query {
         if ((terms = leafReader.terms(getField())) == null) {
           continue;
         }
-      } catch (IOException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException e) {
         continue;
       }
       if (terms instanceof CompletionTerms) {

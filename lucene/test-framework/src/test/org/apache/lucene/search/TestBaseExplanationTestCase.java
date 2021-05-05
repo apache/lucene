@@ -92,10 +92,12 @@ public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
       super(q, in);
     }
 
+    @Override
     public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
       return in.bulkScorer(context);
     }
 
+    @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
       BrokenExplainTermQuery q = (BrokenExplainTermQuery) this.getQuery();
       Explanation result = in.explain(context, doc);

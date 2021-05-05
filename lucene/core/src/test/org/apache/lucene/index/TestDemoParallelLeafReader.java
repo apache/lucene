@@ -529,7 +529,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
               // closing (which makes MDW.close's
               // checkIndex angry):
               closedSegments.add(segIDGen);
-              parReader = null;
             }
             parReader = parLeafReader;
 
@@ -988,7 +987,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
             w.addDocument(newDoc);
           }
         } else {
-          // Just carry over doc values from previous field:
           NumericDocValues oldValues = reader.getNumericDocValues("number");
           assertNotNull("oldSchemaGen=" + oldSchemaGen, oldValues);
           for (int i = 0; i < maxDoc; i++) {
@@ -996,9 +994,9 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
             reader.document(i);
             Document newDoc = new Document();
             assertEquals(i, oldValues.nextDoc());
-            newDoc.add(
-                new NumericDocValuesField(
-                    "number", newSchemaGen * (oldValues.longValue() / oldSchemaGen)));
+            long value = newSchemaGen * (oldValues.longValue() / oldSchemaGen);
+            newDoc.add(new NumericDocValuesField("number", value));
+            newDoc.add(new LongPoint("number", value));
             w.addDocument(newDoc);
           }
         }

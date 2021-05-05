@@ -234,7 +234,9 @@ public abstract class HttpClientBase implements Closeable {
         if (!consumed && minusOne == -1) {
           try {
             EntityUtils.consume(entity);
-          } catch (Exception e) {
+          } catch (
+              @SuppressWarnings("unused")
+              Exception e) {
             // ignored on purpose
           }
           consumed = true;

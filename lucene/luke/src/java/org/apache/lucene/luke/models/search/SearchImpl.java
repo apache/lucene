@@ -261,7 +261,7 @@ public final class SearchImpl extends LukeModel implements Search {
     try {
       return mlt.like(docid);
     } catch (IOException e) {
-      throw new LukeException("Failed to create MLT query for doc: " + docid);
+      throw new LukeException("Failed to create MLT query for doc: " + docid, e);
     }
   }
 
@@ -450,6 +450,7 @@ public final class SearchImpl extends LukeModel implements Search {
       case SORTED_SET:
         return Collections.singletonList(new SortedSetSortField(name, false));
 
+      case BINARY:
       default:
         return Collections.singletonList(new SortField(name, SortField.Type.DOC));
     }

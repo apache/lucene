@@ -2142,7 +2142,7 @@ public class TestIndexSorting extends LuceneTestCase {
 
     Directory dir2 = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    if (indexSort != null && random().nextBoolean()) {
+    if (random().nextBoolean()) {
       // test congruent index sort
       iwc.setIndexSort(new Sort(new SortField("foo", SortField.Type.LONG)));
     } else {
@@ -2824,7 +2824,9 @@ public class TestIndexSorting extends LuceneTestCase {
         w.addDocument(doc);
         doc.add(dvs.get(j));
         exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
-        assertThat(exc.getMessage(), containsString("cannot change DocValues type"));
+        assertEquals(
+            "Inconsistency of field data structures across documents for field [field] of doc [2].",
+            exc.getMessage());
         w.rollback();
         IOUtils.close(w);
       }

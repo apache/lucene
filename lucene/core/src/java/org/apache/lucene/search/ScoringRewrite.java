@@ -34,8 +34,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  * Base rewrite method that translates each term into a query, and keeps the scores as computed by
  * the query.
  *
- * <p>
- *
  * @lucene.internal Only public to be accessible by spans package.
  */
 public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {

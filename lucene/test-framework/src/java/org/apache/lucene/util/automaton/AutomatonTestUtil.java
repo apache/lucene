@@ -49,7 +49,9 @@ public class AutomatonTestUtil {
       try {
         new RegExp(regexp, RegExp.NONE);
         return regexp;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
       }
     }
   }
@@ -263,7 +265,9 @@ public class AutomatonTestUtil {
           a1 = Operations.complement(a1, DEFAULT_MAX_DETERMINIZED_STATES);
         }
         return a1;
-      } catch (TooComplexToDeterminizeException tctde) {
+      } catch (
+          @SuppressWarnings("unused")
+          TooComplexToDeterminizeException tctde) {
         // This can (rarely) happen if the random regexp is too hard; just try again...
       }
     }

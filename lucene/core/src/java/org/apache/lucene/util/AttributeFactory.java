@@ -83,7 +83,7 @@ public abstract class AttributeFactory {
             .asSubclass(AttributeImpl.class);
       } catch (ClassNotFoundException cnfe) {
         throw new IllegalArgumentException(
-            "Cannot find implementing class for: " + attClass.getName());
+            "Cannot find implementing class for: " + attClass.getName(), cnfe);
       }
     }
   }

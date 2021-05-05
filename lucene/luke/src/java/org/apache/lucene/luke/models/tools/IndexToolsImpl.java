@@ -190,12 +190,15 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
       if (writer != null) {
         try {
           writer.close();
-        } catch (IOException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            IOException e) {
         }
       }
     }
   }
 
+  @Override
   public String exportTerms(String destDir, String field, String delimiter) {
     String filename = "terms_" + field + "_" + System.currentTimeMillis() + ".out";
     Path path = Paths.get(destDir, filename);

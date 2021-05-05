@@ -35,11 +35,11 @@ public class TestIndexWriterLockRelease extends LuceneTestCase {
     try {
       new IndexWriter(
           dir, new IndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.APPEND));
-    } catch (FileNotFoundException | NoSuchFileException e) {
+    } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
       try {
         new IndexWriter(
             dir, new IndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.APPEND));
-      } catch (FileNotFoundException | NoSuchFileException e1) {
+      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e1) {
       }
     } finally {
       dir.close();

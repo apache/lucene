@@ -51,6 +51,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.packed.BlockPackedWriter;
+import org.apache.lucene.util.packed.DirectWriter;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -59,9 +60,6 @@ import org.apache.lucene.util.packed.PackedInts;
  * @lucene.experimental
  */
 public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWriter {
-
-  // hard limit on the maximum number of documents per chunk
-  static final int MAX_DOCUMENTS_PER_CHUNK = 128;
 
   static final String VECTORS_EXTENSION = "tvd";
   static final String VECTORS_INDEX_EXTENSION = "tvx";
@@ -77,7 +75,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   static final int POSITIONS = 0x01;
   static final int OFFSETS = 0x02;
   static final int PAYLOADS = 0x04;
-  static final int FLAGS_BITS = PackedInts.bitsRequired(POSITIONS | OFFSETS | PAYLOADS);
+  static final int FLAGS_BITS = DirectWriter.bitsRequired(POSITIONS | OFFSETS | PAYLOADS);
 
   private final String segment;
   private FieldsIndexWriter indexWriter;
@@ -87,8 +85,9 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   private final Compressor compressor;
   private final int chunkSize;
 
+  private long numChunks; // number of chunks
   private long numDirtyChunks; // number of incomplete compressed blocks written
-  private long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
+  private long numDirtyDocs; // cumulative number of docs in incomplete chunks
 
   /** a pending doc */
   private class DocData {
@@ -224,6 +223,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   private final ByteBuffersDataOutput termSuffixes; // buffered term suffixes
   private final ByteBuffersDataOutput payloadBytes; // buffered term payloads
   private final BlockPackedWriter writer;
+  private final int maxDocsPerChunk; // hard limit on number of docs per chunk
+  private final ByteBuffersDataOutput scratchBuffer = ByteBuffersDataOutput.newResettableInstance();
 
   /** Sole constructor. */
   Lucene90CompressingTermVectorsWriter(
@@ -234,6 +235,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       String formatName,
       CompressionMode compressionMode,
       int chunkSize,
+      int maxDocsPerChunk,
       int blockShift)
       throws IOException {
     assert directory != null;
@@ -241,6 +243,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     this.compressionMode = compressionMode;
     this.compressor = compressionMode.newCompressor();
     this.chunkSize = chunkSize;
+    this.maxDocsPerChunk = maxDocsPerChunk;
 
     numDocs = 0;
     pendingDocs = new ArrayDeque<>();
@@ -373,10 +376,11 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   private boolean triggerFlush() {
-    return termSuffixes.size() >= chunkSize || pendingDocs.size() >= MAX_DOCUMENTS_PER_CHUNK;
+    return termSuffixes.size() >= chunkSize || pendingDocs.size() >= maxDocsPerChunk;
   }
 
   private void flush() throws IOException {
+    numChunks++;
     final int chunkDocs = pendingDocs.size();
     assert chunkDocs > 0 : chunkDocs;
 
@@ -476,13 +480,10 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   private void flushFields(int totalFields, int[] fieldNums) throws IOException {
-    final PackedInts.Writer writer =
-        PackedInts.getWriterNoHeader(
-            vectorsStream,
-            PackedInts.Format.PACKED,
-            totalFields,
-            PackedInts.bitsRequired(fieldNums.length - 1),
-            1);
+    scratchBuffer.reset();
+    final DirectWriter writer =
+        DirectWriter.getInstance(
+            scratchBuffer, totalFields, DirectWriter.bitsRequired(fieldNums.length - 1));
     for (DocData dd : pendingDocs) {
       for (FieldData fd : dd.fields) {
         final int fieldNumIndex = Arrays.binarySearch(fieldNums, fd.fieldNum);
@@ -491,6 +492,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       }
     }
     writer.finish();
+    vectorsStream.writeVLong(scratchBuffer.size());
+    scratchBuffer.copyTo(vectorsStream);
   }
 
   private void flushFlags(int totalFields, int[] fieldNums) throws IOException {
@@ -515,28 +518,29 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     if (nonChangingFlags) {
       // write one flag per field num
       vectorsStream.writeVInt(0);
-      final PackedInts.Writer writer =
-          PackedInts.getWriterNoHeader(
-              vectorsStream, PackedInts.Format.PACKED, fieldFlags.length, FLAGS_BITS, 1);
+      scratchBuffer.reset();
+      final DirectWriter writer =
+          DirectWriter.getInstance(scratchBuffer, fieldFlags.length, FLAGS_BITS);
       for (int flags : fieldFlags) {
         assert flags >= 0;
         writer.add(flags);
       }
-      assert writer.ord() == fieldFlags.length - 1;
       writer.finish();
+      vectorsStream.writeVInt(Math.toIntExact(scratchBuffer.size()));
+      scratchBuffer.copyTo(vectorsStream);
     } else {
       // write one flag for every field instance
       vectorsStream.writeVInt(1);
-      final PackedInts.Writer writer =
-          PackedInts.getWriterNoHeader(
-              vectorsStream, PackedInts.Format.PACKED, totalFields, FLAGS_BITS, 1);
+      scratchBuffer.reset();
+      final DirectWriter writer = DirectWriter.getInstance(scratchBuffer, totalFields, FLAGS_BITS);
       for (DocData dd : pendingDocs) {
         for (FieldData fd : dd.fields) {
           writer.add(fd.flags);
         }
       }
-      assert writer.ord() == totalFields - 1;
       writer.finish();
+      vectorsStream.writeVInt(Math.toIntExact(scratchBuffer.size()));
+      scratchBuffer.copyTo(vectorsStream);
     }
   }
 
@@ -547,18 +551,18 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         maxNumTerms |= fd.numTerms;
       }
     }
-    final int bitsRequired = PackedInts.bitsRequired(maxNumTerms);
+    final int bitsRequired = DirectWriter.bitsRequired(maxNumTerms);
     vectorsStream.writeVInt(bitsRequired);
-    final PackedInts.Writer writer =
-        PackedInts.getWriterNoHeader(
-            vectorsStream, PackedInts.Format.PACKED, totalFields, bitsRequired, 1);
+    scratchBuffer.reset();
+    final DirectWriter writer = DirectWriter.getInstance(scratchBuffer, totalFields, bitsRequired);
     for (DocData dd : pendingDocs) {
       for (FieldData fd : dd.fields) {
         writer.add(fd.numTerms);
       }
     }
-    assert writer.ord() == totalFields - 1;
     writer.finish();
+    vectorsStream.writeVInt(Math.toIntExact(scratchBuffer.size()));
+    scratchBuffer.copyTo(vectorsStream);
   }
 
   private void flushTermLengths() throws IOException {
@@ -712,11 +716,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   public void finish(FieldInfos fis, int numDocs) throws IOException {
     if (!pendingDocs.isEmpty()) {
       numDirtyChunks++; // incomplete: we had to force this flush
-      final long expectedChunkDocs =
-          Math.min(
-              MAX_DOCUMENTS_PER_CHUNK,
-              (long) ((double) chunkSize / termSuffixes.size() * pendingDocs.size()));
-      numDirtyDocs += expectedChunkDocs - pendingDocs.size();
+      numDirtyDocs += pendingDocs.size();
       flush();
     }
     if (numDocs != this.numDocs) {
@@ -724,6 +724,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
           "Wrote " + this.numDocs + " docs, finish called with numDocs=" + numDocs);
     }
     indexWriter.finish(numDocs, vectorsStream.getFilePointer(), metaStream);
+    metaStream.writeVLong(numChunks);
     metaStream.writeVLong(numDirtyChunks);
     metaStream.writeVLong(numDirtyDocs);
     CodecUtil.writeFooter(metaStream);
@@ -798,7 +799,9 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (SecurityException ignored) {
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException ignored) {
     }
     BULK_MERGE_ENABLED = v;
   }
@@ -845,8 +848,9 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
 
         // flush any pending chunks
         if (!pendingDocs.isEmpty()) {
-          flush();
           numDirtyChunks++; // incomplete: we had to force this flush
+          numDirtyDocs += pendingDocs.size();
+          flush();
         }
 
         // iterate over each chunk. we use the vectors index to find chunk boundaries,
@@ -902,6 +906,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         }
 
         // since we bulk merged all chunks, we inherit any dirty ones from this segment.
+        numChunks += matchingVectorsReader.getNumChunks();
         numDirtyChunks += matchingVectorsReader.getNumDirtyChunks();
         numDirtyDocs += matchingVectorsReader.getNumDirtyDocs();
       } else {
@@ -937,10 +942,10 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
    * ratio can degrade. This is a safety switch.
    */
   boolean tooDirty(Lucene90CompressingTermVectorsReader candidate) {
-    // more than 1% dirty, or more than hard limit of 1024 dirty chunks
-    return candidate.getNumDirtyChunks() > 1024
-        || (candidate.getNumDirtyChunks() > 1
-            && candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs());
+    // A segment is considered dirty only if it has enough dirty docs to make a full block
+    // AND more than 1% blocks are dirty.
+    return candidate.getNumDirtyDocs() > maxDocsPerChunk
+        && candidate.getNumDirtyChunks() * 100 > candidate.getNumChunks();
   }
 
   @Override
@@ -951,7 +956,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         + payloadLengthsBuf.length
         + termSuffixes.ramBytesUsed()
         + payloadBytes.ramBytesUsed()
-        + lastTerm.bytes.length;
+        + lastTerm.bytes.length
+        + scratchBuffer.ramBytesUsed();
   }
 
   @Override

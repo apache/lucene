@@ -308,7 +308,9 @@ public class TestGeoPath extends LuceneTestCase {
     final GeoPath path;
     try {
       path = GeoPathFactory.makeGeoPath(PlanetModel.WGS84, 1.117010721276371, points);
-    } catch (IllegalArgumentException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalArgumentException e) {
       return;
     }
     assertTrue(false);

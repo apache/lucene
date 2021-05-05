@@ -51,6 +51,7 @@ import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.TestRuleIgnoreTestSuites;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -550,6 +551,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
   /** Launches a child "server" (separate JVM), which is either primary or replica node */
   @SuppressForbidden(reason = "ProcessBuilder requires java.io.File for CWD")
+  @SuppressWarnings("null")
   NodeProcess startNode(final int id, Path indexPath, boolean isPrimary, long forcePrimaryVersion)
       throws IOException {
     nodeTimeStamps[id] = System.nanoTime();
@@ -606,17 +608,19 @@ public class TestStressNRTReplication extends LuceneTestCase {
     long myPrimaryGen = primaryGen;
     cmd.add("-Dtests.nrtreplication.primaryGen=" + myPrimaryGen);
 
+    // Mark as running nested.
+    cmd.add("-D" + TestRuleIgnoreTestSuites.PROPERTY_RUN_NESTED + "=true");
+
     // Mixin our own counter because this is called from a fresh thread which means the seed
     // otherwise isn't changing each time we spawn a
     // new node:
     long seed = random().nextLong() * nodeStartCounter.incrementAndGet();
-
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(seed));
     cmd.add("-ea");
     cmd.add("-cp");
     cmd.add(System.getProperty("java.class.path"));
     cmd.add("org.junit.runner.JUnitCore");
-    cmd.add(getClass().getName().replace(getClass().getSimpleName(), "SimpleServer"));
+    cmd.add(TestSimpleServer.class.getName());
 
     Writer childLog;
 
@@ -1108,7 +1112,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
                         + hitCount);
               }
             }
-          } catch (IOException ioe) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException ioe) {
             // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
             // ioe.printStackTrace(System.out);
             IOUtils.closeWhileHandlingException(c);
@@ -1172,7 +1178,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 stop.set(true);
                 fail(failMessage);
               }
-            } catch (IOException ioe) {
+            } catch (
+                @SuppressWarnings("unused")
+                IOException ioe) {
               // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
               // throw new RuntimeException(ioe);
               // ioe.printStackTrace(System.out);
@@ -1273,14 +1281,18 @@ public class TestStressNRTReplication extends LuceneTestCase {
               curPrimary.addOrUpdateDocument(c, doc, false);
               transLog.addDocument(idString, doc);
             }
-          } catch (IOException se) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException se) {
             // Assume primary crashed
             if (c != null) {
               message("top: indexer lost connection to primary");
             }
             try {
               c.close();
-            } catch (Throwable t) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable t) {
             }
             curPrimary = null;
             c = null;
@@ -1302,12 +1314,16 @@ public class TestStressNRTReplication extends LuceneTestCase {
             c.out.writeByte(SimplePrimaryNode.CMD_INDEXING_DONE);
             c.flush();
             c.in.readByte();
-          } catch (IOException se) {
+          } catch (
+              @SuppressWarnings("unused")
+              IOException se) {
             // Assume primary crashed
             message("top: indexer lost connection to primary");
             try {
               c.close();
-            } catch (Throwable t) {
+            } catch (
+                @SuppressWarnings("unused")
+                Throwable t) {
             }
             curPrimary = null;
             c = null;

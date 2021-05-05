@@ -48,24 +48,29 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
 
     // 2 times each -- should be plenty
 
+    @Override
     protected int getContainsMinimum(int laps) {
       return 2;
     }
 
+    @Override
     protected int getIntersectsMinimum(int laps) {
       return 2;
     }
 
     // producing "within" cases in Geo3D based on our random shapes doesn't happen often. It'd be
     // nice to increase this.
+    @Override
     protected int getWithinMinimum(int laps) {
       return 2;
     }
 
+    @Override
     protected int getDisjointMinimum(int laps) {
       return 2;
     }
 
+    @Override
     protected int getBoundingMinimum(int laps) {
       return 2;
     }
@@ -136,7 +141,9 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
           }
           try {
             return builder.build();
-          } catch (IllegalArgumentException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IllegalArgumentException e) {
             // This is what happens when we create a shape that is invalid.  Although it is
             // conceivable that there are cases where
             // the exception is thrown incorrectly, we aren't going to be able to do that in this
@@ -179,7 +186,9 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
           builder.buffer(width);
           try {
             return builder.build();
-          } catch (IllegalArgumentException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              IllegalArgumentException e) {
             // This is what happens when we create a shape that is invalid.  Although it is
             // conceivable that there are cases where
             // the exception is thrown incorrectly, we aren't going to be able to do that in this

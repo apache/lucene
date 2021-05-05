@@ -17,11 +17,8 @@
 package org.apache.lucene.sandbox.codecs.idversion;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.TreeMap;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -32,8 +29,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.PairOutputs.Pair;
@@ -249,29 +244,15 @@ public final class VersionBlockTreeTermsReader extends FieldsProducer {
     } else {
       try {
         return b.utf8ToString() + " " + b;
-      } catch (Throwable t) {
+      } catch (
+          @SuppressWarnings("unused")
+          Throwable t) {
         // If BytesRef isn't actually UTF8, or it's eg a
         // prefix of UTF8 that ends mid-unicode-char, we
         // fallback to hex:
         return b.toString();
       }
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long sizeInBytes = postingsReader.ramBytesUsed();
-    for (VersionFieldReader reader : fields.values()) {
-      sizeInBytes += reader.ramBytesUsed();
-    }
-    return sizeInBytes;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    List<Accountable> resources = new ArrayList<>(Accountables.namedAccountables("field", fields));
-    resources.add(Accountables.namedAccountable("delegate", postingsReader));
-    return Collections.unmodifiableList(resources);
   }
 
   @Override

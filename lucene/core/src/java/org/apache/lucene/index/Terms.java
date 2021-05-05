@@ -151,7 +151,9 @@ public abstract class Terms {
         TermsEnum iterator = iterator();
         iterator.seekExact(size - 1);
         return iterator.term();
-      } catch (UnsupportedOperationException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          UnsupportedOperationException ignored) {
         // ok
       }
     }

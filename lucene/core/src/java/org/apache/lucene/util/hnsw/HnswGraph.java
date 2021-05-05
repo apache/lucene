@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorValues;
@@ -46,10 +47,10 @@ import org.apache.lucene.util.SparseFixedBitSet;
  *       searching the graph for each newly inserted node.
  *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the later paper; it controls
  *       how many of the <code>efConst</code> neighbors are connected to the new node
- *   <li><code>fanout</code> the fanout parameter of {@link VectorValues#search(float[], int, int)}
- *       is used to control the values of <code>numSeed</code> and <code>topK</code> that are passed
- *       to this API. Thus <code>fanout</code> is like a combination of <code>ef</code> (search beam
- *       width) from the 2016 paper and <code>m</code> from the 2014 paper.
+ *   <li><code>fanout</code> the fanout parameter of {@link VectorReader#search(String, float[],
+ *       int, int)} is used to control the values of <code>numSeed</code> and <code>topK</code> that
+ *       are passed to this API. Thus <code>fanout</code> is like a combination of <code>ef</code>
+ *       (search beam width) from the 2016 paper and <code>m</code> from the 2014 paper.
  * </ul>
  *
  * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
@@ -98,11 +99,11 @@ public final class HnswGraph extends KnnGraphValues {
       KnnGraphValues graphValues,
       Random random)
       throws IOException {
-    VectorValues.SearchStrategy searchStrategy = vectors.searchStrategy();
+    VectorValues.SimilarityFunction similarityFunction = vectors.similarityFunction();
     int size = graphValues.size();
 
     // MIN heap, holding the top results
-    NeighborQueue results = new NeighborQueue(numSeed, searchStrategy.reversed);
+    NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
 
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
     SparseFixedBitSet visited = new SparseFixedBitSet(size);
@@ -113,17 +114,17 @@ public final class HnswGraph extends KnnGraphValues {
       if (visited.get(entryPoint) == false) {
         visited.set(entryPoint);
         // explore the topK starting points of some random numSeed probes
-        results.add(entryPoint, searchStrategy.compare(query, vectors.vectorValue(entryPoint)));
+        results.add(entryPoint, similarityFunction.compare(query, vectors.vectorValue(entryPoint)));
       }
     }
 
     // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = results.copy(!searchStrategy.reversed);
+    NeighborQueue candidates = results.copy(!similarityFunction.reversed);
 
     // Set the bound to the worst current result and below reject any newly-generated candidates
     // failing
     // to exceed this bound
-    BoundsChecker bound = BoundsChecker.create(searchStrategy.reversed);
+    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
     bound.set(results.topScore());
     while (candidates.size() > 0) {
       // get the best candidate (closest or best scoring)
@@ -142,7 +143,7 @@ public final class HnswGraph extends KnnGraphValues {
           continue;
         }
         visited.set(friendOrd);
-        float score = searchStrategy.compare(query, vectors.vectorValue(friendOrd));
+        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         if (results.insertWithOverflow(friendOrd, score)) {
           candidates.add(friendOrd, score);
           bound.set(results.topScore());

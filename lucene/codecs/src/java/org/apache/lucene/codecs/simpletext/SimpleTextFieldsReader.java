@@ -69,10 +69,6 @@ import org.apache.lucene.util.fst.Util;
 
 class SimpleTextFieldsReader extends FieldsProducer {
 
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextFieldsReader.class)
-          + RamUsageEstimator.shallowSizeOfInstance(TreeMap.class);
-
   private final TreeMap<String, Long> fields;
   private final IndexInput in;
   private final FieldInfos fieldInfos;
@@ -742,21 +738,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
   @Override
   public void close() throws IOException {
     in.close();
-  }
-
-  @Override
-  public synchronized long ramBytesUsed() {
-    long sizeInBytes =
-        BASE_RAM_BYTES_USED + fields.size() * 2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-    for (SimpleTextTerms simpleTextTerms : termsCache.values()) {
-      sizeInBytes += (simpleTextTerms != null) ? simpleTextTerms.ramBytesUsed() : 0;
-    }
-    return sizeInBytes;
-  }
-
-  @Override
-  public synchronized Collection<Accountable> getChildResources() {
-    return Accountables.namedAccountables("field", termsCache);
   }
 
   @Override

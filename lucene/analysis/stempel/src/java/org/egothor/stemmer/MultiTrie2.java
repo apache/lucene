@@ -124,7 +124,9 @@ public class MultiTrie2 extends MultiTrie {
           lastkey = key;
         }
       }
-    } catch (IndexOutOfBoundsException x) {
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException x) {
     }
     return result;
   }
@@ -167,7 +169,9 @@ public class MultiTrie2 extends MultiTrie {
           lastkey = key;
         }
       }
-    } catch (IndexOutOfBoundsException x) {
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException x) {
     }
     return result;
   }

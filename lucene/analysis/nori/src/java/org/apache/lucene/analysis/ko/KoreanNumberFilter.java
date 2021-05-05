@@ -237,7 +237,7 @@ public class KoreanNumberFilter extends TokenFilter {
         return number;
       }
       return normalizedNumber.stripTrailingZeros().toPlainString();
-    } catch (NumberFormatException | ArithmeticException e) {
+    } catch (@SuppressWarnings("unused") NumberFormatException | ArithmeticException e) {
       // Return the source number in case of error, i.e. malformed input
       return number;
     }

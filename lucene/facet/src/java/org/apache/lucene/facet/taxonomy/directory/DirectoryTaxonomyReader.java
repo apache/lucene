@@ -35,11 +35,9 @@ import org.apache.lucene.index.CorruptIndexException; // javadocs
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Accountable;
@@ -369,9 +367,6 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   public synchronized long ramBytesUsed() {
     ensureOpen();
     long ramBytesUsed = 0;
-    for (LeafReaderContext ctx : indexReader.leaves()) {
-      ramBytesUsed += ((SegmentReader) ctx.reader()).ramBytesUsed();
-    }
     if (taxoArrays != null) {
       ramBytesUsed += taxoArrays.ramBytesUsed();
     }
@@ -389,11 +384,6 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   @Override
   public synchronized Collection<Accountable> getChildResources() {
     final List<Accountable> resources = new ArrayList<>();
-    long ramBytesUsed = 0;
-    for (LeafReaderContext ctx : indexReader.leaves()) {
-      ramBytesUsed += ((SegmentReader) ctx.reader()).ramBytesUsed();
-    }
-    resources.add(Accountables.namedAccountable("indexReader", ramBytesUsed));
     if (taxoArrays != null) {
       resources.add(Accountables.namedAccountable("taxoArrays", taxoArrays));
     }

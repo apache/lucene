@@ -87,6 +87,14 @@ public class SortedNumericSelector {
             return NumericUtils.sortableDoubleBits(in.longValue());
           }
         };
+      case INT:
+      case LONG:
+      case CUSTOM:
+      case DOC:
+      case REWRITEABLE:
+      case STRING:
+      case STRING_VAL:
+      case SCORE:
       default:
         return view;
     }

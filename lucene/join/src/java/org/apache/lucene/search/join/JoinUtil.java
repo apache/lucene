@@ -123,8 +123,6 @@ public final class JoinUtil {
    * boolean, String, Query, IndexSearcher, ScoreMode)} are applicable here too, though memory
    * consumption might be higher.
    *
-   * <p>
-   *
    * @param fromField The from field to join from
    * @param multipleValuesPerDocument Whether the from field has multiple terms per document when
    *     true fromField might be {@link DocValuesType#SORTED_NUMERIC}, otherwise fromField should be

@@ -47,6 +47,7 @@ public abstract class Lock implements Closeable {
    * @throws LockReleaseFailedException optional specific exception) if the lock could not be
    *     properly released.
    */
+  @Override
   public abstract void close() throws IOException;
 
   /**

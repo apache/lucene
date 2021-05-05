@@ -87,6 +87,7 @@ public final class SimilarityConfig {
     return discountOverlaps;
   }
 
+  @Override
   public String toString() {
     return "SimilarityConfig: ["
         + " use classic similarity="

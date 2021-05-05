@@ -66,9 +66,6 @@ subprojects {
     group = 'Verification'
     description = 'Validate Source Patterns'
 
-    // This task has no proper outputs.
-    setupDummyOutputs(task)
-
     sourceFiles = fileTree(projectDir) {
       extensions.each{
         include "**/*.${it}"
@@ -98,9 +95,6 @@ configure(rootProject) {
   task validateSourcePatterns(type: ValidateSourcePatternsTask) { task ->
     group = 'Verification'
     description = 'Validate Source Patterns'
-
-    // This task has no proper outputs.
-    setupDummyOutputs(task)
 
     sourceFiles = fileTree(projectDir) {
       extensions.each{
@@ -190,8 +184,8 @@ class ValidateSourcePatternsTask extends DefaultTask {
     def validSPINameJavadocTag = ~$/(?s)\s*\*\s*@lucene\.spi\s+\{@value #NAME\}/$;
 
     def isLicense = { matcher, ratDocument ->
-      licenseMatcher.reset();
-      return lineSplitter.split(matcher.group(1)).any{ licenseMatcher.match(ratDocument, it) };
+      licenseMatcher.reset()
+      return lineSplitter.split(matcher.group(1)).any { licenseMatcher.match(ratDocument, it) }
     }
 
     def checkLicenseHeaderPrecedes = { f, description, contentPattern, commentPattern, text, ratDocument ->
@@ -213,7 +207,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
 
     def checkMockitoAssume = { f, text ->
       if (text.contains("mockito") && !text.contains("assumeWorkingMockito()")) {
-        reportViolation(f, 'File uses Mockito but has no assumeWorkingMockito() call');
+        reportViolation(f, 'File uses Mockito but has no assumeWorkingMockito() call')
       }
     }
 

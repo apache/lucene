@@ -735,7 +735,9 @@ public class IndexSearcher {
       final LeafCollector leafCollector;
       try {
         leafCollector = collector.getLeafCollector(ctx);
-      } catch (CollectionTerminatedException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          CollectionTerminatedException e) {
         // there is no doc of interest in this reader context
         // continue with the following leaf
         continue;
@@ -744,7 +746,9 @@ public class IndexSearcher {
       if (scorer != null) {
         try {
           scorer.score(leafCollector, ctx.reader().getLiveDocs());
-        } catch (CollectionTerminatedException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            CollectionTerminatedException e) {
           // collection was terminated prematurely
           // continue with the following leaf
         }

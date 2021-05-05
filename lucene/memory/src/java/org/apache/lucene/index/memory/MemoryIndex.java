@@ -40,6 +40,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
@@ -511,7 +512,7 @@ public class MemoryIndex {
         fieldType.pointIndexDimensionCount(),
         fieldType.pointNumBytes(),
         fieldType.vectorDimension(),
-        fieldType.vectorSearchStrategy(),
+        fieldType.vectorSimilarityFunction(),
         false);
   }
 
@@ -543,7 +544,7 @@ public class MemoryIndex {
               info.fieldInfo.getPointIndexDimensionCount(),
               info.fieldInfo.getPointNumBytes(),
               info.fieldInfo.getVectorDimension(),
-              info.fieldInfo.getVectorSearchStrategy(),
+              info.fieldInfo.getVectorSimilarityFunction(),
               info.fieldInfo.isSoftDeletesField());
     } else if (existingDocValuesType != docValuesType) {
       throw new IllegalArgumentException(
@@ -606,6 +607,7 @@ public class MemoryIndex {
         }
         info.binaryProducer.dvBytesValuesSet.add((BytesRef) docValuesValue);
         break;
+      case NONE:
       default:
         throw new UnsupportedOperationException("unknown doc values type [" + docValuesType + "]");
     }
@@ -1353,7 +1355,12 @@ public class MemoryIndex {
 
     @Override
     public VectorValues getVectorValues(String fieldName) {
-      return VectorValues.EMPTY;
+      return null;
+    }
+
+    @Override
+    public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout) {
+      return null;
     }
 
     @Override

@@ -81,7 +81,7 @@ public class MultiFieldQueryNodeProcessor extends QueryNodeProcessorImpl {
               "StandardQueryConfigHandler.ConfigurationKeys.MULTI_FIELDS should be set on the QueryConfigHandler");
         }
 
-        if (fields != null && fields.length > 0) {
+        if (fields.length > 0) {
           fieldNode.setField(fields[0]);
 
           if (fields.length == 1) {

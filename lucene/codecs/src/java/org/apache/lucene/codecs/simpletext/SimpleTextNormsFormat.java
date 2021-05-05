@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.simpletext;
 
 import java.io.IOException;
-import java.util.Collection;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
@@ -26,7 +25,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.util.Accountable;
 
 /**
  * plain-text norms format.
@@ -72,16 +70,6 @@ public class SimpleTextNormsFormat extends NormsFormat {
     @Override
     public void close() throws IOException {
       impl.close();
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return impl.ramBytesUsed();
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      return impl.getChildResources();
     }
 
     @Override

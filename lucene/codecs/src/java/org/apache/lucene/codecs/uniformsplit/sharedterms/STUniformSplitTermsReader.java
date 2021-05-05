@@ -17,7 +17,11 @@
 
 package org.apache.lucene.codecs.uniformsplit.sharedterms;
 
-import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat.*;
+import static org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat.VERSION_START;
+import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat.NAME;
+import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat.TERMS_BLOCKS_EXTENSION;
+import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat.TERMS_DICTIONARY_EXTENSION;
+import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -25,7 +29,6 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.uniformsplit.BlockDecoder;
 import org.apache.lucene.codecs.uniformsplit.FieldMetadata;
 import org.apache.lucene.codecs.uniformsplit.IndexDictionary;
-import org.apache.lucene.codecs.uniformsplit.UniformSplitTerms;
 import org.apache.lucene.codecs.uniformsplit.UniformSplitTermsReader;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.SegmentReadState;
@@ -122,18 +125,6 @@ public class STUniformSplitTermsReader extends UniformSplitTermsReader {
                 dictionaryBrowserSupplier));
       }
     }
-  }
-
-  @Override
-  protected long getTermsRamBytesUsed() {
-    long termsRamUsage = 0L;
-    long dictionaryRamUsage = 0L;
-    for (UniformSplitTerms terms : fieldToTermsMap.values()) {
-      termsRamUsage += terms.ramBytesUsedWithoutDictionary();
-      dictionaryRamUsage = terms.getDictionaryRamBytesUsed();
-    }
-    termsRamUsage += dictionaryRamUsage;
-    return termsRamUsage;
   }
 
   /**

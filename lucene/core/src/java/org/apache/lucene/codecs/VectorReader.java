@@ -20,6 +20,7 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Accountable;
 
 /** Reads vectors from an index. */
@@ -40,6 +41,22 @@ public abstract class VectorReader implements Closeable, Accountable {
 
   /** Returns the {@link VectorValues} for the given {@code field} */
   public abstract VectorValues getVectorValues(String field) throws IOException;
+
+  /**
+   * Return the k nearest neighbor documents as determined by comparison of their vector values for
+   * this field, to the given vector, by the field's search strategy. If the search strategy is
+   * reversed, lower values indicate nearer vectors, otherwise higher scores indicate nearer
+   * vectors. Unlike relevance scores, vector scores may be negative.
+   *
+   * @param field the vector field to search
+   * @param target the vector-valued query
+   * @param k the number of docs to return
+   * @param fanout control the accuracy/speed tradeoff - larger values give better recall at higher
+   *     cost
+   * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
+   */
+  public abstract TopDocs search(String field, float[] target, int k, int fanout)
+      throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

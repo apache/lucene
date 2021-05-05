@@ -566,7 +566,9 @@ public class TestDocValuesIndexing extends LuceneTestCase {
               try {
                 startingGun.await();
                 w.addDocument(doc);
-              } catch (IllegalArgumentException iae) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  IllegalArgumentException iae) {
                 // expected
                 hitExc.set(true);
               } catch (Exception e) {
@@ -841,29 +843,6 @@ public class TestDocValuesIndexing extends LuceneTestCase {
 
     writer2.close();
     dir2.close();
-    dir.close();
-  }
-
-  public void testDocsWithField() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
-    IndexWriter writer = new IndexWriter(dir, conf);
-    Document doc = new Document();
-    doc.add(new NumericDocValuesField("dv", 0L));
-    writer.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new TextField("dv", "some text", Field.Store.NO));
-    doc.add(new NumericDocValuesField("dv", 0L));
-    writer.addDocument(doc);
-
-    DirectoryReader r = writer.getReader();
-    writer.close();
-
-    LeafReader subR = r.leaves().get(0).reader();
-    assertEquals(2, subR.numDocs());
-
-    r.close();
     dir.close();
   }
 

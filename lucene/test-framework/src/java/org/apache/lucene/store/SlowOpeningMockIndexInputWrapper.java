@@ -33,7 +33,9 @@ class SlowOpeningMockIndexInputWrapper extends MockIndexInputWrapper {
     } catch (InterruptedException ie) {
       try {
         super.close();
-      } catch (Throwable ignore) {
+      } catch (
+          @SuppressWarnings("unused")
+          Throwable ignore) {
         // we didnt open successfully
       }
       throw new ThreadInterruptedException(ie);

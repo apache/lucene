@@ -26,6 +26,7 @@ import org.junit.Test;
 
 public class TestNoMergePolicy extends BaseMergePolicyTestCase {
 
+  @Override
   public MergePolicy mergePolicy() {
     return NoMergePolicy.INSTANCE;
   }

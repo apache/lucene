@@ -71,7 +71,7 @@ configure(project(":lucene:analysis:kuromoji")) {
         }
 
         // Apply patch via local git.
-        project.exec {
+        project.quietExec {
           workingDir = unpackedDir
           executable "git" // TODO: better use jgit to apply patch, this is not portable!!!
           args += [
@@ -129,7 +129,6 @@ configure(project(":lucene:analysis:kuromoji")) {
       }
     }
 
-    // TODO: should we include this in default regeneration?
-    // regenerate.dependsOn compileMecab
+    regenerate.dependsOn compileMecab
   }
 }

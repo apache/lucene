@@ -484,6 +484,10 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
           case BINARY:
             bufferedUpdates.addBinaryUpdate((BinaryDocValuesUpdate) update, docIDUpto);
             break;
+          case NONE:
+          case SORTED:
+          case SORTED_SET:
+          case SORTED_NUMERIC:
           default:
             throw new IllegalArgumentException(
                 update.type + " DocValues updates not supported yet!");

@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
@@ -50,12 +51,13 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     Directory dir = newDirectory();
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
-    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    FieldInfo fi = createFieldInfo();
     addAttributes(fi);
+    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    builder.add(fi);
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+
     FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
     assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
@@ -75,14 +77,15 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     Directory dir = newDirectory();
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
-    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    FieldInfo fi = createFieldInfo();
     addAttributes(fi);
     fi.putAttribute("foo", "bar");
     fi.putAttribute("bar", "baz");
+    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    builder.add(fi);
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+
     FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
     assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
@@ -116,10 +119,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.failOn(fail);
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
-    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    FieldInfo fi = createFieldInfo();
     addAttributes(fi);
+    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    builder.add(fi);
     FieldInfos infos = builder.finish();
 
     fail.setDoFail();
@@ -152,9 +155,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.failOn(fail);
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
+    FieldInfo fi = createFieldInfo();
+
     FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    builder.add(fi);
     addAttributes(fi);
     FieldInfos infos = builder.finish();
 
@@ -188,9 +192,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.failOn(fail);
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
+    FieldInfo fi = createFieldInfo();
+
     FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    builder.add(fi);
     addAttributes(fi);
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
@@ -225,9 +230,9 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.failOn(fail);
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
+    FieldInfo fi = createFieldInfo();
     FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    builder.add(fi);
     addAttributes(fi);
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
@@ -265,35 +270,35 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     for (String field : fieldNames) {
       IndexableFieldType fieldType = randomFieldType(random());
-      FieldInfo fi = builder.getOrAdd(field);
-      IndexOptions indexOptions = fieldType.indexOptions();
-      if (indexOptions != IndexOptions.NONE) {
-        fi.setIndexOptions(indexOptions);
-        if (fieldType.omitNorms()) {
-          fi.setOmitsNorms();
+      boolean storeTermVectors = false;
+      boolean storePayloads = false;
+      boolean omitNorms = false;
+      if (fieldType.indexOptions() != IndexOptions.NONE) {
+        storeTermVectors = fieldType.storeTermVectors();
+        omitNorms = fieldType.omitNorms();
+        if (fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+          storePayloads = random().nextBoolean();
         }
       }
-      fi.setDocValuesType(fieldType.docValuesType());
-      if (fieldType.indexOptions() != IndexOptions.NONE
-          && fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
-        if (random().nextBoolean()) {
-          fi.setStorePayloads();
-        }
-      }
-
-      if (fieldType.pointDimensionCount() > 0) {
-        fi.setPointDimensions(
-            fieldType.pointDimensionCount(),
-            fieldType.pointIndexDimensionCount(),
-            fieldType.pointNumBytes());
-      }
-
-      if (fieldType.vectorDimension() > 0) {
-        fi.setVectorDimensionAndSearchStrategy(
-            fieldType.vectorDimension(), fieldType.vectorSearchStrategy());
-      }
-
+      FieldInfo fi =
+          new FieldInfo(
+              field,
+              -1,
+              storeTermVectors,
+              omitNorms,
+              storePayloads,
+              fieldType.indexOptions(),
+              fieldType.docValuesType(),
+              -1,
+              new HashMap<>(),
+              fieldType.pointDimensionCount(),
+              fieldType.pointIndexDimensionCount(),
+              fieldType.pointNumBytes(),
+              fieldType.vectorDimension(),
+              fieldType.vectorSimilarityFunction(),
+              field.equals(softDeletesField));
       addAttributes(fi);
+      builder.add(fi);
     }
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
@@ -336,9 +341,9 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     if (r.nextBoolean()) {
       int dimension = 1 + r.nextInt(VectorValues.MAX_DIMENSIONS);
-      VectorValues.SearchStrategy searchStrategy =
-          RandomPicks.randomFrom(r, VectorValues.SearchStrategy.values());
-      type.setVectorDimensionsAndSearchStrategy(dimension, searchStrategy);
+      VectorValues.SimilarityFunction similarityFunction =
+          RandomPicks.randomFrom(r, VectorValues.SimilarityFunction.values());
+      type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
     }
 
     return type;
@@ -392,8 +397,22 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     doc.add(new StoredField("foobar", TestUtil.randomSimpleString(random())));
   }
 
-  @Override
-  public void testRamBytesUsed() throws IOException {
-    assumeTrue("not applicable for this format", true);
+  private FieldInfo createFieldInfo() {
+    return new FieldInfo(
+        "field",
+        -1,
+        false,
+        false,
+        false,
+        TextField.TYPE_STORED.indexOptions(),
+        DocValuesType.NONE,
+        -1,
+        new HashMap<>(),
+        0,
+        0,
+        0,
+        0,
+        VectorValues.SimilarityFunction.NONE,
+        false);
   }
 }

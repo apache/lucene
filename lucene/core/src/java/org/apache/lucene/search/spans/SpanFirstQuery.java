@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.spans;
 
-import java.io.IOException;
 import org.apache.lucene.search.spans.FilterSpans.AcceptStatus;
 
 /**
@@ -35,7 +34,8 @@ public class SpanFirstQuery extends SpanPositionRangeQuery {
     super(match, 0, end);
   }
 
-  protected AcceptStatus acceptPosition(Spans spans) throws IOException {
+  @Override
+  protected AcceptStatus acceptPosition(Spans spans) {
     assert spans.startPosition() != spans.endPosition()
         : "start equals end: " + spans.startPosition();
     if (spans.startPosition() >= end) return AcceptStatus.NO_MORE_IN_CURRENT_DOC;

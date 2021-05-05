@@ -23,9 +23,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
@@ -38,10 +36,7 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * @see UniformSplitTermsWriter
  * @lucene.experimental
  */
-public class UniformSplitTerms extends Terms implements Accountable {
-
-  private static final long BASE_RAM_USAGE =
-      RamUsageEstimator.shallowSizeOfInstance(UniformSplitTerms.class);
+public class UniformSplitTerms extends Terms {
 
   protected final IndexInput blockInput;
   protected final FieldMetadata fieldMetadata;
@@ -148,18 +143,5 @@ public class UniformSplitTerms extends Terms implements Accountable {
   @Override
   public boolean hasPayloads() {
     return fieldMetadata.getFieldInfo().hasPayloads();
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return ramBytesUsedWithoutDictionary() + getDictionaryRamBytesUsed();
-  }
-
-  public long ramBytesUsedWithoutDictionary() {
-    return BASE_RAM_USAGE + fieldMetadata.ramBytesUsed();
-  }
-
-  public long getDictionaryRamBytesUsed() {
-    return dictionaryBrowserSupplier.ramBytesUsed();
   }
 }

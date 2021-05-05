@@ -43,16 +43,28 @@ public class TestFieldsReader extends LuceneTestCase {
   @BeforeClass
   public static void beforeClass() throws Exception {
     testDoc = new Document();
-    fieldInfos = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    final String softDeletesFieldName = null;
+    fieldInfos = new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
     DocHelper.setupDoc(testDoc);
     for (IndexableField field : testDoc.getFields()) {
-      FieldInfo fieldInfo = fieldInfos.getOrAdd(field.name());
       IndexableFieldType ift = field.fieldType();
-      fieldInfo.setIndexOptions(ift.indexOptions());
-      if (ift.omitNorms()) {
-        fieldInfo.setOmitsNorms();
-      }
-      fieldInfo.setDocValuesType(ift.docValuesType());
+      fieldInfos.add(
+          new FieldInfo(
+              field.name(),
+              -1,
+              false,
+              ift.omitNorms(),
+              false,
+              ift.indexOptions(),
+              ift.docValuesType(),
+              -1,
+              new HashMap<>(),
+              0,
+              0,
+              0,
+              0,
+              VectorValues.SimilarityFunction.NONE,
+              field.name().equals(softDeletesFieldName)));
     }
     dir = newDirectory();
     IndexWriterConfig conf =
@@ -202,13 +214,17 @@ public class TestFieldsReader extends LuceneTestCase {
     for (int i = 0; i < 2; i++) {
       try {
         reader.document(i);
-      } catch (IOException ioe) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException ioe) {
         // expected
         exc = true;
       }
       try {
         reader.document(i);
-      } catch (IOException ioe) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException ioe) {
         // expected
         exc = true;
       }

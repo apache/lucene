@@ -18,12 +18,12 @@ package org.apache.lucene.backward_codecs.lucene40.blocktree;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -35,8 +35,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
@@ -134,7 +132,7 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
     try {
       String termsName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_EXTENSION);
-      termsIn = state.directory.openInput(termsName, state.context);
+      termsIn = EndiannessReverserUtil.openInput(state.directory, termsName, state.context);
       version =
           CodecUtil.checkIndexHeader(
               termsIn,
@@ -146,7 +144,7 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
 
       String indexName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
-      indexIn = state.directory.openInput(indexName, state.context);
+      indexIn = EndiannessReverserUtil.openInput(state.directory, indexName, state.context);
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
@@ -174,7 +172,7 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
       long indexLength = -1, termsLength = -1;
       try (ChecksumIndexInput metaIn =
           version >= VERSION_META_FILE
-              ? state.directory.openChecksumInput(metaName, state.context)
+              ? EndiannessReverserUtil.openChecksumInput(state.directory, metaName, state.context)
               : null) {
         try {
           final IndexInput indexMetaIn, termsMetaIn;
@@ -189,6 +187,7 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
             indexMetaIn = termsMetaIn = metaIn;
             postingsReader.init(metaIn, state);
           } else {
+            seekDir(termsIn);
             seekDir(termsIn);
             seekDir(indexIn);
             indexMetaIn = indexIn;
@@ -362,30 +361,15 @@ public final class Lucene40BlockTreeTermsReader extends FieldsProducer {
     } else {
       try {
         return b.utf8ToString() + " " + b;
-      } catch (Throwable t) {
+      } catch (
+          @SuppressWarnings("unused")
+          Throwable t) {
         // If BytesRef isn't actually UTF8, or it's eg a
         // prefix of UTF8 that ends mid-unicode-char, we
         // fallback to hex:
         return b.toString();
       }
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long sizeInBytes = postingsReader.ramBytesUsed();
-    for (FieldReader reader : fieldMap.values()) {
-      sizeInBytes += reader.ramBytesUsed();
-    }
-    return sizeInBytes;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    List<Accountable> resources =
-        new ArrayList<>(Accountables.namedAccountables("field", fieldMap));
-    resources.add(Accountables.namedAccountable("delegate", postingsReader));
-    return Collections.unmodifiableList(resources);
   }
 
   @Override

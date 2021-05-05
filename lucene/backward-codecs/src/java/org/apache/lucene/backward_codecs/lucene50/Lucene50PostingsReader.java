@@ -30,6 +30,7 @@ import static org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat.
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat.IntBlockTermState;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -46,7 +47,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * Concrete class that reads docId(maybe frq,pos,offset,payloads) list with postings format.
@@ -54,9 +54,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 public final class Lucene50PostingsReader extends PostingsReaderBase {
-
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene50PostingsReader.class);
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -81,7 +78,7 @@ public final class Lucene50PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene50PostingsFormat.DOC_EXTENSION);
     try {
-      docIn = state.directory.openInput(docName, state.context);
+      docIn = EndiannessReverserUtil.openInput(state.directory, docName, state.context);
       version =
           CodecUtil.checkIndexHeader(
               docIn,
@@ -97,7 +94,7 @@ public final class Lucene50PostingsReader extends PostingsReaderBase {
         String proxName =
             IndexFileNames.segmentFileName(
                 state.segmentInfo.name, state.segmentSuffix, Lucene50PostingsFormat.POS_EXTENSION);
-        posIn = state.directory.openInput(proxName, state.context);
+        posIn = EndiannessReverserUtil.openInput(state.directory, proxName, state.context);
         CodecUtil.checkIndexHeader(
             posIn, POS_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
         CodecUtil.retrieveChecksum(posIn);
@@ -108,7 +105,7 @@ public final class Lucene50PostingsReader extends PostingsReaderBase {
                   state.segmentInfo.name,
                   state.segmentSuffix,
                   Lucene50PostingsFormat.PAY_EXTENSION);
-          payIn = state.directory.openInput(payName, state.context);
+          payIn = EndiannessReverserUtil.openInput(state.directory, payName, state.context);
           CodecUtil.checkIndexHeader(
               payIn, PAY_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
           CodecUtil.retrieveChecksum(payIn);
@@ -1842,11 +1839,6 @@ public final class Lucene50PostingsReader extends PostingsReaderBase {
     public long cost() {
       return docFreq;
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED;
   }
 
   @Override

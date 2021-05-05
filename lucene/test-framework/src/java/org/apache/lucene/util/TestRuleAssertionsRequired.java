@@ -44,7 +44,9 @@ public class TestRuleAssertionsRequired implements TestRule {
             System.err.println(msg);
             throw new Exception(msg);
           }
-        } catch (AssertionError e) {
+        } catch (
+            @SuppressWarnings("unused")
+            AssertionError e) {
           // Ok, enabled.
         }
 

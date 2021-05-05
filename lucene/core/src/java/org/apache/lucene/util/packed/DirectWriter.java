@@ -55,12 +55,18 @@ public final class DirectWriter {
   final long[] nextValues;
   final BulkOperation encoder;
   final int iterations;
+  final int byteOffset;
+  final int bitsUsedOffset;
+  final int byteValueCount;
 
   DirectWriter(DataOutput output, long numValues, int bitsPerValue) {
     this.output = output;
     this.numValues = numValues;
     this.bitsPerValue = bitsPerValue;
     encoder = BulkOperation.of(PackedInts.Format.PACKED, bitsPerValue);
+    this.byteOffset = 8 - bitsPerValue;
+    this.bitsUsedOffset = bitsPerValue - 8;
+    this.byteValueCount = encoder.byteValueCount();
     iterations =
         encoder.computeIterations(
             (int) Math.min(numValues, Integer.MAX_VALUE), PackedInts.DEFAULT_BUFFER_SIZE);
@@ -83,12 +89,39 @@ public final class DirectWriter {
   }
 
   private void flush() throws IOException {
-    encoder.encode(nextValues, 0, nextBlocks, 0, iterations);
+    encode(nextValues, 0, nextBlocks, 0, iterations);
     final int blockCount =
         (int) PackedInts.Format.PACKED.byteCount(PackedInts.VERSION_CURRENT, off, bitsPerValue);
     output.writeBytes(nextBlocks, blockCount);
     Arrays.fill(nextValues, 0L);
     off = 0;
+  }
+
+  public void encode(
+      long[] values, int valuesOffset, byte[] blocks, int blocksOffset, int iterations) {
+    int nextBlock = 0;
+    int bitsUsed = 0;
+    for (int i = 0; i < byteValueCount * iterations; ++i) {
+      final long v = values[valuesOffset++];
+      assert PackedInts.unsignedBitsRequired(v) <= bitsPerValue;
+      if (bitsUsed < byteOffset) {
+        // just buffer
+        nextBlock |= v << bitsUsed;
+        bitsUsed += bitsPerValue;
+      } else {
+        // flush as many blocks as possible
+        blocks[blocksOffset++] = (byte) (nextBlock | (v << bitsUsed));
+        int bits = 8 - bitsUsed;
+        while (bits <= bitsUsedOffset) {
+          blocks[blocksOffset++] = (byte) (v >> bits);
+          bits += 8;
+        }
+        // then buffer
+        bitsUsed = bitsPerValue - bits;
+        nextBlock = (int) ((v >>> bits) & ((1L << bitsUsed) - 1));
+      }
+    }
+    assert bitsUsed == 0;
   }
 
   /** finishes writing */
