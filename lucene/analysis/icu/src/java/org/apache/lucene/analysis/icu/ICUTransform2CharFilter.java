@@ -84,6 +84,23 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
   private final OffsetCorrectionRegistrar registrar;
   private boolean inputFinished = false;
 
+  /**
+   * Creates a new {@link ICUTransform2CharFilter}
+   * @param in - input
+   * @param leaves - atomic/leaf transliterators that are joined together in a pipeline to achieve
+   *               high-level transliteration
+   * @param bypassFilterFunctions - bypass functions that are used to skip over leaf transliterators.
+   *                              this is the flat/streaming equivalent of hierarchical UnicodeFilters
+   * @param maxKeepContext - upon flushing the contents of the active transliteration buffer, keep this
+   *                       amount of context in the buffer, as context for subsequent transliteration
+   *                       windows.
+   * @param mcls - maximumContextLength (antecontext) for each leaf transliterator. This is similar to
+   *             {@link Transliterator#getMaximumContextLength()}, but is precomputed and notably accounts
+   *             for antecontext quantifiers (which {@link Transliterator#getMaximumContextLength()} does
+   *             not).
+   * @param registrar - callback that receives notifications of incremental offset diffs upon flushing
+   *                  completed portions of the transliteration buffer.
+   */
   public ICUTransform2CharFilter(Reader in, Transliterator[] leaves, IntUnaryOperator[] bypassFilterFunctions, int maxKeepContext, int[] mcls,
                                  OffsetCorrectionRegistrar registrar) {
     super(in);

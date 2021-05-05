@@ -24,8 +24,6 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Random;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -38,7 +36,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.AttributeFactory;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.TestUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -172,7 +169,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
   public void testBespoke8() throws Exception {
     System.err.println("BEGIN testBespoke8 \"\u7417\u5dc0\u02acx\uda5e\udc53\ue95e \ud834\ude08 \"");
     Analyzer a = getAnalyzer("Katakana-Hiragana", TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY);
-    BytesRef br = a.normalize("dummy", "\u7417\u5dc0\u02acx\uda5e\udc53\ue95e \ud834\ude08 ");
+    a.normalize("dummy", "\u7417\u5dc0\u02acx\uda5e\udc53\ue95e \ud834\ude08 ");
     // no check here; just make sure no error thrown on `normalize`
   }
 
@@ -309,7 +306,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     String id = "es_419-chr";
     String input = "gnanmtzkob quxtsh";
     // expected doesn't really figure in this problem
-    String expected = "\u13be\u13c2\u13bb\u13d8\u13cd\u13aa\u13eb\u13ab\u13cd\u13d8\u13cd";
+    // String expected = "\u13be\u13c2\u13bb\u13d8\u13cd\u13aa\u13eb\u13ab\u13cd\u13d8\u13cd";
     Analyzer b = getAnalyzer(id, BaseTokenStreamTestCase.newAttributeFactory());
     long seed = random().nextLong();
     final boolean consistentTrimBehavior = true;
@@ -813,9 +810,6 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       }
       // this is a special case that we want to swallow and just move on
     }
-    long seed = random().nextLong();
-    Random randomA = new Random(seed);
-    Random randomB = new Random(seed);
     Transliterator.Position p = new Transliterator.Position();
     for (int i = iterations * RANDOM_MULTIPLIER; i >= 0; i--) {
       String text = TestUtil.randomAnalysisString(random(), 20, false);
@@ -860,7 +854,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       }
 
       try {
-        checkAnalysisConsistency(randomB, b, false, text);
+        checkAnalysisConsistency(random(), b, false, text);
       } catch (Throwable e) {
         System.err.println("caught "+e+" for '"+escape(text)+"'");
         throw e;

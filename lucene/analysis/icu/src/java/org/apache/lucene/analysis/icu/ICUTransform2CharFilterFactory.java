@@ -38,6 +38,7 @@ import java.util.function.IntUnaryOperator;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.CharFilterFactory;
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Factory for {@link ICUTransform2CharFilter}.
@@ -107,6 +108,10 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
     this(new HashMap<>(0), t);
   }
 
+  /**
+   * An {@link org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegistrar} that simply ignores
+   * notifications of offset corrections. For use in cases where offset correction is not required.
+   */
   public static final CircularReplaceable.OffsetCorrectionRegistrar DEV_NULL_REGISTRAR = new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> 0);
 
   /**
@@ -114,6 +119,7 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
    * of Lucene analysis. For that reason we provide a trivial main method to stream
    * transliteration from stdin to stdout.
    */
+  @SuppressForbidden(reason = "command-line util writes to stdout")
   public static void main(String[] args) throws IOException {
     Reader r = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
     Writer w = new BufferedWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8));
@@ -313,6 +319,15 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
     return create(input, null);
   }
 
+  /**
+   * Similar to {@link #create(Reader)}, but allows to specify an external
+   * {@link org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegistrar}. This is useful
+   * for tests, or in contexts other than Analysis chain.
+   *
+   * @param input - input Reader
+   * @param registrar - callback to receive notifications of offset diffs
+   * @return - a CharFilter for applying the Transliteration configured for this {@link ICUNormalizer2CharFilterFactory}.
+   */
   public Reader create(Reader input, CircularReplaceable.OffsetCorrectionRegistrar registrar) {
     if (nullTransform) {
       return new NullTransformCharFilter(input);

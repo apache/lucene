@@ -83,22 +83,46 @@ public class CircularReplaceable implements Replaceable {
     }
   }
 
+  /**
+   * Create new offset-correcting {@link CircularReplaceable} with a default initial capacity
+   * of {@value #FLOOR_CHAR_COUNT}
+   */
   public CircularReplaceable() {
     this(false, INITIAL_CAPACITY, true);
   }
 
+  /**
+   * Create new offset-correcting {@link CircularReplaceable} with the specified initial capacity.
+   */
   public CircularReplaceable(int initialCapacity) {
     this(initialCapacity, true);
   }
 
+  /**
+   * Create new {@link CircularReplaceable} with a default initial capacity of {@value #FLOOR_CHAR_COUNT}
+   *
+   * @param trackOffsets - true if this instance should track offset diffs
+   */
   public CircularReplaceable(boolean trackOffsets) {
     this(false, INITIAL_CAPACITY, trackOffsets);
   }
 
+  /**
+   * Create new {@link CircularReplaceable}.
+   *
+   * @param initialCapacity - the initial capacity of the internal buffer
+   * @param trackOffsets - true if this instance should track offset diffs
+   */
   public CircularReplaceable(int initialCapacity, boolean trackOffsets) {
     this(false, Integer.highestOneBit(initialCapacity == 0 ? 1 : initialCapacity) << 1, trackOffsets);
   }
 
+  /**
+   * Shortcut ctor for creating a new {@link CircularReplaceable} with the internal buffer initially
+   * populated by specified String value.
+   *
+   * @param initial - for initializing the contents of the internal buffer
+   */
   public CircularReplaceable(String initial) {
     this(initial.length(), true);
     append(initial);
@@ -145,6 +169,13 @@ public class CircularReplaceable implements Replaceable {
     return offsetCorrect[head & mask];
   }
 
+  /**
+   * Called after the end of the input stream has been reached; if characters have been removed or
+   * added after the end of the input stream, this method will register associated offset corrections
+   * with the specified {@link OffsetCorrectionRegistrar} callback.
+   *
+   * @param registrar - offset diff callback
+   */
   public void flushHeadDiff(OffsetCorrectionRegistrar registrar) {
     final int headMask = head & mask;
     if (offsetCorrect == null) {
@@ -157,6 +188,17 @@ public class CircularReplaceable implements Replaceable {
     }
   }
 
+  /**
+   * Requests that up to `limit` characters be read from `in` and appended to this buffer.
+   * This method is guaranteed to read at least one character (assuming one is available).
+   * This method will cause the internal buffer to grow if necessary to append new content,
+   * but the buffer will _not_ grow unless there is _no_ space left at initial invocation.
+   *
+   * @param in - input from which to read
+   * @param limit - the maximum number of characters to read from `in`
+   * @return - the number of characters read from the specified input Reader
+   * @throws IOException - if an error reading from the specified input Reader
+   */
   public int readFrom(Reader in, int limit) throws IOException {
     int spaceAavailable = mask - head + tail;
     if (spaceAavailable == 0) {
@@ -338,6 +380,14 @@ public class CircularReplaceable implements Replaceable {
     }
   }
 
+  /**
+   * Append the contents of the specified char array to this buffer. The internal buffer
+   * will grow as necessary to accommodate all of the requested append.
+   *
+   * NOTE: in the case of offset-based metadata, it is crucial to distinguish this operation (which
+   * does not introduce offset diff) from {@link #replace(int, int, char[], int, int)} at the limit of the
+   * buffer (which _does_ introduce an offset diff).
+   */
   public void append(char[] cbuf, int off, int len) {
     if (wbActive) {
       throw new IllegalStateException("tried to append input while workingBuffer is active");
@@ -348,6 +398,14 @@ public class CircularReplaceable implements Replaceable {
     head = newHead;
   }
 
+  /**
+   * Append the contents of the specified String to this buffer. The internal buffer
+   * will grow as necessary to accommodate all of the requested append.
+   *
+   * NOTE: in the case of offset-based metadata, it is crucial to distinguish this operation (which
+   * does not introduce offset diff) from {@link #replace(int, int, String)} at the limit of the
+   * buffer (which _does_ introduce an offset diff).
+   */
   public void append(String s) {
     if (wbActive) {
       throw new IllegalStateException("tried to append input while workingBuffer is active");
@@ -828,10 +886,29 @@ public class CircularReplaceable implements Replaceable {
   private static final int FLUSH_KEEP_CONTEXT = 1;
   private int flushKeepContext = 0;
 
+  /**
+   * As {@link #flush(char[], int, int, int, int, OffsetCorrectionRegistrar)}, with the default `keepContext` of
+   * {@value #FLUSH_KEEP_CONTEXT}.
+   */
   public int flush(char[] dst, int dstStart, int dstLen, int toOffset, OffsetCorrectionRegistrar registrar) {
     return _flush(dst, dstStart, dstLen, toOffset, FLUSH_KEEP_CONTEXT, registrar);
   }
 
+  /**
+   * Flush the contents of this buffer to the specified char[] destination (up to specified `toOffset`,
+   * if destination space allows). Associated offset corrections will be flushed to the specified `registrar`
+   * callback. `keepContext` specifies the amount of context that should, although flushed to the output dest,
+   * be kept in the buffer to serve as antecontext for subsequent transliteration windows.
+   *
+   * @param dst - destination to receive content
+   * @param dstStart - start offset for destination content
+   * @param dstLen - max number of characters to be flushed to dest
+   * @param toOffset - source limit offset (exclusive) that should be flushed to dest
+   * @param keepContext - amount of antecontext to retain in buffer to serve as antecontext for subsequent
+   *                    transliteration windows
+   * @param registrar - callback to receive notifications of offset diffs
+   * @return - the number of characters flushed to dest
+   */
   public int flush(char[] dst, int dstStart, int dstLen, int toOffset, int keepContext, OffsetCorrectionRegistrar registrar) {
     return _flush(dst, dstStart, dstLen, toOffset, Math.max(keepContext, FLUSH_KEEP_CONTEXT), registrar);
   }

@@ -33,12 +33,25 @@ public class AnyMultiplexTransliterator extends Transliterator {
 
   private static final int MAX_CONTEXT_LENGTH = 5;
 
+  //TODO: this should ultimately be used or removed
+  @SuppressWarnings("unused")
   private final int maxContextLength;
 
+  /**
+   * Return an {@link AnyMultiplexTransliterator} instance representing the `AnyTransliterator`
+   * defined by the specified ID.
+   */
   public static AnyMultiplexTransliterator getInstance(Transliterator t) {
     return new AnyMultiplexTransliterator(t.getID(), t.getFilter(), MAX_CONTEXT_LENGTH);
   }
 
+  /**
+   * Create a new {@link AnyMultiplexTransliterator} for the specified ID, with the specified
+   * {@link UnicodeFilter} and max context length
+   * @param ID - the ID of the transform
+   * @param filter - restricts input codepoints
+   * @param maxContextLength - see {@link Transliterator#getMaximumContextLength()}
+   */
   protected AnyMultiplexTransliterator(String ID, UnicodeFilter filter, int maxContextLength) {
     super(ID, filter);
     String[] stv = IDtoSTV(ID);
@@ -58,7 +71,9 @@ public class AnyMultiplexTransliterator extends Transliterator {
 
   }
 
-  // copied from com.ibm.icu.text.TransliteratorIDParser
+  /**
+   * copied from com.ibm.icu.text.TransliteratorIDParser
+   */
   public static String[] IDtoSTV(String id) {
     String source = ANY;
     String target = null;
@@ -146,6 +161,8 @@ public class AnyMultiplexTransliterator extends Transliterator {
     return script == UScript.BOPOMOFO || script == UScript.HAN || script == UScript.HANGUL || script == UScript.HIRAGANA || script == UScript.KATAKANA;
   }
 
+  //TODO: this should ultimately be used or removed
+  @SuppressWarnings("unused")
   private Transliterator getTransliterator(int source) {
     if (source == targetScript || source == UScript.INVALID_CODE) {
       if (isWide(targetScript)) {
