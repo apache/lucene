@@ -17,11 +17,11 @@
 package org.apache.lucene.facet.range;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Segment tree for counting numeric ranges. Works for both single- and multi-valued cases (assuming
@@ -56,9 +56,9 @@ final class LongRangeCounter {
 
   // Needed only for counting multi-valued docs:
   /** whether-or-not an elementary interval has seen at least one match for a single doc */
-  private final boolean[] multiValuedDocLeafHits;
+  private final FixedBitSet multiValuedDocLeafHits;
   /** whether-or-not a range has seen at least one match for a single doc */
-  private final boolean[] multiValuedDocRangeHits;
+  private final FixedBitSet multiValuedDocRangeHits;
 
   // Used during rollup
   private int leafUpto;
@@ -97,8 +97,8 @@ final class LongRangeCounter {
     } else {
       // Setup to count multi-valued docs:
       singleValuedLeafCounts = null;
-      multiValuedDocLeafHits = new boolean[boundaries.length];
-      multiValuedDocRangeHits = new boolean[ranges.length];
+      multiValuedDocLeafHits = new FixedBitSet(boundaries.length);
+      multiValuedDocRangeHits = new FixedBitSet(ranges.length);
     }
   }
 
@@ -108,7 +108,7 @@ final class LongRangeCounter {
    */
   void startDoc() {
     if (isMultiValued) {
-      Arrays.fill(multiValuedDocLeafHits, false);
+      multiValuedDocLeafHits.clear(0, multiValuedDocLeafHits.length());
     }
   }
 
@@ -120,14 +120,21 @@ final class LongRangeCounter {
   boolean endDoc() {
     // Necessary to rollup after each doc for multi-valued case:
     if (isMultiValued) {
+      // Short-circuit if the caller didn't specify any ranges to count
+      if (multiValuedDocRangeHits.length() == 0) {
+        return false;
+      }
+
       leafUpto = 0;
-      Arrays.fill(multiValuedDocRangeHits, false);
+      multiValuedDocRangeHits.clear(0, multiValuedDocRangeHits.length());
       rollupMultiValued(root);
+
       boolean docContributedToAtLeastOneRange = false;
-      for (int i = 0; i < multiValuedDocRangeHits.length; i++) {
-        if (multiValuedDocRangeHits[i]) {
-          countBuffer[i]++;
-          docContributedToAtLeastOneRange = true;
+      for (int i = multiValuedDocRangeHits.nextSetBit(0); i < multiValuedDocRangeHits.length(); ) {
+        countBuffer[i]++;
+        docContributedToAtLeastOneRange = true;
+        if (++i < multiValuedDocRangeHits.length()) {
+          i = multiValuedDocRangeHits.nextSetBit(i);
         }
       }
 
@@ -291,7 +298,7 @@ final class LongRangeCounter {
       int mid = (lo + hi) >>> 1;
       if (v <= boundaries[mid]) {
         if (mid == 0) {
-          multiValuedDocLeafHits[0] = true;
+          multiValuedDocLeafHits.set(0);
           return;
         } else {
           hi = mid - 1;
@@ -299,8 +306,7 @@ final class LongRangeCounter {
       } else if (v > boundaries[mid + 1]) {
         lo = mid + 1;
       } else {
-        int idx = mid + 1;
-        multiValuedDocLeafHits[idx] = true;
+        multiValuedDocLeafHits.set(mid + 1);
         return;
       }
     }
@@ -338,12 +344,12 @@ final class LongRangeCounter {
       containedHit |= rollupMultiValued(node.right);
     } else {
       // Leaf:
-      containedHit = multiValuedDocLeafHits[leafUpto];
+      containedHit = multiValuedDocLeafHits.get(leafUpto);
       leafUpto++;
     }
     if (containedHit && node.outputs != null) {
       for (int rangeIndex : node.outputs) {
-        multiValuedDocRangeHits[rangeIndex] = true;
+        multiValuedDocRangeHits.set(rangeIndex);
       }
     }
 

@@ -296,6 +296,63 @@ public class TestRangeFacetCounts extends FacetTestCase {
     d.close();
   }
 
+  public void testEmptyRangesSingleValued() throws Exception {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    Document doc = new Document();
+    NumericDocValuesField field = new NumericDocValuesField("field", 0L);
+    doc.add(field);
+    for (long l = 0; l < 100; l++) {
+      field.setLongValue(l);
+      w.addDocument(doc);
+    }
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    FacetsCollector fc = new FacetsCollector();
+    IndexSearcher s = newSearcher(r);
+    s.search(new MatchAllDocsQuery(), fc);
+
+    Facets facets = new LongRangeFacetCounts("field", fc);
+
+    FacetResult result = facets.getTopChildren(10, "field");
+    assertEquals("dim=field path=[] value=0 childCount=0\n", result.toString());
+
+    r.close();
+    d.close();
+  }
+
+  public void testEmptyRangesMultiValued() throws Exception {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    Document doc = new Document();
+    SortedNumericDocValuesField field1 = new SortedNumericDocValuesField("field", 0L);
+    SortedNumericDocValuesField field2 = new SortedNumericDocValuesField("field", 0L);
+    doc.add(field1);
+    doc.add(field2);
+    for (long l = 0; l < 100; l++) {
+      field1.setLongValue(l);
+      field2.setLongValue(l);
+      w.addDocument(doc);
+    }
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    FacetsCollector fc = new FacetsCollector();
+    IndexSearcher s = newSearcher(r);
+    s.search(new MatchAllDocsQuery(), fc);
+
+    Facets facets = new LongRangeFacetCounts("field", fc);
+
+    FacetResult result = facets.getTopChildren(10, "field");
+    assertEquals("dim=field path=[] value=0 childCount=0\n", result.toString());
+
+    r.close();
+    d.close();
+  }
+
   /**
    * Tests single request that mixes Range and non-Range faceting, with DrillSideways and taxonomy.
    */

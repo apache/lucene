@@ -79,9 +79,8 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
   /**
    * Create {@code RangeFacetCounts}, using the provided {@link DoubleValuesSource} if non-null. If
    * {@code valueSource} is null, doc values from the provided {@code field} will be used. Use the
-   * provided {@code Query} as a fastmatch: only documents passing the filter are checked for the
-   * matching ranges, which is helpful when the provided {@link DoubleValuesSource} is costly
-   * per-document, such as a geo distance.
+   * provided {@code Query} as a fastmatch: only documents matching the query are checked for the
+   * matching ranges.
    *
    * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
    * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
