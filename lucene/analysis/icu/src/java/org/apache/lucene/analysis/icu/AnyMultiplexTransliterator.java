@@ -75,31 +75,31 @@ public class AnyMultiplexTransliterator extends Transliterator {
     String variant = "";
 
     int sep = id.indexOf(TARGET_SEP);
-    int var = id.indexOf(VARIANT_SEP);
-    if (var < 0) {
-      var = id.length();
+    int v = id.indexOf(VARIANT_SEP);
+    if (v < 0) {
+      v = id.length();
     }
     boolean isSourcePresent = false;
 
     if (sep < 0) {
       // Form: T/V or T (or /V)
-      target = id.substring(0, var);
-      variant = id.substring(var);
-    } else if (sep < var) {
+      target = id.substring(0, v);
+      variant = id.substring(v);
+    } else if (sep < v) {
       // Form: S-T/V or S-T (or -T/V or -T)
       if (sep > 0) {
         source = id.substring(0, sep);
         isSourcePresent = true;
       }
-      target = id.substring(++sep, var);
-      variant = id.substring(var);
+      target = id.substring(++sep, v);
+      variant = id.substring(v);
     } else {
       // Form: (S/V-T or /V-T)
-      if (var > 0) {
-        source = id.substring(0, var);
+      if (v > 0) {
+        source = id.substring(0, v);
         isSourcePresent = true;
       }
-      variant = id.substring(var, sep++);
+      variant = id.substring(v, sep++);
       target = id.substring(sep);
     }
 
