@@ -58,7 +58,8 @@ import org.apache.lucene.util.ArrayUtil;
  * For more details, see the <a href="http://userguide.icu-project.org/transforms/general">ICU User
  * Guide</a>.
  */
-public final class ICUTransformCharFilter extends BaseCharFilter implements ICUBypassCharFilter.FilterAware {
+public final class ICUTransformCharFilter extends BaseCharFilter
+    implements ICUBypassCharFilter.FilterAware {
 
   // Transliterator to transform the text
   private final Transliterator transform;
@@ -224,10 +225,11 @@ public final class ICUTransformCharFilter extends BaseCharFilter implements ICUB
   /**
    * In the (frequent) event that incremental transliteration advances `position.start` _beyond_ the
    * text that has actually changed, we want offset boundary resolution to be recorded wrt the last
-   * _changed_ offset. This _still_ may be imperfect, but it improves results (and importantly, yields
-   * consistency between "optimized" (unicode norm externalized) and "non-optimized" instances).
+   * _changed_ offset. This _still_ may be imperfect, but it improves results (and importantly,
+   * yields consistency between "optimized" (unicode norm externalized) and "non-optimized"
+   * instances).
    *
-   * NOTE: it's tempting to think that this case might be better handled by advancing
+   * <p>NOTE: it's tempting to think that this case might be better handled by advancing
    * `position.contextLimit` as far as possible ahead of `position.limit` (up to
    * `getMaximumContextLength()`) ... but that does _not_ in fact avoid the need for manual suffix
    * boundary correction. Because the `Transliterator.transliterate*(...)` methods advance
@@ -245,11 +247,13 @@ public final class ICUTransformCharFilter extends BaseCharFilter implements ICUB
     }
     return snapshotLen;
   }
+
   private void snapshotBufferSuffix() {
     int srcBegin = Math.max(position.start, position.limit - bufferSuffixSnapshot.length);
     snapshotLen = position.limit - srcBegin;
     buffer.getChars(srcBegin, position.limit, bufferSuffixSnapshot, 0);
   }
+
   private int snapshotLen;
   private final char[] bufferSuffixSnapshot;
 
@@ -365,8 +369,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter implements ICUB
           //
           //         index.contextStart = Math.max(index.start - getMaximumContextLength(),
           //                                       originalStart);
-          position.contextStart =
-              Math.max(position.start - maximumContextLength, 0);
+          position.contextStart = Math.max(position.start - maximumContextLength, 0);
           preStart = position.start;
           if (!rollbackSizeWithinBounds) {
             // prepopulate newly cleared rollback buffer with all top-level uncommitted characters
@@ -420,8 +423,7 @@ public final class ICUTransformCharFilter extends BaseCharFilter implements ICUB
     position.start += shift; // mock transliterator advance
     this.snapshotLen = 0; // prevent suffix boundary correction for forceAdvance
     cursorAdvanced(preStart, preLimit);
-    position.contextStart =
-        Math.max(position.start - maximumContextLength, 0);
+    position.contextStart = Math.max(position.start - maximumContextLength, 0);
     return position.start;
   }
 

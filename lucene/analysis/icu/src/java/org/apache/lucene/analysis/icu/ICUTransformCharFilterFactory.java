@@ -67,9 +67,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
   /** package access, to allow tests to suppress unicode normalization externalization */
   ICUTransformCharFilterFactory(
-      Map<String, String> args,
-      boolean suppressUnicodeNormalizationExternalization,
-      String rules) {
+      Map<String, String> args, boolean suppressUnicodeNormalizationExternalization, String rules) {
     super(args);
     String id = require(args, "id");
     String direction =
@@ -119,10 +117,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
   }
 
   private static final Reader wrapReader(
-      NormType normType,
-      Reader r,
-      boolean leading,
-      List<ICUBypassCharFilter.FilterAware> toReset) {
+      NormType normType, Reader r, boolean leading, List<ICUBypassCharFilter.FilterAware> toReset) {
     if (normType == null || (leading && normType == lookupNormTypeByInput(r))) {
       // either no normType, or redundant (already normalized upstream)
       return r;
@@ -289,7 +284,8 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
     private final Transliterator t;
     private final NormType trailing;
 
-    private ExternalNormalization(UnicodeSet filter, NormType leading, Transliterator t, NormType trailing) {
+    private ExternalNormalization(
+        UnicodeSet filter, NormType leading, Transliterator t, NormType trailing) {
       this.filter = filter;
       this.leading = leading;
       this.t = t;
@@ -313,6 +309,7 @@ public class ICUTransformCharFilterFactory extends CharFilterFactory {
 
     // these are static instances, so we cache them here (mainly for purpose of comparison)
     final Normalizer2 instance;
+
     NormType(Normalizer2 instance) {
       this.instance = instance;
     }

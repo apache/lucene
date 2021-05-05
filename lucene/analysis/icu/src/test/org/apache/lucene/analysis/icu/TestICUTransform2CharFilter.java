@@ -31,7 +31,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharFilter;
@@ -42,7 +41,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.AttributeFactory;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.TestUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -81,7 +79,8 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     System.err.println("BEGIN testNormalizationOptimizationOnAvailableIDs");
     Enumeration<String> ids = Transliterator.getAvailableIDs();
     final int iterations = 1;
-    List<Map.Entry<String, List<Map.Entry<String, String>>>> problems = INSPECT_OFFSET_DISCREPANCIES ? new ArrayList<>() : null;
+    List<Map.Entry<String, List<Map.Entry<String, String>>>> problems =
+        INSPECT_OFFSET_DISCREPANCIES ? new ArrayList<>() : null;
     List<Map.Entry<String, String>> offsetDiscrepancies = new ArrayList<>(iterations);
     while (ids.hasMoreElements()) {
       String id = ids.nextElement();
@@ -103,11 +102,14 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       } catch (Throwable ex) {
         // print the offending `id` before re-throwing
         String msg = ex.getMessage();
-        if (msg != null && msg.contains("is less than the last recorded offset") &&
-            ICUTransformCharFilter.class.getCanonicalName().equals(ex.getStackTrace()[1].getClassName())) {
+        if (msg != null
+            && msg.contains("is less than the last recorded offset")
+            && ICUTransformCharFilter.class
+                .getCanonicalName()
+                .equals(ex.getStackTrace()[1].getClassName())) {
           System.err.println("ignoring offset bug in legacy reference implementation");
         } else {
-          System.err.println("unignored error for id \""+id+"\"");
+          System.err.println("unignored error for id \"" + id + "\"");
           throw ex;
         }
       }
@@ -115,7 +117,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     if (INSPECT_OFFSET_DISCREPANCIES && !problems.isEmpty()) {
       System.err.println("offset discrepancies for `getAvailableIDs`:");
       for (Map.Entry<String, List<Map.Entry<String, String>>> e : problems) {
-        checkOffsetDiscrepancies(e.getValue(), "id: "+e.getKey(), false);
+        checkOffsetDiscrepancies(e.getValue(), "id: " + e.getKey(), false);
       }
       if (FAIL_ON_OFFSET_DISCREPANCIES) {
         assertTrue(FOUND_OFFSET_DISCREPANCIES, false);
@@ -144,7 +146,10 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
   public void testBespoke3() throws Exception {
     System.err.println("BEGIN testBespoke3");
     // this requires extra leading context
-    multiCheck("Hang-Latn", "\uc980\ud3fb\uce39\ub46d\ubd5f\uc3e5\ud2e0 yxyn ds", "jyusspolhcheutdwogboechssolt-tuils yxyn ds");
+    multiCheck(
+        "Hang-Latn",
+        "\uc980\ud3fb\uce39\ub46d\ubd5f\uc3e5\ud2e0 yxyn ds",
+        "jyusspolhcheutdwogboechssolt-tuils yxyn ds");
   }
 
   public void testBespoke4() throws Exception {
@@ -174,12 +179,16 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     // _internal_ Transliterators.
 
     try {
-      multiCheck("und_FONIPA-chr", "agt \ufcc5 0\u177f\uee73\u0003\u0417\u0117 \u0006", "\u13a0\u13a9\u13d8  \u13a1 ");
-      assertTrue("expected an exception to be thrown related to startOffsets",false);
+      multiCheck(
+          "und_FONIPA-chr",
+          "agt \ufcc5 0\u177f\uee73\u0003\u0417\u0117 \u0006",
+          "\u13a0\u13a9\u13d8  \u13a1 ");
+      assertTrue("expected an exception to be thrown related to startOffsets", false);
     } catch (AssertionError er) {
-      String expected = "offsetDiscrepancyStart input='agt \\ufcc5 0\\u177f\\uee73\\u0003\\u0417\\u0117 \\u0006'\n" +
-          "\tt='\\u13a0\\u13a9\\u13d8'; expected=[0, 3]; actual=[0, 3]\n" +
-          "\tt='\\u13a1'; expected=[7, 8]; actual=[11, 12] expected:<[0, 7]> but was:<[0, 11]>";
+      String expected =
+          "offsetDiscrepancyStart input='agt \\ufcc5 0\\u177f\\uee73\\u0003\\u0417\\u0117 \\u0006'\n"
+              + "\tt='\\u13a0\\u13a9\\u13d8'; expected=[0, 3]; actual=[0, 3]\n"
+              + "\tt='\\u13a1'; expected=[7, 8]; actual=[11, 12] expected:<[0, 7]> but was:<[0, 11]>";
       assertEquals(expected, er.getMessage());
     }
   }
@@ -187,14 +196,16 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
   public void testBespoke5() throws Exception {
     System.err.println("BEGIN testBespoke5");
     // this requires extra leading context
-    multiCheck("Latin-Gurmukhi",
+    multiCheck(
+        "Latin-Gurmukhi",
         "\u076c'\u03b3\u0000  \ueb8d\uee65\u76de\u0013\uf095yE\u0734\ud8e3\ude6c\ud36c ",
         "\u076c\u03b3\u0000  \ueb8d\uee65\u76de\u0013\uf095\u0a2f\u0a47\u0734\ud8e3\ude6c\ud36c ");
   }
 
   public void testBespoke6() throws Exception {
     System.err.println("BEGIN testBespoke6");
-    multiCheck("Katakana-Hiragana",
+    multiCheck(
+        "Katakana-Hiragana",
         "r \udb40\udd9d \u2c76\u2c6f\u2c71\u2c71\u2c68\u2c7f\u2c74 oyt",
         "r \udb40\udd9d \u2c76\u2c6f\u2c71\u2c71\u2c68\u2c7f\u2c74 oyt");
   }
@@ -202,32 +213,29 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
   public void testBespoke7() throws Exception {
     System.err.println("BEGIN testBespoke7");
     // check that final headDiff is accurately reported in offset correction
-    multiCheck("Latin-Katakana",
-        "vbco",
-        "ヴブコ");
+    multiCheck("Latin-Katakana", "vbco", "ヴブコ");
   }
 
   public void testBespoke8() throws Exception {
-    System.err.println("BEGIN testBespoke8 \"\u7417\u5dc0\u02acx\uda5e\udc53\ue95e \ud834\ude08 \"");
-    Analyzer a = getAnalyzer("Katakana-Hiragana", false, TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY);
-    BytesRef br = a.normalize("dummy", "\u7417\u5dc0\u02acx\uda5e\udc53\ue95e \ud834\ude08 ");
+    System.err.println(
+        "BEGIN testBespoke8 \"\u7417\u5dc0\u02acx\uda5e\udc53\ue95e \ud834\ude08 \"");
+    Analyzer a =
+        getAnalyzer("Katakana-Hiragana", false, TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY);
+    a.normalize("dummy", "\u7417\u5dc0\u02acx\uda5e\udc53\ue95e \ud834\ude08 ");
     // no check here; just make sure no error thrown on `normalize`
   }
 
   public void testBespoke9() throws Exception {
     System.err.println("BEGIN testBespoke9");
-    multiCheck("Latin-Katakana",
-        "dswxkvdj  \u62aa",
-        "デスウクスクヴヂ  抪");
+    multiCheck("Latin-Katakana", "dswxkvdj  \u62aa", "デスウクスクヴヂ  抪");
   }
 
   public void testBespoke10() throws Exception {
     System.err.println("BEGIN testBespoke10");
-    //print(Transliterator.getInstance("cy-cy_FONIPA"), "");
-    multiCheck("cy-cy_FONIPA",
-        "vhguj",
-        "vhˈɡɨ̞d͡ʒ");
-    multiCheck("cy-cy_FONIPA",
+    // print(Transliterator.getInstance("cy-cy_FONIPA"), "");
+    multiCheck("cy-cy_FONIPA", "vhguj", "vhˈɡɨ̞d͡ʒ");
+    multiCheck(
+        "cy-cy_FONIPA",
         "\u20f8\u20df\u20fd\u20f6\u20fe\u20e3 otfr \ufb9a vhguj",
         "⃸⃟⃽⃶⃾⃣ ɔtvr ﮚ vhɡɨ̞d͡ʒ");
   }
@@ -240,17 +248,17 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     // I think the fix here is to block advancing t idx beyond upstream transliterator's
     // _context_; we already block advancing t idx beyond upstream transliterator's
     // `committedTo`, so this shouldn't too challenging.
-    //print(Transliterator.getInstance("es-zh"), "");
+    // print(Transliterator.getInstance("es-zh"), "");
     String input = "f gnfg";
     input = "f gnfg";
     Replaceable r = new ReplaceableString(input);
-    Transliterator.getInstance("es-es_FONIPA").finishTransliteration(r, new Transliterator.Position(0, r.length(), 0));
-    //System.err.println("XXX1 '"+r.toString()+"'");
-    Transliterator.getInstance("es_FONIPA-zh").finishTransliteration(r, new Transliterator.Position(0, r.length(), 0));
-    //System.err.println("XXX2 '"+r.toString()+"'");
-    multiCheck("es-zh",
-        input,
-        "弗恩弗格"); // 弗格恩弗格
+    Transliterator.getInstance("es-es_FONIPA")
+        .finishTransliteration(r, new Transliterator.Position(0, r.length(), 0));
+    // System.err.println("XXX1 '"+r.toString()+"'");
+    Transliterator.getInstance("es_FONIPA-zh")
+        .finishTransliteration(r, new Transliterator.Position(0, r.length(), 0));
+    // System.err.println("XXX2 '"+r.toString()+"'");
+    multiCheck("es-zh", input, "弗恩弗格"); // 弗格恩弗格
   }
 
   public void testBespoke12() throws Exception {
@@ -285,16 +293,14 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     AttributeFactory attributeFactory = BaseTokenStreamTestCase.newAttributeFactory();
     Analyzer b = getAnalyzer(id, false, attributeFactory);
     long seed = random().nextLong();
-    AnalysisResult resB = checkAnalysisConsistency(new Random(seed), b, false, text);
+    checkAnalysisConsistency(new Random(seed), b, false, text);
   }
 
   public void testBespoke13() throws Exception {
     System.err.println("BEGIN testBespoke13");
-    //print(Transliterator.getInstance("eo-chr"), "");
+    // print(Transliterator.getInstance("eo-chr"), "");
     try {
-      multiCheck("eo-chr",
-          "\ucec6A\udae9\udc82\u0362\u0170 <!--< \u0a53",
-          "ᎠᎤ̋  ");
+      multiCheck("eo-chr", "\ucec6A\udae9\udc82\u0362\u0170 <!--< \u0a53", "ᎠᎤ̋  ");
     } catch (AssertionError er) {
       // this example throws a spurious "offset discrepancy" error; ignore it.
       String msg = er.getMessage();
@@ -306,27 +312,28 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke14() throws Exception {
     System.err.println("BEGIN testBespoke14");
-    //print(Transliterator.getInstance("Latn-Hebr"), "");
-    multiCheck("Latn-Hebr",
+    // print(Transliterator.getInstance("Latn-Hebr"), "");
+    multiCheck(
+        "Latn-Hebr",
         "lj N\u7b04\u0010\u0518\ueb99\ufdf0\u808d",
         "\u05dc\u05d6 \u05e0\u7b04\u0010\u0518\ueb99\ufdf0\u808d");
   }
 
   public void testBespoke14_2() throws Exception {
     System.err.println("BEGIN testBespoke14_2");
-    //print(Transliterator.getInstance("Latn-Hebr"), "");
-    multiCheck("Latn-Hebr",
+    // print(Transliterator.getInstance("Latn-Hebr"), "");
+    multiCheck(
+        "Latn-Hebr",
         "qqfzrsksg \u00ea\ueeb5\u0a51\u0145\u0767\u0114",
         "\u05e7\u05e7\u05e4\u05d6\u05e8\u05e1\u05db\u05e1\u05d2 \u05b6\u05c2\ueeb5\u0a51\u05e0\u0327\u0767\u05b0");
   }
 
   public void testBespoke15() throws Exception {
     System.err.println("BEGIN testBespoke15");
-    // fails for maxContextLength=4; bump ICUTransform2CharFilterFactory.MAX_CONTEXT_LENGTH_FLOOR to `5`
+    // fails for maxContextLength=4; bump ICUTransform2CharFilterFactory.MAX_CONTEXT_LENGTH_FLOOR to
+    // `5`
     // reducing to `3` also works, but this appears to be a different issue than `testBespoke16`
-    multiCheck("cy-cy_FONIPA",
-        "\u2407 JWOb",
-        "\u2407 d\u0361\u0292w\u0254b");
+    multiCheck("cy-cy_FONIPA", "\u2407 JWOb", "\u2407 d\u0361\u0292w\u0254b");
   }
 
   public void testBespoke16() throws Exception {
@@ -335,7 +342,8 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     // (this was causing an infinite loop in ICU code when pre-context of length 3 or 5
     // was passed in!)
     String input = "dcxnwpr \udb40\udd11\udb40\udd34\udb40\udde7\udb40\uddab\udb40\udda3";
-    multiCheck("Han-Latin/Names",
+    multiCheck(
+        "Han-Latin/Names",
         input,
         "dcxnwpr \udb40\udd11\udb40\udd34\udb40\udde7\udb40\uddab\udb40\udda3");
   }
@@ -346,15 +354,14 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     // bump ICUTransform2CharFilterFactory.MAX_CONTEXT_LENGTH_FLOOR to `6`
     // this is a very similar issue to `testBespoke15`, but don't really understand
     // what's going on here
-    multiCheck("cy-cy_FONIPA",
-        "n\u3013IN\\ jmbinc",
-        "n\u3013\u026an d\u0361\u0292mb\u026ank");
+    multiCheck("cy-cy_FONIPA", "n\u3013IN\\ jmbinc", "n\u3013\u026an d\u0361\u0292mb\u026ank");
   }
 
   public void testBespoke18() throws Exception {
     System.err.println("BEGIN testBespoke18");
     try {
-      multiCheck("ch-chr",
+      multiCheck(
+          "ch-chr",
           "\u2321 \ud860\udecc gtyey zmibo",
           "  \u13a9\u13d8\u13e4\u13e5 \u13cd\u13bb\u13c9");
     } catch (AssertionError er) {
@@ -368,16 +375,24 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke19() throws Exception {
     System.err.println("BEGIN testBespoke19");
-    // first pass assumes "complex" RuleBased translit, involving lots of copying around within the Replaceable;
-    // subsequent passes use straight "replace". Per the spec for Replaceable API, we trim common prefix and
-    // suffix from replacement and replacee ... but only for `replace` ... `copy` does no such extra work.
-    // This should be reconciled one way or another -- either make `copy` trim common prefixes and suffixes,
-    // or cause `replace` to _stop_ doing so. Initially resolved by disabling trim on replace (easy). Yet to
-    // be determined whether that's the "right" decision. It could make sense to do trimming of prefix and
+    // first pass assumes "complex" RuleBased translit, involving lots of copying around within the
+    // Replaceable;
+    // subsequent passes use straight "replace". Per the spec for Replaceable API, we trim common
+    // prefix and
+    // suffix from replacement and replacee ... but only for `replace` ... `copy` does no such extra
+    // work.
+    // This should be reconciled one way or another -- either make `copy` trim common prefixes and
+    // suffixes,
+    // or cause `replace` to _stop_ doing so. Initially resolved by disabling trim on replace
+    // (easy). Yet to
+    // be determined whether that's the "right" decision. It could make sense to do trimming of
+    // prefix and
     // suffix separately, or conditionally?
     String id = "es_419-chr";
     String input = "gnanmtzkob quxtsh";
     // expected doesn't really figure in this problem
+    @SuppressWarnings("unused")
+    // TODO: what is this?
     String expected = "\u13be\u13c2\u13bb\u13d8\u13cd\u13aa\u13eb\u13ab\u13cd\u13d8\u13cd";
     Analyzer b = getAnalyzer(id, false, BaseTokenStreamTestCase.newAttributeFactory());
     long seed = random().nextLong();
@@ -399,18 +414,18 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     System.err.println("BEGIN testBespoke20");
     // bump ICUTransform2CharFilterFactory.MAX_CONTEXT_LENGTH_FLOOR to `7` (fails for `6`)
     // don't really understand what's going on here
-    multiCheck("cy-cy_FONIPA",
-        "\uaa63\uaa6d jbfbu",
-        "\uaa63\uaa6d d\u0361\u0292bvb\u0268\u031e");
+    multiCheck("cy-cy_FONIPA", "\uaa63\uaa6d jbfbu", "\uaa63\uaa6d d\u0361\u0292bvb\u0268\u031e");
   }
 
   public void testBespoke21() throws Exception {
     System.err.println("BEGIN testBespoke21");
-    String id ="Hiragana-Latin";
-    String text = " \u4dfe\u0545\u0005\uda12\udd2e\u034f\udb80\udd50 \u30fe\u30e9\u30fc\u30ad" +
-        "\u30e5\u30cd\u30b9\u30e2\u30e8 zwwpmct rqgshqijwurx ";
-    String expected = " \u4dfe\u0545\u0005\uda12\udd2e\u034f\udb80\udd50 \udd50 \u30e9\u0304\u30ad" +
-        "\u30e5\u30cd\u30b9\u30e2\u30e8 zwwpmct rqgshqijwurx ";
+    String id = "Hiragana-Latin";
+    String text =
+        " \u4dfe\u0545\u0005\uda12\udd2e\u034f\udb80\udd50 \u30fe\u30e9\u30fc\u30ad"
+            + "\u30e5\u30cd\u30b9\u30e2\u30e8 zwwpmct rqgshqijwurx ";
+    String expected =
+        " \u4dfe\u0545\u0005\uda12\udd2e\u034f\udb80\udd50 \udd50 \u30e9\u0304\u30ad"
+            + "\u30e5\u30cd\u30b9\u30e2\u30e8 zwwpmct rqgshqijwurx ";
     // first, verify "gold standard" result (raw, non-incremental Transliterator)
     Transliterator t = Transliterator.getInstance(id);
     Replaceable in = new ReplaceableString(text);
@@ -443,10 +458,13 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke22() throws Exception {
     System.err.println("BEGIN testBespoke22");
-    // This test provides a window into a bug where ICU BreakTransliterator can send `position.start`
+    // This test provides a window into a bug where ICU BreakTransliterator can send
+    // `position.start`
     // back to zero for runs containing no boundaries. ICUTransform2CharFilter should indeed detect
-    // and correct this situation; but it consequently conflicts with the (incorrect) transliteration
-    // from ICUTransformCharFilter (and even bare/raw Transliterator), which have no such mitigation.
+    // and correct this situation; but it consequently conflicts with the (incorrect)
+    // transliteration
+    // from ICUTransformCharFilter (and even bare/raw Transliterator), which have no such
+    // mitigation.
 
     // This test is not perfect, but it affords us a baseline assertion that crosschecks
     // fail _differently_ depending on how the BreakTransliterator bug is handled. If the bug
@@ -456,9 +474,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     final int restore = ICUTransform2CharFilter.BATCH_BUFFER_SIZE;
     ICUTransform2CharFilter.BATCH_BUFFER_SIZE = 0;
     try {
-      multiCheck("Thai-Latin",
-          "\u0e49\u0e1a\u0e45\u0e21",
-          "\u0302 b\u0268m");
+      multiCheck("Thai-Latin", "\u0e49\u0e1a\u0e45\u0e21", "\u0302 b\u0268m");
       assertTrue("should throw ComparisonFailure", false);
     } catch (ComparisonFailure f) {
       ICUTransform2CharFilter.BATCH_BUFFER_SIZE = restore;
@@ -467,39 +483,42 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       ICUTransform2CharFilter.BATCH_BUFFER_SIZE = restore;
     }
     ICUTransform2CharFilter.BATCH_BUFFER_SIZE = 0;
-    ICUTransform2CharFilter.MITIGATE_BREAK_TRANSLITERATOR_POSITION_BUG = false; // temporarily disable fixing
+    ICUTransform2CharFilter.MITIGATE_BREAK_TRANSLITERATOR_POSITION_BUG =
+        false; // temporarily disable fixing
     try {
-      multiCheck("Thai-Latin",
-          "\u0e49\u0e1a\u0e45\u0e21",
-          "\u0302 b\u0268m");
+      multiCheck("Thai-Latin", "\u0e49\u0e1a\u0e45\u0e21", "\u0302 b\u0268m");
       assertTrue("should throw AssertionError", false);
     } catch (AssertionError er) {
       ICUTransform2CharFilter.BATCH_BUFFER_SIZE = restore;
-      assertEquals("offsetDiscrepancyEnd input='\\u0e49\\u0e1a\\u0e45\\u0e21'\n" +
-              "\tt='\\u0302'; expected=[0, 0]; actual=[0, 1]\n" +
-              "\tt='b\\u0268m'; expected=[1, 4]; actual=[1, 4] expected:<[0, 4]> but was:<[1, 4]>",
+      assertEquals(
+          "offsetDiscrepancyEnd input='\\u0e49\\u0e1a\\u0e45\\u0e21'\n"
+              + "\tt='\\u0302'; expected=[0, 0]; actual=[0, 1]\n"
+              + "\tt='b\\u0268m'; expected=[1, 4]; actual=[1, 4] expected:<[0, 4]> but was:<[1, 4]>",
           er.getMessage());
     } finally {
       ICUTransform2CharFilter.BATCH_BUFFER_SIZE = restore;
-      ICUTransform2CharFilter.MITIGATE_BREAK_TRANSLITERATOR_POSITION_BUG = true; // restore default value
+      ICUTransform2CharFilter.MITIGATE_BREAK_TRANSLITERATOR_POSITION_BUG =
+          true; // restore default value
     }
   }
 
   public void testBespoke23() throws Exception {
     System.err.println("BEGIN testBespoke23");
-    multiCheck("Hex-Any",
+    multiCheck(
+        "Hex-Any",
         "illegal codepoint &#xdb71f7; test",
         "Illegal codepoint",
         IllegalArgumentException.class);
-    multiCheck("Hex-Any",
-        "illegal codepoint &#xfffc; test",
-        "illegal codepoint \ufffc test");
+    multiCheck("Hex-Any", "illegal codepoint &#xfffc; test", "illegal codepoint \ufffc test");
   }
 
   private void multiCheck(String id, String text, String expected) throws Exception {
     multiCheck(id, text, expected, null);
   }
-  private void multiCheck(String id, String text, String expected, Class<? extends Throwable> expectThrows) throws Exception {
+
+  private void multiCheck(
+      String id, String text, String expected, Class<? extends Throwable> expectThrows)
+      throws Exception {
     // first, verify "gold standard" result (raw, non-incremental Transliterator)
     Transliterator t = Transliterator.getInstance(id);
     Replaceable in = new ReplaceableString(text);
@@ -540,17 +559,24 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testRtx() throws Exception {
     System.err.println("BEGIN testRtx");
-    Transliterator t = Transliterator.createFromRules("X_ROUND_TRIP", "a > bc; ::Null; bc > a;", Transliterator.FORWARD);
+    Transliterator t =
+        Transliterator.createFromRules(
+            "X_ROUND_TRIP", "a > bc; ::Null; bc > a;", Transliterator.FORWARD);
     String in = "a a a a a ";
+    @SuppressWarnings("unused")
+    // TODO: what is this
     int[] expectedOffsets = new int[0];
     checkToken2(t, new StringReader(in), in);
   }
 
   public void testExpand() throws Exception {
     System.err.println("BEGIN testExpand");
-    Transliterator t = Transliterator.createFromRules("X_EXPAND", "a > bc;", Transliterator.FORWARD);
+    Transliterator t =
+        Transliterator.createFromRules("X_EXPAND", "a > bc;", Transliterator.FORWARD);
     String in = "a a a a a ";
     String expected = "bc bc bc bc bc ";
+    @SuppressWarnings("unused")
+    // TODO: what is this
     int[] expectedOffsets = new int[] {1, -1, 4, -2, 7, -3, 10, -4, 13, -5};
     checkToken2(t, new StringReader(in), expected);
   }
@@ -575,22 +601,30 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   public void testCustomBypass() throws Exception {
     System.err.println("BEGIN testCustomBypass");
-    Transliterator inner = Transliterator.createFromRules("x_inner", "a > b; ::Null; b > c;", Transliterator.FORWARD);
+    Transliterator inner =
+        Transliterator.createFromRules("x_inner", "a > b; ::Null; b > c;", Transliterator.FORWARD);
     Transliterator.registerInstance(inner);
     String rules = "::Null; ::[a] x_inner; b > d"; // convert a's to b's and b's to c's
     Transliterator t = Transliterator.createFromRules("test", rules, Transliterator.FORWARD);
-    //print(t, "");
+    // print(t, "");
     Replaceable r = new ReplaceableString("abab");
     t.finishTransliteration(r, new Transliterator.Position(0, r.length(), 0));
     assertEquals("cdcd", r.toString());
-    checkToken2(
-        t,
-        new StringReader("abab"),
-        "cdcd");
+    checkToken2(t, new StringReader("abab"), "cdcd");
   }
 
+  @SuppressWarnings("unused")
+  // TODO: what is this?
   private void print(Transliterator t, String indent) {
-    System.err.println(indent+t.getID()+", "+t.getClass().getSimpleName()+", f="+t.getFilter()+", mcl="+t.getMaximumContextLength());
+    System.err.println(
+        indent
+            + t.getID()
+            + ", "
+            + t.getClass().getSimpleName()
+            + ", f="
+            + t.getFilter()
+            + ", mcl="
+            + t.getMaximumContextLength());
     Transliterator[] e = t.getElements();
     if (e.length == 1 && e[0] == t) {
       return;
@@ -645,6 +679,8 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(input1, new String[] {expected});
   }
 
+  @SuppressWarnings("unused")
+  // TODO: what is this?
   private void checkToken(
       String id, String input, String expected, boolean suppressUnicodeNormExternalization)
       throws IOException {
@@ -655,9 +691,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     checkToken(getTransliteratingFilter(id, new StringReader(input)), expected);
   }
 
-  /**
-   * returns true if unicode norm externalization optimization has been applied
-   */
+  /** returns true if unicode norm externalization optimization has been applied */
   private void checkToken(
       String id,
       String input,
@@ -667,10 +701,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       throws IOException {
     checkToken(
         getTransliteratingFilter(
-            id,
-            new StringReader(input),
-            rules,
-            suppressUnicodeNormalizationExternalization),
+            id, new StringReader(input), rules, suppressUnicodeNormalizationExternalization),
         expected);
   }
 
@@ -689,7 +720,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     checkOffsetDiscrepancies(offsetDiscrepancies, "offset discrepancies for Latin-Katakana", false);
   }
 
-  //NOTE: this is temporarily disabled pending support for `AnyTransliterator`
+  // NOTE: this is temporarily disabled pending support for `AnyTransliterator`
   @Weekly
   public void testRandomStringsAnyToLatin() throws Exception {
     System.err.println("BEGIN testRandomStringsAnyToLatin");
@@ -703,8 +734,9 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     // this Transliterator often increases character length wrt input
     // we _do_ expect unicode norm externalization optimization in practice
     List<Map.Entry<String, String>> offsetDiscrepancies = new ArrayList<>();
-    testRandomStrings("Katakana-Hiragana",1000, offsetDiscrepancies);
-    checkOffsetDiscrepancies(offsetDiscrepancies, "offset discrepancies for Katakana-Hiragana", true);
+    testRandomStrings("Katakana-Hiragana", 1000, offsetDiscrepancies);
+    checkOffsetDiscrepancies(
+        offsetDiscrepancies, "offset discrepancies for Katakana-Hiragana", true);
   }
 
   public void testRandomStringsThaiToLatin() throws Exception {
@@ -715,7 +747,7 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     // for a specific example), `testRandomStrings(...)` goes out of its way to check
     // for this case and re-try with the BreakIterator bug mitigation disabled
     List<Map.Entry<String, String>> offsetDiscrepancies = new ArrayList<>();
-    testRandomStrings("Thai-Latin",1000, offsetDiscrepancies);
+    testRandomStrings("Thai-Latin", 1000, offsetDiscrepancies);
     checkOffsetDiscrepancies(offsetDiscrepancies, "offset discrepancies for Thai-Latin", false);
   }
 
@@ -729,14 +761,17 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       ICUTransform2CharFilter.BATCH_BUFFER_SIZE = restore;
     }
   }
+
   @Nightly
   public void testPerfRollback() throws Exception {
     perfTestLoop(Type.ROLLBACK);
   }
+
   @Nightly
   public void testPerfTokenFilter() throws Exception {
     perfTestLoop(Type.TOKEN_FILTER);
   }
+
   @Nightly
   public void testPerfBareTranslit() throws Exception {
     perfTestLoop(Type.BARE_TRANSLIT);
@@ -750,7 +785,8 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       final long runSeed = seed;
       naivePerformanceTest(new Random(runSeed), type);
       final long post = System.currentTimeMillis();
-      System.err.println(type+" round "+i+" ("+(post - start)+"ms) -- seed="+Long.toHexString(seed));
+      System.err.println(
+          type + " round " + i + " (" + (post - start) + "ms) -- seed=" + Long.toHexString(seed));
       start = post;
       if (!PERF_TEST_SAME_SEED) {
         seed = loopRandom.nextLong();
@@ -770,7 +806,9 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       String id = ids.nextElement();
       if (!"AnyTransliterator".equals(Transliterator.getInstance(id).getClass().getSimpleName())) {
         try {
-          size += naivePerformanceTest(textGenRandom, id, type, PERF_TEST_ITERATIONS, PERF_TEST_MAX_WORD_LENGTH);
+          size +=
+              naivePerformanceTest(
+                  textGenRandom, id, type, PERF_TEST_ITERATIONS, PERF_TEST_MAX_WORD_LENGTH);
         } catch (AssertionError er) {
           if (type == Type.ROLLBACK) {
             // swallow this; we know there are occasional issues here
@@ -783,8 +821,16 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     assertTrue(size > 0);
   }
 
-  private enum Type { DECOMPOSED, ROLLBACK, TOKEN_FILTER, BARE_TRANSLIT }
-  private int naivePerformanceTest(Random textGenRandom, String id, Type type, int iterations, int maxWordLength) throws Exception {
+  private enum Type {
+    DECOMPOSED,
+    ROLLBACK,
+    TOKEN_FILTER,
+    BARE_TRANSLIT
+  }
+
+  private int naivePerformanceTest(
+      Random textGenRandom, String id, Type type, int iterations, int maxWordLength)
+      throws Exception {
     Transliterator t = null;
     Analyzer a;
     switch (type) {
@@ -799,14 +845,20 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
         a = analyzerFromCharFilterFactory(f);
         break;
       case TOKEN_FILTER:
-        a = new Analyzer() {
-          @Override
-          protected TokenStreamComponents createComponents(String fieldName) {
-            Tokenizer tokenizer = new MockTokenizer(TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY, MockTokenizer.WHITESPACE,
-                false, MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
-            return new TokenStreamComponents(tokenizer, new ICUTransformFilter(tokenizer, Transliterator.getInstance(id)));
-          }
-        };
+        a =
+            new Analyzer() {
+              @Override
+              protected TokenStreamComponents createComponents(String fieldName) {
+                Tokenizer tokenizer =
+                    new MockTokenizer(
+                        TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY,
+                        MockTokenizer.WHITESPACE,
+                        false,
+                        MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
+                return new TokenStreamComponents(
+                    tokenizer, new ICUTransformFilter(tokenizer, Transliterator.getInstance(id)));
+              }
+            };
         break;
       case BARE_TRANSLIT:
         return runBareTranslit(Transliterator.getInstance(id), iterations, maxWordLength);
@@ -818,7 +870,8 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     try {
       for (int i = iterations; i > 0; i--) {
         String text = TestUtil.randomAnalysisString(textGenRandom, maxWordLength, false);
-        CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES = false; // first ensure that expected exception is thrown
+        CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES =
+            false; // first ensure that expected exception is thrown
         boolean done = false;
         do {
           TokenStream ts = a.tokenStream("dummy", new StringReader(text));
@@ -837,25 +890,37 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
             }
             if (type != Type.DECOMPOSED) {
               System.err.println(ex);
-              // swallow this; only DECOMPOSED is capable of mitigating introduced unpaired surrogates
+              // swallow this; only DECOMPOSED is capable of mitigating introduced unpaired
+              // surrogates
             }
             String msg = CircularReplaceable.introducedUnpairedSurrogate();
             assertNotNull(msg);
             // recover
-            System.err.println("recover id "+id+", "+msg+", text='"+escape(text)+"'");
+            System.err.println("recover id " + id + ", " + msg + ", text='" + escape(text) + "'");
             a = analyzerFromCharFilterFactory(new ICUTransform2CharFilterFactory(t));
-            CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES = true; // ensure that auto-fix has intended effect
+            CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES =
+                true; // ensure that auto-fix has intended effect
             continue;
           } catch (Exception ex) {
             if (type == Type.ROLLBACK) {
               System.err.println(ex);
-              // swallow this; we _know_ there are problems with ROLLBACK, and we're not going to fix them.
+              // swallow this; we _know_ there are problems with ROLLBACK, and we're not going to
+              // fix them.
             }
-            throw new RuntimeException("id="+id+", text='"+escape(text)+"'", ex);
+            throw new RuntimeException("id=" + id + ", text='" + escape(text) + "'", ex);
           }
           String msg = CircularReplaceable.introducedUnpairedSurrogate();
           if (msg != null) {
-            System.err.println("caught id "+id+", fix="+CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES+", "+msg+", text='"+escape(text)+"'");
+            System.err.println(
+                "caught id "
+                    + id
+                    + ", fix="
+                    + CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES
+                    + ", "
+                    + msg
+                    + ", text='"
+                    + escape(text)
+                    + "'");
             assertTrue(CircularReplaceable.FIX_INTRODUCED_UNPAIRED_SURROGATES);
           }
           done = true;
@@ -886,21 +951,23 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     return new Analyzer() {
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new MockTokenizer(TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY, MockTokenizer.WHITESPACE,
-            false, MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
+        Tokenizer tokenizer =
+            new MockTokenizer(
+                TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY,
+                MockTokenizer.WHITESPACE,
+                false,
+                MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
         return new TokenStreamComponents(tokenizer, tokenizer);
       }
 
       @Override
       protected Reader initReader(String fieldName, Reader reader) {
-        return super.initReader(
-            fieldName, f.create(reader));
+        return super.initReader(fieldName, f.create(reader));
       }
 
       @Override
       protected Reader initReaderForNormalization(String fieldName, Reader reader) {
-        return super.initReaderForNormalization(
-            fieldName, f.create(reader));
+        return super.initReaderForNormalization(fieldName, f.create(reader));
       }
     };
   }
@@ -921,10 +988,12 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
   }
 
   private static final String FOUND_OFFSET_DISCREPANCIES = "found offset discrepancies";
-  private static void checkOffsetDiscrepancies(List<Map.Entry<String, String>> offsetDiscrepancies, String msg, boolean strict) {
+
+  private static void checkOffsetDiscrepancies(
+      List<Map.Entry<String, String>> offsetDiscrepancies, String msg, boolean strict) {
     if (!offsetDiscrepancies.isEmpty()) {
       for (Map.Entry<String, String> e : offsetDiscrepancies) {
-        System.err.println("XXX "+(msg == null ? "" : msg+" ")+e.getValue());
+        System.err.println("XXX " + (msg == null ? "" : msg + " ") + e.getValue());
       }
       if (strict) {
         assertTrue(FOUND_OFFSET_DISCREPANCIES, false);
@@ -932,12 +1001,17 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  private static Analyzer getAnalyzer(String id, boolean suppressExternalize, AttributeFactory attributeFactory) {
+  private static Analyzer getAnalyzer(
+      String id, boolean suppressExternalize, AttributeFactory attributeFactory) {
     return new Analyzer() {
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new MockTokenizer(attributeFactory, MockTokenizer.WHITESPACE,
-            false, MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
+        Tokenizer tokenizer =
+            new MockTokenizer(
+                attributeFactory,
+                MockTokenizer.WHITESPACE,
+                false,
+                MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
         return new TokenStreamComponents(tokenizer, tokenizer);
       }
 
@@ -956,7 +1030,10 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
   }
 
   /** blast some random strings through the analyzer */
-  private void testRandomStrings(final String id, int iterations, List<Map.Entry<String, String>> accumulateOffsetDiscrepancies)
+  private void testRandomStrings(
+      final String id,
+      int iterations,
+      List<Map.Entry<String, String>> accumulateOffsetDiscrepancies)
       throws Exception {
     Transliterator t = Transliterator.getInstance(id);
     AttributeFactory attributeFactory = BaseTokenStreamTestCase.newAttributeFactory();
@@ -989,12 +1066,16 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
         if (!"Any-Hex".equals(id) || !"Illegal codepoint".equals(ex.getMessage())) {
           throw ex;
         }
-        // this is a special case, and rather than proceeding normally, we verify that the same exception
+        // this is a special case, and rather than proceeding normally, we verify that the same
+        // exception
         // is thrown by streaming impl
         try {
           checkToken(id, text, "N/A (should throw exception)", null, false);
           assertTrue("expected exception to be thrown", false);
-        } catch (IllegalStateException ex1) {
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalStateException ex1) {
+          // TODO: this looks buggy, should be using 'ex1'
           assertEquals("Illegal codepoint", ex.getMessage());
           return;
         }
@@ -1005,13 +1086,17 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       try {
         checkToken(id, text, expected, null, true);
         referenceImplOk = true;
-      } catch (Throwable er) {
+      } catch (
+          @SuppressWarnings("unused")
+          Throwable er) {
         // we don't care about errors in the "legacy"/"reference" impl
         referenceImplOk = false;
       }
       // NOTE: `checkToken` on the "decomposed" approach (analyzer b) should often be redundant with
-      // checkAnalysisConsistency (below), but we do it here anyway just to be safe (and for the case
-      // where `referenceImplOk==false`, when there is no other way to validate against the `expected`
+      // checkAnalysisConsistency (below), but we do it here anyway just to be safe (and for the
+      // case
+      // where `referenceImplOk==false`, when there is no other way to validate against the
+      // `expected`
       // value
       try {
         checkToken(id, text, expected, null, false);
@@ -1035,21 +1120,27 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       try {
         resB = checkAnalysisConsistency(randomB, b, false, text);
       } catch (Throwable e) {
-        System.err.println("caught "+e+" for '"+escape(text)+"'");
+        System.err.println("caught " + e + " for '" + escape(text) + "'");
         throw e;
       }
       if (referenceImplOk) {
         AnalysisResult resA = checkAnalysisConsistency(randomA, a, false, text);
         try {
-          // NOTE: we tolerate null positions when using `AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY`, which
-          // lazily instantiates PositionIncrementAttribute and can in some cases report as null when
+          // NOTE: we tolerate null positions when using
+          // `AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY`, which
+          // lazily instantiates PositionIncrementAttribute and can in some cases report as null
+          // when
           // on the initializing call to `getAttribute(PositionIncrementAttribute.class)` in
           // `checkAnalysisConsistency(...)`
-          assertEquals(resA, resB, AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY.equals(attributeFactory));
+          assertEquals(
+              resA, resB, AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY.equals(attributeFactory));
         } catch (Throwable e) {
           final String msg;
-          if (accumulateOffsetDiscrepancies != null && (msg = e.getMessage()) != null && msg.startsWith(OFFSET_DISCREPANCY_MSG_PREFIX)) {
-            accumulateOffsetDiscrepancies.add(new AbstractMap.SimpleImmutableEntry<>("'"+escape(text)+"'", msg));
+          if (accumulateOffsetDiscrepancies != null
+              && (msg = e.getMessage()) != null
+              && msg.startsWith(OFFSET_DISCREPANCY_MSG_PREFIX)) {
+            accumulateOffsetDiscrepancies.add(
+                new AbstractMap.SimpleImmutableEntry<>("'" + escape(text) + "'", msg));
           } else {
             throw e;
           }
@@ -1088,15 +1179,13 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
 
   /**
    * This test verifies that top-level filters are applied (or not!) properly to _all_ component
-   * Transliterators. The three user-level input characters here are each handled differently
-   * in illustrative ways:
-   *  1. composed input "â" matches the top-level filter, is decomposed, its ascii "a" is mapped
-   *     to ascii "i", and "i\u0302" (the decomposed product of composed input entirely matched
-   *     by top-level filter) is composed into "î"
-   *  2. for decomposed input "a\u0302", only ascii "a" matches the top-level filter; it is
-   *     mapped, but is _not_ composed with input "\u0302", which did _not_ match the top-level
-   *     filter
-   *  3. decomposed input "i\u0302" is completely ignored (no part matches top-level filter)
+   * Transliterators. The three user-level input characters here are each handled differently in
+   * illustrative ways: 1. composed input "â" matches the top-level filter, is decomposed, its ascii
+   * "a" is mapped to ascii "i", and "i\u0302" (the decomposed product of composed input entirely
+   * matched by top-level filter) is composed into "î" 2. for decomposed input "a\u0302", only ascii
+   * "a" matches the top-level filter; it is mapped, but is _not_ composed with input "\u0302",
+   * which did _not_ match the top-level filter 3. decomposed input "i\u0302" is completely ignored
+   * (no part matches top-level filter)
    */
   public void testParityWithFilter3() throws Exception {
     System.err.println("BEGIN testParityWithFilter3");
@@ -1146,27 +1235,19 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
   }
 
   private static CharFilter getTransliteratingFilter(
-      String id,
-      Reader r,
-      boolean suppressUnicodeNormalizationExternalization) {
-    return getTransliteratingFilter(
-        id,
-        r,
-        null,
-        suppressUnicodeNormalizationExternalization);
+      String id, Reader r, boolean suppressUnicodeNormalizationExternalization) {
+    return getTransliteratingFilter(id, r, null, suppressUnicodeNormalizationExternalization);
   }
 
   @SuppressWarnings("resource")
   private static CharFilter getTransliteratingFilter(
-      String id,
-      Reader r,
-      String rules,
-      boolean suppressUnicodeNormalizationExternalization) {
+      String id, Reader r, String rules, boolean suppressUnicodeNormalizationExternalization) {
     if (suppressUnicodeNormalizationExternalization) {
       Map<String, String> args = new HashMap<>();
       args.put("id", id);
       ICUTransformCharFilterFactory factory =
-          new ICUTransformCharFilterFactory(args, suppressUnicodeNormalizationExternalization, rules);
+          new ICUTransformCharFilterFactory(
+              args, suppressUnicodeNormalizationExternalization, rules);
       return (CharFilter) factory.create(r);
     } else {
       Transliterator t;
@@ -1178,14 +1259,18 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       return ICUTransform2CharFilterFactory.wrap(r, t);
     }
   }
-  public void assertEquals(AnalysisResult expected, AnalysisResult actual, boolean tolerateNullPositions) {
-    granularAssertEquals("tokens '"+escape(expected.text)+"'", expected.tokens, actual.tokens);
+
+  public void assertEquals(
+      AnalysisResult expected, AnalysisResult actual, boolean tolerateNullPositions) {
+    granularAssertEquals("tokens '" + escape(expected.text) + "'", expected.tokens, actual.tokens);
     assertEquals("type", expected.types, actual.types);
     if (!tolerateNullPositions || !(expected.positions == null ^ actual.positions == null)) {
-      assertEquals("positions '"+escape(expected.text)+"'", expected.positions, actual.positions);
+      assertEquals(
+          "positions '" + escape(expected.text) + "'", expected.positions, actual.positions);
     }
     assertEquals("positionLengths", expected.positionLengths, actual.positionLengths);
-    assertEquals(formatOffsetMsg("Start", expected, actual), expected.startOffsets, actual.startOffsets);
+    assertEquals(
+        formatOffsetMsg("Start", expected, actual), expected.startOffsets, actual.startOffsets);
     assertEquals(formatOffsetMsg("End", expected, actual), expected.endOffsets, actual.endOffsets);
   }
 
@@ -1196,22 +1281,28 @@ public class TestICUTransform2CharFilter extends BaseTokenStreamTestCase {
       Iterator<String> e = expected.iterator();
       Iterator<String> a = actual.iterator();
       while (e.hasNext()) {
-        assertEquals(msg+" e="+expected+", a="+actual, e.next(), a.next());
+        assertEquals(msg + " e=" + expected + ", a=" + actual, e.next(), a.next());
       }
     }
   }
 
   private static final String OFFSET_DISCREPANCY_MSG_PREFIX = "offsetDiscrepancy";
-  private static String formatOffsetMsg(String type, AnalysisResult expected, AnalysisResult actual) {
+
+  private static String formatOffsetMsg(
+      String type, AnalysisResult expected, AnalysisResult actual) {
     StringBuilder sb = new StringBuilder();
-    sb.append(OFFSET_DISCREPANCY_MSG_PREFIX+type+" input='"+escape(expected.text)+"'");
+    sb.append(OFFSET_DISCREPANCY_MSG_PREFIX + type + " input='" + escape(expected.text) + "'");
     Iterator<Integer> esIter = expected.startOffsets.iterator();
     Iterator<Integer> eeIter = expected.endOffsets.iterator();
     Iterator<Integer> asIter = actual.startOffsets.iterator();
     Iterator<Integer> aeIter = actual.endOffsets.iterator();
     for (String s : expected.tokens) {
       sb.append("\n\tt='").append(escape(s)).append("'; ");
-      sb.append("expected=[").append(esIter.next()).append(", ").append(eeIter.next()).append("]; ");
+      sb.append("expected=[")
+          .append(esIter.next())
+          .append(", ")
+          .append(eeIter.next())
+          .append("]; ");
       sb.append("actual=[").append(asIter.next()).append(", ").append(aeIter.next()).append("]");
     }
     return sb.toString();

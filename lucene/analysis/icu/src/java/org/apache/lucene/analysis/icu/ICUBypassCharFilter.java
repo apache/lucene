@@ -16,17 +16,15 @@
  */
 package org.apache.lucene.analysis.icu;
 
-import com.ibm.icu.text.UnicodeSet;
+import static com.ibm.icu.text.UnicodeSet.SpanCondition.NOT_CONTAINED;
+import static com.ibm.icu.text.UnicodeSet.SpanCondition.SIMPLE;
 
+import com.ibm.icu.text.UnicodeSet;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.CharBuffer;
 import java.util.List;
-
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
-
-import static com.ibm.icu.text.UnicodeSet.SpanCondition.SIMPLE;
-import static com.ibm.icu.text.UnicodeSet.SpanCondition.NOT_CONTAINED;
 
 final class ICUBypassCharFilter {
 
@@ -34,9 +32,8 @@ final class ICUBypassCharFilter {
   static final int END_OF_SPAN = -2;
 
   /**
-   * To be extended by CharFilters that should be able to "pretend" to reach EOF,
-   * have internal state cleared via {@link #clearState(int)}, and be reused with further
-   * upstream input.
+   * To be extended by CharFilters that should be able to "pretend" to reach EOF, have internal
+   * state cleared via {@link #clearState(int)}, and be reused with further upstream input.
    */
   interface FilterAware {
     void clearState(int offsetBypass);
@@ -58,9 +55,9 @@ final class ICUBypassCharFilter {
     }
 
     /**
-     * Extends normal {@link Reader#read(char[], int, int)} contract with special return value
-     * of {@value END_OF_SPAN}, which indicates the end of a span of input (wrt the configured
-     * {@link #filter}, and which should trigger flush in downstream consumers.
+     * Extends normal {@link Reader#read(char[], int, int)} contract with special return value of
+     * {@code END_OF_SPAN}, which indicates the end of a span of input (wrt the configured {@link
+     * #filter}, and which should trigger flush in downstream consumers.
      */
     @Override
     public int read(char[] cbuf, int off, int len) throws IOException {
@@ -93,7 +90,7 @@ final class ICUBypassCharFilter {
         outLimit = 0;
         bufStart = 0;
         bufEnd = 0;
-      } else if (outLimit<<1 > this.buf.length) {
+      } else if (outLimit << 1 > this.buf.length) {
         // shift for more space
         bufEnd -= outLimit; // bufEnd now same as new length of internal buffer
         bufStart -= outLimit; // also shift this by the amount we can discard
@@ -126,7 +123,7 @@ final class ICUBypassCharFilter {
 
     @Override
     public int read(char[] cbuf, int off, int len) throws IOException {
-      for (;;) {
+      for (; ; ) {
         final Reader activeInput;
         if (matchState) {
           activeInput = this.input;

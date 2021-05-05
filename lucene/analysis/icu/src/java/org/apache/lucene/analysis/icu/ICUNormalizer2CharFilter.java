@@ -24,7 +24,8 @@ import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
 
 /** Normalize token text with ICU's {@link Normalizer2}. */
-public final class ICUNormalizer2CharFilter extends BaseCharFilter implements ICUBypassCharFilter.FilterAware {
+public final class ICUNormalizer2CharFilter extends BaseCharFilter
+    implements ICUBypassCharFilter.FilterAware {
 
   final Normalizer2 normalizer;
   private final StringBuilder inputBuffer = new StringBuilder();
@@ -35,6 +36,7 @@ public final class ICUNormalizer2CharFilter extends BaseCharFilter implements IC
   private int checkedInputBoundary;
   private int charCount;
 
+  @Override
   public void clearState(int offsetBypass) {
     inputFinished = false;
     inputBuffer.setLength(0);

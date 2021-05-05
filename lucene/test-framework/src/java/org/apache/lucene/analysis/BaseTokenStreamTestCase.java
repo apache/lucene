@@ -1084,6 +1084,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     return checkAnalysisConsistency(random, a, useCharFilter, text, true);
   }
 
+  /** TODO: can we nuke this? it seems only used by the old implementation */
   public static class AnalysisResult {
     public final AttributeFactory attributeFactory;
     public final String text;
@@ -1095,11 +1096,18 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     public final List<Integer> endOffsets;
 
     public AnalysisResult(
-        AttributeFactory attributeFactory, String text,
-        List<String> tokens, TypeAttribute typeAtt, List<String> types,
-        PositionIncrementAttribute posIncAtt, List<Integer> positions,
-        PositionLengthAttribute posLengthAtt, List<Integer> positionLengths,
-        OffsetAttribute offsetAtt, List<Integer> startOffsets, List<Integer> endOffsets) {
+        AttributeFactory attributeFactory,
+        String text,
+        List<String> tokens,
+        TypeAttribute typeAtt,
+        List<String> types,
+        PositionIncrementAttribute posIncAtt,
+        List<Integer> positions,
+        PositionLengthAttribute posLengthAtt,
+        List<Integer> positionLengths,
+        OffsetAttribute offsetAtt,
+        List<Integer> startOffsets,
+        List<Integer> endOffsets) {
       this.attributeFactory = attributeFactory;
       this.text = text;
       this.tokens = tokens;
@@ -1170,8 +1178,20 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     ts.end();
     ts.close();
 
-    AnalysisResult ret = new AnalysisResult(ts.getAttributeFactory(), text, tokens, typeAtt, types,
-        posIncAtt, positions, posLengthAtt, positionLengths, offsetAtt, startOffsets, endOffsets);
+    AnalysisResult ret =
+        new AnalysisResult(
+            ts.getAttributeFactory(),
+            text,
+            tokens,
+            typeAtt,
+            types,
+            posIncAtt,
+            positions,
+            posLengthAtt,
+            positionLengths,
+            offsetAtt,
+            startOffsets,
+            endOffsets);
 
     // verify reusing is "reproducable" and also get the normal tokenstream sanity checks
     if (!tokens.isEmpty()) {

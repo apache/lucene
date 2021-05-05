@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharFilter;
@@ -97,8 +96,12 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
           "ââââââa\u0302ââââa\u0302ââââa\u0302âââ",
           true);
       fail("with failOnRollbackBufferOverflow=true, we expect to throw a RuntimeException");
-    } catch (RuntimeException ex) {
+    } catch (
+        @SuppressWarnings("unused")
+        RuntimeException ex) {
       // this is expected.
+      // TODO: if this is expected, then it should use expectThrows.
+      // otherwise test won't fail if it doesn't happen.
     }
   }
 
@@ -158,7 +161,10 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke3() throws Exception {
     // this requires extra leading context
-    multiCheck("Hang-Latn", "\uc980\ud3fb\uce39\ub46d\ubd5f\uc3e5\ud2e0 yxyn ds", "jyusspolhcheutdwogboechssolt-tuils yxyn ds");
+    multiCheck(
+        "Hang-Latn",
+        "\uc980\ud3fb\uce39\ub46d\ubd5f\uc3e5\ud2e0 yxyn ds",
+        "jyusspolhcheutdwogboechssolt-tuils yxyn ds");
   }
 
   public void testBespoke4() throws Exception {
@@ -182,8 +188,11 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
     //   2> " \u0006" => " "
 
     try {
-      multiCheck("und_FONIPA-chr", "agt \ufcc5 0\u177f\uee73\u0003\u0417\u0117 \u0006", "\u13a0\u13a9\u13d8  \u13a1 ");
-      assertTrue("expected an exception to be thrown related to endOffsets",false);
+      multiCheck(
+          "und_FONIPA-chr",
+          "agt \ufcc5 0\u177f\uee73\u0003\u0417\u0117 \u0006",
+          "\u13a0\u13a9\u13d8  \u13a1 ");
+      assertTrue("expected an exception to be thrown related to endOffsets", false);
     } catch (AssertionError er) {
       assertTrue("expected:<8> but was:<12>".equals(er.getMessage()));
     }
@@ -191,7 +200,8 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
 
   public void testBespoke5() throws Exception {
     // this requires extra leading context
-    multiCheck("Latin-Gurmukhi",
+    multiCheck(
+        "Latin-Gurmukhi",
         "\u076c'\u03b3\u0000  \ueb8d\uee65\u76de\u0013\uf095yE\u0734\ud8e3\ude6c\ud36c ",
         "\u076c\u03b3\u0000  \ueb8d\uee65\u76de\u0013\uf095\u0a2f\u0a47\u0734\ud8e3\ude6c\ud36c ");
   }
@@ -317,7 +327,11 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
   }
 
   private boolean checkToken(
-      String id, String input, String expected, String rules, boolean suppressUnicodeNormExternalization)
+      String id,
+      String input,
+      String expected,
+      String rules,
+      boolean suppressUnicodeNormExternalization)
       throws IOException {
     return checkToken(
         id,
@@ -350,12 +364,16 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       String expected,
       boolean suppressUnicodeNormalizationExternalization)
       throws IOException {
-    checkToken(id, maxRollbackBufferCapacity, failOnRollbackBufferOverflow, input,
-        expected, null, suppressUnicodeNormalizationExternalization);
+    checkToken(
+        id,
+        maxRollbackBufferCapacity,
+        failOnRollbackBufferOverflow,
+        input,
+        expected,
+        null,
+        suppressUnicodeNormalizationExternalization);
   }
-  /**
-   * returns true if unicode norm externalization optimization has been applied
-   */
+  /** returns true if unicode norm externalization optimization has been applied */
   private boolean checkToken(
       String id,
       int maxRollbackBufferCapacity,
@@ -365,7 +383,7 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       String rules,
       boolean suppressUnicodeNormalizationExternalization)
       throws IOException {
-    boolean[] optimized = new boolean[]{false};
+    boolean[] optimized = new boolean[] {false};
     checkToken(
         getTransliteratingFilter(
             optimized,
@@ -403,20 +421,30 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
     testRandomStrings("Katakana-Hiragana", -1, 1000);
   }
 
+  @SuppressWarnings("unused")
+  // TODO: what is this?
   private static Analyzer getAnalyzer(String id, boolean suppressExternalize, boolean[] optimized) {
-    return getAnalyzer(id, suppressExternalize, optimized, BaseTokenStreamTestCase.newAttributeFactory());
+    return getAnalyzer(
+        id, suppressExternalize, optimized, BaseTokenStreamTestCase.newAttributeFactory());
   }
 
-  private static Analyzer getAnalyzer(String id, boolean suppressExternalize,
-      boolean[] optimized, AttributeFactory attributeFactory) {
+  private static Analyzer getAnalyzer(
+      String id,
+      boolean suppressExternalize,
+      boolean[] optimized,
+      AttributeFactory attributeFactory) {
     if (optimized != null && !suppressExternalize) {
       getTransliteratingFilter(optimized, id, new StringReader("dummy"), suppressExternalize);
     }
     return new Analyzer() {
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new MockTokenizer(attributeFactory, MockTokenizer.WHITESPACE,
-            false, MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
+        Tokenizer tokenizer =
+            new MockTokenizer(
+                attributeFactory,
+                MockTokenizer.WHITESPACE,
+                false,
+                MockTokenizer.DEFAULT_MAX_TOKEN_LENGTH);
         return new TokenStreamComponents(tokenizer, tokenizer);
       }
 
@@ -452,8 +480,12 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
       b = null;
     }
     assertTrue(
-        "implicitly expected optimized=" + !optimized[0] + "; found optimized="
-            + optimized[0] + "; requested iterations=" + iterations,
+        "implicitly expected optimized="
+            + !optimized[0]
+            + "; found optimized="
+            + optimized[0]
+            + "; requested iterations="
+            + iterations,
         iterations >= 0);
     // 20 is the default maxWordLength
     checkRandomData(random(), a, iterations * RANDOM_MULTIPLIER, 20);
@@ -499,15 +531,13 @@ public class TestICUTransformCharFilter extends BaseTokenStreamTestCase {
 
   /**
    * This test verifies that top-level filters are applied (or not!) properly to _all_ component
-   * Transliterators. The three user-level input characters here are each handled differently
-   * in illustrative ways:
-   *  1. composed input "â" matches the top-level filter, is decomposed, its ascii "a" is mapped
-   *     to ascii "i", and "i\u0302" (the decomposed product of composed input entirely matched
-   *     by top-level filter) is composed into "î"
-   *  2. for decomposed input "a\u0302", only ascii "a" matches the top-level filter; it is
-   *     mapped, but is _not_ composed with input "\u0302", which did _not_ match the top-level
-   *     filter
-   *  3. decomposed input "i\u0302" is completely ignored (no part matches top-level filter)
+   * Transliterators. The three user-level input characters here are each handled differently in
+   * illustrative ways: 1. composed input "â" matches the top-level filter, is decomposed, its ascii
+   * "a" is mapped to ascii "i", and "i\u0302" (the decomposed product of composed input entirely
+   * matched by top-level filter) is composed into "î" 2. for decomposed input "a\u0302", only ascii
+   * "a" matches the top-level filter; it is mapped, but is _not_ composed with input "\u0302",
+   * which did _not_ match the top-level filter 3. decomposed input "i\u0302" is completely ignored
+   * (no part matches top-level filter)
    */
   public void testParityWithFilter3() throws Exception {
     final String id = "X_SIMPLE";

@@ -18,10 +18,9 @@ package org.apache.lucene.analysis.icu;
 
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.Transliterator.Position;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-
 import java.util.Arrays;
 import java.util.Random;
+import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 
 public class TestCircularReplaceable extends BaseTokenStreamTestCase {
 
@@ -49,7 +48,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
 
   private static void populate(CircularReplaceable r, int i) {
     char[] runner = new char[1];
-    for (;;) {
+    for (; ; ) {
       for (char c = 'a'; c <= 'z'; c++) {
         if (i-- == 0) {
           return;
@@ -66,7 +65,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     final boolean lowercaseReplacement = random().nextBoolean() && false;
     final char from = lowercaseReplacement ? 'a' : 'A';
     final char to = (char) (from + 26);
-    for (;;) {
+    for (; ; ) {
       for (char c = from; c < to; c++) {
         if (offset > 0) {
           offset--;
@@ -81,15 +80,16 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
   }
 
   public void testCopyVsReplace() {
-    final boolean pipeline = true;//random().nextBoolean();
+    final boolean pipeline = true; // random().nextBoolean();
     for (int i = 0; i < 10000; i++) {
-      //System.err.println("round "+i);
+      // System.err.println("round "+i);
       int bound = 32;
       int initCopy = random().nextInt(bound);
       int initReplace = random().nextInt(bound);
       int size = random().nextInt(bound);
       int destOff = size == 0 ? 0 : random().nextInt(size); // negative offset, from `*.length()`
-      int destLimitOff = destOff == 0 ? 0 : random().nextInt(destOff); // negative offset of dest limit
+      int destLimitOff =
+          destOff == 0 ? 0 : random().nextInt(destOff); // negative offset of dest limit
       String replacement = getReplacementText(random().nextInt(size + 1));
       String replace1 = replacement;
       CRStruct copy = new CRStruct(initCopy, size);
@@ -97,49 +97,78 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
       String pre = replace.r.toString();
       int expectSize = testCopyVsReplace(copy, replace, size, destOff, destLimitOff, replacement);
       String mid = replace.r.toString();
-      String midOr = "r:"+Arrays.toString(replace.r.offsetCorrect);
-      String midOc = "c:"+Arrays.toString(copy.r.offsetCorrect);
+      String midOr = "r:" + Arrays.toString(replace.r.offsetCorrect);
+      String midOc = "c:" + Arrays.toString(copy.r.offsetCorrect);
       try {
-        assertEquals("headDiff for len="+replace.r.length()+", "+replace.r.toString(), replace.r.headDiff(), copy.r.headDiff());
+        assertEquals(
+            "headDiff for len=" + replace.r.length() + ", " + replace.r.toString(),
+            replace.r.headDiff(),
+            copy.r.headDiff());
       } catch (AssertionError er) {
-        System.err.println("Stage1: "+pre+" => "+mid+" ("+replace1+")");
-        System.err.println("mid-"+midOr);
-        System.err.println("mid-"+midOc);
+        System.err.println("Stage1: " + pre + " => " + mid + " (" + replace1 + ")");
+        System.err.println("mid-" + midOr);
+        System.err.println("mid-" + midOc);
         throw er;
       }
       if (pipeline) {
         size = expectSize;
         destOff = size == 0 ? 0 : random().nextInt(size); // negative offset, from `*.length()`
-        destLimitOff = destOff == 0 ? 0 : random().nextInt(destOff); // negative offset of dest limit
+        destLimitOff =
+            destOff == 0 ? 0 : random().nextInt(destOff); // negative offset of dest limit
         replacement = getReplacementText(random().nextInt(size + 1));
         expectSize = testCopyVsReplace(copy, replace, size, destOff, destLimitOff, replacement);
       }
       String end = replace.r.toString();
-      String endOr = "r:"+Arrays.toString(replace.r.offsetCorrect);
-      String endOc = "c:"+Arrays.toString(copy.r.offsetCorrect);
+      String endOr = "r:" + Arrays.toString(replace.r.offsetCorrect);
+      String endOc = "c:" + Arrays.toString(copy.r.offsetCorrect);
       char[] replaceSink = new char[expectSize];
       char[] copySink = new char[expectSize];
       final int[] replaceOffsets = new int[expectSize]; // possibly oversized
       final int[] copyOffsets = new int[expectSize]; // possibly oversized
-      replace.r.flush(replaceSink, 0, expectSize, replace.r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-        replaceOffsets[offset - replace.preLen] = diff;
-        return 0;
-      }));
-      copy.r.flush(copySink, 0, expectSize, copy.r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-        copyOffsets[offset - copy.preLen] = diff;
-        return 0;
-      }));
+      replace.r.flush(
+          replaceSink,
+          0,
+          expectSize,
+          replace.r.length(),
+          new CircularReplaceable.OffsetCorrectionRegistrar(
+              (offset, diff) -> {
+                replaceOffsets[offset - replace.preLen] = diff;
+                return 0;
+              }));
+      copy.r.flush(
+          copySink,
+          0,
+          expectSize,
+          copy.r.length(),
+          new CircularReplaceable.OffsetCorrectionRegistrar(
+              (offset, diff) -> {
+                copyOffsets[offset - copy.preLen] = diff;
+                return 0;
+              }));
       assertArrayEquals(replaceSink, copySink);
       try {
-        assertArrayEquals("r:"+Arrays.toString(replaceOffsets)+", "+replace.r.headDiff()+", c:"+Arrays.toString(copyOffsets)+", "+copy.r.headDiff(), replaceOffsets, copyOffsets);
-        assertEquals("headDiff for len="+replace.r.length()+", "+end, replace.r.headDiff(), copy.r.headDiff());
+        assertArrayEquals(
+            "r:"
+                + Arrays.toString(replaceOffsets)
+                + ", "
+                + replace.r.headDiff()
+                + ", c:"
+                + Arrays.toString(copyOffsets)
+                + ", "
+                + copy.r.headDiff(),
+            replaceOffsets,
+            copyOffsets);
+        assertEquals(
+            "headDiff for len=" + replace.r.length() + ", " + end,
+            replace.r.headDiff(),
+            copy.r.headDiff());
       } catch (AssertionError er) {
-        System.err.println("Stage1: "+pre+" => "+mid+" ("+replace1+")");
-        System.err.println("Stage2: "+mid+" => "+end+" ("+replacement+")");
-        System.err.println("mid-"+midOr);
-        System.err.println("mid-"+midOc);
-        System.err.println("end-"+endOr);
-        System.err.println("end-"+endOc);
+        System.err.println("Stage1: " + pre + " => " + mid + " (" + replace1 + ")");
+        System.err.println("Stage2: " + mid + " => " + end + " (" + replacement + ")");
+        System.err.println("mid-" + midOr);
+        System.err.println("mid-" + midOc);
+        System.err.println("end-" + endOr);
+        System.err.println("end-" + endOc);
         throw er;
       }
     }
@@ -148,6 +177,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
   private static class CRStruct {
     private final CircularReplaceable r;
     private final int preLen;
+
     private CRStruct(int initSize, int populate) {
       r = newInstanceInit(initSize);
       preLen = r.length();
@@ -161,16 +191,21 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
    * we replicate "simple" and "complex" replace operations, and check for parity against random
    * data
    */
-  private int testCopyVsReplace(CRStruct copyStruct, CRStruct replaceStruct, int size,
-                                 final int destOff, final int destLimitOff, String replacement) {
+  private int testCopyVsReplace(
+      CRStruct copyStruct,
+      CRStruct replaceStruct,
+      int size,
+      final int destOff,
+      final int destLimitOff,
+      String replacement) {
     CircularReplaceable copy = copyStruct.r;
     CircularReplaceable replace = replaceStruct.r;
     final int copyPreLen = copyStruct.preLen;
     final int replacePreLen = replaceStruct.preLen;
     final int replaceLen = replace.length();
-    //String pre = replace.toString();
+    // String pre = replace.toString();
     replace.replace(replaceLen - destOff, replaceLen - destLimitOff, replacement);
-    //System.err.println(pre+" => "+replace.toString() + " ("+replacement+")");
+    // System.err.println(pre+" => "+replace.toString() + " ("+replacement+")");
     final int copyLen = copy.length();
     // here we mimic the behavior of "complex" replacement:
     // 1: copy the leading context character. This triggers "workingBuffer mode"
@@ -215,11 +250,20 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets1 = new int[r.length()];
     assertEquals("aRQPOd", r.toString());
     expectedOffsets = new int[] {0, 0, 0, -1, -2, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets1[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+", a:"+Arrays.toString(offsets1), expectedOffsets, offsets1);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets1[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:" + Arrays.toString(expectedOffsets) + ", a:" + Arrays.toString(offsets1),
+        expectedOffsets,
+        offsets1);
     r = new CircularReplaceable("abcd");
     r.replace(1, 3, "RQPO");
     assertEquals("aRQPOd", r.toString());
@@ -228,11 +272,26 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets2 = new int[r.length()];
     assertEquals("aOd", r.toString());
     expectedOffsets = new int[] {0, 0, 1};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets2[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+"/0"+", a:"+Arrays.toString(offsets2)+"/"+r.headDiff(), expectedOffsets, offsets2);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets2[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:"
+            + Arrays.toString(expectedOffsets)
+            + "/0"
+            + ", a:"
+            + Arrays.toString(offsets2)
+            + "/"
+            + r.headDiff(),
+        expectedOffsets,
+        offsets2);
   }
 
   public void testDoubleReplace2() throws Exception {
@@ -245,11 +304,20 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets1 = new int[r.length()];
     assertEquals("aRQPONd", r.toString());
     expectedOffsets = new int[] {0, 0, 0, -1, -2, -3, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets1[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+", a:"+Arrays.toString(offsets1), expectedOffsets, offsets1);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets1[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:" + Arrays.toString(expectedOffsets) + ", a:" + Arrays.toString(offsets1),
+        expectedOffsets,
+        offsets1);
     r = new CircularReplaceable("abcd");
     r.replace(1, 3, "RQPON");
     assertEquals("aRQPONd", r.toString());
@@ -258,11 +326,25 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets2 = new int[r.length()];
     assertEquals("aONd", r.toString());
     expectedOffsets = new int[] {0, 0, 0, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets2[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+"/0, a:"+Arrays.toString(offsets2)+"/"+r.headDiff(), expectedOffsets, offsets2);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets2[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:"
+            + Arrays.toString(expectedOffsets)
+            + "/0, a:"
+            + Arrays.toString(offsets2)
+            + "/"
+            + r.headDiff(),
+        expectedOffsets,
+        offsets2);
   }
 
   public void testDoubleReplace3() throws Exception {
@@ -274,23 +356,42 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     charSink = new char[r.length()];
     int[] offsets1 = new int[r.length()];
     assertEquals("abcdefghijTSRQPONMLKJIHGabcd", r.toString());
-    expectedOffsets = new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets1[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+", a:"+Arrays.toString(offsets1), expectedOffsets, offsets1);
+    expectedOffsets =
+        new int[] {
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0
+        };
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets1[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:" + Arrays.toString(expectedOffsets) + ", a:" + Arrays.toString(offsets1),
+        expectedOffsets,
+        offsets1);
     r = new CircularReplaceable("abcdefghijklmnopqrstuvwxyzabcd");
     r.replace(10, 26, "TSRQPONMLKJIHG");
     assertEquals("abcdefghijTSRQPONMLKJIHGabcd", r.toString());
-    r.replace(16, 18, "NMLKJIHGFEDCBAZYXWVUTSRQPONM"); // target key "NM" is both prefix and suffix of replacement val
+    r.replace(
+        16,
+        18,
+        "NMLKJIHGFEDCBAZYXWVUTSRQPONM"); // target key "NM" is both prefix and suffix of replacement
+    // val
     charSink = new char[r.length()];
     int[] offsets2 = new int[r.length()];
     assertEquals("abcdefghijTSRQPONMLKJIHGFEDCBAZYXWVUTSRQPONMLKJIHGabcd", r.toString());
     // below if `replace` associates "NM" as prefix, not suffix.
-    expectedOffsets = new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -2, -3, -4, -5, -6, -7,
-        -8, -9, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21, -22, -23, -24, -25, -26, 0, 0, 0, 0, 0,
-        0, -24, 0, 0, 0};
+    expectedOffsets =
+        new int[] {
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9,
+          -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21, -22, -23, -24, -25, -26, 0, 0,
+          0, 0, 0, 0, -24, 0, 0, 0
+        };
     // below if `replace` associates "NM" as suffix, not prefix.
     /*
     expectedOffsets = new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -2, -3, -4, -5, -6, -7, -8,
@@ -298,11 +399,25 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
         0, -24, 0, 0, 0};
 
     */
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets2[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+"/0, a:"+Arrays.toString(offsets2)+"/"+r.headDiff(), expectedOffsets, offsets2);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets2[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:"
+            + Arrays.toString(expectedOffsets)
+            + "/0, a:"
+            + Arrays.toString(offsets2)
+            + "/"
+            + r.headDiff(),
+        expectedOffsets,
+        offsets2);
   }
 
   public void testTrimPrefixShrink() throws Exception {
@@ -312,10 +427,16 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets = new int[r.length()];
     assertEquals("abefg", r.toString());
     int[] expectedOffsets = new int[] {0, 0, 2, 0, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets[offset] = diff;
-      return 0;
-    }));
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets[offset] = diff;
+              return 0;
+            }));
     assertArrayEquals(expectedOffsets, offsets);
   }
 
@@ -326,10 +447,16 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets = new int[r.length()];
     assertEquals("abcXXefg", r.toString());
     int[] expectedOffsets = new int[] {0, 0, 0, 0, -1, 0, 0, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets[offset] = diff;
-      return 0;
-    }));
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets[offset] = diff;
+              return 0;
+            }));
     assertArrayEquals(expectedOffsets, offsets);
   }
 
@@ -340,11 +467,20 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets = new int[r.length()];
     assertEquals("abcXXdefg", r.toString());
     int[] expectedOffsets = new int[] {0, 0, 0, -1, -2, 0, 0, 0, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+", a:"+Arrays.toString(offsets), expectedOffsets, offsets);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:" + Arrays.toString(expectedOffsets) + ", a:" + Arrays.toString(offsets),
+        expectedOffsets,
+        offsets);
   }
 
   public void testTrimSuffixShrink() throws Exception {
@@ -353,14 +489,24 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     char[] charSink = new char[r.length()];
     int[] offsets = new int[r.length()];
     assertEquals("adefg", r.toString());
-    // This one is odd! because the top-level has "d" replacing "bcd", we actually want "d" to inherit "b"s
+    // This one is odd! because the top-level has "d" replacing "bcd", we actually want "d" to
+    // inherit "b"s
     // offset; the offset diff should thus be applied to "e".
     int[] expectedOffsets = new int[] {0, 0, 2, 0, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+", a:"+Arrays.toString(offsets), expectedOffsets, offsets);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:" + Arrays.toString(expectedOffsets) + ", a:" + Arrays.toString(offsets),
+        expectedOffsets,
+        offsets);
   }
 
   public void testTrimSuffixGrow() throws Exception {
@@ -370,11 +516,20 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets = new int[r.length()];
     assertEquals("aXXcdefg", r.toString());
     int[] expectedOffsets = new int[] {0, 0, -1, 0, 0, 0, 0, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+", a:"+Arrays.toString(offsets), expectedOffsets, offsets);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:" + Arrays.toString(expectedOffsets) + ", a:" + Arrays.toString(offsets),
+        expectedOffsets,
+        offsets);
   }
 
   public void testTrimSuffixFullGrow() throws Exception {
@@ -384,22 +539,34 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] offsets = new int[r.length()];
     assertEquals("aXXbcdefg", r.toString());
     int[] expectedOffsets = new int[] {0, 0, -1, -2, 0, 0, 0, 0, 0};
-    r.flush(charSink, 0, r.length(), r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      offsets[offset] = diff;
-      return 0;
-    }));
-    assertArrayEquals("e:"+Arrays.toString(expectedOffsets)+", a:"+Arrays.toString(offsets), expectedOffsets, offsets);
+    r.flush(
+        charSink,
+        0,
+        r.length(),
+        r.length(),
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              offsets[offset] = diff;
+              return 0;
+            }));
+    assertArrayEquals(
+        "e:" + Arrays.toString(expectedOffsets) + ", a:" + Arrays.toString(offsets),
+        expectedOffsets,
+        offsets);
   }
 
   public void testRtx() throws Exception {
-    Transliterator t = Transliterator.createFromRules("X_ROUND_TRIP", "a > bc; ::Null; bc > a;", Transliterator.FORWARD);
+    Transliterator t =
+        Transliterator.createFromRules(
+            "X_ROUND_TRIP", "a > bc; ::Null; bc > a;", Transliterator.FORWARD);
     String in = "a a a a a ";
     int[] expectedOffsets = new int[0];
     check(t, in, in, expectedOffsets);
   }
 
   public void testExpand() throws Exception {
-    Transliterator t = Transliterator.createFromRules("X_EXPAND", "a > bc;", Transliterator.FORWARD);
+    Transliterator t =
+        Transliterator.createFromRules("X_EXPAND", "a > bc;", Transliterator.FORWARD);
     String in = "a a a a a ";
     String expected = "bc bc bc bc bc ";
     int[] expectedOffsets = new int[] {1, -1, 4, -2, 7, -3, 10, -4, 13, -5};
@@ -423,14 +590,28 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
       final int[] counter = new int[1];
       final int[] offsetMetadata = new int[expectedOffsets.length];
       int len = r.length();
-      r.flush(actual, 0, actual.length, len, new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-        offsetMetadata[counter[0]++] = offset;
-        offsetMetadata[counter[0]++] = diff;
-        return 0;
-      }));
+      r.flush(
+          actual,
+          0,
+          actual.length,
+          len,
+          new CircularReplaceable.OffsetCorrectionRegistrar(
+              (offset, diff) -> {
+                offsetMetadata[counter[0]++] = offset;
+                offsetMetadata[counter[0]++] = diff;
+                return 0;
+              }));
       assertEquals(0, r.headDiff());
       assertArrayEquals(expectedChars, actual);
-      assertArrayEquals("run "+i+"; expected:"+Arrays.toString(expectedOffsets)+", actual: "+Arrays.toString(offsetMetadata), expectedOffsets, offsetMetadata);
+      assertArrayEquals(
+          "run "
+              + i
+              + "; expected:"
+              + Arrays.toString(expectedOffsets)
+              + ", actual: "
+              + Arrays.toString(offsetMetadata),
+          expectedOffsets,
+          offsetMetadata);
       for (int j = 0; j < baseOffsetIndices.length; j++) {
         expectedOffsets[j << 1] = baseOffsetIndices[j] + len;
       }
@@ -442,7 +623,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 0;
     String replace = "X";
     String expected = "Xabcdefg";
-    int[] expectedOffsets = new int[] { 1, -1 };
+    int[] expectedOffsets = new int[] {1, -1};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -451,7 +632,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 0;
     String replace = "XX";
     String expected = "XXabcdefg";
-    int[] expectedOffsets = new int[] { 1, -1, 2, -2 };
+    int[] expectedOffsets = new int[] {1, -1, 2, -2};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -460,7 +641,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 1;
     String replace = "XX";
     String expected = "aXXbcdefg";
-    int[] expectedOffsets = new int[] { 2, -1, 3, -2 };
+    int[] expectedOffsets = new int[] {2, -1, 3, -2};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -469,7 +650,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 6;
     String replace = "XX";
     String expected = "abcdefXXg";
-    int[] expectedOffsets = new int[] { 7, -1, 8, -2 };
+    int[] expectedOffsets = new int[] {7, -1, 8, -2};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -478,8 +659,8 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 7;
     String replace = "XX";
     String expected = "abcdefgXX";
-    int[] firstExpectedOffsets = new int[] { 8, -1 };
-    int[] expectedOffsets = new int[] { 0, -1, 8, -2 };
+    int[] firstExpectedOffsets = new int[] {8, -1};
+    int[] expectedOffsets = new int[] {0, -1, 8, -2};
     checkSimple(from, to, replace, expected, firstExpectedOffsets, expectedOffsets);
   }
 
@@ -489,7 +670,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     String replace = "X";
     String expected = "abcdefgX";
     int[] firstExpectedOffsets = new int[0];
-    int[] expectedOffsets = new int[] { 0, -1 };
+    int[] expectedOffsets = new int[] {0, -1};
     checkSimple(from, to, replace, expected, firstExpectedOffsets, expectedOffsets);
   }
 
@@ -498,7 +679,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 4;
     String replace = "X";
     String expected = "aXefg";
-    int[] expectedOffsets = new int[] { 2, 2 };
+    int[] expectedOffsets = new int[] {2, 2};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -507,7 +688,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 4;
     String replace = "";
     String expected = "aefg";
-    int[] expectedOffsets = new int[] { 1, 3 };
+    int[] expectedOffsets = new int[] {1, 3};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -516,7 +697,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 3;
     String replace = "";
     String expected = "defg";
-    int[] expectedOffsets = new int[] { 0, 3 };
+    int[] expectedOffsets = new int[] {0, 3};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -525,7 +706,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 1;
     String replace = "XX";
     String expected = "XXbcdefg";
-    int[] expectedOffsets = new int[] { 1, -1 };
+    int[] expectedOffsets = new int[] {1, -1};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -534,7 +715,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 2;
     String replace = "XX";
     String expected = "aXXcdefg";
-    int[] expectedOffsets = new int[] { 2, -1 };
+    int[] expectedOffsets = new int[] {2, -1};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -543,7 +724,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 7;
     String replace = "XX";
     String expected = "abcdefXX";
-    int[] expectedOffsets = new int[] { 7, -1 };
+    int[] expectedOffsets = new int[] {7, -1};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -552,7 +733,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 1;
     String replace = "XXX";
     String expected = "XXXbcdefg";
-    int[] expectedOffsets = new int[] { 1, -1, 2, -2 };
+    int[] expectedOffsets = new int[] {1, -1, 2, -2};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -561,7 +742,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 2;
     String replace = "XXX";
     String expected = "aXXXcdefg";
-    int[] expectedOffsets = new int[] { 2, -1, 3, -2 };
+    int[] expectedOffsets = new int[] {2, -1, 3, -2};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
@@ -570,15 +751,23 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int to = 7;
     String replace = "XXX";
     String expected = "abcdefXXX";
-    int[] expectedOffsets = new int[] { 7, -1, 8, -2 };
+    int[] expectedOffsets = new int[] {7, -1, 8, -2};
     checkSimple(from, to, replace, expected, expectedOffsets);
   }
 
-  private void checkSimple(int from, int to, String replace, String expected, int[] expectedOffsets) throws Exception {
+  private void checkSimple(int from, int to, String replace, String expected, int[] expectedOffsets)
+      throws Exception {
     checkSimple(from, to, replace, expected, expectedOffsets, expectedOffsets);
   }
 
-  private void checkSimple(int from, int to, String replace, String expected, int[] firstExpectedOffsets, int[] expectedOffsets) throws Exception {
+  private void checkSimple(
+      int from,
+      int to,
+      String replace,
+      String expected,
+      int[] firstExpectedOffsets,
+      int[] expectedOffsets)
+      throws Exception {
     CircularReplaceable r = new CircularReplaceable();
     char[] expectedChars = expected.toCharArray();
     final int[] baseOffsetIndices = new int[expectedOffsets.length >> 1];
@@ -595,16 +784,26 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
       char[] actual = new char[expectedChars.length];
       final int[] counter = new int[1];
       final int[] offsetMetadata = new int[passExpectedOffsets.length];
-      r.flush(actual, 0, actual.length, len = r.length(), new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-        // it's hard to correct expected diffs for multiple passes, so we pass a new registrar
-        // for each pass (thus we only need correction for _offsets_).
-        offsetMetadata[counter[0]++] = offset;
-        offsetMetadata[counter[0]++] = diff;
-        return 0;
-      }));
+      r.flush(
+          actual,
+          0,
+          actual.length,
+          len = r.length(),
+          new CircularReplaceable.OffsetCorrectionRegistrar(
+              (offset, diff) -> {
+                // it's hard to correct expected diffs for multiple passes, so we pass a new
+                // registrar
+                // for each pass (thus we only need correction for _offsets_).
+                offsetMetadata[counter[0]++] = offset;
+                offsetMetadata[counter[0]++] = diff;
+                return 0;
+              }));
       assertEquals(expectedHeadDiff, r.headDiff());
       assertArrayEquals(expectedChars, actual);
-      assertArrayEquals("actual:"+Arrays.toString(offsetMetadata)+" for pass "+i, passExpectedOffsets, offsetMetadata);
+      assertArrayEquals(
+          "actual:" + Arrays.toString(offsetMetadata) + " for pass " + i,
+          passExpectedOffsets,
+          offsetMetadata);
       passExpectedOffsets = expectedOffsets; // subsequent passes may expect different offsets;
       for (int j = 0; j < baseOffsetIndices.length; j++) {
         passExpectedOffsets[j << 1] = baseOffsetIndices[j] + len;
@@ -626,20 +825,20 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     int[] expectedOffsets;
     assertEquals(expected, r.toString());
     if (toPhase == 1) {
-      expectedOffsets = new int[] { 1, -1, 2, -2 };
+      expectedOffsets = new int[] {1, -1, 2, -2};
     } else {
       r.replace(2, 3, ""); // delete 'a'
       expected = "XXbcdefg";
       assertEquals(expected, r.toString());
       if (toPhase == 2) {
-        expectedOffsets = new int[] { 1, -1 };
+        expectedOffsets = new int[] {1, -1};
       } else if (toPhase == 3) {
         r.replace(3, 4, "XX"); // replace/expand 'c'
         expected = "XXbXXdefg";
         assertEquals(expected, r.toString());
-        expectedOffsets = new int[] { 1, -1, 4, -2};
+        expectedOffsets = new int[] {1, -1, 4, -2};
       } else {
-        throw new IllegalArgumentException("illegal phase: "+toPhase);
+        throw new IllegalArgumentException("illegal phase: " + toPhase);
       }
     }
     char[] expectedChars = expected.toCharArray();
@@ -647,16 +846,22 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     final int[] counter = new int[1];
     final int[] offsetMetadata = new int[expectedOffsets.length];
     int len = r.length();
-    r.flush(actual, 0, actual.length, len, new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      // it's hard to correct expected diffs for multiple passes, so we pass a new registrar
-      // for each pass (thus we only need correction for _offsets_).
-      offsetMetadata[counter[0]++] = offset;
-      offsetMetadata[counter[0]++] = diff;
-      return 0;
-    }));
+    r.flush(
+        actual,
+        0,
+        actual.length,
+        len,
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              // it's hard to correct expected diffs for multiple passes, so we pass a new registrar
+              // for each pass (thus we only need correction for _offsets_).
+              offsetMetadata[counter[0]++] = offset;
+              offsetMetadata[counter[0]++] = diff;
+              return 0;
+            }));
     assertEquals(0, r.headDiff());
     assertArrayEquals(expectedChars, actual);
-    assertArrayEquals("actual:"+Arrays.toString(offsetMetadata), expectedOffsets, offsetMetadata);
+    assertArrayEquals("actual:" + Arrays.toString(offsetMetadata), expectedOffsets, offsetMetadata);
   }
 
   public void testHeadInsertAndDelete() throws Exception {
@@ -675,7 +880,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     assertEquals(expected, r.toString());
     assertEquals(-1, r.headDiff());
     if (toPhase == 1) {
-      expectedOffsets = new int[] { 8, -1 };
+      expectedOffsets = new int[] {8, -1};
     } else {
       r.replace(8, 9, ""); // delete last 'X'
       expected = "abcdefgX";
@@ -690,7 +895,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
         assertEquals(0, r.headDiff());
         expectedOffsets = new int[0];
       } else {
-        throw new IllegalArgumentException("illegal phase: "+toPhase);
+        throw new IllegalArgumentException("illegal phase: " + toPhase);
       }
     }
     char[] expectedChars = expected.toCharArray();
@@ -698,15 +903,21 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     final int[] counter = new int[1];
     final int[] offsetMetadata = new int[expectedOffsets.length];
     int len = r.length();
-    r.flush(actual, 0, actual.length, len, new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      // it's hard to correct expected diffs for multiple passes, so we pass a new registrar
-      // for each pass (thus we only need correction for _offsets_).
-      offsetMetadata[counter[0]++] = offset;
-      offsetMetadata[counter[0]++] = diff;
-      return 0;
-    }));
+    r.flush(
+        actual,
+        0,
+        actual.length,
+        len,
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              // it's hard to correct expected diffs for multiple passes, so we pass a new registrar
+              // for each pass (thus we only need correction for _offsets_).
+              offsetMetadata[counter[0]++] = offset;
+              offsetMetadata[counter[0]++] = diff;
+              return 0;
+            }));
     assertArrayEquals(expectedChars, actual);
-    assertArrayEquals("actual:"+Arrays.toString(offsetMetadata), expectedOffsets, offsetMetadata);
+    assertArrayEquals("actual:" + Arrays.toString(offsetMetadata), expectedOffsets, offsetMetadata);
   }
 
   public void testHeadInsertAndExpand() throws Exception {
@@ -725,7 +936,7 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     assertEquals(expected, r.toString());
     assertEquals(-1, r.headDiff());
     if (toPhase == 1) {
-      expectedOffsets = new int[] { 8, -1 };
+      expectedOffsets = new int[] {8, -1};
     } else {
       r.replace(8, 9, ""); // delete last 'X'
       expected = "abcdefgX";
@@ -739,15 +950,15 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
         assertEquals(expected, r.toString());
         assertEquals(-1, r.headDiff()); // ensure headDiff got shifted forward
         if (toPhase == 3) {
-          expectedOffsets = new int[] { 2, -1, 3, -2 };
+          expectedOffsets = new int[] {2, -1, 3, -2};
         } else if (toPhase == 4) {
           r.replace(9, 10, ""); // delete remaining 'X'
           expected = "aXXbcdefg";
           assertEquals(expected, r.toString());
           assertEquals(0, r.headDiff()); // ensure headDiff got deleted
-          expectedOffsets = new int[] { 2, -1, 3, -2 };
+          expectedOffsets = new int[] {2, -1, 3, -2};
         } else {
-          throw new IllegalArgumentException("illegal phase: "+toPhase);
+          throw new IllegalArgumentException("illegal phase: " + toPhase);
         }
       }
     }
@@ -756,14 +967,20 @@ public class TestCircularReplaceable extends BaseTokenStreamTestCase {
     final int[] counter = new int[1];
     final int[] offsetMetadata = new int[expectedOffsets.length];
     int len = r.length();
-    r.flush(actual, 0, actual.length, len, new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> {
-      // it's hard to correct expected diffs for multiple passes, so we pass a new registrar
-      // for each pass (thus we only need correction for _offsets_).
-      offsetMetadata[counter[0]++] = offset;
-      offsetMetadata[counter[0]++] = diff;
-      return 0;
-    }));
+    r.flush(
+        actual,
+        0,
+        actual.length,
+        len,
+        new CircularReplaceable.OffsetCorrectionRegistrar(
+            (offset, diff) -> {
+              // it's hard to correct expected diffs for multiple passes, so we pass a new registrar
+              // for each pass (thus we only need correction for _offsets_).
+              offsetMetadata[counter[0]++] = offset;
+              offsetMetadata[counter[0]++] = diff;
+              return 0;
+            }));
     assertArrayEquals(expectedChars, actual);
-    assertArrayEquals("actual:"+Arrays.toString(offsetMetadata), expectedOffsets, offsetMetadata);
+    assertArrayEquals("actual:" + Arrays.toString(offsetMetadata), expectedOffsets, offsetMetadata);
   }
 }

@@ -16,23 +16,23 @@
  */
 package org.apache.lucene.analysis.icu;
 
-
 import com.ibm.icu.lang.UScript;
 import com.ibm.icu.text.Replaceable;
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.UnicodeFilter;
-
 import java.util.MissingResourceException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * This is like an AnyTransliterator, but it doesn't actually _do_ anything; just blocks on
- * "COMMON" or "INHERITED" characters until we know which
+ * This is like an AnyTransliterator, but it doesn't actually _do_ anything; just blocks on "COMMON"
+ * or "INHERITED" characters until we know which
  */
-public class AnyMultiplexTransliterator extends Transliterator {
+class AnyMultiplexTransliterator extends Transliterator {
 
   private static final int MAX_CONTEXT_LENGTH = 5;
 
+  @SuppressWarnings("unused")
+  // TODO: what is this?
   private final int maxContextLength;
 
   public static AnyMultiplexTransliterator getInstance(Transliterator t) {
@@ -54,9 +54,7 @@ public class AnyMultiplexTransliterator extends Transliterator {
   }
 
   @Override
-  protected void handleTransliterate(Replaceable text, Position pos, boolean incremental) {
-
-  }
+  protected void handleTransliterate(Replaceable text, Position pos, boolean incremental) {}
 
   // copied from com.ibm.icu.text.TransliteratorIDParser
   public static String[] IDtoSTV(String id) {
@@ -65,31 +63,31 @@ public class AnyMultiplexTransliterator extends Transliterator {
     String variant = "";
 
     int sep = id.indexOf(TARGET_SEP);
-    int var = id.indexOf(VARIANT_SEP);
-    if (var < 0) {
-      var = id.length();
+    int varPos = id.indexOf(VARIANT_SEP);
+    if (varPos < 0) {
+      varPos = id.length();
     }
     boolean isSourcePresent = false;
 
     if (sep < 0) {
       // Form: T/V or T (or /V)
-      target = id.substring(0, var);
-      variant = id.substring(var);
-    } else if (sep < var) {
+      target = id.substring(0, varPos);
+      variant = id.substring(varPos);
+    } else if (sep < varPos) {
       // Form: S-T/V or S-T (or -T/V or -T)
       if (sep > 0) {
         source = id.substring(0, sep);
         isSourcePresent = true;
       }
-      target = id.substring(++sep, var);
-      variant = id.substring(var);
+      target = id.substring(++sep, varPos);
+      variant = id.substring(varPos);
     } else {
       // Form: (S/V-T or /V-T)
-      if (var > 0) {
-        source = id.substring(0, var);
+      if (varPos > 0) {
+        source = id.substring(0, varPos);
         isSourcePresent = true;
       }
-      variant = id.substring(var, sep++);
+      variant = id.substring(varPos, sep++);
       target = id.substring(sep);
     }
 
@@ -97,19 +95,18 @@ public class AnyMultiplexTransliterator extends Transliterator {
       variant = variant.substring(1);
     }
 
-    return new String[] { source, target, variant,
-        isSourcePresent ? "" : null };
+    return new String[] {source, target, variant, isSourcePresent ? "" : null};
   }
-
-
 
   // BEGIN copied from com.ibm.icu.text.AnyTransliterator
 
   private static int scriptNameToCode(String name) {
-    try{
+    try {
       int[] codes = UScript.getCode(name);
       return codes != null ? codes[0] : UScript.INVALID_CODE;
-    }catch( MissingResourceException e){
+    } catch (
+        @SuppressWarnings("unused")
+        MissingResourceException e) {
       return UScript.INVALID_CODE;
     }
   }
@@ -119,33 +116,31 @@ public class AnyMultiplexTransliterator extends Transliterator {
   static final String ANY = "Any";
   static final String LATIN_PIVOT = "-Latin;Latin-";
 
-  /**
-   * Cache mapping UScriptCode values to Transliterator*.
-   */
+  /** Cache mapping UScriptCode values to Transliterator*. */
   private ConcurrentHashMap<Integer, Transliterator> cache;
 
-  /**
-   * The target or target/variant string.
-   */
+  /** The target or target/variant string. */
   private final String target;
 
-  /**
-   * The target script code.  Never USCRIPT_INVALID_CODE.
-   */
+  /** The target script code. Never USCRIPT_INVALID_CODE. */
   private final int targetScript;
 
-  /**
-   * Special code for handling width characters
-   */
+  /** Special code for handling width characters */
   private static final String WIDTH_FIX_SPEC = "[[:dt=Nar:][:dt=Wide:]] nfkd;";
   // leading Null necessary to prevent filter from being interpreted as a global filter
   private static final String COMPOSITE_WIDTH_FIX_SPEC = "Null;".concat(WIDTH_FIX_SPEC);
   private static final Transliterator widthFix = Transliterator.getInstance(WIDTH_FIX_SPEC);
 
   private boolean isWide(int script) {
-    return script == UScript.BOPOMOFO || script == UScript.HAN || script == UScript.HANGUL || script == UScript.HIRAGANA || script == UScript.KATAKANA;
+    return script == UScript.BOPOMOFO
+        || script == UScript.HAN
+        || script == UScript.HANGUL
+        || script == UScript.HIRAGANA
+        || script == UScript.KATAKANA;
   }
 
+  @SuppressWarnings("unused")
+  // TODO: what is this?
   private Transliterator getTransliterator(int source) {
     if (source == targetScript || source == UScript.INVALID_CODE) {
       if (isWide(targetScript)) {
@@ -163,14 +158,16 @@ public class AnyMultiplexTransliterator extends Transliterator {
 
       try {
         t = Transliterator.getInstance(id, FORWARD);
-      } catch (RuntimeException e) { }
+      } catch (RuntimeException e) {
+      }
       if (t == null) {
 
         // Try to pivot around Latin, our most common script
         id = sourceName + LATIN_PIVOT + target;
         try {
           t = Transliterator.getInstance(id, FORWARD);
-        } catch (RuntimeException e) { }
+        } catch (RuntimeException e) {
+        }
       }
 
       if (t != null) {

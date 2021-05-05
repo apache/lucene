@@ -87,7 +87,8 @@ public class ICUNormalizer2CharFilterFactory extends CharFilterFactory {
 
   @Override
   public Reader create(Reader input) {
-    if (normType != null && normType == ICUTransformCharFilterFactory.lookupNormTypeByInput(input)) {
+    if (normType != null
+        && normType == ICUTransformCharFilterFactory.lookupNormTypeByInput(input)) {
       // wrapping this would be redundant (upstream is already normalized)
       return input;
     }
