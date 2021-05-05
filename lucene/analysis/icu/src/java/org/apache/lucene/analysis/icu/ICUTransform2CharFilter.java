@@ -488,6 +488,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     // suspect, considering that we're passing `incremental=false`, which one would
     // think should prevent such blocking? But it's guaranteed to be safe when used
     // in a "bypass" situation, because we know that `bypass <= buf.length()`
+
     // String prePos = REPORT ? position.toString() : null;
     // String pre = REPORT ? toString(buf, preStart, preLimit) : null;
     t.filteredTransliterate(buf, position, false); // equivalent to `finishTransliteration(...)`
@@ -501,8 +502,8 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     // even that didn't seem to work, so for now we're going with an arbitrary floor (as configured
     // in ICUTransform2CharFilterFactory)
 
-    // it's unclear from ICU docs whether MCL is codepoint-based or char-based, so
-    // we take the most generous possible interpretation
+    // it's unclear from ICU docs whether MCL is codepoint-based or char-based; we're going
+    // with `char`-based here.
     int tMCL = mcls[tIdx];
     int candidate = forStartPosition - tMCL;
     if (candidate <= 0
@@ -522,7 +523,17 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     while (committedTo[lastIdx] < (limit = buf.length())) {
       for (int i = 0; i <= lastIdx; i++) {
         if (committedTo[i] < limit) {
-          incrementalTransliterate(i - 1); // `-1` causes `nextIdx(...)` to TODO: explain this?
+          /*
+           * `incrementalTransliterate(...)` is called with `i - 1` in order to cause `nextIdx(...)`
+           * to start by evaluating at `i`.
+           *
+           * NOTE: we need to call `incrementalTransliterate(...)` here (as opposed to simply calling
+           * `finishLeaf(...)`) because we still need to give the "downstream" transliterator leaves
+           * a chance to decide (by evaluating filters) whether or not to pay attention to the input
+           * that may be in (or upstream of) their "window" of the buffer and is being flushed as a
+           * result of reaching EOF.
+           */
+          incrementalTransliterate(i - 1);
           break;
         }
       }
