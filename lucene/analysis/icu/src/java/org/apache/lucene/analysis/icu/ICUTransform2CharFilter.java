@@ -20,13 +20,11 @@ package org.apache.lucene.analysis.icu;
 import com.ibm.icu.text.Replaceable;
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.Transliterator.Position;
-
+import com.ibm.icu.text.UTF16;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.MalformedInputException;
 import java.util.function.IntUnaryOperator;
-
-import com.ibm.icu.text.UTF16;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
 import org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegistrar;
@@ -34,10 +32,10 @@ import org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegist
 /**
  * A {@link CharFilter} that transforms text with ICU.
  *
- * This is similar to {@link ICUTransformFilter}, but is capable of operating on pre-tokenized input,
- * which can be particularly useful in cases where tokenization may be affected by transliteration.
- * This class invokes the {@link Transliterator} API in a way that supports truly streaming
- * transliteration.
+ * <p>This is similar to {@link ICUTransformFilter}, but is capable of operating on pre-tokenized
+ * input, which can be particularly useful in cases where tokenization may be affected by
+ * transliteration. This class invokes the {@link Transliterator} API in a way that supports truly
+ * streaming transliteration.
  *
  * <p>ICU provides text-transformation functionality via its Transliteration API. Although script
  * conversion is its most common use, a Transliterator can actually perform a more general class of
@@ -86,23 +84,28 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
 
   /**
    * Creates a new {@link ICUTransform2CharFilter}
+   *
    * @param in - input
    * @param leaves - atomic/leaf transliterators that are joined together in a pipeline to achieve
-   *               high-level transliteration
-   * @param bypassFilterFunctions - bypass functions that are used to skip over leaf transliterators.
-   *                              this is the flat/streaming equivalent of hierarchical UnicodeFilters
-   * @param maxKeepContext - upon flushing the contents of the active transliteration buffer, keep this
-   *                       amount of context in the buffer, as context for subsequent transliteration
-   *                       windows.
-   * @param mcls - maximumContextLength (antecontext) for each leaf transliterator. This is similar to
-   *             {@link Transliterator#getMaximumContextLength()}, but is precomputed and notably accounts
-   *             for antecontext quantifiers (which {@link Transliterator#getMaximumContextLength()} does
-   *             not).
-   * @param registrar - callback that receives notifications of incremental offset diffs upon flushing
-   *                  completed portions of the transliteration buffer.
+   *     high-level transliteration
+   * @param bypassFilterFunctions - bypass functions that are used to skip over leaf
+   *     transliterators. this is the flat/streaming equivalent of hierarchical UnicodeFilters
+   * @param maxKeepContext - upon flushing the contents of the active transliteration buffer, keep
+   *     this amount of context in the buffer, as context for subsequent transliteration windows.
+   * @param mcls - maximumContextLength (antecontext) for each leaf transliterator. This is similar
+   *     to {@link Transliterator#getMaximumContextLength()}, but is precomputed and notably
+   *     accounts for antecontext quantifiers (which {@link
+   *     Transliterator#getMaximumContextLength()} does not).
+   * @param registrar - callback that receives notifications of incremental offset diffs upon
+   *     flushing completed portions of the transliteration buffer.
    */
-  public ICUTransform2CharFilter(Reader in, Transliterator[] leaves, IntUnaryOperator[] bypassFilterFunctions, int maxKeepContext, int[] mcls,
-                                 OffsetCorrectionRegistrar registrar) {
+  public ICUTransform2CharFilter(
+      Reader in,
+      Transliterator[] leaves,
+      IntUnaryOperator[] bypassFilterFunctions,
+      int maxKeepContext,
+      int[] mcls,
+      OffsetCorrectionRegistrar registrar) {
     super(in);
     this.leaves = leaves;
     this.bypassFilterFunctions = bypassFilterFunctions;
@@ -111,17 +114,22 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     this.lastIdx = bypassFilterFunctions.length - 1;
     this.maxKeepContext = maxKeepContext;
     this.mcls = mcls;
-    this.registrar = registrar != null ? registrar :  new OffsetCorrectionRegistrar((offset, diff) -> {
-      addOffCorrectMap(offset, diff);
-      return 0; // return value is irrelevant
-    });
+    this.registrar =
+        registrar != null
+            ? registrar
+            : new OffsetCorrectionRegistrar(
+                (offset, diff) -> {
+                  addOffCorrectMap(offset, diff);
+                  return 0; // return value is irrelevant
+                });
     buf = new CircularReplaceable(registrar != ICUTransform2CharFilterFactory.DEV_NULL_REGISTRAR);
   }
 
   @Override
   public int read(char[] cbuf, int off, int len) throws IOException {
-    for (;;) {
-      final int ret = buf.flush(cbuf, off, len, committedTo[lastIdx], maxKeepContext + 1, registrar);
+    for (; ; ) {
+      final int ret =
+          buf.flush(cbuf, off, len, committedTo[lastIdx], maxKeepContext + 1, registrar);
       if (ret != 0) {
         // if anything in buffer, flush and return
         return ret;
@@ -140,15 +148,18 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
   }
 
   /**
-   * {@link #BATCH_BUFFER_SIZE} sets a threshold buffer size to prevent
-   * {@link Transliterator#filteredTransliterate(Replaceable, Position, boolean)} from being called
-   * for every new character; we can do this because offset corrections are tracked directly by CircularReplaceable,
-   * so we don't need monitor externally for offset changes. Adding this buffer could easily mask underlying
-   * issues, so it's important to be able to modify/disable it for tests, running tests with 0 tolerance/overhead.
+   * {@link #BATCH_BUFFER_SIZE} sets a threshold buffer size to prevent {@link
+   * Transliterator#filteredTransliterate(Replaceable, Position, boolean)} from being called for
+   * every new character; we can do this because offset corrections are tracked directly by
+   * CircularReplaceable, so we don't need monitor externally for offset changes. Adding this buffer
+   * could easily mask underlying issues, so it's important to be able to modify/disable it for
+   * tests, running tests with 0 tolerance/overhead.
    */
   // non-final, package-access for tests
   static int BATCH_BUFFER_SIZE;
+
   static final int DEFAULT_BATCH_BUFFER_SIZE = 16;
+
   static {
     String batchProp = System.getProperty("icu.batchBufferSize");
     BATCH_BUFFER_SIZE = batchProp == null ? DEFAULT_BATCH_BUFFER_SIZE : Integer.parseInt(batchProp);
@@ -184,7 +195,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
       if (BATCH_BUFFER_SIZE > 0) {
         final IntUnaryOperator f = bypassFilterFunctions[i];
         while (preLimit++ < maxLimit - 1) {
-          if (!UTF16.isLeadSurrogate(buf.charAt(preLimit)) ) {
+          if (!UTF16.isLeadSurrogate(buf.charAt(preLimit))) {
             // the most common case
             final int bypassIdx;
             if (f != null && i != (bypassIdx = checkBypassIdx(f, preLimit, i))) {
@@ -216,7 +227,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
         }
       }
       final IntUnaryOperator f = bypassFilterFunctions[i];
-      for (;;) {
+      for (; ; ) {
         position.limit = ++preLimit;
         position.contextLimit = preLimit;
         String prePos = REPORT ? position.toString() : null;
@@ -242,7 +253,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
             preLimit = position.limit;
           }
           if (preLimit < maxLimit) {
-            if (!UTF16.isLeadSurrogate(buf.charAt(preLimit)) ) {
+            if (!UTF16.isLeadSurrogate(buf.charAt(preLimit))) {
               // the most common case
               final int bypassIdx;
               if (f != null && i != (bypassIdx = checkBypassIdx(f, preLimit, i))) {
@@ -292,9 +303,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     }
   }
 
-  /**
-   * Non-final, package access, for tests
-   */
+  /** Non-final, package access, for tests */
   static boolean MITIGATE_BREAK_TRANSLITERATOR_POSITION_BUG = true;
 
   static String toString(CircularReplaceable r, int start, int end) {
@@ -344,7 +353,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
 
   private int nextIdx(int i) {
     int bufMaxIdx = buf.length() + bufLimitAdjust - 1;
-    for (;;) {
+    for (; ; ) {
       if (i >= leaves.length) {
         if (limitTo[0] < bufMaxIdx) {
           i = 0; // start from beginning, with incremented limit
@@ -419,7 +428,8 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
           }
         }
       }
-      if (bypassFilterFunction == null || i == (bypassIdx = checkBypassIdx(bypassFilterFunction, checkPosition, i))) {
+      if (bypassFilterFunction == null
+          || i == (bypassIdx = checkBypassIdx(bypassFilterFunction, checkPosition, i))) {
         // the upstream codepoint was accepted by filters for this leaf
         return i;
       } else {
@@ -484,7 +494,9 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
     // we take the most generous possible interpretation
     int tMCL = mcls[tIdx];
     int candidate = forStartPosition - tMCL;
-    if (candidate <= 0 || candidate >= (buf.length() + bufLimitAdjust) || !UTF16.isTrailSurrogate(buf.charAt(candidate))) {
+    if (candidate <= 0
+        || candidate >= (buf.length() + bufLimitAdjust)
+        || !UTF16.isTrailSurrogate(buf.charAt(candidate))) {
       // we're out of bounds, or can't have a lead surrogate, or don't need a lead surrogate
       return candidate;
     } else {

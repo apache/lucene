@@ -16,15 +16,14 @@
  */
 package org.apache.lucene.analysis.icu;
 
+import static com.ibm.icu.text.UTF16.LEAD_SURROGATE_MAX_VALUE;
+import static com.ibm.icu.text.UTF16.isLeadSurrogate;
 import static com.ibm.icu.text.UTF16.isSurrogate;
 import static com.ibm.icu.text.UTF16.isTrailSurrogate;
-import static com.ibm.icu.text.UTF16.isLeadSurrogate;
-import static com.ibm.icu.text.UTF16.LEAD_SURROGATE_MAX_VALUE;
 
 import com.ibm.icu.text.Replaceable;
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.UTF16;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.util.function.IntBinaryOperator;
@@ -33,17 +32,16 @@ import java.util.function.IntBinaryOperator;
  * An implementation of {@link Replaceable} that leverages {@link Replaceable}'s "metadata" concept
  * to integrally track (and correct) offset changes.
  *
- * This decouples external invocation of
- * {@link Transliterator#filteredTransliterate(Replaceable, Transliterator.Position, boolean)}
- * methods from granular tracking of offset diffs, which allows composite Transliterators to be
- * separated into constituent components, each with its own dedicated section of the buffer (at
- * any given point in time), without any compromise in terms of the accuracy/granularity of
- * offset diff tracking and correction.
+ * <p>This decouples external invocation of {@link Transliterator#filteredTransliterate(Replaceable,
+ * Transliterator.Position, boolean)} methods from granular tracking of offset diffs, which allows
+ * composite Transliterators to be separated into constituent components, each with its own
+ * dedicated section of the buffer (at any given point in time), without any compromise in terms of
+ * the accuracy/granularity of offset diff tracking and correction.
  *
- * This abstraction is a reasonably good fit, but is a little bit awkward at times because offsets
- * are relative, so offset context can't be trivially "copied" to different places within the
- * Replaceable buffer in the same way that, e.g., style/formatting data can. The awkwardness
- * of this mainly manifests in the need to jump through hoops to ensure parity between simple
+ * <p>This abstraction is a reasonably good fit, but is a little bit awkward at times because
+ * offsets are relative, so offset context can't be trivially "copied" to different places within
+ * the Replaceable buffer in the same way that, e.g., style/formatting data can. The awkwardness of
+ * this mainly manifests in the need to jump through hoops to ensure parity between simple
  * "non-complex" String-replace operations and "complex" operations in which icu StringReplacer
  * copies buffer contents and context to the end of the buffer and manipulates it there before
  * copying it back into position and deleting. See {@link #complexCopyAsReplace(int, int)}, and
@@ -58,7 +56,8 @@ public class CircularReplaceable implements Replaceable {
   private static final int WORKING_BUFFER_FLOOR_CHAR_COUNT = 2;
 
   private static final int INITIAL_CAPACITY = Integer.highestOneBit(FLOOR_CHAR_COUNT) << 1;
-  private static final int WORKING_BUFFER_INITIAL_CAPACITY = Integer.highestOneBit(WORKING_BUFFER_FLOOR_CHAR_COUNT) << 1;
+  private static final int WORKING_BUFFER_INITIAL_CAPACITY =
+      Integer.highestOneBit(WORKING_BUFFER_FLOOR_CHAR_COUNT) << 1;
 
   private int capacity;
   private char[] buf;
@@ -74,7 +73,10 @@ public class CircularReplaceable implements Replaceable {
   private final CircularReplaceable workingBuffer;
 
   private CircularReplaceable(boolean internal, int initialCapacity, boolean trackOffsets) {
-    workingBuffer = internal ? null : new CircularReplaceable(true, WORKING_BUFFER_INITIAL_CAPACITY, trackOffsets);
+    workingBuffer =
+        internal
+            ? null
+            : new CircularReplaceable(true, WORKING_BUFFER_INITIAL_CAPACITY, trackOffsets);
     capacity = initialCapacity;
     buf = new char[capacity];
     mask = capacity - 1;
@@ -84,8 +86,8 @@ public class CircularReplaceable implements Replaceable {
   }
 
   /**
-   * Create new offset-correcting {@link CircularReplaceable} with a default initial capacity
-   * of {@value #FLOOR_CHAR_COUNT}
+   * Create new offset-correcting {@link CircularReplaceable} with a default initial capacity of
+   * {@value #FLOOR_CHAR_COUNT}
    */
   public CircularReplaceable() {
     this(false, INITIAL_CAPACITY, true);
@@ -99,7 +101,8 @@ public class CircularReplaceable implements Replaceable {
   }
 
   /**
-   * Create new {@link CircularReplaceable} with a default initial capacity of {@value #FLOOR_CHAR_COUNT}
+   * Create new {@link CircularReplaceable} with a default initial capacity of {@value
+   * #FLOOR_CHAR_COUNT}
    *
    * @param trackOffsets - true if this instance should track offset diffs
    */
@@ -114,7 +117,10 @@ public class CircularReplaceable implements Replaceable {
    * @param trackOffsets - true if this instance should track offset diffs
    */
   public CircularReplaceable(int initialCapacity, boolean trackOffsets) {
-    this(false, Integer.highestOneBit(initialCapacity == 0 ? 1 : initialCapacity) << 1, trackOffsets);
+    this(
+        false,
+        Integer.highestOneBit(initialCapacity == 0 ? 1 : initialCapacity) << 1,
+        trackOffsets);
   }
 
   /**
@@ -171,8 +177,8 @@ public class CircularReplaceable implements Replaceable {
 
   /**
    * Called after the end of the input stream has been reached; if characters have been removed or
-   * added after the end of the input stream, this method will register associated offset corrections
-   * with the specified {@link OffsetCorrectionRegistrar} callback.
+   * added after the end of the input stream, this method will register associated offset
+   * corrections with the specified {@link OffsetCorrectionRegistrar} callback.
    *
    * @param registrar - offset diff callback
    */
@@ -189,10 +195,10 @@ public class CircularReplaceable implements Replaceable {
   }
 
   /**
-   * Requests that up to `limit` characters be read from `in` and appended to this buffer.
-   * This method is guaranteed to read at least one character (assuming one is available).
-   * This method will cause the internal buffer to grow if necessary to append new content,
-   * but the buffer will _not_ grow unless there is _no_ space left at initial invocation.
+   * Requests that up to `limit` characters be read from `in` and appended to this buffer. This
+   * method is guaranteed to read at least one character (assuming one is available). This method
+   * will cause the internal buffer to grow if necessary to append new content, but the buffer will
+   * _not_ grow unless there is _no_ space left at initial invocation.
    *
    * @param in - input from which to read
    * @param limit - the maximum number of characters to read from `in`
@@ -283,8 +289,7 @@ public class CircularReplaceable implements Replaceable {
       }
       offset16--;
       char lead = buf[offset16 & mask];
-      if (isLeadSurrogate(lead))
-        return Character.toCodePoint(lead, single);
+      if (isLeadSurrogate(lead)) return Character.toCodePoint(lead, single);
     }
     return single; // return unmatched surrogate
   }
@@ -305,7 +310,13 @@ public class CircularReplaceable implements Replaceable {
     _getChars(srcStart, srcLimit, dst, null, dstStart, 0);
   }
 
-  private void _getChars(int srcStart, int srcLimit, char[] dst, int[] offsetDst, int dstStart, int headDiffIncrement) {
+  private void _getChars(
+      int srcStart,
+      int srcLimit,
+      char[] dst,
+      int[] offsetDst,
+      int dstStart,
+      int headDiffIncrement) {
     srcStart &= mask;
     srcLimit &= mask;
     if (srcStart <= srcLimit) {
@@ -375,18 +386,17 @@ public class CircularReplaceable implements Replaceable {
 
   private void checkRangeSIOOBE(int idx) {
     if (idx < tail || idx >= head) {
-      throw new StringIndexOutOfBoundsException(
-          "idx " + idx + ", tail " + tail + ", head " + head);
+      throw new StringIndexOutOfBoundsException("idx " + idx + ", tail " + tail + ", head " + head);
     }
   }
 
   /**
-   * Append the contents of the specified char array to this buffer. The internal buffer
-   * will grow as necessary to accommodate all of the requested append.
+   * Append the contents of the specified char array to this buffer. The internal buffer will grow
+   * as necessary to accommodate all of the requested append.
    *
-   * NOTE: in the case of offset-based metadata, it is crucial to distinguish this operation (which
-   * does not introduce offset diff) from {@link #replace(int, int, char[], int, int)} at the limit of the
-   * buffer (which _does_ introduce an offset diff).
+   * <p>NOTE: in the case of offset-based metadata, it is crucial to distinguish this operation
+   * (which does not introduce offset diff) from {@link #replace(int, int, char[], int, int)} at the
+   * limit of the buffer (which _does_ introduce an offset diff).
    */
   public void append(char[] cbuf, int off, int len) {
     if (wbActive) {
@@ -399,12 +409,12 @@ public class CircularReplaceable implements Replaceable {
   }
 
   /**
-   * Append the contents of the specified String to this buffer. The internal buffer
-   * will grow as necessary to accommodate all of the requested append.
+   * Append the contents of the specified String to this buffer. The internal buffer will grow as
+   * necessary to accommodate all of the requested append.
    *
-   * NOTE: in the case of offset-based metadata, it is crucial to distinguish this operation (which
-   * does not introduce offset diff) from {@link #replace(int, int, String)} at the limit of the
-   * buffer (which _does_ introduce an offset diff).
+   * <p>NOTE: in the case of offset-based metadata, it is crucial to distinguish this operation
+   * (which does not introduce offset diff) from {@link #replace(int, int, String)} at the limit of
+   * the buffer (which _does_ introduce an offset diff).
    */
   public void append(String s) {
     if (wbActive) {
@@ -455,7 +465,11 @@ public class CircularReplaceable implements Replaceable {
       } else if (limit > head) {
         throw new IllegalArgumentException("invalid assumption about use of workingBuffer?");
       }
-    } else if (text.length() == 1 && '\uFFFF' == text.charAt(0) && start == head && limit == head && workingBuffer != null) {
+    } else if (text.length() == 1
+        && '\uFFFF' == text.charAt(0)
+        && start == head
+        && limit == head
+        && workingBuffer != null) {
       wbActive = true;
       workingBuffer.buf[0] = '\uFFFF';
       workingBuffer.head = 1;
@@ -471,13 +485,17 @@ public class CircularReplaceable implements Replaceable {
     int srcOff = 0;
     int srcLimit = text.length();
     final int origStart = start;
-    while (TRIM_PREFIXES && start < limit && srcOff < srcLimit && buf[start & mask] == text.charAt(srcOff)) {
+    while (TRIM_PREFIXES
+        && start < limit
+        && srcOff < srcLimit
+        && buf[start & mask] == text.charAt(srcOff)) {
       start++;
       srcOff++;
     }
     int idx;
     int srcIdx;
-    if (limit > start && srcLimit > srcOff
+    if (limit > start
+        && srcLimit > srcOff
         && buf[(idx = limit - 1) & mask] == text.charAt(srcIdx = srcLimit - 1)) {
       do {
         idx--;
@@ -489,7 +507,8 @@ public class CircularReplaceable implements Replaceable {
     final boolean insert = origStart == limit;
     if (start < limit || srcOff < srcLimit) {
       // replace is not a no-op
-      _replace(start, limit, text, srcOff, srcLimit, keyDelete, rawLimit, insert, srcOff >= srcLimit);
+      _replace(
+          start, limit, text, srcOff, srcLimit, keyDelete, rawLimit, insert, srcOff >= srcLimit);
     }
   }
 
@@ -550,7 +569,9 @@ public class CircularReplaceable implements Replaceable {
       // prefixes must be recognized first in order to mark them as ineligible for suffix matching
       checkSrcIdx = srcStart;
       checkDestIdx = watchKeyOriginalOffset;
-      while (checkSrcIdx < srcLimit && checkDestIdx < srcStart && buf[checkSrcIdx & mask] == buf[checkDestIdx & mask]) {
+      while (checkSrcIdx < srcLimit
+          && checkDestIdx < srcStart
+          && buf[checkSrcIdx & mask] == buf[checkDestIdx & mask]) {
         checkSrcIdx++;
         checkDestIdx++;
       }
@@ -560,7 +581,9 @@ public class CircularReplaceable implements Replaceable {
     checkSrcIdx = srcLimit - 1;
     checkDestIdx = srcStart - 1;
     final int trimmedLimit;
-    if (checkDestIdx < suffixDstFloor || checkSrcIdx < suffixSrcFloor || buf[checkSrcIdx & mask] != buf[checkDestIdx & mask]) {
+    if (checkDestIdx < suffixDstFloor
+        || checkSrcIdx < suffixSrcFloor
+        || buf[checkSrcIdx & mask] != buf[checkDestIdx & mask]) {
       // no common suffix
       checkSrcIdx++;
       checkDestIdx++;
@@ -570,8 +593,9 @@ public class CircularReplaceable implements Replaceable {
         // keep advancing until common suffixes diverge
         checkDestIdx--;
         checkSrcIdx--;
-      } while (checkDestIdx >= suffixDstFloor && checkSrcIdx >= suffixSrcFloor &&
-          buf[checkSrcIdx & mask] == buf[checkDestIdx & mask]);
+      } while (checkDestIdx >= suffixDstFloor
+          && checkSrcIdx >= suffixSrcFloor
+          && buf[checkSrcIdx & mask] == buf[checkDestIdx & mask]);
       if (checkSrcIdx + 1 == srcStart) {
         // source in its entirety is (the same as or) a suffix of replacement.
         // the offset of the first char in the dest range should already hold the original offset of the
@@ -634,7 +658,9 @@ public class CircularReplaceable implements Replaceable {
       if (i < srcStart && offsetCorrect[iMask] == -1) {
         do {
           offsetCorrect[iMask] = 0;
-        } while (--collapsedOffsets > 0 && ++i < srcStart && offsetCorrect[iMask = (i & mask)] == -1);
+        } while (--collapsedOffsets > 0
+            && ++i < srcStart
+            && offsetCorrect[iMask = (i & mask)] == -1);
       }
       if (collapsedOffsets > 0) {
         offsetCorrect[srcStart & mask] += collapsedOffsets;
@@ -648,7 +674,16 @@ public class CircularReplaceable implements Replaceable {
   static boolean DETECT_INTRODUCED_UNPAIRED_SURROGATES = true;
   static boolean FIX_INTRODUCED_UNPAIRED_SURROGATES = true;
 
-  private void _replace(int start, int limit, String text, int srcStart, int srcLimit, boolean keyDelete, int rawLimit, boolean insert, boolean deletePrefix) {
+  private void _replace(
+      int start,
+      int limit,
+      String text,
+      int srcStart,
+      int srcLimit,
+      boolean keyDelete,
+      int rawLimit,
+      boolean insert,
+      boolean deletePrefix) {
     final int srcLen = srcLimit - srcStart;
     final int destLen = limit - start;
     int externalAdjust = 0;
@@ -658,7 +693,8 @@ public class CircularReplaceable implements Replaceable {
       limit += shift;
       int restore = Integer.MIN_VALUE;
       if (!keyDelete) {
-        // the normal case; we accumulate offsets over the shift interval in order to apply them externally
+        // the normal case; we accumulate offsets over the shift interval in order to apply them
+        // externally
         // at the new offset
         if (shift < 0 && offsetCorrect != null) {
           if (rawLimit == origLimit) {
@@ -692,11 +728,12 @@ public class CircularReplaceable implements Replaceable {
           // practice (assuming that a full scan of the replacement may _not_ be necessary). But if fixed upstream
           // in ICU4J, this entire block could just be removed, which would be preferable.
 
-          //System.err.println("blah("+watchKeyOriginalOffset+", "+start+", "+origLimit+")");
+          // System.err.println("blah("+watchKeyOriginalOffset+", "+start+", "+origLimit+")");
           int i = Math.max(watchKeyOriginalOffset - 1, 0);
           if (i < start - 1) {
             if (!UTF16.isLeadSurrogate(charAt(i))) {
-              // non-surrogate, or trail surrogate presumably paired with out-of-range lead surrogate
+              // non-surrogate, or trail surrogate presumably paired with out-of-range lead
+              // surrogate
               i++;
             }
             while (i < start - 1) {
@@ -763,7 +800,8 @@ public class CircularReplaceable implements Replaceable {
         }
         final int[] tmpOffsetCorrect = offsetCorrect;
         this.offsetCorrect = null;
-        // NOTE: because `offsetCorrect` manipulation is disabled, many of the below args are irrelevant
+        // NOTE: because `offsetCorrect` manipulation is disabled, many of the below args are
+        // irrelevant
         shift(origLimit, shift, 0, 0, insert, rawLimit, false);
         this.offsetCorrect = tmpOffsetCorrect;
       }
@@ -807,14 +845,18 @@ public class CircularReplaceable implements Replaceable {
     final int rawLimit = limit;
     final int origStart = start;
     final int charsLimit = charsStart + charsLen;
-    while (TRIM_PREFIXES && start < limit && charsStart < charsLimit && buf[start & mask] == chars[charsStart]) {
+    while (TRIM_PREFIXES
+        && start < limit
+        && charsStart < charsLimit
+        && buf[start & mask] == chars[charsStart]) {
       start++;
       charsStart++;
       charsLen--;
     }
     int idx;
     int charsIdx;
-    if (limit > start && charsLimit > charsStart
+    if (limit > start
+        && charsLimit > charsStart
         && buf[(idx = limit - 1) & mask] == chars[charsIdx = charsLimit - 1]) {
       do {
         idx--;
@@ -830,7 +872,15 @@ public class CircularReplaceable implements Replaceable {
     }
   }
 
-  private void _replace(int start, int limit, char[] chars, int charsStart, int charsLen, int rawLimit, boolean insert, boolean deletePrefix) {
+  private void _replace(
+      int start,
+      int limit,
+      char[] chars,
+      int charsStart,
+      int charsLen,
+      int rawLimit,
+      boolean insert,
+      boolean deletePrefix) {
     final int destLen = limit - start;
     int externalAdjust = 0;
     if (destLen != charsLen) {
@@ -851,7 +901,15 @@ public class CircularReplaceable implements Replaceable {
     }
     _copy(start & mask, limit & mask, chars, null, charsStart, charsLen, 0);
   }
-  private void _copy(int start, int limit, char[] chars, int[] offsetSrc, int charsStart, int charsLen, int headDiffIncrement) {
+
+  private void _copy(
+      int start,
+      int limit,
+      char[] chars,
+      int[] offsetSrc,
+      int charsStart,
+      int charsLen,
+      int headDiffIncrement) {
     // we have the appropriate amount of space now
     if (start <= limit) {
       System.arraycopy(chars, charsStart, buf, start, charsLen);
@@ -873,9 +931,11 @@ public class CircularReplaceable implements Replaceable {
   static final class OffsetCorrectionRegistrar {
     private int cumuDiff;
     private final IntBinaryOperator register;
+
     OffsetCorrectionRegistrar(IntBinaryOperator register) {
       this.register = register;
     }
+
     void register(int offset, int diff) {
       assert diff != 0;
       cumuDiff += diff;
@@ -887,33 +947,48 @@ public class CircularReplaceable implements Replaceable {
   private int flushKeepContext = 0;
 
   /**
-   * As {@link #flush(char[], int, int, int, int, OffsetCorrectionRegistrar)}, with the default `keepContext` of
-   * {@value #FLUSH_KEEP_CONTEXT}.
+   * As {@link #flush(char[], int, int, int, int, OffsetCorrectionRegistrar)}, with the default
+   * `keepContext` of {@value #FLUSH_KEEP_CONTEXT}.
    */
-  public int flush(char[] dst, int dstStart, int dstLen, int toOffset, OffsetCorrectionRegistrar registrar) {
+  public int flush(
+      char[] dst, int dstStart, int dstLen, int toOffset, OffsetCorrectionRegistrar registrar) {
     return _flush(dst, dstStart, dstLen, toOffset, FLUSH_KEEP_CONTEXT, registrar);
   }
 
   /**
-   * Flush the contents of this buffer to the specified char[] destination (up to specified `toOffset`,
-   * if destination space allows). Associated offset corrections will be flushed to the specified `registrar`
-   * callback. `keepContext` specifies the amount of context that should, although flushed to the output dest,
-   * be kept in the buffer to serve as antecontext for subsequent transliteration windows.
+   * Flush the contents of this buffer to the specified char[] destination (up to specified
+   * `toOffset`, if destination space allows). Associated offset corrections will be flushed to the
+   * specified `registrar` callback. `keepContext` specifies the amount of context that should,
+   * although flushed to the output dest, be kept in the buffer to serve as antecontext for
+   * subsequent transliteration windows.
    *
    * @param dst - destination to receive content
    * @param dstStart - start offset for destination content
    * @param dstLen - max number of characters to be flushed to dest
    * @param toOffset - source limit offset (exclusive) that should be flushed to dest
-   * @param keepContext - amount of antecontext to retain in buffer to serve as antecontext for subsequent
-   *                    transliteration windows
+   * @param keepContext - amount of antecontext to retain in buffer to serve as antecontext for
+   *     subsequent transliteration windows
    * @param registrar - callback to receive notifications of offset diffs
    * @return - the number of characters flushed to dest
    */
-  public int flush(char[] dst, int dstStart, int dstLen, int toOffset, int keepContext, OffsetCorrectionRegistrar registrar) {
-    return _flush(dst, dstStart, dstLen, toOffset, Math.max(keepContext, FLUSH_KEEP_CONTEXT), registrar);
+  public int flush(
+      char[] dst,
+      int dstStart,
+      int dstLen,
+      int toOffset,
+      int keepContext,
+      OffsetCorrectionRegistrar registrar) {
+    return _flush(
+        dst, dstStart, dstLen, toOffset, Math.max(keepContext, FLUSH_KEEP_CONTEXT), registrar);
   }
 
-  private int _flush(char[] dst, int dstStart, int dstLen, int toOffset, int keepContext, OffsetCorrectionRegistrar registrar) {
+  private int _flush(
+      char[] dst,
+      int dstStart,
+      int dstLen,
+      int toOffset,
+      int keepContext,
+      OffsetCorrectionRegistrar registrar) {
     assert !wbActive;
     final int oldTail = tail + flushKeepContext; // for output purposes, tail includes extant flushKeepContext
     if (toOffset <= oldTail) {
@@ -921,9 +996,11 @@ public class CircularReplaceable implements Replaceable {
     }
     final int newTail = Math.min(toOffset, oldTail + dstLen);
     if (newTail > head) {
-      // we could be more lenient here, but there's not reason that callers can't assume responsibility
+      // we could be more lenient here, but there's not reason that callers can't assume
+      // responsibility
       // for passing an appropriate `len` param
-      throw new StringIndexOutOfBoundsException("toOffset " + toOffset + ", tail " + tail + ", head " + head);
+      throw new StringIndexOutOfBoundsException(
+          "toOffset " + toOffset + ", tail " + tail + ", head " + head);
     }
     getChars(oldTail, newTail, dst, dstStart);
     if (newTail - keepContext < tail) {
@@ -947,9 +1024,9 @@ public class CircularReplaceable implements Replaceable {
   }
 
   /**
-   * Note: `copy` cannot actually preserve the offset metadata that we're interested in, because
-   * of the way ICU API conceives of "metadata". This may lose us some precision, but it does
-   * simplify things. No way around this one.
+   * Note: `copy` cannot actually preserve the offset metadata that we're interested in, because of
+   * the way ICU API conceives of "metadata". This may lose us some precision, but it does simplify
+   * things. No way around this one.
    */
   @Override
   public void copy(int start, int limit, int dest) {
@@ -988,7 +1065,8 @@ public class CircularReplaceable implements Replaceable {
     }
     checkRangeSIOOBE(start, limit);
     if (dest < tail || dest > head) {
-      throw new StringIndexOutOfBoundsException("dest " + dest + ", tail " + tail + ", head " + head);
+      throw new StringIndexOutOfBoundsException(
+          "dest " + dest + ", tail " + tail + ", head " + head);
     }
     // NOTE: `externalOffsetAdjust` is only for negative shift; `copy` is always
     // positive shift, so `externalOffsetAdjust=0`
@@ -1020,7 +1098,15 @@ public class CircularReplaceable implements Replaceable {
     }
   }
 
-  private int correctOffset(final int newIdx, int restoreShiftDest, int externalOffsetAdjust, int shift, boolean insert, int newHead, int eoAdjustIdx, boolean deletePrefix) {
+  private int correctOffset(
+      final int newIdx,
+      int restoreShiftDest,
+      int externalOffsetAdjust,
+      int shift,
+      boolean insert,
+      int newHead,
+      int eoAdjustIdx,
+      boolean deletePrefix) {
     if (offsetCorrect == null) {
       head = newHead;
       return newIdx;
@@ -1047,7 +1133,9 @@ public class CircularReplaceable implements Replaceable {
           // which contiguous offsets should _not_ be inherited.
           do {
             offsetCorrect[iMask] = 0;
-          } while (--externalOffsetAdjust > 0 && ++i < shiftedEoAdjustIdx && offsetCorrect[iMask = (i & mask)] == -1);
+          } while (--externalOffsetAdjust > 0
+              && ++i < shiftedEoAdjustIdx
+              && offsetCorrect[iMask = (i & mask)] == -1);
         }
         // any remaining adjustments are incorporated at eoAdjustIdx
         offsetCorrect[shiftedEoAdjustIdx & mask] += externalOffsetAdjust;
@@ -1067,7 +1155,14 @@ public class CircularReplaceable implements Replaceable {
     return newIdx;
   }
 
-  private int shift(int origIdx, int shift, int restoreShiftDest, int externalOffsetAdjust, boolean insert, int eoAdjustIdx, boolean deletePrefix) {
+  private int shift(
+      int origIdx,
+      int shift,
+      int restoreShiftDest,
+      int externalOffsetAdjust,
+      boolean insert,
+      int eoAdjustIdx,
+      boolean deletePrefix) {
     final int newHead = head + shift;
     if (shift > 0) {
       ensureCapacity(newHead - tail);
@@ -1093,7 +1188,15 @@ public class CircularReplaceable implements Replaceable {
         }
         if (len == straightCopy) {
           // ranges did not overlap
-          return correctOffset(newIdx, restoreShiftDest, externalOffsetAdjust, shift, insert, newHead, eoAdjustIdx, deletePrefix);
+          return correctOffset(
+              newIdx,
+              restoreShiftDest,
+              externalOffsetAdjust,
+              shift,
+              insert,
+              newHead,
+              eoAdjustIdx,
+              deletePrefix);
         }
         remainder = len - straightCopy;
         headDiffIncrement = 0;
@@ -1107,7 +1210,15 @@ public class CircularReplaceable implements Replaceable {
       if (offsetCorrect != null) {
         System.arraycopy(offsetCorrect, origIdxMask, offsetCorrect, newIdxMask, len + 1);
       }
-      return correctOffset(newIdx, restoreShiftDest, externalOffsetAdjust, shift, insert, newHead, eoAdjustIdx, deletePrefix);
+      return correctOffset(
+          newIdx,
+          restoreShiftDest,
+          externalOffsetAdjust,
+          shift,
+          insert,
+          newHead,
+          eoAdjustIdx,
+          deletePrefix);
     } else {
       remainder = len;
       headDiffIncrement = 1;
@@ -1128,9 +1239,25 @@ public class CircularReplaceable implements Replaceable {
       }
       tmpOffsetBufLocal = tmpOffsetBuf;
     }
-    _getChars(origIdxMask, origIdxMask + remainder, tmpBuf, tmpOffsetBufLocal, 0, headDiffIncrement);
-    _copy(newIdxMask, (newIdxMask + remainder) & mask, tmpBuf, tmpOffsetBufLocal, 0, remainder, headDiffIncrement);
-    return correctOffset(newIdx, restoreShiftDest, externalOffsetAdjust, shift, insert, newHead, eoAdjustIdx, deletePrefix);
+    _getChars(
+        origIdxMask, origIdxMask + remainder, tmpBuf, tmpOffsetBufLocal, 0, headDiffIncrement);
+    _copy(
+        newIdxMask,
+        (newIdxMask + remainder) & mask,
+        tmpBuf,
+        tmpOffsetBufLocal,
+        0,
+        remainder,
+        headDiffIncrement);
+    return correctOffset(
+        newIdx,
+        restoreShiftDest,
+        externalOffsetAdjust,
+        shift,
+        insert,
+        newHead,
+        eoAdjustIdx,
+        deletePrefix);
   }
 
   private char[] tmpBuf;

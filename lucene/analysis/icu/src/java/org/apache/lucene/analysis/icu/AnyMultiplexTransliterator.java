@@ -16,24 +16,22 @@
  */
 package org.apache.lucene.analysis.icu;
 
-
 import com.ibm.icu.lang.UScript;
 import com.ibm.icu.text.Replaceable;
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.UnicodeFilter;
-
 import java.util.MissingResourceException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * This is like an AnyTransliterator, but it doesn't actually _do_ anything; just blocks on
- * "COMMON" or "INHERITED" characters until we know which
+ * This is like an AnyTransliterator, but it doesn't actually _do_ anything; just blocks on "COMMON"
+ * or "INHERITED" characters until we know which
  */
 public class AnyMultiplexTransliterator extends Transliterator {
 
   private static final int MAX_CONTEXT_LENGTH = 5;
 
-  //TODO: this should ultimately be used or removed
+  // TODO: this should ultimately be used or removed
   @SuppressWarnings("unused")
   private final int maxContextLength;
 
@@ -46,8 +44,9 @@ public class AnyMultiplexTransliterator extends Transliterator {
   }
 
   /**
-   * Create a new {@link AnyMultiplexTransliterator} for the specified ID, with the specified
-   * {@link UnicodeFilter} and max context length
+   * Create a new {@link AnyMultiplexTransliterator} for the specified ID, with the specified {@link
+   * UnicodeFilter} and max context length
+   *
    * @param ID - the ID of the transform
    * @param filter - restricts input codepoints
    * @param maxContextLength - see {@link Transliterator#getMaximumContextLength()}
@@ -67,13 +66,9 @@ public class AnyMultiplexTransliterator extends Transliterator {
   }
 
   @Override
-  protected void handleTransliterate(Replaceable text, Position pos, boolean incremental) {
+  protected void handleTransliterate(Replaceable text, Position pos, boolean incremental) {}
 
-  }
-
-  /**
-   * copied from com.ibm.icu.text.TransliteratorIDParser
-   */
+  /** copied from com.ibm.icu.text.TransliteratorIDParser */
   public static String[] IDtoSTV(String id) {
     String source = ANY;
     String target = null;
@@ -112,19 +107,16 @@ public class AnyMultiplexTransliterator extends Transliterator {
       variant = variant.substring(1);
     }
 
-    return new String[] { source, target, variant,
-        isSourcePresent ? "" : null };
+    return new String[] {source, target, variant, isSourcePresent ? "" : null};
   }
-
-
 
   // BEGIN copied from com.ibm.icu.text.AnyTransliterator
 
   private static int scriptNameToCode(String name) {
-    try{
+    try {
       int[] codes = UScript.getCode(name);
       return codes != null ? codes[0] : UScript.INVALID_CODE;
-    }catch( MissingResourceException e){
+    } catch (MissingResourceException e) {
       return UScript.INVALID_CODE;
     }
   }
@@ -134,34 +126,30 @@ public class AnyMultiplexTransliterator extends Transliterator {
   static final String ANY = "Any";
   static final String LATIN_PIVOT = "-Latin;Latin-";
 
-  /**
-   * Cache mapping UScriptCode values to Transliterator*.
-   */
+  /** Cache mapping UScriptCode values to Transliterator*. */
   private ConcurrentHashMap<Integer, Transliterator> cache;
 
-  /**
-   * The target or target/variant string.
-   */
+  /** The target or target/variant string. */
   private final String target;
 
-  /**
-   * The target script code.  Never USCRIPT_INVALID_CODE.
-   */
+  /** The target script code. Never USCRIPT_INVALID_CODE. */
   private final int targetScript;
 
-  /**
-   * Special code for handling width characters
-   */
+  /** Special code for handling width characters */
   private static final String WIDTH_FIX_SPEC = "[[:dt=Nar:][:dt=Wide:]] nfkd;";
   // leading Null necessary to prevent filter from being interpreted as a global filter
   private static final String COMPOSITE_WIDTH_FIX_SPEC = "Null;".concat(WIDTH_FIX_SPEC);
   private static final Transliterator widthFix = Transliterator.getInstance(WIDTH_FIX_SPEC);
 
   private boolean isWide(int script) {
-    return script == UScript.BOPOMOFO || script == UScript.HAN || script == UScript.HANGUL || script == UScript.HIRAGANA || script == UScript.KATAKANA;
+    return script == UScript.BOPOMOFO
+        || script == UScript.HAN
+        || script == UScript.HANGUL
+        || script == UScript.HIRAGANA
+        || script == UScript.KATAKANA;
   }
 
-  //TODO: this should ultimately be used or removed
+  // TODO: this should ultimately be used or removed
   @SuppressWarnings("unused")
   private Transliterator getTransliterator(int source) {
     if (source == targetScript || source == UScript.INVALID_CODE) {
@@ -180,14 +168,16 @@ public class AnyMultiplexTransliterator extends Transliterator {
 
       try {
         t = Transliterator.getInstance(id, FORWARD);
-      } catch (RuntimeException e) { }
+      } catch (RuntimeException e) {
+      }
       if (t == null) {
 
         // Try to pivot around Latin, our most common script
         id = sourceName + LATIN_PIVOT + target;
         try {
           t = Transliterator.getInstance(id, FORWARD);
-        } catch (RuntimeException e) { }
+        } catch (RuntimeException e) {
+        }
       }
 
       if (t != null) {

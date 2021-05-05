@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.icu;
 
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.UnicodeSet;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -34,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntUnaryOperator;
-
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.CharFilterFactory;
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
@@ -109,15 +107,17 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
   }
 
   /**
-   * An {@link org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegistrar} that simply ignores
-   * notifications of offset corrections. For use in cases where offset correction is not required.
+   * An {@link org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegistrar} that
+   * simply ignores notifications of offset corrections. For use in cases where offset correction is
+   * not required.
    */
-  public static final CircularReplaceable.OffsetCorrectionRegistrar DEV_NULL_REGISTRAR = new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> 0);
+  public static final CircularReplaceable.OffsetCorrectionRegistrar DEV_NULL_REGISTRAR =
+      new CircularReplaceable.OffsetCorrectionRegistrar((offset, diff) -> 0);
 
   /**
-   * This class is useful for streaming transliteration of documents outside of the context
-   * of Lucene analysis. For that reason we provide a trivial main method to stream
-   * transliteration from stdin to stdout.
+   * This class is useful for streaming transliteration of documents outside of the context of
+   * Lucene analysis. For that reason we provide a trivial main method to stream transliteration
+   * from stdin to stdout.
    */
   @SuppressForbidden(reason = "command-line util writes to stdout")
   public static void main(String[] args) throws IOException {
@@ -141,9 +141,11 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
     List<TransliteratorEntry> decomposed = new ArrayList<>(); // contains only leaf-level Transliterators
     List<List<FilterBypassEntry>> bypassFilters = new ArrayList<>();
     final int[] maxKeepContext = new int[] {t.getMaximumContextLength(), 0, 0};
-    UnicodeSet topLevelFilter = decomposeTransliterator(t, decomposed, bypassFilters, maxKeepContext, 1);
+    UnicodeSet topLevelFilter =
+        decomposeTransliterator(t, decomposed, bypassFilters, maxKeepContext, 1);
     if (topLevelFilter != null) {
-      final FilterBypassEntry topLevelEntry = new FilterBypassEntry(topLevelFilter, decomposed.size());
+      final FilterBypassEntry topLevelEntry =
+          new FilterBypassEntry(topLevelFilter, decomposed.size());
       List<FilterBypassEntry> first = bypassFilters.get(0);
       if (first == null) {
         bypassFilters.set(0, Collections.singletonList(topLevelEntry));
@@ -180,11 +182,13 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
     return wrap(input, t, null);
   }
 
-  static CharFilter wrap(Reader input, Transliterator t, CircularReplaceable.OffsetCorrectionRegistrar registrar) {
+  static CharFilter wrap(
+      Reader input, Transliterator t, CircularReplaceable.OffsetCorrectionRegistrar registrar) {
     return (CharFilter) new ICUTransform2CharFilterFactory(t).create(input, registrar);
   }
 
-  private static IntUnaryOperator[] processBypassFilters(List<List<FilterBypassEntry>> bypassFilters) {
+  private static IntUnaryOperator[] processBypassFilters(
+      List<List<FilterBypassEntry>> bypassFilters) {
     final int size = bypassFilters.size();
     IntUnaryOperator[] ret = new IntUnaryOperator[size];
     int i = 0;
@@ -200,17 +204,19 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
         ret[acceptIdx] = (codepoint) -> filter.contains(codepoint) ? acceptIdx : bypassIdx;
       } else {
         assert !bypassStartFilters.isEmpty();
-        final FilterBypassEntry[] filters = bypassStartFilters.toArray(new FilterBypassEntry[filterCount]);
-        ret[acceptIdx] = (codepoint) -> {
-          int j = filterCount;
-          do {
-            FilterBypassEntry e = filters[--j];
-            if (!e.filter.contains(codepoint)) {
-              return e.bypassIdx;
-            }
-          } while (j > 0);
-          return acceptIdx; // passed all filters
-        };
+        final FilterBypassEntry[] filters =
+            bypassStartFilters.toArray(new FilterBypassEntry[filterCount]);
+        ret[acceptIdx] =
+            (codepoint) -> {
+              int j = filterCount;
+              do {
+                FilterBypassEntry e = filters[--j];
+                if (!e.filter.contains(codepoint)) {
+                  return e.bypassIdx;
+                }
+              } while (j > 0);
+              return acceptIdx; // passed all filters
+            };
       }
     }
     return ret;
@@ -251,13 +257,14 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
         case "com.ibm.icu.text.AnyTransliterator":
           // AnyTransliterators are effectively composite/multiplexed, so we have to jump
           // through some extra hoops to decompose them
-          return decomposeAnyTransliterator(parent, decomposed, bypassFilters, maxKeepContext, depth);
+          return decomposeAnyTransliterator(
+              parent, decomposed, bypassFilters, maxKeepContext, depth);
         case "com.ibm.icu.text.NullTransliterator":
           // these can be ignored
           return null;
         case "com.ibm.icu.text.NormalizationTransliterator":
           // known to _not_ have quantifiers
-          //maxContextLength = parent.getMaximumContextLength();
+          // maxContextLength = parent.getMaximumContextLength();
           localMaxCl = parent.getMaximumContextLength();
           break;
         default:
@@ -277,7 +284,8 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
         maxKeepContext[0] = localMaxContextLen;
       }
       final int filterAcceptIdx = bypassFilters.size();
-      final UnicodeSet f = decomposeTransliterator(t, decomposed, bypassFilters, maxKeepContext, depth + 1);
+      final UnicodeSet f =
+          decomposeTransliterator(t, decomposed, bypassFilters, maxKeepContext, depth + 1);
       if (f != null) {
         final int filterRejectIdx = bypassFilters.size();
         List<FilterBypassEntry> bypassStartFilters = bypassFilters.get(filterAcceptIdx);
@@ -299,6 +307,7 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
       this.maxContextLength = maxContextLength;
     }
   }
+
   private static class FilterBypassEntry {
     private final UnicodeSet filter;
     private final int bypassIdx;
@@ -320,19 +329,21 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
   }
 
   /**
-   * Similar to {@link #create(Reader)}, but allows to specify an external
-   * {@link org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegistrar}. This is useful
+   * Similar to {@link #create(Reader)}, but allows to specify an external {@link
+   * org.apache.lucene.analysis.icu.CircularReplaceable.OffsetCorrectionRegistrar}. This is useful
    * for tests, or in contexts other than Analysis chain.
    *
    * @param input - input Reader
    * @param registrar - callback to receive notifications of offset diffs
-   * @return - a CharFilter for applying the Transliteration configured for this {@link ICUNormalizer2CharFilterFactory}.
+   * @return - a CharFilter for applying the Transliteration configured for this {@link
+   *     ICUNormalizer2CharFilterFactory}.
    */
   public Reader create(Reader input, CircularReplaceable.OffsetCorrectionRegistrar registrar) {
     if (nullTransform) {
       return new NullTransformCharFilter(input);
     } else {
-      return new ICUTransform2CharFilter(input, leaves, bypassFilterFunctions, maxKeepContext, mcls, registrar);
+      return new ICUTransform2CharFilter(
+          input, leaves, bypassFilterFunctions, maxKeepContext, mcls, registrar);
     }
   }
 
@@ -340,6 +351,7 @@ public class ICUTransform2CharFilterFactory extends CharFilterFactory {
     public NullTransformCharFilter(Reader in) {
       super(in);
     }
+
     @Override
     public int read(char[] cbuf, int off, int len) throws IOException {
       return input.read(cbuf, off, len);
