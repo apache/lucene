@@ -247,9 +247,9 @@ public class BlockMaxMaxscoreScorer extends Scorer {
           return true;
         }
 
-        for (Scorer scorer : scorers) {
-          if (scorer.docID() == doc) {
-            matchedDocScoreSum += WANDScorer.scaleMaxScore(scorer.score(), scalingFactor);
+        for (DisiWrapper w : nonEssentialScorers) {
+          if (w.doc == doc) {
+            matchedDocScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
 
             if (matchedDocScoreSum >= minCompetitiveScore) {
               return true;
