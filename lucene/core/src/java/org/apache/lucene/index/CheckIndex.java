@@ -31,6 +31,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -60,6 +64,7 @@ import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
@@ -605,6 +610,15 @@ public final class CheckIndex implements Closeable {
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
+    // nocommit number of threads should be set dynamically
+    ExecutorService executor =
+        Executors.newFixedThreadPool(10, new NamedThreadFactory("async-check-index"));
+
+    // nocommit the msg statements with infoStream inside this loop (as well as inside each
+    // index part checking methods such as testLiveDocs) may be
+    // interleaved when this section of code run concurrently. Is it ok to not synchronize for
+    // these msg statements and instead have each msg content to include segment id information for
+    // identification?
     for (int i = 0; i < numSegments; i++) {
       final SegmentCommitInfo info = sis.info(i);
       long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
@@ -639,6 +653,8 @@ public final class CheckIndex implements Closeable {
       SegmentReader reader = null;
 
       try {
+        // nocommit these msg statements may require synchronization if printed without segment
+        // identifier
         msg(infoStream, "    version=" + (version == null ? "3.0" : version));
         msg(infoStream, "    id=" + StringHelper.idToString(info.info.getId()));
         final Codec codec = info.info.getCodec();
@@ -731,40 +747,188 @@ public final class CheckIndex implements Closeable {
         }
 
         if (checksumsOnly == false) {
+          // This redundant assignment is done to make compiler happy
+          SegmentReader finalReader = reader;
+
           // Test Livedocs
-          segInfoStat.liveDocStatus = testLiveDocs(reader, infoStream, failFast);
+          CompletableFuture<Void> testliveDocs =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testLiveDocs(finalReader, infoStream, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      liveDocStatus -> {
+                        segInfoStat.liveDocStatus = liveDocStatus;
+                      });
 
           // Test Fieldinfos
-          segInfoStat.fieldInfoStatus = testFieldInfos(reader, infoStream, failFast);
+          CompletableFuture<Void> testFieldInfos =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testFieldInfos(finalReader, infoStream, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      fieldInfoStatus -> {
+                        segInfoStat.fieldInfoStatus = fieldInfoStatus;
+                      });
 
           // Test Field Norms
-          segInfoStat.fieldNormStatus = testFieldNorms(reader, infoStream, failFast);
+          CompletableFuture<Void> testFieldNorms =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testFieldNorms(finalReader, infoStream, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      fieldNormStatus -> {
+                        segInfoStat.fieldNormStatus = fieldNormStatus;
+                      });
 
           // Test the Term Index
-          segInfoStat.termIndexStatus =
-              testPostings(reader, infoStream, verbose, doSlowChecks, failFast);
+          CompletableFuture<Void> testTermIndex =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testPostings(
+                              finalReader, infoStream, verbose, doSlowChecks, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      termIndexStatus -> {
+                        segInfoStat.termIndexStatus = termIndexStatus;
+                      });
 
           // Test Stored Fields
-          segInfoStat.storedFieldStatus = testStoredFields(reader, infoStream, failFast);
+          CompletableFuture<Void> testStoredFields =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testStoredFields(finalReader, infoStream, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      storedFieldStatus -> {
+                        segInfoStat.storedFieldStatus = storedFieldStatus;
+                      });
 
           // Test Term Vectors
-          segInfoStat.termVectorStatus =
-              testTermVectors(reader, infoStream, verbose, doSlowChecks, failFast);
+          CompletableFuture<Void> testTermVectors =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testTermVectors(
+                              finalReader, infoStream, verbose, doSlowChecks, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      termVectorStatus -> {
+                        segInfoStat.termVectorStatus = termVectorStatus;
+                      });
 
           // Test Docvalues
-          segInfoStat.docValuesStatus = testDocValues(reader, infoStream, failFast);
+          CompletableFuture<Void> testDocValues =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testDocValues(finalReader, infoStream, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      docValuesStatus -> {
+                        segInfoStat.docValuesStatus = docValuesStatus;
+                      });
 
           // Test PointValues
-          segInfoStat.pointsStatus = testPoints(reader, infoStream, failFast);
+          CompletableFuture<Void> testPointvalues =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testPoints(finalReader, infoStream, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      pointsStatus -> {
+                        segInfoStat.pointsStatus = pointsStatus;
+                      });
 
           // Test VectorValues
-          segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
+          CompletableFuture<Void> testVectors =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testVectors(finalReader, infoStream, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      vectorValuesStatus -> {
+                        segInfoStat.vectorValuesStatus = vectorValuesStatus;
+                      });
 
           // Test index sort
-          segInfoStat.indexSortStatus = testSort(reader, indexSort, infoStream, failFast);
+          CompletableFuture<Void> testSort =
+              CompletableFuture.supplyAsync(
+                      () -> {
+                        try {
+                          return testSort(finalReader, indexSort, infoStream, failFast);
+                        } catch (IOException e) {
+                          throw new CompletionException(e);
+                        }
+                      },
+                      executor)
+                  .thenAccept(
+                      indexSortStatus -> {
+                        segInfoStat.indexSortStatus = indexSortStatus;
+                      });
 
           // Rethrow the first exception we encountered
           //  This will cause stats for failed segments to be incremented properly
+          // nocommit The error != null check ordering below requires sequencing the above async
+          // calls.
+          // Does the order really matter here or can be done differently?
+          CompletableFuture.allOf(
+                  testliveDocs,
+                  testFieldInfos,
+                  testFieldNorms,
+                  testTermIndex,
+                  testStoredFields,
+                  testTermVectors,
+                  testDocValues,
+                  testPointvalues,
+                  testVectors,
+                  testSort)
+              .join();
           if (segInfoStat.liveDocStatus.error != null) {
             throw new RuntimeException("Live docs test failed");
           } else if (segInfoStat.fieldInfoStatus.error != null) {
@@ -783,6 +947,8 @@ public final class CheckIndex implements Closeable {
             throw new RuntimeException("Points test failed");
           }
         }
+
+        // nocommit parallelize this as well?
         final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
         if (softDeletesField != null) {
           checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
@@ -809,6 +975,8 @@ public final class CheckIndex implements Closeable {
       // Keeper
       result.newSegments.add(info.clone());
     }
+
+    executor.shutdown();
 
     if (0 == result.numBadSegments) {
       result.clean = true;
@@ -931,6 +1099,8 @@ public final class CheckIndex implements Closeable {
     final Status.LiveDocStatus status = new Status.LiveDocStatus();
 
     try {
+      // nocommit these msg statements may require synchronization if printed without segment
+      // identifier
       if (infoStream != null) infoStream.print("    test: check live docs.....");
       final int numDocs = reader.numDocs();
       if (reader.hasDeletions()) {
@@ -969,6 +1139,8 @@ public final class CheckIndex implements Closeable {
             }
           }
         }
+        // nocommit these msg statements may require synchronization if printed without segment
+        // identifier
         msg(
             infoStream,
             String.format(
