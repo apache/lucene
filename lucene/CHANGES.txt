@@ -114,6 +114,8 @@ API Changes
 * LUCENE-9948: No longer require the user to specify whether-or-not a field is multi-valued in
   LongValueFacetCounts (detect automatically based on what is indexed). (Greg Miller)
 
+* LUCENE-9843: Remove compression option on default codec's docvalues. (Jack Conradson)
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
