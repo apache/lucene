@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
+import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
 
 /**
  * Implements the Lucene 9.0 index format
@@ -84,7 +85,13 @@ public class Lucene90Codec extends Codec {
         }
       };
 
-  private final VectorFormat vectorFormat = new Lucene90HnswVectorFormat();
+  private final VectorFormat vectorFormat =
+      new PerFieldVectorFormat() {
+        @Override
+        public VectorFormat getVectorFormatForField(String field) {
+          return new Lucene90HnswVectorFormat();
+        }
+      };
 
   private final StoredFieldsFormat storedFieldsFormat;
 
