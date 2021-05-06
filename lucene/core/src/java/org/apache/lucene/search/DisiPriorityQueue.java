@@ -123,6 +123,14 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
     return updateTop();
   }
 
+  /** Clear the heap. */
+  void clear() {
+    size = 0;
+    for (int i = 0; i < size; ++i) {
+      heap[i] = null;
+    }
+  }
+
   void upHeap(int i) {
     final DisiWrapper node = heap[i];
     final int nodeDoc = node.doc;
