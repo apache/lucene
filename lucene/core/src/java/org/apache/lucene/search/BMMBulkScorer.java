@@ -203,6 +203,13 @@ public class BMMBulkScorer extends BulkScorer {
       assert essentialsScorers.size() > 0;
       doc = essentialsScorers.top().doc;
 
+      matchedDocScoreSum = 0;
+      for (DisiWrapper w : essentialsScorers) {
+        if (w.doc == doc) {
+          matchedDocScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
+        }
+      }
+
       return doc;
     }
 
@@ -287,13 +294,13 @@ public class BMMBulkScorer extends BulkScorer {
             }
           }
 
-          if (matchedDocScoreSum != 0 && matchedDocScoreSum > minCompetitiveScore) {
+          if (matchedDocScoreSum >= minCompetitiveScore) {
             return true;
           }
 
-          for (Scorer scorer : scorers) {
-            if (scorer.docID() == doc) {
-              matchedDocScoreSum += WANDScorer.scaleMaxScore(scorer.score(), scalingFactor);
+          for (DisiWrapper w : nonEssentialScorers) {
+            if (w.doc == doc) {
+              matchedDocScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
 
               if (matchedDocScoreSum >= minCompetitiveScore) {
                 return true;
