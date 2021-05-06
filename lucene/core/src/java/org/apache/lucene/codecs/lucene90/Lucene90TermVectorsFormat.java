@@ -50,6 +50,21 @@ import org.apache.lucene.util.packed.PackedInts;
  * <p><b>File formats</b>
  *
  * <ol>
+ *   <li><a id="vector_meta"></a>
+ *       <p>A vector metadata file (extension <code>.tvm</code>).
+ *       <ul>
+ *         <li>VectorMeta (.tvm) --&gt; &lt;Header&gt;, PackedIntsVersion, ChunkSize,
+ *             ChunkIndexMetadata, ChunkCount, DirtyChunkCount, DirtyDocsCount, Footer
+ *         <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
+ *         <li>PackedIntsVersion --&gt; {@link PackedInts#VERSION_CURRENT} as a {@link
+ *             DataOutput#writeVInt VInt}
+ *         <li>ChunkSize is the number of bytes of terms to accumulate before flushing, as a {@link
+ *             DataOutput#writeVInt VInt}
+ *         <li>ChunkCount is not known in advance and is the number of chunks necessary to store all
+ *             document of the segment
+ *         <li>DirtyChunkCount --&gt; the number of prematurely flushed chunks in the .tvd file
+ *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
+ *       </ul>
  *   <li><a id="vector_data"></a>
  *       <p>A vector data file (extension <code>.tvd</code>). This file stores terms, frequencies,
  *       positions, offsets and payloads for every document. Upon writing a new segment, it
@@ -59,15 +74,8 @@ import org.apache.lucene.util.packed.PackedInts;
  *       BlockPackedWriter blocks of packed ints} for positions.
  *       <p>Here is a more detailed description of the field data file format:
  *       <ul>
- *         <li>VectorData (.tvd) --&gt; &lt;Header&gt;, PackedIntsVersion, ChunkSize,
- *             &lt;Chunk&gt;<sup>ChunkCount</sup>, ChunkCount, DirtyChunkCount, Footer
+ *         <li>VectorData (.tvd) --&gt; &lt;Header&gt;, &lt;Chunk&gt;<sup>ChunkCount</sup>, Footer
  *         <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
- *         <li>PackedIntsVersion --&gt; {@link PackedInts#VERSION_CURRENT} as a {@link
- *             DataOutput#writeVInt VInt}
- *         <li>ChunkSize is the number of bytes of terms to accumulate before flushing, as a {@link
- *             DataOutput#writeVInt VInt}
- *         <li>ChunkCount is not known in advance and is the number of chunks necessary to store all
- *             document of the segment
  *         <li>Chunk --&gt; DocBase, ChunkDocs, &lt; NumFields &gt;, &lt; FieldNums &gt;, &lt;
  *             FieldNumOffs &gt;, &lt; Flags &gt;, &lt; NumTerms &gt;, &lt; TermLengths &gt;, &lt;
  *             TermFreqs &gt;, &lt; Positions &gt;, &lt; StartOffsets &gt;, &lt; Lengths &gt;, &lt;
@@ -134,8 +142,6 @@ import org.apache.lucene.util.packed.PackedInts;
  *         <li>FieldTermsAndPayLoads --&gt; Terms (Payloads)
  *         <li>Terms: term bytes
  *         <li>Payloads: payload bytes (if the field has payloads)
- *         <li>ChunkCount --&gt; the number of chunks in this file
- *         <li>DirtyChunkCount --&gt; the number of prematurely flushed chunks in this file
  *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  *       </ul>
  *   <li><a id="vector_index"></a>
