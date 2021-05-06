@@ -17,14 +17,17 @@
 package org.apache.lucene.facet.range;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
+import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.search.ConjunctionDISI;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -86,6 +89,22 @@ abstract class RangeFacetCounts extends Facets {
     } else {
       return s.iterator();
     }
+  }
+
+  protected DocIdSetIterator createIterator(FacetsCollector.MatchingDocs hits) throws IOException {
+    final DocIdSetIterator it;
+    if (fastMatchQuery != null) {
+      DocIdSetIterator fastMatchDocs = createFastMatchDisi(hits.context);
+      if (fastMatchDocs == null) {
+        return null;
+      } else {
+        it = ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), fastMatchDocs));
+      }
+    } else {
+      it = hits.bits.iterator();
+    }
+
+    return it;
   }
 
   @Override
