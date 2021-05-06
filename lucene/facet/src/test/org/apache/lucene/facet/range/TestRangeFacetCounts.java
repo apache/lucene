@@ -185,19 +185,19 @@ public class TestRangeFacetCounts extends FacetTestCase {
     s.search(new MatchAllDocsQuery(), fc);
 
     Facets facets =
-            new LongRangeFacetCounts(
-                    "field",
-                    fc,
-                    new LongRange("less than 10", 0L, true, 10L, false),
-                    new LongRange("less than or equal to 10", 0L, true, 10L, true),
-                    new LongRange("over 90", 90L, false, 100L, false),
-                    new LongRange("90 or above", 90L, true, 100L, false),
-                    new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, true));
+        new LongRangeFacetCounts(
+            "field",
+            fc,
+            new LongRange("less than 10", 0L, true, 10L, false),
+            new LongRange("less than or equal to 10", 0L, true, 10L, true),
+            new LongRange("over 90", 90L, false, 100L, false),
+            new LongRange("90 or above", 90L, true, 100L, false),
+            new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, true));
 
     FacetResult result = facets.getTopChildren(10, "field");
     assertEquals(
-            "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-            result.toString());
+        "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        result.toString());
 
     r.close();
     d.close();
@@ -629,19 +629,19 @@ public class TestRangeFacetCounts extends FacetTestCase {
     s.search(new MatchAllDocsQuery(), fc);
 
     Facets facets =
-            new DoubleRangeFacetCounts(
-                    "field",
-                    fc,
-                    new DoubleRange("less than 10", 0.0, true, 10.0, false),
-                    new DoubleRange("less than or equal to 10", 0.0, true, 10.0, true),
-                    new DoubleRange("over 90", 90.0, false, 100.0, false),
-                    new DoubleRange("90 or above", 90.0, true, 100.0, false),
-                    new DoubleRange("over 1000", 1000.0, false, Double.POSITIVE_INFINITY, false));
+        new DoubleRangeFacetCounts(
+            "field",
+            fc,
+            new DoubleRange("less than 10", 0.0, true, 10.0, false),
+            new DoubleRange("less than or equal to 10", 0.0, true, 10.0, true),
+            new DoubleRange("over 90", 90.0, false, 100.0, false),
+            new DoubleRange("90 or above", 90.0, true, 100.0, false),
+            new DoubleRange("over 1000", 1000.0, false, Double.POSITIVE_INFINITY, false));
 
     FacetResult result = facets.getTopChildren(10, "field");
     assertEquals(
-            "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-            result.toString());
+        "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        result.toString());
 
     r.close();
     d.close();

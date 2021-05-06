@@ -71,8 +71,8 @@ abstract class RangeFacetCounts extends Facets {
   }
 
   /**
-   * Create a {@link org.apache.lucene.search.DocIdSetIterator} from the provided {@code hits}
-   * that relies on {@code fastMatchQuery} if available for first-pass filtering. A null response
+   * Create a {@link org.apache.lucene.search.DocIdSetIterator} from the provided {@code hits} that
+   * relies on {@code fastMatchQuery} if available for first-pass filtering. A null response
    * indicates no documents will match.
    */
   protected DocIdSetIterator createIterator(FacetsCollector.MatchingDocs hits) throws IOException {
@@ -83,13 +83,14 @@ abstract class RangeFacetCounts extends Facets {
       final IndexSearcher searcher = new IndexSearcher(topLevelContext);
       searcher.setQueryCache(null);
       final Weight fastMatchWeight =
-              searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
+          searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
       final Scorer s = fastMatchWeight.scorer(hits.context);
       if (s == null) {
-        return null;  // no hits from the fastMatchQuery; return null
+        return null; // no hits from the fastMatchQuery; return null
       } else {
         DocIdSetIterator fastMatchDocs = s.iterator();
-        return ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), fastMatchDocs));
+        return ConjunctionDISI.intersectIterators(
+            Arrays.asList(hits.bits.iterator(), fastMatchDocs));
       }
 
     } else {
@@ -104,7 +105,8 @@ abstract class RangeFacetCounts extends Facets {
   }
 
   /** Counts from the provided field. */
-  protected void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs) throws IOException {
+  protected void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
+      throws IOException {
 
     // load doc values for all segments up front and keep track of whether-or-not we found any that
     // were actually multi-valued. this allows us to optimize the case where all segments contain

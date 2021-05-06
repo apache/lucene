@@ -84,10 +84,10 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
 
   /**
    * Counts from the provided valueSource.
-   * TODO: Seems like we could extract this into RangeFacetCounts and make the logic common
-   *       between this class and DoubleRangeFacetCounts somehow. The blocker right  now is
-   *       that this implementation expects LongValueSource and DoubleRangeFacetCounts
-   *       expects DoubleValueSource.
+   *
+   * <p>TODO: Seems like we could extract this into RangeFacetCounts and make the logic common
+   * between this class and DoubleRangeFacetCounts somehow. The blocker right now is that this
+   * implementation expects LongValueSource and DoubleRangeFacetCounts expects DoubleValueSource.
    */
   private void count(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
