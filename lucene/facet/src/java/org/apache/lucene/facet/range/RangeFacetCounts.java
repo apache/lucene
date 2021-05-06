@@ -24,9 +24,11 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReaderContext;
-import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConjunctionDISI;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -69,42 +71,136 @@ abstract class RangeFacetCounts extends Facets {
   }
 
   /**
-   * Create a {@link org.apache.lucene.search.DocIdSetIterator} of {@code fastMatchQuery} for the
-   * provided {@code context}. A null response indicates no documents will match. Note that invoking
-   * this when fastMatchQuery is null will result in a null response as well.
+   * Create a {@link org.apache.lucene.search.DocIdSetIterator} from the provided {@code hits}
+   * that relies on {@code fastMatchQuery} if available for first-pass filtering. A null response
+   * indicates no documents will match.
    */
-  protected DocIdSetIterator createFastMatchDisi(LeafReaderContext context) throws IOException {
-    assert context != null : "context must not be null";
-    if (fastMatchQuery == null) {
-      return null;
-    }
-    final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
-    final IndexSearcher searcher = new IndexSearcher(topLevelContext);
-    searcher.setQueryCache(null);
-    final Weight fastMatchWeight =
-        searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
-    final Scorer s = fastMatchWeight.scorer(context);
-    if (s == null) {
-      return null;
+  protected DocIdSetIterator createIterator(FacetsCollector.MatchingDocs hits) throws IOException {
+
+    if (fastMatchQuery != null) {
+
+      final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(hits.context);
+      final IndexSearcher searcher = new IndexSearcher(topLevelContext);
+      searcher.setQueryCache(null);
+      final Weight fastMatchWeight =
+              searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
+      final Scorer s = fastMatchWeight.scorer(hits.context);
+      if (s == null) {
+        return null;  // no hits from the fastMatchQuery; return null
+      } else {
+        DocIdSetIterator fastMatchDocs = s.iterator();
+        return ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), fastMatchDocs));
+      }
+
     } else {
-      return s.iterator();
+      return hits.bits.iterator();
     }
   }
 
-  protected DocIdSetIterator createIterator(FacetsCollector.MatchingDocs hits) throws IOException {
-    final DocIdSetIterator it;
-    if (fastMatchQuery != null) {
-      DocIdSetIterator fastMatchDocs = createFastMatchDisi(hits.context);
-      if (fastMatchDocs == null) {
-        return null;
-      } else {
-        it = ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), fastMatchDocs));
+  protected abstract LongRange[] getLongRanges();
+
+  protected long mapDocValue(long l) {
+    return l;
+  }
+
+  /** Counts from the provided field. */
+  protected void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs) throws IOException {
+
+    // load doc values for all segments up front and keep track of whether-or-not we found any that
+    // were actually multi-valued. this allows us to optimize the case where all segments contain
+    // single-values.
+    SortedNumericDocValues[] multiValuedDocVals = new SortedNumericDocValues[matchingDocs.size()];
+    NumericDocValues[] singleValuedDocVals = null;
+    boolean foundMultiValued = false;
+
+    for (int i = 0; i < matchingDocs.size(); i++) {
+
+      FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
+
+      SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
+      multiValuedDocVals[i] = multiValues;
+
+      // only bother trying to unwrap a singleton if we haven't yet seen any true multi-valued cases
+      if (foundMultiValued == false) {
+        NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
+        if (singleValues != null) {
+          if (singleValuedDocVals == null) {
+            singleValuedDocVals = new NumericDocValues[matchingDocs.size()];
+          }
+          singleValuedDocVals[i] = singleValues;
+        } else {
+          foundMultiValued = true;
+        }
       }
-    } else {
-      it = hits.bits.iterator();
     }
 
-    return it;
+    // we only need to keep around one or the other at this point
+    if (foundMultiValued) {
+      singleValuedDocVals = null;
+    } else {
+      multiValuedDocVals = null;
+    }
+
+    LongRangeCounter counter = new LongRangeCounter(getLongRanges(), counts, foundMultiValued);
+
+    // if we didn't find any multi-valued cases, we can run a more optimal counting algorithm
+    if (foundMultiValued == false) {
+
+      int missingCount = 0;
+
+      for (int i = 0; i < matchingDocs.size(); i++) {
+
+        FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
+
+        final DocIdSetIterator it = createIterator(hits);
+        if (it == null) {
+          continue;
+        }
+
+        assert singleValuedDocVals != null;
+        NumericDocValues singleValues = singleValuedDocVals[i];
+
+        totCount += hits.totalHits;
+        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+          if (singleValues.advanceExact(doc)) {
+            counter.add(mapDocValue(singleValues.longValue()));
+          } else {
+            missingCount++;
+          }
+
+          doc = it.nextDoc();
+        }
+      }
+
+      missingCount += counter.finish();
+      totCount -= missingCount;
+    } else {
+
+      for (int i = 0; i < matchingDocs.size(); i++) {
+
+        final DocIdSetIterator it = createIterator(matchingDocs.get(i));
+        if (it == null) {
+          continue;
+        }
+
+        SortedNumericDocValues multiValues = multiValuedDocVals[i];
+
+        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+          if (multiValues.advanceExact(doc)) {
+            int limit = multiValues.docValueCount();
+            counter.startDoc();
+            for (int j = 0; j < limit; j++) {
+              counter.add(mapDocValue(multiValues.nextValue()));
+            }
+            if (counter.endDoc()) {
+              totCount++;
+            }
+          }
+
+          doc = it.nextDoc();
+        }
+      }
+    }
   }
 
   @Override

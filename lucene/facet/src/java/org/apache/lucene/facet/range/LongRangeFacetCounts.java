@@ -17,15 +17,12 @@
 package org.apache.lucene.facet.range;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConjunctionDISI;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -85,11 +82,17 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
     }
   }
 
-  /** Counts from the provided valueSource. */
+  /**
+   * Counts from the provided valueSource.
+   * TODO: Seems like we could extract this into RangeFacetCounts and make the logic common
+   *       between this class and DoubleRangeFacetCounts somehow. The blocker right  now is
+   *       that this implementation expects LongValueSource and DoubleRangeFacetCounts
+   *       expects DoubleValueSource.
+   */
   private void count(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
-    LongRange[] ranges = (LongRange[]) this.ranges;
+    LongRange[] ranges = getLongRanges();
 
     LongRangeCounter counter = new LongRangeCounter(ranges, counts, false);
 
@@ -99,18 +102,9 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
       LongValues fv = valueSource.getValues(hits.context, null);
       totCount += hits.totalHits;
 
-      final DocIdSetIterator it;
-      if (fastMatchQuery != null) {
-        DocIdSetIterator fastMatchDocs = createFastMatchDisi(hits.context);
-        if (fastMatchDocs == null) {
-          continue;
-        } else {
-          it =
-              ConjunctionDISI.intersectIterators(
-                  Arrays.asList(hits.bits.iterator(), fastMatchDocs));
-        }
-      } else {
-        it = hits.bits.iterator();
+      final DocIdSetIterator it = createIterator(hits);
+      if (it == null) {
+        continue;
       }
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
@@ -129,105 +123,8 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
     totCount -= missingCount;
   }
 
-  /** Counts from the provided field. */
-  private void count(String field, List<MatchingDocs> matchingDocs) throws IOException {
-
-    LongRange[] ranges = (LongRange[]) this.ranges;
-
-    // load doc values for all segments up front and keep track of whether-or-not we found any that
-    // were actually multi-valued. this allows us to optimize the case where all segments contain
-    // single-values.
-    SortedNumericDocValues[] multiValuedDocVals = new SortedNumericDocValues[matchingDocs.size()];
-    NumericDocValues[] singleValuedDocVals = null;
-    boolean foundMultiValued = false;
-
-    for (int i = 0; i < matchingDocs.size(); i++) {
-
-      MatchingDocs hits = matchingDocs.get(i);
-
-      SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
-      multiValuedDocVals[i] = multiValues;
-
-      // only bother trying to unwrap a singleton if we haven't yet seen any true multi-valued cases
-      if (foundMultiValued == false) {
-        NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
-        if (singleValues != null) {
-          if (singleValuedDocVals == null) {
-            singleValuedDocVals = new NumericDocValues[matchingDocs.size()];
-          }
-          singleValuedDocVals[i] = singleValues;
-        } else {
-          foundMultiValued = true;
-        }
-      }
-    }
-
-    // we only need to keep around one or the other at this point
-    if (foundMultiValued) {
-      singleValuedDocVals = null;
-    } else {
-      multiValuedDocVals = null;
-    }
-
-    LongRangeCounter counter = new LongRangeCounter(ranges, counts, foundMultiValued);
-
-    // if we didn't find any multi-valued cases, we can run a more optimal counting algorithm
-    if (foundMultiValued == false) {
-
-      int missingCount = 0;
-
-      for (int i = 0; i < matchingDocs.size(); i++) {
-
-        MatchingDocs hits = matchingDocs.get(i);
-
-        final DocIdSetIterator it = createIterator(hits);
-        if (it == null) {
-          continue;
-        }
-
-        assert singleValuedDocVals != null;
-        NumericDocValues singleValues = singleValuedDocVals[i];
-
-        totCount += hits.totalHits;
-        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
-          if (singleValues.advanceExact(doc)) {
-            counter.add(singleValues.longValue());
-          } else {
-            missingCount++;
-          }
-
-          doc = it.nextDoc();
-        }
-      }
-
-      missingCount += counter.finish();
-      totCount -= missingCount;
-    } else {
-
-      for (int i = 0; i < matchingDocs.size(); i++) {
-
-        final DocIdSetIterator it = createIterator(matchingDocs.get(i));
-        if (it == null) {
-          continue;
-        }
-
-        SortedNumericDocValues multiValues = multiValuedDocVals[i];
-
-        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
-          if (multiValues.advanceExact(doc)) {
-            int limit = multiValues.docValueCount();
-            counter.startDoc();
-            for (int j = 0; j < limit; j++) {
-              counter.add(multiValues.nextValue());
-            }
-            if (counter.endDoc()) {
-              totCount++;
-            }
-          }
-
-          doc = it.nextDoc();
-        }
-      }
-    }
+  @Override
+  protected LongRange[] getLongRanges() {
+    return (LongRange[]) this.ranges;
   }
 }
