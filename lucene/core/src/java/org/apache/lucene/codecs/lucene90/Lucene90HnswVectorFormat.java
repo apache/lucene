@@ -78,7 +78,7 @@ public final class Lucene90HnswVectorFormat extends VectorFormat {
 
   /** Sole constructor */
   public Lucene90HnswVectorFormat() {
-    super("Lucene90VectorFormat");
+    super("Lucene90HnswVectorFormat");
   }
 
   @Override

@@ -30,7 +30,9 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -246,7 +248,12 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
 
     @Override
     public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
-      return fields.get(field).search(field, target, k, fanout);
+      VectorReader vectorReader = fields.get(field);
+      if (vectorReader == null) {
+        return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+      } else {
+        return vectorReader.search(field, target, k, fanout);
+      }
     }
 
     @Override
