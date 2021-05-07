@@ -62,6 +62,8 @@ final class LongRangeCounter {
   // Needed only for counting multi-valued docs:
   /** whether-or-not an elementary interval has seen at least one match for a single doc */
   private FixedBitSet multiValuedDocLeafHits;
+  /** track the last counted leaf so we can skip over ones we've already counted */
+  private int multiValuedDocLastSeenLeaf;
   /** whether-or-not a range has seen at least one match for a single doc */
   private FixedBitSet multiValuedDocRangeHits;
 
@@ -101,6 +103,7 @@ final class LongRangeCounter {
     } else {
       multiValuedDocLeafHits.clear(0, multiValuedDocLeafHits.length());
     }
+    multiValuedDocLastSeenLeaf = -1;
   }
 
   /**
@@ -185,13 +188,28 @@ final class LongRangeCounter {
   void addMultiValued(long v) {
     assert multiValuedDocLeafHits != null : "must call startDoc() first";
 
-    int lo = 0;
+    // First check if we've "advanced" beyond the last leaf we counted for this doc. If
+    // we haven't, there's no sense doing anything else:
+    if (multiValuedDocLastSeenLeaf != -1 && v <= boundaries[multiValuedDocLastSeenLeaf]) {
+      return;
+    }
+
+    // Also check if we've already counted the last leaf. If so, there's nothing else to count
+    // for this doc:
+    final int nextCandidateLeaf = multiValuedDocLastSeenLeaf + 1;
+    if (nextCandidateLeaf == boundaries.length) {
+      return;
+    }
+
+    // Binary search in the range of the next candidate leaf up to the last leaf:
+    int lo = nextCandidateLeaf;
     int hi = boundaries.length - 1;
     while (true) {
       int mid = (lo + hi) >>> 1;
       if (v <= boundaries[mid]) {
-        if (mid == 0) {
-          multiValuedDocLeafHits.set(0);
+        if (mid == nextCandidateLeaf) {
+          multiValuedDocLeafHits.set(mid);
+          multiValuedDocLastSeenLeaf = mid;
           return;
         } else {
           hi = mid - 1;
@@ -199,7 +217,9 @@ final class LongRangeCounter {
       } else if (v > boundaries[mid + 1]) {
         lo = mid + 1;
       } else {
-        multiValuedDocLeafHits.set(mid + 1);
+        int idx = mid + 1;
+        multiValuedDocLeafHits.set(idx);
+        multiValuedDocLastSeenLeaf = idx;
         return;
       }
     }
