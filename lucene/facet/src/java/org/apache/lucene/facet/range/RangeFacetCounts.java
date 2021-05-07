@@ -65,7 +65,7 @@ abstract class RangeFacetCounts extends Facets {
   protected RangeFacetCounts(String field, Range[] ranges, Query fastMatchQuery)
       throws IOException {
     this.field = field;
-    this.ranges = ranges; // nocommit: must be sorted at this point
+    this.ranges = ranges;
     this.fastMatchQuery = fastMatchQuery;
     counts = new int[ranges.length];
   }
