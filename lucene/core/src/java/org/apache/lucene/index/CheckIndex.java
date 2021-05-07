@@ -35,6 +35,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -455,6 +456,13 @@ public final class CheckIndex implements Closeable {
 
   private boolean checksumsOnly;
 
+  /** Set threadCount used for parallelizing index integrity checking. */
+  public void setThreadCount(int tc) {
+    threadCount = tc;
+  }
+
+  private int threadCount = Runtime.getRuntime().availableProcessors();
+
   /**
    * Set infoStream where messages should go. If null, no messages are printed. If verbose is true
    * then more details are printed.
@@ -493,8 +501,35 @@ public final class CheckIndex implements Closeable {
    *     quite a long time to run.
    */
   public Status checkIndex(List<String> onlySegments) throws IOException {
+    ExecutorService executorService =
+        Executors.newFixedThreadPool(threadCount, new NamedThreadFactory("async-check-index"));
+    try {
+      return checkIndex(onlySegments, executorService);
+    } finally {
+      executorService.shutdown();
+      try {
+        executorService.awaitTermination(5, TimeUnit.SECONDS);
+      } catch (
+          @SuppressWarnings("unused")
+          InterruptedException e) {
+      } finally {
+        executorService.shutdownNow();
+      }
+    }
+  }
+
+  /**
+   * Returns a {@link Status} instance detailing the state of the index.
+   *
+   * <p>This method allows caller to pass in customized ExecutorService to speed up the check.
+   *
+   * <p><b>WARNING</b>: make sure you only call this when the index is not opened by any writer.
+   */
+  public Status checkIndex(List<String> onlySegments, ExecutorService executorService)
+      throws IOException {
     ensureOpen();
     long startNS = System.nanoTime();
+
     NumberFormat nf = NumberFormat.getInstance(Locale.ROOT);
     SegmentInfos sis = null;
     Status result = new Status();
@@ -609,10 +644,6 @@ public final class CheckIndex implements Closeable {
     result.newSegments = sis.clone();
     result.newSegments.clear();
     result.maxSegmentName = -1;
-
-    // nocommit number of threads should be set dynamically
-    ExecutorService executor =
-        Executors.newFixedThreadPool(10, new NamedThreadFactory("async-check-index"));
 
     // nocommit the msg statements with infoStream inside this loop (as well as inside each
     // index part checking methods such as testLiveDocs) may be
@@ -760,7 +791,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       liveDocStatus -> {
                         segInfoStat.liveDocStatus = liveDocStatus;
@@ -776,7 +807,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       fieldInfoStatus -> {
                         segInfoStat.fieldInfoStatus = fieldInfoStatus;
@@ -792,7 +823,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       fieldNormStatus -> {
                         segInfoStat.fieldNormStatus = fieldNormStatus;
@@ -809,7 +840,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       termIndexStatus -> {
                         segInfoStat.termIndexStatus = termIndexStatus;
@@ -825,7 +856,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       storedFieldStatus -> {
                         segInfoStat.storedFieldStatus = storedFieldStatus;
@@ -842,7 +873,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       termVectorStatus -> {
                         segInfoStat.termVectorStatus = termVectorStatus;
@@ -858,7 +889,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       docValuesStatus -> {
                         segInfoStat.docValuesStatus = docValuesStatus;
@@ -874,7 +905,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       pointsStatus -> {
                         segInfoStat.pointsStatus = pointsStatus;
@@ -890,7 +921,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       vectorValuesStatus -> {
                         segInfoStat.vectorValuesStatus = vectorValuesStatus;
@@ -906,7 +937,7 @@ public final class CheckIndex implements Closeable {
                           throw new CompletionException(e);
                         }
                       },
-                      executor)
+                      executorService)
                   .thenAccept(
                       indexSortStatus -> {
                         segInfoStat.indexSortStatus = indexSortStatus;
@@ -975,8 +1006,6 @@ public final class CheckIndex implements Closeable {
       // Keeper
       result.newSegments.add(info.clone());
     }
-
-    executor.shutdown();
 
     if (0 == result.numBadSegments) {
       result.clean = true;
@@ -3794,6 +3823,7 @@ public final class CheckIndex implements Closeable {
     boolean doSlowChecks = false;
     boolean verbose = false;
     boolean doChecksumsOnly = false;
+    int threadCount;
     List<String> onlySegments = new ArrayList<>();
     String indexPath = null;
     String dirImpl = null;
@@ -3892,6 +3922,12 @@ public final class CheckIndex implements Closeable {
         }
         i++;
         opts.dirImpl = args[i];
+      } else if ("-threadCount".equals(arg)) {
+        if (i == args.length - 1) {
+          throw new IllegalArgumentException("-threadCount requires a following number");
+        }
+        i++;
+        opts.threadCount = Integer.parseInt(args[i]);
       } else {
         if (opts.indexPath != null) {
           throw new IllegalArgumentException("ERROR: unexpected extra argument '" + args[i] + "'");
@@ -3959,8 +3995,10 @@ public final class CheckIndex implements Closeable {
     setDoSlowChecks(opts.doSlowChecks);
     setChecksumsOnly(opts.doChecksumsOnly);
     setInfoStream(opts.out, opts.verbose);
+    setThreadCount(opts.threadCount);
 
     Status result = checkIndex(opts.onlySegments);
+
     if (result.missingSegments) {
       return 1;
     }
