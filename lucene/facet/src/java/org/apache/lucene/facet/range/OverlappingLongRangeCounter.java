@@ -120,90 +120,6 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
   }
 
   @Override
-  void addSingleValued(long v) {
-    // NOTE: this works too, but it's ~6% slower on a simple
-    // test with a high-freq TermQuery w/ range faceting on
-    // wikimediumall:
-    /*
-    int index = Arrays.binarySearch(boundaries, v);
-    if (index < 0) {
-      index = -index-1;
-    }
-    leafCounts[index]++;
-    */
-
-    // Binary search to find matched elementary range; we
-    // are guaranteed to find a match because the last
-    // boundary is Long.MAX_VALUE:
-
-    if (singleValuedLeafCounts == null) {
-      singleValuedLeafCounts = new int[boundaries.length];
-    }
-
-    int lo = 0;
-    int hi = boundaries.length - 1;
-    while (true) {
-      int mid = (lo + hi) >>> 1;
-      if (v <= boundaries[mid]) {
-        if (mid == 0) {
-          singleValuedLeafCounts[0]++;
-          hasUnflushedCounts = true;
-          return;
-        } else {
-          hi = mid - 1;
-        }
-      } else if (v > boundaries[mid + 1]) {
-        lo = mid + 1;
-      } else {
-        singleValuedLeafCounts[mid + 1]++;
-        hasUnflushedCounts = true;
-        return;
-      }
-    }
-  }
-
-  @Override
-  void addMultiValued(long v) {
-    assert multiValuedDocLeafHits != null : "must call startDoc() first";
-
-    // First check if we've "advanced" beyond the last leaf we counted for this doc. If
-    // we haven't, there's no sense doing anything else:
-    if (multiValuedDocLastSeenLeaf != -1 && v <= boundaries[multiValuedDocLastSeenLeaf]) {
-      return;
-    }
-
-    // Also check if we've already counted the last leaf. If so, there's nothing else to count
-    // for this doc:
-    final int nextCandidateLeaf = multiValuedDocLastSeenLeaf + 1;
-    if (nextCandidateLeaf == boundaries.length) {
-      return;
-    }
-
-    // Binary search in the range of the next candidate leaf up to the last leaf:
-    int lo = nextCandidateLeaf;
-    int hi = boundaries.length - 1;
-    while (true) {
-      int mid = (lo + hi) >>> 1;
-      if (v <= boundaries[mid]) {
-        if (mid == nextCandidateLeaf) {
-          multiValuedDocLeafHits.set(mid);
-          multiValuedDocLastSeenLeaf = mid;
-          return;
-        } else {
-          hi = mid - 1;
-        }
-      } else if (v > boundaries[mid + 1]) {
-        lo = mid + 1;
-      } else {
-        int idx = mid + 1;
-        multiValuedDocLeafHits.set(idx);
-        multiValuedDocLastSeenLeaf = idx;
-        return;
-      }
-    }
-  }
-
-  @Override
   int finish() {
     if (hasUnflushedCounts) {
       // Rollup any outstanding counts from single-valued cases:
@@ -215,6 +131,28 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     } else {
       return 0;
     }
+  }
+
+  @Override
+  protected long[] boundaries() {
+    return boundaries;
+  }
+
+  @Override
+  protected void processSingleValuedHit(int elementarySegmentNum) {
+    // Lazy init:
+    if (singleValuedLeafCounts == null) {
+      singleValuedLeafCounts = new int[boundaries.length];
+    }
+
+    singleValuedLeafCounts[elementarySegmentNum]++;
+    hasUnflushedCounts = true;
+  }
+
+  @Override
+  protected void processMultiValuedHit(int elementarySegmentNum) {
+    assert multiValuedDocLeafHits != null : "must call startDoc() first";
+    multiValuedDocLeafHits.set(elementarySegmentNum);
   }
 
   private static LongRangeNode split(int start, int end, List<InclusiveRange> elementaryIntervals) {
