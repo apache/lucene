@@ -16,26 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -69,6 +49,29 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -784,13 +787,7 @@ public final class CheckIndex implements Closeable {
           // Test Livedocs
           CompletableFuture<Void> testliveDocs =
               CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testLiveDocs(finalReader, infoStream, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
+                      callableToSupplier(() -> testLiveDocs(finalReader, infoStream, failFast)),
                       executorService)
                   .thenAccept(
                       liveDocStatus -> {
@@ -800,13 +797,7 @@ public final class CheckIndex implements Closeable {
           // Test Fieldinfos
           CompletableFuture<Void> testFieldInfos =
               CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testFieldInfos(finalReader, infoStream, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
+                      callableToSupplier(() -> testFieldInfos(finalReader, infoStream, failFast)),
                       executorService)
                   .thenAccept(
                       fieldInfoStatus -> {
@@ -816,13 +807,7 @@ public final class CheckIndex implements Closeable {
           // Test Field Norms
           CompletableFuture<Void> testFieldNorms =
               CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testFieldNorms(finalReader, infoStream, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
+                      callableToSupplier(() -> testFieldNorms(finalReader, infoStream, failFast)),
                       executorService)
                   .thenAccept(
                       fieldNormStatus -> {
@@ -1038,6 +1023,18 @@ public final class CheckIndex implements Closeable {
         String.format(Locale.ROOT, "Took %.3f sec total.", nsToSec(System.nanoTime() - startNS)));
 
     return result;
+  }
+
+  private <T> Supplier<T> callableToSupplier(Callable<T> callable) {
+    return () -> {
+      try {
+        return callable.call();
+      } catch (RuntimeException | Error e) {
+        throw e;
+      } catch (Throwable e) {
+        throw new CompletionException(e);
+      }
+    };
   }
 
   /**
