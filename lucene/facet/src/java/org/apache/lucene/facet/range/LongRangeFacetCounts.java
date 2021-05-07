@@ -94,7 +94,7 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
 
     LongRange[] ranges = getLongRanges();
 
-    LongRangeCounter counter = new LongRangeCounter(ranges, counts, false);
+    LongRangeCounter counter = new LongRangeCounter(ranges, counts);
 
     int missingCount = 0;
 
@@ -110,7 +110,7 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
         if (fv.advanceExact(doc)) {
-          counter.add(fv.longValue());
+          counter.addSingleValued(fv.longValue());
         } else {
           missingCount++;
         }

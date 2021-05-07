@@ -106,7 +106,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
 
     LongRange[] longRanges = getLongRanges();
 
-    LongRangeCounter counter = new LongRangeCounter(longRanges, counts, false);
+    LongRangeCounter counter = new LongRangeCounter(longRanges, counts);
 
     int missingCount = 0;
     for (MatchingDocs hits : matchingDocs) {
@@ -121,7 +121,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
         if (fv.advanceExact(doc)) {
-          counter.add(NumericUtils.doubleToSortableLong(fv.doubleValue()));
+          counter.addSingleValued(NumericUtils.doubleToSortableLong(fv.doubleValue()));
         } else {
           missingCount++;
         }

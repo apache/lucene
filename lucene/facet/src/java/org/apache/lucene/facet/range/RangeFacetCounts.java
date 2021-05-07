@@ -143,12 +143,12 @@ abstract class RangeFacetCounts extends Facets {
       multiValuedDocVals = null;
     }
 
-    LongRangeCounter counter = new LongRangeCounter(getLongRanges(), counts, foundMultiValued);
+    LongRangeCounter counter = new LongRangeCounter(getLongRanges(), counts);
+
+    int missingCount = 0;
 
     // if we didn't find any multi-valued cases, we can run a more optimal counting algorithm
     if (foundMultiValued == false) {
-
-      int missingCount = 0;
 
       for (int i = 0; i < matchingDocs.size(); i++) {
 
@@ -165,7 +165,7 @@ abstract class RangeFacetCounts extends Facets {
         totCount += hits.totalHits;
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
           if (singleValues.advanceExact(doc)) {
-            counter.add(mapDocValue(singleValues.longValue()));
+            counter.addSingleValued(mapDocValue(singleValues.longValue()));
           } else {
             missingCount++;
           }
@@ -173,9 +173,6 @@ abstract class RangeFacetCounts extends Facets {
           doc = it.nextDoc();
         }
       }
-
-      missingCount += counter.finish();
-      totCount -= missingCount;
     } else {
 
       for (int i = 0; i < matchingDocs.size(); i++) {
@@ -190,12 +187,18 @@ abstract class RangeFacetCounts extends Facets {
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
           if (multiValues.advanceExact(doc)) {
             int limit = multiValues.docValueCount();
-            counter.startDoc();
-            for (int j = 0; j < limit; j++) {
-              counter.add(mapDocValue(multiValues.nextValue()));
-            }
-            if (counter.endDoc()) {
+            // optimize single-value case
+            if (limit == 1) {
+              counter.addSingleValued(mapDocValue(multiValues.nextValue()));
               totCount++;
+            } else {
+              counter.startDoc();
+              for (int j = 0; j < limit; j++) {
+                counter.addMultiValued(mapDocValue(multiValues.nextValue()));
+              }
+              if (counter.endDoc()) {
+                totCount++;
+              }
             }
           }
 
@@ -203,6 +206,9 @@ abstract class RangeFacetCounts extends Facets {
         }
       }
     }
+
+    missingCount += counter.finish();
+    totCount -= missingCount;
   }
 
   @Override

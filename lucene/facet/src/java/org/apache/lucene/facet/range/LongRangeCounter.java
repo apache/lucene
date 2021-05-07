@@ -27,46 +27,49 @@ import org.apache.lucene.util.FixedBitSet;
  * Segment tree for counting numeric ranges. Works for both single- and multi-valued cases (assuming
  * you use it correctly).
  *
- * <p>Usage notes: For counting against a single value field/source, callers should call add() for
- * each value and then call finish() after all documents have been processed. The call to finish()
- * will inform the caller how many documents didn't match against any ranges. After finish() has
- * been called, the caller-provided count buffer (passed into the ctor) will be populated with
- * accurate range counts.
+ * <p>Usage notes: For counting against a single value field/source, callers should call
+ * addSingleValued() for each value and then call finish() after all documents have been processed.
+ * The call to finish() will inform the caller how many documents didn't match against any ranges.
+ * After finish() has been called, the caller-provided count buffer (passed into the ctor) will be
+ * populated with accurate range counts.
  *
  * <p>For counting against a multi-valued field, callers should call startDoc() at the beginning of
- * processing each doc, followed by add() for each value, and then endDoc() at the end of the doc.
- * The call to endDoc() will inform the caller if that document matched against any ranges. It is
- * not necessary to call finish() for multi-valued cases. After each call to endDoc(), the
- * caller-provided count buffer (passed into the ctor) will be populated with accurate range counts.
+ * processing each doc, followed by addMultiValued() for each value, and then endDoc() at the end of
+ * the doc. The call to endDoc() will inform the caller if that document matched against any ranges.
+ *
+ * <p>Note that it's possible to mix single- and multi-valued call patterns. Docs having a single
+ * value only need to use addSingleValued(), while docs with multiple values need to use startDoc(),
+ * addMultiValued(), endDoc(). The caller should always call finish() at the end to ensure all
+ * counts are flushed and final missing docs are identified.
  */
 final class LongRangeCounter {
 
   /** segment tree root node */
   private final LongRangeNode root;
+  /** number of requested ranges */
+  private final int numRanges;
   /** elementary segment boundaries used for efficient counting (bsearch to find interval) */
   private final long[] boundaries;
   /** accumulated counts for all of the ranges */
   private final int[] countBuffer;
-  /** whether-or-not we're counting docs that could be multi-valued */
-  final boolean isMultiValued;
+  /** whether-or-not there are leaf counts that still need to be rolled up at the end */
+  private boolean hasUnflushedCounts = false;
 
   // Needed only for counting single-valued docs:
   /** counts seen in each elementary interval leaf */
-  private final int[] singleValuedLeafCounts;
+  private int[] singleValuedLeafCounts;
 
   // Needed only for counting multi-valued docs:
   /** whether-or-not an elementary interval has seen at least one match for a single doc */
-  private final FixedBitSet multiValuedDocLeafHits;
+  private FixedBitSet multiValuedDocLeafHits;
   /** whether-or-not a range has seen at least one match for a single doc */
-  private final FixedBitSet multiValuedDocRangeHits;
+  private FixedBitSet multiValuedDocRangeHits;
 
   // Used during rollup
   private int leafUpto;
   private int missingCount;
 
-  LongRangeCounter(LongRange[] ranges, int[] countBuffer, boolean isMultiValued) {
-    // Whether-or-not we're processing docs that could be multi-valued:
-    this.isMultiValued = isMultiValued;
+  LongRangeCounter(LongRange[] ranges, int[] countBuffer) {
 
     // We'll populate the user-provided count buffer with range counts:
     this.countBuffer = countBuffer;
@@ -88,78 +91,126 @@ final class LongRangeCounter {
       boundaries[i] = elementaryIntervals.get(i).end;
     }
 
-    // Setup to count:
-    if (isMultiValued == false) {
-      // Setup to count single-valued docs only:
-      singleValuedLeafCounts = new int[boundaries.length];
-      multiValuedDocLeafHits = null;
-      multiValuedDocRangeHits = null;
-    } else {
-      // Setup to count multi-valued docs:
-      singleValuedLeafCounts = null;
-      multiValuedDocLeafHits = new FixedBitSet(boundaries.length);
-      multiValuedDocRangeHits = new FixedBitSet(ranges.length);
-    }
+    numRanges = ranges.length;
   }
 
-  /**
-   * Start processing a new doc. It's unnecessary to call this for single-value cases (but it
-   * doesn't cause problems if you do).
-   */
+  /** Start processing a new doc. It's unnecessary to call this for single-value cases. */
   void startDoc() {
-    if (isMultiValued) {
+    if (multiValuedDocLeafHits == null) {
+      multiValuedDocLeafHits = new FixedBitSet(boundaries.length);
+    } else {
       multiValuedDocLeafHits.clear(0, multiValuedDocLeafHits.length());
     }
   }
 
   /**
    * Finish processing a new doc. Returns whether-or-not the document contributed a count to at
-   * least one range. It's unnecessary to call this for single-value cases, and the return value in
-   * such cases will always be {@code true} (but calling it doesn't cause any problems).
+   * least one range. It's unnecessary to call this for single-value cases.
    */
   boolean endDoc() {
+    assert multiValuedDocLeafHits != null : "must call startDoc() first";
+
     // Necessary to rollup after each doc for multi-valued case:
-    if (isMultiValued) {
-      // Short-circuit if the caller didn't specify any ranges to count
-      if (multiValuedDocRangeHits.length() == 0) {
-        return false;
-      }
 
-      leafUpto = 0;
-      multiValuedDocRangeHits.clear(0, multiValuedDocRangeHits.length());
-      rollupMultiValued(root);
+    // Short-circuit if the caller didn't specify any ranges to count
+    if (numRanges == 0) {
+      return false;
+    }
 
-      boolean docContributedToAtLeastOneRange = false;
-      for (int i = multiValuedDocRangeHits.nextSetBit(0); i < multiValuedDocRangeHits.length(); ) {
-        countBuffer[i]++;
-        docContributedToAtLeastOneRange = true;
-        if (++i < multiValuedDocRangeHits.length()) {
-          i = multiValuedDocRangeHits.nextSetBit(i);
-        }
-      }
-
-      return docContributedToAtLeastOneRange;
+    if (multiValuedDocRangeHits == null) {
+      multiValuedDocRangeHits = new FixedBitSet(numRanges);
     } else {
-      return true;
+      multiValuedDocRangeHits.clear(0, multiValuedDocRangeHits.length());
+    }
+
+    leafUpto = 0;
+    rollupMultiValued(root);
+
+    boolean docContributedToAtLeastOneRange = false;
+    for (int i = multiValuedDocRangeHits.nextSetBit(0); i < multiValuedDocRangeHits.length(); ) {
+      countBuffer[i]++;
+      docContributedToAtLeastOneRange = true;
+      if (++i < multiValuedDocRangeHits.length()) {
+        i = multiValuedDocRangeHits.nextSetBit(i);
+      }
+    }
+
+    return docContributedToAtLeastOneRange;
+  }
+
+  /** Count a single valued doc */
+  void addSingleValued(long v) {
+    // NOTE: this works too, but it's ~6% slower on a simple
+    // test with a high-freq TermQuery w/ range faceting on
+    // wikimediumall:
+    /*
+    int index = Arrays.binarySearch(boundaries, v);
+    if (index < 0) {
+      index = -index-1;
+    }
+    leafCounts[index]++;
+    */
+
+    // Binary search to find matched elementary range; we
+    // are guaranteed to find a match because the last
+    // boundary is Long.MAX_VALUE:
+
+    if (singleValuedLeafCounts == null) {
+      singleValuedLeafCounts = new int[boundaries.length];
+    }
+
+    int lo = 0;
+    int hi = boundaries.length - 1;
+    while (true) {
+      int mid = (lo + hi) >>> 1;
+      if (v <= boundaries[mid]) {
+        if (mid == 0) {
+          singleValuedLeafCounts[0]++;
+          hasUnflushedCounts = true;
+          return;
+        } else {
+          hi = mid - 1;
+        }
+      } else if (v > boundaries[mid + 1]) {
+        lo = mid + 1;
+      } else {
+        singleValuedLeafCounts[mid + 1]++;
+        hasUnflushedCounts = true;
+        return;
+      }
     }
   }
 
-  /** Count a value. */
-  void add(long v) {
-    if (isMultiValued) {
-      addMultiValued(v);
-    } else {
-      addSingleValued(v);
+  /** Count a multi-valued doc value */
+  void addMultiValued(long v) {
+    assert multiValuedDocLeafHits != null : "must call startDoc() first";
+
+    int lo = 0;
+    int hi = boundaries.length - 1;
+    while (true) {
+      int mid = (lo + hi) >>> 1;
+      if (v <= boundaries[mid]) {
+        if (mid == 0) {
+          multiValuedDocLeafHits.set(0);
+          return;
+        } else {
+          hi = mid - 1;
+        }
+      } else if (v > boundaries[mid + 1]) {
+        lo = mid + 1;
+      } else {
+        multiValuedDocLeafHits.set(mid + 1);
+        return;
+      }
     }
   }
 
   /**
    * Finish processing all documents. This will return the number of docs that didn't contribute to
-   * any ranges. It's unnecessary to call this for multi-value cases, and the return value will
-   * always be zero.
+   * any ranges (that weren't already reported when calling endDoc()).
    */
   int finish() {
-    if (isMultiValued == false) {
+    if (hasUnflushedCounts) {
       missingCount = 0;
       leafUpto = 0;
       rollupSingleValued(root, false);
@@ -252,63 +303,6 @@ final class LongRangeCounter {
       LongRangeNode left = split(start, mid, elementaryIntervals);
       LongRangeNode right = split(mid, end, elementaryIntervals);
       return new LongRangeNode(left.start, right.end, left, right, -1);
-    }
-  }
-
-  private void addSingleValued(long v) {
-    // NOTE: this works too, but it's ~6% slower on a simple
-    // test with a high-freq TermQuery w/ range faceting on
-    // wikimediumall:
-    /*
-    int index = Arrays.binarySearch(boundaries, v);
-    if (index < 0) {
-      index = -index-1;
-    }
-    leafCounts[index]++;
-    */
-
-    // Binary search to find matched elementary range; we
-    // are guaranteed to find a match because the last
-    // boundary is Long.MAX_VALUE:
-
-    int lo = 0;
-    int hi = boundaries.length - 1;
-    while (true) {
-      int mid = (lo + hi) >>> 1;
-      if (v <= boundaries[mid]) {
-        if (mid == 0) {
-          singleValuedLeafCounts[0]++;
-          return;
-        } else {
-          hi = mid - 1;
-        }
-      } else if (v > boundaries[mid + 1]) {
-        lo = mid + 1;
-      } else {
-        singleValuedLeafCounts[mid + 1]++;
-        return;
-      }
-    }
-  }
-
-  private void addMultiValued(long v) {
-    int lo = 0;
-    int hi = boundaries.length - 1;
-    while (true) {
-      int mid = (lo + hi) >>> 1;
-      if (v <= boundaries[mid]) {
-        if (mid == 0) {
-          multiValuedDocLeafHits.set(0);
-          return;
-        } else {
-          hi = mid - 1;
-        }
-      } else if (v > boundaries[mid + 1]) {
-        lo = mid + 1;
-      } else {
-        multiValuedDocLeafHits.set(mid + 1);
-        return;
-      }
     }
   }
 
