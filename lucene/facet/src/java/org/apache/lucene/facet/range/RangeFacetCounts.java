@@ -65,7 +65,7 @@ abstract class RangeFacetCounts extends Facets {
   protected RangeFacetCounts(String field, Range[] ranges, Query fastMatchQuery)
       throws IOException {
     this.field = field;
-    this.ranges = ranges;
+    this.ranges = ranges; // nocommit: must be sorted at this point
     this.fastMatchQuery = fastMatchQuery;
     counts = new int[ranges.length];
   }
@@ -143,7 +143,7 @@ abstract class RangeFacetCounts extends Facets {
       multiValuedDocVals = null;
     }
 
-    LongRangeCounter counter = new LongRangeCounter(getLongRanges(), counts);
+    LongRangeCounter counter = LongRangeCounter.create(getLongRanges(), counts);
 
     int missingCount = 0;
 
@@ -192,11 +192,11 @@ abstract class RangeFacetCounts extends Facets {
               counter.addSingleValued(mapDocValue(multiValues.nextValue()));
               totCount++;
             } else {
-              counter.startDoc();
+              counter.startMultiValuedDoc();
               for (int j = 0; j < limit; j++) {
                 counter.addMultiValued(mapDocValue(multiValues.nextValue()));
               }
-              if (counter.endDoc()) {
+              if (counter.endMultiValuedDoc()) {
                 totCount++;
               }
             }

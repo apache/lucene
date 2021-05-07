@@ -94,7 +94,7 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
 
     LongRange[] ranges = getLongRanges();
 
-    LongRangeCounter counter = new LongRangeCounter(ranges, counts);
+    LongRangeCounter counter = LongRangeCounter.create(ranges, counts);
 
     int missingCount = 0;
 

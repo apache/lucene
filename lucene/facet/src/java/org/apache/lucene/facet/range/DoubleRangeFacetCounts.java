@@ -106,7 +106,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
 
     LongRange[] longRanges = getLongRanges();
 
-    LongRangeCounter counter = new LongRangeCounter(longRanges, counts);
+    LongRangeCounter counter = LongRangeCounter.create(longRanges, counts);
 
     int missingCount = 0;
     for (MatchingDocs hits : matchingDocs) {
