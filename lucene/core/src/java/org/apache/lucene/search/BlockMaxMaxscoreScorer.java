@@ -130,7 +130,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
           long matchedMaxScoreSum = nonEssentialMaxScoreSum;
           for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
-            matchedMaxScoreSum += w.maxScore;
+            matchedMaxScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
           }
 
           if (matchedMaxScoreSum < minCompetitiveScore) {
@@ -184,12 +184,16 @@ public class BlockMaxMaxscoreScorer extends Scorer {
         // Re-partition the scorers into non-essential list and essential list, as defined in
         // the "Optimizing Top-k Document Retrieval Strategies for Block-Max Indexes" paper.
         nonEssentialMaxScoreSum = 0;
-        for (DisiWrapper w : allScorers) {
+        for (int i = 0; i < allScorers.length; i++) {
+          DisiWrapper w = allScorers[i];
           if (nonEssentialMaxScoreSum + w.maxScore < minCompetitiveScore) {
             nonEssentialScorers.add(w);
             nonEssentialMaxScoreSum += w.maxScore;
           } else {
-            essentialsScorers.add(w);
+            for (int j = allScorers.length - 1; j >= i; j--) {
+              essentialsScorers.add(allScorers[j]);
+            }
+            break;
           }
         }
       }
