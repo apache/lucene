@@ -37,6 +37,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -463,7 +464,7 @@ public final class CheckIndex implements Closeable {
     threadCount = tc;
   }
 
-  private int threadCount = Runtime.getRuntime().availableProcessors();
+  private int threadCount = 1;
 
   /**
    * Set infoStream where messages should go. If null, no messages are printed. If verbose is true
@@ -785,147 +786,73 @@ public final class CheckIndex implements Closeable {
 
           // Test Livedocs
           CompletableFuture<Void> testliveDocs =
-              CompletableFuture.supplyAsync(
-                      callableToSupplier(() -> testLiveDocs(finalReader, infoStream, failFast)),
-                      executorService)
-                  .thenAccept(
-                      liveDocStatus -> {
-                        segInfoStat.liveDocStatus = liveDocStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testLiveDocs(finalReader, infoStream, failFast),
+                  liveDocStatus -> segInfoStat.liveDocStatus = liveDocStatus);
 
           // Test Fieldinfos
           CompletableFuture<Void> testFieldInfos =
-              CompletableFuture.supplyAsync(
-                      callableToSupplier(() -> testFieldInfos(finalReader, infoStream, failFast)),
-                      executorService)
-                  .thenAccept(
-                      fieldInfoStatus -> {
-                        segInfoStat.fieldInfoStatus = fieldInfoStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testFieldInfos(finalReader, infoStream, failFast),
+                  fieldInfoStatus -> segInfoStat.fieldInfoStatus = fieldInfoStatus);
 
           // Test Field Norms
           CompletableFuture<Void> testFieldNorms =
-              CompletableFuture.supplyAsync(
-                      callableToSupplier(() -> testFieldNorms(finalReader, infoStream, failFast)),
-                      executorService)
-                  .thenAccept(
-                      fieldNormStatus -> {
-                        segInfoStat.fieldNormStatus = fieldNormStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testFieldNorms(finalReader, infoStream, failFast),
+                  fieldNormStatus -> segInfoStat.fieldNormStatus = fieldNormStatus);
 
           // Test the Term Index
           CompletableFuture<Void> testTermIndex =
-              CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testPostings(
-                              finalReader, infoStream, verbose, doSlowChecks, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
-                      executorService)
-                  .thenAccept(
-                      termIndexStatus -> {
-                        segInfoStat.termIndexStatus = termIndexStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testPostings(finalReader, infoStream, verbose, doSlowChecks, failFast),
+                  termIndexStatus -> segInfoStat.termIndexStatus = termIndexStatus);
 
           // Test Stored Fields
           CompletableFuture<Void> testStoredFields =
-              CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testStoredFields(finalReader, infoStream, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
-                      executorService)
-                  .thenAccept(
-                      storedFieldStatus -> {
-                        segInfoStat.storedFieldStatus = storedFieldStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testStoredFields(finalReader, infoStream, failFast),
+                  storedFieldStatus -> segInfoStat.storedFieldStatus = storedFieldStatus);
 
           // Test Term Vectors
           CompletableFuture<Void> testTermVectors =
-              CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testTermVectors(
-                              finalReader, infoStream, verbose, doSlowChecks, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
-                      executorService)
-                  .thenAccept(
-                      termVectorStatus -> {
-                        segInfoStat.termVectorStatus = termVectorStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testTermVectors(finalReader, infoStream, verbose, doSlowChecks, failFast),
+                  termVectorStatus -> segInfoStat.termVectorStatus = termVectorStatus);
 
           // Test Docvalues
           CompletableFuture<Void> testDocValues =
-              CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testDocValues(finalReader, infoStream, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
-                      executorService)
-                  .thenAccept(
-                      docValuesStatus -> {
-                        segInfoStat.docValuesStatus = docValuesStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testDocValues(finalReader, infoStream, failFast),
+                  docValuesStatus -> segInfoStat.docValuesStatus = docValuesStatus);
 
           // Test PointValues
           CompletableFuture<Void> testPointvalues =
-              CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testPoints(finalReader, infoStream, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
-                      executorService)
-                  .thenAccept(
-                      pointsStatus -> {
-                        segInfoStat.pointsStatus = pointsStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testPoints(finalReader, infoStream, failFast),
+                  pointsStatus -> segInfoStat.pointsStatus = pointsStatus);
 
           // Test VectorValues
           CompletableFuture<Void> testVectors =
-              CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testVectors(finalReader, infoStream, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
-                      executorService)
-                  .thenAccept(
-                      vectorValuesStatus -> {
-                        segInfoStat.vectorValuesStatus = vectorValuesStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testVectors(finalReader, infoStream, failFast),
+                  vectorValuesStatus -> segInfoStat.vectorValuesStatus = vectorValuesStatus);
 
           // Test index sort
           CompletableFuture<Void> testSort =
-              CompletableFuture.supplyAsync(
-                      () -> {
-                        try {
-                          return testSort(finalReader, indexSort, infoStream, failFast);
-                        } catch (IOException e) {
-                          throw new CompletionException(e);
-                        }
-                      },
-                      executorService)
-                  .thenAccept(
-                      indexSortStatus -> {
-                        segInfoStat.indexSortStatus = indexSortStatus;
-                      });
+              runAysncSegmentPartCheck(
+                  executorService,
+                  () -> testSort(finalReader, indexSort, infoStream, failFast),
+                  indexSortStatus -> segInfoStat.indexSortStatus = indexSortStatus);
 
           // Rethrow the first exception we encountered
           //  This will cause stats for failed segments to be incremented properly
@@ -1022,6 +949,12 @@ public final class CheckIndex implements Closeable {
         String.format(Locale.ROOT, "Took %.3f sec total.", nsToSec(System.nanoTime() - startNS)));
 
     return result;
+  }
+
+  private <R> CompletableFuture<Void> runAysncSegmentPartCheck(
+      ExecutorService executorService, Callable<R> asyncCallable, Function<R, R> resultProcessor) {
+    return CompletableFuture.supplyAsync(callableToSupplier(asyncCallable), executorService)
+        .thenAccept(arg -> resultProcessor.apply(arg));
   }
 
   private <T> Supplier<T> callableToSupplier(Callable<T> callable) {
