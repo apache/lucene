@@ -129,11 +129,11 @@ class SimpleLongRangeCounter extends LongRangeCounter {
   }
 
   /**
-   * Create elementary intervals, which include requested ranges and "gaps" in-between.
-   * This logic assumes no requested ranges overlap, and that the incoming ranges have already
-   * been sorted.
+   * Create elementary intervals, which include requested ranges and "gaps" in-between. This logic
+   * assumes no requested ranges overlap, and that the incoming ranges have already been sorted.
    */
-  private static List<InclusiveRange> buildElementaryIntervals(ReferencingLongRange[] sortedRanges) {
+  private static List<InclusiveRange> buildElementaryIntervals(
+      ReferencingLongRange[] sortedRanges) {
     List<InclusiveRange> elementaryIntervals = new ArrayList<>();
     long prev = Long.MIN_VALUE;
     for (ReferencingLongRange range : sortedRanges) {
