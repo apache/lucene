@@ -184,16 +184,12 @@ public class BlockMaxMaxscoreScorer extends Scorer {
         // Re-partition the scorers into non-essential list and essential list, as defined in
         // the "Optimizing Top-k Document Retrieval Strategies for Block-Max Indexes" paper.
         nonEssentialMaxScoreSum = 0;
-        for (int i = 0; i < allScorers.length; i++) {
-          DisiWrapper w = allScorers[i];
+        for (DisiWrapper w : allScorers) {
           if (nonEssentialMaxScoreSum + w.maxScore < minCompetitiveScore) {
             nonEssentialScorers.add(w);
             nonEssentialMaxScoreSum += w.maxScore;
           } else {
-            for (int j = allScorers.length - 1; j >= i; j--) {
-              essentialsScorers.add(allScorers[j]);
-            }
-            break;
+            essentialsScorers.add(w);
           }
         }
       }
