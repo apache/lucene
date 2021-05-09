@@ -130,7 +130,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
           long matchedMaxScoreSum = nonEssentialMaxScoreSum;
           for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
-            matchedMaxScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
+            matchedMaxScoreSum += w.maxScore;
           }
 
           if (matchedMaxScoreSum < minCompetitiveScore) {
