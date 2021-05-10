@@ -163,4 +163,11 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
   public Iterator<DisiWrapper> iterator() {
     return Arrays.asList(heap).subList(0, size).iterator();
   }
+
+  public void clear() {
+    for (int i = 0; i < size; ++i) {
+      heap[i] = null;
+    }
+    size = 0;
+  }
 }

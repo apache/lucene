@@ -25,6 +25,7 @@ import org.apache.lucene.util.Bits;
 /** BulkScorer that leverages BMM algorithm within interval (min, max) */
 public class BMMBulkScorer extends BulkScorer {
   private List<Scorer> scorers;
+  private DisiWrapper[] allScorers;
   private Weight weight;
   private ScoreMode scoreMode;
   private int scalingFactor;
@@ -36,6 +37,7 @@ public class BMMBulkScorer extends BulkScorer {
     assert scoreMode == ScoreMode.TOP_SCORES;
     this.weight = weight;
     this.scorers = scorers;
+    this.allScorers = scorers.stream().map(DisiWrapper::new).toArray(DisiWrapper[]::new);
     this.scoreMode = scoreMode;
     this.scalingFactor = WANDScorer.getScalingFactor(scorers).orElse(0);
     this.cost =
@@ -49,26 +51,25 @@ public class BMMBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     // The BMM algorithm is only valid within the boundary [min, max)
     BMMBoundaryAwareScorer scorer = new BMMBoundaryAwareScorer(weight);
-    TwoPhaseIterator twoPhase = scorer.twoPhaseIterator();
-    DocIdSetIterator approximation = twoPhase.approximation;
+    DocIdSetIterator disi = scorer.iterator();
     collector.setScorer(scorer);
 
     int lowerBound = min;
-    int upperBound = getUpperBound(lowerBound, FIXED_WINDOW_SIZE, max);
+    int upTo = getUpperBound(lowerBound, FIXED_WINDOW_SIZE, max);
 
     while (scorer.doc < max) {
       int doc;
-      for (doc = scorer.updateIntervalBoundary(lowerBound, upperBound);
-          doc < upperBound;
-          doc = approximation.nextDoc()) {
+      for (doc = scorer.updateBoundary(lowerBound, upTo);
+          doc < upTo;
+          doc = disi.nextDoc()) {
 
-        if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
+        if ((acceptDocs == null || acceptDocs.get(doc))) {
           collector.collect(doc);
         }
       }
 
       lowerBound = doc;
-      upperBound = getUpperBound(lowerBound, FIXED_WINDOW_SIZE, max);
+      upTo = getUpperBound(lowerBound, FIXED_WINDOW_SIZE, max);
     }
 
     return scorer.doc;
@@ -108,7 +109,7 @@ public class BMMBulkScorer extends BulkScorer {
     private final MaxScoreSumPropagator maxScoreSumPropagator;
 
     // upperBound on doc id where BMM algorithm is valid
-    private int upperBound;
+    private int upTo;
 
     // scaled min competitive score
     private long minCompetitiveScore = 0;
@@ -121,200 +122,135 @@ public class BMMBulkScorer extends BulkScorer {
     protected BMMBoundaryAwareScorer(Weight weight) throws IOException {
       super(weight);
       doc = -1;
-      essentialsScorers = new DisiPriorityQueue(scorers.size());
-      nonEssentialScorers = new LinkedList<>();
+      essentialsScorers = new DisiPriorityQueue(allScorers.length);
+      nonEssentialScorers = new ArrayList<>(allScorers.length);
+      Collections.addAll(nonEssentialScorers, allScorers);
       maxScoreSumPropagator = new MaxScoreSumPropagator(scorers);
-      for (Scorer scorer : scorers) {
-        nonEssentialScorers.add(new DisiWrapper(scorer));
-      }
     }
 
     // returns the doc id from which iteration begins
-    public int updateIntervalBoundary(int lowerBound, int upperBound) throws IOException {
-      assert lowerBound <= upperBound : "loweBound: " + lowerBound + " upperBound: " + upperBound;
-      this.upperBound = upperBound;
+    public int updateBoundary(int min, int upTo) throws IOException {
+      assert min <= upTo : "loweBound: " + min + " upTo: " + upTo;
+      this.upTo = upTo;
 
-      // update all scorers' position and maxScore by the new boundary information
-      long sumOfAllMaxScore = 0;
-      int minNextDoc = DocIdSetIterator.NO_MORE_DOCS;
-      List<DisiWrapper> newNonEssentialScorers = new LinkedList<>();
-
-      while (essentialsScorers.size() > 0) {
-        nonEssentialScorers.add(essentialsScorers.pop());
+      int minNextDoc = updateMaxScores(min, upTo);
+      if (minNextDoc > upTo) {
+        return doc = minNextDoc;
       }
 
-      for (DisiWrapper w : nonEssentialScorers) {
-        if (w.doc < lowerBound) {
-          w.scorer.advanceShallow(lowerBound);
-          w.doc = w.scorer.iterator().advance(lowerBound);
-          minNextDoc = Math.min(minNextDoc, w.doc);
+      repartitionLists();
+
+      // sum of all maxScore in this boundary lower than minCompetitiveScore, skip to next interval
+      if (essentialsScorers.size() == 0) {
+        return doc = upTo + 1;
+      }
+
+      // if sum of all maxScore is less than minCompetitiveScore, then doc would have been set to
+      // upTo and return already
+      assert essentialsScorers.size() > 0;
+      return doc = essentialsScorers.top().doc;
+    }
+
+    public int updateMaxScores(int min, int upTo) throws IOException {
+      int minNextDoc = DocIdSetIterator.NO_MORE_DOCS;
+
+      for (DisiWrapper w : allScorers) {
+        if (w.doc < min) {
+          w.scorer.advanceShallow(min);
+          w.doc = w.scorer.iterator().advance(min);
         } else if (w.doc != DocIdSetIterator.NO_MORE_DOCS) {
           w.scorer.advanceShallow(w.doc);
-          minNextDoc = Math.min(minNextDoc, w.doc);
         }
-        // maxScore valid between lowerBound and upperBound
-        w.maxScore = WANDScorer.scaleMaxScore(w.scorer.getMaxScore(upperBound), scalingFactor);
 
-        if (w.doc != DocIdSetIterator.NO_MORE_DOCS) {
-          newNonEssentialScorers.add(w);
-          sumOfAllMaxScore += w.maxScore;
-        }
+        // maxScore valid between min and upTo
+        w.maxScore = WANDScorer.scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
+        minNextDoc = Math.min(minNextDoc, w.doc);
       }
 
-      nonEssentialScorers = newNonEssentialScorers;
+      return minNextDoc;
+    }
 
-      // optimization: returns early if certain condition is met
-      if (nonEssentialScorers.size() == 0) {
-        // all scorers reach NO_MORE_DOCS
-        doc = DocIdSetIterator.NO_MORE_DOCS;
-        return doc;
-      } else if (minNextDoc > upperBound) {
-        // next candidate doc already beyond upperBound
-        doc = minNextDoc;
-        return doc;
-      } else if (sumOfAllMaxScore < minCompetitiveScore) {
-        // sum of all scorers' max score is lower than minCompetitiveScore
-        doc = upperBound;
-        return doc;
-      }
+    public void repartitionLists() {
+      nonEssentialScorers.clear();
+      essentialsScorers.clear();
 
-      Collections.sort(nonEssentialScorers, (w1, w2) -> (int) (w1.maxScore - w2.maxScore));
+      Collections.sort(nonEssentialScorers, (w1, w2) -> Long.compare(w1.maxScore, w2.maxScore));
 
       // Re-partition the scorers into non-essential list and essential list, as defined
       // in the "Optimizing Top-k Document Retrieval Strategies for Block-Max Indexes" paper.
       nonEssentialMaxScoreSum = 0;
-      for (int i = 0; i < nonEssentialScorers.size(); i++) {
-        DisiWrapper w = nonEssentialScorers.get(i);
+      for (DisiWrapper w : allScorers) {
         if (nonEssentialMaxScoreSum + w.maxScore < minCompetitiveScore) {
           nonEssentialMaxScoreSum += w.maxScore;
+          nonEssentialScorers.add(w);
         } else {
-          // the logic is a bit ugly here...but as soon as we find maxScore of scorers in
-          // non-essential list sum to above minCompetitiveScore, we move the rest of
-          // scorers into essential list
-          for (int j = nonEssentialScorers.size() - 1; j >= i; j--) {
-            essentialsScorers.add(nonEssentialScorers.remove(j));
-          }
-          break;
+          essentialsScorers.add(w);
         }
       }
-
-      // if sum of all maxScore is less than minCompetitiveScore, then doc would have been set to
-      // upperBound and return already
-      assert essentialsScorers.size() > 0;
-      doc = essentialsScorers.top().doc;
-
-      matchedDocScoreSum = 0;
-      for (DisiWrapper w : essentialsScorers) {
-        if (w.doc == doc) {
-          matchedDocScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
-        }
-      }
-
-      return doc;
     }
 
     @Override
     public DocIdSetIterator iterator() {
-      return TwoPhaseIterator.asDocIdSetIterator(twoPhaseIterator());
-    }
-
-    @Override
-    public TwoPhaseIterator twoPhaseIterator() {
-      DocIdSetIterator approximation =
-          new DocIdSetIterator() {
-            @Override
-            public int docID() {
-              return doc;
-            }
-
-            @Override
-            public int nextDoc() throws IOException {
-              return advance(doc + 1);
-            }
-
-            @Override
-            public int advance(int target) throws IOException {
-              // avoiding overflow causing target to be < 0
-              assert 0 <= target && target <= upperBound;
-              assert essentialsScorers.size() > 0;
-
-              doAdvance(target);
-
-              while (doc < upperBound
-                  && nonEssentialMaxScoreSum + matchedDocScoreSum < minCompetitiveScore) {
-                doAdvance(doc + 1);
-              }
-
-              return doc;
-            }
-
-            private void doAdvance(int target) throws IOException {
-              // Find next smallest doc id that is larger than or equal to target from the essential
-              // scorers
-              if (essentialsScorers.top().doc == DocIdSetIterator.NO_MORE_DOCS) {
-                doc = essentialsScorers.top().doc;
-                return;
-              }
-
-              while (essentialsScorers.top().doc < target) {
-                DisiWrapper w = essentialsScorers.pop();
-                w.doc = w.iterator.advance(target);
-                essentialsScorers.add(w);
-              }
-
-              // If the next candidate doc id is still within interval boundary,
-              if (essentialsScorers.top().doc <= upperBound) {
-                doc = essentialsScorers.top().doc;
-
-                matchedDocScoreSum = 0;
-                for (DisiWrapper w : essentialsScorers) {
-                  if (w.doc == doc) {
-                    matchedDocScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
-                  }
-                }
-              } else {
-                // next doc > upperBound already
-                doc = upperBound;
-              }
-            }
-
-            @Override
-            public long cost() {
-              return cost;
-            }
-          };
-
-      return new TwoPhaseIterator(approximation) {
+      return new DocIdSetIterator() {
         @Override
-        public boolean matches() throws IOException {
-          // The doc is a match when all scores sum above minCompetitiveScore
-          for (DisiWrapper w : nonEssentialScorers) {
-            if (w.doc < doc) {
-              w.doc = w.iterator.advance(doc);
-            }
-          }
-
-          if (matchedDocScoreSum >= minCompetitiveScore) {
-            return true;
-          }
-
-          for (DisiWrapper w : nonEssentialScorers) {
-            if (w.doc == doc) {
-              matchedDocScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
-
-              if (matchedDocScoreSum >= minCompetitiveScore) {
-                return true;
-              }
-            }
-          }
-          return false;
+        public int docID() {
+          return doc;
         }
 
         @Override
-        public float matchCost() {
-          // maximum number of scorer that matches() might advance
-          // use length of nonEssentials as it needs to check all scores
-          return nonEssentialScorers.size();
+        public int nextDoc() throws IOException {
+          return advance(doc + 1);
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          while (true) {
+
+            if (target > upTo) {
+              return doc = upTo + 1;
+            }
+
+            assert target <= upTo;
+
+            DisiWrapper top = essentialsScorers.top();
+
+            if (top == null) {
+              if (upTo == NO_MORE_DOCS) {
+                return doc = NO_MORE_DOCS;
+              }
+              target = upTo + 1;
+              continue;
+            }
+
+            while (top.doc < target) {
+              top.doc = top.iterator.advance(target);
+              top = essentialsScorers.updateTop();
+            }
+
+            if (top.doc == NO_MORE_DOCS) {
+              return doc = NO_MORE_DOCS;
+            }
+
+            if (top.doc > upTo) {
+              return doc = upTo + 1;
+            }
+
+            long matchedMaxScoreSum = nonEssentialMaxScoreSum;
+            for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
+              matchedMaxScoreSum += w.maxScore;
+            }
+
+            if (matchedMaxScoreSum < minCompetitiveScore) {
+              target = top.doc + 1;
+            } else {
+              return doc = top.doc;
+            }
+          }
+        }
+
+        @Override
+        public long cost() {
+          return cost;
         }
       };
     }
@@ -339,24 +275,20 @@ public class BMMBulkScorer extends BulkScorer {
     @Override
     public float score() throws IOException {
       double sum = 0;
-      assert ensureAllMatchedAccountedFor();
-      for (Scorer scorer : scorers) {
-        if (scorer.docID() == doc) {
-          sum += scorer.score();
+
+      for (DisiWrapper s = essentialsScorers.topList(); s != null; s = s.next) {
+        assert s.doc == doc : s.doc + " " + doc;
+        sum += s.scorer.score();
+      }
+      for (DisiWrapper s : nonEssentialScorers) {
+        if (s.doc < doc) {
+          s.doc = s.iterator.advance(doc);
+        }
+        if (s.doc == doc) {
+          sum += s.scorer.score();
         }
       }
       return (float) sum;
-    }
-
-    private boolean ensureAllMatchedAccountedFor() {
-      for (Scorer scorer : scorers) {
-        if (scorer.docID() < doc) {
-          return false;
-        }
-      }
-
-      // all scorers positioned on or after current doc
-      return true;
     }
 
     @Override
@@ -367,9 +299,9 @@ public class BMMBulkScorer extends BulkScorer {
     @Override
     public final Collection<ChildScorable> getChildren() {
       List<ChildScorable> matchingChildren = new ArrayList<>();
-      for (Scorer scorer : scorers) {
-        if (scorer.docID() == doc) {
-          matchingChildren.add(new ChildScorable(scorer, "SHOULD"));
+      for (DisiWrapper w : allScorers) {
+        if (w.doc == doc) {
+          matchingChildren.add(new ChildScorable(w.scorer, "SHOULD"));
         }
       }
       return matchingChildren;
