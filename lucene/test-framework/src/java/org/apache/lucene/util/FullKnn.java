@@ -35,13 +35,14 @@ public class FullKnn {
 
   private final int dim;
   private final int topK;
-  private final VectorValues.SearchStrategy searchStrategy;
+  private final VectorValues.SimilarityFunction similarityFunction;
   private final boolean quiet;
 
-  public FullKnn(int dim, int topK, VectorValues.SearchStrategy searchStrategy, boolean quiet) {
+  public FullKnn(
+      int dim, int topK, VectorValues.SimilarityFunction similarityFunction, boolean quiet) {
     this.dim = dim;
     this.topK = topK;
-    this.searchStrategy = searchStrategy;
+    this.similarityFunction = similarityFunction;
     this.quiet = quiet;
   }
 
@@ -109,7 +110,7 @@ public class FullKnn {
       int offset = 0;
       int j = 0;
       LongHeap queue = null;
-      if (searchStrategy.reversed) {
+      if (similarityFunction.reversed) {
         queue = LongHeap.create(LongHeap.Order.MAX, topK);
       } else {
         queue = LongHeap.create(LongHeap.Order.MIN, topK);
@@ -121,7 +122,7 @@ public class FullKnn {
         offset += blockSize;
         for (; j < numDocs && vectors.hasRemaining(); j++) {
           vectors.get(vector);
-          float d = searchStrategy.compare(query, vector);
+          float d = similarityFunction.compare(query, vector);
           queue.insertWithOverflow(encodeNodeIdAndScore(j, d));
         }
       }

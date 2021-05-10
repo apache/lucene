@@ -45,7 +45,7 @@ public class TestFullKnn extends LuceneTestCase {
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    fullKnn = new FullKnn(5, 2, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, true);
+    fullKnn = new FullKnn(5, 2, VectorValues.SimilarityFunction.DOT_PRODUCT, true);
     vec0 = new float[] {1, 2, 3, 4, 5};
     VectorUtil.l2normalize(vec0);
     vec1 = new float[] {6, 7, 8, 9, 10};
@@ -152,7 +152,7 @@ public class TestFullKnn extends LuceneTestCase {
 
     Assert.assertArrayEquals(new int[][] {{1, 0}, {0, 2}, {2, 0}}, result);
 
-    FullKnn full3nn = new FullKnn(5, 3, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, true);
+    FullKnn full3nn = new FullKnn(5, 3, VectorValues.SimilarityFunction.DOT_PRODUCT, true);
     result =
         full3nn.doFullKnn(
             3,
@@ -165,7 +165,7 @@ public class TestFullKnn extends LuceneTestCase {
 
   public void testExceptionFullKnn() {
     float[] twoDocs = joinArrays(vec0, vec1);
-    FullKnn full3nn = new FullKnn(5, 3, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, true);
+    FullKnn full3nn = new FullKnn(5, 3, VectorValues.SimilarityFunction.DOT_PRODUCT, true);
 
     expectThrows(
         IllegalArgumentException.class,
@@ -185,7 +185,7 @@ public class TestFullKnn extends LuceneTestCase {
     float[] vectors = VectorUtil.randomVector(random(), dim * noOfVectors);
     final ByteBuffer byteBuffer = floatArrayToByteBuffer(vectors);
 
-    FullKnn full3nn = new FullKnn(dim, k, VectorValues.SearchStrategy.DOT_PRODUCT_HNSW, true);
+    FullKnn full3nn = new FullKnn(dim, k, VectorValues.SimilarityFunction.DOT_PRODUCT, true);
     final int[][] result =
         full3nn.doFullKnn(
             noOfVectors,

@@ -477,7 +477,7 @@ public class KnnGraphTester {
     if (Files.exists(nnPath)) {
       return readNN(nnPath);
     } else {
-      int[][] nn = new FullKnn(dim, topK, SEARCH_STRATEGY, quiet).computeNN(docPath, queryPath);
+      int[][] nn = new FullKnn(dim, topK, SIMILARITY_FUNCTION, quiet).computeNN(docPath, queryPath);
       writeNN(nn, nnPath);
       return nn;
     }
@@ -510,59 +510,6 @@ public class KnnGraphTester {
         out.write(tmp.array());
       }
     }
-  }
-
-  private int[][] computeNN(Path docPath, Path queryPath) throws IOException {
-    int[][] result = new int[numIters][];
-    if (quiet == false) {
-      System.out.println("computing true nearest neighbors of " + numIters + " target vectors");
-    }
-    try (FileChannel in = FileChannel.open(docPath);
-        FileChannel qIn = FileChannel.open(queryPath)) {
-      FloatBuffer queries =
-          qIn.map(FileChannel.MapMode.READ_ONLY, 0, numIters * dim * Float.BYTES)
-              .order(ByteOrder.LITTLE_ENDIAN)
-              .asFloatBuffer();
-      float[] vector = new float[dim];
-      float[] query = new float[dim];
-      for (int i = 0; i < numIters; i++) {
-        queries.get(query);
-        long totalBytes = (long) numDocs * dim * Float.BYTES;
-        int
-            blockSize =
-                (int)
-                    Math.min(
-                        totalBytes,
-                        (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES)),
-            offset = 0;
-        int j = 0;
-        // System.out.println("totalBytes=" + totalBytes);
-        while (j < numDocs) {
-          FloatBuffer vectors =
-              in.map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
-                  .order(ByteOrder.LITTLE_ENDIAN)
-                  .asFloatBuffer();
-          offset += blockSize;
-          NeighborQueue queue = new NeighborQueue(topK, SIMILARITY_FUNCTION.reversed);
-          for (; j < numDocs && vectors.hasRemaining(); j++) {
-            vectors.get(vector);
-            float d = SIMILARITY_FUNCTION.compare(query, vector);
-            queue.insertWithOverflow(j, d);
-          }
-          result[i] = new int[topK];
-          for (int k = topK - 1; k >= 0; k--) {
-            result[i][k] = queue.topNode();
-            queue.pop();
-            // System.out.print(" " + n);
-          }
-          if (quiet == false && (i + 1) % 10 == 0) {
-            System.out.print(" " + (i + 1));
-            System.out.flush();
-          }
-        }
-      }
-    }
-    return result;
   }
 
   private int createIndex(Path docsPath, Path indexPath) throws IOException {
