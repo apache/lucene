@@ -135,9 +135,9 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
           if (matchedMaxScoreSum < minCompetitiveScore) {
             target = top.doc + 1;
+          } else {
+            return doc = top.doc;
           }
-
-          return doc = top.doc;
         }
       }
 
