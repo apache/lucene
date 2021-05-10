@@ -59,9 +59,7 @@ public class BMMBulkScorer extends BulkScorer {
 
     while (scorer.doc < max) {
       int doc;
-      for (doc = scorer.updateBoundary(lowerBound, upTo);
-          doc < upTo;
-          doc = disi.nextDoc()) {
+      for (doc = scorer.updateBoundary(lowerBound, upTo); doc < upTo; doc = disi.nextDoc()) {
 
         if ((acceptDocs == null || acceptDocs.get(doc))) {
           collector.collect(doc);
@@ -102,9 +100,6 @@ public class BMMBulkScorer extends BulkScorer {
 
     // sum of max scores of scorers in nonEssentialScorers list
     private long nonEssentialMaxScoreSum;
-
-    // sum of score of scorers in essentialScorers list that are positioned on matching doc
-    private long matchedDocScoreSum;
 
     private final MaxScoreSumPropagator maxScoreSumPropagator;
 
