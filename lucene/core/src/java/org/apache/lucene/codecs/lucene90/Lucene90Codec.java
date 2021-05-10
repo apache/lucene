@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
+import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
 
 /**
  * Implements the Lucene 9.0 index format
@@ -46,18 +47,14 @@ public class Lucene90Codec extends Codec {
   /** Configuration option for the codec. */
   public enum Mode {
     /** Trade compression ratio for retrieval speed. */
-    BEST_SPEED(Lucene90StoredFieldsFormat.Mode.BEST_SPEED, Lucene90DocValuesFormat.Mode.BEST_SPEED),
+    BEST_SPEED(Lucene90StoredFieldsFormat.Mode.BEST_SPEED),
     /** Trade retrieval speed for compression ratio. */
-    BEST_COMPRESSION(
-        Lucene90StoredFieldsFormat.Mode.BEST_COMPRESSION,
-        Lucene90DocValuesFormat.Mode.BEST_COMPRESSION);
+    BEST_COMPRESSION(Lucene90StoredFieldsFormat.Mode.BEST_COMPRESSION);
 
     private final Lucene90StoredFieldsFormat.Mode storedMode;
-    private final Lucene90DocValuesFormat.Mode dvMode;
 
-    private Mode(Lucene90StoredFieldsFormat.Mode storedMode, Lucene90DocValuesFormat.Mode dvMode) {
+    private Mode(Lucene90StoredFieldsFormat.Mode storedMode) {
       this.storedMode = Objects.requireNonNull(storedMode);
-      this.dvMode = Objects.requireNonNull(dvMode);
     }
   }
 
@@ -84,7 +81,13 @@ public class Lucene90Codec extends Codec {
         }
       };
 
-  private final VectorFormat vectorFormat = new Lucene90VectorFormat();
+  private final VectorFormat vectorFormat =
+      new PerFieldVectorFormat() {
+        @Override
+        public VectorFormat getVectorFormatForField(String field) {
+          return new Lucene90HnswVectorFormat();
+        }
+      };
 
   private final StoredFieldsFormat storedFieldsFormat;
 
@@ -103,7 +106,7 @@ public class Lucene90Codec extends Codec {
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultFormat = new Lucene90PostingsFormat();
-    this.defaultDVFormat = new Lucene90DocValuesFormat(mode.dvMode);
+    this.defaultDVFormat = new Lucene90DocValuesFormat();
   }
 
   @Override

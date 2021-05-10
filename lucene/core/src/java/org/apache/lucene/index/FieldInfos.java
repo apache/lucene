@@ -16,6 +16,13 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.index.FieldInfo.verifySameDocValuesType;
+import static org.apache.lucene.index.FieldInfo.verifySameIndexOptions;
+import static org.apache.lucene.index.FieldInfo.verifySameOmitNorms;
+import static org.apache.lucene.index.FieldInfo.verifySamePointsOptions;
+import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
+import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -169,7 +176,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
               .orElse(null);
       final Builder builder = new Builder(new FieldNumbers(softDeletesField));
       for (final LeafReaderContext ctx : leaves) {
-        builder.add(ctx.reader().getFieldInfos());
+        for (FieldInfo fieldInfo : ctx.reader().getFieldInfos()) {
+          builder.add(fieldInfo);
+        }
       }
       return builder.finish();
     }
@@ -290,11 +299,11 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   static final class FieldVectorProperties {
     final int numDimensions;
-    final VectorValues.SearchStrategy searchStrategy;
+    final VectorValues.SimilarityFunction similarityFunction;
 
-    FieldVectorProperties(int numDimensions, VectorValues.SearchStrategy searchStrategy) {
+    FieldVectorProperties(int numDimensions, VectorValues.SimilarityFunction similarityFunction) {
       this.numDimensions = numDimensions;
-      this.searchStrategy = searchStrategy;
+      this.similarityFunction = similarityFunction;
     }
   }
 
@@ -311,6 +320,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
     private final Map<String, FieldDimensions> dimensions;
 
     private final Map<String, FieldVectorProperties> vectorProps;
+    private final Map<String, Boolean> omitNorms;
+    private final Map<String, Boolean> storeTermVectors;
 
     // TODO: we should similarly catch an attempt to turn
     // norms back on after they were already committed; today
@@ -327,6 +338,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.docValuesType = new HashMap<>();
       this.dimensions = new HashMap<>();
       this.vectorProps = new HashMap<>();
+      this.omitNorms = new HashMap<>();
+      this.storeTermVectors = new HashMap<>();
       this.softDeletesFieldName = softDeletesFieldName;
     }
 
@@ -335,116 +348,16 @@ public class FieldInfos implements Iterable<FieldInfo> {
      * tries to add it with the given preferred field number assigned if possible otherwise the
      * first unassigned field number is used as the field number.
      */
-    synchronized int addOrGet(
-        String fieldName,
-        int preferredFieldNumber,
-        IndexOptions indexOptions,
-        DocValuesType dvType,
-        int dimensionCount,
-        int indexDimensionCount,
-        int dimensionNumBytes,
-        int vectorDimension,
-        VectorValues.SearchStrategy searchStrategy,
-        boolean isSoftDeletesField) {
-      if (indexOptions != IndexOptions.NONE) {
-        IndexOptions currentOpts = this.indexOptions.get(fieldName);
-        if (currentOpts == null) {
-          this.indexOptions.put(fieldName, indexOptions);
-        } else if (currentOpts != IndexOptions.NONE && currentOpts != indexOptions) {
-          throw new IllegalArgumentException(
-              "cannot change field \""
-                  + fieldName
-                  + "\" from index options="
-                  + currentOpts
-                  + " to inconsistent index options="
-                  + indexOptions);
-        }
-      }
-      if (dvType != DocValuesType.NONE) {
-        DocValuesType currentDVType = docValuesType.get(fieldName);
-        if (currentDVType == null) {
-          docValuesType.put(fieldName, dvType);
-        } else if (currentDVType != DocValuesType.NONE && currentDVType != dvType) {
-          throw new IllegalArgumentException(
-              "cannot change DocValues type from "
-                  + currentDVType
-                  + " to "
-                  + dvType
-                  + " for field \""
-                  + fieldName
-                  + "\"");
-        }
-      }
-      if (dimensionCount != 0) {
-        FieldDimensions dims = dimensions.get(fieldName);
-        if (dims != null) {
-          if (dims.dimensionCount != dimensionCount) {
-            throw new IllegalArgumentException(
-                "cannot change point dimension count from "
-                    + dims.dimensionCount
-                    + " to "
-                    + dimensionCount
-                    + " for field=\""
-                    + fieldName
-                    + "\"");
-          }
-          if (dims.indexDimensionCount != indexDimensionCount) {
-            throw new IllegalArgumentException(
-                "cannot change point index dimension count from "
-                    + dims.indexDimensionCount
-                    + " to "
-                    + indexDimensionCount
-                    + " for field=\""
-                    + fieldName
-                    + "\"");
-          }
-          if (dims.dimensionNumBytes != dimensionNumBytes) {
-            throw new IllegalArgumentException(
-                "cannot change point numBytes from "
-                    + dims.dimensionNumBytes
-                    + " to "
-                    + dimensionNumBytes
-                    + " for field=\""
-                    + fieldName
-                    + "\"");
-          }
-        } else {
-          dimensions.put(
-              fieldName,
-              new FieldDimensions(dimensionCount, indexDimensionCount, dimensionNumBytes));
-        }
-      }
-      if (vectorDimension != 0) {
-        FieldVectorProperties props = vectorProps.get(fieldName);
-        if (props != null) {
-          if (props.numDimensions != vectorDimension) {
-            throw new IllegalArgumentException(
-                "cannot change vector dimension from "
-                    + props.numDimensions
-                    + " to "
-                    + vectorDimension
-                    + " for field=\""
-                    + fieldName
-                    + "\"");
-          }
-          if (props.searchStrategy != searchStrategy) {
-            throw new IllegalArgumentException(
-                "cannot change vector search strategy from "
-                    + props.searchStrategy
-                    + " to "
-                    + searchStrategy
-                    + " for field=\""
-                    + fieldName
-                    + "\"");
-          }
-        } else {
-          vectorProps.put(fieldName, new FieldVectorProperties(vectorDimension, searchStrategy));
-        }
-      }
+    synchronized int addOrGet(FieldInfo fi) {
+      String fieldName = fi.getName();
+      verifySoftDeletedFieldName(fieldName, fi.isSoftDeletesField());
       Integer fieldNumber = nameToNumber.get(fieldName);
-      if (fieldNumber == null) {
-        final Integer preferredBoxed = Integer.valueOf(preferredFieldNumber);
-        if (preferredFieldNumber != -1 && !numberToName.containsKey(preferredBoxed)) {
+
+      if (fieldNumber != null) {
+        verifySameSchema(fi);
+      } else { // first time we see this field in this index
+        final Integer preferredBoxed = Integer.valueOf(fi.number);
+        if (fi.number != -1 && !numberToName.containsKey(preferredBoxed)) {
           // cool - we can use this number globally
           fieldNumber = preferredBoxed;
         } else {
@@ -457,8 +370,26 @@ public class FieldInfos implements Iterable<FieldInfo> {
         assert fieldNumber >= 0;
         numberToName.put(fieldNumber, fieldName);
         nameToNumber.put(fieldName, fieldNumber);
+        this.indexOptions.put(fieldName, fi.getIndexOptions());
+        if (fi.getIndexOptions() != IndexOptions.NONE) {
+          this.storeTermVectors.put(fieldName, fi.hasVectors());
+          this.omitNorms.put(fieldName, fi.omitsNorms());
+        }
+        docValuesType.put(fieldName, fi.getDocValuesType());
+        dimensions.put(
+            fieldName,
+            new FieldDimensions(
+                fi.getPointDimensionCount(),
+                fi.getPointIndexDimensionCount(),
+                fi.getPointNumBytes()));
+        vectorProps.put(
+            fieldName,
+            new FieldVectorProperties(fi.getVectorDimension(), fi.getVectorSimilarityFunction()));
       }
+      return fieldNumber.intValue();
+    }
 
+    private void verifySoftDeletedFieldName(String fieldName, boolean isSoftDeletesField) {
       if (isSoftDeletesField) {
         if (softDeletesFieldName == null) {
           throw new IllegalArgumentException(
@@ -481,205 +412,163 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 + fieldName
                 + "] as non-soft-deletes already");
       }
-
-      return fieldNumber.intValue();
     }
 
-    synchronized void verifyConsistent(Integer number, String name, IndexOptions indexOptions) {
-      if (name.equals(numberToName.get(number)) == false) {
-        throw new IllegalArgumentException(
-            "field number "
-                + number
-                + " is already mapped to field name \""
-                + numberToName.get(number)
-                + "\", not \""
-                + name
-                + "\"");
+    private void verifySameSchema(FieldInfo fi) {
+      String fieldName = fi.getName();
+      IndexOptions currentOpts = this.indexOptions.get(fieldName);
+      verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions());
+      if (currentOpts != IndexOptions.NONE) {
+        boolean curStoreTermVector = this.storeTermVectors.get(fieldName);
+        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasVectors());
+        boolean curOmitNorms = this.omitNorms.get(fieldName);
+        verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms());
       }
-      if (number.equals(nameToNumber.get(name)) == false) {
-        throw new IllegalArgumentException(
-            "field name \""
-                + name
-                + "\" is already mapped to field number \""
-                + nameToNumber.get(name)
-                + "\", not \""
-                + number
-                + "\"");
-      }
-      IndexOptions currentIndexOptions = this.indexOptions.get(name);
-      if (indexOptions != IndexOptions.NONE
-          && currentIndexOptions != null
-          && currentIndexOptions != IndexOptions.NONE
-          && indexOptions != currentIndexOptions) {
-        throw new IllegalArgumentException(
-            "cannot change field \""
-                + name
-                + "\" from index options="
-                + currentIndexOptions
-                + " to inconsistent index options="
-                + indexOptions);
-      }
+
+      DocValuesType currentDVType = docValuesType.get(fieldName);
+      verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType());
+
+      FieldDimensions dims = dimensions.get(fieldName);
+      verifySamePointsOptions(
+          fieldName,
+          dims.dimensionCount,
+          dims.indexDimensionCount,
+          dims.dimensionNumBytes,
+          fi.getPointDimensionCount(),
+          fi.getPointIndexDimensionCount(),
+          fi.getPointNumBytes());
+
+      FieldVectorProperties props = vectorProps.get(fieldName);
+      verifySameVectorOptions(
+          fieldName,
+          props.numDimensions,
+          props.similarityFunction,
+          fi.getVectorDimension(),
+          fi.getVectorSimilarityFunction());
     }
 
-    synchronized void verifyConsistent(Integer number, String name, DocValuesType dvType) {
-      if (name.equals(numberToName.get(number)) == false) {
-        throw new IllegalArgumentException(
-            "field number "
-                + number
-                + " is already mapped to field name \""
-                + numberToName.get(number)
-                + "\", not \""
-                + name
-                + "\"");
-      }
-      if (number.equals(nameToNumber.get(name)) == false) {
-        throw new IllegalArgumentException(
-            "field name \""
-                + name
-                + "\" is already mapped to field number \""
-                + nameToNumber.get(name)
-                + "\", not \""
-                + number
-                + "\"");
-      }
-      DocValuesType currentDVType = docValuesType.get(name);
-      if (dvType != DocValuesType.NONE
-          && currentDVType != null
-          && currentDVType != DocValuesType.NONE
-          && dvType != currentDVType) {
-        throw new IllegalArgumentException(
-            "cannot change DocValues type from "
-                + currentDVType
-                + " to "
-                + dvType
-                + " for field \""
-                + name
-                + "\"");
-      }
-    }
-
-    synchronized void verifyConsistentDimensions(
-        Integer number,
-        String name,
-        int dataDimensionCount,
-        int indexDimensionCount,
-        int dimensionNumBytes) {
-      if (name.equals(numberToName.get(number)) == false) {
-        throw new IllegalArgumentException(
-            "field number "
-                + number
-                + " is already mapped to field name \""
-                + numberToName.get(number)
-                + "\", not \""
-                + name
-                + "\"");
-      }
-      if (number.equals(nameToNumber.get(name)) == false) {
-        throw new IllegalArgumentException(
-            "field name \""
-                + name
-                + "\" is already mapped to field number \""
-                + nameToNumber.get(name)
-                + "\", not \""
-                + number
-                + "\"");
-      }
-      FieldDimensions dim = dimensions.get(name);
-      if (dim != null) {
-        if (dim.dimensionCount != dataDimensionCount) {
+    /**
+     * This function is called from {@code IndexWriter} to verify if doc values of the field can be
+     * updated. If the field with this name already exists, we verify that it is doc values only
+     * field. If the field doesn't exists and the parameter fieldMustExist is false, we create a new
+     * field in the global field numbers.
+     *
+     * @param fieldName - name of the field
+     * @param dvType - expected doc values type
+     * @param fieldMustExist – if the field must exist.
+     * @throws IllegalArgumentException if the field must exist, but it doesn't, or if the field
+     *     exists, but it is not doc values only field with the provided doc values type.
+     */
+    synchronized void verifyOrCreateDvOnlyField(
+        String fieldName, DocValuesType dvType, boolean fieldMustExist) {
+      if (nameToNumber.containsKey(fieldName) == false) {
+        if (fieldMustExist) {
           throw new IllegalArgumentException(
-              "cannot change point dimension count from "
-                  + dim.dimensionCount
-                  + " to "
-                  + dataDimensionCount
-                  + " for field=\""
-                  + name
-                  + "\"");
+              "Can't update ["
+                  + dvType
+                  + "] doc values; the field ["
+                  + fieldName
+                  + "] doesn't exist.");
+        } else {
+          // create dv only field
+          FieldInfo fi =
+              new FieldInfo(
+                  fieldName,
+                  -1,
+                  false,
+                  false,
+                  false,
+                  IndexOptions.NONE,
+                  dvType,
+                  -1,
+                  new HashMap<>(),
+                  0,
+                  0,
+                  0,
+                  0,
+                  VectorValues.SimilarityFunction.NONE,
+                  (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
+          addOrGet(fi);
         }
-        if (dim.indexDimensionCount != indexDimensionCount) {
+      } else {
+        // verify that field is doc values only field with the give doc values type
+        DocValuesType fieldDvType = docValuesType.get(fieldName);
+        if (dvType != fieldDvType) {
           throw new IllegalArgumentException(
-              "cannot change point index dimension count from "
-                  + dim.indexDimensionCount
-                  + " to "
-                  + indexDimensionCount
-                  + " for field=\""
-                  + name
-                  + "\"");
+              "Can't update ["
+                  + dvType
+                  + "] doc values; the field ["
+                  + fieldName
+                  + "] has inconsistent doc values' type of ["
+                  + fieldDvType
+                  + "].");
         }
-        if (dim.dimensionNumBytes != dimensionNumBytes) {
+        FieldDimensions fdimensions = dimensions.get(fieldName);
+        if (fdimensions != null && fdimensions.dimensionCount != 0) {
           throw new IllegalArgumentException(
-              "cannot change point numBytes from "
-                  + dim.dimensionNumBytes
-                  + " to "
-                  + dimensionNumBytes
-                  + " for field=\""
-                  + name
-                  + "\"");
+              "Can't update ["
+                  + dvType
+                  + "] doc values; the field ["
+                  + fieldName
+                  + "] must be doc values only field, but is also indexed with points.");
         }
-      }
-    }
-
-    synchronized void verifyConsistentVectorProperties(
-        Integer number,
-        String name,
-        int numDimensions,
-        VectorValues.SearchStrategy searchStrategy) {
-      if (name.equals(numberToName.get(number)) == false) {
-        throw new IllegalArgumentException(
-            "field number "
-                + number
-                + " is already mapped to field name \""
-                + numberToName.get(number)
-                + "\", not \""
-                + name
-                + "\"");
-      }
-      if (number.equals(nameToNumber.get(name)) == false) {
-        throw new IllegalArgumentException(
-            "field name \""
-                + name
-                + "\" is already mapped to field number \""
-                + nameToNumber.get(name)
-                + "\", not \""
-                + number
-                + "\"");
-      }
-      FieldVectorProperties props = vectorProps.get(name);
-      if (props != null) {
-        if (props.numDimensions != numDimensions) {
+        IndexOptions ioptions = indexOptions.get(fieldName);
+        if (ioptions != null && ioptions != IndexOptions.NONE) {
           throw new IllegalArgumentException(
-              "cannot change vector dimension from "
-                  + props.numDimensions
-                  + " to "
-                  + numDimensions
-                  + " for field=\""
-                  + name
-                  + "\"");
+              "Can't update ["
+                  + dvType
+                  + "] doc values; the field ["
+                  + fieldName
+                  + "] must be doc values only field, but is also indexed with postings.");
         }
-        if (props.searchStrategy != searchStrategy) {
+        FieldVectorProperties fvp = vectorProps.get(fieldName);
+        if (fvp != null && fvp.numDimensions != 0) {
           throw new IllegalArgumentException(
-              "cannot change vector search strategy from "
-                  + props.searchStrategy
-                  + " to "
-                  + searchStrategy
-                  + " for field=\""
-                  + name
-                  + "\"");
+              "Can't update ["
+                  + dvType
+                  + "] doc values; the field ["
+                  + fieldName
+                  + "] must be doc values only field, but is also indexed with vectors.");
         }
       }
     }
 
     /**
-     * Returns true if the {@code fieldName} exists in the map and is of the same {@code dvType}.
+     * Construct a new FieldInfo based on the options in global field numbers. This method is not
+     * synchronized as all the options it uses are not modifiable.
+     *
+     * @param fieldName name of the field
+     * @param dvType doc values type
+     * @param newFieldNumber a new field number
+     * @return {@code null} if {@code fieldName} doesn't exist in the map or is not of the same
+     *     {@code dvType} returns a new FieldInfo based based on the options in global field numbers
      */
-    synchronized boolean contains(String fieldName, DocValuesType dvType) {
-      // used by IndexWriter.updateNumericDocValue
-      if (!nameToNumber.containsKey(fieldName)) {
-        return false;
-      } else {
-        // only return true if the field has the same dvType as the requested one
-        return dvType == docValuesType.get(fieldName);
+    FieldInfo constructFieldInfo(String fieldName, DocValuesType dvType, int newFieldNumber) {
+      Integer fieldNumber;
+      synchronized (this) {
+        fieldNumber = nameToNumber.get(fieldName);
       }
+      if (fieldNumber == null) return null;
+      DocValuesType dvType0 = docValuesType.get(fieldName);
+      if (dvType != dvType0) return null;
+
+      boolean isSoftDeletesField = fieldName.equals(softDeletesFieldName);
+      return new FieldInfo(
+          fieldName,
+          newFieldNumber,
+          false,
+          false,
+          false,
+          IndexOptions.NONE,
+          dvType,
+          -1,
+          new HashMap<>(),
+          0,
+          0,
+          0,
+          0,
+          VectorValues.SimilarityFunction.NONE,
+          isSoftDeletesField);
     }
 
     synchronized Set<String> getFieldNames() {
@@ -694,85 +583,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
       dimensions.clear();
       lowestUnassignedFieldNumber = -1;
     }
-
-    synchronized void setIndexOptions(int number, String name, IndexOptions indexOptions) {
-      verifyConsistent(number, name, indexOptions);
-      this.indexOptions.put(name, indexOptions);
-    }
-
-    synchronized void setDocValuesType(int number, String name, DocValuesType dvType) {
-      verifyConsistent(number, name, dvType);
-      docValuesType.put(name, dvType);
-    }
-
-    synchronized void setDimensions(
-        int number,
-        String name,
-        int dimensionCount,
-        int indexDimensionCount,
-        int dimensionNumBytes) {
-      if (dimensionCount > PointValues.MAX_DIMENSIONS) {
-        throw new IllegalArgumentException(
-            "dimensionCount must be <= PointValues.MAX_DIMENSIONS (= "
-                + PointValues.MAX_DIMENSIONS
-                + "); got "
-                + dimensionCount
-                + " for field=\""
-                + name
-                + "\"");
-      }
-      if (dimensionNumBytes > PointValues.MAX_NUM_BYTES) {
-        throw new IllegalArgumentException(
-            "dimension numBytes must be <= PointValues.MAX_NUM_BYTES (= "
-                + PointValues.MAX_NUM_BYTES
-                + "); got "
-                + dimensionNumBytes
-                + " for field=\""
-                + name
-                + "\"");
-      }
-      if (indexDimensionCount > dimensionCount) {
-        throw new IllegalArgumentException(
-            "indexDimensionCount must be <= dimensionCount (= "
-                + dimensionCount
-                + "); got "
-                + indexDimensionCount
-                + " for field=\""
-                + name
-                + "\"");
-      }
-      if (indexDimensionCount > PointValues.MAX_INDEX_DIMENSIONS) {
-        throw new IllegalArgumentException(
-            "indexDimensionCount must be <= PointValues.MAX_INDEX_DIMENSIONS (= "
-                + PointValues.MAX_INDEX_DIMENSIONS
-                + "); got "
-                + indexDimensionCount
-                + " for field=\""
-                + name
-                + "\"");
-      }
-      verifyConsistentDimensions(
-          number, name, dimensionCount, indexDimensionCount, dimensionNumBytes);
-      dimensions.put(
-          name, new FieldDimensions(dimensionCount, indexDimensionCount, dimensionNumBytes));
-    }
-
-    synchronized void setVectorDimensionsAndSearchStrategy(
-        int number, String name, int numDimensions, VectorValues.SearchStrategy searchStrategy) {
-      if (numDimensions <= 0) {
-        throw new IllegalArgumentException(
-            "vector numDimensions must be > 0; got " + numDimensions);
-      }
-      if (numDimensions > VectorValues.MAX_DIMENSIONS) {
-        throw new IllegalArgumentException(
-            "vector numDimensions must be <= VectorValues.MAX_DIMENSIONS (="
-                + VectorValues.MAX_DIMENSIONS
-                + "); got "
-                + numDimensions);
-      }
-      verifyConsistentVectorProperties(number, name, numDimensions, searchStrategy);
-      vectorProps.put(name, new FieldVectorProperties(numDimensions, searchStrategy));
-    }
   }
 
   static final class Builder {
@@ -786,177 +596,95 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.globalFieldNumbers = globalFieldNumbers;
     }
 
-    public void add(FieldInfos other) {
-      assert assertNotFinished();
-      for (FieldInfo fieldInfo : other) {
-        add(fieldInfo);
-      }
+    public String getSoftDeletesFieldName() {
+      return globalFieldNumbers.softDeletesFieldName;
     }
 
-    /** Create a new field, or return existing one. */
-    public FieldInfo getOrAdd(String name) {
-      FieldInfo fi = fieldInfo(name);
-      if (fi == null) {
-        assert assertNotFinished();
-        // This field wasn't yet added to this in-RAM
-        // segment's FieldInfo, so now we get a global
-        // number for this field.  If the field was seen
-        // before then we'll get the same name and number,
-        // else we'll allocate a new one:
-        final boolean isSoftDeletesField = name.equals(globalFieldNumbers.softDeletesFieldName);
-        final int fieldNumber =
-            globalFieldNumbers.addOrGet(
-                name,
-                -1,
-                IndexOptions.NONE,
-                DocValuesType.NONE,
-                0,
-                0,
-                0,
-                0,
-                VectorValues.SearchStrategy.NONE,
-                isSoftDeletesField);
-        fi =
-            new FieldInfo(
-                name,
-                fieldNumber,
-                false,
-                false,
-                false,
-                IndexOptions.NONE,
-                DocValuesType.NONE,
-                -1,
-                new HashMap<>(),
-                0,
-                0,
-                0,
-                0,
-                VectorValues.SearchStrategy.NONE,
-                isSoftDeletesField);
-        assert !byName.containsKey(fi.name);
-        globalFieldNumbers.verifyConsistent(
-            Integer.valueOf(fi.number), fi.name, DocValuesType.NONE);
-        byName.put(fi.name, fi);
-      }
-
-      return fi;
-    }
-
-    private FieldInfo addOrUpdateInternal(
-        String name,
-        int preferredFieldNumber,
-        boolean storeTermVector,
-        boolean omitNorms,
-        boolean storePayloads,
-        IndexOptions indexOptions,
-        DocValuesType docValues,
-        long dvGen,
-        Map<String, String> attributes,
-        int dataDimensionCount,
-        int indexDimensionCount,
-        int dimensionNumBytes,
-        int vectorDimension,
-        VectorValues.SearchStrategy vectorSearchStrategy,
-        boolean isSoftDeletesField) {
-      assert assertNotFinished();
-      if (docValues == null) {
-        throw new NullPointerException("DocValuesType must not be null");
-      }
-      if (attributes != null) {
-        // original attributes is UnmodifiableMap
-        attributes = new HashMap<>(attributes);
-      }
-
-      FieldInfo fi = fieldInfo(name);
-      if (fi == null) {
-        // This field wasn't yet added to this in-RAM
-        // segment's FieldInfo, so now we get a global
-        // number for this field.  If the field was seen
-        // before then we'll get the same name and number,
-        // else we'll allocate a new one:
-        final int fieldNumber =
-            globalFieldNumbers.addOrGet(
-                name,
-                preferredFieldNumber,
-                indexOptions,
-                docValues,
-                dataDimensionCount,
-                indexDimensionCount,
-                dimensionNumBytes,
-                vectorDimension,
-                vectorSearchStrategy,
-                isSoftDeletesField);
-        fi =
-            new FieldInfo(
-                name,
-                fieldNumber,
-                storeTermVector,
-                omitNorms,
-                storePayloads,
-                indexOptions,
-                docValues,
-                dvGen,
-                attributes,
-                dataDimensionCount,
-                indexDimensionCount,
-                dimensionNumBytes,
-                vectorDimension,
-                vectorSearchStrategy,
-                isSoftDeletesField);
-        assert !byName.containsKey(fi.name);
-        globalFieldNumbers.verifyConsistent(
-            Integer.valueOf(fi.number), fi.name, fi.getDocValuesType());
-        byName.put(fi.name, fi);
-      } else {
-        fi.update(
-            storeTermVector,
-            omitNorms,
-            storePayloads,
-            indexOptions,
-            attributes,
-            dataDimensionCount,
-            indexDimensionCount,
-            dimensionNumBytes);
-
-        if (docValues != DocValuesType.NONE) {
-          // Only pay the synchronization cost if fi does not already have a DVType
-          boolean updateGlobal = fi.getDocValuesType() == DocValuesType.NONE;
-          if (updateGlobal) {
-            // Must also update docValuesType map so it's
-            // aware of this field's DocValuesType.  This will throw IllegalArgumentException if
-            // an illegal type change was attempted.
-            globalFieldNumbers.setDocValuesType(fi.number, name, docValues);
-          }
-
-          fi.setDocValuesType(docValues); // this will also perform the consistency check.
-          fi.setDocValuesGen(dvGen);
-        }
-      }
-      return fi;
-    }
-
+    /**
+     * Adds the provided FieldInfo to this Builder if this field doesn't exist in this Builder. Also
+     * adds a new field with its schema options to the global FieldNumbers if the field doesn't
+     * exist globally in the index. The field number is reused if possible for consistent field
+     * numbers across segments.
+     *
+     * <p>If the field already exists: 1) the provided FieldInfo's schema is checked against the
+     * existing field and 2) the provided FieldInfo's attributes are added to the existing
+     * FieldInfo's attributes.
+     *
+     * @param fi – FieldInfo to add
+     * @return The existing FieldInfo if the field with this name already exists in the builder, or
+     *     a new constructed FieldInfo with the same schema as provided and a consistent global
+     *     field number.
+     * @throws IllegalArgumentException if there already exists field with this name in Builder but
+     *     with a different schema
+     * @throws IllegalArgumentException if there already exists field with this name globally but
+     *     with a different schema.
+     * @throws IllegalStateException if the Builder is already finished building and doesn't accept
+     *     new fields.
+     */
     public FieldInfo add(FieldInfo fi) {
       return add(fi, -1);
     }
 
-    public FieldInfo add(FieldInfo fi, long dvGen) {
-      // IMPORTANT - reuse the field number if possible for consistent field numbers across segments
-      return addOrUpdateInternal(
-          fi.name,
-          fi.number,
-          fi.hasVectors(),
-          fi.omitsNorms(),
-          fi.hasPayloads(),
-          fi.getIndexOptions(),
-          fi.getDocValuesType(),
-          dvGen,
-          fi.attributes(),
-          fi.getPointDimensionCount(),
-          fi.getPointIndexDimensionCount(),
-          fi.getPointNumBytes(),
-          fi.getVectorDimension(),
-          fi.getVectorSearchStrategy(),
-          fi.isSoftDeletesField());
+    /**
+     * Adds the provided FieldInfo with the provided dvGen to this Builder if this field doesn't
+     * exist in this Builder. Also adds a new field with its schema options to the global
+     * FieldNumbers if the field doesn't exist globally in the index. The field number is reused if
+     * possible for consistent field numbers across segments.
+     *
+     * <p>If the field already exists: 1) the provided FieldInfo's schema is checked against the
+     * existing field and 2) the provided FieldInfo's attributes are added to the existing
+     * FieldInfo's attributes.
+     *
+     * @param fi – FieldInfo to add
+     * @param dvGen – doc values generation of the FieldInfo to add
+     * @return The existing FieldInfo if the field with this name already exists in the builder, or
+     *     a new constructed FieldInfo with the same schema as provided and a consistent global
+     *     field number.
+     * @throws IllegalArgumentException if there already exists field with this name in Builder but
+     *     with a different schema
+     * @throws IllegalArgumentException if there already exists field with this name globally but
+     *     with a different schema.
+     * @throws IllegalStateException if the Builder is already finished building and doesn't accept
+     *     new fields.
+     */
+    FieldInfo add(FieldInfo fi, long dvGen) {
+      final FieldInfo curFi = fieldInfo(fi.getName());
+      if (curFi != null) {
+        curFi.verifySameSchema(fi);
+        if (fi.attributes() != null) {
+          fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
+        }
+        if (fi.hasPayloads()) {
+          curFi.setStorePayloads();
+        }
+        return curFi;
+      }
+      // This field wasn't yet added to this in-RAM segment's FieldInfo,
+      // so now we get a global number for this field.
+      // If the field was seen before then we'll get the same name and number,
+      // else we'll allocate a new one
+      assert assertNotFinished();
+      final int fieldNumber = globalFieldNumbers.addOrGet(fi);
+      FieldInfo fiNew =
+          new FieldInfo(
+              fi.getName(),
+              fieldNumber,
+              fi.hasVectors(),
+              fi.omitsNorms(),
+              fi.hasPayloads(),
+              fi.getIndexOptions(),
+              fi.getDocValuesType(),
+              dvGen,
+              // original attributes is UnmodifiableMap
+              new HashMap<>(fi.attributes()),
+              fi.getPointDimensionCount(),
+              fi.getPointIndexDimensionCount(),
+              fi.getPointNumBytes(),
+              fi.getVectorDimension(),
+              fi.getVectorSimilarityFunction(),
+              fi.isSoftDeletesField());
+      byName.put(fiNew.getName(), fiNew);
+      return fiNew;
     }
 
     public FieldInfo fieldInfo(String fieldName) {

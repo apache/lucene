@@ -17,10 +17,10 @@
 package org.apache.lucene.backward_codecs.lucene50.compressing;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import org.apache.lucene.backward_codecs.packed.LegacyPackedInts;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -43,8 +43,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -137,7 +135,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       // Open the data file
       final String vectorsStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
-      vectorsStream = d.openInput(vectorsStreamFN, context);
+      vectorsStream = EndiannessReverserUtil.openInput(d, vectorsStreamFN, context);
       version =
           CodecUtil.checkIndexHeader(
               vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -147,7 +145,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       if (version >= VERSION_OFFHEAP_INDEX) {
         final String metaStreamFN =
             IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION);
-        metaIn = d.openChecksumInput(metaStreamFN, IOContext.READONCE);
+        metaIn = EndiannessReverserUtil.openChecksumInput(d, metaStreamFN, IOContext.READONCE);
         CodecUtil.checkIndexHeader(
             metaIn,
             VECTORS_INDEX_CODEC_NAME + "Meta",
@@ -177,7 +175,8 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       if (version < VERSION_OFFHEAP_INDEX) {
         // Load the index into memory
         final String indexName = IndexFileNames.segmentFileName(segment, segmentSuffix, "tvx");
-        try (ChecksumIndexInput indexStream = d.openChecksumInput(indexName, context)) {
+        try (ChecksumIndexInput indexStream =
+            EndiannessReverserUtil.openChecksumInput(d, indexName, context)) {
           Throwable priorE = null;
           try {
             assert formatName.endsWith("Data");
@@ -407,12 +406,12 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     {
       final int bitsPerOff = PackedInts.bitsRequired(fieldNums.length - 1);
       final PackedInts.Reader allFieldNumOffs =
-          PackedInts.getReaderNoHeader(
+          LegacyPackedInts.getReaderNoHeader(
               vectorsStream, PackedInts.Format.PACKED, packedIntsVersion, totalFields, bitsPerOff);
       switch (vectorsStream.readVInt()) {
         case 0:
           final PackedInts.Reader fieldFlags =
-              PackedInts.getReaderNoHeader(
+              LegacyPackedInts.getReaderNoHeader(
                   vectorsStream,
                   PackedInts.Format.PACKED,
                   packedIntsVersion,
@@ -429,7 +428,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
           break;
         case 1:
           flags =
-              PackedInts.getReaderNoHeader(
+              LegacyPackedInts.getReaderNoHeader(
                   vectorsStream,
                   PackedInts.Format.PACKED,
                   packedIntsVersion,
@@ -450,7 +449,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     {
       final int bitsRequired = vectorsStream.readVInt();
       numTerms =
-          PackedInts.getReaderNoHeader(
+          LegacyPackedInts.getReaderNoHeader(
               vectorsStream,
               PackedInts.Format.PACKED,
               packedIntsVersion,
@@ -1335,16 +1334,6 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       sum += el;
     }
     return sum;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return indexReader.ramBytesUsed();
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    return Collections.singleton(Accountables.namedAccountable("term vector index", indexReader));
   }
 
   @Override

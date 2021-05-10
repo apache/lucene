@@ -20,6 +20,7 @@ package org.apache.lucene.backward_codecs.lucene86;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.index.CorruptIndexException;
@@ -97,7 +98,8 @@ public class Lucene86SegmentInfoFormat extends SegmentInfoFormat {
   public SegmentInfo read(Directory dir, String segment, byte[] segmentID, IOContext context)
       throws IOException {
     final String fileName = IndexFileNames.segmentFileName(segment, "", SI_EXTENSION);
-    try (ChecksumIndexInput input = dir.openChecksumInput(fileName, context)) {
+    try (ChecksumIndexInput input =
+        EndiannessReverserUtil.openChecksumInput(dir, fileName, context)) {
       Throwable priorE = null;
       SegmentInfo si = null;
       try {

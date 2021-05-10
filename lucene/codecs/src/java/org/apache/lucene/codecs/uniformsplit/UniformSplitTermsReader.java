@@ -17,7 +17,12 @@
 
 package org.apache.lucene.codecs.uniformsplit;
 
-import static org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat.*;
+import static org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat.NAME;
+import static org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat.TERMS_BLOCKS_EXTENSION;
+import static org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat.TERMS_DICTIONARY_EXTENSION;
+import static org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat.VERSION_CURRENT;
+import static org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat.VERSION_ENCODABLE_FIELDS_METADATA;
+import static org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat.VERSION_START;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,7 +45,6 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A block-based terms index and dictionary based on the Uniform Split technique.
@@ -49,10 +53,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 public class UniformSplitTermsReader extends FieldsProducer {
-
-  private static final long BASE_RAM_USAGE =
-      RamUsageEstimator.shallowSizeOfInstance(UniformSplitTermsReader.class)
-          + RamUsageEstimator.shallowSizeOfInstance(IndexInput.class) * 2;
 
   protected final PostingsReaderBase postingsReader;
   protected final int version;
@@ -292,24 +292,6 @@ public class UniformSplitTermsReader extends FieldsProducer {
   @Override
   public int size() {
     return fieldToTermsMap.size();
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long ramUsage = BASE_RAM_USAGE;
-    ramUsage += postingsReader.ramBytesUsed();
-    ramUsage += RamUsageUtil.ramBytesUsedByHashMapOfSize(fieldToTermsMap.size());
-    ramUsage += getTermsRamBytesUsed();
-    ramUsage += RamUsageUtil.ramBytesUsedByUnmodifiableArrayListOfSize(sortedFieldNames.size());
-    return ramUsage;
-  }
-
-  protected long getTermsRamBytesUsed() {
-    long ramUsage = 0L;
-    for (UniformSplitTerms terms : fieldToTermsMap.values()) {
-      ramUsage += terms.ramBytesUsed();
-    }
-    return ramUsage;
   }
 
   /** Positions the given {@link IndexInput} at the beginning of the fields metadata. */

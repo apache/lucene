@@ -58,11 +58,6 @@ public abstract class PointsFormat {
             public void close() {}
 
             @Override
-            public long ramBytesUsed() {
-              return 0L;
-            }
-
-            @Override
             public void checkIntegrity() {}
 
             @Override

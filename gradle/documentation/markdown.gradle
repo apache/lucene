@@ -78,7 +78,7 @@ configure(project(':lucene:documentation')) {
       def regex = ~/\bdefaultCodec\s*=\s*LOADER\s*\.\s*lookup\s*\(\s*"([^"]+)"\s*\)\s*;/
       def matcher = regex.matcher(defaultCodecFile.getText('UTF-8'))
       if (!matcher.find()) {
-        throw GradleException("Cannot determine default codec from file ${defaultCodecFile}")
+        throw new GradleException("Cannot determine default codec from file ${defaultCodecFile}")
       }
       return matcher.group(1).toLowerCase(Locale.ROOT)
     })

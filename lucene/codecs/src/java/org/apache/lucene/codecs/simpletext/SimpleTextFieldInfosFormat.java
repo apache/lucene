@@ -158,7 +158,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), VECTOR_SEARCH_STRATEGY);
         String scoreFunction = readString(VECTOR_SEARCH_STRATEGY.length, scratch);
-        VectorValues.SearchStrategy vectorDistFunc = distanceFunction(scoreFunction);
+        VectorValues.SimilarityFunction vectorDistFunc = distanceFunction(scoreFunction);
 
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), SOFT_DELETES);
@@ -201,8 +201,8 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
     return DocValuesType.valueOf(dvType);
   }
 
-  public VectorValues.SearchStrategy distanceFunction(String scoreFunction) {
-    return VectorValues.SearchStrategy.valueOf(scoreFunction);
+  public VectorValues.SimilarityFunction distanceFunction(String scoreFunction) {
+    return VectorValues.SimilarityFunction.valueOf(scoreFunction);
   }
 
   private String readString(int offset, BytesRefBuilder scratch) {
@@ -298,7 +298,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, VECTOR_SEARCH_STRATEGY);
-        SimpleTextUtil.write(out, fi.getVectorSearchStrategy().name(), scratch);
+        SimpleTextUtil.write(out, fi.getVectorSimilarityFunction().name(), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, SOFT_DELETES);

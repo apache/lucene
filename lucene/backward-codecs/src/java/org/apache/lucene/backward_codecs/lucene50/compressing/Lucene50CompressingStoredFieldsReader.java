@@ -19,8 +19,7 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -39,8 +38,6 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -147,7 +144,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      fieldsStream = d.openInput(fieldsStreamFN, context);
+      fieldsStream = EndiannessReverserUtil.openInput(d, fieldsStreamFN, context);
       version =
           CodecUtil.checkIndexHeader(
               fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -157,7 +154,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
       if (version >= VERSION_OFFHEAP_INDEX) {
         final String metaStreamFN =
             IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION);
-        metaIn = d.openChecksumInput(metaStreamFN, IOContext.READONCE);
+        metaIn = EndiannessReverserUtil.openChecksumInput(d, metaStreamFN, IOContext.READONCE);
         CodecUtil.checkIndexHeader(
             metaIn,
             INDEX_CODEC_NAME + "Meta",
@@ -190,7 +187,8 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
       if (version < VERSION_OFFHEAP_INDEX) {
         // Load the index into memory
         final String indexName = IndexFileNames.segmentFileName(segment, segmentSuffix, "fdx");
-        try (ChecksumIndexInput indexStream = d.openChecksumInput(indexName, context)) {
+        try (ChecksumIndexInput indexStream =
+            EndiannessReverserUtil.openChecksumInput(d, indexName, context)) {
           Throwable priorE = null;
           try {
             assert formatName.endsWith("Data");
@@ -686,7 +684,8 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
         documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset, bytes.length);
       }
 
-      return new SerializedDocument(documentInput, length, numStoredFields);
+      return new SerializedDocument(
+          EndiannessReverserUtil.wrapDataInput(documentInput), length, numStoredFields);
     }
   }
 
@@ -789,16 +788,6 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
 
   int getPackedIntsVersion() {
     return packedIntsVersion;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return indexReader.ramBytesUsed();
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    return Collections.singleton(Accountables.namedAccountable("stored field index", indexReader));
   }
 
   @Override

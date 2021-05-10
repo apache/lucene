@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene80;
 import static org.apache.lucene.backward_codecs.lucene80.Lucene80NormsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -47,13 +48,13 @@ final class Lucene80NormsConsumer extends NormsConsumer {
       String dataName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, dataExtension);
-      data = state.directory.createOutput(dataName, state.context);
+      data = EndiannessReverserUtil.createOutput(state.directory, dataName, state.context);
       CodecUtil.writeIndexHeader(
           data, dataCodec, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       String metaName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, metaExtension);
-      meta = state.directory.createOutput(metaName, state.context);
+      meta = EndiannessReverserUtil.createOutput(state.directory, metaName, state.context);
       CodecUtil.writeIndexHeader(
           meta, metaCodec, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       maxDoc = state.segmentInfo.maxDoc();

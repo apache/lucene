@@ -856,11 +856,10 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
       }
 
       // write footer w/ wrong checksum
-      os.writeInt(CodecUtil.FOOTER_MAGIC);
-      os.writeInt(0);
-
+      CodecUtil.writeBEInt(os, CodecUtil.FOOTER_MAGIC);
+      CodecUtil.writeBEInt(os, 0);
       long checksum = os.getChecksum();
-      os.writeLong(checksum + 1);
+      CodecUtil.writeBELong(os, checksum + 1);
     }
 
     si.setFiles(Collections.singletonList(subFile));
@@ -881,10 +880,10 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
       for (int i = 0; i < 1024; i++) {
         os.writeByte((byte) i);
       }
-      os.writeInt(CodecUtil.FOOTER_MAGIC);
-      os.writeInt(0);
+      CodecUtil.writeBEInt(os, CodecUtil.FOOTER_MAGIC);
+      CodecUtil.writeBEInt(os, 0);
       long checksum = os.getChecksum();
-      os.writeLong(checksum);
+      CodecUtil.writeBELong(os, checksum);
     }
 
     si.setFiles(Collections.singletonList(subFile));

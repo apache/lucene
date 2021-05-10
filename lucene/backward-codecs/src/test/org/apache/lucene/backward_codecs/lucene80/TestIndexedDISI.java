@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene80;
 
 import java.io.IOException;
 import java.util.Random;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -98,12 +99,12 @@ public class TestIndexedDISI extends LuceneTestCase {
     final int cardinality = set.cardinality();
     final byte denseRankPower = 9; // Not tested here so fixed to isolate factors
     int jumpTableentryCount;
-    try (IndexOutput out = dir.createOutput("bar", IOContext.DEFAULT)) {
+    try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "bar", IOContext.DEFAULT)) {
       jumpTableentryCount =
           IndexedDISI.writeBitSet(new BitSetIterator(set, cardinality), out, denseRankPower);
     }
 
-    try (IndexInput in = dir.openInput("bar", IOContext.DEFAULT)) {
+    try (IndexInput in = EndiannessReverserUtil.openInput(dir, "bar", IOContext.DEFAULT)) {
       BitSetIterator disi2 = new BitSetIterator(set, cardinality);
       int doc = disi2.docID();
       int index = 0;
@@ -148,11 +149,11 @@ public class TestIndexedDISI extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       final int cardinality = set.cardinality();
       int jumpTableEntryCount;
-      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+      try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
         jumpTableEntryCount =
             IndexedDISI.writeBitSet(new BitSetIterator(set, cardinality), out, denseRankPower);
       }
-      try (IndexInput fullInput = dir.openInput("foo", IOContext.DEFAULT)) {
+      try (IndexInput fullInput = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         IndexInput blockData =
             IndexedDISI.createBlockSlice(
                 fullInput, "blocks", 0, fullInput.length(), jumpTableEntryCount);
@@ -213,13 +214,13 @@ public class TestIndexedDISI extends LuceneTestCase {
         rarely() ? -1 : (byte) (random().nextInt(7) + 7); // sane + chance of disable
     long length;
     int jumpTableentryCount;
-    try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+    try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
       jumpTableentryCount =
           IndexedDISI.writeBitSet(new BitSetIterator(set, cardinality), out, denseRankPower);
       length = out.getFilePointer();
     }
 
-    try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+    try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
       for (int i = 0; i < set.length(); i++) {
         IndexedDISI disi =
             new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
@@ -312,13 +313,14 @@ public class TestIndexedDISI extends LuceneTestCase {
       set.set(start, start + IndexedDISI.MAX_ARRAY_LENGTH);
       long length;
       int jumpTableEntryCount;
-      try (IndexOutput out = dir.createOutput("sparse", IOContext.DEFAULT)) {
+      try (IndexOutput out =
+          EndiannessReverserUtil.createOutput(dir, "sparse", IOContext.DEFAULT)) {
         jumpTableEntryCount =
             IndexedDISI.writeBitSet(
                 new BitSetIterator(set, IndexedDISI.MAX_ARRAY_LENGTH), out, denseRankPower);
         length = out.getFilePointer();
       }
-      try (IndexInput in = dir.openInput("sparse", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "sparse", IOContext.DEFAULT)) {
         IndexedDISI disi =
             new IndexedDISI(
                 in, 0L, length, jumpTableEntryCount, denseRankPower, IndexedDISI.MAX_ARRAY_LENGTH);
@@ -329,12 +331,12 @@ public class TestIndexedDISI extends LuceneTestCase {
 
       // now we set one more bit so the encoding will be dense
       set.set(start + IndexedDISI.MAX_ARRAY_LENGTH + random().nextInt(100));
-      try (IndexOutput out = dir.createOutput("bar", IOContext.DEFAULT)) {
+      try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "bar", IOContext.DEFAULT)) {
         IndexedDISI.writeBitSet(
             new BitSetIterator(set, IndexedDISI.MAX_ARRAY_LENGTH + 1), out, denseRankPower);
         length = out.getFilePointer();
       }
-      try (IndexInput in = dir.openInput("bar", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "bar", IOContext.DEFAULT)) {
         IndexedDISI disi =
             new IndexedDISI(
                 in,
@@ -419,13 +421,13 @@ public class TestIndexedDISI extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       long length;
       int jumpTableEntryCount = -1;
-      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+      try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
         jumpTableEntryCount =
             IndexedDISI.writeBitSet(
                 new BitSetIterator(set, set.cardinality()), out, denseRankPowerWrite);
         length = out.getFilePointer();
       }
-      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPowerRead, set.cardinality());
       }
       // This tests the legality of the denseRankPower only, so we don't do anything with the disi
@@ -444,14 +446,14 @@ public class TestIndexedDISI extends LuceneTestCase {
       final int cardinality = set.cardinality();
       long length;
       int jumpTableentryCount;
-      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+      try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
         jumpTableentryCount =
             IndexedDISI.writeBitSet(new BitSetIterator(set, cardinality), out, denseRankPower);
         length = out.getFilePointer();
       }
 
       int step = 16000;
-      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         IndexedDISI disi =
             new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
         BitSetIterator disi2 = new BitSetIterator(set, cardinality);
@@ -492,13 +494,13 @@ public class TestIndexedDISI extends LuceneTestCase {
         rarely() ? -1 : (byte) (random().nextInt(7) + 7); // sane + chance of disable
     long length;
     int jumpTableentryCount;
-    try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+    try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
       jumpTableentryCount =
           IndexedDISI.writeBitSet(new BitSetIterator(set, cardinality), out, denseRankPower);
       length = out.getFilePointer();
     }
 
-    try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+    try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
       IndexedDISI disi =
           new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
       BitSetIterator disi2 = new BitSetIterator(set, cardinality);
@@ -506,7 +508,7 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
 
     for (int step : new int[] {1, 10, 100, 1000, 10000, 100000}) {
-      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         IndexedDISI disi =
             new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
         BitSetIterator disi2 = new BitSetIterator(set, cardinality);
@@ -515,7 +517,7 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
 
     for (int step : new int[] {10, 100, 1000, 10000, 100000}) {
-      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         IndexedDISI disi =
             new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
         BitSetIterator disi2 = new BitSetIterator(set, cardinality);

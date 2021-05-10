@@ -18,7 +18,6 @@ package org.apache.lucene.codecs.ramonly;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -48,7 +47,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
@@ -89,24 +87,10 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     public void close() {}
 
     @Override
-    public long ramBytesUsed() {
-      long sizeInBytes = 0;
-      for (RAMField field : fieldToTerms.values()) {
-        sizeInBytes += field.ramBytesUsed();
-      }
-      return sizeInBytes;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      return Accountables.namedAccountables("field", fieldToTerms);
-    }
-
-    @Override
     public void checkIntegrity() throws IOException {}
   }
 
-  static class RAMField extends Terms implements Accountable {
+  static class RAMField extends Terms {
     final String field;
     final SortedMap<String, RAMTerm> termToDocs = new TreeMap<>();
     long sumTotalTermFreq;
@@ -117,15 +101,6 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     RAMField(String field, FieldInfo info) {
       this.field = field;
       this.info = info;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long sizeInBytes = 0;
-      for (RAMTerm term : termToDocs.values()) {
-        sizeInBytes += term.ramBytesUsed();
-      }
-      return sizeInBytes;
     }
 
     @Override
@@ -175,22 +150,13 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     }
   }
 
-  static class RAMTerm implements Accountable {
+  static class RAMTerm {
     final String term;
     long totalTermFreq;
     final List<RAMDoc> docs = new ArrayList<>();
 
     public RAMTerm(String term) {
       this.term = term;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long sizeInBytes = 0;
-      for (RAMDoc rDoc : docs) {
-        sizeInBytes += rDoc.ramBytesUsed();
-      }
-      return sizeInBytes;
     }
   }
 

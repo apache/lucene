@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -27,20 +26,12 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /** Encapsulates multiple producers when there are docvalues updates as one producer */
 // TODO: try to clean up close? no-op?
 // TODO: add shared base class (also used by per-field-pf?) to allow "punching thru" to low level
 // producer?
 class SegmentDocValuesProducer extends DocValuesProducer {
-
-  private static final long LONG_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(Long.class);
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SegmentDocValuesProducer.class);
 
   final Map<String, DocValuesProducer> dvProducersByField = new HashMap<>();
   final Set<DocValuesProducer> dvProducers =
@@ -144,27 +135,6 @@ class SegmentDocValuesProducer extends DocValuesProducer {
   @Override
   public void close() throws IOException {
     throw new UnsupportedOperationException(); // there is separate ref tracking
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long ramBytesUsed = BASE_RAM_BYTES_USED;
-    ramBytesUsed += dvGens.size() * LONG_RAM_BYTES_USED;
-    ramBytesUsed += dvProducers.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-    ramBytesUsed += dvProducersByField.size() * 2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-    for (DocValuesProducer producer : dvProducers) {
-      ramBytesUsed += producer.ramBytesUsed();
-    }
-    return ramBytesUsed;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    final List<Accountable> resources = new ArrayList<>(dvProducers.size());
-    for (Accountable producer : dvProducers) {
-      resources.add(Accountables.namedAccountable("delegate", producer));
-    }
-    return Collections.unmodifiableList(resources);
   }
 
   @Override

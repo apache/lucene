@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util.packed;
 
-import java.io.IOException;
-import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -134,10 +132,5 @@ public class GrowableWriter extends PackedInts.Mutable {
                 + Long.BYTES
                 + Float.BYTES)
         + current.ramBytesUsed();
-  }
-
-  @Override
-  public void save(DataOutput out) throws IOException {
-    current.save(out);
   }
 }

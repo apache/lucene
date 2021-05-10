@@ -14,19 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.store;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.util.TestUtil;
+import java.io.IOException;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 
-/** Tests Lucene90DocValuesFormat */
-public class TestBestSpeedLucene90DocValuesFormat extends BaseLucene90DocValuesFormatTestCase {
-  private final Codec codec =
-      TestUtil.alwaysDocValuesFormat(
-          new Lucene90DocValuesFormat(Lucene90DocValuesFormat.Mode.BEST_SPEED));
+public class TestEndiannessReverserIndexInput extends EndiannessReverserTestCase {
 
   @Override
-  protected Codec getCodec() {
-    return codec;
+  protected IndexInput getEndiannessReverserInput(Directory dir, String name, IOContext context)
+      throws IOException {
+    return new EndiannessReverserIndexInput(dir.openInput(name, context));
+  }
+
+  @Override
+  protected IndexOutput getEndiannessReverserOutput(Directory dir, String name, IOContext context)
+      throws IOException {
+    return new EndiannessReverserIndexOutput(dir.createOutput(name, context));
+  }
+
+  @Override
+  protected boolean supportSlice() {
+    return true;
   }
 }

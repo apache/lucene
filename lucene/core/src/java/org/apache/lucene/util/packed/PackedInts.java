@@ -18,10 +18,8 @@ package org.apache.lucene.util.packed;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -504,25 +502,6 @@ public class PackedInts {
     public void clear() {
       fill(0, size(), 0);
     }
-
-    /**
-     * Save this mutable into <code>out</code>. Instantiating a reader from the generated data will
-     * return a reader with the same number of bits per value.
-     */
-    public void save(DataOutput out) throws IOException {
-      Writer writer =
-          getWriterNoHeader(out, getFormat(), size(), getBitsPerValue(), DEFAULT_BUFFER_SIZE);
-      writer.writeHeader();
-      for (int i = 0; i < size(); ++i) {
-        writer.add(get(i));
-      }
-      writer.finish();
-    }
-
-    /** The underlying format. */
-    Format getFormat() {
-      return Format.PACKED;
-    }
   }
 
   /**
@@ -632,14 +611,6 @@ public class PackedInts {
       this.bitsPerValue = bitsPerValue;
     }
 
-    void writeHeader() throws IOException {
-      assert valueCount != -1;
-      CodecUtil.writeHeader(out, CODEC_NAME, VERSION_CURRENT);
-      out.writeVInt(bitsPerValue);
-      out.writeVInt(valueCount);
-      out.writeVInt(getFormat().getId());
-    }
-
     /** The format used to serialize values. */
     protected abstract PackedInts.Format getFormat();
 
@@ -688,53 +659,6 @@ public class PackedInts {
   }
 
   /**
-   * Expert: Restore a {@link Reader} from a stream without reading metadata at the beginning of the
-   * stream. This method is useful to restore data from streams which have been created using {@link
-   * PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)}.
-   *
-   * @param in the stream to read data from, positioned at the beginning of the packed values
-   * @param format the format used to serialize
-   * @param version the version used to serialize the data
-   * @param valueCount how many values the stream holds
-   * @param bitsPerValue the number of bits per value
-   * @return a Reader
-   * @throws IOException If there is a low-level I/O error
-   * @see PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)
-   * @lucene.internal
-   */
-  public static Reader getReaderNoHeader(
-      DataInput in, Format format, int version, int valueCount, int bitsPerValue)
-      throws IOException {
-    checkVersion(version);
-    switch (format) {
-      case PACKED_SINGLE_BLOCK:
-        return Packed64SingleBlock.create(in, valueCount, bitsPerValue);
-      case PACKED:
-        return new Packed64(version, in, valueCount, bitsPerValue);
-      default:
-        throw new AssertionError("Unknown Writer format: " + format);
-    }
-  }
-
-  /**
-   * Restore a {@link Reader} from a stream.
-   *
-   * @param in the stream to read data from
-   * @return a Reader
-   * @throws IOException If there is a low-level I/O error
-   * @lucene.internal
-   */
-  public static Reader getReader(DataInput in) throws IOException {
-    final int version = CodecUtil.checkHeader(in, CODEC_NAME, VERSION_START, VERSION_CURRENT);
-    final int bitsPerValue = in.readVInt();
-    assert bitsPerValue > 0 && bitsPerValue <= 64 : "bitsPerValue=" + bitsPerValue;
-    final int valueCount = in.readVInt();
-    final Format format = Format.byId(in.readVInt());
-
-    return getReaderNoHeader(in, format, version, valueCount, bitsPerValue);
-  }
-
-  /**
    * Expert: Restore a {@link ReaderIterator} from a stream without reading metadata at the
    * beginning of the stream. This method is useful to restore data from streams which have been
    * created using {@link PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)}.
@@ -754,76 +678,6 @@ public class PackedInts {
       DataInput in, Format format, int version, int valueCount, int bitsPerValue, int mem) {
     checkVersion(version);
     return new PackedReaderIterator(format, version, valueCount, bitsPerValue, in, mem);
-  }
-
-  /**
-   * Retrieve PackedInts as a {@link ReaderIterator}
-   *
-   * @param in positioned at the beginning of a stored packed int structure.
-   * @param mem how much memory the iterator is allowed to use to read-ahead (likely to speed up
-   *     iteration)
-   * @return an iterator to access the values
-   * @throws IOException if the structure could not be retrieved.
-   * @lucene.internal
-   */
-  public static ReaderIterator getReaderIterator(DataInput in, int mem) throws IOException {
-    final int version = CodecUtil.checkHeader(in, CODEC_NAME, VERSION_START, VERSION_CURRENT);
-    final int bitsPerValue = in.readVInt();
-    assert bitsPerValue > 0 && bitsPerValue <= 64 : "bitsPerValue=" + bitsPerValue;
-    final int valueCount = in.readVInt();
-    final Format format = Format.byId(in.readVInt());
-    return getReaderIteratorNoHeader(in, format, version, valueCount, bitsPerValue, mem);
-  }
-
-  /**
-   * Expert: Construct a direct {@link Reader} from a stream without reading metadata at the
-   * beginning of the stream. This method is useful to restore data from streams which have been
-   * created using {@link PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)}.
-   *
-   * <p>The returned reader will have very little memory overhead, but every call to {@link
-   * Reader#get(int)} is likely to perform a disk seek.
-   *
-   * @param in the stream to read data from
-   * @param format the format used to serialize
-   * @param version the version used to serialize the data
-   * @param valueCount how many values the stream holds
-   * @param bitsPerValue the number of bits per value
-   * @return a direct Reader
-   * @lucene.internal
-   */
-  public static Reader getDirectReaderNoHeader(
-      final IndexInput in, Format format, int version, int valueCount, int bitsPerValue) {
-    checkVersion(version);
-    switch (format) {
-      case PACKED:
-        return new DirectPackedReader(bitsPerValue, valueCount, in);
-      case PACKED_SINGLE_BLOCK:
-        return new DirectPacked64SingleBlockReader(bitsPerValue, valueCount, in);
-      default:
-        throw new AssertionError("Unknown format: " + format);
-    }
-  }
-
-  /**
-   * Construct a direct {@link Reader} from an {@link IndexInput}. This method is useful to restore
-   * data from streams which have been created using {@link PackedInts#getWriter(DataOutput, int,
-   * int, float)}.
-   *
-   * <p>The returned reader will have very little memory overhead, but every call to {@link
-   * Reader#get(int)} is likely to perform a disk seek.
-   *
-   * @param in the stream to read data from
-   * @return a direct Reader
-   * @throws IOException If there is a low-level I/O error
-   * @lucene.internal
-   */
-  public static Reader getDirectReader(IndexInput in) throws IOException {
-    final int version = CodecUtil.checkHeader(in, CODEC_NAME, VERSION_START, VERSION_CURRENT);
-    final int bitsPerValue = in.readVInt();
-    assert bitsPerValue > 0 && bitsPerValue <= 64 : "bitsPerValue=" + bitsPerValue;
-    final int valueCount = in.readVInt();
-    final Format format = Format.byId(in.readVInt());
-    return getDirectReaderNoHeader(in, format, version, valueCount, bitsPerValue);
   }
 
   /**
@@ -905,55 +759,11 @@ public class PackedInts {
    * @param mem how much memory (in bytes) can be used to speed up serialization
    * @return a Writer
    * @see PackedInts#getReaderIteratorNoHeader(DataInput, Format, int, int, int, int)
-   * @see PackedInts#getReaderNoHeader(DataInput, Format, int, int, int)
    * @lucene.internal
    */
   public static Writer getWriterNoHeader(
       DataOutput out, Format format, int valueCount, int bitsPerValue, int mem) {
     return new PackedWriter(format, out, valueCount, bitsPerValue, mem);
-  }
-
-  /**
-   * Create a packed integer array writer for the given output, format, value count, and number of
-   * bits per value.
-   *
-   * <p>The resulting stream will be long-aligned. This means that depending on the format which is
-   * used under the hoods, up to 63 bits will be wasted. An easy way to make sure that no space is
-   * lost is to always use a <code>valueCount</code> that is a multiple of 64.
-   *
-   * <p>This method writes metadata to the stream, so that the resulting stream is sufficient to
-   * restore a {@link Reader} from it. You don't need to track <code>valueCount</code> or <code>
-   * bitsPerValue</code> by yourself. In case this is a problem, you should probably look at {@link
-   * #getWriterNoHeader(DataOutput, Format, int, int, int)}.
-   *
-   * <p>The <code>acceptableOverheadRatio</code> parameter controls how readers that will be
-   * restored from this stream trade space for speed by selecting a faster but potentially less
-   * memory-efficient implementation. An <code>acceptableOverheadRatio</code> of {@link
-   * PackedInts#COMPACT} will make sure that the most memory-efficient implementation is selected
-   * whereas {@link PackedInts#FASTEST} will make sure that the fastest implementation is selected.
-   * In case you are only interested in reading this stream sequentially later on, you should
-   * probably use {@link PackedInts#COMPACT}.
-   *
-   * @param out the data output
-   * @param valueCount the number of values
-   * @param bitsPerValue the number of bits per value
-   * @param acceptableOverheadRatio an acceptable overhead ratio per value
-   * @return a Writer
-   * @throws IOException If there is a low-level I/O error
-   * @lucene.internal
-   */
-  public static Writer getWriter(
-      DataOutput out, int valueCount, int bitsPerValue, float acceptableOverheadRatio)
-      throws IOException {
-    assert valueCount >= 0;
-
-    final FormatAndBits formatAndBits =
-        fastestFormatAndBits(valueCount, bitsPerValue, acceptableOverheadRatio);
-    final Writer writer =
-        getWriterNoHeader(
-            out, formatAndBits.format, valueCount, formatAndBits.bitsPerValue, DEFAULT_BUFFER_SIZE);
-    writer.writeHeader();
-    return writer;
   }
 
   /**

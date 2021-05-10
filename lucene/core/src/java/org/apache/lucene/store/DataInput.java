@@ -90,7 +90,9 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeByte(byte)
    */
   public short readShort() throws IOException {
-    return (short) (((readByte() & 0xFF) << 8) | (readByte() & 0xFF));
+    final byte b1 = readByte();
+    final byte b2 = readByte();
+    return (short) (((b2 & 0xFF) << 8) | (b1 & 0xFF));
   }
 
   /**
@@ -99,10 +101,11 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeInt(int)
    */
   public int readInt() throws IOException {
-    return ((readByte() & 0xFF) << 24)
-        | ((readByte() & 0xFF) << 16)
-        | ((readByte() & 0xFF) << 8)
-        | (readByte() & 0xFF);
+    final byte b1 = readByte();
+    final byte b2 = readByte();
+    final byte b3 = readByte();
+    final byte b4 = readByte();
+    return ((b4 & 0xFF) << 24) | ((b3 & 0xFF) << 16) | ((b2 & 0xFF) << 8) | (b1 & 0xFF);
   }
 
   /**
@@ -160,29 +163,18 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeLong(long)
    */
   public long readLong() throws IOException {
-    return (((long) readInt()) << 32) | (readInt() & 0xFFFFFFFFL);
+    return (readInt() & 0xFFFFFFFFL) | (((long) readInt()) << 32);
   }
 
   /**
-   * Read a specified number of longs with the little endian byte order.
-   *
-   * <p>This method can be used to read longs whose bytes have been {@link Long#reverseBytes
-   * reversed} at write time:
-   *
-   * <pre class="prettyprint">
-   * for (long l : longs) {
-   *   output.writeLong(Long.reverseBytes(l));
-   * }
-   * </pre>
+   * Read a specified number of longs.
    *
    * @lucene.experimental
    */
-  // TODO: LUCENE-9047: Make the entire DataInput/DataOutput API little endian
-  // Then this would just be `readLongs`?
-  public void readLELongs(long[] dst, int offset, int length) throws IOException {
+  public void readLongs(long[] dst, int offset, int length) throws IOException {
     Objects.checkFromIndexSize(offset, length, dst.length);
     for (int i = 0; i < length; ++i) {
-      dst[offset + i] = Long.reverseBytes(readLong());
+      dst[offset + i] = readLong();
     }
   }
 
@@ -193,10 +185,10 @@ public abstract class DataInput implements Cloneable {
    * @param offset the offset in the array to start storing floats
    * @param len the number of floats to read
    */
-  public void readLEFloats(float[] floats, int offset, int len) throws IOException {
+  public void readFloats(float[] floats, int offset, int len) throws IOException {
     Objects.checkFromIndexSize(offset, len, floats.length);
     for (int i = 0; i < len; i++) {
-      floats[offset + i] = Float.intBitsToFloat(Integer.reverseBytes(readInt()));
+      floats[offset + i] = Float.intBitsToFloat(readInt());
     }
   }
 

@@ -58,7 +58,7 @@ ext {
   baseVersion = {
     def m = (version =~ /^(\d+\.\d+\.\d+)(-(.+))?/)
     if (!m) {
-      throw GradleException("Can't strip version to just x.y.z: " + rootProject.version)
+      throw new GradleException("Can't strip version to just x.y.z: " + rootProject.version)
     }
     return m[0][1]
   }()
@@ -66,7 +66,7 @@ ext {
   majorVersion = {
     def m = (version =~ /^(\d+)\.\d+\.\d+(-(.+))?/)
     if (!m) {
-      throw GradleException("Can't strip version to just major version: " + rootProject.version)
+      throw new GradleException("Can't strip version to just major version: " + rootProject.version)
     }
     return m[0][1] as int
   }
@@ -151,6 +151,7 @@ apply from: file('gradle/generation/kuromoji.gradle')
 apply from: file('gradle/generation/nori.gradle')
 apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
+apply from: file('gradle/generation/forUtil.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
 
@@ -164,6 +165,7 @@ apply from: file('gradle/testing/slowest-tests-at-end.gradle')
 apply from: file('gradle/testing/failed-tests-at-end.gradle')
 apply from: file('gradle/testing/profiling.gradle')
 apply from: file('gradle/testing/beasting.gradle')
+apply from: file('gradle/testing/coverage.gradle')
 apply from: file('gradle/help.gradle')
 
 apply from: file('gradle/documentation/documentation.gradle')

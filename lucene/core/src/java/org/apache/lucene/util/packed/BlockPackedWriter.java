@@ -50,7 +50,6 @@ import org.apache.lucene.store.DataOutput;
  * </ul>
  *
  * @see BlockPackedReaderIterator
- * @see BlockPackedReader
  * @lucene.internal
  */
 public final class BlockPackedWriter extends AbstractBlockPackedWriter {

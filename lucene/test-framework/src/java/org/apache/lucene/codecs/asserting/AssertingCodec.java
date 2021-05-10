@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
+import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 import org.apache.lucene.util.TestUtil;
@@ -67,6 +68,7 @@ public class AssertingCodec extends FilterCodec {
   private final PostingsFormat defaultFormat = new AssertingPostingsFormat();
   private final DocValuesFormat defaultDVFormat = new AssertingDocValuesFormat();
   private final PointsFormat pointsFormat = new AssertingPointsFormat();
+  private final VectorFormat defaultVectorFormat = new AssertingVectorFormat();
 
   public AssertingCodec() {
     super("Asserting", TestUtil.getDefaultCodec());
@@ -108,6 +110,11 @@ public class AssertingCodec extends FilterCodec {
   }
 
   @Override
+  public VectorFormat vectorFormat() {
+    return defaultVectorFormat;
+  }
+
+  @Override
   public String toString() {
     return "Asserting(" + delegate + ")";
   }
@@ -129,5 +136,9 @@ public class AssertingCodec extends FilterCodec {
    */
   public DocValuesFormat getDocValuesFormatForField(String field) {
     return defaultDVFormat;
+  }
+
+  public VectorFormat getVectorFormatForField(String field) {
+    return defaultVectorFormat;
   }
 }

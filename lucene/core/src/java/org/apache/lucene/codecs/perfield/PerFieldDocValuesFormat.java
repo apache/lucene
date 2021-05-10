@@ -28,7 +28,6 @@ import java.util.TreeMap;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
-import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -39,8 +38,6 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -59,7 +56,7 @@ import org.apache.lucene.util.IOUtils;
  * @lucene.experimental
  */
 public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
-  /** Name of this {@link PostingsFormat}. */
+  /** Name of this {@link DocValuesFormat}. */
   public static final String PER_FIELD_NAME = "PerFieldDV40";
 
   /** {@link FieldInfo} attribute name used to store the format name for each field. */
@@ -358,20 +355,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     @Override
     public void close() throws IOException {
       IOUtils.close(formats.values());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long size = 0;
-      for (Map.Entry<String, DocValuesProducer> entry : formats.entrySet()) {
-        size += (entry.getKey().length() * Character.BYTES) + entry.getValue().ramBytesUsed();
-      }
-      return size;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      return Accountables.namedAccountables("format", formats);
     }
 
     @Override

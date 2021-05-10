@@ -7,5 +7,6 @@
     "lucene/analysis/icu/src/data/utr30/nfc.txt": "ec95d7f7e5910791717234dd09efc4b13dc32d35",
     "lucene/analysis/icu/src/data/utr30/nfkc.txt": "b8e91bc64e354af505d51f6072a43c90c6b4d1b5",
     "lucene/analysis/icu/src/data/utr30/nfkc_cf.txt": "22d90ea4a7771e6ddebaaeb9438e98ce625e16f5",
-    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/utr30.nrm": "32a6a3198039883c93f9ebef31fe24c1029f2b07"
+    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/utr30.nrm": "32a6a3198039883c93f9ebef31fe24c1029f2b07",
+    "property:icu4j": "68.2"
 }

@@ -1259,17 +1259,7 @@ public class IndexWriter
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
       for (FieldInfo fi : fis) {
-        map.addOrGet(
-            fi.name,
-            fi.number,
-            fi.getIndexOptions(),
-            fi.getDocValuesType(),
-            fi.getPointDimensionCount(),
-            fi.getPointIndexDimensionCount(),
-            fi.getPointNumBytes(),
-            fi.getVectorDimension(),
-            fi.getVectorSearchStrategy(),
-            fi.isSoftDeletesField());
+        map.addOrGet(fi);
       }
     }
 
@@ -1861,7 +1851,7 @@ public class IndexWriter
   /**
    * Updates a document's {@link NumericDocValues} for <code>field</code> to the given <code>value
    * </code>. You can only update fields that already exist in the index, not add new fields through
-   * this method.
+   * this method. You can only update fields that were indexed with doc values only.
    *
    * @param term the term to identify the document(s) to be updated
    * @param field field name of the {@link NumericDocValues} field
@@ -1872,9 +1862,7 @@ public class IndexWriter
    */
   public long updateNumericDocValue(Term term, String field, long value) throws IOException {
     ensureOpen();
-    if (!globalFieldNumberMap.contains(field, DocValuesType.NUMERIC)) {
-      throw new IllegalArgumentException("can only update existing numeric-docvalues fields!");
-    }
+    globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.NUMERIC, true);
     if (config.getIndexSortFields().contains(field)) {
       throw new IllegalArgumentException(
           "cannot update docvalues field involved in the index sort, field="
@@ -1894,7 +1882,7 @@ public class IndexWriter
   /**
    * Updates a document's {@link BinaryDocValues} for <code>field</code> to the given <code>value
    * </code>. You can only update fields that already exist in the index, not add new fields through
-   * this method.
+   * this method. You can only update fields that were indexed only with doc values.
    *
    * <p><b>NOTE:</b> this method currently replaces the existing value of all affected documents
    * with the new value.
@@ -1911,9 +1899,7 @@ public class IndexWriter
     if (value == null) {
       throw new IllegalArgumentException("cannot update a field to a null value: " + field);
     }
-    if (!globalFieldNumberMap.contains(field, DocValuesType.BINARY)) {
-      throw new IllegalArgumentException("can only update existing binary-docvalues fields!");
-    }
+    globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.BINARY, true);
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value)));
@@ -1958,23 +1944,10 @@ public class IndexWriter
         throw new IllegalArgumentException(
             "can only update NUMERIC or BINARY fields! field=" + f.name());
       }
-      if (globalFieldNumberMap.contains(f.name(), dvType) == false) {
-        // if this field doesn't exists we try to add it. if it exists and the DV type doesn't match
-        // we
-        // get a consistent error message as if you try to do that during an indexing operation.
-        globalFieldNumberMap.addOrGet(
-            f.name(),
-            -1,
-            IndexOptions.NONE,
-            dvType,
-            0,
-            0,
-            0,
-            0,
-            VectorValues.SearchStrategy.NONE,
-            f.name().equals(config.softDeletesField));
-        assert globalFieldNumberMap.contains(f.name(), dvType);
-      }
+      // if this field doesn't exists we try to add it.
+      // if it exists and the DV type doesn't match or it is not DV only field,
+      // we will get an error.
+      globalFieldNumberMap.verifyOrCreateDvOnlyField(f.name(), dvType, false);
       if (config.getIndexSortFields().contains(f.name())) {
         throw new IllegalArgumentException(
             "cannot update docvalues field involved in the index sort, field="
@@ -3040,19 +3013,9 @@ public class IndexWriter
 
             FieldInfos fis = readFieldInfos(info);
             for (FieldInfo fi : fis) {
-              // This will throw exceptions if any of the incoming fields have an illegal schema
-              // change:
-              globalFieldNumberMap.addOrGet(
-                  fi.name,
-                  fi.number,
-                  fi.getIndexOptions(),
-                  fi.getDocValuesType(),
-                  fi.getPointDimensionCount(),
-                  fi.getPointIndexDimensionCount(),
-                  fi.getPointNumBytes(),
-                  fi.getVectorDimension(),
-                  fi.getVectorSearchStrategy(),
-                  fi.isSoftDeletesField());
+              // This will throw exceptions if any of the incoming fields
+              // has an illegal schema change
+              globalFieldNumberMap.addOrGet(fi);
             }
             infos.add(copySegmentAsIs(info, newSegName, context));
           }

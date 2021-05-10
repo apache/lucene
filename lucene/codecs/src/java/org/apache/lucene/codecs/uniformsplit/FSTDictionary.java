@@ -25,7 +25,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -51,18 +50,10 @@ import org.apache.lucene.util.fst.Util;
  */
 public class FSTDictionary implements IndexDictionary {
 
-  private static final long BASE_RAM_USAGE =
-      RamUsageEstimator.shallowSizeOfInstance(FSTDictionary.class);
-
   protected final FST<Long> fst;
 
   protected FSTDictionary(FST<Long> fst) {
     this.fst = fst;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_USAGE + fst.ramBytesUsed();
   }
 
   @Override
@@ -167,11 +158,6 @@ public class FSTDictionary implements IndexDictionary {
         }
       }
       return dictionary.browser();
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return dictionary == null ? 0 : dictionary.ramBytesUsed();
     }
   }
 
