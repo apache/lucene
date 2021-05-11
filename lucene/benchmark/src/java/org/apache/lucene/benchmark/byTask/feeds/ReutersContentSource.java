@@ -106,7 +106,7 @@ public class ReutersContentSource extends ContentSource {
     int inputFilesSize = inputFiles.size();
 
     if (threadIndexCreated == false) {
-       createThreadIndex();
+      createThreadIndex();
     }
 
     // Getting file index value which is set for each thread
