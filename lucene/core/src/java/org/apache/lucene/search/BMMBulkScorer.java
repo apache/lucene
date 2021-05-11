@@ -30,7 +30,7 @@ public class BMMBulkScorer extends BulkScorer {
   private ScoreMode scoreMode;
   private int scalingFactor;
   private long cost;
-  private static final int FIXED_WINDOW_SIZE = 2048;
+  private static final int FIXED_WINDOW_SIZE = 1024;
 
   public BMMBulkScorer(BooleanWeight weight, List<Scorer> scorers, ScoreMode scoreMode)
       throws IOException {
