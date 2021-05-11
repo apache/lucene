@@ -37,7 +37,6 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.TYPE_MASK;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.VERSION_START;
-import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.VERSION_TRACK_DIRTY_CHUNK;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -439,7 +438,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     private void doReset(int docID) throws IOException {
       docBase = fieldsStream.readVInt();
       final int token = fieldsStream.readVInt();
-      chunkDocs = version >= VERSION_TRACK_DIRTY_CHUNK ? token >>> 2 : token >>> 1;
+      chunkDocs = token >>> 2;
       if (contains(docID) == false || docBase + chunkDocs > numDocs) {
         throw new CorruptIndexException(
             "Corrupted: docID="

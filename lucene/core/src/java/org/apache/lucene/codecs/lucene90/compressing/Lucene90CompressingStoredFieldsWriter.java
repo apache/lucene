@@ -75,8 +75,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   static final int TYPE_MASK = (int) PackedInts.maxValue(TYPE_BITS);
 
   static final int VERSION_START = 1;
-  static final int VERSION_TRACK_DIRTY_CHUNK = 2;
-  static final int VERSION_CURRENT = VERSION_TRACK_DIRTY_CHUNK;
+  static final int VERSION_CURRENT = VERSION_START;
   static final int META_VERSION_START = 0;
 
   private final String segment;
