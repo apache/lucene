@@ -314,13 +314,5 @@ class PointValuesWriter {
       in.restore(i, j);
     }
 
-    @Override
-    public boolean indexSortingReorder(int i, int j) {
-      for (int k = i; k < j; k++) {
-        save(in.getDocID(i), docMap.oldToNew(in.getDocID(i)));
-      }
-      restore(i, j);
-      return true;
-    }
   }
 }
