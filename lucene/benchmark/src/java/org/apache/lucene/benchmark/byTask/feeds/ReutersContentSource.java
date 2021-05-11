@@ -158,7 +158,6 @@ public class ReutersContentSource extends ContentSource {
   @Override
   public synchronized void resetInputs() throws IOException {
     super.resetInputs();
-    nextFile = 0;
     iteration = 0;
   }
 
