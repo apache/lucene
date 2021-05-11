@@ -42,7 +42,7 @@ public abstract class MSBRadixSorter extends Sorter {
   private final int[] endOffsets = new int[HISTOGRAM_SIZE];
   private final int[] commonPrefix;
 
-  private final int maxLength;
+  protected final int maxLength;
 
   /**
    * Sole constructor.

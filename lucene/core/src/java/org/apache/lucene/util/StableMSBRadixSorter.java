@@ -28,10 +28,34 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
   }
 
   /** Save the i-th value into the j-th position in temporary storage. */
-  protected abstract void save(int from, int to);
+  protected abstract void save(int i, int j);
 
   /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
-  protected abstract void restore(int from, int to);
+  protected abstract void restore(int i, int j);
+
+  @Override
+  protected Sorter getFallbackSorter(int k) {
+    return new InPlaceMergeSorter() {
+      @Override
+      protected void swap(int i, int j) {
+        StableMSBRadixSorter.this.swap(i, j);
+      }
+
+      @Override
+      protected int compare(int i, int j) {
+        for (int o = k; o < maxLength; ++o) {
+          final int b1 = byteAt(i, o);
+          final int b2 = byteAt(j, o);
+          if (b1 != b2) {
+            return b1 - b2;
+          } else if (b1 == -1) {
+            break;
+          }
+        }
+        return 0;
+      }
+    };
+  }
 
   /**
    * Reorder elements in stable way, since Dutch sort does not guarantee ordering for same values.
