@@ -611,15 +611,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     return state.document(docID);
   }
 
-  /**
-   * Checks if a given docID was loaded in the current block state.
-   */
+  /** Checks if a given docID was loaded in the current block state. */
   boolean isLoaded(int docID) {
     if (merging == false) {
       throw new IllegalStateException("isLoaded should only ever get called on a merge instance");
     }
     if (version != VERSION_CURRENT) {
-      throw new IllegalStateException("isLoaded should only ever get called when the reader is on the current version");
+      throw new IllegalStateException(
+          "isLoaded should only ever get called when the reader is on the current version");
     }
     return state.contains(docID);
   }

@@ -203,7 +203,12 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   private void writeHeader(
-      int docBase, int numBufferedDocs, int[] numStoredFields, int[] lengths, boolean sliced, boolean dirtyChunk)
+      int docBase,
+      int numBufferedDocs,
+      int[] numStoredFields,
+      int[] lengths,
+      boolean sliced,
+      boolean dirtyChunk)
       throws IOException {
     final int slicedBit = sliced ? 1 : 0;
     final int dirtyBit = dirtyChunk ? 2 : 0;
@@ -509,7 +514,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     BULK_MERGE_ENABLED = v;
   }
 
-  private void copyOneDoc(Lucene90CompressingStoredFieldsReader reader, int docID) throws IOException {
+  private void copyOneDoc(Lucene90CompressingStoredFieldsReader reader, int docID)
+      throws IOException {
     assert reader.getVersion() == VERSION_CURRENT;
     SerializedDocument doc = reader.document(docID);
     startDocument();
@@ -518,10 +524,14 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     finishDocument();
   }
 
-  private void copyChunks(final MergeState mergeState, final CompressingStoredFieldsMergeSub sub,
-                          final int fromDocID, final int toDocID) throws IOException {
+  private void copyChunks(
+      final MergeState mergeState,
+      final CompressingStoredFieldsMergeSub sub,
+      final int fromDocID,
+      final int toDocID)
+      throws IOException {
     final Lucene90CompressingStoredFieldsReader reader =
-            (Lucene90CompressingStoredFieldsReader) mergeState.storedFieldsReaders[sub.readerIndex];
+        (Lucene90CompressingStoredFieldsReader) mergeState.storedFieldsReaders[sub.readerIndex];
     assert reader.getVersion() == VERSION_CURRENT;
     assert reader.getChunkSize() == chunkSize;
     assert reader.getCompressionMode() == compressionMode;
@@ -540,7 +550,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     }
     // copy chunks
     long fromPointer = index.getStartPointer(docID);
-    final long toPointer = toDocID == sub.maxDoc ? reader.getMaxPointer() : index.getStartPointer(toDocID);
+    final long toPointer =
+        toDocID == sub.maxDoc ? reader.getMaxPointer() : index.getStartPointer(toDocID);
     if (fromPointer < toPointer) {
       if (numBufferedDocs > 0) {
         numDirtyChunks++; // incomplete: we had to force this flush
@@ -555,7 +566,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         final int bufferedDocs = code >>> 2;
         if (base != docID) {
           throw new CorruptIndexException(
-                  "invalid state: base=" + base + ", docID=" + docID, rawDocs);
+              "invalid state: base=" + base + ", docID=" + docID, rawDocs);
         }
         // write a new index entry and new header for this chunk.
         indexWriter.writeIndex(bufferedDocs, fieldsStream.getFilePointer());
@@ -565,8 +576,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         docBase += bufferedDocs;
         if (docID > toDocID) {
           throw new CorruptIndexException(
-                  "invalid state: base=" + base + ", count=" + bufferedDocs + ", toDocID=" + toDocID,
-                  rawDocs);
+              "invalid state: base=" + base + ", count=" + bufferedDocs + ", toDocID=" + toDocID,
+              rawDocs);
         }
         // copy bytes until the next chunk boundary (or end of chunk data).
         // using the stored fields index for this isn't the most efficient, but fast enough
@@ -600,7 +611,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   public int merge(MergeState mergeState) throws IOException {
     final MatchingReaders matchingReaders = new MatchingReaders(mergeState);
     final MergeVisitor[] visitors = new MergeVisitor[mergeState.storedFieldsReaders.length];
-    final List<CompressingStoredFieldsMergeSub> subs = new ArrayList<>(mergeState.storedFieldsReaders.length);
+    final List<CompressingStoredFieldsMergeSub> subs =
+        new ArrayList<>(mergeState.storedFieldsReaders.length);
     for (int i = 0; i < mergeState.storedFieldsReaders.length; i++) {
       final StoredFieldsReader reader = mergeState.storedFieldsReaders[i];
       reader.checkIntegrity();
@@ -611,7 +623,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       subs.add(new CompressingStoredFieldsMergeSub(mergeState, mergeStrategy, i));
     }
     int docCount = 0;
-    final DocIDMerger<CompressingStoredFieldsMergeSub> docIDMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
+    final DocIDMerger<CompressingStoredFieldsMergeSub> docIDMerger =
+        DocIDMerger.of(subs, mergeState.needsIndexSort);
     CompressingStoredFieldsMergeSub sub = docIDMerger.next();
     while (sub != null) {
       assert sub.mappedDocID == docCount : sub.mappedDocID + " != " + docCount;
@@ -662,36 +675,32 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   private enum MergeStrategy {
-    /**
-     * Copy chunk by chunk in a compressed format
-     */
+    /** Copy chunk by chunk in a compressed format */
     BULK,
 
-    /**
-     * Copy document by document in a decompressed format
-     */
+    /** Copy document by document in a decompressed format */
     DOC,
 
-    /**
-     * Copy field by field of decompressed documents
-     */
+    /** Copy field by field of decompressed documents */
     VISITOR
   }
 
-  private MergeStrategy getMergeStrategy(MergeState mergeState, MatchingReaders matchingReaders, int readerIndex) {
+  private MergeStrategy getMergeStrategy(
+      MergeState mergeState, MatchingReaders matchingReaders, int readerIndex) {
     final StoredFieldsReader candidate = mergeState.storedFieldsReaders[readerIndex];
     if (matchingReaders.matchingReaders[readerIndex] == false
-            || candidate instanceof Lucene90CompressingStoredFieldsReader == false
-            || ((Lucene90CompressingStoredFieldsReader) candidate).getVersion() != VERSION_CURRENT) {
+        || candidate instanceof Lucene90CompressingStoredFieldsReader == false
+        || ((Lucene90CompressingStoredFieldsReader) candidate).getVersion() != VERSION_CURRENT) {
       return MergeStrategy.VISITOR;
     }
-    Lucene90CompressingStoredFieldsReader reader = (Lucene90CompressingStoredFieldsReader) candidate;
+    Lucene90CompressingStoredFieldsReader reader =
+        (Lucene90CompressingStoredFieldsReader) candidate;
     if (BULK_MERGE_ENABLED
-            && reader.getCompressionMode() == compressionMode
-            && reader.getChunkSize() == chunkSize
-            // its not worth fine-graining this if there are deletions.
-            && mergeState.liveDocs[readerIndex] == null
-            && !tooDirty(reader)) {
+        && reader.getCompressionMode() == compressionMode
+        && reader.getChunkSize() == chunkSize
+        // its not worth fine-graining this if there are deletions.
+        && mergeState.liveDocs[readerIndex] == null
+        && !tooDirty(reader)) {
       return MergeStrategy.BULK;
     } else {
       return MergeStrategy.DOC;
@@ -704,7 +713,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     private final MergeStrategy mergeStrategy;
     int docID = -1;
 
-    CompressingStoredFieldsMergeSub(MergeState mergeState, MergeStrategy mergeStrategy, int readerIndex) {
+    CompressingStoredFieldsMergeSub(
+        MergeState mergeState, MergeStrategy mergeStrategy, int readerIndex) {
       super(mergeState.docMaps[readerIndex]);
       this.readerIndex = readerIndex;
       this.mergeStrategy = mergeStrategy;
