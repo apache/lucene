@@ -131,8 +131,6 @@ public class ReutersContentSource extends ContentSource {
     f = inputFiles.get(fIndex);
     name = f.toRealPath() + "_" + iteration;
 
-    }
-
     try (BufferedReader reader = Files.newBufferedReader(f, StandardCharsets.UTF_8)) {
       // First line is the date, 3rd is the title, rest is body
       String dateStr = reader.readLine();
