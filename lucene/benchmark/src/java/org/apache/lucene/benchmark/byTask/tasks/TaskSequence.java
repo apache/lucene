@@ -340,14 +340,15 @@ public class TaskSequence extends PerfTask {
 
     initTasksArray();
     ParallelTask t[] = runningParallelTasks = new ParallelTask[repetitions * tasks.size()];
+    //Get number of parallel threads from algo file and set it to use in ReuersContentSource.java's fileIndexArrInit()
     this.getRunData().getConfig().setNumThreads(t.length);
     // prepare threads
     int index = 0;
     for (int k = 0; k < repetitions; k++) {
       for (int i = 0; i < tasksArray.length; i++) {
         final PerfTask task = tasksArray[i].clone();
-	t[index] = new ParallelTask(task);
-        // Set the thread name for guaranteed file index while processing.
+        t[index] = new ParallelTask(task);
+        //Setting unique ThreadName with index value which is used in ReuersContentSource.java's getNextDocData()
         t[index].setName("IndexThread-" + index);
         index++;
       }

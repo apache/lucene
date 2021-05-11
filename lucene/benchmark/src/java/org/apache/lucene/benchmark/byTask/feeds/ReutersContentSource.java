@@ -50,9 +50,8 @@ public class ReutersContentSource extends ContentSource {
   private ThreadLocal<DateFormatInfo> dateFormat = new ThreadLocal<>();
   private Path dataDir = null;
   private ArrayList<Path> inputFiles = new ArrayList<>();
-  private int iteration = 0;
-  private int[] threadIndex;
-  private volatile boolean threadIndexCreated;
+  private int[] docCountArr;
+  private volatile boolean docCountArrCreated;
 
   @Override
   public void setConfig(Config config) {
@@ -101,34 +100,23 @@ public class ReutersContentSource extends ContentSource {
 
   @Override
   public DocData getNextDocData(DocData docData) throws NoMoreDataException, IOException {
-    Path f = null;
-    String name = null;
-    int inputFilesSize = inputFiles.size();
-
-    if (threadIndexCreated == false) {
-       createThreadIndex();
+    if (docCountArrCreated == false) {
+      docCountArrInit();
     }
 
-    // Getting file index value which is set for each thread
-    int index = Integer.parseInt(Thread.currentThread().getName().substring(12));
-    int fIndex = index + threadIndex[index] * threadIndex.length;
-    threadIndex[index]++;
+    //Extract ThreadIndex from unique ThreadName (at position 12), which is set with '"IndexThread-"+index', in TaskSequence.java's doParallelTasks()
+    int threadIndex = Integer.parseInt(Thread.currentThread().getName().substring(12));
+    assert (threadIndex >= 0 && threadIndex < docCountArr.length):"Please check threadIndex or docCountArr length";
+    int stride = threadIndex + docCountArr[threadIndex] * docCountArr.length;
+    int inFileSize = inputFiles.size();
 
-    // Sanity check, if # threads is greater than # input files, wrap index
-    if (index >= inputFilesSize) {
-      index %= inputFilesSize;
-    }
+    //Modulo Operator covers all three possible senarios i.e. 1. If inputFiles.size() < Num Of Threads 2.inputFiles.size() == Num Of Threads 3.inputFiles.size() > Num Of Threads
+    int fileIndex = stride % inFileSize;
+    int iteration = stride / inFileSize;
+    docCountArr[threadIndex]++;
 
-    // Check if this thread has exhausted its files
-    if (fIndex >= inputFilesSize) {
-      threadIndex[index] = 0;
-      fIndex = index + threadIndex[index] * threadIndex.length;
-      threadIndex[index]++;
-      iteration++;
-    }
-
-    f = inputFiles.get(fIndex);
-    name = f.toRealPath() + "_" + iteration;
+    Path f = inputFiles.get(fIndex);
+    String name = f.toRealPath() + "_" + iteration;
 
     try (BufferedReader reader = Files.newBufferedReader(f, StandardCharsets.UTF_8)) {
       // First line is the date, 3rd is the title, rest is body
@@ -158,13 +146,12 @@ public class ReutersContentSource extends ContentSource {
   @Override
   public synchronized void resetInputs() throws IOException {
     super.resetInputs();
-    iteration = 0;
   }
 
-  private synchronized void createThreadIndex() {
-    if (threadIndexCreated == false) {
-      threadIndex = new int[getConfig().getNumThreads()];
-      threadIndexCreated = true;
+  private synchronized void docCountArrInit() {
+    if (docCountArrCreated == false) {
+      docCountArr = new int[getConfig().getNumThreads()];
+      docCountArrCreated = true;
     }
   }
 }
