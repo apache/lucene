@@ -50,7 +50,6 @@ public class ReutersContentSource extends ContentSource {
   private ThreadLocal<DateFormatInfo> dateFormat = new ThreadLocal<>();
   private Path dataDir = null;
   private ArrayList<Path> inputFiles = new ArrayList<>();
-  private int nextFile = 0;
   private int iteration = 0;
   private int[] threadIndex;
   private volatile boolean threadIndexCreated;
