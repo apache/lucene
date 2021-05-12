@@ -225,6 +225,8 @@ Improvements
 
 * LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
 
+* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
+
 Bug fixes
 
 
