@@ -17,8 +17,6 @@
 
 # Luke
 
-![Luke, the Lucene Toolbox Project](luke-logo.gif) + Swing ![Java](java_logo.png)
-
 ## Introduction
 
 Luke (atop Swing) is the GUI tool for introspecting your Lucene index. It allows:
