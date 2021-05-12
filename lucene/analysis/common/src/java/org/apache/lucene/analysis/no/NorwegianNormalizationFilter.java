@@ -14,44 +14,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.miscellaneous;
-
-import static org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer.ALL_FOLDINGS;
+package org.apache.lucene.analysis.no;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter;
+import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer;
+import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer.Foldings;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
  * This filter normalize use of the interchangeable Scandinavian characters æÆäÄöÖøØ and folded
- * variants (aa, ao, ae, oe and oo) by transforming them to åÅæÆøØ.
+ * variants (ae, oe, aa) by transforming them to åÅæÆøØ. This is similar to
+ * ScandinavianNormalizationFilter, except for the folding rules customized for Norwegian.
  *
- * <p>It's a semantically less destructive solution than {@link ScandinavianFoldingFilter}, most
- * useful when a person with a Norwegian or Danish keyboard queries a Swedish index and vice versa.
- * This filter does <b>not</b> the common Swedish folds of å and ä to a nor ö to o.
+ * <p>blåbærsyltetøj == blåbärsyltetöj == blaabaersyltetoej
  *
- * <p>blåbærsyltetøj == blåbärsyltetöj == blaabaarsyltetoej but not blabarsyltetoj räksmörgås ==
- * ræksmørgås == ræksmörgaos == raeksmoergaas but not raksmorgas
- *
- * <p>There are also separate filters for Norwegian, Danish and Swedish with slightly differing
- * settings
- *
- * @see ScandinavianFoldingFilter
+ * @see ScandinavianNormalizationFilter
  */
-public final class ScandinavianNormalizationFilter extends TokenFilter {
-
+public final class NorwegianNormalizationFilter extends TokenFilter {
   private final ScandinavianNormalizer normalizer;
 
-  public ScandinavianNormalizationFilter(TokenStream input) {
+  public NorwegianNormalizationFilter(TokenStream input) {
     super(input);
-    this.normalizer = new ScandinavianNormalizer(ALL_FOLDINGS);
+    this.normalizer = new ScandinavianNormalizer(EnumSet.of(Foldings.AE, Foldings.OE, Foldings.AA));
   }
 
   private final CharTermAttribute charTermAttribute = addAttribute(CharTermAttribute.class);
 
   @Override
-  public boolean incrementToken() throws IOException {
+  public final boolean incrementToken() throws IOException {
     if (!input.incrementToken()) {
       return false;
     }
