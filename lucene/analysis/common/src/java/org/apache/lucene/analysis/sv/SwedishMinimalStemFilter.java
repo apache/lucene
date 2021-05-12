@@ -16,24 +16,21 @@
  */
 package org.apache.lucene.analysis.sv;
 
-
+import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
-import java.io.IOException;
-
 /**
- * A {@link TokenFilter} that applies {@link SwedishMinimalStemmer} to stem Swedish
- * words.
- * <p>
- * To prevent terms from being stemmed use an instance of
- * {@link SetKeywordMarkerFilter} or a custom {@link TokenFilter} that sets
- * the {@link KeywordAttribute} before this {@link TokenStream}.
- * </p>
- * @since 8.8.0
+ * A {@link TokenFilter} that applies {@link SwedishMinimalStemmer} to stem Swedish words.
+ *
+ * <p>To prevent terms from being stemmed use an instance of {@link SetKeywordMarkerFilter} or a
+ * custom {@link TokenFilter} that sets the {@link KeywordAttribute} before this {@link
+ * TokenStream}.
+ *
+ * @since 8.9.0
  */
 public final class SwedishMinimalStemFilter extends TokenFilter {
   private final SwedishMinimalStemmer stemmer = new SwedishMinimalStemmer();
@@ -43,7 +40,7 @@ public final class SwedishMinimalStemFilter extends TokenFilter {
   public SwedishMinimalStemFilter(TokenStream input) {
     super(input);
   }
-  
+
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {

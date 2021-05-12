@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.analysis.sv;
 
-
+import java.util.Map;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 
-import java.util.Map;
-
-/** 
+/**
  * Factory for {@link SwedishMinimalStemFilter}.
+ *
  * <pre class="prettyprint">
  * &lt;fieldType name="text_svminstem" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
@@ -32,7 +31,8 @@ import java.util.Map;
  *     &lt;filter class="solr.SwedishMinimalStemFilterFactory"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
- * @since 8.8.0
+ *
+ * @since 8.9.0
  * @lucene.spi {@value #NAME}
  */
 public class SwedishMinimalStemFilterFactory extends TokenFilterFactory {
@@ -41,7 +41,7 @@ public class SwedishMinimalStemFilterFactory extends TokenFilterFactory {
   public static final String NAME = "swedishMinimalStem";
 
   /** Creates a new SwedishMinimalStemFilterFactory */
-  public SwedishMinimalStemFilterFactory(Map<String,String> args) {
+  public SwedishMinimalStemFilterFactory(Map<String, String> args) {
     super(args);
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
