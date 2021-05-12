@@ -60,8 +60,19 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
         });
     assertNotSame(points, reader.points);
     assertEquals(points.length, reader.points.length);
+
+    // Check doc IDs are in ascending order.
+    // If doc IDs are already increasing, StableMSBRadixSorter should keep doc ID's ordering.
+    // If doc IDs are not ordered, StableMSBRadixSorter should compare doc ID to guarantee the ordering.
+    Point prevPoint = null;
     for (int i = 0; i < points.length; i++) {
       assertEquals(points[i].packedValue, reader.points[i].packedValue);
+      if (prevPoint != null) {
+        if (reader.points[i].packedValue.equals(prevPoint.packedValue)) {
+          assertTrue(reader.points[i].doc >= prevPoint.doc);
+        }
+      }
+      prevPoint = reader.points[i];
     }
   }
 

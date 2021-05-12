@@ -23,8 +23,11 @@ package org.apache.lucene.util;
  */
 public abstract class StableMSBRadixSorter extends MSBRadixSorter {
 
+  private final int[] fixedStartOffsets;
+
   public StableMSBRadixSorter(int maxLength) {
     super(maxLength);
+    fixedStartOffsets = new int[HISTOGRAM_SIZE];
   }
 
   /** Save the i-th value into the j-th position in temporary storage. */
@@ -64,10 +67,10 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
    */
   @Override
   protected void reorder(int from, int to, int[] startOffsets, int[] endOffsets, int k) {
-    int[] assignPos = ArrayUtil.copyOfSubArray(startOffsets, 0, startOffsets.length);
+    System.arraycopy(startOffsets, 0, fixedStartOffsets, 0, startOffsets.length);
     for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
       final int limit = endOffsets[i];
-      for (int h1 = assignPos[i]; h1 < limit; h1++) {
+      for (int h1 = fixedStartOffsets[i]; h1 < limit; h1++) {
         final int b = getBucket(from + h1, k);
         final int h2 = startOffsets[b]++;
         save(from + h1, from + h2);

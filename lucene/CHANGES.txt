@@ -331,7 +331,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* LUCENE-9932: Performance improvement for BKD index building (neoremind)
 
 Bug Fixes
 ---------------------
