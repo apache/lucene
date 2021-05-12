@@ -892,7 +892,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     }
 
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+    IndexWriterConfig iwc = newIndexWriterConfig();
     iwc.setMaxBufferedDocs(TestUtil.nextInt(random(), 5, 20));
     iwc.setIndexSort(new Sort(sortFields));
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
@@ -928,7 +928,21 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     final List<String> ids = new ArrayList<>(docs.keySet());
     Collections.shuffle(ids, random());
     for (String id : ids) {
-      iw.addDocument(docs.get(id));
+      if (random().nextInt(100) < 5) {
+        // add via foreign reader
+        IndexWriterConfig otherIwc = newIndexWriterConfig();
+        otherIwc.setIndexSort(new Sort(sortFields));
+        try (Directory otherDir = newDirectory();
+            RandomIndexWriter otherIw = new RandomIndexWriter(random(), otherDir, otherIwc)) {
+          otherIw.addDocument(docs.get(id));
+          try (DirectoryReader otherReader = otherIw.getReader()) {
+            TestUtil.addIndexesSlowly(iw.w, otherReader);
+          }
+        }
+      } else {
+        // add normally
+        iw.addDocument(docs.get(id));
+      }
       addedIds.add(id);
       if (random().nextInt(100) < 5) {
         String deletingId = addedIds.remove(random().nextInt(addedIds.size()));
