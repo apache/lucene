@@ -198,7 +198,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
         byte[] value = new byte[config.packedBytesLength];
         random().nextBytes(value);
         points[i] =
-            new Point(value, isDocIdIncremental ? Math.min(i, maxDoc) : random().nextInt(maxDoc));
+            new Point(value, isDocIdIncremental ? Math.min(i, maxDoc - 1) : random().nextInt(maxDoc));
       }
       for (int i = 0; i < config.numDims; ++i) {
         commonPrefixLengths[i] = TestUtil.nextInt(random(), 0, config.bytesPerDim);
