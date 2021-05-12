@@ -231,6 +231,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private void flush(boolean force) throws IOException {
     assert triggerFlush() != force;
     numChunks++;
+    if (force) {
+      numDirtyChunks++; // incomplete: we had to force this flush
+      numDirtyDocs += numBufferedDocs;
+    }
     indexWriter.writeIndex(numBufferedDocs, fieldsStream.getFilePointer());
 
     // transform end offsets into lengths
@@ -476,8 +480,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   @Override
   public void finish(FieldInfos fis, int numDocs) throws IOException {
     if (numBufferedDocs > 0) {
-      numDirtyChunks++; // incomplete: we had to force this flush
-      numDirtyDocs += numBufferedDocs;
       flush(true);
     } else {
       assert bufferedDocs.size() == 0;
@@ -553,8 +555,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         toDocID == sub.maxDoc ? reader.getMaxPointer() : index.getStartPointer(toDocID);
     if (fromPointer < toPointer) {
       if (numBufferedDocs > 0) {
-        numDirtyChunks++; // incomplete: we had to force this flush
-        numDirtyDocs += numBufferedDocs;
         flush(true);
       }
       final IndexInput rawDocs = reader.getFieldsStream();
