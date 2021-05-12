@@ -14,12 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.miscellaneous;
+package org.apache.lucene.analysis.no;
 
 import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter;
 
-public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase {
+public class TestNorwegianNormalizationFilter extends BaseTokenStreamTestCase {
   public void testDefault() throws Exception {
     Analyzer analyzer = createAnalyzer();
 
@@ -35,7 +36,6 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
     checkOneTerm(analyzer, "blåbærsyltetøj", "blåbærsyltetøj");
     checkOneTerm(analyzer, "blaabaersyltetöj", "blåbærsyltetøj");
     checkOneTerm(analyzer, "räksmörgås", "ræksmørgås");
-    checkOneTerm(analyzer, "raeksmörgaos", "ræksmørgås");
     checkOneTerm(analyzer, "raeksmörgaas", "ræksmørgås");
     checkOneTerm(analyzer, "raeksmoergås", "ræksmørgås");
 
@@ -48,13 +48,13 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
 
     checkOneTerm(analyzer, "aa", "å");
     checkOneTerm(analyzer, "aA", "å");
-    checkOneTerm(analyzer, "ao", "å");
-    checkOneTerm(analyzer, "aO", "å");
+    checkOneTerm(analyzer, "ao", "ao");
+    checkOneTerm(analyzer, "aO", "aO");
 
     checkOneTerm(analyzer, "AA", "Å");
     checkOneTerm(analyzer, "Aa", "Å");
-    checkOneTerm(analyzer, "Ao", "Å");
-    checkOneTerm(analyzer, "AO", "Å");
+    checkOneTerm(analyzer, "Ao", "Ao");
+    checkOneTerm(analyzer, "AO", "AO");
 
     checkOneTerm(analyzer, "æ", "æ");
     checkOneTerm(analyzer, "ä", "æ");
@@ -73,14 +73,14 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
     checkOneTerm(analyzer, "Ö", "Ø");
     checkOneTerm(analyzer, "Ø", "Ø");
 
-    checkOneTerm(analyzer, "oo", "ø");
+    checkOneTerm(analyzer, "oo", "oo");
     checkOneTerm(analyzer, "oe", "ø");
-    checkOneTerm(analyzer, "oO", "ø");
+    checkOneTerm(analyzer, "oO", "oO");
     checkOneTerm(analyzer, "oE", "ø");
 
-    checkOneTerm(analyzer, "Oo", "Ø");
+    checkOneTerm(analyzer, "Oo", "Oo");
     checkOneTerm(analyzer, "Oe", "Ø");
-    checkOneTerm(analyzer, "OO", "Ø");
+    checkOneTerm(analyzer, "OO", "OO");
     checkOneTerm(analyzer, "OE", "Ø");
     analyzer.close();
   }
@@ -112,7 +112,7 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
       @Override
       protected TokenStreamComponents createComponents(String field) {
         final Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-        final TokenStream stream = new ScandinavianNormalizationFilter(tokenizer);
+        final TokenStream stream = new NorwegianNormalizationFilter(tokenizer);
         return new TokenStreamComponents(tokenizer, stream);
       }
     };

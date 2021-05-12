@@ -225,6 +225,9 @@ Improvements
 
 * LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
 
+* LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
+  it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
+
 Bug fixes
 
 

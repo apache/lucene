@@ -14,17 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.miscellaneous;
+package org.apache.lucene.analysis.no;
 
 import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
 
-public class TestScandinavianNormalizationFilterFactory extends BaseTokenStreamFactoryTestCase {
+public class TestNorwegianNormalizationFilterFactory extends BaseTokenStreamFactoryTestCase {
 
   public void testDefault() throws Exception {
     TokenStream stream = whitespaceMockTokenizer("räksmörgås_ae_oe_aa_oo_ao_AE_OE_AA_OO_AO");
-    stream = tokenFilterFactory("ScandinavianNormalization").create(stream);
-    assertTokenStreamContents(stream, new String[] {"ræksmørgås_æ_ø_å_ø_å_Æ_Ø_Å_Ø_Å"});
+    stream = tokenFilterFactory("NorwegianNormalization").create(stream);
+    assertTokenStreamContents(stream, new String[] {"ræksmørgås_æ_ø_å_oo_ao_Æ_Ø_Å_OO_AO"});
   }
 
   /** Test that bogus arguments result in exception */
@@ -33,7 +33,7 @@ public class TestScandinavianNormalizationFilterFactory extends BaseTokenStreamF
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              tokenFilterFactory("ScandinavianNormalization", "bogusArg", "bogusValue");
+              tokenFilterFactory("NorwegianNormalization", "bogusArg", "bogusValue");
             });
     assertTrue(
         "Got " + expected.getMessage(), expected.getMessage().contains("Unknown parameters"));
