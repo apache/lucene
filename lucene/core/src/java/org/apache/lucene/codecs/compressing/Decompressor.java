@@ -41,5 +41,4 @@ public abstract class Decompressor {
    */
   public abstract void decompress(
       DataInput in, int originalLength, int offset, int length, BytesRef bytes) throws IOException;
-
 }
