@@ -19,9 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Objects;
 
-/**
- * Delegates all methods to a wrapped {@link SortedNumericDocValues}.
- */
+/** Delegates all methods to a wrapped {@link SortedNumericDocValues}. */
 public abstract class FilterSortedNumericDocValues extends SortedNumericDocValues {
 
   /** Wrapped values */
@@ -33,34 +31,38 @@ public abstract class FilterSortedNumericDocValues extends SortedNumericDocValue
     this.in = in;
   }
 
+  @Override
   public boolean advanceExact(int target) throws IOException {
     return in.advanceExact(target);
   }
 
+  @Override
   public long nextValue() throws IOException {
     return in.nextValue();
   }
 
+  @Override
   public int docValueCount() {
     return in.docValueCount();
   }
 
+  @Override
   public int docID() {
     return in.docID();
   }
 
+  @Override
   public int nextDoc() throws IOException {
     return in.nextDoc();
   }
 
+  @Override
   public int advance(int target) throws IOException {
     return in.advance(target);
   }
 
+  @Override
   public long cost() {
     return in.cost();
   }
-
-  
-
 }

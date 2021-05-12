@@ -1,8 +1,11 @@
-# Gradle
-#    Ignore the generated local settings file.
+# Gradle.
+# Ignore the generated local settings file.
 /gradle.properties
 .gradle/
 build/
+
+# Ignore gradle wrapper jar.
+gradle/wrapper/gradle-wrapper.jar
 
 # IntelliJ IDEA
 /.idea/
@@ -13,7 +16,8 @@ build/
 /.project
 /.classpath
 /.settings/
-#    Eclipse Gradle oddity
+
+# Eclipse Gradle oddity
 **/bin/default/
 
 # macOS
@@ -25,3 +29,6 @@ __pycache__
 
 # Emacs backup
 *~
+
+# SDKMAN
+.sdkmanrc

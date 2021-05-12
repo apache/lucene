@@ -18,9 +18,7 @@ package org.apache.lucene.util;
 
 import org.junit.Assert;
 
-/**
- * Check large and special graphs. 
- */
+/** Check large and special graphs. */
 public class TestRamUsageTesterOnWildAnimals extends LuceneTestCase {
   public static class ListElement {
     ListElement next;
@@ -30,7 +28,7 @@ public class TestRamUsageTesterOnWildAnimals extends LuceneTestCase {
     int UPPERLIMIT = atLeast(10000);
     int lower = 0;
     int upper = UPPERLIMIT;
-    
+
     while (lower + 1 < upper) {
       int mid = (lower + upper) / 2;
       try {
@@ -41,7 +39,9 @@ public class TestRamUsageTesterOnWildAnimals extends LuceneTestCase {
         }
         RamUsageTester.sizeOf(first); // cause SOE or pass.
         lower = mid;
-      } catch (StackOverflowError e) {
+      } catch (
+          @SuppressWarnings("unused")
+          StackOverflowError e) {
         upper = mid;
       }
     }
@@ -49,5 +49,5 @@ public class TestRamUsageTesterOnWildAnimals extends LuceneTestCase {
     if (lower + 1 < UPPERLIMIT) {
       Assert.fail("Max object chain length till stack overflow: " + lower);
     }
-  }  
+  }
 }

@@ -95,13 +95,19 @@ def commonCleanups = { FileTree generatedFiles ->
       text = text.replace(
           "public  void setDebugStream(java.io.PrintStream ds) { debugStream = ds; }",
           "// (setDebugStream omitted).")
+      text = text.replace(
+          "public class QueryParserTokenManager ",
+          '@SuppressWarnings("unused") public class QueryParserTokenManager ')
+      text = text.replace(
+          "public class StandardSyntaxParserTokenManager ",
+          '@SuppressWarnings("unused") public class StandardSyntaxParserTokenManager ')
       return text
     })
   }
 }
 
 configure(project(":lucene:queryparser")) {
-  task javaccParserClassic(type: JavaCCTask) {
+  task javaccParserClassicInternal(type: JavaCCTask) {
     description "Regenerate classic query parser from lucene/queryparser/classic/QueryParser.jj"
     group "generation"
 
@@ -120,13 +126,25 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "new java.util.ArrayList<int[]>",
               "new java.util.ArrayList<>")
+          text = text.replace(
+              "final private LookaheadSuccess jj_ls =",
+              "static final private LookaheadSuccess jj_ls =")
+          text = text.replace(
+              "public class QueryParser ",
+              '@SuppressWarnings({"unused","null"}) public class QueryParser ')
+          text = text.replace(
+              "final public Query TopLevelQuery(",
+              "@Override final public Query TopLevelQuery(")
+          text = text.replace(
+              "public void ReInit(CharStream ",
+              "@Override public void ReInit(CharStream ")
           return text
         })
       }
     }
   }
 
-  task javaccParserSurround(type: JavaCCTask) {
+  task javaccParserSurroundInternal(type: JavaCCTask) {
     description "Regenerate surround query parser from lucene/queryparser/surround/parser/QueryParser.jj"
     group "generation"
 
@@ -142,14 +160,17 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "new java.util.ArrayList<int[]>",
               "new java.util.ArrayList<>")
+          text = text.replace(
+              "public class QueryParser ",
+              '@SuppressWarnings({"unused","null"}) public class QueryParser ')
           return text
         })
       }
     }
   }
 
-  task javaccParserFlexible(type: JavaCCTask) {
-    description "Regenerate Flexible query parser from queryparser/flexible/standard/parser/StandardSyntaxParser.jj"
+  task javaccParserFlexibleInternal(type: JavaCCTask) {
+    description "Regenerate flexible query parser from queryparser/flexible/standard/parser/StandardSyntaxParser.jj"
     group "generation"
 
     javaccFile = file('src/java/org/apache/lucene/queryparser/flexible/standard/parser/StandardSyntaxParser.jj')
@@ -166,42 +187,42 @@ configure(project(":lucene:queryparser")) {
           // Modify imports.
           text = text.replace(
               "package org.apache.lucene.queryparser.flexible.standard.parser;", '''\
-          package org.apache.lucene.queryparser.flexible.standard.parser;
-
-          import org.apache.lucene.queryparser.flexible.messages.*;
-          import org.apache.lucene.queryparser.flexible.core.*;
-          import org.apache.lucene.queryparser.flexible.core.messages.*;
-          ''')
+            package org.apache.lucene.queryparser.flexible.standard.parser;
+  
+            import org.apache.lucene.queryparser.flexible.messages.*;
+            import org.apache.lucene.queryparser.flexible.core.*;
+            import org.apache.lucene.queryparser.flexible.core.messages.*;
+            ''')
 
           // Modify constructors and code bits
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(Token currentTokenVal[^}]+[}]/, '''\
-          public ParseException(Token currentTokenVal,
-            int[][] expectedTokenSequencesVal, String[] tokenImageVal) 
-          {
-            super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, initialise(
-            currentTokenVal, expectedTokenSequencesVal, tokenImageVal)));
-            this.currentToken = currentTokenVal;
-            this.expectedTokenSequences = expectedTokenSequencesVal;
-            this.tokenImage = tokenImageVal;
-          }
-          ''')
+            public ParseException(Token currentTokenVal,
+              int[][] expectedTokenSequencesVal, String[] tokenImageVal) 
+            {
+              super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, initialise(
+              currentTokenVal, expectedTokenSequencesVal, tokenImageVal)));
+              this.currentToken = currentTokenVal;
+              this.expectedTokenSequences = expectedTokenSequencesVal;
+              this.tokenImage = tokenImageVal;
+            }
+            ''')
 
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(String message\)[^}]+[}]/, '''\
-          public ParseException(Message message) 
-          {
-            super(message);
-          }
-          ''')
+            public ParseException(Message message) 
+            {
+              super(message);
+            }
+            ''')
 
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(\)[^}]+[}]/, '''\
-          public ParseException() 
-          {
-            super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, "Error"));
-          }
-          ''')
+            public ParseException() 
+            {
+              super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, "Error"));
+            }
+            ''')
           return text
         })
       }
@@ -218,6 +239,9 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "Collections.<QueryNode> singletonList",
               "Collections.singletonList")
+          text = text.replace(
+              "public class StandardSyntaxParser ",
+              '@SuppressWarnings({"unused","null"}) public class StandardSyntaxParser ')
           return text
         })
       }
@@ -228,54 +252,40 @@ configure(project(":lucene:queryparser")) {
     description "Regenerate query parsers (javacc syntax definitions)."
     group "generation"
 
-    dependsOn javaccParserClassic
-    dependsOn javaccParserSurround
-    dependsOn javaccParserFlexible
+    dependsOn wrapWithPersistentChecksums(javaccParserClassicInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+        wrapWithPersistentChecksums(javaccParserSurroundInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+        wrapWithPersistentChecksums(javaccParserFlexibleInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
   }
+
+  regenerate.dependsOn javacc
 }
-
-configure(project(":solr:core")) {
-  task javacc(type: JavaCCTask) {
-    description "Regenerate Solr query parser"
-    group "generation"
-
-    javaccFile = file('src/java/org/apache/solr/parser/QueryParser.jj')
-
-
-    afterGenerate << commonCleanups
-    afterGenerate << { FileTree generatedFiles ->
-      generatedFiles.matching { include "QueryParser.java" }.each { file ->
-        modifyFile(file, { text ->
-          text = text.replace(
-              "public QueryParser(CharStream ",
-              "protected QueryParser(CharStream ")
-          text = text.replace(
-              "public QueryParser(QueryParserTokenManager ",
-              "protected QueryParser(QueryParserTokenManager ")
-          text = text.replace(
-              "final private LookaheadSuccess jj_ls =",
-              "static final private LookaheadSuccess jj_ls =")
-          return text
-        })
-      }
-    }
-  }
-}
-
-
 
 // We always regenerate, no need to declare outputs.
 class JavaCCTask extends DefaultTask {
-  @Input
+  @InputFile
   File javaccFile
 
   /**
    * Apply closures to all generated files before they're copied back
    * to mainline code.
    */
-  @Optional
-  @Input
   List<Closure<FileTree>> afterGenerate = new ArrayList<>()
+
+  @OutputFiles
+  List<File> getGeneratedSources() {
+    // Return the list of generated files.
+    def baseDir = javaccFile.parentFile
+    def baseName = javaccFile.name.replace(".jj", "")
+
+    return [
+        project.file("${baseDir}/${baseName}.java"),
+        project.file("${baseDir}/${baseName}Constants.java"),
+        project.file("${baseDir}/${baseName}TokenManager.java"),
+        project.file("${baseDir}/ParseException.java"),
+        project.file("${baseDir}/Token.java"),
+        project.file("${baseDir}/TokenMgrError.java")
+    ]
+  }
 
   JavaCCTask() {
     dependsOn(project.rootProject.configurations.javacc)
@@ -294,7 +304,7 @@ class JavaCCTask extends DefaultTask {
     project.delete project.fileTree(tempDir, { include: "**/*.java" })
 
     def targetDir = javaccFile.parentFile
-    logger.lifecycle("Regenerating JavaCC:\n  from: ${javaccFile}\n    to: ${targetDir}")
+    logger.lifecycle("Recompiling JavaCC: ${project.rootDir.relativePath(javaccFile)}")
 
     def output = new ByteArrayOutputStream()
     def result = project.javaexec {

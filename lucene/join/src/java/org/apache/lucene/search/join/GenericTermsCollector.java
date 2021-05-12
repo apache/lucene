@@ -18,9 +18,8 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.io.PrintStream;
-
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.LeafCollector;
@@ -31,29 +30,33 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 interface GenericTermsCollector extends Collector {
-  
-  BytesRefHash getCollectedTerms() ;
-  
+
+  BytesRefHash getCollectedTerms();
+
   float[] getScoresPerTerm();
-  
-  static GenericTermsCollector createCollectorMV(Function<SortedSetDocValues> mvFunction,
-      ScoreMode mode) {
-    
+
+  static GenericTermsCollector createCollectorMV(
+      Function<SortedSetDocValues> mvFunction, ScoreMode mode) {
+
     switch (mode) {
       case None:
         return wrap(new TermsCollector.MV(mvFunction));
       case Avg:
         return new MV.Avg(mvFunction);
+      case Max:
+      case Min:
+      case Total:
       default:
         return new MV(mvFunction, mode);
     }
   }
 
-  static Function<SortedSetDocValues> verbose(PrintStream out, Function<SortedSetDocValues> mvFunction){
+  static Function<SortedSetDocValues> verbose(
+      PrintStream out, Function<SortedSetDocValues> mvFunction) {
     return (ctx) -> {
       final SortedSetDocValues target = mvFunction.apply(ctx);
       return new SortedSetDocValues() {
-        
+
         @Override
         public int docID() {
           return target.docID();
@@ -62,21 +65,21 @@ interface GenericTermsCollector extends Collector {
         @Override
         public int nextDoc() throws IOException {
           int docID = target.nextDoc();
-          out.println("\nnextDoc doc# "+docID);
+          out.println("\nnextDoc doc# " + docID);
           return docID;
         }
 
         @Override
         public int advance(int dest) throws IOException {
           int docID = target.advance(dest);
-          out.println("\nadvance(" + dest + ") -> doc# "+docID);
+          out.println("\nadvance(" + dest + ") -> doc# " + docID);
           return docID;
         }
 
         @Override
         public boolean advanceExact(int dest) throws IOException {
           boolean exists = target.advanceExact(dest);
-          out.println("\nadvanceExact(" + dest + ") -> exists# "+exists);
+          out.println("\nadvanceExact(" + dest + ") -> exists# " + exists);
           return exists;
         }
 
@@ -84,45 +87,46 @@ interface GenericTermsCollector extends Collector {
         public long cost() {
           return target.cost();
         }
-        
+
         @Override
         public long nextOrd() throws IOException {
           return target.nextOrd();
         }
-        
+
         @Override
         public BytesRef lookupOrd(long ord) throws IOException {
           final BytesRef val = target.lookupOrd(ord);
-          out.println(val.toString()+", ");
+          out.println(val.toString() + ", ");
           return val;
         }
-        
+
         @Override
         public long getValueCount() {
           return target.getValueCount();
         }
       };
-      
     };
   }
 
-  static GenericTermsCollector createCollectorSV(Function<BinaryDocValues> svFunction,
-      ScoreMode mode) {
-    
+  static GenericTermsCollector createCollectorSV(
+      Function<SortedDocValues> svFunction, ScoreMode mode) {
+
     switch (mode) {
       case None:
         return wrap(new TermsCollector.SV(svFunction));
       case Avg:
         return new SV.Avg(svFunction);
+      case Max:
+      case Min:
+      case Total:
       default:
-        return new SV(svFunction, mode);  
+        return new SV(svFunction, mode);
     }
   }
-  
+
   static GenericTermsCollector wrap(final TermsCollector<?> collector) {
     return new GenericTermsCollector() {
 
-      
       @Override
       public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
         return collector.getLeafCollector(context);
@@ -140,7 +144,7 @@ interface GenericTermsCollector extends Collector {
 
       @Override
       public float[] getScoresPerTerm() {
-        throw new UnsupportedOperationException("scores are not available for "+collector);
+        throw new UnsupportedOperationException("scores are not available for " + collector);
       }
     };
   }

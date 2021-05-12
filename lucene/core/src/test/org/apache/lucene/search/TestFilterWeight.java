@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-
 import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
@@ -31,19 +30,28 @@ public class TestFilterWeight extends LuceneTestCase {
     implTestDeclaredMethodsOverridden(subClass.getSuperclass(), subClass);
   }
 
-  private void implTestDeclaredMethodsOverridden(Class<?> superClass, Class<?> subClass) throws Exception {
+  private void implTestDeclaredMethodsOverridden(Class<?> superClass, Class<?> subClass)
+      throws Exception {
     for (final Method superClassMethod : superClass.getDeclaredMethods()) {
       final int modifiers = superClassMethod.getModifiers();
       if (Modifier.isFinal(modifiers)) continue;
       if (Modifier.isStatic(modifiers)) continue;
       if (Arrays.asList("bulkScorer", "scorerSupplier").contains(superClassMethod.getName())) {
         try {
-          final Method subClassMethod = subClass.getDeclaredMethod(
-              superClassMethod.getName(),
-              superClassMethod.getParameterTypes());
-          fail(subClass + " must not override\n'" + superClassMethod + "'"
-              + " but it does override\n'" + subClassMethod + "'");
-        } catch (NoSuchMethodException e) {
+          final Method subClassMethod =
+              subClass.getDeclaredMethod(
+                  superClassMethod.getName(), superClassMethod.getParameterTypes());
+          fail(
+              subClass
+                  + " must not override\n'"
+                  + superClassMethod
+                  + "'"
+                  + " but it does override\n'"
+                  + subClassMethod
+                  + "'");
+        } catch (
+            @SuppressWarnings("unused")
+            NoSuchMethodException e) {
           /* FilterWeight must not override the bulkScorer method
            * since as of July 2016 not all deriving classes use the
            * {code}return in.bulkScorer(content);{code}
@@ -53,16 +61,18 @@ public class TestFilterWeight extends LuceneTestCase {
         }
       }
       try {
-        final Method subClassMethod = subClass.getDeclaredMethod(
-            superClassMethod.getName(),
-            superClassMethod.getParameterTypes());
-        assertEquals("getReturnType() difference",
+        final Method subClassMethod =
+            subClass.getDeclaredMethod(
+                superClassMethod.getName(), superClassMethod.getParameterTypes());
+        assertEquals(
+            "getReturnType() difference",
             superClassMethod.getReturnType(),
             subClassMethod.getReturnType());
-      } catch (NoSuchMethodException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          NoSuchMethodException e) {
         fail(subClass + " needs to override '" + superClassMethod + "'");
       }
     }
   }
-
 }

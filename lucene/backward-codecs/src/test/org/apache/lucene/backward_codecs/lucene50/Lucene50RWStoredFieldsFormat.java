@@ -17,16 +17,15 @@
 package org.apache.lucene.backward_codecs.lucene50;
 
 import java.io.IOException;
-
-import org.apache.lucene.backward_codecs.lucene50.Lucene50StoredFieldsFormat;
+import org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50RWCompressingStoredFieldsFormat;
+import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsWriter;
+import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 
-/**
- * RW impersonation of Lucene50StoredFieldsFormat.
- */
+/** RW impersonation of Lucene50StoredFieldsFormat. */
 public final class Lucene50RWStoredFieldsFormat extends Lucene50StoredFieldsFormat {
 
   /** No-argument constructor. */
@@ -40,13 +39,34 @@ public final class Lucene50RWStoredFieldsFormat extends Lucene50StoredFieldsForm
   }
 
   @Override
-  public StoredFieldsWriter fieldsWriter(Directory directory, SegmentInfo si, IOContext context) throws IOException {
+  public StoredFieldsWriter fieldsWriter(Directory directory, SegmentInfo si, IOContext context)
+      throws IOException {
     String previous = si.putAttribute(MODE_KEY, mode.name());
     if (previous != null && previous.equals(mode.name()) == false) {
-      throw new IllegalStateException("found existing value for " + MODE_KEY + " for segment: " + si.name +
-          "old=" + previous + ", new=" + mode.name());
+      throw new IllegalStateException(
+          "found existing value for "
+              + MODE_KEY
+              + " for segment: "
+              + si.name
+              + "old="
+              + previous
+              + ", new="
+              + mode.name());
     }
     return impl(mode).fieldsWriter(directory, si, context);
   }
 
+  @Override
+  StoredFieldsFormat impl(Mode mode) {
+    switch (mode) {
+      case BEST_SPEED:
+        return new Lucene50RWCompressingStoredFieldsFormat(
+            "Lucene50StoredFieldsFastData", CompressionMode.FAST, 1 << 14, 128, 10);
+      case BEST_COMPRESSION:
+        return new Lucene50RWCompressingStoredFieldsFormat(
+            "Lucene50StoredFieldsHighData", CompressionMode.HIGH_COMPRESSION, 61440, 512, 10);
+      default:
+        throw new AssertionError();
+    }
+  }
 }

@@ -17,12 +17,12 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
+  @Override
   public MergePolicy mergePolicy() {
     return newLogMergePolicy(random());
   }

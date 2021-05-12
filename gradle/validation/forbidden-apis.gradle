@@ -69,10 +69,12 @@ allprojects { prj ->
       suppressAnnotations += [
           "**.SuppressForbidden"
       ]
+
+      doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
     }
 
     // Configure defaults for sourceSets.test
-    forbiddenApisTest {
+    tasks.matching { it.name in ["forbiddenApisTest", "forbiddenApisTestFixtures"] }.all {
       bundledSignatures += [
           'jdk-unsafe',
           'jdk-deprecated',
@@ -87,41 +89,30 @@ allprojects { prj ->
       suppressAnnotations += [
           "**.SuppressForbidden"
       ]
-    }
 
-    // Disable sysout signatures for these projects.
-    if (prj.path in [
-        ":lucene:demo",
-        ":lucene:benchmark",
-        ":lucene:test-framework",
-        ":solr:solr-ref-guide",
-        ":solr:test-framework"
-    ]) {
-      forbiddenApisMain.bundledSignatures -= [
-          'jdk-system-out'
-      ]
-    }
-
-    // Configure lucene-specific rules.
-    if (prj.path.startsWith(":lucene")) {
-      forbiddenApisMain {
-        doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
-      }
-
-      forbiddenApisTest {
+      if (it.name == "forbiddenApisTestFixtures") {
+        doFirst dynamicSignatures.curry(configurations.testFixturesCompileClasspath, "lucene")
+      } else {
         doFirst dynamicSignatures.curry(configurations.testCompileClasspath, "lucene")
       }
     }
 
-    // Configure solr-specific rules.
-    if (prj.path.startsWith(":solr")) {
-      forbiddenApisMain {
-        doFirst dynamicSignatures.curry(configurations.compileClasspath, "solr")
-      }
+    // Configure defaults for sourceSets.tools (if present).
+    tasks.matching { it.name == "forbiddenApisTools" }.all {
+      bundledSignatures += [
+          'jdk-unsafe',
+          'jdk-deprecated',
+          'jdk-non-portable',
+          'jdk-reflection',
+      ]
 
-      forbiddenApisTest {
-        doFirst dynamicSignatures.curry(configurations.testCompileClasspath, "solr")
-      }
+      suppressAnnotations += [
+          "**.SuppressForbidden"
+      ]
+
+      doFirst dynamicSignatures.curry(configurations.toolsCompileClasspath, "lucene")
+
+      inputs.dir(file(resources))
     }
 
     // We rely on resolved configurations to compute the relevant set of rule
@@ -131,8 +122,19 @@ allprojects { prj ->
     //
     // This is the simplest workaround possible: just point at all the rule files and indicate
     // them as inputs. This way if a rule is modified, checks will be reapplied.
-    configure([forbiddenApisMain, forbiddenApisTest]) { task ->
+    configure(tasks.matching { it.name.startsWith("forbiddenApis") }) { task ->
       task.inputs.dir(file(resources))
+    }
+
+    // Disable sysout signatures for these projects.
+    if (prj.path in [
+        ":lucene:demo",
+        ":lucene:benchmark",
+        ":lucene:test-framework"
+    ]) {
+      forbiddenApisMain.bundledSignatures -= [
+          'jdk-system-out'
+      ]
     }
   })
 }

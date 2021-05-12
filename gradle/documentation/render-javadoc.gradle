@@ -46,7 +46,7 @@ allprojects {
     }
 
     task renderJavadoc(type: RenderJavadocTask) {
-      description "Generates Javadoc API documentation for the main source code. This directly invokes javadoc tool."
+      description "Generates Javadoc API documentation for each module. This directly invokes javadoc tool."
       group "documentation"
 
       taskResources = resources
@@ -82,12 +82,14 @@ def javaJavadocPackages = rootProject.file("${resources}/java11/")
 def junitJavadocPackages = rootProject.file("${resources}/junit/")
 allprojects {
   project.tasks.withType(RenderJavadocTask) {
-    title = "${project.path.startsWith(':lucene') ? 'Lucene' : 'Solr'} ${project.version} ${project.name} API"
+    title = "Lucene ${project.version} ${project.name} API"
 
     offlineLinks += [
         "https://docs.oracle.com/en/java/javase/11/docs/api/": javaJavadocPackages,
         "https://junit.org/junit4/javadoc/4.12/": junitJavadocPackages
     ]
+
+    luceneDocUrl = provider({ rootProject.luceneDocUrl })
 
     // Set up custom doclet.
     dependsOn configurations.missingdoclet
@@ -96,12 +98,10 @@ allprojects {
 }
 
 // Configure project-specific tweaks and to-dos.
-
 configure(project(":lucene:analysis:common")) {
   project.tasks.withType(RenderJavadocTask) {
     // TODO: fix missing javadocs
     javadocMissingLevel = "class"
-    javadocMissingIgnore = [ "org.apache.lucene.analysis.classic", "org.apache.lucene.analysis.email" ]
   }
 }
 
@@ -120,7 +120,7 @@ configure([
     project(":lucene:queryparser"),
     project(":lucene:replicator"),
     project(":lucene:spatial-extras"),
-  ]) {
+]) {
   project.tasks.withType(RenderJavadocTask) {
     // TODO: fix missing javadocs
     javadocMissingLevel = "class"
@@ -139,7 +139,7 @@ configure([
     project(":lucene:join"),
     project(":lucene:spatial3d"),
     project(":lucene:suggest"),
-  ]) {
+]) {
   project.tasks.withType(RenderJavadocTask) {
     // TODO: fix missing @param tags
     javadocMissingLevel = "method"
@@ -150,16 +150,6 @@ configure(project(":lucene:backward-codecs")) {
   project.tasks.withType(RenderJavadocTask) {
     // TODO: fix missing @param tags
     javadocMissingLevel = "method"
-    // TODO: fix missing javadocs
-    javadocMissingIgnore = [
-        "org.apache.lucene.backward_codecs",
-        "org.apache.lucene.backward_codecs.lucene50",
-        "org.apache.lucene.backward_codecs.lucene60",
-        "org.apache.lucene.backward_codecs.lucene80",
-        "org.apache.lucene.backward_codecs.lucene84",
-        "org.apache.lucene.backward_codecs.lucene86",
-        "org.apache.lucene.backward_codecs.lucene87"
-    ]
   }
 }
 
@@ -194,11 +184,6 @@ configure(project(":lucene:sandbox")) {
   project.tasks.withType(RenderJavadocTask) {
     // TODO: fix missing javadocs
     javadocMissingLevel = "class"
-    // TODO: clean up split packages
-    javadocMissingIgnore = [
-        "org.apache.lucene.search",
-        "org.apache.lucene.document"
-    ]
   }
 }
 
@@ -206,16 +191,6 @@ configure(project(":lucene:misc")) {
   project.tasks.withType(RenderJavadocTask) {
     // TODO: fix missing javadocs
     javadocMissingLevel = "class"
-    // TODO: clean up split packages
-    javadocMissingIgnore = [
-        "org.apache.lucene.search",
-        "org.apache.lucene.search.similarity",
-        "org.apache.lucene.util",
-        "org.apache.lucene.util.fst",
-        "org.apache.lucene.store",
-        "org.apache.lucene.document",
-        "org.apache.lucene.index"
-    ]
   }
 }
 
@@ -243,67 +218,11 @@ configure(project(":lucene:core")) {
   }
 }
 
-configure(project(":solr").allprojects) {
-  project.tasks.withType(RenderJavadocTask) {
-    // TODO: fix missing javadocs
-    javadocMissingLevel = "package"
-  }
-}
-
-configure(project(":solr:contrib:analysis-extras")) {
-  project.tasks.withType(RenderJavadocTask) {
-    // TODO: clean up split packages
-    javadocMissingIgnore = [
-        "org.apache.solr.schema",
-        "org.apache.solr.update.processor"
-    ]
-  }
-}
-
-configure(project(":solr:contrib:analytics")) {
-  project.tasks.withType(RenderJavadocTask) {
-    // TODO: clean up split packages
-    javadocMissingIgnore = [
-        "org.apache.solr.handler",
-        "org.apache.solr.handler.component",
-        "org.apache.solr.response"
-    ]
-  }
-}
-
-configure(project(":solr:contrib:langid")) {
-  project.tasks.withType(RenderJavadocTask) {
-    // TODO: clean up split packages
-    javadocMissingIgnore = [ "org.apache.solr.update.processor" ]
-  }
-}
-
-configure(project(":solr:solrj")) {
-  project.tasks.withType(RenderJavadocTask) {
-    // TODO: clean up split packages
-    javadocMissingIgnore = [ "org.apache.solr.client.solrj.embedded" ]
-  }
-}
-
-configure(project(":solr:test-framework")) {
-  project.tasks.withType(RenderJavadocTask) {
-    // TODO: clean up split packages
-    javadocMissingIgnore = [
-        "org.apache.solr",
-        "org.apache.solr.analysis",
-        "org.apache.solr.cloud",
-        "org.apache.solr.core",
-        "org.apache.solr.handler.component",
-        "org.apache.solr.update.processor",
-        "org.apache.solr.util"
-    ]
-  }
-}
-
 // Fix for Java 11 Javadoc tool that cannot handle split packages between modules correctly.
 // (by removing all the packages which are part of lucene-core)
 // See: https://issues.apache.org/jira/browse/LUCENE-8738?focusedCommentId=16818106&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-16818106
-configure(subprojects.findAll { it.path.startsWith(':lucene') && it.path != ':lucene:core' }) {
+// LUCENE-9499: This workaround should be applied only to test-framework (we have no split package in other modules).
+configure(project(":lucene:test-framework")) {
   project.tasks.withType(RenderJavadocTask) {
     doLast {
       Set luceneCorePackages = file("${project(':lucene:core').tasks[name].outputDir}/element-list").readLines('UTF-8').toSet();
@@ -322,18 +241,8 @@ configure(project(':lucene:demo')) {
   }
 }
 
-// Disable Javadoc rendering for these projects.
-configure(subprojects.findAll { it.path in [
-    ':solr:solr-ref-guide',
-    ':solr:server',
-    ':solr:webapp']}) {
-  project.tasks.withType(RenderJavadocTask) {
-    enabled = false
-  }
-}
-
 // Add cross-project documentation task dependencies:
-// - each RenderJavaDocs task gets a dependency to all tasks with same name in its dependencies
+// - each RenderJavaDocs task gets a dependency to all tasks with the same name in its dependencies
 // - the dependency is using dependsOn with a closure to enable lazy evaluation
 configure(subprojects) {
   project.tasks.withType(RenderJavadocTask) { task ->
@@ -344,6 +253,10 @@ configure(subprojects) {
       }
     }
   }
+}
+
+configure(project(':lucene:luke')) {
+  project.tasks.matching { it.name == 'renderSiteJavadoc' }.configureEach { it.enabled = false }
 }
 
 class RenderJavadocTask extends DefaultTask {
@@ -373,10 +286,8 @@ class RenderJavadocTask extends DefaultTask {
   def offlineLinks = [:]
 
   @Input
-  def luceneDocUrl = "${->project.luceneDocUrl}"
-
-  @Input
-  def solrDocUrl = "${->project.solrDocUrl}"
+  @Optional
+  Property<String> luceneDocUrl = project.objects.property(String)
 
   // default is to require full javadocs
   @Input
@@ -390,6 +301,9 @@ class RenderJavadocTask extends DefaultTask {
   @Input
   List<String> javadocMissingIgnore = []
 
+  @Input
+  @Optional
+  ListProperty<String> extraOpts = project.objects.listProperty(String)
 
   @Nullable
   @Optional
@@ -459,6 +373,9 @@ class RenderJavadocTask extends DefaultTask {
 
     opts << [ '-quiet' ]
 
+    // Add all extra options, if any.
+    opts.addAll(extraOpts.orElse([]).get())
+
     def allOfflineLinks = [:]
     allOfflineLinks.putAll(offlineLinks)
 
@@ -469,26 +386,25 @@ class RenderJavadocTask extends DefaultTask {
     // NOTE: explicitly exclude solr/test-framework, or attempting to link to lucene-test-framework because if we did javadoc would
     // attempt to link class refs in in org.apache.lucene, causing broken links. (either broken links to things like "Directory" if
     // lucene-test-framework was first, or broken links to things like LuceneTestCase if lucene-core was first)
-    if (project.path != ':solr:test-framework') {  //
-      findRenderTasksInDependencies()
+    findRenderTasksInDependencies()
         .sort(false, Comparator.comparing { (it.project.name != 'core') as Boolean }.thenComparing(Comparator.comparing { it.path }))
         .each { otherTask ->
           def otherProject = otherTask.project
           // For relative links we compute the actual relative link between projects.
-          def crossLuceneSolr = (otherProject.docroot != project.docroot)
-          if (relativeProjectLinks && !crossLuceneSolr) {
+          if (relativeProjectLinks) {
             def pathTo = otherTask.outputDir.toPath().toAbsolutePath()
             def pathFrom = outputDir.toPath().toAbsolutePath()
             def relative = pathFrom.relativize(pathTo).toString().replace(File.separator, '/')
             opts << ['-link', relative]
           } else {
-            // For absolute links, we determine the target URL by assembling the full URL.
-            def base = otherProject.path.startsWith(":lucene") ? luceneDocUrl : solrDocUrl
-            allOfflineLinks.put("${base}/${otherProject.relativeDocPath}/".toString(), otherTask.outputDir)
+            // For absolute links, we determine the target URL by assembling the full URL (if base is available).
+            def value = luceneDocUrl.getOrElse(null)
+            if (value) {
+              allOfflineLinks.put("${value}/${otherProject.relativeDocPath}/".toString(), otherTask.outputDir)
+            }
           }
         }
-    }
-    
+
     // Add offline links.
     allOfflineLinks.each { url, dir ->
       // Some sanity check/ validation here to ensure dir/package-list or dir/element-list is present.
@@ -496,13 +412,23 @@ class RenderJavadocTask extends DefaultTask {
           !project.file("$dir/element-list").exists()) {
         throw new GradleException("Expected pre-rendered package-list or element-list at ${dir}.")
       }
+      logger.info("Linking ${url} to ${dir}")
       opts << [ '-linkoffline', url, dir ]
     }
 
     opts << [ '--release', 11 ]
     opts << '-Xdoclint:all,-missing'
 
-    // Temporary file that holds all javadoc options for the current task.
+    // Increase Javadoc's heap.
+    opts += [ "-J-Xmx512m" ]
+    // Force locale to be "en_US" (fix for: https://bugs.openjdk.java.net/browse/JDK-8222793)
+    opts += [ "-J-Duser.language=en", "-J-Duser.country=US" ]
+
+    // -J options have to be passed on command line, they are not interpreted if passed via args file.
+    def jOpts = opts.findAll { opt -> opt instanceof String && opt.startsWith("-J") }
+    opts.removeAll(jOpts)
+
+    // Temporary file that holds all javadoc options for the current task (except jOpts)
     optionsFile.withWriter("UTF-8", { writer ->
       // escapes an option with single quotes or whitespace to be passed in the options.txt file for
       def escapeJavadocOption = { String s -> (s =~ /[ '"]/) ? ("'" + s.replaceAll(/[\\'"]/, /\\$0/) + "'") : s }
@@ -529,38 +455,11 @@ class RenderJavadocTask extends DefaultTask {
 
     logger.info("Javadoc executable used: ${javadocCmd}")
 
-    def outputFile = project.file("${getTemporaryDir()}/javadoc-output.txt")
-    def result
-    outputFile.withOutputStream { output ->
-      result = project.exec {
+    project.quietExec {
         executable javadocCmd
 
-        standardOutput = output
-        errorOutput = output
-
         args += [ "@${optionsFile}" ]
-
-        // -J flags can't be passed via options file... (an error "javadoc: error - invalid flag: -J-Xmx512m" occurs.)
-        args += [ "-J-Xmx512m" ]
-        // force locale to be "en_US" (fix for: https://bugs.openjdk.java.net/browse/JDK-8222793)
-        args += [ "-J-Duser.language=en", "-J-Duser.country=US" ]
-
-        ignoreExitValue true
-      }
-    }
-
-    if (result.getExitValue() != 0) {
-      // Pipe the output to console. Intentionally skips any encoding conversion 
-      // and pumps raw bytes.
-      System.out.write(outputFile.bytes)
-
-      def cause
-      try {
-        result.rethrowFailure()
-      } catch (ex) {
-        cause = ex
-      }
-      throw new GradleException("Javadoc generation failed for ${project.path},\n  Options file at: ${optionsFile}\n  Command output at: ${outputFile}", cause)
+        args += jOpts
     }
 
     // append some special table css, prettify css

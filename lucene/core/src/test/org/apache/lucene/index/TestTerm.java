@@ -16,11 +16,11 @@
  */
 package org.apache.lucene.index;
 
-
 import org.apache.lucene.util.LuceneTestCase;
 
 public class TestTerm extends LuceneTestCase {
 
+  @SuppressWarnings("unlikely-arg-type")
   public void testEquals() {
     final Term base = new Term("same", "same");
     final Term same = new Term("same", "same");

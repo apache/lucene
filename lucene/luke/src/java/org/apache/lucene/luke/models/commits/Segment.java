@@ -18,12 +18,9 @@
 package org.apache.lucene.luke.models.commits;
 
 import java.io.IOException;
-
 import org.apache.lucene.index.SegmentCommitInfo;
 
-/**
- * Holder for a segment.
- */
+/** Holder for a segment. */
 public final class Segment {
 
   private String name;
@@ -52,7 +49,9 @@ public final class Segment {
     segment.codecName = segInfo.info.getCodec().getName();
     try {
       segment.displaySize = CommitsImpl.toDisplaySize(segInfo.sizeInBytes());
-    } catch (IOException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
     }
     segment.useCompoundFile = segInfo.info.getUseCompoundFile();
     return segment;
@@ -90,6 +89,5 @@ public final class Segment {
     return useCompoundFile;
   }
 
-  private Segment() {
-  }
+  private Segment() {}
 }

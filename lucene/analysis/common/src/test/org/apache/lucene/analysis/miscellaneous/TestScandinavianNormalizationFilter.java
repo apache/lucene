@@ -16,37 +16,12 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 
 public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase {
-  private Analyzer analyzer;
-  
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    analyzer = new Analyzer() {
-      @Override
-      protected TokenStreamComponents createComponents(String field) {
-        final Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-        final TokenStream stream = new ScandinavianNormalizationFilter(tokenizer);
-        return new TokenStreamComponents(tokenizer, stream);
-      }
-    };
-  }
-  
-  @Override
-  public void tearDown() throws Exception {
-    analyzer.close();
-    super.tearDown();
-  }
-
-  public void test() throws Exception {
+  public void testDefault() throws Exception {
+    Analyzer analyzer = createAnalyzer();
 
     checkOneTerm(analyzer, "aeäaeeea", "æææeea"); // should not cause ArrayIndexOutOfBoundsException
 
@@ -57,14 +32,12 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
     checkOneTerm(analyzer, "bOEen", "bØen");
     checkOneTerm(analyzer, "åene", "åene");
 
-
     checkOneTerm(analyzer, "blåbærsyltetøj", "blåbærsyltetøj");
     checkOneTerm(analyzer, "blaabaersyltetöj", "blåbærsyltetøj");
     checkOneTerm(analyzer, "räksmörgås", "ræksmørgås");
     checkOneTerm(analyzer, "raeksmörgaos", "ræksmørgås");
     checkOneTerm(analyzer, "raeksmörgaas", "ræksmørgås");
     checkOneTerm(analyzer, "raeksmoergås", "ræksmørgås");
-
 
     checkOneTerm(analyzer, "ab", "ab");
     checkOneTerm(analyzer, "ob", "ob");
@@ -95,12 +68,10 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
     checkOneTerm(analyzer, "Ae", "Æ");
     checkOneTerm(analyzer, "AE", "Æ");
 
-
     checkOneTerm(analyzer, "ö", "ø");
     checkOneTerm(analyzer, "ø", "ø");
     checkOneTerm(analyzer, "Ö", "Ø");
     checkOneTerm(analyzer, "Ø", "Ø");
-
 
     checkOneTerm(analyzer, "oo", "ø");
     checkOneTerm(analyzer, "oe", "ø");
@@ -111,23 +82,39 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
     checkOneTerm(analyzer, "Oe", "Ø");
     checkOneTerm(analyzer, "OO", "Ø");
     checkOneTerm(analyzer, "OE", "Ø");
+    analyzer.close();
   }
-  
+
   /** check that the empty string doesn't cause issues */
   public void testEmptyTerm() throws Exception {
-    Analyzer a = new Analyzer() {
-      @Override
-      protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new KeywordTokenizer();
-        return new TokenStreamComponents(tokenizer, new ScandinavianNormalizationFilter(tokenizer));
-      } 
-    };
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new KeywordTokenizer();
+            return new TokenStreamComponents(
+                tokenizer, new ScandinavianNormalizationFilter(tokenizer));
+          }
+        };
     checkOneTerm(a, "", "");
     a.close();
   }
-  
+
   /** blast some random strings through the analyzer */
   public void testRandomData() throws Exception {
+    Analyzer analyzer = createAnalyzer();
     checkRandomData(random(), analyzer, 200 * RANDOM_MULTIPLIER);
+    analyzer.close();
+  }
+
+  private Analyzer createAnalyzer() {
+    return new Analyzer() {
+      @Override
+      protected TokenStreamComponents createComponents(String field) {
+        final Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+        final TokenStream stream = new ScandinavianNormalizationFilter(tokenizer);
+        return new TokenStreamComponents(tokenizer, stream);
+      }
+    };
   }
 }

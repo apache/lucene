@@ -16,18 +16,17 @@
  */
 package org.apache.lucene.index;
 
-
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.junit.Test;
 
 public class TestNoMergePolicy extends BaseMergePolicyTestCase {
 
+  @Override
   public MergePolicy mergePolicy() {
     return NoMergePolicy.INSTANCE;
   }
@@ -35,7 +34,7 @@ public class TestNoMergePolicy extends BaseMergePolicyTestCase {
   @Test
   public void testNoMergePolicy() throws Exception {
     MergePolicy mp = mergePolicy();
-    assertNull(mp.findMerges(null, (SegmentInfos)null, null));
+    assertNull(mp.findMerges(null, (SegmentInfos) null, null));
     assertNull(mp.findForcedMerges(null, 0, null, null));
     assertNull(mp.findForcedDeletesMerges(null, null));
   }
@@ -45,7 +44,8 @@ public class TestNoMergePolicy extends BaseMergePolicyTestCase {
     assertTrue(Modifier.isFinal(NoMergePolicy.class.getModifiers()));
     Constructor<?>[] ctors = NoMergePolicy.class.getDeclaredConstructors();
     assertEquals("expected 1 private ctor only: " + Arrays.toString(ctors), 1, ctors.length);
-    assertTrue("that 1 should be private: " + ctors[0], Modifier.isPrivate(ctors[0].getModifiers()));
+    assertTrue(
+        "that 1 should be private: " + ctors[0], Modifier.isPrivate(ctors[0].getModifiers()));
   }
 
   @Test

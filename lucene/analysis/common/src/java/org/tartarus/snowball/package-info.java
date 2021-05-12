@@ -15,7 +15,5 @@
  * limitations under the License.
  */
 
-/**
- * Snowball stemmer API
- */
+/** Snowball stemmer API */
 package org.tartarus.snowball;

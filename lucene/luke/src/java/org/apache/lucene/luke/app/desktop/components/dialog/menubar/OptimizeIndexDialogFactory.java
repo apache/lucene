@@ -17,6 +17,17 @@
 
 package org.apache.lucene.luke.app.desktop.components.dialog.menubar;
 
+import java.awt.BorderLayout;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -30,20 +41,6 @@ import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingWorker;
-import java.awt.BorderLayout;
-import java.awt.Dialog;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
-import java.awt.Insets;
-import java.awt.Window;
-import java.awt.event.ActionEvent;
-import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.luke.app.IndexHandler;
 import org.apache.lucene.luke.app.IndexObserver;
 import org.apache.lucene.luke.app.LukeState;
@@ -57,13 +54,10 @@ import org.apache.lucene.luke.app.desktop.util.StyleConstants;
 import org.apache.lucene.luke.app.desktop.util.TextAreaPrintStream;
 import org.apache.lucene.luke.models.tools.IndexTools;
 import org.apache.lucene.luke.models.tools.IndexToolsFactory;
-import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.util.NamedThreadFactory;
 
 /** Factory of optimize index dialog */
 public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFactory {
-
-  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static OptimizeIndexDialogFactory instance;
 
@@ -89,7 +83,7 @@ public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFact
 
   private IndexTools toolsModel;
 
-  public synchronized static OptimizeIndexDialogFactory getInstance() throws IOException {
+  public static synchronized OptimizeIndexDialogFactory getInstance() throws IOException {
     if (instance == null) {
       instance = new OptimizeIndexDialogFactory();
     }
@@ -165,7 +159,10 @@ public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFact
 
     JPanel execButtons = new JPanel(new FlowLayout(FlowLayout.TRAILING));
     execButtons.setOpaque(false);
-    JButton optimizeBtn = new JButton(FontUtils.elegantIconHtml("&#xe0ff;", MessageUtils.getLocalizedMessage("optimize.button.optimize")));
+    JButton optimizeBtn =
+        new JButton(
+            FontUtils.elegantIconHtml(
+                "&#xe0ff;", MessageUtils.getLocalizedMessage("optimize.button.optimize")));
     optimizeBtn.setFont(StyleConstants.FONT_BUTTON_LARGE);
     optimizeBtn.setMargin(new Insets(3, 0, 3, 0));
     optimizeBtn.addActionListener(listeners::optimize);
@@ -206,55 +203,56 @@ public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFact
   private class ListenerFunctions {
 
     void optimize(ActionEvent e) {
-      ExecutorService executor = Executors.newFixedThreadPool(1, new NamedThreadFactory("optimize-index-dialog"));
+      ExecutorService executor =
+          Executors.newFixedThreadPool(1, new NamedThreadFactory("optimize-index-dialog"));
 
-      SwingWorker<Void, Void> task = new SwingWorker<Void, Void>() {
+      SwingWorker<Void, Void> task =
+          new SwingWorker<Void, Void>() {
 
-        @Override
-        protected Void doInBackground() {
-          setProgress(0);
-          statusLbl.setText("Running...");
-          indicatorLbl.setVisible(true);
-          TextAreaPrintStream ps;
-          try {
-            ps = new TextAreaPrintStream(logArea);
-            toolsModel.optimize(expungeCB.isSelected(), (int) maxSegSpnr.getValue(), ps);
-            ps.flush();
-          } catch (Exception e) {
-            statusLbl.setText(MessageUtils.getLocalizedMessage("message.error.unknown"));
-            throw e;
-          } finally {
-            setProgress(100);
-          }
-          return null;
-        }
+            @Override
+            protected Void doInBackground() {
+              setProgress(0);
+              statusLbl.setText("Running...");
+              indicatorLbl.setVisible(true);
+              TextAreaPrintStream ps;
+              try {
+                ps = new TextAreaPrintStream(logArea);
+                toolsModel.optimize(expungeCB.isSelected(), (int) maxSegSpnr.getValue(), ps);
+                ps.flush();
+              } catch (Exception e) {
+                statusLbl.setText(MessageUtils.getLocalizedMessage("message.error.unknown"));
+                throw e;
+              } finally {
+                setProgress(100);
+              }
+              return null;
+            }
 
-        @Override
-        protected void done() {
-          indicatorLbl.setVisible(false);
-          statusLbl.setText("Done");
-          indexHandler.reOpen();
-        }
-      };
+            @Override
+            protected void done() {
+              indicatorLbl.setVisible(false);
+              statusLbl.setText("Done");
+              indexHandler.reOpen();
+            }
+          };
 
       executor.submit(task);
       executor.shutdown();
     }
-
   }
 
   private class Observer implements IndexObserver {
 
     @Override
     public void openIndex(LukeState state) {
-      toolsModel = indexToolsFactory.newInstance(state.getIndexReader(), state.useCompound(), state.keepAllCommits());
+      toolsModel =
+          indexToolsFactory.newInstance(
+              state.getIndexReader(), state.useCompound(), state.keepAllCommits());
     }
 
     @Override
     public void closeIndex() {
       toolsModel = null;
     }
-
   }
-
 }

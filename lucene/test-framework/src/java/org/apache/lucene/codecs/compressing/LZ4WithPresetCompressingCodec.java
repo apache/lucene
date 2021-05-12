@@ -16,21 +16,25 @@
  */
 package org.apache.lucene.codecs.compressing;
 
-import org.apache.lucene.codecs.lucene87.LZ4WithPresetDictCompressionMode;
+import org.apache.lucene.codecs.lucene90.LZ4WithPresetDictCompressionMode;
 
 /** CompressionCodec that uses {@link LZ4WithPresetDictCompressionMode}. */
 public class LZ4WithPresetCompressingCodec extends CompressingCodec {
 
   /** Constructor that allows to configure the chunk size. */
-  public LZ4WithPresetCompressingCodec(int chunkSize, int maxDocsPerChunk, boolean withSegmentSuffix, int blockSize) {
-    super("LZ4WithPresetCompressingStoredFieldsData", 
-          withSegmentSuffix ? "DeflateWithPresetCompressingStoredFields" : "",
-          new LZ4WithPresetDictCompressionMode(), chunkSize, maxDocsPerChunk, blockSize);
+  public LZ4WithPresetCompressingCodec(
+      int chunkSize, int maxDocsPerChunk, boolean withSegmentSuffix, int blockSize) {
+    super(
+        "LZ4WithPresetCompressingStoredFieldsData",
+        withSegmentSuffix ? "DeflateWithPresetCompressingStoredFields" : "",
+        new LZ4WithPresetDictCompressionMode(),
+        chunkSize,
+        maxDocsPerChunk,
+        blockSize);
   }
 
   /** No-arg constructor. */
   public LZ4WithPresetCompressingCodec() {
-    this(1<<18, 512, false, 10);
+    this(1 << 18, 512, false, 10);
   }
-
 }

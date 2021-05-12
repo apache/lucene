@@ -17,12 +17,13 @@
 
 package org.apache.lucene.index;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -32,20 +33,18 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.packed.PackedInts;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 /**
- * An {@link org.apache.lucene.index.CodecReader} which supports sorting documents by a given
- * {@link Sort}. This can be used to re-sort and index after it's been created by wrapping all
- * readers of the index with this reader and adding it to a fresh IndexWriter via
- * {@link IndexWriter#addIndexes(CodecReader...)}.
- * NOTE: This reader should only be used for merging. Pulling fields from this reader might be very costly and memory
- * intensive.
+ * An {@link org.apache.lucene.index.CodecReader} which supports sorting documents by a given {@link
+ * Sort}. This can be used to re-sort and index after it's been created by wrapping all readers of
+ * the index with this reader and adding it to a fresh IndexWriter via {@link
+ * IndexWriter#addIndexes(CodecReader...)}. NOTE: This reader should only be used for merging.
+ * Pulling fields from this reader might be very costly and memory intensive.
  *
  * @lucene.experimental
  */
@@ -84,22 +83,23 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public void intersect(IntersectVisitor visitor) throws IOException {
-      in.intersect(new IntersectVisitor() {
-                     @Override
-                     public void visit(int docID) throws IOException {
-                       visitor.visit(docMap.oldToNew(docID));
-                     }
+      in.intersect(
+          new IntersectVisitor() {
+            @Override
+            public void visit(int docID) throws IOException {
+              visitor.visit(docMap.oldToNew(docID));
+            }
 
-                     @Override
-                     public void visit(int docID, byte[] packedValue) throws IOException {
-                       visitor.visit(docMap.oldToNew(docID), packedValue);
-                     }
+            @Override
+            public void visit(int docID, byte[] packedValue) throws IOException {
+              visitor.visit(docMap.oldToNew(docID), packedValue);
+            }
 
-                     @Override
-                     public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                       return visitor.compare(minPackedValue, maxPackedValue);
-                     }
-                   });
+            @Override
+            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+              return visitor.compare(minPackedValue, maxPackedValue);
+            }
+          });
     }
 
     @Override
@@ -143,17 +143,22 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  /** Return a sorted view of <code>reader</code> according to the order
-   *  defined by <code>sort</code>. If the reader is already sorted, this
-   *  method might return the reader as-is. */
+  /**
+   * Return a sorted view of <code>reader</code> according to the order defined by <code>sort</code>
+   * . If the reader is already sorted, this method might return the reader as-is.
+   */
   public static CodecReader wrap(CodecReader reader, Sort sort) throws IOException {
     return wrap(reader, new Sorter(sort).sort(reader), sort);
   }
 
-  /** Expert: same as {@link #wrap(org.apache.lucene.index.CodecReader, Sort)} but operates directly on a {@link Sorter.DocMap}. */
+  /**
+   * Expert: same as {@link #wrap(org.apache.lucene.index.CodecReader, Sort)} but operates directly
+   * on a {@link Sorter.DocMap}.
+   */
   static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
     LeafMetaData metaData = reader.getMetaData();
-    LeafMetaData newMetaData = new LeafMetaData(metaData.getCreatedVersionMajor(), metaData.getMinVersion(), sort);
+    LeafMetaData newMetaData =
+        new LeafMetaData(metaData.getCreatedVersionMajor(), metaData.getMinVersion(), sort);
     if (docMap == null) {
       // the reader is already sorted
       return new FilterCodecReader(reader) {
@@ -179,7 +184,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       };
     }
     if (reader.maxDoc() != docMap.size()) {
-      throw new IllegalArgumentException("reader.maxDoc() should be equal to docMap.size(), got" + reader.maxDoc() + " != " + docMap.size());
+      throw new IllegalArgumentException(
+          "reader.maxDoc() should be equal to docMap.size(), got"
+              + reader.maxDoc()
+              + " != "
+              + docMap.size());
     }
     assert Sorter.isConsistent(docMap);
     return new SortingCodecReader(reader, docMap, newMetaData);
@@ -188,12 +197,12 @@ public final class SortingCodecReader extends FilterCodecReader {
   final Sorter.DocMap docMap; // pkg-protected to avoid synthetic accessor methods
   final LeafMetaData metaData;
 
-  private SortingCodecReader(final CodecReader in, final Sorter.DocMap docMap, LeafMetaData metaData) {
+  private SortingCodecReader(
+      final CodecReader in, final Sorter.DocMap docMap, LeafMetaData metaData) {
     super(in);
     this.docMap = docMap;
     this.metaData = metaData;
   }
-
 
   @Override
   public FieldsProducer getPostingsReader() {
@@ -217,18 +226,15 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public Terms terms(String field) throws IOException {
         Terms terms = postingsReader.terms(field);
-        return terms == null ? null : new FreqProxTermsWriter.SortingTerms(terms,
-            in.getFieldInfos().fieldInfo(field).getIndexOptions(), docMap);
+        return terms == null
+            ? null
+            : new FreqProxTermsWriter.SortingTerms(
+                terms, in.getFieldInfos().fieldInfo(field).getIndexOptions(), docMap);
       }
 
       @Override
       public int size() {
         return postingsReader.size();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return postingsReader.ramBytesUsed();
       }
     };
   }
@@ -259,11 +265,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }
@@ -296,11 +297,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
-      }
     };
   }
 
@@ -316,6 +312,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public VectorValues getVectorValues(String field) throws IOException {
         return new VectorValuesWriter.SortingVectorValues(delegate.getVectorValues(field), docMap);
+      }
+
+      @Override
+      public TopDocs search(String field, float[] target, int k, int fanout) {
+        throw new UnsupportedOperationException();
       }
 
       @Override
@@ -336,7 +337,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     return new NormsProducer() {
       @Override
       public NumericDocValues getNorms(FieldInfo field) throws IOException {
-        return new NumericDocValuesWriter.SortingNumericDocValues(getOrCreateNorms(field.name, () -> getNumericDocValues(delegate.getNorms(field))));
+        return new NumericDocValuesWriter.SortingNumericDocValues(
+            getOrCreateNorms(field.name, () -> getNumericDocValues(delegate.getNorms(field))));
       }
 
       @Override
@@ -347,11 +349,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void close() throws IOException {
         delegate.close();
-      }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
       }
     };
   }
@@ -362,42 +359,61 @@ public final class SortingCodecReader extends FilterCodecReader {
     return new DocValuesProducer() {
       @Override
       public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-        return new NumericDocValuesWriter.SortingNumericDocValues(getOrCreateDV(field.name, () -> getNumericDocValues(delegate.getNumeric(field))));
+        return new NumericDocValuesWriter.SortingNumericDocValues(
+            getOrCreateDV(field.name, () -> getNumericDocValues(delegate.getNumeric(field))));
       }
 
       @Override
       public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-        return new BinaryDocValuesWriter.SortingBinaryDocValues(getOrCreateDV(field.name,
-            () -> new BinaryDocValuesWriter.BinaryDVs(maxDoc(), docMap, delegate.getBinary(field))));
+        return new BinaryDocValuesWriter.SortingBinaryDocValues(
+            getOrCreateDV(
+                field.name,
+                () ->
+                    new BinaryDocValuesWriter.BinaryDVs(
+                        maxDoc(), docMap, delegate.getBinary(field))));
       }
 
       @Override
       public SortedDocValues getSorted(FieldInfo field) throws IOException {
         SortedDocValues oldDocValues = delegate.getSorted(field);
-        return new SortedDocValuesWriter.SortingSortedDocValues(oldDocValues, getOrCreateDV(field.name, () -> {
-          int[] ords = new int[maxDoc()];
-          Arrays.fill(ords, -1);
-          int docID;
-          while ((docID = oldDocValues.nextDoc()) != NO_MORE_DOCS) {
-            int newDocID = docMap.oldToNew(docID);
-            ords[newDocID] = oldDocValues.ordValue();
-          }
-          return ords;
-        }));
+        return new SortedDocValuesWriter.SortingSortedDocValues(
+            oldDocValues,
+            getOrCreateDV(
+                field.name,
+                () -> {
+                  int[] ords = new int[maxDoc()];
+                  Arrays.fill(ords, -1);
+                  int docID;
+                  while ((docID = oldDocValues.nextDoc()) != NO_MORE_DOCS) {
+                    int newDocID = docMap.oldToNew(docID);
+                    ords[newDocID] = oldDocValues.ordValue();
+                  }
+                  return ords;
+                }));
       }
 
       @Override
       public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
         final SortedNumericDocValues oldDocValues = delegate.getSortedNumeric(field);
-        return new SortedNumericDocValuesWriter.SortingSortedNumericDocValues(oldDocValues, getOrCreateDV(field.name, () ->
-            new SortedNumericDocValuesWriter.LongValues(maxDoc(), docMap, oldDocValues, PackedInts.FAST)));
+        return new SortedNumericDocValuesWriter.SortingSortedNumericDocValues(
+            oldDocValues,
+            getOrCreateDV(
+                field.name,
+                () ->
+                    new SortedNumericDocValuesWriter.LongValues(
+                        maxDoc(), docMap, oldDocValues, PackedInts.FAST)));
       }
 
       @Override
       public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
         SortedSetDocValues oldDocValues = delegate.getSortedSet(field);
-        return new SortedSetDocValuesWriter.SortingSortedSetDocValues(oldDocValues, getOrCreateDV(field.name, () ->
-            new SortedSetDocValuesWriter.DocOrds(maxDoc(), docMap, oldDocValues, PackedInts.FAST)));
+        return new SortedSetDocValuesWriter.SortingSortedSetDocValues(
+            oldDocValues,
+            getOrCreateDV(
+                field.name,
+                () ->
+                    new SortedSetDocValuesWriter.DocOrds(
+                        maxDoc(), docMap, oldDocValues, PackedInts.FAST)));
       }
 
       @Override
@@ -409,15 +425,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
-      }
     };
   }
 
-  private NumericDocValuesWriter.NumericDVs getNumericDocValues(NumericDocValues oldNumerics) throws IOException {
+  private NumericDocValuesWriter.NumericDVs getNumericDocValues(NumericDocValues oldNumerics)
+      throws IOException {
     FixedBitSet docsWithField = new FixedBitSet(maxDoc());
     long[] values = new long[maxDoc()];
     int docID;
@@ -455,11 +467,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
-      }
     };
   }
 
@@ -496,7 +503,8 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   @SuppressWarnings("unchecked")
-  private synchronized  <T> T getOrCreate(String field, boolean norms, IOSupplier<T> supplier) throws IOException {
+  private synchronized <T> T getOrCreate(String field, boolean norms, IOSupplier<T> supplier)
+      throws IOException {
     if ((field.equals(cachedField) && cacheIsNorms == norms) == false) {
       assert assertCreatedOnlyOnce(field, norms);
       cachedObject = supplier.get();
@@ -508,12 +516,14 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   private final Map<String, Integer> cacheStats = new HashMap<>(); // only with assertions enabled
+
   private boolean assertCreatedOnlyOnce(String field, boolean norms) {
     assert Thread.holdsLock(this);
     // this is mainly there to make sure we change anything in the way we merge we realize it early
-    Integer timesCached = cacheStats.compute(field + "N:" + norms, (s, i) -> i == null ? 1 : i.intValue() + 1);
+    Integer timesCached =
+        cacheStats.compute(field + "N:" + norms, (s, i) -> i == null ? 1 : i.intValue() + 1);
     if (timesCached > 1) {
-      assert norms == false :"[" + field + "] norms must not be cached twice";
+      assert norms == false : "[" + field + "] norms must not be cached twice";
       boolean isSortField = false;
       for (SortField sf : metaData.getSort().getSort()) {
         if (field.equals(sf.getField())) {
@@ -521,9 +531,15 @@ public final class SortingCodecReader extends FilterCodecReader {
           break;
         }
       }
-      assert timesCached == 2 : "[" + field + "] must not be cached more than twice but was cached: "
-          + timesCached + " times isSortField: " + isSortField;
-      assert isSortField : "only sort fields should be cached twice but [" + field + "] is not a sort field";
+      assert timesCached == 2
+          : "["
+              + field
+              + "] must not be cached more than twice but was cached: "
+              + timesCached
+              + " times isSortField: "
+              + isSortField;
+      assert isSortField
+          : "only sort fields should be cached twice but [" + field + "] is not a sort field";
     }
     return true;
   }

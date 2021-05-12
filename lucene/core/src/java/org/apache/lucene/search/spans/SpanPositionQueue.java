@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.spans;
 
-
 import org.apache.lucene.util.PriorityQueue;
 
 class SpanPositionQueue extends PriorityQueue<Spans> {
@@ -24,12 +23,12 @@ class SpanPositionQueue extends PriorityQueue<Spans> {
     super(maxSize); // do not prepopulate
   }
 
+  @Override
   protected boolean lessThan(Spans s1, Spans s2) {
     int start1 = s1.startPosition();
     int start2 = s2.startPosition();
-    return (start1 < start2) ? true
-          : (start1 == start2) ? s1.endPosition() < s2.endPosition()
-          : false;
+    return (start1 < start2)
+        ? true
+        : (start1 == start2) ? s1.endPosition() < s2.endPosition() : false;
   }
 }
-

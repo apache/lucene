@@ -29,16 +29,16 @@ import org.apache.lucene.util.NumericUtils;
 
 /** Simple tests for SortedNumericSortField */
 public class TestSortedNumericSortField extends LuceneTestCase {
-  
+
   public void testEmptyIndex() throws Exception {
     IndexSearcher empty = newSearcher(new MultiReader());
     Query query = new TermQuery(new Term("contents", "foo"));
-  
+
     Sort sort = new Sort();
     sort.setSort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG));
     TopDocs td = empty.search(query, 10, sort, true);
     assertEquals(0, td.totalHits.value);
-    
+
     // for an empty index, any selector should work
     for (SortedNumericSelector.Type v : SortedNumericSelector.Type.values()) {
       sort.setSort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG, false, v));
@@ -46,24 +46,28 @@ public class TestSortedNumericSortField extends LuceneTestCase {
       assertEquals(0, td.totalHits.value);
     }
   }
-  
+
+  @SuppressWarnings("unlikely-arg-type")
   public void testEquals() throws Exception {
     SortField sf = new SortedNumericSortField("a", SortField.Type.LONG);
     assertFalse(sf.equals(null));
-    
+
     assertEquals(sf, sf);
-    
+
     SortField sf2 = new SortedNumericSortField("a", SortField.Type.LONG);
     assertEquals(sf, sf2);
     assertEquals(sf.hashCode(), sf2.hashCode());
-    
+
     assertFalse(sf.equals(new SortedNumericSortField("a", SortField.Type.LONG, true)));
     assertFalse(sf.equals(new SortedNumericSortField("a", SortField.Type.FLOAT)));
     assertFalse(sf.equals(new SortedNumericSortField("b", SortField.Type.LONG)));
-    assertFalse(sf.equals(new SortedNumericSortField("a", SortField.Type.LONG, false, SortedNumericSelector.Type.MAX)));
+    assertFalse(
+        sf.equals(
+            new SortedNumericSortField(
+                "a", SortField.Type.LONG, false, SortedNumericSelector.Type.MAX)));
     assertFalse(sf.equals("foo"));
   }
-  
+
   public void testForward() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -78,7 +82,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
-    
+
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT));
 
@@ -87,11 +91,11 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     // 3 comes before 5
     assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
-    
+
     ir.close();
     dir.close();
   }
-  
+
   public void testReverse() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -107,7 +111,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
 
     IndexReader ir = writer.getReader();
     writer.close();
-    
+
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT, true));
 
@@ -120,7 +124,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     ir.close();
     dir.close();
   }
-  
+
   public void testMissingFirst() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -138,7 +142,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
-    
+
     IndexSearcher searcher = newSearcher(ir);
     SortField sortField = new SortedNumericSortField("value", SortField.Type.INT);
     sortField.setMissingValue(Integer.MIN_VALUE);
@@ -155,7 +159,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     ir.close();
     dir.close();
   }
-  
+
   public void testMissingLast() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -173,7 +177,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
-    
+
     IndexSearcher searcher = newSearcher(ir);
     SortField sortField = new SortedNumericSortField("value", SortField.Type.INT);
     sortField.setMissingValue(Integer.MAX_VALUE);
@@ -190,7 +194,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     ir.close();
     dir.close();
   }
-  
+
   public void testSingleton() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -204,7 +208,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
-    
+
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT));
 
@@ -217,7 +221,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     ir.close();
     dir.close();
   }
-  
+
   public void testFloat() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -232,7 +236,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
-    
+
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.FLOAT));
 
@@ -241,11 +245,11 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     // -5 comes before -3
     assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
-    
+
     ir.close();
     dir.close();
   }
-  
+
   public void testDouble() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -260,7 +264,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
-    
+
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.DOUBLE));
 
@@ -269,7 +273,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     // -5 comes before -3
     assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
-    
+
     ir.close();
     dir.close();
   }

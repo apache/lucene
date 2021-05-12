@@ -18,18 +18,17 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.Arrays;
-
-import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
-abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV> 
-                                    implements GenericTermsCollector {
+abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
+    implements GenericTermsCollector {
 
-  private final static int INITIAL_ARRAY_SIZE = 0;
+  private static final int INITIAL_ARRAY_SIZE = 0;
 
   final BytesRefHash collectedTerms = new BytesRefHash();
   final ScoreMode scoreMode;
@@ -51,7 +50,7 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
   public BytesRefHash getCollectedTerms() {
     return collectedTerms;
   }
- 
+
   @Override
   public float[] getScoresPerTerm() {
     return scoreSums;
@@ -65,32 +64,42 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
   /**
    * Chooses the right {@link TermsWithScoreCollector} implementation.
    *
-   * @param field                     The field to collect terms for
-   * @param multipleValuesPerDocument Whether the field to collect terms for has multiple values per document.
+   * @param field The field to collect terms for
+   * @param multipleValuesPerDocument Whether the field to collect terms for has multiple values per
+   *     document.
    * @return a {@link TermsWithScoreCollector} instance
    */
-  static TermsWithScoreCollector<?> create(String field, boolean multipleValuesPerDocument, ScoreMode scoreMode) {
+  static TermsWithScoreCollector<?> create(
+      String field, boolean multipleValuesPerDocument, ScoreMode scoreMode) {
     if (multipleValuesPerDocument) {
       switch (scoreMode) {
         case Avg:
           return new MV.Avg(sortedSetDocValues(field));
+        case Max:
+        case Min:
+        case None:
+        case Total:
         default:
           return new MV(sortedSetDocValues(field), scoreMode);
       }
     } else {
       switch (scoreMode) {
         case Avg:
-          return new SV.Avg(binaryDocValues(field));
+          return new SV.Avg(sortedDocValues(field));
+        case Max:
+        case Min:
+        case None:
+        case Total:
         default:
-          return new SV(binaryDocValues(field), scoreMode);
+          return new SV(sortedDocValues(field), scoreMode);
       }
     }
   }
- 
-  // impl that works with single value per document
-  static class SV extends TermsWithScoreCollector<BinaryDocValues> {
 
-    SV(Function<BinaryDocValues> docValuesCall, ScoreMode scoreMode) {
+  // impl that works with single value per document
+  static class SV extends TermsWithScoreCollector<SortedDocValues> {
+
+    SV(Function<SortedDocValues> docValuesCall, ScoreMode scoreMode) {
       super(docValuesCall, scoreMode);
     }
 
@@ -98,7 +107,7 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
     public void collect(int doc) throws IOException {
       BytesRef value;
       if (docValues.advanceExact(doc)) {
-        value = docValues.binaryValue();
+        value = docValues.lookupOrd(docValues.ordValue());
       } else {
         value = new BytesRef(BytesRef.EMPTY_BYTES);
       }
@@ -136,6 +145,8 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
               scoreSums[ord] = current;
             }
             break;
+          case None:
+          case Avg:
           default:
             throw new AssertionError("unexpected: " + scoreMode);
         }
@@ -146,7 +157,7 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
 
       int[] scoreCounts = new int[INITIAL_ARRAY_SIZE];
 
-      Avg(Function<BinaryDocValues> docValuesCall) {
+      Avg(Function<SortedDocValues> docValuesCall) {
         super(docValuesCall, ScoreMode.Avg);
       }
 
@@ -154,7 +165,7 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
       public void collect(int doc) throws IOException {
         BytesRef value;
         if (docValues.advanceExact(doc)) {
-          value = docValues.binaryValue();
+          value = docValues.lookupOrd(docValues.ordValue());
         } else {
           value = new BytesRef(BytesRef.EMPTY_BYTES);
         }
@@ -218,19 +229,21 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
               }
             }
           }
-        
+
           switch (scoreMode) {
-          case Total:
-            scoreSums[termID] += scorer.score();
-            break;
-          case Min:
-            scoreSums[termID] = Math.min(scoreSums[termID], scorer.score());
-            break;
-          case Max:
-            scoreSums[termID] = Math.max(scoreSums[termID], scorer.score());
-            break;
-          default:
-            throw new AssertionError("unexpected: " + scoreMode);
+            case Total:
+              scoreSums[termID] += scorer.score();
+              break;
+            case Min:
+              scoreSums[termID] = Math.min(scoreSums[termID], scorer.score());
+              break;
+            case Max:
+              scoreSums[termID] = Math.max(scoreSums[termID], scorer.score());
+              break;
+            case Avg:
+            case None:
+            default:
+              throw new AssertionError("unexpected: " + scoreMode);
           }
         }
       }
@@ -258,7 +271,7 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
                 scoreCounts = ArrayUtil.grow(scoreCounts);
               }
             }
-          
+
             scoreSums[termID] += scorer.score();
             scoreCounts[termID]++;
           }

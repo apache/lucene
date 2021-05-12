@@ -16,21 +16,19 @@
  */
 package org.apache.lucene.index;
 
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -52,7 +50,7 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(newStringField("dim", "foo", Field.Store.NO));
     w.addDocument(doc);
     w.close();
-    
+
     iwc = newIndexWriterConfig();
     w = new IndexWriter(dir, iwc);
     doc.add(new BinaryPoint("dim", new byte[4]));
@@ -69,10 +67,15 @@ public class TestPointValues extends LuceneTestCase {
     Document doc = new Document();
     doc.add(new BinaryPoint("dim", new byte[4]));
     doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w.addDocument(doc);
-    });
-    assertEquals("cannot change point dimension count from 1 to 2 for field=\"dim\"", expected.getMessage());
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w.addDocument(doc);
+            });
+    assertEquals(
+        "Inconsistency of field data structures across documents for field [dim] of doc [0].",
+        expected.getMessage());
     w.close();
     dir.close();
   }
@@ -87,11 +90,15 @@ public class TestPointValues extends LuceneTestCase {
 
     Document doc2 = new Document();
     doc2.add(new BinaryPoint("dim", new byte[4], new byte[4]));
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w.addDocument(doc2);
-    });
-    assertEquals("cannot change point dimension count from 1 to 2 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w.addDocument(doc2);
+            });
+    assertEquals(
+        "Inconsistency of field data structures across documents for field [dim] of doc [1].",
+        expected.getMessage());
     w.close();
     dir.close();
   }
@@ -107,11 +114,16 @@ public class TestPointValues extends LuceneTestCase {
 
     Document doc2 = new Document();
     doc2.add(new BinaryPoint("dim", new byte[4], new byte[4]));
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w.addDocument(doc2);
-    });
-    assertEquals("cannot change point dimension count from 1 to 2 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w.addDocument(doc2);
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=1, indexDimensionCount=1, numBytes=4 "
+            + "to inconsistent dimensionCount=2, indexDimensionCount=2, numBytes=4",
+        expected.getMessage());
     w.close();
     dir.close();
   }
@@ -129,11 +141,16 @@ public class TestPointValues extends LuceneTestCase {
     IndexWriter w2 = new IndexWriter(dir, iwc);
     Document doc2 = new Document();
     doc2.add(new BinaryPoint("dim", new byte[4], new byte[4]));
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w2.addDocument(doc2);
-    });
-    assertEquals("cannot change point dimension count from 1 to 2 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w2.addDocument(doc2);
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=1, indexDimensionCount=1, numBytes=4 "
+            + "to inconsistent dimensionCount=2, indexDimensionCount=2, numBytes=4",
+        expected.getMessage());
     w2.close();
     dir.close();
   }
@@ -152,11 +169,17 @@ public class TestPointValues extends LuceneTestCase {
     doc = new Document();
     doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
     w2.addDocument(doc);
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w2.addIndexes(new Directory[] {dir});
-    });
-    assertEquals("cannot change point dimension count from 2 to 1 for field=\"dim\"", expected.getMessage());
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w2.addIndexes(new Directory[] {dir});
+            });
 
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=2, indexDimensionCount=2, numBytes=4 "
+            + "to inconsistent dimensionCount=1, indexDimensionCount=1, numBytes=4",
+        expected.getMessage());
     IOUtils.close(w2, dir, dir2);
   }
 
@@ -175,11 +198,16 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
     w2.addDocument(doc);
     DirectoryReader r = DirectoryReader.open(dir);
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-        w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)});
-    });
-    assertEquals("cannot change point dimension count from 2 to 1 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)});
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=2, indexDimensionCount=2, numBytes=4 "
+            + "to inconsistent dimensionCount=1, indexDimensionCount=1, numBytes=4",
+        expected.getMessage());
     IOUtils.close(r, w2, dir, dir2);
   }
 
@@ -199,11 +227,16 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
     w2.addDocument(doc);
     DirectoryReader r = DirectoryReader.open(dir);
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      TestUtil.addIndexesSlowly(w2, r);
-    });
-    assertEquals("cannot change point dimension count from 2 to 1 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              TestUtil.addIndexesSlowly(w2, r);
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=2, indexDimensionCount=2, numBytes=4 "
+            + "to inconsistent dimensionCount=1, indexDimensionCount=1, numBytes=4",
+        expected.getMessage());
     IOUtils.close(r, w2, dir, dir2);
   }
 
@@ -214,11 +247,15 @@ public class TestPointValues extends LuceneTestCase {
     Document doc = new Document();
     doc.add(new BinaryPoint("dim", new byte[4]));
     doc.add(new BinaryPoint("dim", new byte[6]));
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w.addDocument(doc);
-    });
-    assertEquals("cannot change point numBytes from 4 to 6 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w.addDocument(doc);
+            });
+    assertEquals(
+        "Inconsistency of field data structures across documents for field [dim] of doc [0].",
+        expected.getMessage());
     w.close();
     dir.close();
   }
@@ -233,11 +270,15 @@ public class TestPointValues extends LuceneTestCase {
 
     Document doc2 = new Document();
     doc2.add(new BinaryPoint("dim", new byte[6]));
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w.addDocument(doc2);
-    });
-    assertEquals("cannot change point numBytes from 4 to 6 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w.addDocument(doc2);
+            });
+    assertEquals(
+        "Inconsistency of field data structures across documents for field [dim] of doc [1].",
+        expected.getMessage());
     w.close();
     dir.close();
   }
@@ -250,14 +291,19 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new BinaryPoint("dim", new byte[4]));
     w.addDocument(doc);
     w.commit();
-    
+
     Document doc2 = new Document();
     doc2.add(new BinaryPoint("dim", new byte[6]));
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w.addDocument(doc2);
-    });
-    assertEquals("cannot change point numBytes from 4 to 6 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w.addDocument(doc2);
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=1, indexDimensionCount=1, numBytes=4 "
+            + "to inconsistent dimensionCount=1, indexDimensionCount=1, numBytes=6",
+        expected.getMessage());
     w.close();
     dir.close();
   }
@@ -270,17 +316,22 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new BinaryPoint("dim", new byte[4]));
     w.addDocument(doc);
     w.close();
-    
+
     iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter w2 = new IndexWriter(dir, iwc);
     Document doc2 = new Document();
     doc2.add(new BinaryPoint("dim", new byte[6]));
-    
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w2.addDocument(doc2);
-    });
-    assertEquals("cannot change point numBytes from 4 to 6 for field=\"dim\"", expected.getMessage());
 
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w2.addDocument(doc2);
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=1, indexDimensionCount=1, numBytes=4 "
+            + "to inconsistent dimensionCount=1, indexDimensionCount=1, numBytes=6",
+        expected.getMessage());
     w2.close();
     dir.close();
   }
@@ -300,11 +351,16 @@ public class TestPointValues extends LuceneTestCase {
     doc = new Document();
     doc.add(new BinaryPoint("dim", new byte[6]));
     w2.addDocument(doc);
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w2.addIndexes(new Directory[] {dir});
-    });
-    assertEquals("cannot change point numBytes from 6 to 4 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w2.addIndexes(new Directory[] {dir});
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=1, indexDimensionCount=1, numBytes=6 "
+            + "to inconsistent dimensionCount=1, indexDimensionCount=1, numBytes=4",
+        expected.getMessage());
     IOUtils.close(w2, dir, dir2);
   }
 
@@ -324,11 +380,16 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new BinaryPoint("dim", new byte[6]));
     w2.addDocument(doc);
     DirectoryReader r = DirectoryReader.open(dir);
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-        w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)});
-    });
-    assertEquals("cannot change point numBytes from 6 to 4 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)});
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=1, indexDimensionCount=1, numBytes=6 "
+            + "to inconsistent dimensionCount=1, indexDimensionCount=1, numBytes=4",
+        expected.getMessage());
     IOUtils.close(r, w2, dir, dir2);
   }
 
@@ -348,11 +409,16 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new BinaryPoint("dim", new byte[6]));
     w2.addDocument(doc);
     DirectoryReader r = DirectoryReader.open(dir);
-    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      TestUtil.addIndexesSlowly(w2, r);
-    });
-    assertEquals("cannot change point numBytes from 6 to 4 for field=\"dim\"", expected.getMessage());
-
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              TestUtil.addIndexesSlowly(w2, r);
+            });
+    assertEquals(
+        "cannot change field \"dim\" from points dimensionCount=1, indexDimensionCount=1, numBytes=6 "
+            + "to inconsistent dimensionCount=1, indexDimensionCount=1, numBytes=4",
+        expected.getMessage());
     IOUtils.close(r, w2, dir, dir2);
   }
 
@@ -361,9 +427,11 @@ public class TestPointValues extends LuceneTestCase {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();
-    expectThrows(IllegalArgumentException.class, () -> {
-      doc.add(new BinaryPoint("dim", new byte[PointValues.MAX_NUM_BYTES+1]));
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          doc.add(new BinaryPoint("dim", new byte[PointValues.MAX_NUM_BYTES + 1]));
+        });
 
     Document doc2 = new Document();
     doc2.add(new IntPoint("dim", 17));
@@ -377,13 +445,15 @@ public class TestPointValues extends LuceneTestCase {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();
-    byte[][] values = new byte[PointValues.MAX_INDEX_DIMENSIONS +1][];
-    for(int i=0;i<values.length;i++) {
+    byte[][] values = new byte[PointValues.MAX_INDEX_DIMENSIONS + 1][];
+    for (int i = 0; i < values.length; i++) {
       values[i] = new byte[4];
     }
-    expectThrows(IllegalArgumentException.class, () -> {
-      doc.add(new BinaryPoint("dim", values));
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          doc.add(new BinaryPoint("dim", values));
+        });
 
     Document doc2 = new Document();
     doc2.add(new IntPoint("dim", 17));
@@ -392,7 +462,8 @@ public class TestPointValues extends LuceneTestCase {
     dir.close();
   }
 
-  // Write point values, one segment with Lucene84, another with SimpleText, then forceMerge with SimpleText
+  // Write point values, one segment with Lucene84, another with SimpleText, then forceMerge with
+  // SimpleText
   public void testDifferentCodecs1() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -402,7 +473,7 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new IntPoint("int", 1));
     w.addDocument(doc);
     w.close();
-    
+
     iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     iwc.setCodec(Codec.forName("SimpleText"));
     w = new IndexWriter(dir, iwc);
@@ -415,7 +486,8 @@ public class TestPointValues extends LuceneTestCase {
     dir.close();
   }
 
-  // Write point values, one segment with Lucene84, another with SimpleText, then forceMerge with Lucene84
+  // Write point values, one segment with Lucene84, another with SimpleText, then forceMerge with
+  // Lucene84
   public void testDifferentCodecs2() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -425,7 +497,7 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new IntPoint("int", 1));
     w.addDocument(doc);
     w.close();
-    
+
     iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     iwc.setCodec(TestUtil.getDefaultCodec());
     w = new IndexWriter(dir, iwc);
@@ -441,49 +513,65 @@ public class TestPointValues extends LuceneTestCase {
   public void testInvalidIntPointUsage() throws Exception {
     IntPoint field = new IntPoint("field", 17, 42);
 
-    expectThrows(IllegalArgumentException.class, () -> {
-      field.setIntValue(14);
-    });
-    
-    expectThrows(IllegalStateException.class, () -> {
-      field.numericValue();
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          field.setIntValue(14);
+        });
+
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          field.numericValue();
+        });
   }
 
   public void testInvalidLongPointUsage() throws Exception {
     LongPoint field = new LongPoint("field", 17, 42);
 
-    expectThrows(IllegalArgumentException.class, () -> {
-      field.setLongValue(14);
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          field.setLongValue(14);
+        });
 
-    expectThrows(IllegalStateException.class, () -> {
-      field.numericValue();
-    });
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          field.numericValue();
+        });
   }
 
   public void testInvalidFloatPointUsage() throws Exception {
     FloatPoint field = new FloatPoint("field", 17, 42);
 
-    expectThrows(IllegalArgumentException.class, () -> {
-      field.setFloatValue(14);
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          field.setFloatValue(14);
+        });
 
-    expectThrows(IllegalStateException.class, () -> {
-      field.numericValue();
-    });
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          field.numericValue();
+        });
   }
 
   public void testInvalidDoublePointUsage() throws Exception {
     DoublePoint field = new DoublePoint("field", 17, 42);
 
-    expectThrows(IllegalArgumentException.class, () -> {
-      field.setDoubleValue(14);
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          field.setDoubleValue(14);
+        });
 
-    expectThrows(IllegalStateException.class, () -> {
-      field.numericValue();
-    });
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          field.numericValue();
+        });
   }
 
   public void testTieBreakByDocID() throws Exception {
@@ -493,7 +581,7 @@ public class TestPointValues extends LuceneTestCase {
     Document doc = new Document();
     doc.add(new IntPoint("int", 17));
     int numDocs = TEST_NIGHTLY ? 300000 : 3000;
-    for(int i=0;i<numDocs;i++) {
+    for (int i = 0; i < numDocs; i++) {
       w.addDocument(doc);
       if (random().nextInt(1000) == 17) {
         w.commit();
@@ -502,37 +590,37 @@ public class TestPointValues extends LuceneTestCase {
 
     IndexReader r = DirectoryReader.open(w);
 
-    for(LeafReaderContext ctx : r.leaves()) {
+    for (LeafReaderContext ctx : r.leaves()) {
       PointValues points = ctx.reader().getPointValues("int");
       points.intersect(
-                       new IntersectVisitor() {
+          new IntersectVisitor() {
 
-                         int lastDocID = -1;
+            int lastDocID = -1;
 
-                         @Override
-                         public void visit(int docID) {
-                           if (docID < lastDocID) {
-                             fail("docs out of order: docID=" + docID + " but lastDocID=" + lastDocID);
-                           }
-                           lastDocID = docID;
-                         }
+            @Override
+            public void visit(int docID) {
+              if (docID < lastDocID) {
+                fail("docs out of order: docID=" + docID + " but lastDocID=" + lastDocID);
+              }
+              lastDocID = docID;
+            }
 
-                         @Override
-                         public void visit(int docID, byte[] packedValue) {
-                           visit(docID);
-                         }
+            @Override
+            public void visit(int docID, byte[] packedValue) {
+              visit(docID);
+            }
 
-                         @Override
-                         public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                           if (random().nextBoolean()) {
-                             return Relation.CELL_CROSSES_QUERY;
-                           } else {
-                             return Relation.CELL_INSIDE_QUERY;
-                           }
-                         }
-                       });
+            @Override
+            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+              if (random().nextBoolean()) {
+                return Relation.CELL_CROSSES_QUERY;
+              } else {
+                return Relation.CELL_INSIDE_QUERY;
+              }
+            }
+          });
     }
-    
+
     r.close();
     w.close();
     dir.close();
@@ -550,7 +638,7 @@ public class TestPointValues extends LuceneTestCase {
     w.commit();
 
     w.deleteDocuments(new Term("id", "0"));
-    
+
     w.forceMerge(1);
     DirectoryReader r = w.getReader();
     assertNull(r.leaves().get(0).reader().getPointValues("int"));
@@ -585,9 +673,9 @@ public class TestPointValues extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     int[] fieldDocCounts = new int[numFields];
     int[] fieldSizes = new int[numFields];
-    for(int i=0;i<numDocs;i++) {
+    for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
-      for(int field=0;field<numFields;field++) {
+      for (int field = 0; field < numFields; field++) {
         String fieldName = "int" + field;
         if (random().nextInt(100) == 17) {
           doc.add(new IntPoint(fieldName, random().nextInt()));
@@ -605,11 +693,11 @@ public class TestPointValues extends LuceneTestCase {
     }
 
     IndexReader r = w.getReader();
-    for(int field=0;field<numFields;field++) {
+    for (int field = 0; field < numFields; field++) {
       int docCount = 0;
       int size = 0;
       String fieldName = "int" + field;
-      for(LeafReaderContext ctx : r.leaves()) {
+      for (LeafReaderContext ctx : r.leaves()) {
         PointValues points = ctx.reader().getPointValues(fieldName);
         if (points != null) {
           docCount += points.getDocCount();
@@ -661,7 +749,8 @@ public class TestPointValues extends LuceneTestCase {
 
   public void testMergedStatsOneSegmentWithoutPoints() throws IOException {
     Directory dir = new ByteBuffersDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null).setMergePolicy(NoMergePolicy.INSTANCE));
+    IndexWriter w =
+        new IndexWriter(dir, new IndexWriterConfig(null).setMergePolicy(NoMergePolicy.INSTANCE));
     w.addDocument(new Document());
     DirectoryReader.open(w).close();
     Document doc = new Document();
@@ -745,13 +834,11 @@ public class TestPointValues extends LuceneTestCase {
       assertEquals(0, PointValues.size(reader1, "field"));
     } else {
       assertArrayEquals(
-          expected.getMinPackedValue(),
-          PointValues.getMinPackedValue(reader1, "field"));
+          expected.getMinPackedValue(), PointValues.getMinPackedValue(reader1, "field"));
       assertArrayEquals(
-          expected.getMaxPackedValue(),
-          PointValues.getMaxPackedValue(reader1, "field"));
+          expected.getMaxPackedValue(), PointValues.getMaxPackedValue(reader1, "field"));
       assertEquals(expected.getDocCount(), PointValues.getDocCount(reader1, "field"));
-      assertEquals(expected.size(),  PointValues.size(reader1, "field"));
+      assertEquals(expected.size(), PointValues.size(reader1, "field"));
     }
     IOUtils.close(w, reader1, reader2, dir);
   }

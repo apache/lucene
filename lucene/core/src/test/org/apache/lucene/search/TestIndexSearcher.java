@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,7 +33,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -88,26 +86,21 @@ public class TestIndexSearcher extends LuceneTestCase {
 
   // should not throw exception
   public void testHugeN() throws Exception {
-    ExecutorService service = new ThreadPoolExecutor(4, 4, 0L, TimeUnit.MILLISECONDS,
-                                   new LinkedBlockingQueue<Runnable>(),
-                                   new NamedThreadFactory("TestIndexSearcher"));
+    ExecutorService service =
+        new ThreadPoolExecutor(
+            4,
+            4,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("TestIndexSearcher"));
 
-    IndexSearcher searchers[] = new IndexSearcher[] {
-        new IndexSearcher(reader),
-        new IndexSearcher(reader, service)
-    };
-    Query queries[] = new Query[] {
-        new MatchAllDocsQuery(),
-        new TermQuery(new Term("field", "1"))
-    };
-    Sort sorts[] = new Sort[] {
-        null,
-        new Sort(new SortField("field2", SortField.Type.STRING))
-    };
-    ScoreDoc afters[] = new ScoreDoc[] {
-        null,
-        new FieldDoc(0, 0f, new Object[] { new BytesRef("boo!") })
-    };
+    IndexSearcher searchers[] =
+        new IndexSearcher[] {new IndexSearcher(reader), new IndexSearcher(reader, service)};
+    Query queries[] = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
+    Sort sorts[] = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
+    ScoreDoc afters[] =
+        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {new BytesRef("boo!")})};
 
     for (IndexSearcher searcher : searchers) {
       for (ScoreDoc after : afters) {
@@ -141,9 +134,11 @@ public class TestIndexSearcher extends LuceneTestCase {
     w.close();
 
     IndexSearcher s = new IndexSearcher(r);
-    expectThrows(IllegalArgumentException.class, () -> {
-      s.searchAfter(new ScoreDoc(r.maxDoc(), 0.54f), new MatchAllDocsQuery(), 10);
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          s.searchAfter(new ScoreDoc(r.maxDoc(), 0.54f), new MatchAllDocsQuery(), 10);
+        });
 
     IOUtils.close(r, dir);
   }
@@ -172,16 +167,16 @@ public class TestIndexSearcher extends LuceneTestCase {
       final IndexReader reader = w.getReader();
       final IndexSearcher searcher = newSearcher(reader);
       // Test multiple queries, some of them are optimized by IndexSearcher.count()
-      for (Query query : Arrays.asList(
-          new MatchAllDocsQuery(),
-          new MatchNoDocsQuery(),
-          new TermQuery(new Term("foo", "bar")),
-          new ConstantScoreQuery(new TermQuery(new Term("foo", "baz"))),
-          new BooleanQuery.Builder()
-            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
-            .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
-            .build()
-          )) {
+      for (Query query :
+          Arrays.asList(
+              new MatchAllDocsQuery(),
+              new MatchNoDocsQuery(),
+              new TermQuery(new Term("foo", "bar")),
+              new ConstantScoreQuery(new TermQuery(new Term("foo", "baz"))),
+              new BooleanQuery.Builder()
+                  .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+                  .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
+                  .build())) {
         assertEquals(searcher.count(query), searcher.search(query, 1).totalHits.value);
       }
       reader.close();
@@ -193,12 +188,13 @@ public class TestIndexSearcher extends LuceneTestCase {
   public void testGetQueryCache() throws IOException {
     IndexSearcher searcher = new IndexSearcher(new MultiReader());
     assertEquals(IndexSearcher.getDefaultQueryCache(), searcher.getQueryCache());
-    QueryCache dummyCache = new QueryCache() {
-      @Override
-      public Weight doCache(Weight weight, QueryCachingPolicy policy) {
-        return weight;
-      }
-    };
+    QueryCache dummyCache =
+        new QueryCache() {
+          @Override
+          public Weight doCache(Weight weight, QueryCachingPolicy policy) {
+            return weight;
+          }
+        };
     searcher.setQueryCache(dummyCache);
     assertEquals(dummyCache, searcher.getQueryCache());
 
@@ -217,14 +213,16 @@ public class TestIndexSearcher extends LuceneTestCase {
   public void testGetQueryCachingPolicy() throws IOException {
     IndexSearcher searcher = new IndexSearcher(new MultiReader());
     assertEquals(IndexSearcher.getDefaultQueryCachingPolicy(), searcher.getQueryCachingPolicy());
-    QueryCachingPolicy dummyPolicy = new QueryCachingPolicy() {
-      @Override
-      public boolean shouldCache(Query query) throws IOException {
-        return false;
-      }
-      @Override
-      public void onUse(Query query) {}
-    };
+    QueryCachingPolicy dummyPolicy =
+        new QueryCachingPolicy() {
+          @Override
+          public boolean shouldCache(Query query) throws IOException {
+            return false;
+          }
+
+          @Override
+          public void onUse(Query query) {}
+        };
     searcher.setQueryCachingPolicy(dummyPolicy);
     assertEquals(dummyPolicy, searcher.getQueryCachingPolicy());
 
@@ -242,9 +240,14 @@ public class TestIndexSearcher extends LuceneTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    ExecutorService service = new ThreadPoolExecutor(4, 4, 0L, TimeUnit.MILLISECONDS,
-                                   new LinkedBlockingQueue<Runnable>(),
-                                   new NamedThreadFactory("TestIndexSearcher"));
+    ExecutorService service =
+        new ThreadPoolExecutor(
+            4,
+            4,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("TestIndexSearcher"));
     IndexSearcher s = new IndexSearcher(r, service);
     IndexSearcher.LeafSlice[] slices = s.getSlices();
     assertNotNull(slices);
@@ -258,19 +261,22 @@ public class TestIndexSearcher extends LuceneTestCase {
   public void testOneSegmentExecutesOnTheCallerThread() throws IOException {
     List<LeafReaderContext> leaves = reader.leaves();
     AtomicInteger numExecutions = new AtomicInteger(0);
-    IndexSearcher searcher = new IndexSearcher(reader, task -> {
-      numExecutions.incrementAndGet();
-      task.run();
-    }) {
-      @Override
-      protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-        ArrayList<LeafSlice> slices = new ArrayList<>();
-        for (LeafReaderContext ctx : leaves) {
-          slices.add(new LeafSlice(Arrays.asList(ctx)));
-        }
-        return slices.toArray(new LeafSlice[0]);
-      }
-    };
+    IndexSearcher searcher =
+        new IndexSearcher(
+            reader,
+            task -> {
+              numExecutions.incrementAndGet();
+              task.run();
+            }) {
+          @Override
+          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+            ArrayList<LeafSlice> slices = new ArrayList<>();
+            for (LeafReaderContext ctx : leaves) {
+              slices.add(new LeafSlice(Arrays.asList(ctx)));
+            }
+            return slices.toArray(new LeafSlice[0]);
+          }
+        };
     searcher.search(new MatchAllDocsQuery(), 10);
     if (leaves.size() <= 1) {
       assertEquals(0, numExecutions.get());
@@ -282,16 +288,17 @@ public class TestIndexSearcher extends LuceneTestCase {
   public void testRejectedExecution() throws IOException {
     ExecutorService service = new RejectingMockExecutor();
 
-    IndexSearcher searcher = new IndexSearcher(reader, service) {
-      @Override
-      protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-        ArrayList<LeafSlice> slices = new ArrayList<>();
-        for (LeafReaderContext ctx : leaves) {
-          slices.add(new LeafSlice(Arrays.asList(ctx)));
-        }
-        return slices.toArray(new LeafSlice[0]);
-      }
-    };
+    IndexSearcher searcher =
+        new IndexSearcher(reader, service) {
+          @Override
+          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+            ArrayList<LeafSlice> slices = new ArrayList<>();
+            for (LeafReaderContext ctx : leaves) {
+              slices.add(new LeafSlice(Arrays.asList(ctx)));
+            }
+            return slices.toArray(new LeafSlice[0]);
+          }
+        };
 
     // To ensure that failing ExecutorService still allows query to run
     // successfully
@@ -303,62 +310,86 @@ public class TestIndexSearcher extends LuceneTestCase {
 
   private static class RejectingMockExecutor implements ExecutorService {
 
-    public void shutdown() {
-    }
+    @Override
+    public void shutdown() {}
 
+    @Override
     public List<Runnable> shutdownNow() {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean isShutdown() {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean isTerminated() {
       throw new UnsupportedOperationException();
     }
 
-    public boolean awaitTermination(final long l, final TimeUnit timeUnit) throws InterruptedException {
+    @Override
+    public boolean awaitTermination(final long l, final TimeUnit timeUnit)
+        throws InterruptedException {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> Future<T> submit(final Callable<T> tCallable) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> Future<T> submit(final Runnable runnable, final T t) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public Future<?> submit(final Runnable runnable) {
-      throw  new UnsupportedOperationException();
-    }
-
-    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> callables) throws InterruptedException {
       throw new UnsupportedOperationException();
     }
 
-    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit) throws InterruptedException {
+    @Override
+    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> callables)
+        throws InterruptedException {
       throw new UnsupportedOperationException();
     }
 
-    public <T> T invokeAny(final Collection<? extends Callable<T>> callables) throws InterruptedException, ExecutionException {
+    @Override
+    public <T> List<Future<T>> invokeAll(
+        final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit)
+        throws InterruptedException {
       throw new UnsupportedOperationException();
     }
 
-    public <T> T invokeAny(final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
+    @Override
+    public <T> T invokeAny(final Collection<? extends Callable<T>> callables)
+        throws InterruptedException, ExecutionException {
       throw new UnsupportedOperationException();
     }
 
+    @Override
+    public <T> T invokeAny(
+        final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit)
+        throws InterruptedException, ExecutionException, TimeoutException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void execute(final Runnable runnable) {
       throw new RejectedExecutionException();
     }
   }
 
   public void testQueueSizeBasedSliceExecutor() throws Exception {
-    ThreadPoolExecutor service = new ThreadPoolExecutor(4, 4, 0L, TimeUnit.MILLISECONDS,
-        new LinkedBlockingQueue<Runnable>(),
-        new NamedThreadFactory("TestIndexSearcher"));
+    ThreadPoolExecutor service =
+        new ThreadPoolExecutor(
+            4,
+            4,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("TestIndexSearcher"));
 
     runSliceExecutorTest(service, false);
 
@@ -366,33 +397,33 @@ public class TestIndexSearcher extends LuceneTestCase {
   }
 
   public void testRandomBlockingSliceExecutor() throws Exception {
-    ThreadPoolExecutor service = new ThreadPoolExecutor(4, 4, 0L, TimeUnit.MILLISECONDS,
-        new LinkedBlockingQueue<Runnable>(),
-        new NamedThreadFactory("TestIndexSearcher"));
+    ThreadPoolExecutor service =
+        new ThreadPoolExecutor(
+            4,
+            4,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("TestIndexSearcher"));
 
     runSliceExecutorTest(service, true);
 
     TestUtil.shutdownExecutorService(service);
   }
 
-  private void runSliceExecutorTest(ThreadPoolExecutor service, boolean useRandomSliceExecutor) throws Exception {
-    SliceExecutor sliceExecutor = useRandomSliceExecutor == true ? new RandomBlockingSliceExecutor(service) :
-                                                              new QueueSizeBasedExecutor(service);
+  private void runSliceExecutorTest(ThreadPoolExecutor service, boolean useRandomSliceExecutor)
+      throws Exception {
+    SliceExecutor sliceExecutor =
+        useRandomSliceExecutor == true
+            ? new RandomBlockingSliceExecutor(service)
+            : new QueueSizeBasedExecutor(service);
 
     IndexSearcher searcher = new IndexSearcher(reader.getContext(), service, sliceExecutor);
 
-    Query queries[] = new Query[] {
-        new MatchAllDocsQuery(),
-        new TermQuery(new Term("field", "1"))
-    };
-    Sort sorts[] = new Sort[] {
-        null,
-        new Sort(new SortField("field2", SortField.Type.STRING))
-    };
-    ScoreDoc afters[] = new ScoreDoc[] {
-        null,
-        new FieldDoc(0, 0f, new Object[] { new BytesRef("boo!") })
-    };
+    Query queries[] = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
+    Sort sorts[] = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
+    ScoreDoc afters[] =
+        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {new BytesRef("boo!")})};
 
     for (ScoreDoc after : afters) {
       for (Query query : queries) {
@@ -430,7 +461,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     }
 
     @Override
-    public void invokeAll(Collection<? extends Runnable> tasks){
+    public void invokeAll(Collection<? extends Runnable> tasks) {
 
       for (Runnable task : tasks) {
         boolean shouldExecuteOnCallerThread = random().nextBoolean();

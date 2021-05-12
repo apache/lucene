@@ -15,11 +15,20 @@
  * limitations under the License.
  */
 
+repositories {
+  mavenCentral()
+}
 
 // Make sure the build environment is consistent.
 apply from: file('../gradle/validation/check-environment.gradle')
 
+// Load common buildSrc and script deps.
+apply from: file("scriptDepVersions.gradle")
+
 dependencies {
   implementation gradleApi()
   implementation localGroovy()
+
+  implementation "commons-codec:commons-codec:${scriptDepVersions['commons-codec']}"
 }
+

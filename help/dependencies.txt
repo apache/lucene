@@ -13,8 +13,8 @@ https://docs.gradle.org/current/userguide/dependency_management_for_java_project
 https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_separation
 https://docs.gradle.org/current/userguide/java_plugin.html#sec:java_plugin_and_dependency_management
 
-For the needs of Lucene and Solr we will typically focus on three
-configurations and attach project dependencies to them:
+Lucene typically uses three configurations and attach project 
+dependencies to them:
 
 api  - makes a dependency available for main classes, tests and any
   other modules importing the project (exportable dependency),

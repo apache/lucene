@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.backward_codecs.lucene50;
 
-
-import static org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat.BLOCK_SIZE;
 import static org.apache.lucene.backward_codecs.lucene50.ForUtil.MAX_DATA_SIZE;
 import static org.apache.lucene.backward_codecs.lucene50.ForUtil.MAX_ENCODED_SIZE;
+import static org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat.BLOCK_SIZE;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
-
-import org.apache.lucene.backward_codecs.lucene50.ForUtil;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -32,8 +31,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.packed.PackedInts;
-
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 
 public class TestForUtil extends LuceneTestCase {
 
@@ -50,8 +47,8 @@ public class TestForUtil extends LuceneTestCase {
         }
       } else {
         for (int j = 0; j < BLOCK_SIZE; ++j) {
-          values[i * BLOCK_SIZE + j] = RandomNumbers.randomIntBetween(random(),
-              0, (int) PackedInts.maxValue(bpv));
+          values[i * BLOCK_SIZE + j] =
+              RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
         }
       }
     }
@@ -61,12 +58,14 @@ public class TestForUtil extends LuceneTestCase {
 
     {
       // encode
-      IndexOutput out = d.createOutput("test.bin", IOContext.DEFAULT);
+      IndexOutput out = EndiannessReverserUtil.createOutput(d, "test.bin", IOContext.DEFAULT);
       final ForUtil forUtil = new ForUtil(acceptableOverheadRatio, out);
-      
+
       for (int i = 0; i < iterations; ++i) {
-        // Although values after BLOCK_SIZE are garbage, we need to allocate extra bytes to avoid AIOOBE.
-        int[] block = ArrayUtil.grow(ArrayUtil.copyOfSubArray(values, i*BLOCK_SIZE, (i+1)*BLOCK_SIZE));
+        // Although values after BLOCK_SIZE are garbage, we need to allocate extra bytes to avoid
+        // AIOOBE.
+        int[] block =
+            ArrayUtil.grow(ArrayUtil.copyOfSubArray(values, i * BLOCK_SIZE, (i + 1) * BLOCK_SIZE));
         forUtil.writeBlock(ArrayUtil.grow(block, MAX_DATA_SIZE), new byte[MAX_ENCODED_SIZE], out);
       }
       endPointer = out.getFilePointer();
@@ -75,7 +74,7 @@ public class TestForUtil extends LuceneTestCase {
 
     {
       // decode
-      IndexInput in = d.openInput("test.bin", IOContext.READONCE);
+      IndexInput in = EndiannessReverserUtil.openInput(d, "test.bin", IOContext.READONCE);
       final ForUtil forUtil = new ForUtil(in);
       for (int i = 0; i < iterations; ++i) {
         if (random().nextBoolean()) {
@@ -84,14 +83,14 @@ public class TestForUtil extends LuceneTestCase {
         }
         final int[] restored = new int[MAX_DATA_SIZE];
         forUtil.readBlock(in, new byte[MAX_ENCODED_SIZE], restored);
-        assertArrayEquals(ArrayUtil.copyOfSubArray(values, i*BLOCK_SIZE, (i+1)*BLOCK_SIZE),
+        assertArrayEquals(
+            ArrayUtil.copyOfSubArray(values, i * BLOCK_SIZE, (i + 1) * BLOCK_SIZE),
             ArrayUtil.copyOfSubArray(restored, 0, BLOCK_SIZE));
       }
       assertEquals(endPointer, in.getFilePointer());
       in.close();
     }
-    
+
     d.close();
   }
-
 }

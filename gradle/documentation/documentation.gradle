@@ -17,30 +17,17 @@
 
 configure(rootProject) {
   def urlVersion = project.baseVersion.replace('.', '_')
-  def refguideUrlVersion = project.baseVersion.replaceFirst(/^(\d+)\.(\d+).*$/, '$1_$2')
 
   ext {
     luceneDocUrl = project.propertyOrDefault('lucene.javadoc.url', {
       if (project.version != project.baseVersion) {
-        // non-release build
-        new File(project('lucene:documentation').buildDir, 'site').toURI().toASCIIString().minus(~'/$')
+        // non-release build does not cross-link between modules.
+        return null
       } else {
         // release build
         "https://lucene.apache.org/core/${urlVersion}"
       }
     }())
-
-    solrDocUrl = project.propertyOrDefault('solr.javadoc.url', {
-      if (project.version != project.baseVersion) {
-        // non-release build
-        new File(project('solr:documentation').buildDir, 'site').toURI().toASCIIString().minus(~'/$')
-      } else {
-        // release build
-        "https://lucene.apache.org/solr/${urlVersion}"
-      }
-    }())
-
-    solrRefguideUrl = project.propertyOrDefault('solr.refguide.url', "https://lucene.apache.org/solr/guide/${refguideUrlVersion}")
   }
 
   task documentation() {
@@ -48,13 +35,13 @@ configure(rootProject) {
     description = 'Generate all documentation'
 
     dependsOn ':lucene:documentation:assemble'
-    dependsOn ':solr:documentation:assemble'
   }
+
+  assemble.dependsOn documentation
 }
 
 // docroot will point to Lucene and Solr relative directory for each sub-project.
-configure(subprojects.findAll { it.path == ':lucene:documentation' || it.path == ':solr:documentation' }) {
-
+configure(project(':lucene:documentation')) {
   ext {
     docroot = file("${buildDir}/site")
     docrootMinimal = file("${buildDir}/minimalSite")
@@ -93,51 +80,11 @@ configure(subprojects.findAll { it.path == ':lucene:documentation' || it.path ==
       builtBy documentation
     }
   }
-
 }
 
-configure(project(':solr:documentation')) {
-
-  task documentationMinimal() {
-    group = 'documentation'
-    description = "Generate stub Solr documentation pointing to web page (that's part of Solr TGZ)"
-    dependsOn 'copyMiniDocumentationAssets','createMiniDocumentationIndex','copyChangesToHtmlForMiniSite'
-  }
-
-  task copyChangesToHtmlForMiniSite(type: Copy) {
-    from project.docroot
-    into project.docrootMinimal
-    include 'changes/**'
-    dependsOn 'changesToHtml'
-  }
-
-  task copyMiniDocumentationAssets(type: Copy) {
-    includeEmptyDirs = false
-    from('src/assets')
-    into project.docrootMinimal
-  }
-
-  assemble {
-    dependsOn documentationMinimal
-  }
-
-  configurations {
-    minimalSite
-  }
-  
-  artifacts {
-    minimalSite project.docrootMinimal, {
-      builtBy documentationMinimal
-    }
-  }
-
-}
-
-configure(subprojects.findAll { it.path == ':lucene' || it.path == ':solr' }) {
-  
+configure(project(":lucene")) {
   ext {
     docroot = project('documentation').docroot
     docrootMinimal = project('documentation').docrootMinimal
   }
-
 }

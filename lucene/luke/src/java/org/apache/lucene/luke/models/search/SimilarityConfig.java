@@ -17,9 +17,7 @@
 
 package org.apache.lucene.luke.models.search;
 
-/**
- * Configurations for Similarity.
- */
+/** Configurations for Similarity. */
 public final class SimilarityConfig {
 
   private final boolean useClassicSimilarity;
@@ -56,7 +54,7 @@ public final class SimilarityConfig {
       return this;
     }
 
-    public Builder discountOverlaps (boolean val) {
+    public Builder discountOverlaps(boolean val) {
       discountOverlaps = val;
       return this;
     }
@@ -89,12 +87,21 @@ public final class SimilarityConfig {
     return discountOverlaps;
   }
 
+  @Override
   public String toString() {
-    return "SimilarityConfig: [" +
-        " use classic similarity=" + useClassicSimilarity + ";" +
-        " discount overlaps=" + discountOverlaps + ";" +
-        " k1=" + k1 + ";" +
-        " b=" + b + ";" +
-        "]";
+    return "SimilarityConfig: ["
+        + " use classic similarity="
+        + useClassicSimilarity
+        + ";"
+        + " discount overlaps="
+        + discountOverlaps
+        + ";"
+        + " k1="
+        + k1
+        + ";"
+        + " b="
+        + b
+        + ";"
+        + "]";
   }
 }

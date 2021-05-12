@@ -21,9 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-/**
- * Holder for a index file.
- */
+/** Holder for a index file. */
 public final class File {
   private String fileName;
   private String displaySize;
@@ -33,7 +31,9 @@ public final class File {
     file.fileName = name;
     try {
       file.displaySize = CommitsImpl.toDisplaySize(Files.size(Paths.get(indexPath, name)));
-    } catch (IOException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
       file.displaySize = "unknown";
     }
     return file;
@@ -47,6 +47,5 @@ public final class File {
     return displaySize;
   }
 
-  private File() {
-  }
+  private File() {}
 }

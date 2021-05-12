@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.index;
 
-
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
@@ -30,13 +32,7 @@ import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-
-/**
- * Test adding to the info stream when there's an exception thrown during field analysis.
- */
+/** Test adding to the info stream when there's an exception thrown during field analysis. */
 public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
   private static final FieldType storedTextType = new FieldType(TextField.TYPE_NOT_STORED);
 
@@ -51,12 +47,13 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     protected TokenStreamComponents createComponents(String fieldName) {
       Tokenizer tokenizer = new MockTokenizer();
       if (fieldName.equals("distinctiveFieldName")) {
-        TokenFilter tosser = new TokenFilter(tokenizer) {
-          @Override
-          public boolean incrementToken() throws IOException {
-            throw new BadNews("Something is icky.");
-          }
-        };
+        TokenFilter tosser =
+            new TokenFilter(tokenizer) {
+              @Override
+              public boolean incrementToken() throws IOException {
+                throw new BadNews("Something is icky.");
+              }
+            };
         return new TokenStreamComponents(tokenizer, tosser);
       } else {
         return new TokenStreamComponents(tokenizer);
@@ -76,9 +73,11 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     writer = new IndexWriter(dir, c);
     Document doc = new Document();
     doc.add(newField("distinctiveFieldName", "aaa ", storedTextType));
-    expectThrows(BadNews.class, () -> {
-      writer.addDocument(doc);
-    });
+    expectThrows(
+        BadNews.class,
+        () -> {
+          writer.addDocument(doc);
+        });
     infoPrintStream.flush();
     String infoStream = new String(infoBytes.toByteArray(), IOUtils.UTF_8);
     assertTrue(infoStream.contains("distinctiveFieldName"));
@@ -99,11 +98,8 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     writer = new IndexWriter(dir, c);
     Document doc = new Document();
     doc.add(newField("boringFieldName", "aaa ", storedTextType));
-    try {
-      writer.addDocument(doc);
-    } catch(BadNews badNews) {
-      fail("Unwanted exception");
-    }
+    // should not throw BadNews
+    writer.addDocument(doc);
     infoPrintStream.flush();
     String infoStream = new String(infoBytes.toByteArray(), IOUtils.UTF_8);
     assertFalse(infoStream.contains("boringFieldName"));
@@ -111,5 +107,4 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     writer.close();
     dir.close();
   }
-
 }

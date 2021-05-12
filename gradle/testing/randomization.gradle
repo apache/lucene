@@ -96,30 +96,11 @@ allprojects {
              RandomPicks.randomFrom(new Random(projectSeedLong), ["US-ASCII", "ISO-8859-1", "UTF-8"])
            },
            description: "Sets the default file.encoding on test JVM.", buildOnly: true],
-          // test data
+          // Test data file used.
           [propName: 'tests.linedocsfile', value: 'europarl.lines.txt.gz', description: "Test data file path."],
           // miscellaneous; some of them very weird.
           [propName: 'tests.LUCENE_VERSION', value: baseVersion, description: "Base Lucene version."],
           [propName: 'tests.bwcdir', value: null, description: "Data for backward-compatibility indexes."],
-      ]
-    }
-  }
-}
-
-// Add Solr-specific test configs settings.
-configure(allprojects.findAll {project -> project.path.startsWith(":solr") }) {
-  plugins.withType(JavaPlugin) {
-    ext {
-      testOptions += [
-          [propName: 'tests.luceneMatchVersion', value: baseVersion, description: "Base Lucene version."],
-          [propName: 'common-solr.dir',
-           value: { -> file("${commonDir}/../solr").path },
-           description: "Solr base dir.",
-           includeInReproLine: false
-          ],
-          [propName: 'solr.directoryFactory', value: "org.apache.solr.core.MockDirectoryFactory", description: "Solr directory factory."],
-          [propName: 'tests.src.home', value: null, description: "See SOLR-14023."],
-          [propName: 'solr.tests.use.numeric.points', value: null, description: "Point implementation to use (true=numerics, false=trie)."],
       ]
     }
   }
@@ -189,10 +170,6 @@ allprojects {
           } else if (project.path.startsWith(":lucene")) {
             systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")
-          } else {
-            systemProperty 'common-solr.dir', commonSolrDir
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/solr-tests.policy")
           }
 
           systemProperty 'common.dir', commonDir

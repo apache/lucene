@@ -17,24 +17,22 @@
 
 package org.apache.lucene.codecs;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.RandomAccessVectorValues;
+import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
-/**
- * Writes vectors to an index.
- */
+/** Writes vectors to an index. */
 public abstract class VectorWriter implements Closeable {
 
   /** Sole constructor */
@@ -63,29 +61,41 @@ public abstract class VectorWriter implements Closeable {
     finish();
   }
 
-  private void mergeVectors(FieldInfo mergeFieldInfo, final MergeState mergeState) throws IOException {
+  private void mergeVectors(FieldInfo mergeFieldInfo, final MergeState mergeState)
+      throws IOException {
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
     }
     List<VectorValuesSub> subs = new ArrayList<>();
     int dimension = -1;
-    VectorValues.SearchStrategy searchStrategy = null;
+    VectorValues.SimilarityFunction similarityFunction = null;
     int nonEmptySegmentIndex = 0;
     for (int i = 0; i < mergeState.vectorReaders.length; i++) {
       VectorReader vectorReader = mergeState.vectorReaders[i];
       if (vectorReader != null) {
         if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
           int segmentDimension = mergeFieldInfo.getVectorDimension();
-          VectorValues.SearchStrategy segmentSearchStrategy = mergeFieldInfo.getVectorSearchStrategy();
+          VectorValues.SimilarityFunction segmentSimilarityFunction =
+              mergeFieldInfo.getVectorSimilarityFunction();
           if (dimension == -1) {
             dimension = segmentDimension;
-            searchStrategy = mergeFieldInfo.getVectorSearchStrategy();
+            similarityFunction = mergeFieldInfo.getVectorSimilarityFunction();
           } else if (dimension != segmentDimension) {
-            throw new IllegalStateException("Varying dimensions for vector-valued field " + mergeFieldInfo.name
-                + ": " + dimension + "!=" + segmentDimension);
-          } else if (searchStrategy != segmentSearchStrategy) {
-            throw new IllegalStateException("Varying search strategys for vector-valued field " + mergeFieldInfo.name
-                + ": " + searchStrategy + "!=" + segmentSearchStrategy);
+            throw new IllegalStateException(
+                "Varying dimensions for vector-valued field "
+                    + mergeFieldInfo.name
+                    + ": "
+                    + dimension
+                    + "!="
+                    + segmentDimension);
+          } else if (similarityFunction != segmentSimilarityFunction) {
+            throw new IllegalStateException(
+                "Varying similarity functions for vector-valued field "
+                    + mergeFieldInfo.name
+                    + ": "
+                    + similarityFunction
+                    + "!="
+                    + segmentSimilarityFunction);
           }
           VectorValues values = vectorReader.getVectorValues(mergeFieldInfo.name);
           if (values != null) {
@@ -107,7 +117,6 @@ public abstract class VectorWriter implements Closeable {
   /** Tracks state of one sub-reader that we are merging */
   private static class VectorValuesSub extends DocIDMerger.Sub {
 
-    final MergeState.DocMap docMap;
     final VectorValues values;
     final int segmentIndex;
     int count;
@@ -116,7 +125,6 @@ public abstract class VectorWriter implements Closeable {
       super(docMap);
       this.values = values;
       this.segmentIndex = segmentIndex;
-      this.docMap = docMap;
       assert values.docID() == -1;
     }
 
@@ -132,20 +140,23 @@ public abstract class VectorWriter implements Closeable {
   }
 
   /**
-   * View over multiple VectorValues supporting iterator-style access via DocIdMerger. Maintains a reverse ordinal
-   * mapping for documents having values in order to support random access by dense ordinal.
+   * View over multiple VectorValues supporting iterator-style access via DocIdMerger. Maintains a
+   * reverse ordinal mapping for documents having values in order to support random access by dense
+   * ordinal.
    */
-  private static class VectorValuesMerger extends VectorValues {
+  private static class VectorValuesMerger extends VectorValues
+      implements RandomAccessVectorValuesProducer {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
     private final int[] ordBase;
     private final int cost;
-    private final int size;
+    private int size;
 
     private int docId;
     private VectorValuesSub current;
-    // For each doc with a vector, record its ord in the segments being merged. This enables random access into the
-    // unmerged segments using the ords from the merged segment.
+    /* For each doc with a vector, record its ord in the segments being merged. This enables random
+     * access into the unmerged segments using the ords from the merged segment.
+     */
     private int[] ordMap;
     private int ord;
 
@@ -157,6 +168,10 @@ public abstract class VectorWriter implements Closeable {
         totalCost += sub.values.cost();
         totalSize += sub.values.size();
       }
+      /* This size includes deleted docs, but when we iterate over docs here (nextDoc())
+       * we skip deleted docs. So we sneakily update this size once we observe that iteration is complete.
+       * That way by the time we are asked to do random access for graph building, we have a correct size.
+       */
       cost = totalCost;
       size = totalSize;
       ordMap = new int[size];
@@ -180,6 +195,9 @@ public abstract class VectorWriter implements Closeable {
       current = docIdMerger.next();
       if (current == null) {
         docId = NO_MORE_DOCS;
+        /* update the size to reflect the number of *non-deleted* documents seen so we can support
+         * random access. */
+        size = ord;
       } else {
         docId = current.mappedDocID;
         ordMap[ord++] = ordBase[current.segmentIndex] + current.count - 1;
@@ -198,7 +216,7 @@ public abstract class VectorWriter implements Closeable {
     }
 
     @Override
-    public RandomAccess randomAccess() {
+    public RandomAccessVectorValues randomAccess() {
       return new MergerRandomAccess();
     }
 
@@ -223,18 +241,23 @@ public abstract class VectorWriter implements Closeable {
     }
 
     @Override
-    public SearchStrategy searchStrategy() {
-      return subs.get(0).values.searchStrategy();
+    public SimilarityFunction similarityFunction() {
+      return subs.get(0).values.similarityFunction();
     }
 
-    class MergerRandomAccess implements VectorValues.RandomAccess {
+    class MergerRandomAccess implements RandomAccessVectorValues {
 
-      private final List<RandomAccess> raSubs;
+      private final List<RandomAccessVectorValues> raSubs;
 
       MergerRandomAccess() {
         raSubs = new ArrayList<>(subs.size());
         for (VectorValuesSub sub : subs) {
-          raSubs.add(sub.values.randomAccess());
+          if (sub.values instanceof RandomAccessVectorValuesProducer) {
+            raSubs.add(((RandomAccessVectorValuesProducer) sub.values).randomAccess());
+          } else {
+            throw new IllegalStateException(
+                "Cannot merge VectorValues without support for random access");
+          }
         }
       }
 
@@ -249,8 +272,8 @@ public abstract class VectorWriter implements Closeable {
       }
 
       @Override
-      public SearchStrategy searchStrategy() {
-        return VectorValuesMerger.this.searchStrategy();
+      public SimilarityFunction similarityFunction() {
+        return VectorValuesMerger.this.similarityFunction();
       }
 
       @Override
@@ -261,7 +284,7 @@ public abstract class VectorWriter implements Closeable {
           // get the index of the greatest lower bound
           segmentOrd = -2 - segmentOrd;
         }
-        while(segmentOrd < ordBase.length - 1 && ordBase[segmentOrd + 1] == ordBase[segmentOrd]) {
+        while (segmentOrd < ordBase.length - 1 && ordBase[segmentOrd + 1] == ordBase[segmentOrd]) {
           // forward over empty segments which will share the same ordBase
           segmentOrd++;
         }
@@ -272,12 +295,6 @@ public abstract class VectorWriter implements Closeable {
       public BytesRef binaryValue(int targetOrd) throws IOException {
         throw new UnsupportedOperationException();
       }
-
-      @Override
-      public TopDocs search(float[] target, int k, int fanout) throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
     }
   }
 }

@@ -54,6 +54,9 @@ configure(project(":lucene:analysis:common")) {
         srcExcludes += [
             "**/*.aff",
             "**/*.dic",
+            "**/*.wrong",
+            "**/*.good",
+            "**/*.sug",
             "**/charfilter/*.htm*",
             "**/*LuceneResourcesWikiPage.html"
         ]
@@ -90,26 +93,6 @@ configure(project(":lucene:suggest")) {
         srcExcludes += [
             "**/Top50KWiki.utf8",
             "**/stop-snowball.txt"
-        ]
-    }
-}
-
-configure(project(":solr:core")) {
-    rat {
-        srcExcludes += [
-            "**/htmlStripReaderTest.html"
-        ]
-    }
-}
-
-configure(project(":solr:webapp")) {
-    rat {
-        includes = [ "**" ]
-        excludes += [
-            "web/img/**",
-            "*.iml",
-            "build.gradle",
-            "build/**",
         ]
     }
 }
@@ -151,10 +134,16 @@ class RatTask extends DefaultTask {
             }
 
             if (project.plugins.findPlugin(JavaPlugin)) {
-                [
+                def checkSets = [
                     project.sourceSets.main.java.srcDirs,
                     project.sourceSets.test.java.srcDirs,
-                ].flatten().each { srcLocation ->
+                ]
+
+                project.sourceSets.matching { it.name == 'tools' }.all {
+                    checkSets += project.sourceSets.tools.java.srcDirs
+                }
+
+                checkSets.flatten().each { srcLocation ->
                     ant.fileset(dir: srcLocation, erroronmissingdir: false) {
                         srcExcludes.each { pattern -> ant.exclude(name: pattern) }
                     }
@@ -198,6 +187,8 @@ class RatTask extends DefaultTask {
             substringMatcher(licenseFamilyCategory: "MIT  ", licenseFamilyName:"Modified BSD License") {
                 // ICU license
                 pattern(substring: "Permission is hereby granted, free of charge, to any person obtaining a copy")
+                // ui-grid
+                pattern(substring: " ; License: MIT")                
             }
 
             // Apache

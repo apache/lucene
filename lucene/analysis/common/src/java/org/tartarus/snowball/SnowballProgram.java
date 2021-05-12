@@ -10,13 +10,13 @@ modification, are permitted provided that the following conditions
 are met:
 
   1. Redistributions of source code must retain the above copyright notice,
-   this list of conditions and the following disclaimer.
+     this list of conditions and the following disclaimer.
   2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
   3. Neither the name of the Snowball project nor the names of its contributors
-   may be used to endorse or promote products derived from this software
-   without specific prior written permission.
+     may be used to endorse or promote products derived from this software
+     without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -31,26 +31,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 package org.tartarus.snowball;
-import java.lang.reflect.UndeclaredThrowableException;
-import java.io.Serializable;
 
-/**
- * Base class for a snowball stemmer
- */
+import java.io.Serializable;
+import java.lang.reflect.UndeclaredThrowableException;
+
+/** Base class for a snowball stemmer */
 public class SnowballProgram implements Serializable {
-  protected SnowballProgram()
-  {
+  protected SnowballProgram() {
     current = new char[8];
     setCurrent("");
   }
 
   static final long serialVersionUID = 2016072500L;
 
-  /**
-   * Set the current string.
-   */
-  public void setCurrent(String value)
-  {
+  /** Set the current string. */
+  public void setCurrent(String value) {
     current = value.toCharArray();
     cursor = 0;
     limit = value.length();
@@ -59,16 +54,14 @@ public class SnowballProgram implements Serializable {
     ket = limit;
   }
 
-  /**
-   * Get the current string.
-   */
-  public String getCurrent()
-  {
+  /** Get the current string. */
+  public String getCurrent() {
     return new String(current, 0, limit);
   }
 
   /**
    * Set the current string.
+   *
    * @param text character array containing input
    * @param length valid length of text.
    */
@@ -83,16 +76,15 @@ public class SnowballProgram implements Serializable {
 
   /**
    * Get the current buffer containing the stem.
-   * <p>
-   * NOTE: this may be a reference to a different character array than the
-   * one originally provided with setCurrent, in the exceptional case that
-   * stemming produced a longer intermediate or result string.
-   * </p>
-   * <p>
-   * It is necessary to use {@link #getCurrentBufferLength()} to determine
-   * the valid length of the returned buffer. For example, many words are
-   * stemmed simply by subtracting from the length to remove suffixes.
-   * </p>
+   *
+   * <p>NOTE: this may be a reference to a different character array than the one originally
+   * provided with setCurrent, in the exceptional case that stemming produced a longer intermediate
+   * or result string.
+   *
+   * <p>It is necessary to use {@link #getCurrentBufferLength()} to determine the valid length of
+   * the returned buffer. For example, many words are stemmed simply by subtracting from the length
+   * to remove suffixes.
+   *
    * @see #getCurrentBufferLength()
    */
   public char[] getCurrentBuffer() {
@@ -100,8 +92,8 @@ public class SnowballProgram implements Serializable {
   }
 
   /**
-   * Get the valid length of the character array in
-   * {@link #getCurrentBuffer()}.
+   * Get the valid length of the character array in {@link #getCurrentBuffer()}.
+   *
    * @return valid length of the array.
    */
   public int getCurrentBufferLength() {
@@ -118,26 +110,24 @@ public class SnowballProgram implements Serializable {
   protected int ket;
 
   public SnowballProgram(SnowballProgram other) {
-    current      = other.current;
-    cursor       = other.cursor;
-    limit      = other.limit;
-    limit_backward   = other.limit_backward;
-    bra        = other.bra;
-    ket        = other.ket;
+    current = other.current;
+    cursor = other.cursor;
+    limit = other.limit;
+    limit_backward = other.limit_backward;
+    bra = other.bra;
+    ket = other.ket;
   }
 
-  protected void copy_from(SnowballProgram other)
-  {
-    current      = other.current;
-    cursor       = other.cursor;
-    limit      = other.limit;
-    limit_backward   = other.limit_backward;
-    bra        = other.bra;
-    ket        = other.ket;
+  protected void copy_from(SnowballProgram other) {
+    current = other.current;
+    cursor = other.cursor;
+    limit = other.limit;
+    limit_backward = other.limit_backward;
+    bra = other.bra;
+    ket = other.ket;
   }
 
-  protected boolean in_grouping(char [] s, int min, int max)
-  {
+  protected boolean in_grouping(char[] s, int min, int max) {
     if (cursor >= limit) return false;
     char ch = current[cursor];
     if (ch > max || ch < min) return false;
@@ -147,8 +137,7 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
-  protected boolean in_grouping_b(char [] s, int min, int max)
-  {
+  protected boolean in_grouping_b(char[] s, int min, int max) {
     if (cursor <= limit_backward) return false;
     char ch = current[cursor - 1];
     if (ch > max || ch < min) return false;
@@ -158,8 +147,7 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
-  protected boolean out_grouping(char [] s, int min, int max)
-  {
+  protected boolean out_grouping(char[] s, int min, int max) {
     if (cursor >= limit) return false;
     char ch = current[cursor];
     if (ch > max || ch < min) {
@@ -174,8 +162,7 @@ public class SnowballProgram implements Serializable {
     return false;
   }
 
-  protected boolean out_grouping_b(char [] s, int min, int max)
-  {
+  protected boolean out_grouping_b(char[] s, int min, int max) {
     if (cursor <= limit_backward) return false;
     char ch = current[cursor - 1];
     if (ch > max || ch < min) {
@@ -190,8 +177,7 @@ public class SnowballProgram implements Serializable {
     return false;
   }
 
-  protected boolean eq_s(CharSequence s)
-  {
+  protected boolean eq_s(CharSequence s) {
     if (limit - cursor < s.length()) return false;
     int i;
     for (i = 0; i != s.length(); i++) {
@@ -201,8 +187,7 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
-  protected boolean eq_s_b(CharSequence s)
-  {
+  protected boolean eq_s_b(CharSequence s) {
     if (cursor - limit_backward < s.length()) return false;
     int i;
     for (i = 0; i != s.length(); i++) {
@@ -212,8 +197,7 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
-  protected int find_among(Among v[])
-  {
+  protected int find_among(Among v[]) {
     int i = 0;
     int j = v.length;
 
@@ -281,8 +265,7 @@ public class SnowballProgram implements Serializable {
   }
 
   // find_among_b is for backwards processing. Same comments apply
-  protected int find_among_b(Among v[])
-  {
+  protected int find_among_b(Among v[]) {
     int i = 0;
     int j = v.length;
 
@@ -358,11 +341,10 @@ public class SnowballProgram implements Serializable {
   /* to replace chars between c_bra and c_ket in current by the
    * chars in s.
    */
-  protected int replace_s(int c_bra, int c_ket, CharSequence s)
-  {
+  protected int replace_s(int c_bra, int c_ket, CharSequence s) {
     final int adjustment = s.length() - (c_ket - c_bra);
     final int newLength = limit + adjustment;
-    //resize if necessary
+    // resize if necessary
     if (newLength > current.length) {
       char newBuffer[] = new char[oversize(newLength)];
       System.arraycopy(current, 0, newBuffer, 0, limit);
@@ -371,14 +353,12 @@ public class SnowballProgram implements Serializable {
     // if the substring being replaced is longer or shorter than the
     // replacement, need to shift things around
     if (adjustment != 0 && c_ket < limit) {
-      System.arraycopy(current, c_ket, current, c_bra + s.length(),
-        limit - c_ket);
+      System.arraycopy(current, c_ket, current, c_bra + s.length(), limit - c_ket);
     }
     // insert the replacement text
     // Note, faster is s.getChars(0, s.length(), current, c_bra);
     // but would have to duplicate this method for both String and StringBuilder
-    for (int i = 0; i < s.length(); i++)
-      current[c_bra + i] = s.charAt(i);
+    for (int i = 0; i < s.length(); i++) current[c_bra + i] = s.charAt(i);
 
     limit += adjustment;
     if (cursor >= c_ket) cursor += adjustment;
@@ -386,69 +366,62 @@ public class SnowballProgram implements Serializable {
     return adjustment;
   }
 
-  protected void slice_check()
-  {
-    if (bra < 0 ||
-      bra > ket ||
-      ket > limit)
-    {
-       throw new IllegalArgumentException("faulty slice operation: bra=" + bra + ",ket=" + ket + ",limit=" + limit);
+  protected void slice_check() {
+    if (bra < 0 || bra > ket || ket > limit) {
+      throw new IllegalArgumentException(
+          "faulty slice operation: bra=" + bra + ",ket=" + ket + ",limit=" + limit);
     }
   }
 
-  protected void slice_from(CharSequence s)
-  {
+  protected void slice_from(CharSequence s) {
     slice_check();
     replace_s(bra, ket, s);
   }
 
-  protected void slice_del()
-  {
+  protected void slice_del() {
     slice_from("");
   }
 
-  protected void insert(int c_bra, int c_ket, CharSequence s)
-  {
+  protected void insert(int c_bra, int c_ket, CharSequence s) {
     int adjustment = replace_s(c_bra, c_ket, s);
     if (c_bra <= bra) bra += adjustment;
     if (c_bra <= ket) ket += adjustment;
   }
 
   /* Copy the slice into the supplied StringBuilder */
-  protected void slice_to(StringBuilder s)
-  {
+  protected void slice_to(StringBuilder s) {
     slice_check();
     int len = ket - bra;
     s.setLength(0);
     s.append(current, bra, len);
   }
 
-  protected void assign_to(StringBuilder s)
-  {
+  protected void assign_to(StringBuilder s) {
     s.setLength(0);
     s.append(current, 0, limit);
   }
 
-/*
-extern void debug(struct SN_env * z, int number, int line_count)
-{   int i;
-  int limit = SIZE(z->p);
-  //if (number >= 0) printf("%3d (line %4d): '", number, line_count);
-  if (number >= 0) printf("%3d (line %4d): [%d]'", number, line_count,limit);
-  for (i = 0; i <= limit; i++)
-  {   if (z->lb == i) printf("{");
-    if (z->bra == i) printf("[");
-    if (z->c == i) printf("|");
-    if (z->ket == i) printf("]");
-    if (z->l == i) printf("}");
-    if (i < limit)
-    {   int ch = z->p[i];
-      if (ch == 0) ch = '#';
-      printf("%c", ch);
-    }
+  /*
+  extern void debug(struct SN_env * z, int number, int line_count)
+  {   int i;
+      int limit = SIZE(z->p);
+      //if (number >= 0) printf("%3d (line %4d): '", number, line_count);
+      if (number >= 0) printf("%3d (line %4d): [%d]'", number, line_count,limit);
+      for (i = 0; i <= limit; i++)
+      {   if (z->lb == i) printf("{");
+          if (z->bra == i) printf("[");
+          if (z->c == i) printf("|");
+          if (z->ket == i) printf("]");
+          if (z->l == i) printf("}");
+          if (i < limit)
+          {   int ch = z->p[i];
+              if (ch == 0) ch = '#';
+              printf("%c", ch);
+          }
+      }
+      printf("'\n");
   }
-  printf("'\n");
-}
-*/
+  */
 
-};
+}
+;

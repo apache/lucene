@@ -20,9 +20,7 @@ import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
-/**
- * Require assertions for Lucene/Solr packages.
- */
+/** Require assertions for Lucene/Solr packages. */
 public class TestRuleAssertionsRequired implements TestRule {
   @Override
   public Statement apply(final Statement base, final Description description) {
@@ -40,13 +38,15 @@ public class TestRuleAssertionsRequired implements TestRule {
             }
             if (LuceneTestCase.TEST_ASSERTS_ENABLED) {
               msg += " but -Dtests.asserts=true";
-            } else  {
+            } else {
               msg += " but -Dtests.asserts=false";
             }
             System.err.println(msg);
             throw new Exception(msg);
           }
-        } catch (AssertionError e) {
+        } catch (
+            @SuppressWarnings("unused")
+            AssertionError e) {
           // Ok, enabled.
         }
 

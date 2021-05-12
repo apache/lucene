@@ -95,8 +95,10 @@ org.apache.lucene.analysis.ngram.EdgeNGramFilterFactory
 org.apache.lucene.analysis.ngram.NGramFilterFactory
 org.apache.lucene.analysis.no.NorwegianLightStemFilterFactory
 org.apache.lucene.analysis.no.NorwegianMinimalStemFilterFactory
+org.apache.lucene.analysis.no.NorwegianNormalizationFilterFactory
 org.apache.lucene.analysis.pattern.PatternReplaceFilterFactory
 org.apache.lucene.analysis.pattern.PatternCaptureGroupFilterFactory
+org.apache.lucene.analysis.pattern.PatternTypingFilterFactory
 org.apache.lucene.analysis.payloads.DelimitedPayloadTokenFilterFactory
 org.apache.lucene.analysis.payloads.NumericPayloadTokenFilterFactory
 org.apache.lucene.analysis.payloads.TokenOffsetPayloadTokenFilterFactory

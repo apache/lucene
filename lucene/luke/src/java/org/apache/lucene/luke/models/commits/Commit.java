@@ -18,13 +18,10 @@
 package org.apache.lucene.luke.models.commits;
 
 import java.io.IOException;
-
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.luke.models.util.IndexUtils;
 
-/**
- * Holder for a commit.
- */
+/** Holder for a commit. */
 public final class Commit {
 
   private long generation;
@@ -42,7 +39,9 @@ public final class Commit {
     commit.segCount = ic.getSegmentCount();
     try {
       commit.userData = IndexUtils.getCommitUserData(ic);
-    } catch (IOException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
     }
     return commit;
   }
@@ -63,6 +62,5 @@ public final class Commit {
     return userData;
   }
 
-  private Commit() {
-  }
+  private Commit() {}
 }

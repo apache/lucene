@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.codecs.asserting;
 
-import java.io.IOException;
-import java.util.Collection;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.IOException;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
@@ -27,17 +27,12 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.TestUtil;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
-/**
- * Just like the default but with additional asserts.
- */
+/** Just like the default but with additional asserts. */
 public class AssertingNormsFormat extends NormsFormat {
   private final NormsFormat in = TestUtil.getDefaultCodec().normsFormat();
-  
+
   @Override
   public NormsConsumer normsConsumer(SegmentWriteState state) throws IOException {
     NormsConsumer consumer = in.normsConsumer(state);
@@ -52,11 +47,11 @@ public class AssertingNormsFormat extends NormsFormat {
     assert producer != null;
     return new AssertingNormsProducer(producer, state.segmentInfo.maxDoc(), false);
   }
-  
+
   static class AssertingNormsConsumer extends NormsConsumer {
     private final NormsConsumer in;
     private final int maxDoc;
-    
+
     AssertingNormsConsumer(NormsConsumer in, int maxDoc) {
       this.in = in;
       this.maxDoc = maxDoc;
@@ -72,25 +67,25 @@ public class AssertingNormsFormat extends NormsFormat {
         assert docID >= 0 && docID < maxDoc;
         assert docID > lastDocID;
         lastDocID = docID;
-        long value = values.longValue();
+        values.longValue();
       }
 
       in.addNormsField(field, valuesProducer);
     }
-    
+
     @Override
     public void close() throws IOException {
       in.close();
       in.close(); // close again
     }
   }
-  
+
   static class AssertingNormsProducer extends NormsProducer {
     private final NormsProducer in;
     private final int maxDoc;
     private final boolean merging;
     private final Thread creationThread;
-    
+
     AssertingNormsProducer(NormsProducer in, int maxDoc, boolean merging) {
       this.in = in;
       this.maxDoc = maxDoc;
@@ -98,8 +93,6 @@ public class AssertingNormsFormat extends NormsFormat {
       this.creationThread = Thread.currentThread();
       // do a few simple checks on init
       assert toString() != null;
-      assert ramBytesUsed() >= 0;
-      assert getChildResources() != null;
     }
 
     @Override
@@ -120,29 +113,15 @@ public class AssertingNormsFormat extends NormsFormat {
     }
 
     @Override
-    public long ramBytesUsed() {
-      long v = in.ramBytesUsed();
-      assert v >= 0;
-      return v;
-    }
-    
-    @Override
-    public Collection<Accountable> getChildResources() {
-      Collection<Accountable> res = in.getChildResources();
-      TestUtil.checkReadOnly(res);
-      return res;
-    }
-
-    @Override
     public void checkIntegrity() throws IOException {
       in.checkIntegrity();
     }
-    
+
     @Override
     public NormsProducer getMergeInstance() {
       return new AssertingNormsProducer(in.getMergeInstance(), maxDoc, true);
     }
-    
+
     @Override
     public String toString() {
       return getClass().getSimpleName() + "(" + in.toString() + ")";

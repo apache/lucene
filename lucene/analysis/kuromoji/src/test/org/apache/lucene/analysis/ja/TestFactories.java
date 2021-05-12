@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.analysis.ja;
 
-
 import java.io.IOException;
 import java.io.Reader;
 import java.lang.reflect.Constructor;
@@ -26,53 +25,52 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
+import org.apache.lucene.analysis.AbstractAnalysisFactory;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.analysis.CharFilterFactory;
 import org.apache.lucene.analysis.MockTokenizer;
+import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.TokenizerFactory;
 import org.apache.lucene.analysis.boost.DelimitedBoostTokenFilterFactory;
 import org.apache.lucene.analysis.miscellaneous.DelimitedTermFrequencyTokenFilterFactory;
-import org.apache.lucene.analysis.AbstractAnalysisFactory;
-import org.apache.lucene.analysis.CharFilterFactory;
-import org.apache.lucene.util.ResourceLoaderAware;
-import org.apache.lucene.analysis.TokenFilterFactory;
-import org.apache.lucene.analysis.TokenizerFactory;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.LuceneTestCase.Nightly;
+import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.Version;
 
 /**
- * Sanity check some things about all factories,
- * we do our best to see if we can sanely initialize it with
- * no parameters and smoke test it, etc.
+ * Sanity check some things about all factories, we do our best to see if we can sanely initialize
+ * it with no parameters and smoke test it, etc.
  */
 // TODO: this was copied from the analysis/common module ... find a better way to share it!
 
 // TODO: fix this to use CustomAnalyzer instead of its own FactoryAnalyzer
 @Nightly
 public class TestFactories extends BaseTokenStreamTestCase {
-  
+
   /** Factories that are excluded from testing it with random data */
-  private static final Set<Class<? extends AbstractAnalysisFactory>> EXCLUDE_FACTORIES_RANDOM_DATA = new HashSet<>(Arrays.asList(
-      DelimitedTermFrequencyTokenFilterFactory.class,
-      DelimitedBoostTokenFilterFactory.class
-  ));
-  
+  private static final Set<Class<? extends AbstractAnalysisFactory>> EXCLUDE_FACTORIES_RANDOM_DATA =
+      new HashSet<>(
+          Arrays.asList(
+              DelimitedTermFrequencyTokenFilterFactory.class,
+              DelimitedBoostTokenFilterFactory.class));
+
   public void test() throws IOException {
     for (String tokenizer : TokenizerFactory.availableTokenizers()) {
       doTestTokenizer(tokenizer);
     }
-    
+
     for (String tokenFilter : TokenFilterFactory.availableTokenFilters()) {
       doTestTokenFilter(tokenFilter);
     }
-    
+
     for (String charFilter : CharFilterFactory.availableCharFilters()) {
       doTestCharFilter(charFilter);
     }
   }
-  
+
   private void doTestTokenizer(String tokenizer) throws IOException {
     Class<? extends TokenizerFactory> factoryClazz = TokenizerFactory.lookupClass(tokenizer);
     TokenizerFactory factory = (TokenizerFactory) initialize(factoryClazz);
@@ -87,7 +85,7 @@ public class TestFactories extends BaseTokenStreamTestCase {
       }
     }
   }
-  
+
   private void doTestTokenFilter(String tokenfilter) throws IOException {
     Class<? extends TokenFilterFactory> factoryClazz = TokenFilterFactory.lookupClass(tokenfilter);
     TokenFilterFactory factory = (TokenFilterFactory) initialize(factoryClazz);
@@ -102,7 +100,7 @@ public class TestFactories extends BaseTokenStreamTestCase {
       }
     }
   }
-  
+
   private void doTestCharFilter(String charfilter) throws IOException {
     Class<? extends CharFilterFactory> factoryClazz = CharFilterFactory.lookupClass(charfilter);
     CharFilterFactory factory = (CharFilterFactory) initialize(factoryClazz);
@@ -117,18 +115,19 @@ public class TestFactories extends BaseTokenStreamTestCase {
       }
     }
   }
-  
+
   /** tries to initialize a factory with no arguments */
-  private AbstractAnalysisFactory initialize(Class<? extends AbstractAnalysisFactory> factoryClazz) throws IOException {
-    Map<String,String> args = new HashMap<>();
+  private AbstractAnalysisFactory initialize(Class<? extends AbstractAnalysisFactory> factoryClazz)
+      throws IOException {
+    Map<String, String> args = new HashMap<>();
     args.put("luceneMatchVersion", Version.LATEST.toString());
     Constructor<? extends AbstractAnalysisFactory> ctor;
     try {
       ctor = factoryClazz.getConstructor(Map.class);
     } catch (Exception e) {
-      throw new RuntimeException("factory '" + factoryClazz + "' does not have a proper ctor!");
+      throw new RuntimeException("factory '" + factoryClazz + "' does not have a proper ctor!", e);
     }
-    
+
     AbstractAnalysisFactory factory = null;
     try {
       factory = ctor.newInstance(args);
@@ -140,33 +139,39 @@ public class TestFactories extends BaseTokenStreamTestCase {
         return null;
       }
     }
-    
+
     if (factory instanceof ResourceLoaderAware) {
       try {
         ((ResourceLoaderAware) factory).inform(new StringMockResourceLoader(""));
-      } catch (IOException ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          IOException ignored) {
         // it's ok if the right files arent available or whatever to throw this
-      } catch (IllegalArgumentException ignored) {
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalArgumentException ignored) {
         // is this ok? I guess so
       }
     }
     return factory;
   }
-  
+
   // some silly classes just so we can use checkRandomData
-  private TokenizerFactory assertingTokenizer = new TokenizerFactory(new HashMap<String,String>()) {
-    @Override
-    public MockTokenizer create(AttributeFactory factory) {
-      return new MockTokenizer(factory);
-    }
-  };
-  
+  private TokenizerFactory assertingTokenizer =
+      new TokenizerFactory(new HashMap<String, String>()) {
+        @Override
+        public MockTokenizer create(AttributeFactory factory) {
+          return new MockTokenizer(factory);
+        }
+      };
+
   private static class FactoryAnalyzer extends Analyzer {
     final TokenizerFactory tokenizer;
     final CharFilterFactory charFilter;
     final TokenFilterFactory tokenfilter;
-    
-    FactoryAnalyzer(TokenizerFactory tokenizer, TokenFilterFactory tokenfilter, CharFilterFactory charFilter) {
+
+    FactoryAnalyzer(
+        TokenizerFactory tokenizer, TokenFilterFactory tokenfilter, CharFilterFactory charFilter) {
       assert tokenizer != null;
       this.tokenizer = tokenizer;
       this.charFilter = charFilter;

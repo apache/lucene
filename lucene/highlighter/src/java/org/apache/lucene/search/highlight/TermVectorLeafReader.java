@@ -19,7 +19,6 @@ package org.apache.lucene.search.highlight;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
-
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -36,6 +35,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 
@@ -50,25 +50,26 @@ public class TermVectorLeafReader extends LeafReader {
   private final FieldInfos fieldInfos;
 
   public TermVectorLeafReader(String field, Terms terms) {
-    fields = new Fields() {
-      @Override
-      public Iterator<String> iterator() {
-        return Collections.singletonList(field).iterator();
-      }
+    fields =
+        new Fields() {
+          @Override
+          public Iterator<String> iterator() {
+            return Collections.singletonList(field).iterator();
+          }
 
-      @Override
-      public Terms terms(String fld) throws IOException {
-        if (!field.equals(fld)) {
-          return null;
-        }
-        return terms;
-      }
+          @Override
+          public Terms terms(String fld) throws IOException {
+            if (!field.equals(fld)) {
+              return null;
+            }
+            return terms;
+          }
 
-      @Override
-      public int size() {
-        return 1;
-      }
-    };
+          @Override
+          public int size() {
+            return 1;
+          }
+        };
 
     IndexOptions indexOptions;
     if (!terms.hasFreqs()) {
@@ -80,15 +81,28 @@ public class TermVectorLeafReader extends LeafReader {
     } else {
       indexOptions = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS;
     }
-    FieldInfo fieldInfo = new FieldInfo(field, 0,
-                                        true, true, terms.hasPayloads(),
-                                        indexOptions, DocValuesType.NONE, -1, Collections.emptyMap(), 0, 0, 0, 0, VectorValues.SearchStrategy.NONE, false);
-    fieldInfos = new FieldInfos(new FieldInfo[]{fieldInfo});
+    FieldInfo fieldInfo =
+        new FieldInfo(
+            field,
+            0,
+            true,
+            true,
+            terms.hasPayloads(),
+            indexOptions,
+            DocValuesType.NONE,
+            -1,
+            Collections.emptyMap(),
+            0,
+            0,
+            0,
+            0,
+            VectorValues.SimilarityFunction.NONE,
+            false);
+    fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
 
   @Override
-  protected void doClose() throws IOException {
-  }
+  protected void doClose() throws IOException {}
 
   @Override
   public Terms terms(String field) throws IOException {
@@ -122,7 +136,7 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public NumericDocValues getNormValues(String field) throws IOException {
-    return null;//Is this needed?  See MemoryIndex for a way to do it.
+    return null; // Is this needed?  See MemoryIndex for a way to do it.
   }
 
   @Override
@@ -146,8 +160,12 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout) {
+    return null;
   }
+
+  @Override
+  public void checkIntegrity() throws IOException {}
 
   @Override
   public Fields getTermVectors(int docID) throws IOException {
@@ -168,8 +186,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-  }
+  public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
 
   @Override
   public LeafMetaData getMetaData() {

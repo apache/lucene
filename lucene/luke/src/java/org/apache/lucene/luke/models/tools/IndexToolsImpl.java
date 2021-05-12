@@ -27,7 +27,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CheckIndex;
@@ -83,7 +82,8 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
   public void optimize(boolean expunge, int maxNumSegments, PrintStream ps) {
     if (reader instanceof DirectoryReader) {
       Directory dir = ((DirectoryReader) reader).directory();
-      try (IndexWriter writer = IndexUtils.createWriter(dir, null, useCompound, keepAllCommits, ps)) {
+      try (IndexWriter writer =
+          IndexUtils.createWriter(dir, null, useCompound, keepAllCommits, ps)) {
         IndexUtils.optimizeIndex(writer, expunge, maxNumSegments);
       } catch (IOException e) {
         throw new LukeException("Failed to optimize index", e);
@@ -128,7 +128,8 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
 
     if (reader instanceof DirectoryReader) {
       Directory dir = ((DirectoryReader) reader).directory();
-      try (IndexWriter writer = IndexUtils.createWriter(dir, analyzer, useCompound, keepAllCommits)) {
+      try (IndexWriter writer =
+          IndexUtils.createWriter(dir, analyzer, useCompound, keepAllCommits)) {
         writer.addDocument(doc);
         writer.commit();
       } catch (IOException e) {
@@ -170,7 +171,8 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
         throw new IllegalStateException();
       }
 
-      writer = IndexUtils.createWriter(dir, Message.createLuceneAnalyzer(), useCompound, keepAllCommits);
+      writer =
+          IndexUtils.createWriter(dir, Message.createLuceneAnalyzer(), useCompound, keepAllCommits);
 
       if (Objects.nonNull(dataDir)) {
         Path path = Paths.get(dataDir);
@@ -188,29 +190,37 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
       if (writer != null) {
         try {
           writer.close();
-        } catch (IOException e) {}
+        } catch (
+            @SuppressWarnings("unused")
+            IOException e) {
+        }
       }
     }
   }
 
+  @Override
   public String exportTerms(String destDir, String field, String delimiter) {
     String filename = "terms_" + field + "_" + System.currentTimeMillis() + ".out";
     Path path = Paths.get(destDir, filename);
     try {
       Terms terms = MultiTerms.getTerms(reader, field);
       if (terms == null) {
-        throw new LukeException(String.format(Locale.US, "Field %s does not contain any terms to be exported", field));
+        throw new LukeException(
+            String.format(Locale.US, "Field %s does not contain any terms to be exported", field));
       }
       try (BufferedWriter writer = Files.newBufferedWriter(path, Charset.forName("UTF-8"))) {
         TermsEnum termsEnum = terms.iterator();
         BytesRef term;
         while (!Thread.currentThread().isInterrupted() && (term = termsEnum.next()) != null) {
-          writer.write(String.format(Locale.US, "%s%s%d\n", term.utf8ToString(), delimiter, +termsEnum.docFreq()));
+          writer.write(
+              String.format(
+                  Locale.US, "%s%s%d\n", term.utf8ToString(), delimiter, +termsEnum.docFreq()));
         }
         return path.toString();
       }
     } catch (IOException e) {
-      throw new LukeException("Terms file export for field [" + field + "] to file [" + filename + "] has failed.", e);
+      throw new LukeException(
+          "Terms file export for field [" + field + "] to file [" + filename + "] has failed.", e);
     }
   }
 }

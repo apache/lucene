@@ -16,13 +16,14 @@
  */
 package org.apache.lucene.index;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
@@ -38,26 +39,25 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 /**
- * Abstract class to do basic tests for fis format.
- * NOTE: This test focuses on the fis impl, nothing else.
- * The [stretch] goal is for this test to be
- * so thorough in testing a new fis format that if this
- * test passes, then all Lucene/Solr tests should also pass.  Ie,
- * if there is some bug in a given fis Format that this
- * test fails to catch then this test needs to be improved! */
+ * Abstract class to do basic tests for fis format. NOTE: This test focuses on the fis impl, nothing
+ * else. The [stretch] goal is for this test to be so thorough in testing a new fis format that if
+ * this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some bug in a
+ * given fis Format that this test fails to catch then this test needs to be improved!
+ */
 public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTestCase {
-  
+
   /** Test field infos read/write with a single field */
   public void testOneField() throws Exception {
     Directory dir = newDirectory();
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
-    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    FieldInfo fi = createFieldInfo();
     addAttributes(fi);
+    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    builder.add(fi);
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+
     FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
     assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
@@ -66,200 +66,239 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertFalse(infos2.fieldInfo("field").omitsNorms());
     assertFalse(infos2.fieldInfo("field").hasPayloads());
     assertFalse(infos2.fieldInfo("field").hasVectors());
+    assertEquals(0, infos2.fieldInfo("field").getPointDimensionCount());
+    assertEquals(0, infos2.fieldInfo("field").getVectorDimension());
+    assertFalse(infos2.fieldInfo("field").isSoftDeletesField());
     dir.close();
   }
-  
+
   /** Test field infos attributes coming back are not mutable */
   public void testImmutableAttributes() throws Exception {
     Directory dir = newDirectory();
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
-    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    FieldInfo fi = createFieldInfo();
     addAttributes(fi);
     fi.putAttribute("foo", "bar");
     fi.putAttribute("bar", "baz");
+    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    builder.add(fi);
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+
     FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
     assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
-    Map<String,String> attributes = infos2.fieldInfo("field").attributes();
+    Map<String, String> attributes = infos2.fieldInfo("field").attributes();
     // shouldn't be able to modify attributes
-    expectThrows(UnsupportedOperationException.class, () -> {
-      attributes.put("bogus", "bogus");
-    });
+    expectThrows(
+        UnsupportedOperationException.class,
+        () -> {
+          attributes.put("bogus", "bogus");
+        });
 
     dir.close();
   }
-  
-  /** 
-   * Test field infos write that hits exception immediately on open.
-   * make sure we get our exception back, no file handle leaks, etc. 
+
+  /**
+   * Test field infos write that hits exception immediately on open. make sure we get our exception
+   * back, no file handle leaks, etc.
    */
   public void testExceptionOnCreateOutput() throws Exception {
-    Failure fail = new Failure() {
-      @Override
-      public void eval(MockDirectoryWrapper dir) throws IOException {
-        if (doFail && callStackContainsAnyOf("createOutput")) {
-          throw new FakeIOException();
-        }
-      }
-    };
-    
+    Failure fail =
+        new Failure() {
+          @Override
+          public void eval(MockDirectoryWrapper dir) throws IOException {
+            if (doFail && callStackContainsAnyOf("createOutput")) {
+              throw new FakeIOException();
+            }
+          }
+        };
+
     MockDirectoryWrapper dir = newMockDirectory();
     dir.failOn(fail);
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
-    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    FieldInfo fi = createFieldInfo();
     addAttributes(fi);
+    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    builder.add(fi);
     FieldInfos infos = builder.finish();
-    
+
     fail.setDoFail();
-    expectThrows(FakeIOException.class, () -> {
-      codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
-    });
+    expectThrows(
+        FakeIOException.class,
+        () -> {
+          codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+        });
     fail.clearDoFail();
-    
+
     dir.close();
   }
-  
-  /** 
-   * Test field infos write that hits exception on close.
-   * make sure we get our exception back, no file handle leaks, etc. 
+
+  /**
+   * Test field infos write that hits exception on close. make sure we get our exception back, no
+   * file handle leaks, etc.
    */
   public void testExceptionOnCloseOutput() throws Exception {
-    Failure fail = new Failure() {
-      @Override
-      public void eval(MockDirectoryWrapper dir) throws IOException {
-        if (doFail && callStackContainsAnyOf("close")) {
-          throw new FakeIOException();
-        }
-      }
-    };
-    
+    Failure fail =
+        new Failure() {
+          @Override
+          public void eval(MockDirectoryWrapper dir) throws IOException {
+            if (doFail && callStackContainsAnyOf("close")) {
+              throw new FakeIOException();
+            }
+          }
+        };
+
     MockDirectoryWrapper dir = newMockDirectory();
     dir.failOn(fail);
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
+    FieldInfo fi = createFieldInfo();
+
     FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    builder.add(fi);
     addAttributes(fi);
     FieldInfos infos = builder.finish();
-    
+
     fail.setDoFail();
-    expectThrows(FakeIOException.class, () -> {
-      codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
-    });
+    expectThrows(
+        FakeIOException.class,
+        () -> {
+          codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+        });
     fail.clearDoFail();
-    
+
     dir.close();
   }
-  
-  /** 
-   * Test field infos read that hits exception immediately on open.
-   * make sure we get our exception back, no file handle leaks, etc. 
+
+  /**
+   * Test field infos read that hits exception immediately on open. make sure we get our exception
+   * back, no file handle leaks, etc.
    */
   public void testExceptionOnOpenInput() throws Exception {
-    Failure fail = new Failure() {
-      @Override
-      public void eval(MockDirectoryWrapper dir) throws IOException {
-        if (doFail && callStackContainsAnyOf("openInput")) {
-          throw new FakeIOException();
-        }
-      }
-    };
-    
+    Failure fail =
+        new Failure() {
+          @Override
+          public void eval(MockDirectoryWrapper dir) throws IOException {
+            if (doFail && callStackContainsAnyOf("openInput")) {
+              throw new FakeIOException();
+            }
+          }
+        };
+
     MockDirectoryWrapper dir = newMockDirectory();
     dir.failOn(fail);
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
+    FieldInfo fi = createFieldInfo();
+
     FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    builder.add(fi);
     addAttributes(fi);
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
-    
+
     fail.setDoFail();
-    expectThrows(FakeIOException.class, () -> {
-      codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
-    });
+    expectThrows(
+        FakeIOException.class,
+        () -> {
+          codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+        });
     fail.clearDoFail();
-    
+
     dir.close();
   }
-  
-  /** 
-   * Test field infos read that hits exception on close.
-   * make sure we get our exception back, no file handle leaks, etc. 
+
+  /**
+   * Test field infos read that hits exception on close. make sure we get our exception back, no
+   * file handle leaks, etc.
    */
   public void testExceptionOnCloseInput() throws Exception {
-    Failure fail = new Failure() {
-      @Override
-      public void eval(MockDirectoryWrapper dir) throws IOException {
-        if (doFail && callStackContainsAnyOf("close")) {
-          throw new FakeIOException();
-        }
-      }
-    };
-    
+    Failure fail =
+        new Failure() {
+          @Override
+          public void eval(MockDirectoryWrapper dir) throws IOException {
+            if (doFail && callStackContainsAnyOf("close")) {
+              throw new FakeIOException();
+            }
+          }
+        };
+
     MockDirectoryWrapper dir = newMockDirectory();
     dir.failOn(fail);
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
+    FieldInfo fi = createFieldInfo();
     FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
-    FieldInfo fi = builder.getOrAdd("field");
-    fi.setIndexOptions(TextField.TYPE_STORED.indexOptions());
+    builder.add(fi);
     addAttributes(fi);
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
-    
+
     fail.setDoFail();
-    expectThrows(FakeIOException.class, () -> {
-      codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
-    });
+    expectThrows(
+        FakeIOException.class,
+        () -> {
+          codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+        });
     fail.clearDoFail();
-    
+
     dir.close();
   }
-  
+
   // TODO: more tests
-  
+
   /** Test field infos read/write with random fields, with different values. */
   public void testRandom() throws Exception {
     Directory dir = newDirectory();
     Codec codec = getCodec();
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
-    
+
     // generate a bunch of fields
     int numFields = atLeast(2000);
     Set<String> fieldNames = new HashSet<>();
     for (int i = 0; i < numFields; i++) {
       fieldNames.add(TestUtil.randomUnicodeString(random()));
     }
-    FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+
+    String softDeletesField =
+        random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
+    FieldInfos.Builder builder =
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesField));
+
     for (String field : fieldNames) {
       IndexableFieldType fieldType = randomFieldType(random());
-      FieldInfo fi = builder.getOrAdd(field);
-      IndexOptions indexOptions = fieldType.indexOptions();
-      if (indexOptions != IndexOptions.NONE) {
-        fi.setIndexOptions(indexOptions);
-        if (fieldType.omitNorms()) {      
-          fi.setOmitsNorms();
+      boolean storeTermVectors = false;
+      boolean storePayloads = false;
+      boolean omitNorms = false;
+      if (fieldType.indexOptions() != IndexOptions.NONE) {
+        storeTermVectors = fieldType.storeTermVectors();
+        omitNorms = fieldType.omitNorms();
+        if (fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+          storePayloads = random().nextBoolean();
         }
       }
-      fi.setDocValuesType(fieldType.docValuesType());
-      if (fieldType.indexOptions() != IndexOptions.NONE && fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
-        if (random().nextBoolean()) {
-          fi.setStorePayloads();
-        }
-      }
+      FieldInfo fi =
+          new FieldInfo(
+              field,
+              -1,
+              storeTermVectors,
+              omitNorms,
+              storePayloads,
+              fieldType.indexOptions(),
+              fieldType.docValuesType(),
+              -1,
+              new HashMap<>(),
+              fieldType.pointDimensionCount(),
+              fieldType.pointIndexDimensionCount(),
+              fieldType.pointNumBytes(),
+              fieldType.vectorDimension(),
+              fieldType.vectorSimilarityFunction(),
+              field.equals(softDeletesField));
       addAttributes(fi);
+      builder.add(fi);
     }
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
@@ -267,15 +306,15 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(infos, infos2);
     dir.close();
   }
-  
-  private final IndexableFieldType randomFieldType(Random r) {
+
+  private IndexableFieldType randomFieldType(Random r) {
     FieldType type = new FieldType();
-    
+
     if (r.nextBoolean()) {
-      IndexOptions values[] = IndexOptions.values();
+      IndexOptions[] values = IndexOptions.values();
       type.setIndexOptions(values[r.nextInt(values.length)]);
       type.setOmitNorms(r.nextBoolean());
-      
+
       if (r.nextBoolean()) {
         type.setStoreTermVectors(true);
         if (type.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
@@ -287,32 +326,32 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         }
       }
     }
-    
+
     if (r.nextBoolean()) {
-      DocValuesType values[] = getDocValuesTypes();
+      DocValuesType[] values = DocValuesType.values();
       type.setDocValuesType(values[r.nextInt(values.length)]);
     }
-        
+
+    if (r.nextBoolean()) {
+      int dimension = 1 + r.nextInt(PointValues.MAX_DIMENSIONS);
+      int indexDimension = 1 + r.nextInt(Math.min(dimension, PointValues.MAX_INDEX_DIMENSIONS));
+      int dimensionNumBytes = 1 + r.nextInt(PointValues.MAX_NUM_BYTES);
+      type.setDimensions(dimension, indexDimension, dimensionNumBytes);
+    }
+
+    if (r.nextBoolean()) {
+      int dimension = 1 + r.nextInt(VectorValues.MAX_DIMENSIONS);
+      VectorValues.SimilarityFunction similarityFunction =
+          RandomPicks.randomFrom(r, VectorValues.SimilarityFunction.values());
+      type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
+    }
+
     return type;
   }
-  
-  /** 
-   * Hook to add any codec attributes to fieldinfo
-   * instances added in this test.
-   */
-  protected void addAttributes(FieldInfo fi) {
-  }
-  
-  /** 
-   * Docvalues types to test. 
-   * @deprecated only for Only available to ancient codecs can 
-   * limit this to the subset of types they support.
-   */
-  @Deprecated
-  protected DocValuesType[] getDocValuesTypes() {
-    return DocValuesType.values();
-  }
-  
+
+  /** Hook to add any codec attributes to fieldinfo instances added in this test. */
+  protected void addAttributes(FieldInfo fi) {}
+
   /** equality for entirety of fieldinfos */
   protected void assertEquals(FieldInfos expected, FieldInfos actual) {
     assertEquals(expected.size(), actual.size());
@@ -322,7 +361,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       assertEquals(expectedField, actualField);
     }
   }
-  
+
   /** equality for two individual fieldinfo objects */
   protected void assertEquals(FieldInfo expected, FieldInfo actual) {
     assertEquals(expected.number, actual.number);
@@ -335,20 +374,45 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(expected.omitsNorms(), actual.omitsNorms());
     assertEquals(expected.getDocValuesGen(), actual.getDocValuesGen());
   }
-  
+
   /** Returns a new fake segment */
   protected static SegmentInfo newSegmentInfo(Directory dir, String name) {
     Version minVersion = random().nextBoolean() ? null : Version.LATEST;
-    return new SegmentInfo(dir, Version.LATEST, minVersion, name, 10000, false, Codec.getDefault(), Collections.emptyMap(), StringHelper.randomId(), Collections.emptyMap(), null);
+    return new SegmentInfo(
+        dir,
+        Version.LATEST,
+        minVersion,
+        name,
+        10000,
+        false,
+        Codec.getDefault(),
+        Collections.emptyMap(),
+        StringHelper.randomId(),
+        Collections.emptyMap(),
+        null);
   }
-  
+
   @Override
   protected void addRandomFields(Document doc) {
     doc.add(new StoredField("foobar", TestUtil.randomSimpleString(random())));
   }
 
-  @Override
-  public void testRamBytesUsed() throws IOException {
-    assumeTrue("not applicable for this format", true);
+  private FieldInfo createFieldInfo() {
+    return new FieldInfo(
+        "field",
+        -1,
+        false,
+        false,
+        false,
+        TextField.TYPE_STORED.indexOptions(),
+        DocValuesType.NONE,
+        -1,
+        new HashMap<>(),
+        0,
+        0,
+        0,
+        0,
+        VectorValues.SimilarityFunction.NONE,
+        false);
   }
 }

@@ -28,12 +28,14 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.luke.util.LoggerFactory;
 
-/** 20 Newsgroups (http://kdd.ics.uci.edu/databases/20newsgroups/20newsgroups.html) message files parser */
-public class MessageFilesParser  extends SimpleFileVisitor<Path> {
+/**
+ * 20 Newsgroups (http://kdd.ics.uci.edu/databases/20newsgroups/20newsgroups.html) message files
+ * parser
+ */
+public class MessageFilesParser extends SimpleFileVisitor<Path> {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -45,6 +47,7 @@ public class MessageFilesParser  extends SimpleFileVisitor<Path> {
     this.root = root;
   }
 
+  @Override
   public FileVisitResult visitFile(Path file, BasicFileAttributes attr) {
     try {
       if (attr.isRegularFile()) {
@@ -53,7 +56,9 @@ public class MessageFilesParser  extends SimpleFileVisitor<Path> {
           messages.add(parse(file));
         }
       }
-    } catch (IOException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
       log.warn("Invalid file? {}", file);
     }
     return FileVisitResult.CONTINUE;
@@ -94,7 +99,10 @@ public class MessageFilesParser  extends SimpleFileVisitor<Path> {
           case "Lines":
             try {
               message.setLines(Integer.parseInt(ary[1].trim()));
-            } catch (NumberFormatException e) {}
+            } catch (
+                @SuppressWarnings("unused")
+                NumberFormatException e) {
+            }
             break;
           default:
             break;
@@ -119,5 +127,4 @@ public class MessageFilesParser  extends SimpleFileVisitor<Path> {
     Files.walkFileTree(root, this);
     return messages;
   }
-
 }
