@@ -21,7 +21,7 @@
 
 ## Introduction
 
-Luke (atop Swing) is the GUI tool for introspecting your Lucene / Solr / Elasticsearch index. It allows:
+Luke (atop Swing) is the GUI tool for introspecting your Lucene index. It allows:
 
 * Browsing your documents, indexed terms and posting lists
 * Searching in the index
@@ -38,4 +38,4 @@ The [Lucene Downloads](https://lucene.apache.org/core/downloads.html) page conta
 
 ## Older releases
 
-Older releases of Luke can be found at https://github.com/DmitryKey/luke
+Older releases of Luke (prior to 8.1) can be found at https://github.com/DmitryKey/luke
