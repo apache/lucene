@@ -22,11 +22,9 @@ import java.util.Set;
 import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer.Foldings;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.junit.Test;
 
 /** Tests low level the normalizer functionality */
 public class TestScandinavianNormalizer extends BaseTokenStreamTestCase {
-  @Test
   public void testNoFoldings() throws Exception {
     Analyzer analyzer = createAnalyzer(Collections.emptySet());
     checkOneTerm(analyzer, "aa", "aa");
@@ -37,7 +35,6 @@ public class TestScandinavianNormalizer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
-  @Test
   public void testAeFolding() throws Exception {
     Analyzer analyzer = createAnalyzer(Set.of(Foldings.AE));
     checkOneTerm(analyzer, "aa", "aa");
@@ -51,7 +48,6 @@ public class TestScandinavianNormalizer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
-  @Test
   public void testAaFolding() throws Exception {
     Analyzer analyzer = createAnalyzer(Set.of(Foldings.AA));
     checkOneTerm(analyzer, "aa", "å");
@@ -65,7 +61,6 @@ public class TestScandinavianNormalizer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
-  @Test
   public void testOeFolding() throws Exception {
     Analyzer analyzer = createAnalyzer(Set.of(Foldings.OE));
     checkOneTerm(analyzer, "aa", "aa");
@@ -79,7 +74,6 @@ public class TestScandinavianNormalizer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
-  @Test
   public void testOoFolding() throws Exception {
     Analyzer analyzer = createAnalyzer(Set.of(Foldings.OO));
     checkOneTerm(analyzer, "aa", "aa");
@@ -93,7 +87,6 @@ public class TestScandinavianNormalizer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
-  @Test
   public void testAoFolding() throws Exception {
     Analyzer analyzer = createAnalyzer(Set.of(Foldings.AO));
     checkOneTerm(analyzer, "aa", "aa");

@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.miscellaneous;
 import static org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer.ALL_FOLDINGS;
 
 import java.io.IOException;
-import java.util.Set;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -40,7 +39,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  *
  * @see ScandinavianFoldingFilter
  */
-public class ScandinavianNormalizationFilter extends TokenFilter {
+public final class ScandinavianNormalizationFilter extends TokenFilter {
 
   private final ScandinavianNormalizer normalizer;
 
@@ -49,17 +48,10 @@ public class ScandinavianNormalizationFilter extends TokenFilter {
     this.normalizer = new ScandinavianNormalizer(ALL_FOLDINGS);
   }
 
-  // Constructor for use by sub classes
-  protected ScandinavianNormalizationFilter(
-      TokenStream input, Set<ScandinavianNormalizer.Foldings> foldings) {
-    super(input);
-    this.normalizer = new ScandinavianNormalizer(foldings);
-  }
-
   private final CharTermAttribute charTermAttribute = addAttribute(CharTermAttribute.class);
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (!input.incrementToken()) {
       return false;
     }

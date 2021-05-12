@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import java.util.EnumSet;
 import java.util.Set;
 import org.apache.lucene.analysis.util.StemmerUtil;
 
@@ -25,6 +26,7 @@ import org.apache.lucene.analysis.util.StemmerUtil;
  * ao, ae, oe and oo) by transforming them to åÅæÆøØ.
  *
  * @since 9.0
+ * @lucene.internal
  */
 public final class ScandinavianNormalizer {
 
@@ -49,8 +51,7 @@ public final class ScandinavianNormalizer {
 
   private final Set<Foldings> foldings;
 
-  public static final Set<Foldings> ALL_FOLDINGS =
-      Set.of(Foldings.AA, Foldings.AO, Foldings.OO, Foldings.AE, Foldings.OE);
+  public static final Set<Foldings> ALL_FOLDINGS = EnumSet.allOf(Foldings.class);
 
   static final char AA = '\u00C5'; // Å
   static final char aa = '\u00E5'; // å

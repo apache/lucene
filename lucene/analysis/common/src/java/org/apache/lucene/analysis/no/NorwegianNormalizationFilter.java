@@ -16,10 +16,14 @@
  */
 package org.apache.lucene.analysis.no;
 
-import java.util.Set;
+import java.io.IOException;
+import java.util.EnumSet;
+import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter;
+import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer;
 import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer.Foldings;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
  * This filter normalize use of the interchangeable Scandinavian characters æÆäÄöÖøØ and folded
@@ -30,8 +34,23 @@ import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer.Foldings;
  *
  * @see ScandinavianNormalizationFilter
  */
-public final class NorwegianNormalizationFilter extends ScandinavianNormalizationFilter {
+public final class NorwegianNormalizationFilter extends TokenFilter {
+  private final ScandinavianNormalizer normalizer;
+
   public NorwegianNormalizationFilter(TokenStream input) {
-    super(input, Set.of(Foldings.AE, Foldings.OE, Foldings.AA));
+    super(input);
+    this.normalizer = new ScandinavianNormalizer(EnumSet.of(Foldings.AE, Foldings.OE, Foldings.AA));
+  }
+
+  private final CharTermAttribute charTermAttribute = addAttribute(CharTermAttribute.class);
+
+  @Override
+  public final boolean incrementToken() throws IOException {
+    if (!input.incrementToken()) {
+      return false;
+    }
+    charTermAttribute.setLength(
+        normalizer.processToken(charTermAttribute.buffer(), charTermAttribute.length()));
+    return true;
   }
 }
