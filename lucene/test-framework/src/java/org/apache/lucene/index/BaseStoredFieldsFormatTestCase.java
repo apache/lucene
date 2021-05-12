@@ -925,13 +925,12 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
             throw new UncheckedIOException(e);
           }
         };
-    final boolean hasDeletions = random().nextBoolean();
     final List<String> ids = new ArrayList<>(docs.keySet());
     Collections.shuffle(ids, random());
     for (String id : ids) {
       iw.addDocument(docs.get(id));
       addedIds.add(id);
-      if (hasDeletions && random().nextInt(100) < 5) {
+      if (random().nextInt(100) < 5) {
         String deletingId = addedIds.remove(random().nextInt(addedIds.size()));
         if (random().nextBoolean()) {
           iw.deleteDocuments(new TermQuery(new Term("id", deletingId)));
