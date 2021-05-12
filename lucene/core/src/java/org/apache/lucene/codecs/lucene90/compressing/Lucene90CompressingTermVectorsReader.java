@@ -82,7 +82,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   private final int version;
   private final int packedIntsVersion;
   private final CompressionMode compressionMode;
-  private final Decompressor decompressor;
   private final int chunkSize;
   private final int numDocs;
   private boolean closed;
@@ -99,7 +98,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     this.indexReader = reader.indexReader.clone();
     this.packedIntsVersion = reader.packedIntsVersion;
     this.compressionMode = reader.compressionMode;
-    this.decompressor = reader.decompressor.clone();
     this.chunkSize = reader.chunkSize;
     this.numDocs = reader.numDocs;
     this.reader =
@@ -202,7 +200,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
             metaIn);
       }
 
-      decompressor = compressionMode.newDecompressor();
       this.reader =
           new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
 
@@ -651,6 +648,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
     // decompress data
     final BytesRef suffixBytes = new BytesRef();
+    final Decompressor decompressor = compressionMode.newDecompressor();
     decompressor.decompress(
         vectorsStream,
         totalLen + totalPayloadLength,

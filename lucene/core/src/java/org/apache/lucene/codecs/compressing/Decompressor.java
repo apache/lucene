@@ -21,7 +21,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BytesRef;
 
 /** A decompressor. */
-public abstract class Decompressor implements Cloneable {
+public abstract class Decompressor {
 
   /** Sole constructor, typically called from sub-classes. */
   protected Decompressor() {}
@@ -42,6 +42,4 @@ public abstract class Decompressor implements Cloneable {
   public abstract void decompress(
       DataInput in, int originalLength, int offset, int length, BytesRef bytes) throws IOException;
 
-  @Override
-  public abstract Decompressor clone();
 }
