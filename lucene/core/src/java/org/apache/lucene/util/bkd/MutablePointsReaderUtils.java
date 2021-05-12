@@ -19,12 +19,10 @@ package org.apache.lucene.util.bkd;
 import java.util.Arrays;
 import org.apache.lucene.codecs.MutablePointValues;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.RadixSelector;
 import org.apache.lucene.util.Selector;
-import org.apache.lucene.util.Sorter;
 import org.apache.lucene.util.StableMSBRadixSorter;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -38,16 +36,27 @@ public final class MutablePointsReaderUtils {
   MutablePointsReaderUtils() {}
 
   /**
-   * Sort the given {@link MutablePointValues} based on its packed value. If doc IDs are already
-   * in ascending order, stable sort is able to maintain the ordering of doc ID. If index sorting
-   * is enabled, we can leverage sortMap to reorder without having to sort (ie. O(n) rather than O(n log n)).
+   * Sort the given {@link MutablePointValues} based on its packed value then doc ID.
    */
   public static void sort(
       BKDConfig config, int maxDoc, MutablePointValues reader, int from, int to) {
-    if (reader.indexSortingReorder(from, to)) {
-      return;
+
+    boolean sortedByDocID = true;
+    int prevDoc = 0;
+    for (int i = from; i < to; ++i) {
+      int doc = reader.getDocID(i);
+      if (doc < prevDoc) {
+        sortedByDocID = false;
+        break;
+      }
+      prevDoc = doc;
     }
-    new StableMSBRadixSorter(config.packedBytesLength) {
+
+    // No need to tie break on doc IDs if already sorted by doc ID, since we use a stable sort.
+    // This should be a common situation as IndexWriter accumulates data in doc ID order when
+    // index sorting is not enabled.
+    final int bitsPerDocId = sortedByDocID ? 0 : PackedInts.bitsRequired(maxDoc - 1);
+    new StableMSBRadixSorter(config.packedBytesLength + (bitsPerDocId + 7) / 8) {
 
       @Override
       protected void swap(int i, int j) {
@@ -66,11 +75,12 @@ public final class MutablePointsReaderUtils {
 
       @Override
       protected int byteAt(int i, int k) {
-        if (k >= config.packedBytesLength) {
-          throw new IllegalStateException(
-              "k should be less than packedBytesLength " + config.packedBytesLength);
+        if (k < config.packedBytesLength) {
+          return Byte.toUnsignedInt(reader.getByteAt(i, k));
+        } else {
+          final int shift = bitsPerDocId - ((k - config.packedBytesLength + 1) << 3);
+          return (reader.getDocID(i) >>> Math.max(0, shift)) & 0xff;
         }
-        return Byte.toUnsignedInt(reader.getByteAt(i, k));
       }
     }.sort(from, to);
   }

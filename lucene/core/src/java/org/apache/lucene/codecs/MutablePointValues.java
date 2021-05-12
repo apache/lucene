@@ -48,13 +48,4 @@ public abstract class MutablePointValues extends PointValues {
   /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
   public abstract void restore(int i, int j);
 
-  /**
-   * If index sorting is enabled for field, reorder i-th to j-th(excluding)
-   * based on sortMap without having to sort (ie. O(n) rather than O(n log n)).
-   *
-   * @return true if index sorting works, else false.
-   */
-  public boolean indexSortingReorder(int i, int j) {
-    return false;
-  }
 }

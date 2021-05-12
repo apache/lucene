@@ -1696,7 +1696,9 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public byte getByteAt(int i, int k) {
-            throw new UnsupportedOperationException();
+            BytesRef b = new BytesRef();
+            getValue(i, b);
+            return b.bytes[b.offset + k];
           }
 
           @Override
