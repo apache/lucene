@@ -228,6 +228,8 @@ Improvements
 * LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
   it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
 
+* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
+
 Bug fixes
 
 
