@@ -67,6 +67,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     Point prevPoint = null;
     for (int i = 0; i < points.length; i++) {
       assertEquals(points[i].packedValue, reader.points[i].packedValue);
+      assertSame(points[i].packedValue, reader.points[i].packedValue);
       if (prevPoint != null) {
         if (reader.points[i].packedValue.equals(prevPoint.packedValue)) {
           assertTrue(reader.points[i].doc >= prevPoint.doc);
