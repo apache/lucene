@@ -82,6 +82,13 @@ public class TestStableMSBRadixSorter extends LuceneTestCase {
     }.sort(0, len);
     BytesRef[] actual = ArrayUtil.copyOfSubArray(refs, 0, len);
     assertArrayEquals(expected, actual);
+    // Verify that the arrays are not only equal after sorting with Arrays#sort and StableMSBRadixSorter
+    // but also that they have the very same instance at every index.
+    // This is different from MSBRadixSorter which does not guarantee ordering of the same value.
+    assertEquals(expected.length, actual.length);
+    for (int i = 0; i < expected.length; i++) {
+      assertSame(expected[i].bytes, actual[i].bytes);
+    }
   }
 
   public void testEmpty() {
