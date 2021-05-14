@@ -139,11 +139,6 @@ public abstract class CompressionMode {
           bytes.offset = offset;
           bytes.length = length;
         }
-
-        @Override
-        public Decompressor clone() {
-          return this;
-        }
       };
 
   private static final class LZ4FastCompressor extends Compressor {
@@ -237,11 +232,6 @@ public abstract class CompressionMode {
       }
       bytes.offset = offset;
       bytes.length = length;
-    }
-
-    @Override
-    public Decompressor clone() {
-      return new DeflateDecompressor();
     }
   }
 
