@@ -165,6 +165,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     entry.denseRankPower = meta.readByte();
     entry.numValues = meta.readLong();
     int tableSize = meta.readInt();
+    if (tableSize == 257) {
+      entry.sorted = true;
+      entry.sortedValuesOffset = meta.readLong();
+      final int blockShift = meta.readVInt();
+      entry.sortedValuesMeta = DirectMonotonicReader.loadMeta(meta, entry.numValues, blockShift);
+      entry.sortedValuesLength = meta.readLong();
+      return;
+    }
     if (tableSize > 256) {
       throw new CorruptIndexException("invalid table size: " + tableSize, meta);
     }
@@ -305,6 +313,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     short jumpTableEntryCount;
     byte denseRankPower;
     long numValues;
+    boolean sorted;
+    DirectMonotonicReader.Meta sortedValuesMeta;
+    long sortedValuesOffset;
+    long sortedValuesLength;
     long minValue;
     long gcd;
     long valuesOffset;
@@ -384,6 +396,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     return getNumeric(entry);
   }
 
+  private abstract static class SortedValuesDenseNumericDocValues extends DenseNumericDocValues {
+    public SortedValuesDenseNumericDocValues(int maxDoc) {
+      super(maxDoc);
+    }
+  }
+
   private abstract static class DenseNumericDocValues extends NumericDocValues {
 
     final int maxDoc;
@@ -420,6 +438,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     @Override
     public long cost() {
       return maxDoc;
+    }
+  }
+
+  private abstract static class SortedValuesSparseNumericDocValues extends SparseNumericDocValues {
+    public SortedValuesSparseNumericDocValues(IndexedDISI disi) {
+      super(disi);
     }
   }
 
@@ -463,6 +487,18 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.emptyNumeric();
     } else if (entry.docsWithFieldOffset == -1) {
       // dense
+      if (entry.sorted) {
+        final RandomAccessInput addressesInput =
+            data.randomAccessSlice(entry.sortedValuesOffset, entry.sortedValuesLength);
+        final LongValues addresses =
+            DirectMonotonicReader.getInstance(entry.sortedValuesMeta, addressesInput);
+        return new SortedValuesDenseNumericDocValues(maxDoc) {
+          @Override
+          public long longValue() throws IOException {
+            return addresses.get(doc);
+          }
+        };
+      }
       if (entry.bitsPerValue == 0) {
         return new DenseNumericDocValues(maxDoc) {
           @Override
@@ -515,6 +551,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               entry.jumpTableEntryCount,
               entry.denseRankPower,
               entry.numValues);
+      if (entry.sorted) {
+        final RandomAccessInput addressesInput =
+            data.randomAccessSlice(entry.sortedValuesOffset, entry.sortedValuesLength);
+        final LongValues addresses =
+            DirectMonotonicReader.getInstance(entry.sortedValuesMeta, addressesInput);
+        return new SortedValuesSparseNumericDocValues(disi) {
+          @Override
+          public long longValue() throws IOException {
+            final int index = disi.index();
+            return addresses.get(index);
+          }
+        };
+      }
       if (entry.bitsPerValue == 0) {
         return new SparseNumericDocValues(disi) {
           @Override

@@ -182,9 +182,17 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     MinMaxTracker blockMinMax = new MinMaxTracker();
     long gcd = 0;
     Set<Long> uniqueValues = new HashSet<>();
+    boolean sorted = true;
+    long previous = Long.MIN_VALUE;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       for (int i = 0, count = values.docValueCount(); i < count; ++i) {
         long v = values.nextValue();
+        if (sorted) {
+          // NumericDocValues or only one SortedNumericDocValues with same field name in per
+          // Document
+          sorted = v >= previous && numDocsWithValue == minMax.numValues;
+        }
+        previous = v;
 
         if (gcd != 1) {
           if (v < Long.MIN_VALUE / 2 || v > Long.MAX_VALUE / 2) {
@@ -241,6 +249,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
 
     meta.writeLong(numValues);
+    if (sorted) {
+      // tablesize: max capacity of uniqueValues plus 1
+      meta.writeInt(257);
+      writeSortedValues(valuesProducer.getSortedNumeric(field), numValues);
+      return new long[] {numDocsWithValue, numValues};
+    }
     final int numBitsPerValue;
     boolean doBlocks = false;
     Map<Long, Integer> encode = null;
@@ -301,6 +315,25 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     meta.writeLong(data.getFilePointer() - startOffset); // valuesLength
     meta.writeLong(jumpTableOffset);
     return new long[] {numDocsWithValue, numValues};
+  }
+
+  private void writeSortedValues(SortedNumericDocValues values, long numDocsWithValue)
+      throws IOException {
+    long start = data.getFilePointer();
+    meta.writeLong(start);
+    meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
+
+    final DirectMonotonicWriter valueWriter =
+        DirectMonotonicWriter.getInstance(
+            meta, data, numDocsWithValue, DIRECT_MONOTONIC_BLOCK_SHIFT);
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      for (int i = 0, count = values.docValueCount(); i < count; ++i) {
+        long v = values.nextValue();
+        valueWriter.add(v);
+      }
+    }
+    valueWriter.finish();
+    meta.writeLong(data.getFilePointer() - start);
   }
 
   private void writeValuesSingleBlock(
