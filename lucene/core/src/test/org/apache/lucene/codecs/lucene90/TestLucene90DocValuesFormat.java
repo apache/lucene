@@ -26,7 +26,10 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
@@ -68,8 +71,13 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.TestUtil;
 
 /** Tests Lucene90DocValuesFormat */
-public abstract class BaseLucene90DocValuesFormatTestCase
-    extends BaseCompressingDocValuesFormatTestCase {
+public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
+  private final Codec codec = TestUtil.getDefaultCodec();
+
+  @Override
+  protected Codec getCodec() {
+    return codec;
+  }
 
   // TODO: these big methods can easily blow up some of the other ram-hungry codecs...
   // for now just keep them here, as we want to test this for this format.
@@ -760,5 +768,88 @@ public abstract class BaseLucene90DocValuesFormatTestCase
       }
     }
     ir.close();
+  }
+
+  public void testReseekAfterSkipDecompression() throws IOException {
+    final int CARDINALITY = (Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE << 1) + 11;
+    Set<String> valueSet = new HashSet<>(CARDINALITY);
+    for (int i = 0; i < CARDINALITY; i++) {
+      valueSet.add(TestUtil.randomSimpleString(random(), 64));
+    }
+    List<String> values = new ArrayList<>(valueSet);
+    Collections.sort(values);
+    // Create one non-existent value just between block-1 and block-2.
+    String nonexistentValue =
+        values.get(Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE - 1)
+            + TestUtil.randomSimpleString(random(), 64, 128);
+    int docValues = values.size();
+
+    try (Directory directory = newDirectory()) {
+      Analyzer analyzer = new StandardAnalyzer();
+      IndexWriterConfig config = new IndexWriterConfig(analyzer);
+      config.setCodec(getCodec());
+      config.setUseCompoundFile(false);
+      IndexWriter writer = new IndexWriter(directory, config);
+      for (int i = 0; i < 280; i++) {
+        Document doc = new Document();
+        doc.add(new StringField("id", "Doc" + i, Field.Store.NO));
+        doc.add(new SortedDocValuesField("sdv", new BytesRef(values.get(i % docValues))));
+        writer.addDocument(doc);
+      }
+      writer.commit();
+      writer.forceMerge(1);
+      DirectoryReader dReader = DirectoryReader.open(writer);
+      writer.close();
+
+      LeafReader reader = getOnlyLeafReader(dReader);
+      // Check values count.
+      SortedDocValues ssdvMulti = reader.getSortedDocValues("sdv");
+      assertEquals(docValues, ssdvMulti.getValueCount());
+
+      // Seek to first block.
+      int ord1 = ssdvMulti.lookupTerm(new BytesRef(values.get(0)));
+      assertTrue(ord1 >= 0);
+      int ord2 = ssdvMulti.lookupTerm(new BytesRef(values.get(1)));
+      assertTrue(ord2 >= ord1);
+      // Ensure re-seek logic is correct after skip-decompression.
+      int nonexistentOrd2 = ssdvMulti.lookupTerm(new BytesRef(nonexistentValue));
+      assertTrue(nonexistentOrd2 < 0);
+      dReader.close();
+    }
+  }
+
+  public void testLargeTermsCompression() throws IOException {
+    final int CARDINALITY = 64;
+    Set<String> valuesSet = new HashSet<>();
+    for (int i = 0; i < CARDINALITY; ++i) {
+      final int length = TestUtil.nextInt(random(), 512, 1024);
+      valuesSet.add(TestUtil.randomSimpleString(random(), length));
+    }
+    int valuesCount = valuesSet.size();
+    List<String> values = new ArrayList<>(valuesSet);
+
+    try (Directory directory = newDirectory()) {
+      Analyzer analyzer = new StandardAnalyzer();
+      IndexWriterConfig config = new IndexWriterConfig(analyzer);
+      config.setCodec(getCodec());
+      config.setUseCompoundFile(false);
+      IndexWriter writer = new IndexWriter(directory, config);
+      for (int i = 0; i < 256; i++) {
+        Document doc = new Document();
+        doc.add(new StringField("id", "Doc" + i, Field.Store.NO));
+        doc.add(new SortedDocValuesField("sdv", new BytesRef(values.get(i % valuesCount))));
+        writer.addDocument(doc);
+      }
+      writer.commit();
+      writer.forceMerge(1);
+      DirectoryReader ireader = DirectoryReader.open(writer);
+      writer.close();
+
+      LeafReader reader = getOnlyLeafReader(ireader);
+      // Check values count.
+      SortedDocValues ssdvMulti = reader.getSortedDocValues("sdv");
+      assertEquals(valuesCount, ssdvMulti.getValueCount());
+      ireader.close();
+    }
   }
 }

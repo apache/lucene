@@ -101,6 +101,21 @@ API Changes
 * LUCENE-9853: JapaneseAnalyzer should use CJKWidthCharFilter for full-width and half-width character normalization.
   (Tomoko Uchida)
 
+* LUCENE-9387: Removed CodecReader#ramBytesUsed. (Adrien Grand)
+
+* LUCENE-9334: Require consistency between data-structures on a per-field basis.
+  A field across all documents within an index must be indexed with the same index
+  options and data-structures. As a consequence of this, doc values updates are
+  only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
+  Adrien Grand, Simon Willnauer)
+
+* LUCENE-9047: Directory API is now little endian. (Ignacio Vera, Adrien Grand)  
+
+* LUCENE-9948: No longer require the user to specify whether-or-not a field is multi-valued in
+  LongValueFacetCounts (detect automatically based on what is indexed). (Greg Miller)
+
+* LUCENE-9843: Remove compression option on default codec's docvalues. (Jack Conradson)
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
@@ -202,11 +217,15 @@ Improvements
 
 * LUCENE-9794: Speed up implementations of DataInput.skipBytes(). (Greg Miller)
 
-* LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
-  (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
-
 * LUCENE-9898: Removes no longer used scorePayload method from BM25Similarity
   (Pieter van Boxtel)
+
+* LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
+
+* LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
+  it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
+
+* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
 
 Bug fixes
 
@@ -231,6 +250,12 @@ Bug fixes
 
 * LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon
   splitting. (Ignacio Vera)
+
+* LUCENE-9930: The Ukrainian analyzer was reloading its dictionary for every new
+  TokenStreamComponents, which could lead to memory leaks. (Alan Woodward)
+
+* LUCENE-9940: The order of disjuncts in DisjunctionMaxQuery does not matter
+  for equality checks (Alan Woodward)
 
 Changes in Backwards Compatibility Policy
 
@@ -288,6 +313,9 @@ Other
  
 * LUCENE-9705: Make new versions of all index formats for the Lucene90 codec and move 
   the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)  
+  
+* LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
+  method to backwards codec. (Ignacio Vera)   
 
 ======================= Lucene 8.9.0 =======================
 
@@ -300,6 +328,14 @@ API Changes
 
 New Features
 ---------------------
+
+* LUCENE-9575: PatternTypingFilter has been added to allow setting a type attribute on tokens based on
+  a configured set of regular expressions (Gus Heck).
+
+* LUCENE-9572: TypeAsSynonymFilter has been enhanced support ignoring some types, and to allow
+  the generated synonyms to copy some or all flags from the original token (Gus Heck).
+
+* LUCENE-9574 A token filter to drop tokens that match all specified flags. (Gus Heck, Uwe Schindler)
 
 * LUCENE-9537:  Added smoothingScore method and default implementation to
   Scorable abstract class.  The smoothing score allows scorers to calculate a
@@ -331,7 +367,11 @@ Improvements
 
 Optimizations
 ---------------------
+
 * LUCENE-9932: Performance improvement for BKD index building (neoremind)
+
+* LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
+  (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
 
 Bug Fixes
 ---------------------
@@ -380,12 +420,6 @@ Bug Fixes
 
 New Features
 ---------------------
-
-* LUCENE-9574 A token filter to drop tokens that match all specified flags. (Gus Heck, Uwe Schindler)
-
-* LUCENE-9572: TypeAsSynonymFilter has been enhanced support ignoring some types, and to allow
-  the generated synonyms to copy some or all flags from the original token (Gus Heck).
-
 
 * LUCENE-9552: New LatLonPoint query that accepts an array of LatLonGeometries. (Ignacio Vera)
 

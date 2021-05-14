@@ -14,15 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.index;
 
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -51,8 +50,8 @@ public abstract class VectorValues extends DocIdSetIterator {
    */
   public abstract int size();
 
-  /** Return the search strategy used to compare these vectors */
-  public abstract SearchStrategy searchStrategy();
+  /** Return the similarity function used to compare these vectors */
+  public abstract SimilarityFunction similarityFunction();
 
   /**
    * Return the vector value for the current document ID. It is illegal to call this method when the
@@ -76,49 +75,36 @@ public abstract class VectorValues extends DocIdSetIterator {
   }
 
   /**
-   * Return the k nearest neighbor documents as determined by comparison of their vector values for
-   * this field, to the given vector, by the field's search strategy. If the search strategy is
-   * reversed, lower values indicate nearer vectors, otherwise higher scores indicate nearer
-   * vectors. Unlike relevance scores, vector scores may be negative.
-   *
-   * @param target the vector-valued query
-   * @param k the number of docs to return
-   * @param fanout control the accuracy/speed tradeoff - larger values give better recall at higher
-   *     cost
-   * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
+   * Vector similarity function; used in search to return top K most similar vectors to a target
+   * vector. This is a label describing the method used during indexing and searching of the vectors
+   * in order to determine the nearest neighbors.
    */
-  public abstract TopDocs search(float[] target, int k, int fanout) throws IOException;
-
-  /**
-   * Search strategy. This is a label describing the method used during indexing and searching of
-   * the vectors in order to determine the nearest neighbors.
-   */
-  public enum SearchStrategy {
+  public enum SimilarityFunction {
 
     /**
-     * No search strategy is provided. Note: {@link VectorValues#search(float[], int, int)} is not
-     * supported for fields specifying this strategy.
+     * No similarity function is provided. Note: {@link VectorReader#search(String, float[], int,
+     * int)} is not supported for fields specifying this.
      */
     NONE,
 
     /** HNSW graph built using Euclidean distance */
-    EUCLIDEAN_HNSW(true),
+    EUCLIDEAN(true),
 
     /** HNSW graph buit using dot product */
-    DOT_PRODUCT_HNSW;
+    DOT_PRODUCT;
 
     /**
-     * If true, the scores associated with vector comparisons in this strategy are in reverse order;
-     * that is, lower scores represent more similar vectors. Otherwise, if false, higher scores
-     * represent more similar vectors.
+     * If true, the scores associated with vector comparisons are in reverse order; that is, lower
+     * scores represent more similar vectors. Otherwise, if false, higher scores represent more
+     * similar vectors.
      */
     public final boolean reversed;
 
-    SearchStrategy(boolean reversed) {
+    SimilarityFunction(boolean reversed) {
       this.reversed = reversed;
     }
 
-    SearchStrategy() {
+    SimilarityFunction() {
       reversed = false;
     }
 
@@ -127,29 +113,17 @@ public abstract class VectorValues extends DocIdSetIterator {
      *
      * @param v1 a vector
      * @param v2 another vector, of the same dimension
-     * @return the value of the strategy's score function applied to the two vectors
+     * @return the value of the similarity function applied to the two vectors
      */
     public float compare(float[] v1, float[] v2) {
       switch (this) {
-        case EUCLIDEAN_HNSW:
+        case EUCLIDEAN:
           return squareDistance(v1, v2);
-        case DOT_PRODUCT_HNSW:
+        case DOT_PRODUCT:
           return dotProduct(v1, v2);
         case NONE:
         default:
-          throw new IllegalStateException("Incomparable search strategy: " + this);
-      }
-    }
-
-    /** Return true if vectors indexed using this strategy will be indexed using an HNSW graph */
-    public boolean isHnsw() {
-      switch (this) {
-        case EUCLIDEAN_HNSW:
-        case DOT_PRODUCT_HNSW:
-          return true;
-        case NONE:
-        default:
-          return false;
+          throw new IllegalStateException("Incomparable similarity function: " + this);
       }
     }
   }
@@ -172,19 +146,14 @@ public abstract class VectorValues extends DocIdSetIterator {
         }
 
         @Override
-        public SearchStrategy searchStrategy() {
-          return SearchStrategy.NONE;
+        public SimilarityFunction similarityFunction() {
+          return SimilarityFunction.NONE;
         }
 
         @Override
         public float[] vectorValue() {
           throw new IllegalStateException(
               "Attempt to get vectors from EMPTY values (which was not advanced)");
-        }
-
-        @Override
-        public TopDocs search(float[] target, int k, int fanout) {
-          throw new UnsupportedOperationException();
         }
 
         @Override

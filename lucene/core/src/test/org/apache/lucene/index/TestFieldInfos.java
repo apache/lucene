@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
@@ -149,6 +150,55 @@ public class TestFieldInfos extends LuceneTestCase {
     dir.close();
   }
 
+  public void testFieldAttributesSingleSegment() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document d1 = new Document();
+    FieldType type1 = new FieldType();
+    type1.setStored(true);
+    type1.putAttribute("att1", "attdoc1");
+    d1.add(new Field("f1", "v1", type1));
+    // add field with the same name and an extra attribute
+    type1.putAttribute("att2", "attdoc1");
+    d1.add(new Field("f1", "v1", type1));
+    writer.addDocument(d1);
+
+    Document d2 = new Document();
+    type1.putAttribute("att1", "attdoc2");
+    type1.putAttribute("att2", "attdoc2");
+    type1.putAttribute("att3", "attdoc2");
+    FieldType type2 = new FieldType();
+    type2.setStored(true);
+    type2.putAttribute("att4", "attdoc2");
+    d2.add(new Field("f1", "v2", type1));
+    d2.add(new Field("f2", "v2", type2));
+    writer.addDocument(d2);
+    writer.commit();
+
+    IndexReader reader = writer.getReader();
+    FieldInfos fis = FieldInfos.getMergedFieldInfos(reader);
+
+    // test that attributes for f1 are introduced by d1,
+    // and not modified by d2
+    FieldInfo fi1 = fis.fieldInfo("f1");
+    assertEquals("attdoc1", fi1.getAttribute("att1"));
+    assertEquals("attdoc1", fi1.getAttribute("att2"));
+    assertEquals(null, fi1.getAttribute("att3"));
+
+    // test that attributes for f2 are introduced by d2
+    FieldInfo fi2 = fis.fieldInfo("f2");
+    assertEquals("attdoc2", fi2.getAttribute("att4"));
+
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
   public void testMergedFieldInfos_empty() throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
@@ -196,44 +246,62 @@ public class TestFieldInfos extends LuceneTestCase {
     FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes");
     for (int i = 0; i < 10; i++) {
       fieldNumbers.addOrGet(
-          "field" + i,
-          -1,
-          IndexOptions.NONE,
-          DocValuesType.NONE,
-          0,
-          0,
-          0,
-          0,
-          VectorValues.SearchStrategy.NONE,
-          false);
+          new FieldInfo(
+              "field" + i,
+              -1,
+              false,
+              false,
+              false,
+              IndexOptions.NONE,
+              DocValuesType.NONE,
+              -1,
+              new HashMap<>(),
+              0,
+              0,
+              0,
+              0,
+              VectorValues.SimilarityFunction.NONE,
+              false));
     }
     int idx =
         fieldNumbers.addOrGet(
-            "EleventhField",
-            -1,
-            IndexOptions.NONE,
-            DocValuesType.NONE,
-            0,
-            0,
-            0,
-            0,
-            VectorValues.SearchStrategy.NONE,
-            false);
+            new FieldInfo(
+                "EleventhField",
+                -1,
+                false,
+                false,
+                false,
+                IndexOptions.NONE,
+                DocValuesType.NONE,
+                -1,
+                new HashMap<>(),
+                0,
+                0,
+                0,
+                0,
+                VectorValues.SimilarityFunction.NONE,
+                false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
 
     fieldNumbers.clear();
     idx =
         fieldNumbers.addOrGet(
-            "PostClearField",
-            -1,
-            IndexOptions.NONE,
-            DocValuesType.NONE,
-            0,
-            0,
-            0,
-            0,
-            VectorValues.SearchStrategy.NONE,
-            false);
+            new FieldInfo(
+                "PostClearField",
+                -1,
+                false,
+                false,
+                false,
+                IndexOptions.NONE,
+                DocValuesType.NONE,
+                -1,
+                new HashMap<>(),
+                0,
+                0,
+                0,
+                0,
+                VectorValues.SimilarityFunction.NONE,
+                false));
     assertEquals("Field numbers should reset after clear()", 0, idx);
   }
 }

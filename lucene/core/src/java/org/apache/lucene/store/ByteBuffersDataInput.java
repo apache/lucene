@@ -53,7 +53,10 @@ public final class ByteBuffersDataInput extends DataInput
   public ByteBuffersDataInput(List<ByteBuffer> buffers) {
     ensureAssumptions(buffers);
 
-    this.blocks = buffers.stream().map(buf -> buf.asReadOnlyBuffer()).toArray(ByteBuffer[]::new);
+    this.blocks =
+        buffers.stream()
+            .map(buf -> buf.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
+            .toArray(ByteBuffer[]::new);
     // pre-allocate this array and create the FloatBuffers lazily
     this.floatBuffers = new FloatBuffer[blocks.length * Float.BYTES];
     if (blocks.length == 1) {
@@ -173,7 +176,7 @@ public final class ByteBuffersDataInput extends DataInput
     if (blockOffset + Short.BYTES <= blockMask) {
       return blocks[blockIndex(absPos)].getShort(blockOffset);
     } else {
-      return (short) ((readByte(pos) & 0xFF) << 8 | (readByte(pos + 1) & 0xFF));
+      return (short) ((readByte(pos) & 0xFF) | (readByte(pos + 1) & 0xFF) << 8);
     }
   }
 
@@ -184,10 +187,10 @@ public final class ByteBuffersDataInput extends DataInput
     if (blockOffset + Integer.BYTES <= blockMask) {
       return blocks[blockIndex(absPos)].getInt(blockOffset);
     } else {
-      return ((readByte(pos)) << 24
-          | (readByte(pos + 1) & 0xFF) << 16
-          | (readByte(pos + 2) & 0xFF) << 8
-          | (readByte(pos + 3) & 0xFF));
+      return ((readByte(pos) & 0xFF)
+          | (readByte(pos + 1) & 0xFF) << 8
+          | (readByte(pos + 2) & 0xFF) << 16
+          | (readByte(pos + 3) << 24));
     }
   }
 
@@ -198,12 +201,27 @@ public final class ByteBuffersDataInput extends DataInput
     if (blockOffset + Long.BYTES <= blockMask) {
       return blocks[blockIndex(absPos)].getLong(blockOffset);
     } else {
-      return (((long) readInt(pos)) << 32) | (readInt(pos + 4) & 0xFFFFFFFFL);
+      final byte b1 = readByte(pos);
+      final byte b2 = readByte(pos + 1);
+      final byte b3 = readByte(pos + 2);
+      final byte b4 = readByte(pos + 3);
+      final byte b5 = readByte(pos + 4);
+      final byte b6 = readByte(pos + 5);
+      final byte b7 = readByte(pos + 6);
+      final byte b8 = readByte(pos + 7);
+      return (b8 & 0xFFL) << 56
+          | (b7 & 0xFFL) << 48
+          | (b6 & 0xFFL) << 40
+          | (b5 & 0xFFL) << 32
+          | (b4 & 0xFFL) << 24
+          | (b3 & 0xFFL) << 16
+          | (b2 & 0xFFL) << 8
+          | (b1 & 0xFFL);
     }
   }
 
   @Override
-  public void readLEFloats(float[] arr, int off, int len) throws EOFException {
+  public void readFloats(float[] arr, int off, int len) throws EOFException {
     try {
       while (len > 0) {
         FloatBuffer floatBuffer = getFloatBuffer(pos);
@@ -211,7 +229,7 @@ public final class ByteBuffersDataInput extends DataInput
         int chunk = Math.min(len, floatBuffer.remaining());
         if (chunk == 0) {
           // read a single float spanning the boundary between two buffers
-          arr[off] = Float.intBitsToFloat(Integer.reverseBytes(readInt(pos - offset)));
+          arr[off] = Float.intBitsToFloat(readInt(pos - offset));
           off++;
           len--;
           pos += Float.BYTES;
@@ -354,7 +372,8 @@ public final class ByteBuffersDataInput extends DataInput
     ensureAssumptions(buffers);
 
     if (buffers.size() == 1) {
-      ByteBuffer cloned = buffers.get(0).asReadOnlyBuffer();
+      ByteBuffer cloned = buffers.get(0).asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+      ;
       cloned.position(Math.toIntExact(cloned.position() + offset));
       cloned.limit(Math.toIntExact(cloned.position() + length));
       return Arrays.asList(cloned);
@@ -374,11 +393,11 @@ public final class ByteBuffersDataInput extends DataInput
                   Math.toIntExact(absStart / blockBytes),
                   Math.toIntExact(absEnd / blockBytes + (endOffset == 0 ? 0 : 1)))
               .stream()
-              .map(buf -> buf.asReadOnlyBuffer())
+              .map(buf -> buf.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
               .collect(Collectors.toCollection(ArrayList::new));
 
       if (endOffset == 0) {
-        cloned.add(ByteBuffer.allocate(0));
+        cloned.add(ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN));
       }
 
       cloned.get(0).position(Math.toIntExact(absStart & blockMask));

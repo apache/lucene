@@ -140,7 +140,7 @@ public class RandomPostingsTester {
               0,
               0,
               0,
-              VectorValues.SearchStrategy.NONE,
+              VectorValues.SimilarityFunction.NONE,
               false);
       fieldUpto++;
 
@@ -711,7 +711,7 @@ public class RandomPostingsTester {
               0,
               0,
               0,
-              VectorValues.SearchStrategy.NONE,
+              VectorValues.SimilarityFunction.NONE,
               false);
     }
 
@@ -737,11 +737,6 @@ public class RandomPostingsTester {
 
           @Override
           public void close() throws IOException {}
-
-          @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
 
           @Override
           public NumericDocValues getNorms(FieldInfo field) throws IOException {

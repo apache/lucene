@@ -92,7 +92,7 @@ configure(project(":lucene:analysis:common")) {
   }
 
   // runs shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
-  task snowball() {
+  task snowballInternal() {
     description "Regenerate snowball stemmers."
     group "generation"
 
@@ -117,7 +117,7 @@ configure(project(":lucene:analysis:common")) {
     if (Os.isFamily(Os.FAMILY_WINDOWS)) {
       doFirst {
         // Just emit a big fat error message. Fail the build so that checksums are not regenerated.
-        throw GradleException("Snowball generation does not work on Windows (patch and bash must be available).")
+        throw new GradleException("Snowball generation does not work on Windows (patch and bash must be available).")
       }
     } else {
       dependsOn downloadSnowballStemmers
@@ -133,5 +133,5 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(snowball, [ andThenTasks: "spotlessApply", ignoreWithSource: [downloadSnowballStemmers, downloadSnowballWebsite, downloadSnowballData] ])
+  regenerate.dependsOn wrapWithPersistentChecksums(snowballInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"], ignoreWithSource: [downloadSnowballStemmers, downloadSnowballWebsite, downloadSnowballData] ])
 }

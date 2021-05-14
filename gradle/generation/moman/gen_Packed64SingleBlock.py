@@ -37,10 +37,7 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
  */
 package org.apache.lucene.util.packed;
 
-import java.io.IOException;
 import java.util.Arrays;
-
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -216,24 +213,9 @@ abstract class Packed64SingleBlock extends PackedInts.MutableImpl {
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected PackedInts.Format getFormat() {
-    return PackedInts.Format.PACKED_SINGLE_BLOCK;
-  }
-
-  @Override
   public String toString() {
     return getClass().getSimpleName() + "(bitsPerValue=" + bitsPerValue
         + ",size=" + size() + ",blocks=" + blocks.length + ")";
-  }
-
-  public static Packed64SingleBlock create(DataInput in,
-      int valueCount, int bitsPerValue) throws IOException {
-    Packed64SingleBlock reader = create(valueCount, bitsPerValue);
-    for (int i = 0; i < reader.blocks.length; ++i) {
-      reader.blocks[i] = in.readLong();
-    }
-    return reader;
   }
 
 """ % (SUPPORTED_BITS_PER_VALUE[-1], ", ".join(map(str, SUPPORTED_BITS_PER_VALUE)))

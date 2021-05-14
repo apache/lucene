@@ -40,8 +40,6 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -60,8 +58,6 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -442,7 +438,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     private void doReset(int docID) throws IOException {
       docBase = fieldsStream.readVInt();
       final int token = fieldsStream.readVInt();
-      chunkDocs = token >>> 1;
+      chunkDocs = token >>> 2;
       if (contains(docID) == false || docBase + chunkDocs > numDocs) {
         throw new CorruptIndexException(
             "Corrupted: docID="
@@ -614,6 +610,18 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     return state.document(docID);
   }
 
+  /** Checks if a given docID was loaded in the current block state. */
+  boolean isLoaded(int docID) {
+    if (merging == false) {
+      throw new IllegalStateException("isLoaded should only ever get called on a merge instance");
+    }
+    if (version != VERSION_CURRENT) {
+      throw new IllegalStateException(
+          "isLoaded should only ever get called when the reader is on the current version");
+    }
+    return state.contains(docID);
+  }
+
   @Override
   public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
 
@@ -709,16 +717,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
   int getNumDocs() {
     return numDocs;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return indexReader.ramBytesUsed();
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    return Collections.singleton(Accountables.namedAccountable("stored field index", indexReader));
   }
 
   @Override

@@ -79,9 +79,9 @@ public final class CodecUtil {
       throw new IllegalArgumentException(
           "codec must be simple ASCII, less than 128 characters in length [got " + codec + "]");
     }
-    out.writeInt(CODEC_MAGIC);
+    writeBEInt(out, CODEC_MAGIC);
     out.writeString(codec);
-    out.writeInt(version);
+    writeBEInt(out, version);
   }
 
   /**
@@ -181,7 +181,7 @@ public final class CodecUtil {
   public static int checkHeader(DataInput in, String codec, int minVersion, int maxVersion)
       throws IOException {
     // Safety to guard against reading a bogus string:
-    final int actualHeader = in.readInt();
+    final int actualHeader = readBEInt(in);
     if (actualHeader != CODEC_MAGIC) {
       throw new CorruptIndexException(
           "codec header mismatch: actual header="
@@ -205,7 +205,7 @@ public final class CodecUtil {
           "codec mismatch: actual codec=" + actualCodec + " vs expected codec=" + codec, in);
     }
 
-    final int actualVersion = in.readInt();
+    final int actualVersion = readBEInt(in);
     if (actualVersion < minVersion) {
       throw new IndexFormatTooOldException(in, actualVersion, minVersion, maxVersion);
     }
@@ -281,7 +281,7 @@ public final class CodecUtil {
           in);
     }
 
-    int actualHeader = in.readInt();
+    int actualHeader = readBEInt(in);
     if (actualHeader != CODEC_MAGIC) {
       throw new CorruptIndexException(
           "compound sub-files must have a valid codec header and footer: codec header mismatch: actual header="
@@ -293,7 +293,7 @@ public final class CodecUtil {
 
     // we can't verify these, so we pass-through:
     String codec = in.readString();
-    int version = in.readInt();
+    int version = readBEInt(in);
 
     // verify id:
     checkIndexHeaderID(in, expectedID);
@@ -304,9 +304,9 @@ public final class CodecUtil {
     in.readBytes(suffixBytes, 0, suffixLength);
 
     // now write the header we just verified
-    out.writeInt(CodecUtil.CODEC_MAGIC);
+    writeBEInt(out, CodecUtil.CODEC_MAGIC);
     out.writeString(codec);
-    out.writeInt(version);
+    writeBEInt(out, version);
     out.writeBytes(expectedID, 0, expectedID.length);
     out.writeByte((byte) suffixLength);
     out.writeBytes(suffixBytes, 0, suffixLength);
@@ -318,7 +318,7 @@ public final class CodecUtil {
    */
   public static byte[] readIndexHeader(IndexInput in) throws IOException {
     in.seek(0);
-    final int actualHeader = in.readInt();
+    final int actualHeader = readBEInt(in);
     if (actualHeader != CODEC_MAGIC) {
       throw new CorruptIndexException(
           "codec header mismatch: actual header="
@@ -328,7 +328,7 @@ public final class CodecUtil {
           in);
     }
     String codec = in.readString();
-    in.readInt();
+    readBEInt(in);
     in.seek(in.getFilePointer() + StringHelper.ID_LENGTH);
     int suffixLength = in.readByte() & 0xFF;
     byte[] bytes = new byte[headerLength(codec) + StringHelper.ID_LENGTH + 1 + suffixLength];
@@ -406,8 +406,8 @@ public final class CodecUtil {
    * @throws IOException If there is an I/O error writing to the underlying medium.
    */
   public static void writeFooter(IndexOutput out) throws IOException {
-    out.writeInt(FOOTER_MAGIC);
-    out.writeInt(0);
+    writeBEInt(out, FOOTER_MAGIC);
+    writeBEInt(out, 0);
     writeCRC(out);
   }
 
@@ -574,7 +574,7 @@ public final class CodecUtil {
           in);
     }
 
-    final int magic = in.readInt();
+    final int magic = readBEInt(in);
     if (magic != FOOTER_MAGIC) {
       throw new CorruptIndexException(
           "codec footer mismatch (file truncated?): actual footer="
@@ -584,7 +584,7 @@ public final class CodecUtil {
           in);
     }
 
-    final int algorithmID = in.readInt();
+    final int algorithmID = readBEInt(in);
     if (algorithmID != 0) {
       throw new CorruptIndexException(
           "codec footer mismatch: unknown algorithmID: " + algorithmID, in);
@@ -621,7 +621,7 @@ public final class CodecUtil {
    * @throws IOException if an i/o error occurs
    */
   static long readCRC(IndexInput input) throws IOException {
-    long value = input.readLong();
+    long value = readBELong(input);
     if ((value & 0xFFFFFFFF00000000L) != 0) {
       throw new CorruptIndexException("Illegal CRC-32 checksum: " + value, input);
     }
@@ -640,6 +640,33 @@ public final class CodecUtil {
       throw new IllegalStateException(
           "Illegal CRC-32 checksum: " + value + " (resource=" + output + ")");
     }
-    output.writeLong(value);
+    writeBELong(output, value);
+  }
+
+  /** write int value on header / footer with big endian order */
+  public static void writeBEInt(DataOutput out, int i) throws IOException {
+    out.writeByte((byte) (i >> 24));
+    out.writeByte((byte) (i >> 16));
+    out.writeByte((byte) (i >> 8));
+    out.writeByte((byte) i);
+  }
+
+  /** write long value on header / footer with big endian order */
+  public static void writeBELong(DataOutput out, long l) throws IOException {
+    writeBEInt(out, (int) (l >> 32));
+    writeBEInt(out, (int) l);
+  }
+
+  /** read int value from header / footer with big endian order */
+  public static int readBEInt(DataInput in) throws IOException {
+    return ((in.readByte() & 0xFF) << 24)
+        | ((in.readByte() & 0xFF) << 16)
+        | ((in.readByte() & 0xFF) << 8)
+        | (in.readByte() & 0xFF);
+  }
+
+  /** read long value from header / footer with big endian order */
+  public static long readBELong(DataInput in) throws IOException {
+    return (((long) readBEInt(in)) << 32) | (readBEInt(in) & 0xFFFFFFFFL);
   }
 }

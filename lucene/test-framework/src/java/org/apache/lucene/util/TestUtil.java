@@ -50,11 +50,13 @@ import java.util.zip.ZipInputStream;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.codecs.blockterms.LuceneFixedGap;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -70,7 +72,6 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -82,7 +83,6 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.SlowCodecReaderWrapper;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -373,16 +373,6 @@ public final class TestUtil {
 
     if (LuceneTestCase.INFOSTREAM) {
       System.out.println(bos.toString(IOUtils.UTF_8));
-    }
-
-    LeafReader unwrapped = FilterLeafReader.unwrap(reader);
-    if (unwrapped instanceof SegmentReader) {
-      SegmentReader sr = (SegmentReader) unwrapped;
-      long bytesUsed = sr.ramBytesUsed();
-      if (sr.ramBytesUsed() < 0) {
-        throw new IllegalStateException("invalid ramBytesUsed for reader: " + bytesUsed);
-      }
-      assert Accountables.toString(sr) != null;
     }
 
     // FieldInfos should be cached at the reader and always return the same instance
@@ -1304,6 +1294,13 @@ public final class TestUtil {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Returns the actual default vector format (e.g. LuceneMNVectorFormat for this version of Lucene.
+   */
+  public static VectorFormat getDefaultVectorFormat() {
+    return new Lucene90HnswVectorFormat();
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {

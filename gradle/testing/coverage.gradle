@@ -1,0 +1,55 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// This adds jacoco code coverage to tests.
+
+// Run with jacoco if either 'coverage' is passed as a task on input or
+// tests.coverage property is true.
+def withCoverage = gradle.startParameter.taskNames.contains("coverage") ||
+    Boolean.parseBoolean(propertyOrDefault("tests.coverage", "false"))
+
+if (withCoverage) {
+  allprojects {
+    plugins.withType(JavaPlugin) {
+      // Apply jacoco once we know the project has a Java plugin too.
+      project.plugins.apply("jacoco")
+
+      // Synthetic task to enable test coverage (and reports).
+      task coverage() {
+        dependsOn jacocoTestReport
+      }
+
+      tasks.withType(Test) { Task testTask ->
+        // Configure jacoco destination file to be within the test
+        // task's working directory - this is related to security
+        // manager permissions (access to this file from within test jvm).
+        jacoco {
+          destinationFile = file("${testTask.workingDir}/jacoco.exec")
+        }
+
+        // Test reports, if any, must be preceded by test execution.
+        jacocoTestReport.dependsOn testTask
+      }
+
+      configure(jacocoTestReport) {
+        doLast {
+          logger.lifecycle("Code coverage report at: ${reports.html.destination}.\n")
+        }
+      }
+    }
+  }
+}

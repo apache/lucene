@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
-import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -139,34 +138,15 @@ import org.apache.lucene.util.packed.DirectWriter;
  */
 public final class Lucene90DocValuesFormat extends DocValuesFormat {
 
-  /** Configuration option for doc values. */
-  public enum Mode {
-    /** Trade compression ratio for retrieval speed. */
-    BEST_SPEED,
-    /** Trade retrieval speed for compression ratio. */
-    BEST_COMPRESSION
-  }
-
-  /** Attribute key for compression mode. */
-  public static final String MODE_KEY = Lucene90DocValuesFormat.class.getSimpleName() + ".mode";
-
-  private final Mode mode;
-
   /** Default constructor. */
   public Lucene90DocValuesFormat() {
-    this(Mode.BEST_SPEED);
-  }
-
-  /** Constructor */
-  public Lucene90DocValuesFormat(Mode mode) {
     super("Lucene90");
-    this.mode = Objects.requireNonNull(mode);
   }
 
   @Override
   public DocValuesConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     return new Lucene90DocValuesConsumer(
-        state, DATA_CODEC, DATA_EXTENSION, META_CODEC, META_EXTENSION, mode);
+        state, DATA_CODEC, DATA_EXTENSION, META_CODEC, META_EXTENSION);
   }
 
   @Override
@@ -194,21 +174,9 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int NUMERIC_BLOCK_SHIFT = 14;
   static final int NUMERIC_BLOCK_SIZE = 1 << NUMERIC_BLOCK_SHIFT;
 
-  static final int BINARY_BLOCK_SHIFT = 5;
-  static final int BINARY_DOCS_PER_COMPRESSED_BLOCK = 1 << BINARY_BLOCK_SHIFT;
-
-  static final int TERMS_DICT_BLOCK_SHIFT = 4;
-  static final int TERMS_DICT_BLOCK_SIZE = 1 << TERMS_DICT_BLOCK_SHIFT;
-  static final int TERMS_DICT_BLOCK_MASK = TERMS_DICT_BLOCK_SIZE - 1;
-
-  static final int TERMS_DICT_BLOCK_COMPRESSION_THRESHOLD = 32;
   static final int TERMS_DICT_BLOCK_LZ4_SHIFT = 6;
   static final int TERMS_DICT_BLOCK_LZ4_SIZE = 1 << TERMS_DICT_BLOCK_LZ4_SHIFT;
   static final int TERMS_DICT_BLOCK_LZ4_MASK = TERMS_DICT_BLOCK_LZ4_SIZE - 1;
-  static final int TERMS_DICT_COMPRESSOR_LZ4_CODE = 1;
-  // Writing a special code so we know this is a LZ4-compressed block.
-  static final int TERMS_DICT_BLOCK_LZ4_CODE =
-      TERMS_DICT_BLOCK_LZ4_SHIFT << 16 | TERMS_DICT_COMPRESSOR_LZ4_CODE;
 
   static final int TERMS_DICT_REVERSE_INDEX_SHIFT = 10;
   static final int TERMS_DICT_REVERSE_INDEX_SIZE = 1 << TERMS_DICT_REVERSE_INDEX_SHIFT;

@@ -21,15 +21,53 @@ import java.io.IOException;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
+import org.apache.lucene.util.NamedSPILoader;
 
 /**
  * Encodes/decodes per-document vector and any associated indexing structures required to support
  * nearest-neighbor search
  */
-public abstract class VectorFormat {
+public abstract class VectorFormat implements NamedSPILoader.NamedSPI {
+
+  /**
+   * This static holder class prevents classloading deadlock by delaying init of doc values formats
+   * until needed.
+   */
+  private static final class Holder {
+    private static final NamedSPILoader<VectorFormat> LOADER =
+        new NamedSPILoader<>(VectorFormat.class);
+
+    private Holder() {}
+
+    static NamedSPILoader<VectorFormat> getLoader() {
+      if (LOADER == null) {
+        throw new IllegalStateException(
+            "You tried to lookup a VectorFormat name before all formats could be initialized. "
+                + "This likely happens if you call VectorFormat#forName from a VectorFormat's ctor.");
+      }
+      return LOADER;
+    }
+  }
+
+  private final String name;
 
   /** Sole constructor */
-  protected VectorFormat() {}
+  protected VectorFormat(String name) {
+    NamedSPILoader.checkServiceName(name);
+    this.name = name;
+  }
+
+  @Override
+  public String getName() {
+    return name;
+  }
+
+  /** looks up a format by name */
+  public static VectorFormat forName(String name) {
+    return Holder.getLoader().lookup(name);
+  }
 
   /** Returns a {@link VectorWriter} to write the vectors to the index. */
   public abstract VectorWriter fieldsWriter(SegmentWriteState state) throws IOException;
@@ -42,7 +80,7 @@ public abstract class VectorFormat {
    * support vectors.
    */
   public static final VectorFormat EMPTY =
-      new VectorFormat() {
+      new VectorFormat("EMPTY") {
         @Override
         public VectorWriter fieldsWriter(SegmentWriteState state) {
           throw new UnsupportedOperationException(
@@ -61,7 +99,12 @@ public abstract class VectorFormat {
             }
 
             @Override
-            public void close() throws IOException {}
+            public TopDocs search(String field, float[] target, int k, int fanout) {
+              return TopDocsCollector.EMPTY_TOPDOCS;
+            }
+
+            @Override
+            public void close() {}
 
             @Override
             public long ramBytesUsed() {

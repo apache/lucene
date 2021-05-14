@@ -75,6 +75,15 @@ class PointValuesWriter {
     numPoints++;
   }
 
+  /**
+   * Get number of buffered documents
+   *
+   * @return number of buffered documents
+   */
+  public int getNumDocs() {
+    return numDocs;
+  }
+
   public void flush(SegmentWriteState state, Sorter.DocMap sortMap, PointsWriter writer)
       throws IOException {
     PointValues points =
@@ -200,11 +209,6 @@ class PointValuesWriter {
           @Override
           public void checkIntegrity() {
             throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public long ramBytesUsed() {
-            return 0L;
           }
 
           @Override

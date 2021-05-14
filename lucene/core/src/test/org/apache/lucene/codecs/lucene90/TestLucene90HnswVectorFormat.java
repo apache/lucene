@@ -17,17 +17,13 @@
 package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.BaseVectorFormatTestCase;
 import org.apache.lucene.util.TestUtil;
 
-/** Tests Lucene90DocValuesFormat */
-public class TestBestCompressionLucene90DocValuesFormat
-    extends BaseLucene90DocValuesFormatTestCase {
-  private final Codec codec =
-      TestUtil.alwaysDocValuesFormat(
-          new Lucene90DocValuesFormat(Lucene90DocValuesFormat.Mode.BEST_COMPRESSION));
+public class TestLucene90HnswVectorFormat extends BaseVectorFormatTestCase {
 
   @Override
   protected Codec getCodec() {
-    return codec;
+    return TestUtil.getDefaultCodec();
   }
 }

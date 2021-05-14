@@ -29,7 +29,7 @@ written in Java.
 This README file only contains basic setup instructions.  For more
 comprehensive documentation, visit:
 
-- Lucene: <http://lucene.apache.org/core/documentation.html>
+- Lucene: <https://lucene.apache.org/core/documentation.html>
 
 ## Building with Gradle
 
