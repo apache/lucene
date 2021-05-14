@@ -74,7 +74,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), dir);
   }
 
-  public void testBasicingleValuedUsingSortedDoc() throws Exception {
+  public void testBasicSingleValuedUsingSortedDoc() throws Exception {
 
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);

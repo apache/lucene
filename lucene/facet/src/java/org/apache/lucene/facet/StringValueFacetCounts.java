@@ -40,7 +40,7 @@ import org.apache.lucene.util.LongValues;
  * {@link org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetCounts}, no assumption is made
  * about a "dimension" path component being indexed. Because of this, the field itself is
  * effectively treated as the "dimension", and counts for all unique string values are produced.
- * This approach is meant to compliment {@link LongValueFacetCounts} in that they both provide facet
+ * This approach is meant to complement {@link LongValueFacetCounts} in that they both provide facet
  * counting on a doc value field with no assumptions of content.
  *
  * <p>This implementation is useful if you want to dynamically count against any string doc value
