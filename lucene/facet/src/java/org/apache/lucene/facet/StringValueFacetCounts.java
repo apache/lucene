@@ -54,6 +54,10 @@ import org.apache.lucene.util.LongValues;
  * StringDocValuesReaderState}. Also note that this class should be instantiated and used from a
  * single thread, because it holds a thread-private instance of {@link SortedSetDocValues}.
  *
+ * <p>Also note that counting does not use a sparse data structure, so heap memory cost scales with
+ * the number of unique ordinals for the field being counting. For high-cardinality fields, this
+ * could be costly.
+ *
  * @lucene.experimental
  */
 // TODO: Add a concurrent version much like ConcurrentSortedSetDocValuesFacetCounts?
@@ -64,9 +68,13 @@ public class StringValueFacetCounts extends Facets {
   private final OrdinalMap ordinalMap;
   private final SortedSetDocValues docValues;
 
+  // TODO: There's an optimization opportunity here to use a sparse counting structure in some
+  // cases,
+  // much like what IntTaxonomyFacetCounts does.
+  /** Dense counting array indexed by ordinal. */
   private final int[] counts;
 
-  private int totalDocCount = 0;
+  private int totalDocCount;
 
   /**
    * Returns all facet counts for the field, same result as searching on {@link MatchAllDocsQuery}

@@ -33,13 +33,19 @@ import org.apache.lucene.util.packed.PackedInts;
  * Specifically, callers should confirm that the reader used to create the map ({@code reader})
  * matches their use-case.
  */
-class StringDocValuesReaderState {
+public class StringDocValuesReaderState {
 
   final IndexReader reader;
   final String field;
   final OrdinalMap ordinalMap;
 
-  StringDocValuesReaderState(IndexReader reader, String field) throws IOException {
+  /**
+   * Construct state specific to a reader + field. This builds an {@link OrdinalMap} that can be
+   * reused for mapping segment-specific ordinals to global ordinals for the given field. Keep in
+   * mind that the state is only valid for the specified {@link IndexReader}, so opening new readers
+   * (e.g., to pickup NRT updates) requires constructing a new state instance.
+   */
+  public StringDocValuesReaderState(IndexReader reader, String field) throws IOException {
     this.reader = reader;
     this.field = field;
     ordinalMap = buildOrdinalMap(reader, field);
