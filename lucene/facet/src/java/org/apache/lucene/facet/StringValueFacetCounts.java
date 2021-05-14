@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.facet;
 
+import com.carrotsearch.hppc.IntIntScatterMap;
+import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,10 +56,6 @@ import org.apache.lucene.util.LongValues;
  * StringDocValuesReaderState}. Also note that this class should be instantiated and used from a
  * single thread, because it holds a thread-private instance of {@link SortedSetDocValues}.
  *
- * <p>Also note that counting does not use a sparse data structure, so heap memory cost scales with
- * the number of unique ordinals for the field being counting. For high-cardinality fields, this
- * could be costly.
- *
  * @lucene.experimental
  */
 // TODO: Add a concurrent version much like ConcurrentSortedSetDocValuesFacetCounts?
@@ -68,12 +66,10 @@ public class StringValueFacetCounts extends Facets {
   private final OrdinalMap ordinalMap;
   private final SortedSetDocValues docValues;
 
-  // TODO: There's an optimization opportunity here to use a sparse counting structure in some
-  // cases,
-  // much like what IntTaxonomyFacetCounts does.
-  /** Dense counting array indexed by ordinal. */
-  private final int[] counts;
+  private final int[] denseCounts;
+  private final IntIntScatterMap sparseCounts;
 
+  private final int cardinality;
   private int totalDocCount;
 
   /**
@@ -92,19 +88,43 @@ public class StringValueFacetCounts extends Facets {
     ordinalMap = state.ordinalMap;
     docValues = getDocValues();
 
-    // Since we accumulate counts in an array, we need to ensure the number of unique ordinals
-    // doesn't overflow an integer:
-    if (docValues.getValueCount() > Integer.MAX_VALUE) {
+    long valueCount = docValues.getValueCount();
+    if (valueCount > Integer.MAX_VALUE) {
       throw new IllegalArgumentException(
-          "can only handle valueCount < Integer.MAX_VALUE; got " + docValues.getValueCount());
+          "can only handle valueCount < Integer.MAX_VALUE; got " + valueCount);
     }
+    cardinality = (int) valueCount;
 
-    counts = new int[(int) docValues.getValueCount()];
+    if (facetsCollector != null) {
+      if (cardinality < 1024) { // count densely for low cardinality
+        sparseCounts = null;
+        denseCounts = new int[cardinality];
+      } else {
+        int totalHits = 0;
+        int totalDocs = 0;
+        for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
+          totalHits += matchingDocs.totalHits;
+          totalDocs += matchingDocs.context.reader().maxDoc();
+        }
 
-    if (facetsCollector == null) {
-      countAll();
-    } else {
+        // If our result set is < 10% of the index, we collect sparsely (use hash map). This
+        // heuristic is borrowed from IntTaxonomyFacetCounts:
+        if (totalHits < totalDocs / 10) {
+          sparseCounts = new IntIntScatterMap();
+          denseCounts = null;
+        } else {
+          sparseCounts = null;
+          denseCounts = new int[cardinality];
+        }
+      }
+
       count(facetsCollector);
+    } else {
+      // Since we're counting all ordinals, count densely:
+      sparseCounts = null;
+      denseCounts = new int[cardinality];
+
+      countAll();
     }
   }
 
@@ -121,21 +141,21 @@ public class StringValueFacetCounts extends Facets {
       throw new IllegalArgumentException("path.length should be 0");
     }
 
-    topN = Math.min(topN, counts.length);
+    topN = Math.min(topN, cardinality);
     TopOrdAndIntQueue q = null;
     TopOrdAndIntQueue.OrdAndValue reuse = null;
     int bottomCount = 0;
     int childCount = 0; // total number of labels with non-zero count
 
-    for (int i = 0; i < counts.length; i++) {
-      int count = counts[i];
-      if (count != 0) {
-        childCount++;
+    if (sparseCounts != null) {
+      for (IntIntCursor cursor : sparseCounts) {
+        childCount++; // every count in sparseValues should be non-zero
+        int count = cursor.value;
         if (count > bottomCount) {
           if (reuse == null) {
             reuse = new TopOrdAndIntQueue.OrdAndValue();
           }
-          reuse.ord = i;
+          reuse.ord = cursor.key;
           reuse.value = count;
           if (q == null) {
             // Lazy init for sparse case:
@@ -144,6 +164,28 @@ public class StringValueFacetCounts extends Facets {
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomCount = q.top().value;
+          }
+        }
+      }
+    } else {
+      for (int i = 0; i < denseCounts.length; i++) {
+        int count = denseCounts[i];
+        if (count != 0) {
+          childCount++;
+          if (count > bottomCount) {
+            if (reuse == null) {
+              reuse = new TopOrdAndIntQueue.OrdAndValue();
+            }
+            reuse.ord = i;
+            reuse.value = count;
+            if (q == null) {
+              // Lazy init for sparse case:
+              q = new TopOrdAndIntQueue(topN);
+            }
+            reuse = q.insertWithOverflow(reuse);
+            if (q.size() == topN) {
+              bottomCount = q.top().value;
+            }
           }
         }
       }
@@ -174,7 +216,7 @@ public class StringValueFacetCounts extends Facets {
       return -1;
     }
 
-    return counts[ord];
+    return sparseCounts != null ? sparseCounts.get(ord) : denseCounts[ord];
   }
 
   @Override
@@ -310,7 +352,7 @@ public class StringValueFacetCounts extends Facets {
         int term = (int) segValues.nextOrd();
         boolean countedDocInTotal = false;
         while (term != SortedSetDocValues.NO_MORE_ORDS) {
-          counts[term]++;
+          increment(term);
           if (countedDocInTotal == false) {
             totalDocCount++;
           }
@@ -323,15 +365,15 @@ public class StringValueFacetCounts extends Facets {
       // depending on how many hits we have to count relative to how many unique doc val ordinals
       // there are in this segment:
       final LongValues ordMap = ordinalMap.getGlobalOrds(segmentOrd);
-      int numSegOrds = (int) segValues.getValueCount();
+      int segmentCardinality = (int) segValues.getValueCount();
 
-      if (hits != null && hits.totalHits < numSegOrds / 10) {
+      if (hits != null && hits.totalHits < segmentCardinality / 10) {
         // Remap every ord to global ord as we iterate:
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           int term = (int) segValues.nextOrd();
           boolean countedDocInTotal = false;
           while (term != SortedSetDocValues.NO_MORE_ORDS) {
-            counts[term]++;
+            increment(term);
             if (countedDocInTotal == false) {
               totalDocCount++;
             }
@@ -340,8 +382,11 @@ public class StringValueFacetCounts extends Facets {
           }
         }
       } else {
-        // First count in seg-ord space:
-        final int[] segCounts = new int[numSegOrds];
+        // First count in seg-ord space.
+        // At this point, we're either counting all ordinals or our heuristic suggests that
+        // we expect to visit a large percentage of the unique ordinals (lots of hits relative
+        // to the segment cardinality), so we count the segment densely:
+        final int[] segCounts = new int[segmentCardinality];
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           int term = (int) segValues.nextOrd();
           boolean countedDocInTotal = false;
@@ -356,13 +401,25 @@ public class StringValueFacetCounts extends Facets {
         }
 
         // Then, migrate to global ords:
-        for (int ord = 0; ord < numSegOrds; ord++) {
+        for (int ord = 0; ord < segmentCardinality; ord++) {
           int count = segCounts[ord];
           if (count != 0) {
-            counts[(int) ordMap.get(ord)] += count;
+            increment((int) ordMap.get(ord), count);
           }
         }
       }
+    }
+  }
+
+  private void increment(int ordinal) {
+    increment(ordinal, 1);
+  }
+
+  private void increment(int ordinal, int amount) {
+    if (sparseCounts != null) {
+      sparseCounts.addTo(ordinal, amount);
+    } else {
+      denseCounts[ordinal] += amount;
     }
   }
 
