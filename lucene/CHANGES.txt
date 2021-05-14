@@ -116,6 +116,8 @@ API Changes
 
 * LUCENE-9843: Remove compression option on default codec's docvalues. (Jack Conradson)
 
+* LUCENE-9956: Expose the getBaseQuery, getDrillDownQueries APIs from DrillDownQuery (Gautam Worah)
+
 Improvements
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,

@@ -170,11 +170,22 @@ public final class DrillDownQuery extends Query {
     return bq.build();
   }
 
-  Query getBaseQuery() {
+  /**
+   * Returns the internal baseQuery of the DrillDownQuery
+   *
+   * @return The baseQuery used on initialization of DrillDownQuery
+   */
+  public Query getBaseQuery() {
     return baseQuery;
   }
 
-  Query[] getDrillDownQueries() {
+  /**
+   * Returns the dimension queries added either via {@link #add(String, Query)} or {@link
+   * #add(String, String...)}
+   *
+   * @return The array of dimQueries
+   */
+  public Query[] getDrillDownQueries() {
     Query[] dimQueries = new Query[this.dimQueries.size()];
     for (int i = 0; i < dimQueries.length; ++i) {
       dimQueries[i] = this.dimQueries.get(i).build();
