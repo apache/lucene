@@ -63,7 +63,8 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
 
     // Check doc IDs are in ascending order.
     // If doc IDs are already increasing, StableMSBRadixSorter should keep doc ID's ordering.
-    // If doc IDs are not ordered, StableMSBRadixSorter should compare doc ID to guarantee the ordering.
+    // If doc IDs are not ordered, StableMSBRadixSorter should compare doc ID to guarantee the
+    // ordering.
     Point prevPoint = null;
     for (int i = 0; i < points.length; i++) {
       assertEquals(points[i].packedValue, reader.points[i].packedValue);
@@ -210,7 +211,8 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
         byte[] value = new byte[config.packedBytesLength];
         random().nextBytes(value);
         points[i] =
-            new Point(value, isDocIdIncremental ? Math.min(i, maxDoc - 1) : random().nextInt(maxDoc));
+            new Point(
+                value, isDocIdIncremental ? Math.min(i, maxDoc - 1) : random().nextInt(maxDoc));
       }
       for (int i = 0; i < config.numDims; ++i) {
         commonPrefixLengths[i] = TestUtil.nextInt(random(), 0, config.bytesPerDim);

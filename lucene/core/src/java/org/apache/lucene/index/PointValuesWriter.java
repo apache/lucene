@@ -313,6 +313,5 @@ class PointValuesWriter {
     public void restore(int i, int j) {
       in.restore(i, j);
     }
-
   }
 }

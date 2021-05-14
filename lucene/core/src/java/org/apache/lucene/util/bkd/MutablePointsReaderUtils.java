@@ -35,9 +35,7 @@ public final class MutablePointsReaderUtils {
 
   MutablePointsReaderUtils() {}
 
-  /**
-   * Sort the given {@link MutablePointValues} based on its packed value then doc ID.
-   */
+  /** Sort the given {@link MutablePointValues} based on its packed value then doc ID. */
   public static void sort(
       BKDConfig config, int maxDoc, MutablePointValues reader, int from, int to) {
 

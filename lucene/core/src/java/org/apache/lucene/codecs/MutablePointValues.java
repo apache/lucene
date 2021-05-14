@@ -47,5 +47,4 @@ public abstract class MutablePointValues extends PointValues {
 
   /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
   public abstract void restore(int i, int j);
-
 }
