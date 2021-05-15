@@ -329,28 +329,11 @@ final class BooleanWeight extends Weight {
 
   @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    boolean isPureDisjunction = true;
-    boolean isTermQuery = true;
-    for (WeightedBooleanClause wbc : weightedClauses) {
-      BooleanClause bc = wbc.clause;
-      Query query = bc.getQuery();
-      if (!(query instanceof TermQuery)) {
-        isTermQuery = false;
-      }
-
-      if (bc.getOccur() != Occur.SHOULD) {
-        isPureDisjunction = false;
-      }
-    }
-
-    if (isPureDisjunction
-        && isTermQuery
-        && scoreMode == ScoreMode.TOP_SCORES
-        && query.getMinimumNumberShouldMatch() <= 1
-        && weightedClauses.size() > 1) {
+    if (isPureDisjunctionTermQueries()) {
       List<Scorer> optionalScorers = new ArrayList<>();
       for (WeightedBooleanClause wc : weightedClauses) {
         Scorer scorer = wc.weight.scorer(context);
+        // scorer can be null if this particular context doesn't contain matching docs for this term
         if (scorer != null) {
           optionalScorers.add(scorer);
         }
@@ -374,6 +357,20 @@ final class BooleanWeight extends Weight {
       // use a Scorer-based impl (BS2)
       return super.bulkScorer(context);
     }
+  }
+
+  private boolean isPureDisjunctionTermQueries() {
+    for (WeightedBooleanClause wbc : weightedClauses) {
+      BooleanClause bc = wbc.clause;
+      Query query = bc.getQuery();
+      if (!(query instanceof TermQuery)) {
+        return false;
+      }
+    }
+
+    return query.isPureDisjunction()
+        && scoreMode == ScoreMode.TOP_SCORES
+        && weightedClauses.size() > 1;
   }
 
   @Override
