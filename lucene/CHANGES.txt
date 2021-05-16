@@ -225,8 +225,6 @@ Improvements
 * LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
   it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
 
-* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
-
 Bug fixes
 
 
@@ -364,6 +362,8 @@ Improvements
   (Jaison Bi via Bruno Roustant)
 
 * LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
+
+* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
 
 Optimizations
 ---------------------
