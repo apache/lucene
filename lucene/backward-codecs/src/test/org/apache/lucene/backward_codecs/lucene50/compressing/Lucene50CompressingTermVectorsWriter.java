@@ -17,7 +17,6 @@
 package org.apache.lucene.backward_codecs.lucene50.compressing;
 
 import static org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingTermVectorsReader.FLAGS_BITS;
-import static org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingTermVectorsReader.MAX_DOCUMENTS_PER_CHUNK;
 import static org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingTermVectorsReader.OFFSETS;
 import static org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingTermVectorsReader.PACKED_BLOCK_SIZE;
 import static org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingTermVectorsReader.PAYLOADS;
@@ -81,8 +80,9 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
   private final Compressor compressor;
   private final int chunkSize;
 
+  private long numChunks; // number of chunks
   private long numDirtyChunks; // number of incomplete compressed blocks written
-  private long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
+  private long numDirtyDocs; // cumulative number of docs in incomplete chunks
 
   /** a pending doc */
   private class DocData {
@@ -218,6 +218,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
   private final ByteBuffersDataOutput termSuffixes; // buffered term suffixes
   private final ByteBuffersDataOutput payloadBytes; // buffered term payloads
   private final BlockPackedWriter writer;
+  private final int maxDocsPerChunk; // hard limit on number of docs per chunk
 
   /** Sole constructor. */
   Lucene50CompressingTermVectorsWriter(
@@ -228,6 +229,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
       String formatName,
       CompressionMode compressionMode,
       int chunkSize,
+      int maxDocsPerChunk,
       int blockShift)
       throws IOException {
     assert directory != null;
@@ -235,6 +237,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
     this.compressionMode = compressionMode;
     this.compressor = compressionMode.newCompressor();
     this.chunkSize = chunkSize;
+    this.maxDocsPerChunk = maxDocsPerChunk;
 
     numDocs = 0;
     pendingDocs = new ArrayDeque<>();
@@ -370,10 +373,11 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   private boolean triggerFlush() {
-    return termSuffixes.size() >= chunkSize || pendingDocs.size() >= MAX_DOCUMENTS_PER_CHUNK;
+    return termSuffixes.size() >= chunkSize || pendingDocs.size() >= maxDocsPerChunk;
   }
 
   private void flush() throws IOException {
+    numChunks++;
     final int chunkDocs = pendingDocs.size();
     assert chunkDocs > 0 : chunkDocs;
 
@@ -709,11 +713,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
   public void finish(FieldInfos fis, int numDocs) throws IOException {
     if (!pendingDocs.isEmpty()) {
       numDirtyChunks++; // incomplete: we had to force this flush
-      final long expectedChunkDocs =
-          Math.min(
-              MAX_DOCUMENTS_PER_CHUNK,
-              (long) ((double) chunkSize / termSuffixes.size() * pendingDocs.size()));
-      numDirtyDocs += expectedChunkDocs - pendingDocs.size();
+      numDirtyDocs += pendingDocs.size();
       flush();
     }
     if (numDocs != this.numDocs) {
@@ -721,6 +721,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
           "Wrote " + this.numDocs + " docs, finish called with numDocs=" + numDocs);
     }
     indexWriter.finish(numDocs, vectorsStream.getFilePointer(), metaStream);
+    metaStream.writeVLong(numChunks);
     metaStream.writeVLong(numDirtyChunks);
     metaStream.writeVLong(numDirtyDocs);
     CodecUtil.writeFooter(metaStream);
@@ -844,8 +845,9 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
 
         // flush any pending chunks
         if (!pendingDocs.isEmpty()) {
-          flush();
           numDirtyChunks++; // incomplete: we had to force this flush
+          numDirtyDocs += pendingDocs.size();
+          flush();
         }
 
         // iterate over each chunk. we use the vectors index to find chunk boundaries,
@@ -901,6 +903,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
         }
 
         // since we bulk merged all chunks, we inherit any dirty ones from this segment.
+        numChunks += matchingVectorsReader.getNumChunks();
         numDirtyChunks += matchingVectorsReader.getNumDirtyChunks();
         numDirtyDocs += matchingVectorsReader.getNumDirtyDocs();
       } else {
@@ -936,9 +939,10 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
    * ratio can degrade. This is a safety switch.
    */
   boolean tooDirty(Lucene50CompressingTermVectorsReader candidate) {
-    // more than 1% dirty, or more than hard limit of 1024 dirty chunks
-    return candidate.getNumDirtyChunks() > 1024
-        || candidate.getNumDirtyDocs() * 100 > candidate.getNumDocs();
+    // A segment is considered dirty only if it has enough dirty docs to make a full block
+    // AND more than 1% blocks are dirty.
+    return candidate.getNumDirtyDocs() > maxDocsPerChunk
+        && candidate.getNumDirtyChunks() * 100 > candidate.getNumChunks();
   }
 
   @Override

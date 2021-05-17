@@ -75,8 +75,13 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
   static final int VERSION_OFFHEAP_INDEX = 2;
   /** Version where all metadata were moved to the meta file. */
   static final int VERSION_META = 3;
+  /**
+   * Version where numChunks is explicitly recorded in meta file and a dirty chunk bit is recorded
+   * in each chunk
+   */
+  static final int VERSION_NUM_CHUNKS = 4;
 
-  static final int VERSION_CURRENT = VERSION_META;
+  static final int VERSION_CURRENT = VERSION_NUM_CHUNKS;
   static final int META_VERSION_START = 0;
 
   // for compression of timestamps
@@ -99,8 +104,9 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
   private final int numDocs;
   private final boolean merging;
   private final BlockState state;
+  private final long numChunks; // number of written blocks
   private final long numDirtyChunks; // number of incomplete compressed blocks written
-  private final long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
+  private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private boolean closed;
 
   // used by clone
@@ -116,6 +122,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     this.compressionMode = reader.compressionMode;
     this.decompressor = reader.decompressor.clone();
     this.numDocs = reader.numDocs;
+    this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
     this.numDirtyDocs = reader.numDirtyDocs;
     this.merging = merging;
@@ -231,14 +238,45 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
       this.maxPointer = maxPointer;
       this.indexReader = indexReader;
 
-      if (version >= VERSION_META) {
+      if (version >= VERSION_NUM_CHUNKS) {
+        numChunks = metaIn.readVLong();
         numDirtyChunks = metaIn.readVLong();
         numDirtyDocs = metaIn.readVLong();
       } else {
-        // Old versions of this format did not record numDirtyDocs. Since bulk
+        if (version >= VERSION_META) {
+          // consume dirty chunks/docs stats we wrote
+          metaIn.readVLong();
+          metaIn.readVLong();
+        }
+        // Old versions of this format did not record these. Since bulk
         // merges are disabled on version increments anyway, we make no effort
-        // to get valid values of numDirtyChunks and numDirtyDocs.
-        numDirtyChunks = numDirtyDocs = -1;
+        // to get valid values for these stats.
+        numChunks = numDirtyChunks = numDirtyDocs = -1;
+      }
+
+      if (numChunks < numDirtyChunks) {
+        throw new CorruptIndexException(
+            "Cannot have more dirty chunks than chunks: numChunks="
+                + numChunks
+                + ", numDirtyChunks="
+                + numDirtyChunks,
+            metaIn);
+      }
+      if ((numDirtyChunks == 0) != (numDirtyDocs == 0)) {
+        throw new CorruptIndexException(
+            "Cannot have dirty chunks without dirty docs or vice-versa: numDirtyChunks="
+                + numDirtyChunks
+                + ", numDirtyDocs="
+                + numDirtyDocs,
+            metaIn);
+      }
+      if (numDirtyDocs < numDirtyChunks) {
+        throw new CorruptIndexException(
+            "Cannot have more dirty chunks than documents within dirty chunks: numDirtyChunks="
+                + numDirtyChunks
+                + ", numDirtyDocs="
+                + numDirtyDocs,
+            metaIn);
       }
 
       if (metaIn != null) {
@@ -482,7 +520,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     private void doReset(int docID) throws IOException {
       docBase = fieldsStream.readVInt();
       final int token = fieldsStream.readVInt();
-      chunkDocs = token >>> 1;
+      chunkDocs = version >= VERSION_NUM_CHUNKS ? token >>> 2 : token >>> 1;
       if (contains(docID) == false || docBase + chunkDocs > numDocs) {
         throw new CorruptIndexException(
             "Corrupted: docID="
@@ -788,6 +826,15 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
 
   int getPackedIntsVersion() {
     return packedIntsVersion;
+  }
+
+  long getNumChunks() {
+    if (version != VERSION_CURRENT) {
+      throw new IllegalStateException(
+          "getNumChunks should only ever get called when the reader is on the current version");
+    }
+    assert numChunks >= 0;
+    return numChunks;
   }
 
   @Override

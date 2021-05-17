@@ -69,8 +69,10 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
   static final int VERSION_OFFHEAP_INDEX = 2;
   /** Version where all metadata were moved to the meta file. */
   static final int VERSION_META = 3;
+  /** Version where numChunks is explicitly recorded in meta file */
+  static final int VERSION_NUM_CHUNKS = 4;
 
-  static final int VERSION_CURRENT = VERSION_META;
+  static final int VERSION_CURRENT = VERSION_NUM_CHUNKS;
   static final int META_VERSION_START = 0;
 
   static final int PACKED_BLOCK_SIZE = 64;
@@ -91,8 +93,9 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
   private final int numDocs;
   private boolean closed;
   private final BlockPackedReaderIterator reader;
+  private final long numChunks; // number of written blocks
   private final long numDirtyChunks; // number of incomplete compressed blocks written
-  private final long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
+  private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private final long maxPointer; // end of the data section
 
   // used by clone
@@ -108,6 +111,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     this.reader =
         new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
     this.version = reader.version;
+    this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
     this.numDirtyDocs = reader.numDirtyDocs;
     this.maxPointer = reader.maxPointer;
@@ -225,14 +229,45 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       this.indexReader = indexReader;
       this.maxPointer = maxPointer;
 
-      if (version >= VERSION_META) {
+      if (version >= VERSION_NUM_CHUNKS) {
+        numChunks = metaIn.readVLong();
         numDirtyChunks = metaIn.readVLong();
         numDirtyDocs = metaIn.readVLong();
       } else {
-        // Old versions of this format did not record numDirtyDocs. Since bulk
+        if (version >= VERSION_META) {
+          // consume dirty chunks/docs stats we wrote
+          metaIn.readVLong();
+          metaIn.readVLong();
+        }
+        // Old versions of this format did not record these. Since bulk
         // merges are disabled on version increments anyway, we make no effort
-        // to get valid values of numDirtyChunks and numDirtyDocs.
-        numDirtyChunks = numDirtyDocs = -1;
+        // to get valid values for these stats.
+        numChunks = numDirtyChunks = numDirtyDocs = -1;
+      }
+
+      if (numChunks < numDirtyChunks) {
+        throw new CorruptIndexException(
+            "Cannot have more dirty chunks than chunks: numChunks="
+                + numChunks
+                + ", numDirtyChunks="
+                + numDirtyChunks,
+            metaIn);
+      }
+      if ((numDirtyChunks == 0) != (numDirtyDocs == 0)) {
+        throw new CorruptIndexException(
+            "Cannot have dirty chunks without dirty docs or vice-versa: numDirtyChunks="
+                + numDirtyChunks
+                + ", numDirtyDocs="
+                + numDirtyDocs,
+            metaIn);
+      }
+      if (numDirtyDocs < numDirtyChunks) {
+        throw new CorruptIndexException(
+            "Cannot have more dirty chunks than documents within dirty chunks: numDirtyChunks="
+                + numDirtyChunks
+                + ", numDirtyDocs="
+                + numDirtyDocs,
+            metaIn);
       }
 
       decompressor = compressionMode.newDecompressor();
@@ -303,6 +338,15 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     }
     assert numDirtyChunks >= 0;
     return numDirtyChunks;
+  }
+
+  long getNumChunks() {
+    if (version != VERSION_CURRENT) {
+      throw new IllegalStateException(
+          "getNumChunks should only ever get called when the reader is on the current version");
+    }
+    assert numChunks >= 0;
+    return numChunks;
   }
 
   int getNumDocs() {
