@@ -273,12 +273,14 @@ public class StringValueFacetCounts extends Facets {
 
       countOneSegment(docValues, hits.context.ord, hits);
     } else {
+
+      // Validate state before doing anything else. We only check the first segment since they
+      // should all ladder up to the same top-level reader:
+      validateState(matchingDocs.get(0).context);
+
       for (int i = 0; i < matchingDocs.size(); i++) {
 
         FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
-
-        // Validate state before doing anything else:
-        validateState(hits.context);
 
         // Assuming the state is valid, ordinalMap should be non-null and docValues should be
         // a MultiSortedSetDocValues since we have more than one segment:
