@@ -21,7 +21,7 @@ import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
 /**
- * A PriorityQueue maintains a partial ordering of its elements such that the least element can
+ * A priority queue maintains a partial ordering of its elements such that the least element can
  * always be found in constant time. Put()'s and pop()'s require log(size) time but the remove()
  * cost implemented here is linear.
  *
@@ -74,11 +74,11 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    */
   public PriorityQueue(int maxSize, Supplier<T> sentinelObjectSupplier) {
     final int heapSize;
+
     if (0 == maxSize) {
       // We allocate 1 extra to avoid if statement in top()
       heapSize = 2;
     } else {
-
       if ((maxSize < 0) || (maxSize >= ArrayUtil.MAX_ARRAY_LENGTH)) {
         // Throw exception to prevent confusing OOME:
         throw new IllegalArgumentException(
@@ -89,7 +89,8 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
       // 1-based not 0-based.  heap[0] is unused.
       heapSize = maxSize + 1;
     }
-    // T is unbounded type, so this unchecked cast works always:
+
+    // T is an unbounded type, so this unchecked cast works always.
     @SuppressWarnings("unchecked")
     final T[] h = (T[]) new Object[heapSize];
     this.heap = h;
@@ -121,9 +122,11 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * @return the new 'top' element in the queue.
    */
   public final T add(T element) {
-    size++;
-    heap[size] = element;
-    upHeap(size);
+    // don't modify size until we know heap access didn't throw AIOOB.
+    int index = size + 1;
+    heap[index] = element;
+    size = index;
+    upHeap(index);
     return heap[1];
   }
 
@@ -138,7 +141,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     if (size < maxSize) {
       add(element);
       return null;
-    } else if (size > 0 && !lessThan(element, heap[1])) {
+    } else if (size > 0 && lessThan(heap[1], element)) {
       T ret = heap[1];
       heap[1] = element;
       updateTop();
@@ -273,7 +276,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * @lucene.internal
    */
   protected final Object[] getHeapArray() {
-    return (Object[]) heap;
+    return heap;
   }
 
   @Override

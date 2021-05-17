@@ -118,6 +118,8 @@ API Changes
 
 Improvements
 
+* LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
+
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
   fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
 
