@@ -21,8 +21,7 @@ import org.apache.lucene.search.Query;
 
 /**
  * This class tracks the dependency tree for queries (scoring and rewriting) and generates {@link
- * QueryProfileBreakdown} for each node in the tree. It also finalizes the tree and returns a list
- * of {@link ProfileResult} that can be serialized back to the client
+ * QueryProfileBreakdown} for each node in the tree.
  */
 final class InternalQueryProfileTree
     extends AbstractInternalProfileTree<QueryProfileBreakdown, Query> {

@@ -19,6 +19,10 @@ package org.apache.lucene.sandbox.queries.profile;
 
 import java.util.List;
 
+/**
+ * This class acts as as storage for a profile tree. This class may be extended to define how the
+ * profile contains and how it's broken into different pieces.
+ */
 public class AbstractProfiler<PB extends AbstractProfileBreakdown<?>, E> {
 
   protected final AbstractInternalProfileTree<PB, E> profileTree;

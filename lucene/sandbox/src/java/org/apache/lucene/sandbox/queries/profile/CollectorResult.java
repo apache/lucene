@@ -20,8 +20,8 @@ package org.apache.lucene.sandbox.queries.profile;
 import java.util.List;
 
 /**
- * Public interface and serialization container for profiled timings of the Collectors used in the
- * search. Children CollectorResult's may be embedded inside of a parent CollectorResult
+ * Public class for profiled timings of the Collectors used in the search. Children
+ * CollectorResult's may be embedded inside of a parent CollectorResult
  */
 public class CollectorResult {
 

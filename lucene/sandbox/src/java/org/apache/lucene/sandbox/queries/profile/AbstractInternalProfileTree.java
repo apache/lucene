@@ -23,6 +23,10 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 
+/**
+ * This class tracks a Query tree for profiling. This class can be extended to allow different
+ * element types for timing with the tree.
+ */
 public abstract class AbstractInternalProfileTree<PB extends AbstractProfileBreakdown<?>, E> {
 
   protected ArrayList<PB> breakdowns;

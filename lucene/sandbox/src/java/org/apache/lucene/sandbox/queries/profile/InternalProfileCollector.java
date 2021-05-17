@@ -26,7 +26,7 @@ import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.ScoreMode;
 
 /**
- * This class wraps a Lucene Collector and times the execution of: - setScorer() - collect() -
+ * This class wraps a Collector and times the execution of: - setScorer() - collect() -
  * doSetNextReader() - needsScores()
  *
  * <p>InternalProfiler facilitates the linking of the Collector graph

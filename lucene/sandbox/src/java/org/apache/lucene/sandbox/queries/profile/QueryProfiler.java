@@ -21,13 +21,10 @@ import java.util.Objects;
 import org.apache.lucene.search.Query;
 
 /**
- * This class acts as a thread-local storage for profiling a query. It also builds a representation
- * of the query tree which is built constructed "online" as the weights are wrapped by
- * ContextIndexSearcher. This allows us to know the relationship between nodes in tree without
- * explicitly walking the tree or pre-wrapping everything
- *
- * <p>A Profiler is associated with every Search, not per Search-Request. E.g. a request may execute
- * two searches (query + global agg). A Profiler just represents one of those
+ * This class acts as storage for profiling a query. It also builds a representation of the query
+ * tree which is built constructed "online" as the weights are wrapped by {@link
+ * ProfileIndexSearcher}. This allows us to know the relationship between nodes in tree without
+ * explicitly walking the tree or pre-wrapping everything.
  */
 public final class QueryProfiler extends AbstractProfiler<QueryProfileBreakdown, Query> {
 

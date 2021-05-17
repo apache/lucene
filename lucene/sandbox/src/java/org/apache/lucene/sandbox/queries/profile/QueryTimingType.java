@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.queries.profile;
 
 import java.util.Locale;
 
+/** This enum breaks down the query into different sections to describe what was timed. */
 public enum QueryTimingType {
   CREATE_WEIGHT,
   BUILD_SCORER,

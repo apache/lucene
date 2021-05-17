@@ -24,6 +24,10 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Weight;
 
+/**
+ * A simple extension of {@link IndexSearcher} to add a {@link QueryProfiler} that can be set to
+ * test query timings.
+ */
 public class ProfileIndexSearcher extends IndexSearcher {
 
   private QueryProfiler profiler;
