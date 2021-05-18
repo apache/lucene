@@ -663,11 +663,6 @@ public final class CheckIndex implements Closeable {
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
-    // nocommit the msg statements with infoStream inside this loop (as well as inside each
-    // index part checking methods such as testLiveDocs) may be
-    // interleaved when this section of code run concurrently. Is it ok to not synchronize for
-    // these msg statements and instead have each msg content to include segment id information for
-    // identification?
     for (int i = 0; i < numSegments; i++) {
       final SegmentCommitInfo info = sis.info(i);
       long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
@@ -705,8 +700,6 @@ public final class CheckIndex implements Closeable {
       SegmentReader reader = null;
 
       try {
-        // nocommit these msg statements may require synchronization if printed without segment
-        // identifier
         msg(infoStream, segmentId, "    version=" + (version == null ? "3.0" : version));
         msg(infoStream, segmentId, "    id=" + StringHelper.idToString(info.info.getId()));
         final Codec codec = info.info.getCodec();
@@ -1113,8 +1106,6 @@ public final class CheckIndex implements Closeable {
     final Status.LiveDocStatus status = new Status.LiveDocStatus();
 
     try {
-      // nocommit these msg statements may require synchronization if printed without segment
-      // identifier
       if (infoStream != null) infoStream.print(segmentPartId + "    test: check live docs.....");
       final int numDocs = reader.numDocs();
       if (reader.hasDeletions()) {
@@ -1162,8 +1153,6 @@ public final class CheckIndex implements Closeable {
             }
           }
         }
-        // nocommit these msg statements may require synchronization if printed without segment
-        // identifier
         msg(
             infoStream,
             segmentPartId,
