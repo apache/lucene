@@ -855,14 +855,14 @@ public final class CheckIndex implements Closeable {
           CompletableFuture<Void> testDocValues =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testDocValues(finalReader, infoStream, segmentId, failFast),
+                  () -> testDocValues(finalReader, infoStream, segmentId),
                   docValuesStatus -> segInfoStat.docValuesStatus = docValuesStatus);
 
           // Test PointValues
           CompletableFuture<Void> testPointvalues =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testPoints(finalReader, infoStream, segmentId, failFast),
+                  () -> testPoints(finalReader, infoStream, segmentId),
                   pointsStatus -> segInfoStat.pointsStatus = pointsStatus);
 
           // Test VectorValues
@@ -2357,8 +2357,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.PointsStatus testPoints(
-      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
-      throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId) {
     String segmentPartId = segmentId + "[Points]";
     if (infoStream != null) {
       infoStream.print(segmentPartId + "    test: points..............");
@@ -2984,8 +2983,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.DocValuesStatus testDocValues(
-      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
-      throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId) {
     long startNS = System.nanoTime();
     String segmentPartId = segmentId + "[DocValues]";
 
