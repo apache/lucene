@@ -874,38 +874,54 @@ public final class CheckIndex implements Closeable {
 
           // Rethrow the first exception we encountered
           //  This will cause stats for failed segments to be incremented properly
-          // nocommit The error != null check ordering below requires sequencing the above async
-          // calls.
-          // Does the order really matter here or can be done differently?
-          CompletableFuture.allOf(
-                  testliveDocs,
-                  testFieldInfos,
-                  testFieldNorms,
-                  testTermIndex,
-                  testStoredFields,
-                  testTermVectors,
-                  testDocValues,
-                  testPointvalues,
-                  testVectors,
-                  testSort)
-              .join();
-
+          testliveDocs.join();
           if (segInfoStat.liveDocStatus.error != null) {
             throw new RuntimeException(segmentId + "Live docs test failed");
-          } else if (segInfoStat.fieldInfoStatus.error != null) {
+          }
+
+          testFieldInfos.join();
+          if (segInfoStat.fieldInfoStatus.error != null) {
             throw new RuntimeException(segmentId + "Field Info test failed");
-          } else if (segInfoStat.fieldNormStatus.error != null) {
+          }
+
+          testFieldNorms.join();
+          if (segInfoStat.fieldNormStatus.error != null) {
             throw new RuntimeException(segmentId + "Field Norm test failed");
-          } else if (segInfoStat.termIndexStatus.error != null) {
+          }
+
+          testTermIndex.join();
+          if (segInfoStat.termIndexStatus.error != null) {
             throw new RuntimeException(segmentId + "Term Index test failed");
-          } else if (segInfoStat.storedFieldStatus.error != null) {
+          }
+
+          testStoredFields.join();
+          if (segInfoStat.storedFieldStatus.error != null) {
             throw new RuntimeException(segmentId + "Stored Field test failed");
-          } else if (segInfoStat.termVectorStatus.error != null) {
+          }
+
+          testTermVectors.join();
+          if (segInfoStat.termVectorStatus.error != null) {
             throw new RuntimeException(segmentId + "Term Vector test failed");
-          } else if (segInfoStat.docValuesStatus.error != null) {
+          }
+
+          testDocValues.join();
+          if (segInfoStat.docValuesStatus.error != null) {
             throw new RuntimeException(segmentId + "DocValues test failed");
-          } else if (segInfoStat.pointsStatus.error != null) {
+          }
+
+          testPointvalues.join();
+          if (segInfoStat.pointsStatus.error != null) {
             throw new RuntimeException(segmentId + "Points test failed");
+          }
+
+          testVectors.join();
+          if (segInfoStat.vectorValuesStatus.error != null) {
+            throw new RuntimeException(segmentId + "Vectors test failed");
+          }
+
+          testSort.join();
+          if (segInfoStat.indexSortStatus.error != null) {
+            throw new RuntimeException(segmentId + "Index Sort test failed");
           }
         }
 
@@ -1055,9 +1071,6 @@ public final class CheckIndex implements Closeable {
             segmentPartId,
             String.format(Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startNS)));
       } catch (Throwable e) {
-        if (failFast) {
-          throw IOUtils.rethrowAlways(e);
-        }
         msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
         status.error = e;
         if (infoStream != null) {
@@ -1141,9 +1154,6 @@ public final class CheckIndex implements Closeable {
       }
 
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -1185,9 +1195,6 @@ public final class CheckIndex implements Closeable {
               nsToSec(System.nanoTime() - startNS)));
       status.totFields = fieldInfos.size();
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -1235,9 +1242,6 @@ public final class CheckIndex implements Closeable {
               status.totFields,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -2322,9 +2326,6 @@ public final class CheckIndex implements Closeable {
               verbose,
               doSlowChecks);
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId + "ERROR: " + e);
       status = new Status.TermIndexStatus();
       status.error = e;
@@ -2437,9 +2438,6 @@ public final class CheckIndex implements Closeable {
               nsToSec(System.nanoTime() - startNS)));
 
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId, "ERROR: " + e);
       status.error = e;
       if (infoStream != null) {
@@ -2528,9 +2526,6 @@ public final class CheckIndex implements Closeable {
               nsToSec(System.nanoTime() - startNS)));
 
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId, "ERROR: " + e);
       status.error = e;
       if (infoStream != null) {
@@ -2961,9 +2956,6 @@ public final class CheckIndex implements Closeable {
               (((float) status.totFields) / status.docCount),
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -3015,9 +3007,6 @@ public final class CheckIndex implements Closeable {
               status.totalSortedSetFields,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -3733,9 +3722,6 @@ public final class CheckIndex implements Closeable {
               vectorAvg,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
       msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
