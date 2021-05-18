@@ -484,6 +484,10 @@ public final class CheckIndex implements Closeable {
     if (out != null) out.println(msg);
   }
 
+  private static void msg(PrintStream out, String id, String msg) {
+    if (out != null) out.println(id + " " + msg);
+  }
+
   /**
    * Returns a {@link Status} instance detailing the state of the index.
    *
@@ -659,6 +663,7 @@ public final class CheckIndex implements Closeable {
       if (segmentName > result.maxSegmentName) {
         result.maxSegmentName = segmentName;
       }
+      String segmentId = String.format(Locale.ROOT, "[Segment %s]", segmentName);
       if (onlySegments != null && !onlySegments.contains(info.info.name)) {
         continue;
       }
@@ -666,6 +671,7 @@ public final class CheckIndex implements Closeable {
       result.segmentInfos.add(segInfoStat);
       msg(
           infoStream,
+          segmentId,
           "  "
               + (1 + i)
               + " of "
@@ -679,7 +685,8 @@ public final class CheckIndex implements Closeable {
 
       final Version version = info.info.getVersion();
       if (info.info.maxDoc() <= 0) {
-        throw new RuntimeException("illegal number of documents: maxDoc=" + info.info.maxDoc());
+        throw new RuntimeException(
+            segmentId + " illegal number of documents: maxDoc=" + info.info.maxDoc());
       }
 
       int toLoseDocCount = info.info.maxDoc();
@@ -689,57 +696,60 @@ public final class CheckIndex implements Closeable {
       try {
         // nocommit these msg statements may require synchronization if printed without segment
         // identifier
-        msg(infoStream, "    version=" + (version == null ? "3.0" : version));
-        msg(infoStream, "    id=" + StringHelper.idToString(info.info.getId()));
+        msg(infoStream, segmentId, "    version=" + (version == null ? "3.0" : version));
+        msg(infoStream, segmentId, "    id=" + StringHelper.idToString(info.info.getId()));
         final Codec codec = info.info.getCodec();
-        msg(infoStream, "    codec=" + codec);
+        msg(infoStream, segmentId, "    codec=" + codec);
         segInfoStat.codec = codec;
-        msg(infoStream, "    compound=" + info.info.getUseCompoundFile());
+        msg(infoStream, segmentId, "    compound=" + info.info.getUseCompoundFile());
         segInfoStat.compound = info.info.getUseCompoundFile();
-        msg(infoStream, "    numFiles=" + info.files().size());
+        msg(infoStream, segmentId, "    numFiles=" + info.files().size());
         Sort indexSort = info.info.getIndexSort();
         if (indexSort != null) {
-          msg(infoStream, "    sort=" + indexSort);
+          msg(infoStream, segmentId, "    sort=" + indexSort);
         }
         segInfoStat.numFiles = info.files().size();
         segInfoStat.sizeMB = info.sizeInBytes() / (1024. * 1024.);
-        msg(infoStream, "    size (MB)=" + nf.format(segInfoStat.sizeMB));
+        msg(infoStream, segmentId, "    size (MB)=" + nf.format(segInfoStat.sizeMB));
         Map<String, String> diagnostics = info.info.getDiagnostics();
         segInfoStat.diagnostics = diagnostics;
         if (diagnostics.size() > 0) {
-          msg(infoStream, "    diagnostics = " + diagnostics);
+          msg(infoStream, segmentId, "    diagnostics = " + diagnostics);
         }
 
         if (!info.hasDeletions()) {
-          msg(infoStream, "    no deletions");
+          msg(infoStream, segmentId, "    no deletions");
           segInfoStat.hasDeletions = false;
         } else {
-          msg(infoStream, "    has deletions [delGen=" + info.getDelGen() + "]");
+          msg(infoStream, segmentId, "    has deletions [delGen=" + info.getDelGen() + "]");
           segInfoStat.hasDeletions = true;
           segInfoStat.deletionsGen = info.getDelGen();
         }
 
         long startOpenReaderNS = System.nanoTime();
-        if (infoStream != null) infoStream.print("    test: open reader.........");
+        if (infoStream != null) infoStream.print(segmentId + "    test: open reader.........");
         reader = new SegmentReader(info, sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
         msg(
             infoStream,
+            segmentId,
             String.format(
                 Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startOpenReaderNS)));
 
         segInfoStat.openReaderPassed = true;
 
         long startIntegrityNS = System.nanoTime();
-        if (infoStream != null) infoStream.print("    test: check integrity.....");
+        if (infoStream != null) infoStream.print(segmentId + "    test: check integrity.....");
         reader.checkIntegrity();
         msg(
             infoStream,
+            segmentId,
             String.format(
                 Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startIntegrityNS)));
 
         if (reader.maxDoc() != info.info.maxDoc()) {
           throw new RuntimeException(
-              "SegmentReader.maxDoc() "
+              segmentId
+                  + "SegmentReader.maxDoc() "
                   + reader.maxDoc()
                   + " != SegmentInfo.maxDoc "
                   + info.info.maxDoc());
@@ -751,21 +761,24 @@ public final class CheckIndex implements Closeable {
         if (reader.hasDeletions()) {
           if (reader.numDocs() != info.info.maxDoc() - info.getDelCount()) {
             throw new RuntimeException(
-                "delete count mismatch: info="
+                segmentId
+                    + "delete count mismatch: info="
                     + (info.info.maxDoc() - info.getDelCount())
                     + " vs reader="
                     + reader.numDocs());
           }
           if ((info.info.maxDoc() - reader.numDocs()) > reader.maxDoc()) {
             throw new RuntimeException(
-                "too many deleted docs: maxDoc()="
+                segmentId
+                    + "too many deleted docs: maxDoc()="
                     + reader.maxDoc()
                     + " vs del count="
                     + (info.info.maxDoc() - reader.numDocs()));
           }
           if (info.info.maxDoc() - reader.numDocs() != info.getDelCount()) {
             throw new RuntimeException(
-                "delete count mismatch: info="
+                segmentId
+                    + "delete count mismatch: info="
                     + info.getDelCount()
                     + " vs reader="
                     + (info.info.maxDoc() - reader.numDocs()));
@@ -773,7 +786,8 @@ public final class CheckIndex implements Closeable {
         } else {
           if (info.getDelCount() != 0) {
             throw new RuntimeException(
-                "delete count mismatch: info="
+                segmentId
+                    + "delete count mismatch: info="
                     + info.getDelCount()
                     + " vs reader="
                     + (info.info.maxDoc() - reader.numDocs()));
@@ -788,70 +802,74 @@ public final class CheckIndex implements Closeable {
           CompletableFuture<Void> testliveDocs =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testLiveDocs(finalReader, infoStream, failFast),
+                  () -> testLiveDocs(finalReader, infoStream, segmentId, failFast),
                   liveDocStatus -> segInfoStat.liveDocStatus = liveDocStatus);
 
           // Test Fieldinfos
           CompletableFuture<Void> testFieldInfos =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testFieldInfos(finalReader, infoStream, failFast),
+                  () -> testFieldInfos(finalReader, infoStream, segmentId, failFast),
                   fieldInfoStatus -> segInfoStat.fieldInfoStatus = fieldInfoStatus);
 
           // Test Field Norms
           CompletableFuture<Void> testFieldNorms =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testFieldNorms(finalReader, infoStream, failFast),
+                  () -> testFieldNorms(finalReader, infoStream, segmentId, failFast),
                   fieldNormStatus -> segInfoStat.fieldNormStatus = fieldNormStatus);
 
           // Test the Term Index
           CompletableFuture<Void> testTermIndex =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testPostings(finalReader, infoStream, verbose, doSlowChecks, failFast),
+                  () ->
+                      testPostings(
+                          finalReader, infoStream, segmentId, verbose, doSlowChecks, failFast),
                   termIndexStatus -> segInfoStat.termIndexStatus = termIndexStatus);
 
           // Test Stored Fields
           CompletableFuture<Void> testStoredFields =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testStoredFields(finalReader, infoStream, failFast),
+                  () -> testStoredFields(finalReader, infoStream, segmentId, failFast),
                   storedFieldStatus -> segInfoStat.storedFieldStatus = storedFieldStatus);
 
           // Test Term Vectors
           CompletableFuture<Void> testTermVectors =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testTermVectors(finalReader, infoStream, verbose, doSlowChecks, failFast),
+                  () ->
+                      testTermVectors(
+                          finalReader, infoStream, segmentId, verbose, doSlowChecks, failFast),
                   termVectorStatus -> segInfoStat.termVectorStatus = termVectorStatus);
 
           // Test Docvalues
           CompletableFuture<Void> testDocValues =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testDocValues(finalReader, infoStream, failFast),
+                  () -> testDocValues(finalReader, infoStream, segmentId, failFast),
                   docValuesStatus -> segInfoStat.docValuesStatus = docValuesStatus);
 
           // Test PointValues
           CompletableFuture<Void> testPointvalues =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testPoints(finalReader, infoStream, failFast),
+                  () -> testPoints(finalReader, infoStream, segmentId, failFast),
                   pointsStatus -> segInfoStat.pointsStatus = pointsStatus);
 
           // Test VectorValues
           CompletableFuture<Void> testVectors =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testVectors(finalReader, infoStream, failFast),
+                  () -> testVectors(finalReader, infoStream, segmentId, failFast),
                   vectorValuesStatus -> segInfoStat.vectorValuesStatus = vectorValuesStatus);
 
           // Test index sort
           CompletableFuture<Void> testSort =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testSort(finalReader, indexSort, infoStream, failFast),
+                  () -> testSort(finalReader, indexSort, infoStream, segmentId, failFast),
                   indexSortStatus -> segInfoStat.indexSortStatus = indexSortStatus);
 
           // Rethrow the first exception we encountered
@@ -871,22 +889,23 @@ public final class CheckIndex implements Closeable {
                   testVectors,
                   testSort)
               .join();
+
           if (segInfoStat.liveDocStatus.error != null) {
-            throw new RuntimeException("Live docs test failed");
+            throw new RuntimeException(segmentId + "Live docs test failed");
           } else if (segInfoStat.fieldInfoStatus.error != null) {
-            throw new RuntimeException("Field Info test failed");
+            throw new RuntimeException(segmentId + "Field Info test failed");
           } else if (segInfoStat.fieldNormStatus.error != null) {
-            throw new RuntimeException("Field Norm test failed");
+            throw new RuntimeException(segmentId + "Field Norm test failed");
           } else if (segInfoStat.termIndexStatus.error != null) {
-            throw new RuntimeException("Term Index test failed");
+            throw new RuntimeException(segmentId + "Term Index test failed");
           } else if (segInfoStat.storedFieldStatus.error != null) {
-            throw new RuntimeException("Stored Field test failed");
+            throw new RuntimeException(segmentId + "Stored Field test failed");
           } else if (segInfoStat.termVectorStatus.error != null) {
-            throw new RuntimeException("Term Vector test failed");
+            throw new RuntimeException(segmentId + "Term Vector test failed");
           } else if (segInfoStat.docValuesStatus.error != null) {
-            throw new RuntimeException("DocValues test failed");
+            throw new RuntimeException(segmentId + "DocValues test failed");
           } else if (segInfoStat.pointsStatus.error != null) {
-            throw new RuntimeException("Points test failed");
+            throw new RuntimeException(segmentId + "Points test failed");
           }
         }
 
@@ -895,18 +914,18 @@ public final class CheckIndex implements Closeable {
         if (softDeletesField != null) {
           checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
         }
-        msg(infoStream, "");
+        msg(infoStream, segmentId, "");
 
       } catch (Throwable t) {
         if (failFast) {
           throw IOUtils.rethrowAlways(t);
         }
-        msg(infoStream, "FAILED");
+        msg(infoStream, segmentId, "FAILED");
         String comment;
         comment = "exorciseIndex() would remove reference to this segment";
-        msg(infoStream, "    WARNING: " + comment + "; full exception:");
+        msg(infoStream, segmentId, "    WARNING: " + comment + "; full exception:");
         if (infoStream != null) t.printStackTrace(infoStream);
-        msg(infoStream, "");
+        msg(infoStream, segmentId, "");
         result.totLoseDocCount += toLoseDocCount;
         result.numBadSegments++;
         continue;
@@ -975,17 +994,19 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.IndexSortStatus testSort(
-      CodecReader reader, Sort sort, PrintStream infoStream, boolean failFast) throws IOException {
+      CodecReader reader, Sort sort, PrintStream infoStream, String segmentId, boolean failFast)
+      throws IOException {
     // This segment claims its documents are sorted according to the incoming sort ... let's make
     // sure:
 
     long startNS = System.nanoTime();
+    String segmentPartId = segmentId + "[Sort]";
 
     Status.IndexSortStatus status = new Status.IndexSortStatus();
 
     if (sort != null) {
       if (infoStream != null) {
-        infoStream.print("    test: index sort..........");
+        infoStream.print(segmentPartId + "    test: index sort..........");
       }
 
       SortField fields[] = sort.getSort();
@@ -1020,7 +1041,8 @@ public final class CheckIndex implements Closeable {
 
           if (cmp > 0) {
             throw new RuntimeException(
-                "segment has indexSort="
+                segmentPartId
+                    + "segment has indexSort="
                     + sort
                     + " but docID="
                     + (docID - 1)
@@ -1030,12 +1052,13 @@ public final class CheckIndex implements Closeable {
         }
         msg(
             infoStream,
+            segmentPartId,
             String.format(Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startNS)));
       } catch (Throwable e) {
         if (failFast) {
           throw IOUtils.rethrowAlways(e);
         }
-        msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+        msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
         status.error = e;
         if (infoStream != null) {
           e.printStackTrace(infoStream);
@@ -1052,19 +1075,22 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.LiveDocStatus testLiveDocs(
-      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
+      throws IOException {
     long startNS = System.nanoTime();
+    String segmentPartId = segmentId + "[LiveDocs]";
     final Status.LiveDocStatus status = new Status.LiveDocStatus();
 
     try {
       // nocommit these msg statements may require synchronization if printed without segment
       // identifier
-      if (infoStream != null) infoStream.print("    test: check live docs.....");
+      if (infoStream != null) infoStream.print(segmentPartId + "    test: check live docs.....");
       final int numDocs = reader.numDocs();
       if (reader.hasDeletions()) {
         Bits liveDocs = reader.getLiveDocs();
         if (liveDocs == null) {
-          throw new RuntimeException("segment should have deletions, but liveDocs is null");
+          throw new RuntimeException(
+              segmentPartId + "segment should have deletions, but liveDocs is null");
         } else {
           int numLive = 0;
           for (int j = 0; j < liveDocs.length(); j++) {
@@ -1074,13 +1100,18 @@ public final class CheckIndex implements Closeable {
           }
           if (numLive != numDocs) {
             throw new RuntimeException(
-                "liveDocs count mismatch: info=" + numDocs + ", vs bits=" + numLive);
+                segmentPartId
+                    + "liveDocs count mismatch: info="
+                    + numDocs
+                    + ", vs bits="
+                    + numLive);
           }
         }
 
         status.numDeleted = reader.numDeletedDocs();
         msg(
             infoStream,
+            segmentPartId,
             String.format(
                 Locale.ROOT,
                 "OK [%d deleted docs] [took %.3f sec]",
@@ -1093,7 +1124,10 @@ public final class CheckIndex implements Closeable {
           for (int j = 0; j < liveDocs.length(); j++) {
             if (!liveDocs.get(j)) {
               throw new RuntimeException(
-                  "liveDocs mismatch: info says no deletions but doc " + j + " is deleted.");
+                  segmentPartId
+                      + "liveDocs mismatch: info says no deletions but doc "
+                      + j
+                      + " is deleted.");
             }
           }
         }
@@ -1101,6 +1135,7 @@ public final class CheckIndex implements Closeable {
         // identifier
         msg(
             infoStream,
+            segmentPartId,
             String.format(
                 Locale.ROOT, "OK [took %.3f sec]", (nsToSec(System.nanoTime() - startNS))));
       }
@@ -1109,7 +1144,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -1125,14 +1160,16 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.FieldInfoStatus testFieldInfos(
-      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
+      throws IOException {
     long startNS = System.nanoTime();
+    String segmentPartId = segmentId + "[FieldInfos]";
     final Status.FieldInfoStatus status = new Status.FieldInfoStatus();
 
     try {
       // Test Field Infos
       if (infoStream != null) {
-        infoStream.print("    test: field infos.........");
+        infoStream.print(segmentPartId + "    test: field infos.........");
       }
       FieldInfos fieldInfos = reader.getFieldInfos();
       for (FieldInfo f : fieldInfos) {
@@ -1140,6 +1177,7 @@ public final class CheckIndex implements Closeable {
       }
       msg(
           infoStream,
+          segmentPartId,
           String.format(
               Locale.ROOT,
               "OK [%d fields] [took %.3f sec]",
@@ -1150,7 +1188,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -1166,14 +1204,16 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.FieldNormStatus testFieldNorms(
-      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
+      throws IOException {
     long startNS = System.nanoTime();
+    String segmentPartId = segmentId + "[FieldNorms]";
     final Status.FieldNormStatus status = new Status.FieldNormStatus();
 
     try {
       // Test Field Norms
       if (infoStream != null) {
-        infoStream.print("    test: field norms.........");
+        infoStream.print(segmentPartId + "    test: field norms.........");
       }
       NormsProducer normsReader = reader.getNormsReader();
       if (normsReader != null) {
@@ -1188,6 +1228,7 @@ public final class CheckIndex implements Closeable {
 
       msg(
           infoStream,
+          segmentPartId,
           String.format(
               Locale.ROOT,
               "OK [%d fields] [took %.3f sec]",
@@ -1197,7 +1238,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -2241,19 +2282,10 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.TermIndexStatus testPostings(CodecReader reader, PrintStream infoStream)
-      throws IOException {
-    return testPostings(reader, infoStream, false, true, false);
-  }
-
-  /**
-   * Test the term index.
-   *
-   * @lucene.experimental
-   */
   public static Status.TermIndexStatus testPostings(
       CodecReader reader,
       PrintStream infoStream,
+      String segmentId,
       boolean verbose,
       boolean doSlowChecks,
       boolean failFast)
@@ -2262,12 +2294,13 @@ public final class CheckIndex implements Closeable {
     // TODO: we should go and verify term vectors match, if
     // doSlowChecks is on...
 
+    String segmentPartId = segmentId + "[Postings]";
     Status.TermIndexStatus status;
     final int maxDoc = reader.maxDoc();
 
     try {
       if (infoStream != null) {
-        infoStream.print("    test: terms, freq, prox...");
+        infoStream.print(segmentPartId + "    test: terms, freq, prox...");
       }
 
       final Fields fields = reader.getPostingsReader().getMergeInstance();
@@ -2292,7 +2325,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR: " + e);
+      msg(infoStream, segmentPartId + "ERROR: " + e);
       status = new Status.TermIndexStatus();
       status.error = e;
       if (infoStream != null) {
@@ -2309,9 +2342,11 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.PointsStatus testPoints(
-      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
+      throws IOException {
+    String segmentPartId = segmentId + "[Points]";
     if (infoStream != null) {
-      infoStream.print("    test: points..............");
+      infoStream.print(segmentPartId + "    test: points..............");
     }
     long startNS = System.nanoTime();
     FieldInfos fieldInfos = reader.getFieldInfos();
@@ -2322,7 +2357,7 @@ public final class CheckIndex implements Closeable {
         PointsReader pointsReader = reader.getPointsReader();
         if (pointsReader == null) {
           throw new RuntimeException(
-              "there are fields with points, but reader.getPointsReader() is null");
+              segmentPartId + "there are fields with points, but reader.getPointsReader() is null");
         }
         for (FieldInfo fieldInfo : fieldInfos) {
           if (fieldInfo.getPointDimensionCount() > 0) {
@@ -2341,20 +2376,23 @@ public final class CheckIndex implements Closeable {
                     new ConstantRelationIntersectVisitor(Relation.CELL_CROSSES_QUERY));
             if (crossCost < size / 2) {
               throw new RuntimeException(
-                  "estimatePointCount should return >= size/2 when all cells match");
+                  segmentPartId
+                      + "estimatePointCount should return >= size/2 when all cells match");
             }
             final long insideCost =
                 values.estimatePointCount(
                     new ConstantRelationIntersectVisitor(Relation.CELL_INSIDE_QUERY));
             if (insideCost < size) {
               throw new RuntimeException(
-                  "estimatePointCount should return >= size when all cells fully match");
+                  segmentPartId
+                      + "estimatePointCount should return >= size when all cells fully match");
             }
             final long outsideCost =
                 values.estimatePointCount(
                     new ConstantRelationIntersectVisitor(Relation.CELL_OUTSIDE_QUERY));
             if (outsideCost != 0) {
-              throw new RuntimeException("estimatePointCount should return 0 when no cells match");
+              throw new RuntimeException(
+                  segmentPartId + "estimatePointCount should return 0 when no cells match");
             }
 
             VerifyPointsVisitor visitor =
@@ -2363,7 +2401,8 @@ public final class CheckIndex implements Closeable {
 
             if (visitor.getPointCountSeen() != size) {
               throw new RuntimeException(
-                  "point values for field \""
+                  segmentPartId
+                      + "point values for field \""
                       + fieldInfo.name
                       + "\" claims to have size="
                       + size
@@ -2373,7 +2412,8 @@ public final class CheckIndex implements Closeable {
 
             if (visitor.getDocCountSeen() != docCount) {
               throw new RuntimeException(
-                  "point values for field \""
+                  segmentPartId
+                      + "point values for field \""
                       + fieldInfo.name
                       + "\" claims to have docCount="
                       + docCount
@@ -2388,6 +2428,7 @@ public final class CheckIndex implements Closeable {
 
       msg(
           infoStream,
+          segmentPartId,
           String.format(
               Locale.ROOT,
               "OK [%d fields, %d points] [took %.3f sec]",
@@ -2399,7 +2440,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR: " + e);
+      msg(infoStream, segmentPartId, "ERROR: " + e);
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -2415,9 +2456,11 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.VectorValuesStatus testVectors(
-      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
+      throws IOException {
+    String segmentPartId = segmentId + "[Vectors]";
     if (infoStream != null) {
-      infoStream.print("    test: vectors..............");
+      infoStream.print(segmentPartId + "    test: vectors..............");
     }
     long startNS = System.nanoTime();
     FieldInfos fieldInfos = reader.getFieldInfos();
@@ -2430,7 +2473,8 @@ public final class CheckIndex implements Closeable {
             int dimension = fieldInfo.getVectorDimension();
             if (dimension <= 0) {
               throw new RuntimeException(
-                  "Field \""
+                  segmentPartId
+                      + "Field \""
                       + fieldInfo.name
                       + "\" has vector values but dimension is "
                       + dimension);
@@ -2447,7 +2491,8 @@ public final class CheckIndex implements Closeable {
               int valueLength = values.vectorValue().length;
               if (valueLength != dimension) {
                 throw new RuntimeException(
-                    "Field \""
+                    segmentPartId
+                        + "Field \""
                         + fieldInfo.name
                         + "\" has a value whose dimension="
                         + valueLength
@@ -2458,7 +2503,8 @@ public final class CheckIndex implements Closeable {
             }
             if (docCount != values.size()) {
               throw new RuntimeException(
-                  "Field \""
+                  segmentPartId
+                      + "Field \""
                       + fieldInfo.name
                       + "\" has size="
                       + values.size()
@@ -2473,6 +2519,7 @@ public final class CheckIndex implements Closeable {
 
       msg(
           infoStream,
+          segmentPartId,
           String.format(
               Locale.ROOT,
               "OK [%d fields, %d vectors] [took %.3f sec]",
@@ -2484,7 +2531,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR: " + e);
+      msg(infoStream, segmentPartId, "ERROR: " + e);
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -2867,13 +2914,15 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.StoredFieldStatus testStoredFields(
-      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
+      throws IOException {
     long startNS = System.nanoTime();
+    String segmentPartId = segmentId + "[StoredFields]";
     final Status.StoredFieldStatus status = new Status.StoredFieldStatus();
 
     try {
       if (infoStream != null) {
-        infoStream.print("    test: stored fields.......");
+        infoStream.print(segmentPartId + "    test: stored fields.......");
       }
 
       // Scan stored fields for all documents
@@ -2894,11 +2943,17 @@ public final class CheckIndex implements Closeable {
       // Validate docCount
       if (status.docCount != reader.numDocs()) {
         throw new RuntimeException(
-            "docCount=" + status.docCount + " but saw " + status.docCount + " undeleted docs");
+            segmentPartId
+                + "docCount="
+                + status.docCount
+                + " but saw "
+                + status.docCount
+                + " undeleted docs");
       }
 
       msg(
           infoStream,
+          segmentPartId,
           String.format(
               Locale.ROOT,
               "OK [%d total field count; avg %.1f fields per doc] [took %.3f sec]",
@@ -2909,7 +2964,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -2925,12 +2980,15 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.DocValuesStatus testDocValues(
-      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
+      throws IOException {
     long startNS = System.nanoTime();
+    String segmentPartId = segmentId + "[DocValues]";
+
     final Status.DocValuesStatus status = new Status.DocValuesStatus();
     try {
       if (infoStream != null) {
-        infoStream.print("    test: docvalues...........");
+        infoStream.print(segmentPartId + "    test: docvalues...........");
       }
       DocValuesProducer dvReader = reader.getDocValuesReader();
       if (dvReader != null) {
@@ -2945,6 +3003,7 @@ public final class CheckIndex implements Closeable {
 
       msg(
           infoStream,
+          segmentPartId,
           String.format(
               Locale.ROOT,
               "OK [%d docvalues fields; %d BINARY; %d NUMERIC; %d SORTED; %d SORTED_NUMERIC; %d SORTED_SET] [took %.3f sec]",
@@ -2959,7 +3018,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -3368,30 +3427,22 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.TermVectorStatus testTermVectors(CodecReader reader, PrintStream infoStream)
-      throws IOException {
-    return testTermVectors(reader, infoStream, false, false, false);
-  }
-
-  /**
-   * Test term vectors.
-   *
-   * @lucene.experimental
-   */
   public static Status.TermVectorStatus testTermVectors(
       CodecReader reader,
       PrintStream infoStream,
+      String segmentId,
       boolean verbose,
       boolean doSlowChecks,
       boolean failFast)
       throws IOException {
     long startNS = System.nanoTime();
+    String segmentPartId = segmentId + "[TermVectors]";
     final Status.TermVectorStatus status = new Status.TermVectorStatus();
     final FieldInfos fieldInfos = reader.getFieldInfos();
 
     try {
       if (infoStream != null) {
-        infoStream.print("    test: term vectors........");
+        infoStream.print(segmentPartId + "    test: term vectors........");
       }
 
       PostingsEnum postings = null;
@@ -3443,7 +3494,8 @@ public final class CheckIndex implements Closeable {
               final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
               if (!fieldInfo.hasVectors()) {
                 throw new RuntimeException(
-                    "docID="
+                    segmentPartId
+                        + "docID="
                         + j
                         + " has term vectors for field="
                         + field
@@ -3461,7 +3513,11 @@ public final class CheckIndex implements Closeable {
                 Terms postingsTerms = postingsFields.terms(field);
                 if (postingsTerms == null) {
                   throw new RuntimeException(
-                      "vector field=" + field + " does not exist in postings; doc=" + j);
+                      segmentPartId
+                          + "vector field="
+                          + field
+                          + " does not exist in postings; doc="
+                          + j);
                 }
                 TermsEnum postingsTermsEnum = postingsTerms.iterator();
 
@@ -3475,7 +3531,8 @@ public final class CheckIndex implements Closeable {
 
                   if (!postingsTermsEnum.seekExact(term)) {
                     throw new RuntimeException(
-                        "vector term="
+                        segmentPartId
+                            + "vector term="
                             + term
                             + " field="
                             + field
@@ -3490,7 +3547,8 @@ public final class CheckIndex implements Closeable {
                   final int advanceDoc = postingsDocs.advance(j);
                   if (advanceDoc != j) {
                     throw new RuntimeException(
-                        "vector term="
+                        segmentPartId
+                            + "vector term="
                             + term
                             + " field="
                             + field
@@ -3505,14 +3563,19 @@ public final class CheckIndex implements Closeable {
 
                   if (doc != 0) {
                     throw new RuntimeException(
-                        "vector for doc " + j + " didn't return docID=0: got docID=" + doc);
+                        segmentPartId
+                            + "vector for doc "
+                            + j
+                            + " didn't return docID=0: got docID="
+                            + doc);
                   }
 
                   if (postingsHasFreq) {
                     final int tf = postings.freq();
                     if (postingsHasFreq && postingsDocs.freq() != tf) {
                       throw new RuntimeException(
-                          "vector term="
+                          segmentPartId
+                              + "vector term="
                               + term
                               + " field="
                               + field
@@ -3532,7 +3595,8 @@ public final class CheckIndex implements Closeable {
                           int postingsPos = postingsDocs.nextPosition();
                           if (terms.hasPositions() && pos != postingsPos) {
                             throw new RuntimeException(
-                                "vector term="
+                                segmentPartId
+                                    + "vector term="
                                     + term
                                     + " field="
                                     + field
@@ -3565,7 +3629,8 @@ public final class CheckIndex implements Closeable {
                           int postingsEndOffset = postingsDocs.endOffset();
                           if (startOffset != postingsStartOffset) {
                             throw new RuntimeException(
-                                "vector term="
+                                segmentPartId
+                                    + "vector term="
                                     + term
                                     + " field="
                                     + field
@@ -3578,7 +3643,8 @@ public final class CheckIndex implements Closeable {
                           }
                           if (endOffset != postingsEndOffset) {
                             throw new RuntimeException(
-                                "vector term="
+                                segmentPartId
+                                    + "vector term="
                                     + term
                                     + " field="
                                     + field
@@ -3604,7 +3670,8 @@ public final class CheckIndex implements Closeable {
                             // postings has payloads too, it should not have one at this position
                             if (postingsDocs.getPayload() != null) {
                               throw new RuntimeException(
-                                  "vector term="
+                                  segmentPartId
+                                      + "vector term="
                                       + term
                                       + " field="
                                       + field
@@ -3618,7 +3685,8 @@ public final class CheckIndex implements Closeable {
                             // postings should also have one at this position, with the same bytes.
                             if (postingsDocs.getPayload() == null) {
                               throw new RuntimeException(
-                                  "vector term="
+                                  segmentPartId
+                                      + "vector term="
                                       + term
                                       + " field="
                                       + field
@@ -3631,7 +3699,8 @@ public final class CheckIndex implements Closeable {
                             BytesRef postingsPayload = postingsDocs.getPayload();
                             if (!payload.equals(postingsPayload)) {
                               throw new RuntimeException(
-                                  "vector term="
+                                  segmentPartId
+                                      + "vector term="
                                       + term
                                       + " field="
                                       + field
@@ -3656,6 +3725,7 @@ public final class CheckIndex implements Closeable {
       float vectorAvg = status.docCount == 0 ? 0 : status.totVectors / (float) status.docCount;
       msg(
           infoStream,
+          segmentPartId,
           String.format(
               Locale.ROOT,
               "OK [%d total term vector count; avg %.1f term/freq vector fields per doc] [took %.3f sec]",
@@ -3666,7 +3736,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, segmentPartId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);

@@ -357,14 +357,14 @@ public final class TestUtil {
     } else {
       codecReader = SlowCodecReaderWrapper.wrap(reader);
     }
-    CheckIndex.testLiveDocs(codecReader, infoStream, true);
-    CheckIndex.testFieldInfos(codecReader, infoStream, true);
-    CheckIndex.testFieldNorms(codecReader, infoStream, true);
-    CheckIndex.testPostings(codecReader, infoStream, false, doSlowChecks, true);
-    CheckIndex.testStoredFields(codecReader, infoStream, true);
-    CheckIndex.testTermVectors(codecReader, infoStream, false, doSlowChecks, true);
-    CheckIndex.testDocValues(codecReader, infoStream, true);
-    CheckIndex.testPoints(codecReader, infoStream, true);
+    CheckIndex.testLiveDocs(codecReader, infoStream, "", true);
+    CheckIndex.testFieldInfos(codecReader, infoStream, "", true);
+    CheckIndex.testFieldNorms(codecReader, infoStream, "", true);
+    CheckIndex.testPostings(codecReader, infoStream, "", false, doSlowChecks, true);
+    CheckIndex.testStoredFields(codecReader, infoStream, "", true);
+    CheckIndex.testTermVectors(codecReader, infoStream, "", false, doSlowChecks, true);
+    CheckIndex.testDocValues(codecReader, infoStream, "", true);
+    CheckIndex.testPoints(codecReader, infoStream, "", true);
 
     // some checks really against the reader API
     checkReaderSanity(reader);

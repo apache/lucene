@@ -2920,7 +2920,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
                   startingGun.await();
                   for (LeafReaderContext leaf : r.leaves()) {
                     DocValuesStatus status =
-                        CheckIndex.testDocValues((SegmentReader) leaf.reader(), infoStream, true);
+                        CheckIndex.testDocValues(
+                            (SegmentReader) leaf.reader(), infoStream, "", true);
                     if (status.error != null) {
                       throw status.error;
                     }
