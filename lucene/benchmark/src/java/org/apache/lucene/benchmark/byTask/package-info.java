@@ -76,10 +76,10 @@
  *
  * <h2>How to use</h2>
  *
- * <p>Easiest way to run a benchmarks is using the predefined ant task:
+ * <p>The easiest way to run a benchmarks is using gradle:
  *
  * <ul>
- *   <li>ant run-task <br>
+ *   <li>./gradlew -p lucene/benchmark getReuters run <br>
  *       - would run the <code>micro-standard.alg</code> "algorithm".
  *   <li>ant run-task -Dtask.alg=conf/compound-penalty.alg <br>
  *       - would run the <code>compound-penalty.alg</code> "algorithm".
