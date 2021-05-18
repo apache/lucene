@@ -19,6 +19,9 @@ New Features
 * LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
   (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
 
+* LUCENE-9950: New facet counting implementation for general string doc value fields
+  (SortedSetDocValues / SortedDocValues) not created through FacetsConfig (Greg Miller)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
