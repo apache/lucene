@@ -169,6 +169,12 @@ Example:
 gradlew -p lucene/core coverage
 open lucene/core/build/reports/jacoco/test/html/index.html
 
+If you want to use test filtering to just check a particular test, specify
+the "test" task explicitly before "coverage":
+
+gradlew -p lucene/core test --tests TestDemo coverage
+open lucene/core/build/reports/jacoco/test/html/index.html
+
 
 External data sets
 ------------------

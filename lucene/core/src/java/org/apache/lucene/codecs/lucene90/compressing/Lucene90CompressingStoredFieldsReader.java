@@ -438,7 +438,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     private void doReset(int docID) throws IOException {
       docBase = fieldsStream.readVInt();
       final int token = fieldsStream.readVInt();
-      chunkDocs = token >>> 1;
+      chunkDocs = token >>> 2;
       if (contains(docID) == false || docBase + chunkDocs > numDocs) {
         throw new CorruptIndexException(
             "Corrupted: docID="
@@ -608,6 +608,18 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     }
     assert state.contains(docID);
     return state.document(docID);
+  }
+
+  /** Checks if a given docID was loaded in the current block state. */
+  boolean isLoaded(int docID) {
+    if (merging == false) {
+      throw new IllegalStateException("isLoaded should only ever get called on a merge instance");
+    }
+    if (version != VERSION_CURRENT) {
+      throw new IllegalStateException(
+          "isLoaded should only ever get called when the reader is on the current version");
+    }
+    return state.contains(docID);
   }
 
   @Override
