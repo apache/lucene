@@ -225,6 +225,9 @@ public final class CheckIndex implements Closeable {
 
       /** Status of vectors */
       public VectorValuesStatus vectorValuesStatus;
+
+      /** Status of soft deletes */
+      public SoftDeletsStatus softDeletesStatus;
     }
 
     /** Status from testing livedocs */
@@ -379,6 +382,14 @@ public final class CheckIndex implements Closeable {
       IndexSortStatus() {}
 
       /** Exception thrown during term index test (null on success) */
+      public Throwable error = null;
+    }
+
+    /** Status from testing soft deletes */
+    public static final class SoftDeletsStatus {
+      SoftDeletsStatus() {}
+
+      /** Exception thrown during soft deletes test (null on success) */
       public Throwable error = null;
     }
   }
@@ -802,46 +813,42 @@ public final class CheckIndex implements Closeable {
           CompletableFuture<Void> testliveDocs =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testLiveDocs(finalReader, infoStream, segmentId, failFast),
+                  () -> testLiveDocs(finalReader, infoStream, segmentId),
                   liveDocStatus -> segInfoStat.liveDocStatus = liveDocStatus);
 
           // Test Fieldinfos
           CompletableFuture<Void> testFieldInfos =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testFieldInfos(finalReader, infoStream, segmentId, failFast),
+                  () -> testFieldInfos(finalReader, infoStream, segmentId),
                   fieldInfoStatus -> segInfoStat.fieldInfoStatus = fieldInfoStatus);
 
           // Test Field Norms
           CompletableFuture<Void> testFieldNorms =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testFieldNorms(finalReader, infoStream, segmentId, failFast),
+                  () -> testFieldNorms(finalReader, infoStream, segmentId),
                   fieldNormStatus -> segInfoStat.fieldNormStatus = fieldNormStatus);
 
           // Test the Term Index
           CompletableFuture<Void> testTermIndex =
               runAysncSegmentPartCheck(
                   executorService,
-                  () ->
-                      testPostings(
-                          finalReader, infoStream, segmentId, verbose, doSlowChecks, failFast),
+                  () -> testPostings(finalReader, infoStream, segmentId, verbose, doSlowChecks),
                   termIndexStatus -> segInfoStat.termIndexStatus = termIndexStatus);
 
           // Test Stored Fields
           CompletableFuture<Void> testStoredFields =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testStoredFields(finalReader, infoStream, segmentId, failFast),
+                  () -> testStoredFields(finalReader, infoStream, segmentId),
                   storedFieldStatus -> segInfoStat.storedFieldStatus = storedFieldStatus);
 
           // Test Term Vectors
           CompletableFuture<Void> testTermVectors =
               runAysncSegmentPartCheck(
                   executorService,
-                  () ->
-                      testTermVectors(
-                          finalReader, infoStream, segmentId, verbose, doSlowChecks, failFast),
+                  () -> testTermVectors(finalReader, infoStream, segmentId, verbose, doSlowChecks),
                   termVectorStatus -> segInfoStat.termVectorStatus = termVectorStatus);
 
           // Test Docvalues
@@ -862,15 +869,27 @@ public final class CheckIndex implements Closeable {
           CompletableFuture<Void> testVectors =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testVectors(finalReader, infoStream, segmentId, failFast),
+                  () -> testVectors(finalReader, infoStream, segmentId),
                   vectorValuesStatus -> segInfoStat.vectorValuesStatus = vectorValuesStatus);
 
           // Test index sort
           CompletableFuture<Void> testSort =
               runAysncSegmentPartCheck(
                   executorService,
-                  () -> testSort(finalReader, indexSort, infoStream, segmentId, failFast),
+                  () -> testSort(finalReader, indexSort, infoStream, segmentId),
                   indexSortStatus -> segInfoStat.indexSortStatus = indexSortStatus);
+
+          CompletableFuture<Void> testSoftDeletes = null;
+          final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
+          if (softDeletesField != null) {
+            testSoftDeletes =
+                runAysncSegmentPartCheck(
+                    executorService,
+                    () ->
+                        checkSoftDeletes(
+                            softDeletesField, info, finalReader, infoStream, segmentId),
+                    softDeletesStatus -> segInfoStat.softDeletesStatus = softDeletesStatus);
+          }
 
           // Rethrow the first exception we encountered
           //  This will cause stats for failed segments to be incremented properly
@@ -923,15 +942,16 @@ public final class CheckIndex implements Closeable {
           if (segInfoStat.indexSortStatus.error != null) {
             throw new RuntimeException(segmentId + "Index Sort test failed");
           }
+
+          if (testSoftDeletes != null) {
+            testSoftDeletes.join();
+            if (segInfoStat.softDeletesStatus.error != null) {
+              throw new RuntimeException(segmentId + "Soft Deletes test failed");
+            }
+          }
         }
 
-        // nocommit parallelize this as well?
-        final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
-        if (softDeletesField != null) {
-          checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
-        }
         msg(infoStream, segmentId, "");
-
       } catch (Throwable t) {
         if (failFast) {
           throw IOUtils.rethrowAlways(t);
@@ -1010,8 +1030,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.IndexSortStatus testSort(
-      CodecReader reader, Sort sort, PrintStream infoStream, String segmentId, boolean failFast)
-      throws IOException {
+      CodecReader reader, Sort sort, PrintStream infoStream, String segmentId) throws IOException {
     // This segment claims its documents are sorted according to the incoming sort ... let's make
     // sure:
 
@@ -1088,8 +1107,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.LiveDocStatus testLiveDocs(
-      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
-      throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId) {
     long startNS = System.nanoTime();
     String segmentPartId = segmentId + "[LiveDocs]";
     final Status.LiveDocStatus status = new Status.LiveDocStatus();
@@ -1170,8 +1188,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.FieldInfoStatus testFieldInfos(
-      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
-      throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId) {
     long startNS = System.nanoTime();
     String segmentPartId = segmentId + "[FieldInfos]";
     final Status.FieldInfoStatus status = new Status.FieldInfoStatus();
@@ -1211,8 +1228,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.FieldNormStatus testFieldNorms(
-      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
-      throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId) {
     long startNS = System.nanoTime();
     String segmentPartId = segmentId + "[FieldNorms]";
     final Status.FieldNormStatus status = new Status.FieldNormStatus();
@@ -2291,9 +2307,7 @@ public final class CheckIndex implements Closeable {
       PrintStream infoStream,
       String segmentId,
       boolean verbose,
-      boolean doSlowChecks,
-      boolean failFast)
-      throws IOException {
+      boolean doSlowChecks) {
 
     // TODO: we should go and verify term vectors match, if
     // doSlowChecks is on...
@@ -2454,8 +2468,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.VectorValuesStatus testVectors(
-      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
-      throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId) throws IOException {
     String segmentPartId = segmentId + "[Vectors]";
     if (infoStream != null) {
       infoStream.print(segmentPartId + "    test: vectors..............");
@@ -2909,8 +2922,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.StoredFieldStatus testStoredFields(
-      CodecReader reader, PrintStream infoStream, String segmentId, boolean failFast)
-      throws IOException {
+      CodecReader reader, PrintStream infoStream, String segmentId) {
     long startNS = System.nanoTime();
     String segmentPartId = segmentId + "[StoredFields]";
     final Status.StoredFieldStatus status = new Status.StoredFieldStatus();
@@ -3421,9 +3433,7 @@ public final class CheckIndex implements Closeable {
       PrintStream infoStream,
       String segmentId,
       boolean verbose,
-      boolean doSlowChecks,
-      boolean failFast)
-      throws IOException {
+      boolean doSlowChecks) {
     long startNS = System.nanoTime();
     String segmentPartId = segmentId + "[TermVectors]";
     final Status.TermVectorStatus status = new Status.TermVectorStatus();
@@ -4020,14 +4030,15 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static void checkSoftDeletes(
+  private static Status.SoftDeletsStatus checkSoftDeletes(
       String softDeletesField,
       SegmentCommitInfo info,
       SegmentReader reader,
       PrintStream infoStream,
-      boolean failFast)
-      throws IOException {
-    if (infoStream != null) infoStream.print("    test: check soft deletes.....");
+      String segmentId) {
+
+    Status.SoftDeletsStatus status = new Status.SoftDeletsStatus();
+    if (infoStream != null) infoStream.print(segmentId + "    test: check soft deletes.....");
     try {
       int softDeletes =
           PendingSoftDeletes.countSoftDeletes(
@@ -4035,17 +4046,21 @@ public final class CheckIndex implements Closeable {
               reader.getLiveDocs());
       if (softDeletes != info.getSoftDelCount()) {
         throw new RuntimeException(
-            "actual soft deletes: " + softDeletes + " but expected: " + info.getSoftDelCount());
+            segmentId
+                + "actual soft deletes: "
+                + softDeletes
+                + " but expected: "
+                + info.getSoftDelCount());
       }
     } catch (Exception e) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(e);
-      }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, segmentId, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
       }
     }
+
+    return status;
   }
 
   private static double nsToSec(long ns) {
