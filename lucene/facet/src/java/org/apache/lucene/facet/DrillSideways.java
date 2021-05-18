@@ -192,6 +192,7 @@ public class DrillSideways {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
       if (drillDownCollector != null) {
+        // Make sure we still populate a facet collector for the base query if desired:
         searcher.search(query, MultiCollector.wrap(hitCollector, drillDownCollector));
       } else {
         searcher.search(query, hitCollector);
@@ -424,6 +425,7 @@ public class DrillSideways {
         createDrillDownFacetsCollectorManager();
     CollectorManager<?, ?> mainCollectorManager;
     if (drillDownFacetsCollectorManager != null) {
+      // Make sure we populate a facet collector corresponding to the base query if desired:
       mainCollectorManager =
           new MultiCollectorManager(drillDownFacetsCollectorManager, hitCollectorManager);
     } else {
