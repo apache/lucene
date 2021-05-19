@@ -314,5 +314,116 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         11);
   }
 
+  // The end node the long path is supposed to flatten over doesn't exist
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
+  public void testAltPathFirstStepHole() throws Exception {
+    TokenStream in =
+        new CannedTokenStream(
+            0,
+            3,
+            new Token[] {token("abc", 1, 3, 0, 3), token("b", 1, 1, 1, 2), token("c", 1, 1, 2, 3)});
+
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out,
+        new String[] {"abc", "b", "c"},
+        new int[] {0, 1, 2},
+        new int[] {3, 2, 3},
+        new int[] {1, 1, 1},
+        new int[] {3, 1, 1},
+        3);
+  }
+  // Last node in an alt path releases the long path. but it doesn't exist in this graph
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
+  public void testAltPathLastStepHole() throws Exception {
+    TokenStream in =
+        new CannedTokenStream(
+            0,
+            4,
+            new Token[] {
+              token("abc", 1, 3, 0, 3),
+              token("a", 0, 1, 0, 1),
+              token("b", 1, 1, 1, 2),
+              token("d", 2, 1, 3, 4)
+            });
+
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out,
+        new String[] {"abc", "a", "b", "d"},
+        new int[] {0, 0, 1, 3},
+        new int[] {1, 1, 2, 4},
+        new int[] {1, 0, 1, 2},
+        new int[] {3, 1, 1, 1},
+        4);
+  }
+
+  // Posinc >2 gets squashed to 2
+  public void testLongHole() throws Exception {
+    TokenStream in =
+        new CannedTokenStream(
+            0,
+            28,
+            new Token[] {
+              token("hello", 1, 1, 0, 5), token("hole", 5, 1, 20, 24), token("fun", 1, 1, 25, 28),
+            });
+
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out,
+        new String[] {"hello", "hole", "fun"},
+        new int[] {0, 20, 25},
+        new int[] {5, 24, 28},
+        new int[] {1, 2, 1},
+        new int[] {1, 1, 1},
+        28);
+  }
+
+  // multiple nodes missing in the alt path.
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
+  public void testAltPathLastStepLongHole() throws Exception {
+    TokenStream in =
+        new CannedTokenStream(
+            0,
+            4,
+            new Token[] {token("abc", 1, 3, 0, 3), token("a", 0, 1, 0, 1), token("d", 3, 1, 3, 4)});
+
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out,
+        new String[] {"abc", "a", "d"},
+        new int[] {0, 0, 3},
+        new int[] {1, 1, 4},
+        new int[] {1, 0, 1},
+        new int[] {1, 1, 1},
+        4);
+  }
+
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
+  // LUCENE-8723
+  // Token stream ends without last node showing up
+  public void testAltPathLastStepHoleWithoutEndToken() throws Exception {
+    TokenStream in =
+        new CannedTokenStream(
+            0,
+            2,
+            new Token[] {token("abc", 1, 3, 0, 3), token("a", 0, 1, 0, 1), token("b", 1, 1, 1, 2)});
+
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out,
+        new String[] {"abc", "a", "b"},
+        new int[] {0, 0, 1},
+        new int[] {1, 1, 2},
+        new int[] {1, 0, 1},
+        new int[] {1, 1, 1},
+        2);
+  }
+
   // NOTE: TestSynonymGraphFilter's testRandomSyns also tests FlattenGraphFilter
 }
