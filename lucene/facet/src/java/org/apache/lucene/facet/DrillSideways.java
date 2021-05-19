@@ -449,6 +449,7 @@ public class DrillSideways {
 
       // Extract the results
       if (drillDownFacetsCollectorManager != null) {
+        // If we populated a facets collector for the main query, make sure to unpack it properly
         final Object[] mainResults = (Object[]) futures.get(0).get().result;
         mainFacetsCollector = (FacetsCollector) mainResults[0];
         collectorResult = (R) mainResults[1];
