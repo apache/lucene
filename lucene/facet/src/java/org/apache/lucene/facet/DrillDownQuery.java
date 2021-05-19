@@ -53,6 +53,8 @@ public final class DrillDownQuery extends Query {
   private final Query baseQuery;
   private final List<BooleanQuery.Builder> dimQueries = new ArrayList<>();
   private final Map<String, Integer> drillDownDims = new LinkedHashMap<>();
+  private boolean isDimQueriesDirty = true;
+  private Query[] builtDimQueries;
 
   /** Used by clone() and DrillSideways */
   DrillDownQuery(
@@ -119,6 +121,8 @@ public final class DrillDownQuery extends Query {
     }
     final int index = drillDownDims.get(dim);
     dimQueries.get(index).add(subQuery, Occur.SHOULD);
+    // adding subQueries to a single dim renders all dimQueries to be dirty
+    isDimQueriesDirty = true;
   }
 
   @Override
@@ -186,10 +190,16 @@ public final class DrillDownQuery extends Query {
    * @return The array of dimQueries
    */
   public Query[] getDrillDownQueries() {
+    if (isDimQueriesDirty == false) {
+      // returns previously built dimQueries
+      return builtDimQueries;
+    }
     Query[] dimQueries = new Query[this.dimQueries.size()];
     for (int i = 0; i < dimQueries.length; ++i) {
       dimQueries[i] = this.dimQueries.get(i).build();
     }
+    builtDimQueries = dimQueries;
+    isDimQueriesDirty = false;
     return dimQueries;
   }
 
