@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,25 +29,25 @@ import org.apache.lucene.search.ScoreMode;
  * This class wraps a Collector and times the execution of: - setScorer() - collect() -
  * doSetNextReader() - needsScores()
  *
- * <p>InternalProfiler facilitates the linking of the Collector graph
+ * <p>QueryProfiler facilitates the linking of the Collector graph
  */
-public class InternalProfileCollector implements Collector {
+public class QueryProfilerCollectorWrapper implements Collector {
 
   /** A more friendly representation of the Collector's class name */
-  private final String collectorName;
+  protected final String collectorName;
 
   /** A "hint" to help provide some context about this Collector */
-  private final String reason;
+  protected final String reason;
 
   /** The wrapped collector */
-  private final ProfileCollector collector;
+  protected final QueryProfilerCollector collector;
 
   /** A list of "embedded" children collectors */
-  private final List<InternalProfileCollector> children;
+  protected final List<QueryProfilerCollectorWrapper> children;
 
-  public InternalProfileCollector(
-      Collector collector, String reason, List<InternalProfileCollector> children) {
-    this.collector = new ProfileCollector(collector);
+  public QueryProfilerCollectorWrapper(
+      Collector collector, String reason, List<QueryProfilerCollectorWrapper> children) {
+    this.collector = new QueryProfilerCollector(collector);
     this.reason = reason;
     this.collectorName = deriveCollectorName(collector);
     this.children = children;
@@ -88,17 +88,18 @@ public class InternalProfileCollector implements Collector {
     return collector.scoreMode();
   }
 
-  public CollectorResult getCollectorTree() {
-    return InternalProfileCollector.doGetCollectorTree(this);
+  public QueryProfilerCollectorResult getCollectorTree() {
+    return QueryProfilerCollectorWrapper.doGetCollectorTree(this);
   }
 
-  private static CollectorResult doGetCollectorTree(InternalProfileCollector collector) {
-    List<CollectorResult> childResults = new ArrayList<>(collector.children.size());
-    for (InternalProfileCollector child : collector.children) {
-      CollectorResult result = doGetCollectorTree(child);
+  private static QueryProfilerCollectorResult doGetCollectorTree(
+      QueryProfilerCollectorWrapper collector) {
+    List<QueryProfilerCollectorResult> childResults = new ArrayList<>(collector.children.size());
+    for (QueryProfilerCollectorWrapper child : collector.children) {
+      QueryProfilerCollectorResult result = doGetCollectorTree(child);
       childResults.add(result);
     }
-    return new CollectorResult(
+    return new QueryProfilerCollectorResult(
         collector.getName(), collector.getReason(), collector.getTime(), childResults);
   }
 }

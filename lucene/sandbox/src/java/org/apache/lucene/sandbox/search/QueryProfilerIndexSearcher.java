@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
@@ -28,11 +28,11 @@ import org.apache.lucene.search.Weight;
  * A simple extension of {@link IndexSearcher} to add a {@link QueryProfiler} that can be set to
  * test query timings.
  */
-public class ProfileIndexSearcher extends IndexSearcher {
+public class QueryProfilerIndexSearcher extends IndexSearcher {
 
-  private QueryProfiler profiler;
+  protected QueryProfiler profiler;
 
-  public ProfileIndexSearcher(IndexReader reader) {
+  public QueryProfilerIndexSearcher(IndexReader reader) {
     super(reader);
   }
 
@@ -61,17 +61,17 @@ public class ProfileIndexSearcher extends IndexSearcher {
       // createWeight() is called for each query in the tree, so we tell the queryProfiler
       // each invocation so that it can build an internal representation of the query
       // tree
-      QueryProfileBreakdown profile = profiler.getQueryBreakdown(query);
-      ProfileTimer timer = profile.getTimer(QueryTimingType.CREATE_WEIGHT);
+      QueryProfilerBreakdown profile = profiler.getQueryBreakdown(query);
+      QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.CREATE_WEIGHT);
       timer.start();
       final Weight weight;
       try {
         weight = query.createWeight(this, scoreMode, boost);
       } finally {
         timer.stop();
-        profiler.pollLastElement();
+        profiler.pollLastQuery();
       }
-      return new ProfileWeight(query, weight, profile);
+      return new QueryProfilerWeight(query, weight, profile);
     } else {
       return super.createWeight(query, scoreMode, boost);
     }

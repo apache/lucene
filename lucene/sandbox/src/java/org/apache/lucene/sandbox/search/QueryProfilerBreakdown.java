@@ -15,9 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
-
-import static java.util.Collections.emptyMap;
+package org.apache.lucene.sandbox.search;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,49 +25,41 @@ import java.util.Map;
  * A record of timings for the various operations that may happen during query execution. A node's
  * time may be composed of several internal attributes (rewriting, weighting, scoring, etc).
  */
-public abstract class AbstractProfileBreakdown<T extends Enum<T>> {
+public class QueryProfilerBreakdown {
 
   /** The accumulated timings for this query node */
-  private final ProfileTimer[] timings;
-
-  private final T[] timingTypes;
+  protected final QueryProfilerTimer[] timers;
 
   /** Sole constructor. */
-  public AbstractProfileBreakdown(Class<T> clazz) {
-    this.timingTypes = clazz.getEnumConstants();
-    timings = new ProfileTimer[timingTypes.length];
-    for (int i = 0; i < timings.length; ++i) {
-      timings[i] = new ProfileTimer();
+  public QueryProfilerBreakdown() {
+    timers = new QueryProfilerTimer[QueryProfilerTimingType.values().length];
+    for (int i = 0; i < timers.length; ++i) {
+      timers[i] = new QueryProfilerTimer();
     }
   }
 
-  public ProfileTimer getTimer(T timing) {
-    return timings[timing.ordinal()];
+  public QueryProfilerTimer getTimer(QueryProfilerTimingType type) {
+    return timers[type.ordinal()];
   }
 
-  public void setTimer(T timing, ProfileTimer timer) {
-    timings[timing.ordinal()] = timer;
+  public void setTimer(QueryProfilerTimingType type, QueryProfilerTimer timer) {
+    timers[type.ordinal()] = timer;
   }
 
   /** Build a timing count breakdown. */
   public final Map<String, Long> toBreakdownMap() {
-    Map<String, Long> map = new HashMap<>(timings.length * 2);
-    for (T timingType : timingTypes) {
-      map.put(timingType.toString(), timings[timingType.ordinal()].getApproximateTiming());
-      map.put(timingType.toString() + "_count", timings[timingType.ordinal()].getCount());
+    Map<String, Long> map = new HashMap<>(timers.length * 2);
+    for (QueryProfilerTimingType type : QueryProfilerTimingType.values()) {
+      map.put(type.toString(), timers[type.ordinal()].getApproximateTiming());
+      map.put(type.toString() + "_count", timers[type.ordinal()].getCount());
     }
     return Collections.unmodifiableMap(map);
   }
 
-  /** Fetch extra debugging information. */
-  protected Map<String, Object> toDebugMap() {
-    return emptyMap();
-  }
-
-  public final long toNodeTime() {
+  public final long toTotalTime() {
     long total = 0;
-    for (T timingType : timingTypes) {
-      total += timings[timingType.ordinal()].getApproximateTiming();
+    for (QueryProfilerTimer timer : timers) {
+      total += timer.getApproximateTiming();
     }
     return total;
   }

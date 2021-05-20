@@ -15,28 +15,49 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.search.Query;
 
 /**
  * This class acts as storage for profiling a query. It also builds a representation of the query
  * tree which is built constructed "online" as the weights are wrapped by {@link
- * ProfileIndexSearcher}. This allows us to know the relationship between nodes in tree without
- * explicitly walking the tree or pre-wrapping everything.
+ * QueryProfilerIndexSearcher}. This allows us to know the relationship between nodes in tree
+ * without explicitly walking the tree or pre-wrapping everything.
  */
-public final class QueryProfiler extends AbstractProfiler<QueryProfileBreakdown, Query> {
+public class QueryProfiler {
+
+  protected final QueryProfilerTree profileTree;
 
   /** The root Collector used in the search */
-  private InternalProfileCollector collector;
+  protected QueryProfilerCollectorWrapper collector;
 
   public QueryProfiler() {
-    super(new InternalQueryProfileTree());
+    this.profileTree = new QueryProfilerTree();
+  }
+
+  /**
+   * Get the {@link QueryProfilerTree} for the given query in the tree, potentially creating it if
+   * it did not exist.
+   */
+  public QueryProfilerBreakdown getQueryBreakdown(Query query) {
+    return profileTree.getProfileBreakdown(query);
+  }
+
+  /** Removes the last (e.g. most recent) query on the stack. */
+  public void pollLastQuery() {
+    profileTree.pollLast();
+  }
+
+  /** @return a hierarchical representation of the profiled tree */
+  public List<QueryProfilerResult> getTree() {
+    return profileTree.getTree();
   }
 
   /** Set the collector that is associated with this profiler. */
-  public void setCollector(InternalProfileCollector collector) {
+  public void setCollector(QueryProfilerCollectorWrapper collector) {
     if (this.collector != null) {
       throw new IllegalStateException("The collector can only be set once.");
     }
@@ -48,7 +69,7 @@ public final class QueryProfiler extends AbstractProfiler<QueryProfileBreakdown,
    * single metric
    */
   public void startRewriteTime() {
-    ((InternalQueryProfileTree) profileTree).startRewriteTime();
+    profileTree.startRewriteTime();
   }
 
   /**
@@ -58,16 +79,16 @@ public final class QueryProfiler extends AbstractProfiler<QueryProfileBreakdown,
    * @return cumulative rewrite time
    */
   public long stopAndAddRewriteTime() {
-    return ((InternalQueryProfileTree) profileTree).stopAndAddRewriteTime();
+    return profileTree.stopAndAddRewriteTime();
   }
 
   /** @return total time taken to rewrite all queries in this profile */
   public long getRewriteTime() {
-    return ((InternalQueryProfileTree) profileTree).getRewriteTime();
+    return profileTree.getRewriteTime();
   }
 
   /** Return the current root Collector for this search */
-  public CollectorResult getCollector() {
+  public QueryProfilerCollectorResult getCollector() {
     return collector.getCollectorTree();
   }
 }

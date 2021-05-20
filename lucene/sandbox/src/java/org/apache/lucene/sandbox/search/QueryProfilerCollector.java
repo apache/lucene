@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
@@ -27,12 +27,12 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 
 /** A collector that profiles how much time is spent calling it. */
-final class ProfileCollector extends FilterCollector {
+public class QueryProfilerCollector extends FilterCollector {
 
-  private long time;
+  protected long time;
 
   /** Sole constructor. */
-  ProfileCollector(Collector in) {
+  QueryProfilerCollector(Collector in) {
     super(in);
   }
 

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 /**
  * Helps measure how much time is spent running some methods. The {@link #start()} and {@link
@@ -32,10 +32,10 @@ package org.apache.lucene.sandbox.queries.profile;
  *  }
  *  </pre>
  */
-public class ProfileTimer {
+public class QueryProfilerTimer {
 
-  private boolean doTiming;
-  private long timing, count, lastCount, start;
+  protected boolean doTiming;
+  protected long timing, count, lastCount, start;
 
   /** pkg-private for testing */
   long nanoTime() {

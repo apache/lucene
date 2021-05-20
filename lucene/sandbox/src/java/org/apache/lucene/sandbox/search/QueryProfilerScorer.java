@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -28,12 +28,12 @@ import org.apache.lucene.search.Weight;
  * {@link Scorer} wrapper that will compute how much time is spent on moving the iterator,
  * confirming matches and computing scores.
  */
-final class ProfileScorer extends Scorer {
+public class QueryProfilerScorer extends Scorer {
 
-  private final Scorer scorer;
-  private ProfileWeight profileWeight;
+  protected final Scorer scorer;
+  protected QueryProfilerWeight profileWeight;
 
-  private final ProfileTimer scoreTimer,
+  private final QueryProfilerTimer scoreTimer,
       nextDocTimer,
       advanceTimer,
       matchTimer,
@@ -41,17 +41,19 @@ final class ProfileScorer extends Scorer {
       computeMaxScoreTimer,
       setMinCompetitiveScoreTimer;
 
-  ProfileScorer(ProfileWeight w, Scorer scorer, QueryProfileBreakdown profile) throws IOException {
+  QueryProfilerScorer(QueryProfilerWeight w, Scorer scorer, QueryProfilerBreakdown profile)
+      throws IOException {
     super(w);
     this.scorer = scorer;
     this.profileWeight = w;
-    scoreTimer = profile.getTimer(QueryTimingType.SCORE);
-    nextDocTimer = profile.getTimer(QueryTimingType.NEXT_DOC);
-    advanceTimer = profile.getTimer(QueryTimingType.ADVANCE);
-    matchTimer = profile.getTimer(QueryTimingType.MATCH);
-    shallowAdvanceTimer = profile.getTimer(QueryTimingType.SHALLOW_ADVANCE);
-    computeMaxScoreTimer = profile.getTimer(QueryTimingType.COMPUTE_MAX_SCORE);
-    setMinCompetitiveScoreTimer = profile.getTimer(QueryTimingType.SET_MIN_COMPETITIVE_SCORE);
+    scoreTimer = profile.getTimer(QueryProfilerTimingType.SCORE);
+    nextDocTimer = profile.getTimer(QueryProfilerTimingType.NEXT_DOC);
+    advanceTimer = profile.getTimer(QueryProfilerTimingType.ADVANCE);
+    matchTimer = profile.getTimer(QueryProfilerTimingType.MATCH);
+    shallowAdvanceTimer = profile.getTimer(QueryProfilerTimingType.SHALLOW_ADVANCE);
+    computeMaxScoreTimer = profile.getTimer(QueryProfilerTimingType.COMPUTE_MAX_SCORE);
+    setMinCompetitiveScoreTimer =
+        profile.getTimer(QueryProfilerTimingType.SET_MIN_COMPETITIVE_SCORE);
   }
 
   @Override

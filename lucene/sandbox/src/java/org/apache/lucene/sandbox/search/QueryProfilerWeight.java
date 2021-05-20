@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
@@ -30,12 +30,12 @@ import org.apache.lucene.search.Weight;
  * Weight wrapper that will compute how much time it takes to build the {@link Scorer} and then
  * return a {@link Scorer} that is wrapped in order to compute timings as well.
  */
-public final class ProfileWeight extends Weight {
+public class QueryProfilerWeight extends Weight {
 
-  private final Weight subQueryWeight;
-  private final QueryProfileBreakdown profile;
+  protected final Weight subQueryWeight;
+  protected final QueryProfilerBreakdown profile;
 
-  public ProfileWeight(Query query, Weight subQueryWeight, QueryProfileBreakdown profile)
+  public QueryProfilerWeight(Query query, Weight subQueryWeight, QueryProfilerBreakdown profile)
       throws IOException {
     super(query);
     this.subQueryWeight = subQueryWeight;
@@ -53,7 +53,7 @@ public final class ProfileWeight extends Weight {
 
   @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-    ProfileTimer timer = profile.getTimer(QueryTimingType.BUILD_SCORER);
+    QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.BUILD_SCORER);
     timer.start();
     final ScorerSupplier subQueryScorerSupplier;
     try {
@@ -65,14 +65,14 @@ public final class ProfileWeight extends Weight {
       return null;
     }
 
-    final ProfileWeight weight = this;
+    final QueryProfilerWeight weight = this;
     return new ScorerSupplier() {
 
       @Override
       public Scorer get(long loadCost) throws IOException {
         timer.start();
         try {
-          return new ProfileScorer(weight, subQueryScorerSupplier.get(loadCost), profile);
+          return new QueryProfilerScorer(weight, subQueryScorerSupplier.get(loadCost), profile);
         } finally {
           timer.stop();
         }

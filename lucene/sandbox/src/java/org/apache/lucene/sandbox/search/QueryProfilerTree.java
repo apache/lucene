@@ -15,42 +15,48 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import org.apache.lucene.search.Query;
 
 /**
- * This class tracks a Query tree for profiling. This class can be extended to allow different
- * element types for timing with the tree.
+ * This class tracks the dependency tree for queries (scoring and rewriting) and generates {@link
+ * QueryProfilerBreakdown} for each node in the tree.
  */
-public abstract class AbstractInternalProfileTree<PB extends AbstractProfileBreakdown<?>, E> {
+public class QueryProfilerTree {
 
-  protected ArrayList<PB> breakdowns;
+  protected ArrayList<QueryProfilerBreakdown> breakdowns;
   /** Maps the Query to it's list of children. This is basically the dependency tree */
   protected ArrayList<ArrayList<Integer>> tree;
   /** A list of the original queries, keyed by index position */
-  protected ArrayList<E> elements;
+  protected ArrayList<Query> queries;
   /** A list of top-level "roots". Each root can have its own tree of profiles */
   protected ArrayList<Integer> roots;
   /** A temporary stack used to record where we are in the dependency tree. */
   protected Deque<Integer> stack;
 
-  private int currentToken = 0;
+  protected int currentToken = 0;
 
-  public AbstractInternalProfileTree() {
+  /** Rewrite time */
+  protected long rewriteTime;
+
+  protected long rewriteScratch;
+
+  public QueryProfilerTree() {
     breakdowns = new ArrayList<>(10);
     stack = new ArrayDeque<>(10);
     tree = new ArrayList<>(10);
-    elements = new ArrayList<>(10);
+    queries = new ArrayList<>(10);
     roots = new ArrayList<>(10);
   }
 
   /**
-   * Returns a {@link QueryProfileBreakdown} for a scoring query. Scoring queries (e.g. those that
+   * Returns a {@link QueryProfilerBreakdown} for a scoring query. Scoring queries (e.g. those that
    * are past the rewrite phase and are now being wrapped by createWeight() ) follow a recursive
    * progression. We can track the dependency tree by a simple stack
    *
@@ -60,7 +66,7 @@ public abstract class AbstractInternalProfileTree<PB extends AbstractProfileBrea
    * @param query The scoring query we wish to profile
    * @return A ProfileBreakdown for this query
    */
-  public PB getProfileBreakdown(E query) {
+  public QueryProfilerBreakdown getProfileBreakdown(Query query) {
     int token = currentToken;
 
     boolean stackEmpty = stack.isEmpty();
@@ -94,26 +100,28 @@ public abstract class AbstractInternalProfileTree<PB extends AbstractProfileBrea
    * Helper method to add a new node to the dependency tree.
    *
    * <p>Initializes a new list in the dependency tree, saves the query and generates a new {@link
-   * AbstractProfileBreakdown} to track the timings of this element.
+   * QueryProfilerBreakdown} to track the timings of this query.
    *
-   * @param element The element to profile
-   * @param token The assigned token for this element
-   * @return A {@link AbstractProfileBreakdown} to profile this element
+   * @param query The query to profile
+   * @param token The assigned token for this query
+   * @return A {@link QueryProfilerBreakdown} to profile this query
    */
-  private PB addDependencyNode(E element, int token) {
+  protected QueryProfilerBreakdown addDependencyNode(Query query, int token) {
 
     // Add a new slot in the dependency tree
     tree.add(new ArrayList<>(5));
 
     // Save our query for lookup later
-    elements.add(element);
+    queries.add(query);
 
-    PB breakdown = createProfileBreakdown();
+    QueryProfilerBreakdown breakdown = createProfileBreakdown();
     breakdowns.add(token, breakdown);
     return breakdown;
   }
 
-  protected abstract PB createProfileBreakdown();
+  protected QueryProfilerBreakdown createProfileBreakdown() {
+    return new QueryProfilerBreakdown();
+  }
 
   /** Removes the last (e.g. most recent) value on the stack */
   public void pollLast() {
@@ -121,13 +129,13 @@ public abstract class AbstractInternalProfileTree<PB extends AbstractProfileBrea
   }
 
   /**
-   * After the element has been run and profiled, we need to merge the flat timing map with the
+   * After the query has been run and profiled, we need to merge the flat timing map with the
    * dependency graph to build a data structure that mirrors the original query tree
    *
    * @return a hierarchical representation of the profiled query tree
    */
-  public List<ProfileResult> getTree() {
-    ArrayList<ProfileResult> results = new ArrayList<>(roots.size());
+  public List<QueryProfilerResult> getTree() {
+    ArrayList<QueryProfilerResult> results = new ArrayList<>(roots.size());
     for (Integer root : roots) {
       results.add(doGetTree(root));
     }
@@ -140,46 +148,78 @@ public abstract class AbstractInternalProfileTree<PB extends AbstractProfileBrea
    * @param token The node we are currently finalizing
    * @return A hierarchical representation of the tree inclusive of children at this level
    */
-  private ProfileResult doGetTree(int token) {
-    E element = elements.get(token);
-    PB breakdown = breakdowns.get(token);
+  protected QueryProfilerResult doGetTree(int token) {
+    Query query = queries.get(token);
+    QueryProfilerBreakdown breakdown = breakdowns.get(token);
     List<Integer> children = tree.get(token);
-    List<ProfileResult> childrenProfileResults = Collections.emptyList();
+    List<QueryProfilerResult> childrenProfileResults = Collections.emptyList();
 
     if (children != null) {
       childrenProfileResults = new ArrayList<>(children.size());
       for (Integer child : children) {
-        ProfileResult childNode = doGetTree(child);
+        QueryProfilerResult childNode = doGetTree(child);
         childrenProfileResults.add(childNode);
       }
     }
 
     // TODO this would be better done bottom-up instead of top-down to avoid
     // calculating the same times over and over...but worth the effort?
-    String type = getTypeFromElement(element);
-    String description = getDescriptionFromElement(element);
-    return new ProfileResult(
+    String type = getTypeFromQuery(query);
+    String description = getDescriptionFromQuery(query);
+    return new QueryProfilerResult(
         type,
         description,
         breakdown.toBreakdownMap(),
-        breakdown.toDebugMap(),
-        breakdown.toNodeTime(),
+        breakdown.toTotalTime(),
         childrenProfileResults);
   }
 
-  protected abstract String getTypeFromElement(E element);
+  protected String getTypeFromQuery(Query query) {
+    // Anonymous classes won't have a name,
+    // we need to get the super class
+    if (query.getClass().getSimpleName().isEmpty()) {
+      return query.getClass().getSuperclass().getSimpleName();
+    }
+    return query.getClass().getSimpleName();
+  }
 
-  protected abstract String getDescriptionFromElement(E element);
+  protected String getDescriptionFromQuery(Query query) {
+    return query.toString();
+  }
 
   /**
    * Internal helper to add a child to the current parent node
    *
    * @param childToken The child to add to the current parent
    */
-  private void updateParent(int childToken) {
+  protected void updateParent(int childToken) {
     Integer parent = stack.peekLast();
     ArrayList<Integer> parentNode = tree.get(parent);
     parentNode.add(childToken);
     tree.set(parent, parentNode);
+  }
+
+  /** Begin timing a query for a specific Timing context */
+  public void startRewriteTime() {
+    assert rewriteScratch == 0;
+    rewriteScratch = System.nanoTime();
+  }
+
+  /**
+   * Halt the timing process and add the elapsed rewriting time. startRewriteTime() must be called
+   * for a particular context prior to calling stopAndAddRewriteTime(), otherwise the elapsed time
+   * will be negative and nonsensical
+   *
+   * @return The elapsed time
+   */
+  public long stopAndAddRewriteTime() {
+    long time = Math.max(1, System.nanoTime() - rewriteScratch);
+    rewriteTime += time;
+    rewriteScratch = 0;
+    return time;
+  }
+
+  public long getRewriteTime() {
+    return rewriteTime;
   }
 }

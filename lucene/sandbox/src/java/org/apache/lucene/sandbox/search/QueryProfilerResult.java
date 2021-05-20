@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 import java.util.Collections;
 import java.util.List;
@@ -31,32 +31,29 @@ import java.util.Objects;
  * <p>Each InternalProfileResult has a List of InternalProfileResults, which will contain "children"
  * queries if applicable
  */
-public final class ProfileResult {
+public class QueryProfilerResult {
 
-  private final String type;
-  private final String description;
-  private final Map<String, Long> breakdown;
-  private final Map<String, Object> debug;
-  private final long nodeTime;
-  private final List<ProfileResult> children;
+  protected final String type;
+  protected final String description;
+  protected final Map<String, Long> breakdown;
+  protected final long totalTime;
+  protected final List<QueryProfilerResult> children;
 
-  public ProfileResult(
+  public QueryProfilerResult(
       String type,
       String description,
       Map<String, Long> breakdown,
-      Map<String, Object> debug,
-      long nodeTime,
-      List<ProfileResult> children) {
+      long totalTime,
+      List<QueryProfilerResult> children) {
     this.type = type;
     this.description = description;
     this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
-    this.debug = debug == null ? Collections.emptyMap() : debug;
     this.children = children == null ? Collections.emptyList() : children;
-    this.nodeTime = nodeTime;
+    this.totalTime = totalTime;
   }
 
   /** Retrieve the lucene description of this query (e.g. the "explain" text) */
-  public String getLuceneDescription() {
+  public String getDescription() {
     return description;
   }
 
@@ -70,22 +67,17 @@ public final class ProfileResult {
     return Collections.unmodifiableMap(breakdown);
   }
 
-  /** The debug information about the profiled execution. */
-  public Map<String, Object> getDebugInfo() {
-    return Collections.unmodifiableMap(debug);
-  }
-
   /**
    * Returns the total time (inclusive of children) for this query node.
    *
    * @return elapsed time in nanoseconds
    */
-  public long getTime() {
-    return nodeTime;
+  public long getTotalTime() {
+    return totalTime;
   }
 
   /** Returns a list of all profiled children queries */
-  public List<ProfileResult> getProfiledChildren() {
+  public List<QueryProfilerResult> getProfiledChildren() {
     return Collections.unmodifiableList(children);
   }
 }

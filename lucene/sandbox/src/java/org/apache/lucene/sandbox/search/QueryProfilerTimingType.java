@@ -15,5 +15,24 @@
  * limitations under the License.
  */
 
-/** Utilities for query profiling. */
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
+
+import java.util.Locale;
+
+/** This enum breaks down the query into different sections to describe what was timed. */
+public enum QueryProfilerTimingType {
+  CREATE_WEIGHT,
+  BUILD_SCORER,
+  NEXT_DOC,
+  ADVANCE,
+  MATCH,
+  SCORE,
+  SHALLOW_ADVANCE,
+  COMPUTE_MAX_SCORE,
+  SET_MIN_COMPETITIVE_SCORE;
+
+  @Override
+  public String toString() {
+    return name().toLowerCase(Locale.ROOT);
+  }
+}

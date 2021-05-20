@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.queries.profile;
+package org.apache.lucene.sandbox.search;
 
 import java.util.List;
 
@@ -23,22 +23,22 @@ import java.util.List;
  * Public class for profiled timings of the Collectors used in the search. Children
  * CollectorResult's may be embedded inside of a parent CollectorResult
  */
-public class CollectorResult {
+public class QueryProfilerCollectorResult {
 
   /** A more friendly representation of the Collector's class name */
-  private final String collectorName;
+  protected final String collectorName;
 
   /** A "hint" to help provide some context about this Collector */
-  private final String reason;
+  protected final String reason;
 
   /** The total elapsed time for this Collector */
-  private final Long time;
+  protected final Long time;
 
   /** A list of children collectors "embedded" inside this collector */
-  private List<CollectorResult> children;
+  protected List<QueryProfilerCollectorResult> children;
 
-  public CollectorResult(
-      String collectorName, String reason, Long time, List<CollectorResult> children) {
+  public QueryProfilerCollectorResult(
+      String collectorName, String reason, Long time, List<QueryProfilerCollectorResult> children) {
     this.collectorName = collectorName;
     this.reason = reason;
     this.time = time;
@@ -61,7 +61,7 @@ public class CollectorResult {
   }
 
   /** @return a list of children collectors */
-  public List<CollectorResult> getProfiledChildren() {
+  public List<QueryProfilerCollectorResult> getProfiledChildren() {
     return children;
   }
 }
