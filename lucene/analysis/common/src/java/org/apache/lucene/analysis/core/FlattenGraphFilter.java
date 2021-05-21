@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.core;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -193,14 +194,25 @@ public final class FlattenGraphFilter extends TokenFilter {
         }
         if (inputNode.tokens.size() == 0) {
           assert inputNode.nextOut == 0;
-          assert output.nextOut == 0;
           // Hole dest nodes should never be merged since 1) we always
           // assign them to a new output position, and 2) since they never
           // have arriving tokens they cannot be pushed:
-          assert output.inputNodes.size() == 1 : output.inputNodes.size();
+          // skip hole sources, but don't free until every input is checked
+          if (output.inputNodes.size() > 1) {
+            output.inputNodes.remove(output.nextOut);
+            if (output.nextOut < output.inputNodes.size()) {
+              continue;
+            }
+          }
+
           outputFrom++;
-          inputNodes.freeBefore(output.inputNodes.get(0));
+          int freeBefore = Collections.min(output.inputNodes);
+          assert outputNodes.get(outputFrom).inputNodes.stream().filter(n -> freeBefore < n).count()
+                  > 0
+              : "FreeBefore " + output.inputNodes.get(0) + " will free in use nodes";
+          inputNodes.freeBefore(freeBefore);
           outputNodes.freeBefore(outputFrom);
+
           continue;
         }
 
@@ -240,7 +252,13 @@ public final class FlattenGraphFilter extends TokenFilter {
           output.nextOut++;
           if (output.nextOut == output.inputNodes.size()) {
             outputFrom++;
-            inputNodes.freeBefore(output.inputNodes.get(0));
+            int freeBefore = Collections.min(output.inputNodes);
+            assert outputNodes.get(outputFrom).inputNodes.stream()
+                        .filter(n -> freeBefore < n)
+                        .count()
+                    > 0
+                : "FreeBefore " + output.inputNodes.get(0) + " will free in use nodes";
+            inputNodes.freeBefore(freeBefore);
             outputNodes.freeBefore(outputFrom);
           }
         }
@@ -273,7 +291,8 @@ public final class FlattenGraphFilter extends TokenFilter {
 
       if (input.incrementToken()) {
         // Input node this token leaves from:
-        inputFrom += posIncAtt.getPositionIncrement();
+        int positionIncrement = posIncAtt.getPositionIncrement();
+        inputFrom += positionIncrement;
 
         int startOffset = offsetAtt.startOffset();
         int endOffset = offsetAtt.endOffset();
@@ -284,27 +303,24 @@ public final class FlattenGraphFilter extends TokenFilter {
 
         InputNode src = inputNodes.get(inputFrom);
         if (src.node == -1) {
-          // This means the "from" node of this token was never seen as a "to" node,
-          // which should only happen if we just crossed a hole.  This is a challenging
-          // case for us because we normally rely on the full dependencies expressed
-          // by the arcs to assign outgoing node IDs.  It would be better if tokens
-          // were never dropped but instead just marked deleted with a new
-          // TermDeletedAttribute (boolean valued) ... but until that future, we have
-          // a hack here to forcefully jump the output node ID:
-          assert src.outputNode == -1;
-          src.node = inputFrom;
+          recoverFromHole(src, startOffset);
 
-          src.outputNode = outputNodes.getMaxPos() + 1;
-          // System.out.println("    hole: force to outputNode=" + src.outputNode);
-          OutputNode outSrc = outputNodes.get(src.outputNode);
-
-          // Not assigned yet:
-          assert outSrc.node == -1;
-          outSrc.node = src.outputNode;
-          outSrc.inputNodes.add(inputFrom);
-          outSrc.startOffset = startOffset;
         } else {
           OutputNode outSrc = outputNodes.get(src.outputNode);
+          int outMax = outputNodes.getMaxPos();
+          // If positionIncrement > 1 this node should be at the end of the flattened graph
+          if (positionIncrement > 1 && src.outputNode < outMax) {
+            // We crossed a gap that we need to account for. This node exists from a length >1 path
+            // jumping to get here.
+            // The last node in the alt path didn't arrive to remove this reference.
+            assert inputNodes.get(inputFrom).tokens.isEmpty() : "about to remove non empty edge";
+            outSrc.inputNodes.remove(Integer.valueOf(inputFrom));
+            src.outputNode = -1;
+            int prevEndOffset = outSrc.endOffset;
+
+            outSrc = recoverFromHole(src, startOffset);
+            outSrc.endOffset = prevEndOffset;
+          }
           if (outSrc.startOffset == -1 || startOffset > outSrc.startOffset) {
             // "shrink wrap" the offsets so the original tokens (with most
             // restrictive offsets) win:
@@ -360,6 +376,40 @@ public final class FlattenGraphFilter extends TokenFilter {
         // Don't return false here: we need to force release any buffered tokens now
       }
     }
+  }
+
+  private OutputNode recoverFromHole(InputNode src, int startOffset) {
+    // This means the "from" node of this token was never seen as a "to" node,
+    // which should only happen if we just crossed a hole.  This is a challenging
+    // case for us because we normally rely on the full dependencies expressed
+    // by the arcs to assign outgoing node IDs.  It would be better if tokens
+    // were never dropped but instead just marked deleted with a new
+    // TermDeletedAttribute (boolean valued) ... but until that future, we have
+    // a hack here to forcefully jump the output node ID:
+    assert src.outputNode == -1;
+    src.node = inputFrom;
+
+    int maxOutIndex = outputNodes.getMaxPos();
+    OutputNode outSrc = outputNodes.get(maxOutIndex);
+    // There are two types of holes, neighbor holes and consumed holes. A neighbor hole is between
+    // two tokens. A consumed hole is
+    // between the start a long token and the next token that is "under" the path of the long token.
+    // A consumed hole should have the outputsrc node of the short token be the out dest
+    // of the long token as that's how we'd resolve it if the missing token were present.
+    // neighbor holes should start a new output node and continue as if the hole didn't
+    // exist.
+    if (outSrc.endOffset < startOffset) {
+      maxOutIndex += 1;
+      outSrc = outputNodes.get(maxOutIndex);
+    }
+    src.outputNode = maxOutIndex;
+
+    // Not assigned yet:
+    assert outSrc.node == -1;
+    outSrc.node = src.outputNode;
+    outSrc.inputNodes.add(inputFrom);
+    outSrc.startOffset = startOffset;
+    return outSrc;
   }
 
   // Only for debugging:

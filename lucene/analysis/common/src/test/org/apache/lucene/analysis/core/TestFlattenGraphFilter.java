@@ -17,6 +17,9 @@
 
 package org.apache.lucene.analysis.core;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CannedTokenStream;
@@ -30,10 +33,6 @@ import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
 public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
 
@@ -325,9 +324,8 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   }
 
   // The end node the long path is supposed to flatten over doesn't exist
-  //assert disabled = pos length of abc = 4
-  //assert enabled = AssertionError: outputEndNode=3 vs inputTo=2
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
+  // assert disabled = pos length of abc = 4
+  // assert enabled = AssertionError: outputEndNode=3 vs inputTo=2
   public void testAltPathFirstStepHole() throws Exception {
     TokenStream in =
         new CannedTokenStream(
@@ -348,8 +346,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   }
 
   // Last node in an alt path releases the long path. but it doesn't exist in this graph
-  //pos length of abc = 1
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
+  // pos length of abc = 1
   public void testAltPathLastStepHole() throws Exception {
     TokenStream in =
         new CannedTokenStream(
@@ -400,7 +397,6 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   // which looks good but the output graph isn't flat.
   // assert disabled = nothing
   // assert enabled = AssertionError
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
   public void testAltPathLastStepLongHole() throws Exception {
     TokenStream in =
         new CannedTokenStream(
@@ -424,7 +420,6 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   // Token stream ends without last node showing up
   // assert disabled = dropped token
   // assert enabled = AssertionError: 2
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
   public void testAltPathLastStepHoleWithoutEndToken() throws Exception {
     TokenStream in =
         new CannedTokenStream(
@@ -444,19 +439,106 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         2);
   }
 
-  private CharsRef buildMultiTokenCarRef(String[] tokens, CharsRefBuilder charsRefBuilder, Random random){
+  // similar to AltPathLastStepHoleWithoutEndToken, but instead of no token to trigger long path
+  // resolution,
+  // the next token has no way to reference to the long path so we have to resolve as if that last
+  // token wasn't present.
+  public void testAltPathLastStepHoleFollowedByHole() throws Exception {
+    TokenStream in =
+        new CannedTokenStream(
+            0,
+            5,
+            new Token[] {token("abc", 1, 3, 0, 3), token("b", 1, 1, 1, 2), token("e", 3, 1, 4, 5)});
+
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out,
+        new String[] {"abc", "b", "e"},
+        new int[] {0, 1, 4},
+        new int[] {3, 2, 5},
+        new int[] {1, 1, 2},
+        new int[] {1, 1, 1},
+        5);
+  }
+
+  // Two Shingled long paths pass each other which gives a flattened graph with tokens backing up a
+  // lot.
+  public void testShingledGap() throws Exception {
+    TokenStream in =
+        new CannedTokenStream(
+            0,
+            5,
+            new Token[] {
+              token("abc", 1, 3, 0, 3),
+              token("a", 0, 1, 0, 1),
+              token("b", 1, 1, 1, 2),
+              token("cde", 1, 3, 2, 5),
+              token("d", 1, 1, 3, 4),
+              token("e", 1, 1, 4, 5)
+            });
+
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out,
+        new String[] {"abc", "a", "d", "b", "cde", "e"},
+        new int[] {0, 0, 3, 3, 4, 4},
+        new int[] {1, 1, 3, 3, 5, 5},
+        new int[] {1, 0, 1, 0, 1, 0},
+        new int[] {1, 1, 1, 1, 1, 1},
+        5);
+  }
+
+  // With a hole we can miss that a node hasn't been fulled released and release nodes before we've
+  // released the accompanying tokens.
+  // with/without exceptions ArrayIndexOutOfBoundsException
+  public void testShingledGapWithHoles() throws Exception {
+    TokenStream in =
+        new CannedTokenStream(
+            0,
+            5,
+            new Token[] {
+              token("abc", 1, 3, 0, 3),
+              token("b", 1, 1, 1, 2),
+              token("cde", 1, 3, 2, 5),
+              token("d", 1, 1, 3, 4),
+              token("e", 1, 1, 4, 5)
+            });
+
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out,
+        new String[] {"abc", "d", "b", "cde", "e"},
+        new int[] {0, 3, 3, 4, 4},
+        new int[] {3, 3, 3, 5, 5},
+        new int[] {1, 1, 0, 1, 0},
+        new int[] {1, 1, 1, 1, 1},
+        5);
+  }
+
+  public void testFirstTokenHole() throws Exception {
+    TokenStream in = new CannedTokenStream(0, 9, new Token[] {token("start", 2, 1, 0, 5)});
+    TokenStream out = new FlattenGraphFilter(in);
+
+    assertTokenStreamContents(
+        out, new String[] {"start"}, new int[] {0}, new int[] {5}, new int[] {2}, new int[] {1}, 9);
+  }
+
+  private CharsRef buildMultiTokenCarRef(
+      String[] tokens, CharsRefBuilder charsRefBuilder, Random random) {
     int srcLen = random.nextInt(2) + 2;
     String[] srcTokens = new String[srcLen];
-    for(int pos = 0; pos< srcLen; pos++){
+    for (int pos = 0; pos < srcLen; pos++) {
       srcTokens[pos] = tokens[random().nextInt(tokens.length)];
     }
     SynonymMap.Builder.join(srcTokens, charsRefBuilder);
     return charsRefBuilder.toCharsRef();
   }
 
-  //Create a random graph then delete some edges to see if we can trip up FlattenGraphFilter
-  //Is there some way we can do this and validate output nodes?
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9963")
+  // Create a random graph then delete some edges to see if we can trip up FlattenGraphFilter
+  // Is there some way we can do this and validate output nodes?
   public void testRandomGraphs() throws Exception {
     String[] baseTokens = new String[] {"t1", "t2", "t3", "t4"};
     String[] synTokens = new String[] {"s1", "s2", "s3", "s4"};
@@ -465,36 +547,36 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     CharsRefBuilder charRefBuilder = new CharsRefBuilder();
     Random random = random();
 
-    //between 20 and 20 synonym entries
+    // between 10 and 20 synonym entries
     int synCount = random.nextInt(10) + 10;
-    for(int i =0; i< synCount; i++){
+    for (int i = 0; i < synCount; i++) {
       int type = random.nextInt(4);
       CharsRef src;
       CharsRef dest;
       switch (type) {
         case 0:
-          //1:1
+          // 1:1
           src = charRefBuilder.append(baseTokens[random.nextInt(baseTokens.length)]).toCharsRef();
           charRefBuilder.clear();
           dest = charRefBuilder.append(synTokens[random.nextInt(synTokens.length)]).toCharsRef();
           charRefBuilder.clear();
           break;
         case 1:
-          //many:1
+          // many:1
           src = buildMultiTokenCarRef(baseTokens, charRefBuilder, random);
           charRefBuilder.clear();
           dest = charRefBuilder.append(synTokens[random.nextInt(synTokens.length)]).toCharsRef();
           charRefBuilder.clear();
           break;
         case 2:
-          //1:many
+          // 1:many
           src = charRefBuilder.append(baseTokens[random.nextInt(baseTokens.length)]).toCharsRef();
           charRefBuilder.clear();
           dest = buildMultiTokenCarRef(synTokens, charRefBuilder, random);
           charRefBuilder.clear();
           break;
         default:
-          //many:many
+          // many:many
           src = buildMultiTokenCarRef(baseTokens, charRefBuilder, random);
           charRefBuilder.clear();
           dest = buildMultiTokenCarRef(synTokens, charRefBuilder, random);
@@ -507,36 +589,37 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
 
     int stopWordCount = random.nextInt(4) + 1;
     CharArraySet stopWords = new CharArraySet(stopWordCount, true);
-    while(stopWords.size() < stopWordCount){
+    while (stopWords.size() < stopWordCount) {
       int index = random.nextInt(baseTokens.length + synTokens.length);
       String[] tokenArray = baseTokens;
-      if(index >= baseTokens.length){
-        index -=baseTokens.length;
+      if (index >= baseTokens.length) {
+        index -= baseTokens.length;
         tokenArray = synTokens;
       }
       stopWords.add(tokenArray[index]);
     }
 
-    Analyzer a = new Analyzer() {
-      @Override
-      protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer in = new WhitespaceTokenizer();
-        TokenStream result = new SynonymGraphFilter(in, synMap, true);
-        result = new StopFilter(result, stopWords);
-        result = new FlattenGraphFilter(result);
-        return new TokenStreamComponents(in, result);
-      }
-    };
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer in = new WhitespaceTokenizer();
+            TokenStream result = new SynonymGraphFilter(in, synMap, true);
+            result = new StopFilter(result, stopWords);
+            result = new FlattenGraphFilter(result);
+            return new TokenStreamComponents(in, result);
+          }
+        };
 
     int tokenCount = random.nextInt(20) + 20;
     List<String> stringTokens = new ArrayList<>();
-    while(stringTokens.size() < tokenCount){
+    while (stringTokens.size() < tokenCount) {
       stringTokens.add(baseTokens[random.nextInt(baseTokens.length)]);
     }
 
     String text = String.join(" ", stringTokens);
-    checkAnalysisConsistency(random, a, false, text);
 
+    checkAnalysisConsistency(random, a, false, text);
   }
 
   // NOTE: TestSynonymGraphFilter's testRandomSyns also tests FlattenGraphFilter
