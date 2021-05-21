@@ -34,6 +34,8 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
   // heap of scorers ordered by doc ID
   private final DisiPriorityQueue essentialsScorers;
+  // list of scorers ordered by maxScore
+  private final List<DisiWrapper> maxScoreSortedEssentialsScorers;
 
   // list of scorers whose sum of maxScore is less than minCompetitiveScore, ordered by maxScore
   private final List<DisiWrapper> nonEssentialScorers;
@@ -71,6 +73,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
             1);
 
     essentialsScorers = new DisiPriorityQueue(scorers.size());
+    maxScoreSortedEssentialsScorers = new LinkedList<>();
     nonEssentialScorers = new ArrayList<>(scorers.size());
 
     scalingFactor = WANDScorer.getScalingFactor(scorers);
@@ -82,6 +85,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
   @Override
   public DocIdSetIterator iterator() {
+
     return new DocIdSetIterator() {
 
       @Override
@@ -100,6 +104,12 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
           if (target > upTo) {
             updateMaxScores(target);
+          }
+
+          if (maxScoreSortedEssentialsScorers.size() > 0
+              && minCompetitiveScore - nonEssentialMaxScoreSum
+                  > maxScoreSortedEssentialsScorers.get(0).maxScore) {
+            adjustLists();
           }
 
           assert target <= upTo;
@@ -130,7 +140,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
           long matchedMaxScoreSum = nonEssentialMaxScoreSum;
           for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
-            matchedMaxScoreSum += w.maxScore;
+            matchedMaxScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
           }
 
           if (matchedMaxScoreSum < minCompetitiveScore) {
@@ -176,8 +186,31 @@ public class BlockMaxMaxscoreScorer extends Scorer {
         }
       }
 
+      private void adjustLists() {
+        assert essentialsScorers.size() > 0;
+        assert essentialsScorers.size() == maxScoreSortedEssentialsScorers.size()
+            : "essentialScores size: "
+                + essentialsScorers.size()
+                + " , but maxScoreSortedEssentialScorersSize: "
+                + maxScoreSortedEssentialsScorers.size();
+
+        while (maxScoreSortedEssentialsScorers.size() > 0
+            && nonEssentialMaxScoreSum + maxScoreSortedEssentialsScorers.get(0).maxScore
+                < minCompetitiveScore) {
+          DisiWrapper nextLeastContributingScorer = maxScoreSortedEssentialsScorers.remove(0);
+          nonEssentialMaxScoreSum += nextLeastContributingScorer.maxScore;
+          nonEssentialScorers.add(nextLeastContributingScorer);
+        }
+
+        essentialsScorers.clear();
+        for (DisiWrapper w : maxScoreSortedEssentialsScorers) {
+          essentialsScorers.add(w);
+        }
+      }
+
       private void repartitionLists() {
         essentialsScorers.clear();
+        maxScoreSortedEssentialsScorers.clear();
         nonEssentialScorers.clear();
         Arrays.sort(allScorers, (w1, w2) -> Long.compare(w1.maxScore, w2.maxScore));
 
@@ -189,6 +222,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
             nonEssentialScorers.add(w);
             nonEssentialMaxScoreSum += w.maxScore;
           } else {
+            maxScoreSortedEssentialsScorers.add(w);
             essentialsScorers.add(w);
           }
         }
