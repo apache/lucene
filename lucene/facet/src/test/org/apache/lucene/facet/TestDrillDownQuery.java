@@ -541,6 +541,7 @@ public class TestDrillDownQuery extends FacetTestCase {
 
     assert Arrays.equals(drillDownQueries, drillDownQueriesCopy);
 
+    q.add("c", "1");
     q.add("a", "2");
     Query[] drillDownQueriesModified = q.getDrillDownQueries();
     Query[] drillDownQueriesModifiedCopy = q.getDrillDownQueries();
