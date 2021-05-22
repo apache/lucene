@@ -97,7 +97,7 @@ public class DirectReader {
     @Override
     public long get(long index) {
       try {
-        int shift = 7 - (int) (index & 7);
+        int shift = (int) (index & 7);
         return (in.readByte(offset + (index >>> 3)) >>> shift) & 0x1;
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -117,7 +117,7 @@ public class DirectReader {
     @Override
     public long get(long index) {
       try {
-        int shift = (3 - (int) (index & 3)) << 1;
+        int shift = ((int) (index & 3)) << 1;
         return (in.readByte(offset + (index >>> 2)) >>> shift) & 0x3;
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -132,12 +132,13 @@ public class DirectReader {
     DirectPackedReader4(RandomAccessInput in, long offset) {
       this.in = in;
       this.offset = offset;
+      ;
     }
 
     @Override
     public long get(long index) {
       try {
-        int shift = (int) ((index + 1) & 1) << 2;
+        int shift = (int) (index & 1) << 2;
         return (in.readByte(offset + (index >>> 1)) >>> shift) & 0xF;
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -177,7 +178,7 @@ public class DirectReader {
     public long get(long index) {
       try {
         long offset = (index * 12) >>> 3;
-        int shift = (int) ((index + 1) & 1) << 2;
+        int shift = (int) (index & 1) << 2;
         return (in.readShort(this.offset + offset) >>> shift) & 0xFFF;
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -217,10 +218,8 @@ public class DirectReader {
     public long get(long index) {
       try {
         long offset = (index * 20) >>> 3;
-        // TODO: clean this up...
-        int v = in.readInt(this.offset + offset) >>> 8;
-        int shift = (int) ((index + 1) & 1) << 2;
-        return (v >>> shift) & 0xFFFFF;
+        int shift = (int) (index & 1) << 2;
+        return (in.readInt(this.offset + offset) >>> shift) & 0xFFFFF;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -230,6 +229,7 @@ public class DirectReader {
   static final class DirectPackedReader24 extends LongValues {
     final RandomAccessInput in;
     final long offset;
+    ;
 
     DirectPackedReader24(RandomAccessInput in, long offset) {
       this.in = in;
@@ -239,7 +239,7 @@ public class DirectReader {
     @Override
     public long get(long index) {
       try {
-        return in.readInt(offset + index * 3) >>> 8;
+        return in.readInt(this.offset + index * 3) & 0xFFFFFF;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -259,8 +259,8 @@ public class DirectReader {
     public long get(long index) {
       try {
         long offset = (index * 28) >>> 3;
-        int shift = (int) ((index + 1) & 1) << 2;
-        return (in.readInt(this.offset + offset) >>> shift) & 0xFFFFFFFL;
+        int shift = (int) (index & 1) << 2;
+        return (in.readInt(this.offset + offset) >>> shift) & 0xFFFFFFF;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -298,7 +298,7 @@ public class DirectReader {
     @Override
     public long get(long index) {
       try {
-        return in.readLong(this.offset + index * 5) >>> 24;
+        return in.readLong(this.offset + index * 5) & 0xFFFFFFFFFFL;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -317,7 +317,7 @@ public class DirectReader {
     @Override
     public long get(long index) {
       try {
-        return in.readLong(this.offset + index * 6) >>> 16;
+        return in.readLong(this.offset + index * 6) & 0xFFFFFFFFFFFFL;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -336,7 +336,7 @@ public class DirectReader {
     @Override
     public long get(long index) {
       try {
-        return in.readLong(this.offset + index * 7) >>> 8;
+        return in.readLong(this.offset + index * 7) & 0xFFFFFFFFFFFFFFL;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

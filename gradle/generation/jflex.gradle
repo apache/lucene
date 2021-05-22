@@ -41,6 +41,9 @@ configure(project(":lucene:core")) {
     jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
     skeleton = skeletonNoBufferExpansion
 
+    // Add included files as inputs.
+    inputs.file project(":lucene:core").file('src/data/jflex/UnicodeEmojiProperties.jflex')
+
     doLast {
       ant.replace(
           file: file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java'),
@@ -51,7 +54,13 @@ configure(project(":lucene:core")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateStandardTokenizerInternal, [ andThenTasks: "spotlessApply" ])
+  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  configure(generateStandardTokenizer) {
+    // StandardTokenizerImpl.jflex includes UnicodeEmojiProperties.jflex so we make sure it's up to date.
+    dependsOn ":lucene:core:generateEmojiProperties"
+  }
+
+  regenerate.dependsOn generateStandardTokenizer
 }
 
 configure(project(":lucene:analysis:common")) {
@@ -130,12 +139,9 @@ configure(project(":lucene:analysis:common")) {
     skeleton = skeletonNoBufferExpansion
     heapSize = "12g"
 
-    // Don't enforce strict dependency (although it would make sense to regenerate both).
-    // Just ensure we run after TLD regeneration, if it runs too.
-    mustRunAfter generateTldsInternal
-
-    // Additional input (included by the source jflex file)
+    // Add included files as inputs.
     inputs.file file('src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex')
+    inputs.file project(":lucene:core").file('src/data/jflex/UnicodeEmojiProperties.jflex')
 
     doFirst {
       logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
@@ -151,22 +157,28 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  task generateHTMLStripCharFilterInternal(type: JFlexTask) {
-    description "Regenerate HTMLStripCharFilter.java"
-    group "generation"
+  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  configure (generateUAX29URLEmailTokenizer) {
+    // UAX29URLEmailTokenizerImpl.jflex includes: UnicodeEmojiProperties.jflex and ASCIITLD.jflex
+    // so we make sure both are up to date.
+    dependsOn ":lucene:core:generateEmojiProperties", "generateTlds"
+  }
 
-    jflexFile = file('src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex')
-    skeleton = skeletonDefault
+  task generateHTMLCharacterEntitiesInternal() {
+    def target = file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
+    def script = file("${resources}/htmlentity.py")
+
+    outputs.files target
+    inputs.file script
 
     doFirst {
-      // Regenerate HTMLCharacterEntities.jflex first.
-      def target = file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
       quietExec {
         executable = project.externalTool("python3")
         workingDir = target.parentFile
         args += [
             "-B", // don't write any bytecode cache
-            "htmlentity.py"
+            script,
+            target
         ]
       }
 
@@ -178,11 +190,29 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateClassicTokenizerInternal, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: "spotlessApply" ]),
-      wrapWithPersistentChecksums(generateTldsInternal, [ andThenTasks: "spotlessApply" ])
+  task generateHTMLStripCharFilterInternal(type: JFlexTask) {
+    description "Regenerate HTMLStripCharFilter.java"
+    group "generation"
+
+    // Add included files as inputs.
+    inputs.file file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex')
+    skeleton = skeletonDefault
+  }
+
+  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  configure(generateHTMLStripCharFilter) {
+    // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
+    dependsOn "generateHTMLCharacterEntities"
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+      wrapWithPersistentChecksums(generateClassicTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+      generateUAX29URLEmailTokenizer,
+      wrapWithPersistentChecksums(generateHTMLCharacterEntitiesInternal),
+      generateHTMLStripCharFilter,
+      wrapWithPersistentChecksums(generateTldsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
 }
 
 class JFlexTask extends DefaultTask {

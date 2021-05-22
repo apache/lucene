@@ -19,6 +19,7 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +38,8 @@ import org.apache.lucene.util.UnicodeUtil;
 
 /** A {@link DataOutput} storing data in a list of {@link ByteBuffer}s. */
 public final class ByteBuffersDataOutput extends DataOutput implements Accountable {
-  private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
+  private static final ByteBuffer EMPTY = ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
+  ;
   private static final byte[] EMPTY_BYTE_ARRAY = {};
 
   public static final IntFunction<ByteBuffer> ALLOCATE_BB_ON_HEAP = ByteBuffer::allocate;
@@ -193,7 +195,8 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
       result.add(EMPTY);
     } else {
       for (ByteBuffer bb : blocks) {
-        bb = bb.asReadOnlyBuffer().flip();
+        bb = bb.asReadOnlyBuffer().flip().order(ByteOrder.LITTLE_ENDIAN);
+        ;
         result.add(bb);
       }
     }
@@ -433,7 +436,8 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     }
 
     final int requiredBlockSize = 1 << blockBits;
-    currentBlock = blockAllocate.apply(requiredBlockSize);
+    currentBlock = blockAllocate.apply(requiredBlockSize).order(ByteOrder.LITTLE_ENDIAN);
+    ;
     assert currentBlock.capacity() == requiredBlockSize;
     blocks.add(currentBlock);
     ramBytesUsed += RamUsageEstimator.NUM_BYTES_OBJECT_REF + currentBlock.capacity();

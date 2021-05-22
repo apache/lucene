@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -45,7 +44,7 @@ import org.apache.lucene.index.LeafReaderContext;
 public final class DisjunctionMaxQuery extends Query implements Iterable<Query> {
 
   /* The subqueries */
-  private final Query[] disjuncts;
+  private final Multiset<Query> disjuncts = new Multiset<>();
 
   /* Multiple of the non-max disjunct scores added into our final score.  Non-zero values support tie-breaking. */
   private final float tieBreakerMultiplier;
@@ -66,7 +65,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       throw new IllegalArgumentException("tieBreakerMultiplier must be in [0, 1]");
     }
     this.tieBreakerMultiplier = tieBreakerMultiplier;
-    this.disjuncts = disjuncts.toArray(new Query[disjuncts.size()]);
+    this.disjuncts.addAll(disjuncts);
   }
 
   /** @return An {@code Iterator<Query>} over the disjuncts */
@@ -76,8 +75,8 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   }
 
   /** @return the disjuncts. */
-  public List<Query> getDisjuncts() {
-    return Collections.unmodifiableList(Arrays.asList(disjuncts));
+  public Collection<Query> getDisjuncts() {
+    return Collections.unmodifiableCollection(disjuncts);
   }
 
   /** @return tie breaker value for multiple matches. */
@@ -208,8 +207,8 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    */
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
-    if (disjuncts.length == 1) {
-      return disjuncts[0];
+    if (disjuncts.size() == 1) {
+      return disjuncts.iterator().next();
     }
 
     if (tieBreakerMultiplier == 1.0f) {
@@ -254,14 +253,15 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   public String toString(String field) {
     StringBuilder buffer = new StringBuilder();
     buffer.append("(");
-    for (int i = 0; i < disjuncts.length; i++) {
-      Query subquery = disjuncts[i];
+    Iterator<Query> it = disjuncts.iterator();
+    for (int i = 0; it.hasNext(); i++) {
+      Query subquery = it.next();
       if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
         buffer.append("(");
         buffer.append(subquery.toString(field));
         buffer.append(")");
       } else buffer.append(subquery.toString(field));
-      if (i != disjuncts.length - 1) buffer.append(" | ");
+      if (i != disjuncts.size() - 1) buffer.append(" | ");
     }
     buffer.append(")");
     if (tieBreakerMultiplier != 0.0f) {
@@ -285,7 +285,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
 
   private boolean equalsTo(DisjunctionMaxQuery other) {
     return tieBreakerMultiplier == other.tieBreakerMultiplier
-        && Arrays.equals(disjuncts, other.disjuncts);
+        && Objects.equals(disjuncts, other.disjuncts);
   }
 
   /**
@@ -297,7 +297,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   public int hashCode() {
     int h = classHash();
     h = 31 * h + Float.floatToIntBits(tieBreakerMultiplier);
-    h = 31 * h + Arrays.hashCode(disjuncts);
+    h = 31 * h + Objects.hashCode(disjuncts);
     return h;
   }
 }

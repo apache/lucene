@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
+import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -171,9 +172,11 @@ public class TestKnnGraph extends LuceneTestCase {
         iw.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
+        PerFieldVectorFormat.FieldsReader perFieldReader =
+            (PerFieldVectorFormat.FieldsReader)
+                ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
         Lucene90HnswVectorReader vectorReader =
-            ((Lucene90HnswVectorReader)
-                ((CodecReader) getOnlyLeafReader(reader)).getVectorReader());
+            (Lucene90HnswVectorReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
         graph = copyGraph(vectorReader.getGraphValues(KNN_GRAPH_FIELD));
       }
     }
@@ -310,11 +313,13 @@ public class TestKnnGraph extends LuceneTestCase {
       for (LeafReaderContext ctx : dr.leaves()) {
         LeafReader reader = ctx.reader();
         VectorValues vectorValues = reader.getVectorValues(KNN_GRAPH_FIELD);
-        Lucene90HnswVectorReader vectorReader =
-            ((Lucene90HnswVectorReader) ((CodecReader) reader).getVectorReader());
-        if (vectorReader == null) {
+        PerFieldVectorFormat.FieldsReader perFieldReader =
+            (PerFieldVectorFormat.FieldsReader) ((CodecReader) reader).getVectorReader();
+        if (perFieldReader == null) {
           continue;
         }
+        Lucene90HnswVectorReader vectorReader =
+            (Lucene90HnswVectorReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
         KnnGraphValues graphValues = vectorReader.getGraphValues(KNN_GRAPH_FIELD);
         assertEquals((vectorValues == null), (graphValues == null));
         if (vectorValues == null) {

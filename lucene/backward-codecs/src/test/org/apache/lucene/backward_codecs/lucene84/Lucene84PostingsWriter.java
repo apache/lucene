@@ -27,6 +27,7 @@ import static org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat.
 import java.io.IOException;
 import java.nio.ByteOrder;
 import org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat.IntBlockTermState;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
@@ -105,7 +106,7 @@ public final class Lucene84PostingsWriter extends PushPostingsWriterBase {
     String docFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene84PostingsFormat.DOC_EXTENSION);
-    docOut = state.directory.createOutput(docFileName, state.context);
+    docOut = EndiannessReverserUtil.createOutput(state.directory, docFileName, state.context);
     IndexOutput posOut = null;
     IndexOutput payOut = null;
     boolean success = false;
@@ -128,7 +129,7 @@ public final class Lucene84PostingsWriter extends PushPostingsWriterBase {
         String posFileName =
             IndexFileNames.segmentFileName(
                 state.segmentInfo.name, state.segmentSuffix, Lucene84PostingsFormat.POS_EXTENSION);
-        posOut = state.directory.createOutput(posFileName, state.context);
+        posOut = EndiannessReverserUtil.createOutput(state.directory, posFileName, state.context);
         CodecUtil.writeIndexHeader(
             posOut, POS_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
 
@@ -154,7 +155,7 @@ public final class Lucene84PostingsWriter extends PushPostingsWriterBase {
                   state.segmentInfo.name,
                   state.segmentSuffix,
                   Lucene84PostingsFormat.PAY_EXTENSION);
-          payOut = state.directory.createOutput(payFileName, state.context);
+          payOut = EndiannessReverserUtil.createOutput(state.directory, payFileName, state.context);
           CodecUtil.writeIndexHeader(
               payOut, PAY_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
         }

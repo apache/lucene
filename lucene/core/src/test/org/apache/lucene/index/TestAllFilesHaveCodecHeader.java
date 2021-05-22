@@ -84,7 +84,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
       Directory dir, String file, Map<String, String> namesToExtensions, byte[] id)
       throws IOException {
     try (IndexInput in = dir.openInput(file, newIOContext(random()))) {
-      int val = in.readInt();
+      int val = CodecUtil.readBEInt(in);
       assertEquals(
           file + " has no codec header, instead found: " + val, CodecUtil.CODEC_MAGIC, val);
       String codecName = in.readString();

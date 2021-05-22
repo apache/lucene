@@ -1,5 +1,5 @@
 {
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex": "aae1ea12f09aa2efcf7611df2dd11cda32869cda",
-    "lucene/analysis/common/src/test/org/apache/lucene/analysis/email/TLDs.txt": "54d9a32e6dbac42aee8b3aa0d1133ed2fb5f5259",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex": "bb3878ea10f85f124a0a9e4ea614d3400d664dae",
+    "lucene/analysis/common/src/test/org/apache/lucene/analysis/email/TLDs.txt": "800f0f70d7ce4723d493cd5da88a19bfc8e532e5",
     "property:tldZones": "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
 }

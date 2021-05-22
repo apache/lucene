@@ -839,7 +839,6 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         IndexWriter iw = new IndexWriter(dir, iwc)) {
       int numDoc = atLeast(100);
       int dimension = atLeast(10);
-      float[][] values = new float[numDoc][];
       float[][] id2value = new float[numDoc][];
       int[] id2ord = new int[numDoc];
       for (int i = 0; i < numDoc; i++) {
@@ -851,7 +850,6 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         } else {
           value = null;
         }
-        values[i] = value;
         id2value[id] = value;
         id2ord[id] = i;
         add(iw, fieldName, id, value, VectorValues.SimilarityFunction.EUCLIDEAN);

@@ -1,0 +1,4 @@
+{
+    "gradle/generation/jflex/htmlentity.py": "66e0238fed4e069addbbdb93179b1457fc3a5203",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex": "d1aa75b9b37646efe31731394f84a063eb7eed9d"
+}

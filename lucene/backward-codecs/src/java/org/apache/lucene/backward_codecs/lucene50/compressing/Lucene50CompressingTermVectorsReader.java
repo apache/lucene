@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import org.apache.lucene.backward_codecs.packed.LegacyPackedInts;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -56,9 +57,6 @@ import org.apache.lucene.util.packed.PackedInts;
  */
 public final class Lucene50CompressingTermVectorsReader extends TermVectorsReader {
 
-  // hard limit on the maximum number of documents per chunk
-  static final int MAX_DOCUMENTS_PER_CHUNK = 128;
-
   static final String VECTORS_EXTENSION = "tvd";
   static final String VECTORS_INDEX_EXTENSION = "tvx";
   static final String VECTORS_META_EXTENSION = "tvm";
@@ -68,8 +66,10 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
   static final int VERSION_OFFHEAP_INDEX = 2;
   /** Version where all metadata were moved to the meta file. */
   static final int VERSION_META = 3;
+  /** Version where numChunks is explicitly recorded in meta file */
+  static final int VERSION_NUM_CHUNKS = 4;
 
-  static final int VERSION_CURRENT = VERSION_META;
+  static final int VERSION_CURRENT = VERSION_NUM_CHUNKS;
   static final int META_VERSION_START = 0;
 
   static final int PACKED_BLOCK_SIZE = 64;
@@ -90,8 +90,6 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
   private final int numDocs;
   private boolean closed;
   private final BlockPackedReaderIterator reader;
-  private final long numDirtyChunks; // number of incomplete compressed blocks written
-  private final long numDirtyDocs; // cumulative number of missing docs in incomplete chunks
   private final long maxPointer; // end of the data section
 
   // used by clone
@@ -107,8 +105,6 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     this.reader =
         new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
     this.version = reader.version;
-    this.numDirtyChunks = reader.numDirtyChunks;
-    this.numDirtyDocs = reader.numDirtyDocs;
     this.maxPointer = reader.maxPointer;
     this.closed = false;
   }
@@ -134,7 +130,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       // Open the data file
       final String vectorsStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
-      vectorsStream = d.openInput(vectorsStreamFN, context);
+      vectorsStream = EndiannessReverserUtil.openInput(d, vectorsStreamFN, context);
       version =
           CodecUtil.checkIndexHeader(
               vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -144,7 +140,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       if (version >= VERSION_OFFHEAP_INDEX) {
         final String metaStreamFN =
             IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION);
-        metaIn = d.openChecksumInput(metaStreamFN, IOContext.READONCE);
+        metaIn = EndiannessReverserUtil.openChecksumInput(d, metaStreamFN, IOContext.READONCE);
         CodecUtil.checkIndexHeader(
             metaIn,
             VECTORS_INDEX_CODEC_NAME + "Meta",
@@ -174,7 +170,8 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       if (version < VERSION_OFFHEAP_INDEX) {
         // Load the index into memory
         final String indexName = IndexFileNames.segmentFileName(segment, segmentSuffix, "tvx");
-        try (ChecksumIndexInput indexStream = d.openChecksumInput(indexName, context)) {
+        try (ChecksumIndexInput indexStream =
+            EndiannessReverserUtil.openChecksumInput(d, indexName, context)) {
           Throwable priorE = null;
           try {
             assert formatName.endsWith("Data");
@@ -223,14 +220,14 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
       this.indexReader = indexReader;
       this.maxPointer = maxPointer;
 
+      if (version >= VERSION_NUM_CHUNKS) {
+        // consume num_chunks
+        metaIn.readVLong();
+      }
       if (version >= VERSION_META) {
-        numDirtyChunks = metaIn.readVLong();
-        numDirtyDocs = metaIn.readVLong();
-      } else {
-        // Old versions of this format did not record numDirtyDocs. Since bulk
-        // merges are disabled on version increments anyway, we make no effort
-        // to get valid values of numDirtyChunks and numDirtyDocs.
-        numDirtyChunks = numDirtyDocs = -1;
+        // consume dirty chunks/docs stats we wrote
+        metaIn.readVLong();
+        metaIn.readVLong();
       }
 
       decompressor = compressionMode.newDecompressor();
@@ -255,56 +252,6 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
         IOUtils.closeWhileHandlingException(this, metaIn);
       }
     }
-  }
-
-  CompressionMode getCompressionMode() {
-    return compressionMode;
-  }
-
-  int getChunkSize() {
-    return chunkSize;
-  }
-
-  int getPackedIntsVersion() {
-    return packedIntsVersion;
-  }
-
-  int getVersion() {
-    return version;
-  }
-
-  FieldsIndex getIndexReader() {
-    return indexReader;
-  }
-
-  IndexInput getVectorsStream() {
-    return vectorsStream;
-  }
-
-  long getMaxPointer() {
-    return maxPointer;
-  }
-
-  long getNumDirtyDocs() {
-    if (version != VERSION_CURRENT) {
-      throw new IllegalStateException(
-          "getNumDirtyDocs should only ever get called when the reader is on the current version");
-    }
-    assert numDirtyDocs >= 0;
-    return numDirtyDocs;
-  }
-
-  long getNumDirtyChunks() {
-    if (version != VERSION_CURRENT) {
-      throw new IllegalStateException(
-          "getNumDirtyChunks should only ever get called when the reader is on the current version");
-    }
-    assert numDirtyChunks >= 0;
-    return numDirtyChunks;
-  }
-
-  int getNumDocs() {
-    return numDocs;
   }
 
   /** @throws AlreadyClosedException if this TermVectorsReader is closed */

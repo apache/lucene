@@ -133,5 +133,5 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(snowballInternal, [ andThenTasks: "spotlessApply", ignoreWithSource: [downloadSnowballStemmers, downloadSnowballWebsite, downloadSnowballData] ])
+  regenerate.dependsOn wrapWithPersistentChecksums(snowballInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"], ignoreWithSource: [downloadSnowballStemmers, downloadSnowballWebsite, downloadSnowballData] ])
 }

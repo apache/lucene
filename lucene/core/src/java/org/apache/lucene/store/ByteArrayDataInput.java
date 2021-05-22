@@ -81,30 +81,38 @@ public final class ByteArrayDataInput extends DataInput {
 
   @Override
   public short readShort() {
-    return (short) (((bytes[pos++] & 0xFF) << 8) | (bytes[pos++] & 0xFF));
+    final byte b1 = bytes[pos++];
+    final byte b2 = bytes[pos++];
+    return (short) ((b2 & 0xFF) << 8 | (b1 & 0xFF));
   }
 
   @Override
   public int readInt() {
-    return ((bytes[pos++] & 0xFF) << 24)
-        | ((bytes[pos++] & 0xFF) << 16)
-        | ((bytes[pos++] & 0xFF) << 8)
-        | (bytes[pos++] & 0xFF);
+    final byte b1 = bytes[pos++];
+    final byte b2 = bytes[pos++];
+    final byte b3 = bytes[pos++];
+    final byte b4 = bytes[pos++];
+    return (b4 & 0xFF) << 24 | (b3 & 0xFF) << 16 | (b2 & 0xFF) << 8 | (b1 & 0xFF);
   }
 
   @Override
   public long readLong() {
-    final int i1 =
-        ((bytes[pos++] & 0xff) << 24)
-            | ((bytes[pos++] & 0xff) << 16)
-            | ((bytes[pos++] & 0xff) << 8)
-            | (bytes[pos++] & 0xff);
-    final int i2 =
-        ((bytes[pos++] & 0xff) << 24)
-            | ((bytes[pos++] & 0xff) << 16)
-            | ((bytes[pos++] & 0xff) << 8)
-            | (bytes[pos++] & 0xff);
-    return (((long) i1) << 32) | (i2 & 0xFFFFFFFFL);
+    final byte b1 = bytes[pos++];
+    final byte b2 = bytes[pos++];
+    final byte b3 = bytes[pos++];
+    final byte b4 = bytes[pos++];
+    final byte b5 = bytes[pos++];
+    final byte b6 = bytes[pos++];
+    final byte b7 = bytes[pos++];
+    final byte b8 = bytes[pos++];
+    return (b8 & 0xFFL) << 56
+        | (b7 & 0xFFL) << 48
+        | (b6 & 0xFFL) << 40
+        | (b5 & 0xFFL) << 32
+        | (b4 & 0xFFL) << 24
+        | (b3 & 0xFFL) << 16
+        | (b2 & 0xFFL) << 8
+        | (b1 & 0xFFL);
   }
 
   @Override

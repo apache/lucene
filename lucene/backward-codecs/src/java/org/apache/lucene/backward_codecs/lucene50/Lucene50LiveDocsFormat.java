@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene50;
 
 import java.io.IOException;
 import java.util.Collection;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.index.CorruptIndexException;
@@ -68,7 +69,7 @@ public final class Lucene50LiveDocsFormat extends LiveDocsFormat {
     long gen = info.getDelGen();
     String name = IndexFileNames.fileNameFromGeneration(info.info.name, EXTENSION, gen);
     final int length = info.info.maxDoc();
-    try (ChecksumIndexInput input = dir.openChecksumInput(name, context)) {
+    try (ChecksumIndexInput input = EndiannessReverserUtil.openChecksumInput(dir, name, context)) {
       Throwable priorE = null;
       try {
         CodecUtil.checkIndexHeader(
@@ -119,7 +120,7 @@ public final class Lucene50LiveDocsFormat extends LiveDocsFormat {
     long gen = info.getNextDelGen();
     String name = IndexFileNames.fileNameFromGeneration(info.info.name, EXTENSION, gen);
     int delCount;
-    try (IndexOutput output = dir.createOutput(name, context)) {
+    try (IndexOutput output = EndiannessReverserUtil.createOutput(dir, name, context)) {
 
       CodecUtil.writeIndexHeader(
           output,

@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene84;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -57,7 +58,7 @@ public class TestPForUtil extends LuceneTestCase {
 
     {
       // encode
-      IndexOutput out = d.createOutput("test.bin", IOContext.DEFAULT);
+      IndexOutput out = EndiannessReverserUtil.createOutput(d, "test.bin", IOContext.DEFAULT);
       final PForUtil pforUtil = new PForUtil(new ForUtil());
 
       for (int i = 0; i < iterations; ++i) {
@@ -73,7 +74,7 @@ public class TestPForUtil extends LuceneTestCase {
 
     {
       // decode
-      IndexInput in = d.openInput("test.bin", IOContext.READONCE);
+      IndexInput in = EndiannessReverserUtil.openInput(d, "test.bin", IOContext.READONCE);
       final PForUtil pforUtil = new PForUtil(new ForUtil());
       for (int i = 0; i < iterations; ++i) {
         if (random().nextInt(5) == 0) {

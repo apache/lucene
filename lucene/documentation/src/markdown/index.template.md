@@ -48,3 +48,7 @@ on some of the conceptual or inner details of Lucene:
 ## API Javadocs
 
 ${projectList}
+
+## Tools
+
+* Luke - Lucene Toolbox GUI tool: A Swing app for browsing documents, indexed terms and posting lists, searching an index, and so on. Type "/path/to/lucene-${project.version}/luke/luke.{sh|bat}" to launch Luke.

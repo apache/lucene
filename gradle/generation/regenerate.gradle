@@ -64,11 +64,12 @@ def computeChecksummedEntries = { Task sourceTask ->
 
 configure([
         project(":lucene:analysis:common"),
-        project(":lucene:core"),
         project(":lucene:analysis:icu"),
-        project(":lucene:queryparser"),
         project(":lucene:analysis:kuromoji"),
-        project(":lucene:analysis:nori")
+        project(":lucene:analysis:nori"),
+        project(":lucene:backward-codecs"),
+        project(":lucene:core"),
+        project(":lucene:queryparser"),
 ]) {
     task regenerate() {
       description "Rerun any code or static data generation tasks."

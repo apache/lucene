@@ -667,7 +667,6 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     dir.close();
   }
 
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9334")
   public void testMerge() throws IOException {
     final RandomDocumentFactory docFactory = new RandomDocumentFactory(5, 20);
     final int numDocs = atLeast(100);

@@ -18,16 +18,19 @@ package org.apache.lucene.queryparser.xml;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenFilter;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.spans.SpanQuery;
 import org.apache.lucene.util.LuceneTestCase;
@@ -99,13 +102,14 @@ public class TestCoreParser extends LuceneTestCase {
 
   public void testDisjunctionMaxQueryXML() throws ParserException, IOException {
     Query q = parse("DisjunctionMaxQuery.xml");
-    assertTrue(q instanceof DisjunctionMaxQuery);
-    DisjunctionMaxQuery d = (DisjunctionMaxQuery) q;
-    assertEquals(0.0f, d.getTieBreakerMultiplier(), 0.0001f);
-    assertEquals(2, d.getDisjuncts().size());
-    DisjunctionMaxQuery ndq = (DisjunctionMaxQuery) d.getDisjuncts().get(1);
-    assertEquals(0.3f, ndq.getTieBreakerMultiplier(), 0.0001f);
-    assertEquals(1, ndq.getDisjuncts().size());
+    Query expected =
+        new DisjunctionMaxQuery(
+            Arrays.asList(
+                new TermQuery(new Term("a", "merger")),
+                new DisjunctionMaxQuery(
+                    Arrays.asList(new TermQuery(new Term("b", "verger"))), 0.3f)),
+            0.0f);
+    assertEquals(expected, q);
   }
 
   public void testRangeQueryXML() throws ParserException, IOException {
