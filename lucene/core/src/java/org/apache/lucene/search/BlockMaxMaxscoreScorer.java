@@ -141,7 +141,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
           long matchedMaxScoreSum = nonEssentialMaxScoreSum;
 
           for (DisiWrapper w : nonEssentialScorers) {
-            if (w.doc >  top.doc) {
+            if (w.doc > top.doc) {
               matchedMaxScoreSum -= w.maxScore;
             }
           }
@@ -172,12 +172,12 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
       private void updateUpToAndMaxScore(int target) throws IOException {
         // reset upTo
-        upTo = DocIdSetIterator.NO_MORE_DOCS;
+        upTo = -1;
         for (DisiWrapper w : allScorers) {
           if (w.doc < target) {
-            upTo = Math.min(w.scorer.advanceShallow(target), upTo);
+            upTo = Math.max(w.scorer.advanceShallow(target), upTo);
           } else {
-            upTo = Math.min(w.scorer.advanceShallow(w.doc), upTo);
+            upTo = Math.max(w.scorer.advanceShallow(w.doc), upTo);
           }
         }
         assert target <= upTo;
