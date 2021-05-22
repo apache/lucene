@@ -139,6 +139,13 @@ public class BlockMaxMaxscoreScorer extends Scorer {
           }
 
           long matchedMaxScoreSum = nonEssentialMaxScoreSum;
+
+          for (DisiWrapper w : nonEssentialScorers) {
+            if (w.doc >  top.doc) {
+              matchedMaxScoreSum -= w.maxScore;
+            }
+          }
+
           for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
             matchedMaxScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
           }
