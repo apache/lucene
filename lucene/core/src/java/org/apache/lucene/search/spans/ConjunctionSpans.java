@@ -19,7 +19,6 @@ package org.apache.lucene.search.spans;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TwoPhaseIterator;
@@ -126,7 +125,7 @@ abstract class ConjunctionSpans extends Spans {
   }
 
   private static void addSpans(
-          Spans spans, List<DocIdSetIterator> allIterators, List<TwoPhaseIterator> twoPhaseIterators) {
+      Spans spans, List<DocIdSetIterator> allIterators, List<TwoPhaseIterator> twoPhaseIterators) {
     TwoPhaseIterator twoPhaseIter = spans.asTwoPhaseIterator();
     if (twoPhaseIter != null) {
       ConjunctionUtils.addTwoPhaseIterator(twoPhaseIter, allIterators, twoPhaseIterators);
@@ -134,5 +133,4 @@ abstract class ConjunctionSpans extends Spans {
       ConjunctionUtils.addIterator(spans, allIterators, twoPhaseIterators);
     }
   }
-
 }
