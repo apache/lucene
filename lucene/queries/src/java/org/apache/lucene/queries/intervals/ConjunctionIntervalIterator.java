@@ -19,6 +19,7 @@ package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 
 abstract class ConjunctionIntervalIterator extends IntervalIterator {
@@ -28,7 +29,7 @@ abstract class ConjunctionIntervalIterator extends IntervalIterator {
   final float cost;
 
   ConjunctionIntervalIterator(List<IntervalIterator> subIterators) {
-    this.approximation = ConjunctionDISI.intersectIterators(subIterators);
+    this.approximation = ConjunctionUtils.intersectIterators(subIterators);
     this.subIterators = subIterators;
     float costsum = 0;
     for (IntervalIterator it : subIterators) {
