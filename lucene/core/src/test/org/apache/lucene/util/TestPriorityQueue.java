@@ -21,6 +21,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Random;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 
 public class TestPriorityQueue extends LuceneTestCase {
 
@@ -47,6 +49,50 @@ public class TestPriorityQueue extends LuceneTestCase {
     }
   }
 
+  public void testZeroSizedQueue() {
+    PriorityQueue<Integer> pq = new IntegerQueue(0);
+    assertEquals((Object) 1, pq.insertWithOverflow(1));
+    assertEquals(0, pq.size());
+
+    // should fail, but passes and modifies the top...
+    pq.add(1);
+    assertEquals((Object) 1, pq.top());
+  }
+
+  public void testNoExtraWorkOnEqualElements() {
+    class Value {
+      private final int index;
+      private final int value;
+
+      Value(int index, int value) {
+        this.index = index;
+        this.value = value;
+      }
+    }
+
+    PriorityQueue<Value> pq =
+        new PriorityQueue<>(5) {
+          @Override
+          protected boolean lessThan(Value a, Value b) {
+            return a.value < b.value;
+          }
+        };
+
+    // Make all elements equal but record insertion order.
+    for (int i = 0; i < 100; i++) {
+      pq.insertWithOverflow(new Value(i, 0));
+    }
+
+    ArrayList<Integer> indexes = new ArrayList<>();
+    for (Value e : pq) {
+      indexes.add(e.index);
+    }
+
+    // All elements are "equal" so we should have exactly the indexes of those elements that were
+    // added first.
+    MatcherAssert.assertThat(indexes, Matchers.containsInAnyOrder(0, 1, 2, 3, 4));
+  }
+
   public void testPQ() throws Exception {
     testPQ(atLeast(10000), random());
   }
@@ -61,13 +107,6 @@ public class TestPriorityQueue extends LuceneTestCase {
       pq.add(next);
     }
 
-    //      Date end = new Date();
-
-    //      System.out.print(((float)(end.getTime()-start.getTime()) / count) * 1000);
-    //      System.out.println(" microseconds/put");
-
-    //      start = new Date();
-
     int last = Integer.MIN_VALUE;
     for (int i = 0; i < count; i++) {
       Integer next = pq.pop();
@@ -77,10 +116,6 @@ public class TestPriorityQueue extends LuceneTestCase {
     }
 
     assertEquals(sum, sum2);
-    //      end = new Date();
-
-    //      System.out.print(((float)(end.getTime()-start.getTime()) / count) * 1000);
-    //      System.out.println(" microseconds/pop");
   }
 
   public void testClear() {
@@ -141,7 +176,7 @@ public class TestPriorityQueue extends LuceneTestCase {
       if (evicted != null) {
         assertTrue(sds.remove(evicted));
         if (evicted != newEntry) {
-          assertTrue(evicted == lastLeast);
+          assertSame(evicted, lastLeast);
         }
       }
       Integer newLeast = pq.top();
@@ -159,7 +194,7 @@ public class TestPriorityQueue extends LuceneTestCase {
     for (int p = 0; p < 500000; p++) {
       int element = (int) (random.nextFloat() * (sds.size() - 1));
       Integer objectToRemove = sds.get(element);
-      assertTrue(sds.remove(element) == objectToRemove);
+      assertSame(sds.remove(element), objectToRemove);
       assertTrue(pq.remove(objectToRemove));
       pq.checkValidity();
       Integer newEntry = Math.abs(random.nextInt());

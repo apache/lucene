@@ -28,7 +28,6 @@ import java.util.TreeMap;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
-import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -57,7 +56,7 @@ import org.apache.lucene.util.IOUtils;
  * @lucene.experimental
  */
 public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
-  /** Name of this {@link PostingsFormat}. */
+  /** Name of this {@link DocValuesFormat}. */
   public static final String PER_FIELD_NAME = "PerFieldDV40";
 
   /** {@link FieldInfo} attribute name used to store the format name for each field. */

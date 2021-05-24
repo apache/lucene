@@ -28,7 +28,8 @@ configure(rootProject) {
       ["LocalSettings", "help/localSettings.txt", "Local settings, overrides and build performance tweaks."],
       ["Regeneration", "help/regeneration.txt", "How to refresh generated and derived resources."],
       ["Git", "help/git.txt", "Git assistance and guides."],
-      ["IDEs", "help/IDEs.txt", "IDE support."]
+      ["IDEs", "help/IDEs.txt", "IDE support."],
+      ["GpgSigning", "help/gpgSigning.txt", "Signing artifacts with GPG."]
   ]
 
   helpFiles.each { section, path, sectionInfo ->
