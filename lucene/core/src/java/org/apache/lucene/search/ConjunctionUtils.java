@@ -22,6 +22,7 @@ import static org.apache.lucene.search.ConjunctionDISI.addScorer;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /** Helper methods for building conjunction iterators */
@@ -61,5 +62,38 @@ public final class ConjunctionUtils {
     }
 
     return ConjunctionDISI.createConjunction(allIterators, twoPhaseIterators);
+  }
+
+  /**
+   * Create a conjunction over the provided set of DocIdSetIterators and TwoPhaseIterators,
+   * using two-phase iterator where possible. Note that the returned {@link
+   * DocIdSetIterator} might leverage two-phase iteration in which case it is possible to retrieve
+   * the {@link TwoPhaseIterator} using {@link TwoPhaseIterator#unwrap}.
+   * @param allIterators        a list of DocIdSetIterators to combine
+   * @param twoPhaseIterators   a list of TwoPhaseIterators to combine
+   */
+  public static DocIdSetIterator createConjunction(List<DocIdSetIterator> allIterators, List<TwoPhaseIterator> twoPhaseIterators) {
+    return ConjunctionDISI.createConjunction(allIterators, twoPhaseIterators);
+  }
+
+  /**
+   * Given a two-phase iterator, find any sub-iterators and add them to the provided
+   * DocIdSetIterator and TwoPhaseIterator lists
+   */
+  public static void addTwoPhaseIterator(
+          TwoPhaseIterator twoPhaseIter,
+          List<DocIdSetIterator> allIterators,
+          List<TwoPhaseIterator> twoPhaseIterators) {
+    ConjunctionDISI.addTwoPhaseIterator(twoPhaseIter, allIterators, twoPhaseIterators);
+  }
+
+  /**
+   * Given a DocIdSetIterator, find any sub-iterators or two-phase iterators and add
+   * them to the provided DocIdSetIterator and TwoPhaseIterator lists
+   */
+  public static void addIterator(DocIdSetIterator disi,
+                                 List<DocIdSetIterator> allIterators,
+                                 List<TwoPhaseIterator> twoPhaseIterators) {
+    ConjunctionDISI.addIterator(disi, allIterators, twoPhaseIterators);
   }
 }
