@@ -229,7 +229,6 @@ Improvements
 
 Bug fixes
 
-
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
   Julie Tibshirani)
 
@@ -394,6 +393,9 @@ Bug Fixes
 * LUCENE-9953: LongValueFacetCounts should count each document at most once when determining
   the total count for a dimension. Prior to this fix, multi-value docs could contribute a > 1
   count to the dimension count. (Greg Miller)
+
+* LUCEDNE-9967: Do not throw NullPointerException while trying to handle another exception in
+  ReplicaNode.start (Steven Schlansker)
 
 Other
 ---------------------
