@@ -22,29 +22,29 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * This implementation assumes the requested ranges _do not_ overlap. With this assumption, we're
- * able to take a simpler approach to accumulating range counts by just binary searching for the
- * appropriate range and counting directly as each value comes in.
+ * This implementation assumes the requested ranges <i>do not</i> overlap. With this assumption,
+ * we're able to take a simpler approach to accumulating range counts by just binary searching for
+ * the appropriate range and counting directly as each value comes in.
  */
-class SimpleLongRangeCounter extends LongRangeCounter {
+class ExclusiveLongRangeCounter extends LongRangeCounter {
 
-  /** elementary segment boundaries used for efficient counting (bsearch to find interval) */
+  /** elementary interval boundaries used for efficient counting (bsearch to find interval) */
   private final long[] boundaries;
-  /** original range number each elementary segment corresponds to (index into countBuffer) */
+  /** original range number each elementary interval corresponds to (index into countBuffer) */
   private final int[] rangeNums;
   /** number of counted documents that haven't matched any requested ranges */
-  private int missingCount = 0;
+  private int missingCount;
   /** whether-or-not the multi-valued doc currently being counted has matched any ranges */
   private boolean multiValuedDocMatchedRange;
 
-  SimpleLongRangeCounter(LongRange[] ranges, int[] countBuffer) {
+  ExclusiveLongRangeCounter(LongRange[] ranges, int[] countBuffer) {
     super(countBuffer);
 
     // Create a copy of the requested ranges, sorted by min, and keeping track of the original
     // position:
-    ReferencingLongRange[] sortedRanges = new ReferencingLongRange[ranges.length];
+    LongRangeAndPos[] sortedRanges = new LongRangeAndPos[ranges.length];
     for (int i = 0; i < ranges.length; i++) {
-      sortedRanges[i] = new ReferencingLongRange(ranges[i], i);
+      sortedRanges[i] = new LongRangeAndPos(ranges[i], i);
     }
     Arrays.sort(sortedRanges, Comparator.comparingLong(r -> r.range.min));
 
@@ -60,7 +60,7 @@ class SimpleLongRangeCounter extends LongRangeCounter {
     for (int i = 0; i < boundaries.length; i++) {
       boundaries[i] = elementaryIntervals.get(i).end;
       if (currRange < sortedRanges.length) {
-        ReferencingLongRange curr = sortedRanges[currRange];
+        LongRangeAndPos curr = sortedRanges[currRange];
         if (boundaries[i] == curr.range.max) {
           rangeNums[i] = curr.pos;
           currRange++;
@@ -103,24 +103,24 @@ class SimpleLongRangeCounter extends LongRangeCounter {
   }
 
   @Override
-  protected void processSingleValuedHit(int elementarySegmentNum) {
-    int rangeNum = rangeNums[elementarySegmentNum];
+  protected void processSingleValuedHit(int elementaryIntervalNum) {
+    int rangeNum = rangeNums[elementaryIntervalNum];
     if (rangeNum != -1) {
-      // The elementary segment we matched against corresponds to a requested
+      // The elementary interval we matched against corresponds to a requested
       // range, so increment it:
       increment(rangeNum);
     } else {
-      // The matched elementary segment is a "gap" range, so the doc isn't
+      // The matched elementary interval is a "gap" range, so the doc isn't
       // present in any requested ranges:
       missingCount++;
     }
   }
 
   @Override
-  protected void processMultiValuedHit(int elementarySegmentNum) {
-    int rangeNum = rangeNums[elementarySegmentNum];
+  protected void processMultiValuedHit(int elementaryIntervalNum) {
+    int rangeNum = rangeNums[elementaryIntervalNum];
     if (rangeNum != -1) {
-      // The elementary segment we matched against corresponds to a requested
+      // The elementary interval we matched against corresponds to a requested
       // range, so increment it. We can do this without fear of double-counting
       // since we know the requested ranges don't overlap:
       increment(rangeNum);
@@ -132,11 +132,10 @@ class SimpleLongRangeCounter extends LongRangeCounter {
    * Create elementary intervals, which include requested ranges and "gaps" in-between. This logic
    * assumes no requested ranges overlap, and that the incoming ranges have already been sorted.
    */
-  private static List<InclusiveRange> buildElementaryIntervals(
-      ReferencingLongRange[] sortedRanges) {
+  private static List<InclusiveRange> buildElementaryIntervals(LongRangeAndPos[] sortedRanges) {
     List<InclusiveRange> elementaryIntervals = new ArrayList<>();
     long prev = Long.MIN_VALUE;
-    for (ReferencingLongRange range : sortedRanges) {
+    for (LongRangeAndPos range : sortedRanges) {
       if (range.range.min > prev) {
         // add a "gap" range preceding requested range if necessary:
         elementaryIntervals.add(new InclusiveRange(prev, range.range.min - 1));
@@ -158,12 +157,12 @@ class SimpleLongRangeCounter extends LongRangeCounter {
     return elementaryIntervals;
   }
 
-  /** Simple container for a requested range and it's original position */
-  private static final class ReferencingLongRange {
+  /** Simple container for a requested range and its original position */
+  private static final class LongRangeAndPos {
     final LongRange range;
     final int pos;
 
-    ReferencingLongRange(LongRange range, int pos) {
+    LongRangeAndPos(LongRange range, int pos) {
       this.range = range;
       this.pos = pos;
     }

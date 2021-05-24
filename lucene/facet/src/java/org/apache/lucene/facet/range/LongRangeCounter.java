@@ -43,16 +43,17 @@ abstract class LongRangeCounter {
   private final int[] countBuffer;
 
   /**
-   * track the last counted leaf so we can skip over ones we've already counted for multi-value doc
-   * cases. takes advantage of the fact that values within a given doc are sorted.
+   * for multi-value docs, we keep track of the last elementary interval we've counted so we can use
+   * that as a lower-bound when counting subsequent values. this takes advantage of the fact that
+   * values within a given doc are sorted.
    */
-  protected int multiValuedDocLastSeenLeaf;
+  protected int multiValuedDocLastSeenElementaryInterval;
 
   static LongRangeCounter create(LongRange[] ranges, int[] countBuffer) {
     if (hasOverlappingRanges(ranges)) {
       return new OverlappingLongRangeCounter(ranges, countBuffer);
     } else {
-      return new SimpleLongRangeCounter(ranges, countBuffer);
+      return new ExclusiveLongRangeCounter(ranges, countBuffer);
     }
   }
 
@@ -63,7 +64,7 @@ abstract class LongRangeCounter {
 
   /** Start processing a new doc. It's unnecessary to call this for single-value cases. */
   void startMultiValuedDoc() {
-    multiValuedDocLastSeenLeaf = -1;
+    multiValuedDocLastSeenElementaryInterval = -1;
   }
 
   /**
@@ -121,28 +122,29 @@ abstract class LongRangeCounter {
 
     long[] boundaries = boundaries();
 
-    // First check if we've "advanced" beyond the last leaf we counted for this doc. If
-    // we haven't, there's no sense doing anything else:
-    if (multiValuedDocLastSeenLeaf != -1 && v <= boundaries[multiValuedDocLastSeenLeaf]) {
+    // First check if we've "advanced" beyond the last elementary interval we counted for this doc.
+    // If we haven't, there's no sense doing anything else:
+    if (multiValuedDocLastSeenElementaryInterval != -1
+        && v <= boundaries[multiValuedDocLastSeenElementaryInterval]) {
       return;
     }
 
-    // Also check if we've already counted the last leaf. If so, there's nothing else to count
-    // for this doc:
-    final int nextCandidateLeaf = multiValuedDocLastSeenLeaf + 1;
-    if (nextCandidateLeaf == boundaries.length) {
+    // Also check if we've already counted the last elementary interval. If so, there's nothing
+    // else to count for this doc:
+    final int nextCandidateElementaryInterval = multiValuedDocLastSeenElementaryInterval + 1;
+    if (nextCandidateElementaryInterval == boundaries.length) {
       return;
     }
 
-    // Binary search in the range of the next candidate leaf up to the last leaf:
-    int lo = nextCandidateLeaf;
+    // Binary search in the range of the next candidate interval up to the last interval:
+    int lo = nextCandidateElementaryInterval;
     int hi = boundaries.length - 1;
     while (true) {
       int mid = (lo + hi) >>> 1;
       if (v <= boundaries[mid]) {
-        if (mid == nextCandidateLeaf) {
+        if (mid == nextCandidateElementaryInterval) {
           processMultiValuedHit(mid);
-          multiValuedDocLastSeenLeaf = mid;
+          multiValuedDocLastSeenElementaryInterval = mid;
           return;
         } else {
           hi = mid - 1;
@@ -152,7 +154,7 @@ abstract class LongRangeCounter {
       } else {
         int idx = mid + 1;
         processMultiValuedHit(idx);
-        multiValuedDocLastSeenLeaf = idx;
+        multiValuedDocLastSeenElementaryInterval = idx;
         return;
       }
     }
@@ -164,14 +166,14 @@ abstract class LongRangeCounter {
    */
   abstract int finish();
 
-  /** Provide boundary information for elementary segments (max inclusive value per range) */
+  /** Provide boundary information for elementary intervals (max inclusive value per interval) */
   protected abstract long[] boundaries();
 
-  /** Process a single-value "hit" against an elementary segment. */
-  protected abstract void processSingleValuedHit(int elementarySegmentNum);
+  /** Process a single-value "hit" against an elementary interval. */
+  protected abstract void processSingleValuedHit(int elementaryIntervalNum);
 
-  /** Process a multi-value "hit" against an elementary segment. */
-  protected abstract void processMultiValuedHit(int elementarySegmentNum);
+  /** Process a multi-value "hit" against an elementary interval. */
+  protected abstract void processMultiValuedHit(int elementaryIntervalNum);
 
   /** Increment the specified range by one. */
   protected final void increment(int rangeNum) {
@@ -199,12 +201,14 @@ abstract class LongRangeCounter {
     System.arraycopy(ranges, 0, sortedRanges, 0, ranges.length);
     Arrays.sort(sortedRanges, Comparator.comparingLong(r -> r.min));
 
-    long prev = sortedRanges[0].max;
+    long previousMax = sortedRanges[0].max;
     for (int i = 1; i < sortedRanges.length; i++) {
-      if (sortedRanges[i].min <= prev) {
+      // Ranges overlap if the next min is <= the previous max (note that LongRange models
+      // closed ranges, so equal limit points are considered overlapping):
+      if (sortedRanges[i].min <= previousMax) {
         return true;
       }
-      prev = sortedRanges[i].max;
+      previousMax = sortedRanges[i].max;
     }
 
     return false;

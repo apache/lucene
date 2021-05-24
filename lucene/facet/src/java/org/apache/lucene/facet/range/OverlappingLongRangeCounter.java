@@ -26,33 +26,35 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * This implementation supports requested ranges that overlap. Because of this, we use a
  * segment-tree to more efficiently aggregate counts into ranges at the end of processing. We also
- * need to worry about double-counting issues since it's possible that multiple elementary segments,
- * although mutually-exclusive, can roll-up to the same requested range. This creates some
- * complexity with how we need to handle multi-valued documents.
+ * need to worry about double-counting issues since it's possible that multiple elementary
+ * intervals, although mutually-exclusive, can roll-up to the same requested range. This creates
+ * some complexity with how we need to handle multi-valued documents.
  */
 class OverlappingLongRangeCounter extends LongRangeCounter {
 
   /** segment tree root node */
   private final LongRangeNode root;
-  /** elementary segment boundaries used for efficient counting (bsearch to find interval) */
+  /** elementary interval boundaries used for efficient counting (bsearch to find interval) */
   private final long[] boundaries;
-  /** whether-or-not there are leaf counts that still need to be rolled up at the end */
-  private boolean hasUnflushedCounts = false;
+  /**
+   * whether-or-not there are elementary interval counts that still need to be rolled up at the end
+   */
+  private boolean hasUnflushedCounts;
 
   // Needed only for counting single-valued docs:
-  /** counts seen in each elementary interval leaf */
-  private int[] singleValuedLeafCounts;
+  /** counts seen in each elementary interval */
+  private int[] singleValuedElementaryIntervalCounts;
 
   // Needed only for counting multi-valued docs:
   /** whether-or-not an elementary interval has seen at least one match for a single doc */
-  private FixedBitSet multiValuedDocLeafHits;
-  /** whether-or-not a range has seen at least one match for a single doc */
+  private FixedBitSet multiValuedDocElementaryIntervalHits;
+  /** whether-or-not a requested range has seen at least one match for a single doc */
   private FixedBitSet multiValuedDocRangeHits;
 
   // Used during rollup
-  private int leafUpto;
+  private int elementaryIntervalUpto;
   /** number of counted documents that haven't matched any requested ranges */
-  private int missingCount = 0;
+  private int missingCount;
 
   OverlappingLongRangeCounter(LongRange[] ranges, int[] countBuffer) {
     super(countBuffer);
@@ -78,17 +80,17 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
   @Override
   void startMultiValuedDoc() {
     super.startMultiValuedDoc();
-    // Lazy init a bitset to track the elementary segments we see of a multi-valued doc:
-    if (multiValuedDocLeafHits == null) {
-      multiValuedDocLeafHits = new FixedBitSet(boundaries.length);
+    // Lazy init a bitset to track the elementary intervals we see of a multi-valued doc:
+    if (multiValuedDocElementaryIntervalHits == null) {
+      multiValuedDocElementaryIntervalHits = new FixedBitSet(boundaries.length);
     } else {
-      multiValuedDocLeafHits.clear(0, multiValuedDocLeafHits.length());
+      multiValuedDocElementaryIntervalHits.clear(0, multiValuedDocElementaryIntervalHits.length());
     }
   }
 
   @Override
   boolean endMultiValuedDoc() {
-    assert multiValuedDocLeafHits != null : "must call startDoc() first";
+    assert multiValuedDocElementaryIntervalHits != null : "must call startDoc() first";
 
     // Short-circuit if the caller didn't specify any ranges to count:
     if (rangeCount() == 0) {
@@ -96,13 +98,14 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     }
 
     // Do the rollup for this doc:
+
     // Lazy init a bitset to track the requested ranges seen for this multi-valued doc:
     if (multiValuedDocRangeHits == null) {
       multiValuedDocRangeHits = new FixedBitSet(rangeCount());
     } else {
       multiValuedDocRangeHits.clear(0, multiValuedDocRangeHits.length());
     }
-    leafUpto = 0;
+    elementaryIntervalUpto = 0;
     rollupMultiValued(root);
 
     // Actually increment the count for each matching range, and see if the doc contributed to
@@ -124,7 +127,7 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     if (hasUnflushedCounts) {
       // Rollup any outstanding counts from single-valued cases:
       missingCount = 0;
-      leafUpto = 0;
+      elementaryIntervalUpto = 0;
       rollupSingleValued(root, false);
 
       return missingCount;
@@ -139,20 +142,20 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
   }
 
   @Override
-  protected void processSingleValuedHit(int elementarySegmentNum) {
+  protected void processSingleValuedHit(int elementaryIntervalNum) {
     // Lazy init:
-    if (singleValuedLeafCounts == null) {
-      singleValuedLeafCounts = new int[boundaries.length];
+    if (singleValuedElementaryIntervalCounts == null) {
+      singleValuedElementaryIntervalCounts = new int[boundaries.length];
     }
 
-    singleValuedLeafCounts[elementarySegmentNum]++;
+    singleValuedElementaryIntervalCounts[elementaryIntervalNum]++;
     hasUnflushedCounts = true;
   }
 
   @Override
-  protected void processMultiValuedHit(int elementarySegmentNum) {
-    assert multiValuedDocLeafHits != null : "must call startDoc() first";
-    multiValuedDocLeafHits.set(elementarySegmentNum);
+  protected void processMultiValuedHit(int elementaryIntervalNum) {
+    assert multiValuedDocElementaryIntervalHits != null : "must call startDoc() first";
+    multiValuedDocElementaryIntervalHits.set(elementaryIntervalNum);
   }
 
   private static LongRangeNode split(int start, int end, List<InclusiveRange> elementaryIntervals) {
@@ -176,11 +179,10 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
       count += rollupSingleValued(node.right, sawOutputs);
     } else {
       // Leaf:
-      count = singleValuedLeafCounts[leafUpto];
-      leafUpto++;
-      if (!sawOutputs) {
-        // This is a missing count (no output ranges were
-        // seen "above" us):
+      count = singleValuedElementaryIntervalCounts[elementaryIntervalUpto];
+      elementaryIntervalUpto++;
+      if (sawOutputs == false) {
+        // This is a missing count (no output ranges were seen "above" us):
         missingCount += count;
       }
     }
@@ -200,8 +202,8 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
       containedHit |= rollupMultiValued(node.right);
     } else {
       // Leaf:
-      containedHit = multiValuedDocLeafHits.get(leafUpto);
-      leafUpto++;
+      containedHit = multiValuedDocElementaryIntervalHits.get(elementaryIntervalUpto);
+      elementaryIntervalUpto++;
     }
     if (containedHit && node.outputs != null) {
       for (int rangeIndex : node.outputs) {
@@ -293,21 +295,24 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     final long start;
     final long end;
 
-    // If we are a leaf, the index into elementary ranges that
-    // we point to:
-    final int leafIndex;
+    // If we are a leaf, the index into elementary ranges that we point to:
+    final int elementaryIntervalIndex;
 
     // Which range indices to output when a query goes
     // through this node:
     List<Integer> outputs;
 
     public LongRangeNode(
-        long start, long end, LongRangeNode left, LongRangeNode right, int leafIndex) {
+        long start,
+        long end,
+        LongRangeNode left,
+        LongRangeNode right,
+        int elementaryIntervalIndex) {
       this.start = start;
       this.end = end;
       this.left = left;
       this.right = right;
-      this.leafIndex = leafIndex;
+      this.elementaryIntervalIndex = elementaryIntervalIndex;
     }
 
     @Override
