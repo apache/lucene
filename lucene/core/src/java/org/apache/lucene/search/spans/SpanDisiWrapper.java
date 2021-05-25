@@ -14,20 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.search.spans;
+
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TwoPhaseIterator;
 
 /**
- * Wrapper used in {@link DisiPriorityQueue}.
+ * Wrapper used in {@link SpanDisiPriorityQueue}.
  *
  * @lucene.internal
  */
-public class DisiWrapper {
+public class SpanDisiWrapper {
   public final DocIdSetIterator iterator;
-  public final Scorer scorer;
   public final long cost;
   public final float matchCost; // the match cost for two-phase iterators, 0 otherwise
   public int doc; // the current doc, used for comparison
-  public DisiWrapper next; // reference to a next element, see #topList
+  public SpanDisiWrapper next; // reference to a next element, see #topList
 
   // An approximation of the iterator, or the iterator itself if it does not
   // support two-phase iteration
@@ -36,15 +38,16 @@ public class DisiWrapper {
   // two-phase iteration
   public final TwoPhaseIterator twoPhaseView;
 
-  // For WANDScorer
-  long maxScore;
+  public final Spans spans;
+  public int lastApproxMatchDoc; // last doc of approximation that did match
+  public int lastApproxNonMatchDoc; // last doc of approximation that did not match
 
-  public DisiWrapper(Scorer scorer) {
-    this.scorer = scorer;
-    this.iterator = scorer.iterator();
+  public SpanDisiWrapper(Spans spans) {
+    this.spans = spans;
+    this.iterator = spans;
     this.cost = iterator.cost();
     this.doc = -1;
-    this.twoPhaseView = scorer.twoPhaseIterator();
+    this.twoPhaseView = spans.asTwoPhaseIterator();
 
     if (twoPhaseView != null) {
       approximation = twoPhaseView.approximation();
@@ -53,5 +56,7 @@ public class DisiWrapper {
       approximation = iterator;
       matchCost = 0f;
     }
+    this.lastApproxNonMatchDoc = -2;
+    this.lastApproxMatchDoc = -2;
   }
 }
