@@ -116,6 +116,9 @@ API Changes
 
 * LUCENE-9843: Remove compression option on default codec's docvalues. (Jack Conradson)
 
+* LUCENE-9204: SpanQuery and its subclasses have been moved from core/ into the
+  queries/ module. (Alan Woodward)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
