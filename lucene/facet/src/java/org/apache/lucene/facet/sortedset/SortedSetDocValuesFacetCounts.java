@@ -96,7 +96,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     }
     OrdRange ordRange = state.getOrdRange(dim);
     if (ordRange == null) {
-      throw new IllegalArgumentException("dimension \"" + dim + "\" was not indexed");
+      return null; // means dimension was never indexed
     }
     return getDim(dim, ordRange, topN);
   }
