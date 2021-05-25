@@ -29,7 +29,7 @@ import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConjunctionDISI;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -89,7 +89,7 @@ abstract class RangeFacetCounts extends Facets {
         return null; // no hits from the fastMatchQuery; return null
       } else {
         DocIdSetIterator fastMatchDocs = s.iterator();
-        return ConjunctionDISI.intersectIterators(
+        return ConjunctionUtils.intersectIterators(
             Arrays.asList(hits.bits.iterator(), fastMatchDocs));
       }
 
