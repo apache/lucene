@@ -171,6 +171,13 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     }
   }
 
+  /**
+   * Rolls up all the single-valued doc counts. Note that this is done once at the end of processing
+   * all documents (as part of {@link #finish()}. This is done in bulk at the end for efficiency
+   * purposes (vs. after ever document). This works only for cases where documents have a
+   * single-value. Multi-valued docs need to get rolled up after each document to ensure there's no
+   * double-counting (see {@link #rollupMultiValued(LongRangeNode)})
+   */
   private int rollupSingleValued(LongRangeNode node, boolean sawOutputs) {
     int count;
     sawOutputs |= node.outputs != null;
@@ -195,6 +202,13 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     return count;
   }
 
+  /**
+   * Rolls up all the multi-valued doc counts. Note that this is done at the end of each document
+   * (as part of {@link #endMultiValuedDoc()}). All of the counts contributed by a single document
+   * get rolled up into the appropriate ranges in this step. It must be done after each document so
+   * that counts don't get double-counted, and so we know whether-or-not an individual doc actually
+   * contributed to any of the user-requested ranges.
+   */
   private boolean rollupMultiValued(LongRangeNode node) {
     boolean containedHit;
     if (node.left != null) {
