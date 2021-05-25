@@ -215,7 +215,7 @@ public abstract class Weight implements SegmentCacheable {
         }
         // filter scorerIterator to keep only competitive docs as defined by collector
         filteredIterator =
-            ConjunctionDISI.intersectIterators(Arrays.asList(scorerIterator, collectorIterator));
+            ConjunctionUtils.intersectIterators(Arrays.asList(scorerIterator, collectorIterator));
       }
       if (filteredIterator.docID() == -1 && min == 0 && max == DocIdSetIterator.NO_MORE_DOCS) {
         scoreAll(collector, filteredIterator, twoPhase, acceptDocs);

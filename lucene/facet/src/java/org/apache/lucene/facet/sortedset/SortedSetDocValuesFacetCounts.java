@@ -39,7 +39,7 @@ import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.search.ConjunctionDISI;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.util.BytesRef;
@@ -163,7 +163,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     if (hits == null) {
       it = segValues;
     } else {
-      it = ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), segValues));
+      it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), segValues));
     }
 
     // TODO: yet another option is to count all segs
