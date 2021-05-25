@@ -321,6 +321,7 @@ public final class TestUtil {
       checker.setDoSlowChecks(doSlowChecks);
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
+      checker.setThreadCount(RandomNumbers.randomIntBetween(new Random(), 1, 5));
       CheckIndex.Status indexStatus = checker.checkIndex(null);
 
       if (indexStatus == null || indexStatus.clean == false) {
