@@ -400,3 +400,9 @@ field.
 
 Lucene index readers are now using so little memory with the default codec that
 it was decided to remove the ability to estimate their RAM usage.
+
+## LongValueFacetCounts no longer accepts multiValued param in constructors (LUCENE-9948)
+
+LongValueFacetCounts will now automatically detect whether-or-not an indexed field is single- or
+multi-valued. The user no longer needs to provide this information to the ctors. Migrating should
+be as simple as no longer providing this boolean.

@@ -269,7 +269,7 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [ andThenTasks: "spotlessApply" ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
 }
 
 

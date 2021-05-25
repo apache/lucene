@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.packed;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -37,7 +38,7 @@ public class TestLegacyPackedInts extends LuceneTestCase {
         final int valueCount = TestUtil.nextInt(random(), 1, 600);
         final Directory d = newDirectory();
 
-        IndexOutput out = d.createOutput("out.bin", newIOContext(random()));
+        IndexOutput out = EndiannessReverserUtil.createOutput(d, "out.bin", newIOContext(random()));
         final int mem = random().nextInt(2 * PackedInts.DEFAULT_BUFFER_SIZE);
         PackedInts.Writer w =
             PackedInts.getWriterNoHeader(out, PackedInts.Format.PACKED, valueCount, nbits, mem);
@@ -65,7 +66,7 @@ public class TestLegacyPackedInts extends LuceneTestCase {
         assertEquals(bytes, fp - startFp);
 
         { // test reader
-          IndexInput in = d.openInput("out.bin", newIOContext(random()));
+          IndexInput in = EndiannessReverserUtil.openInput(d, "out.bin", newIOContext(random()));
           PackedInts.Reader r =
               LegacyPackedInts.getReaderNoHeader(
                   in, PackedInts.Format.PACKED, PackedInts.VERSION_CURRENT, valueCount, nbits);
@@ -99,12 +100,14 @@ public class TestLegacyPackedInts extends LuceneTestCase {
   public void testEndPointer() throws IOException {
     final Directory dir = newDirectory();
     final int valueCount = RandomNumbers.randomIntBetween(random(), 1, 1000);
-    final IndexOutput out = dir.createOutput("tests.bin", newIOContext(random()));
+    final IndexOutput out =
+        EndiannessReverserUtil.createOutput(dir, "tests.bin", newIOContext(random()));
     for (int i = 0; i < valueCount; ++i) {
       out.writeLong(0);
     }
     out.close();
-    final IndexInput in = dir.openInput("tests.bin", newIOContext(random()));
+    final IndexInput in =
+        EndiannessReverserUtil.openInput(dir, "tests.bin", newIOContext(random()));
     for (int version = PackedInts.VERSION_START; version <= PackedInts.VERSION_CURRENT; ++version) {
       for (int bpv = 1; bpv <= 64; ++bpv) {
         for (PackedInts.Format format : PackedInts.Format.values()) {
@@ -135,7 +138,7 @@ public class TestLegacyPackedInts extends LuceneTestCase {
   public void testSingleValue() throws Exception {
     for (int bitsPerValue = 1; bitsPerValue <= 64; ++bitsPerValue) {
       Directory dir = newDirectory();
-      IndexOutput out = dir.createOutput("out", newIOContext(random()));
+      IndexOutput out = EndiannessReverserUtil.createOutput(dir, "out", newIOContext(random()));
       PackedInts.Writer w =
           PackedInts.getWriterNoHeader(
               out, PackedInts.Format.PACKED, 1, bitsPerValue, PackedInts.DEFAULT_BUFFER_SIZE);
@@ -145,7 +148,7 @@ public class TestLegacyPackedInts extends LuceneTestCase {
       final long end = out.getFilePointer();
       out.close();
 
-      IndexInput in = dir.openInput("out", newIOContext(random()));
+      IndexInput in = EndiannessReverserUtil.openInput(dir, "out", newIOContext(random()));
       Reader reader =
           LegacyPackedInts.getReaderNoHeader(
               in, PackedInts.Format.PACKED, PackedInts.VERSION_CURRENT, 1, bitsPerValue);

@@ -552,8 +552,7 @@ public final class FieldInfo {
   }
 
   void setStorePayloads() {
-    if (indexOptions != IndexOptions.NONE
-        && indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+    if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
       storePayloads = true;
     }
     this.checkConsistency();

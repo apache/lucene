@@ -172,10 +172,13 @@ import org.apache.lucene.util.packed.PackedInts;
  *         <li>SkipLevel --&gt; &lt;SkipDatum&gt; <sup>TrimmedDocFreq/(PackedBlockSize^(Level +
  *             1))</sup>
  *         <li>SkipDatum --&gt; DocSkip, DocFPSkip, &lt;PosFPSkip, PosBlockOffset, PayLength?,
- *             PayFPSkip?&gt;?, SkipChildLevelPointer?
+ *             PayFPSkip?&gt;?, ImpactLength, &lt;CompetitiveFreqDelta, CompetitiveNormDelta?&gt;
+ *             <sup>ImpactCount</sup>, SkipChildLevelPointer?
  *         <li>PackedDocDeltaBlock, PackedFreqBlock --&gt; {@link PackedInts PackedInts}
- *         <li>DocDelta, Freq, DocSkip, DocFPSkip, PosFPSkip, PosBlockOffset, PayByteUpto, PayFPSkip
- *             --&gt; {@link DataOutput#writeVInt VInt}
+ *         <li>DocDelta, Freq, DocSkip, DocFPSkip, PosFPSkip, PosBlockOffset, PayByteUpto,
+ *             PayFPSkip, ImpactLength, CompetitiveFreqDelta --&gt; {@link DataOutput#writeVInt
+ *             VInt}
+ *         <li>CompetitiveNormDelta --&gt; {@link DataOutput#writeZLong ZLong}
  *         <li>SkipChildLevelPointer --&gt; {@link DataOutput#writeVLong VLong}
  *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  *       </ul>
@@ -235,6 +238,10 @@ import org.apache.lucene.util.packed.PackedInts;
  *             and stored as a difference sequence.
  *         <li>PayByteUpto indicates the start offset of the current payload. It is equivalent to
  *             the sum of the payload lengths in the current block up to PosBlockOffset
+ *         <li>ImpactLength is the total length of CompetitiveFreqDelta and CompetitiveNormDelta
+ *             pairs. CompetitiveFreqDelta and CompetitiveNormDelta are used to safely skip score
+ *             calculation for uncompetitive documents; See {@link
+ *             org.apache.lucene.codecs.CompetitiveImpactAccumulator} for more details.
  *       </ul>
  * </dl>
  *
@@ -299,7 +306,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *       positions. Some payloads and offsets will be separated out into .pos file, for performance
  *       reasons.
  *       <ul>
- *         <li>PayFile(.pay): --&gt; Header, &lt;TermPayloads, TermOffsets?&gt;
+ *         <li>PayFile(.pay): --&gt; Header, &lt;TermPayloads?, TermOffsets?&gt;
  *             <sup>TermCount</sup>, Footer
  *         <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
  *         <li>TermPayloads --&gt; &lt;PackedPayLengthBlock, SumPayLength, PayData&gt;

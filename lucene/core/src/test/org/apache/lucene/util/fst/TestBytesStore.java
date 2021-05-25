@@ -349,16 +349,16 @@ public class TestBytesStore extends LuceneTestCase {
           int expectedInt = 0;
           if (reversed) {
             expectedPos -= skipBytes;
-            expectedInt |= (expected[expectedPos--] & 0xFF) << 24;
-            expectedInt |= (expected[expectedPos--] & 0xFF) << 16;
-            expectedInt |= (expected[expectedPos--] & 0xFF) << 8;
             expectedInt |= (expected[expectedPos--] & 0xFF);
+            expectedInt |= (expected[expectedPos--] & 0xFF) << 8;
+            expectedInt |= (expected[expectedPos--] & 0xFF) << 16;
+            expectedInt |= (expected[expectedPos--] & 0xFF) << 24;
           } else {
             expectedPos += skipBytes;
-            expectedInt |= (expected[expectedPos++] & 0xFF) << 24;
-            expectedInt |= (expected[expectedPos++] & 0xFF) << 16;
-            expectedInt |= (expected[expectedPos++] & 0xFF) << 8;
             expectedInt |= (expected[expectedPos++] & 0xFF);
+            expectedInt |= (expected[expectedPos++] & 0xFF) << 8;
+            expectedInt |= (expected[expectedPos++] & 0xFF) << 16;
+            expectedInt |= (expected[expectedPos++] & 0xFF) << 24;
           }
 
           if (VERBOSE) {

@@ -16,70 +16,22 @@
  */
 package org.apache.lucene.index;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+
 import java.io.IOException;
 import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.English;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 
 public class TestTermVectors extends LuceneTestCase {
-  private static IndexReader reader;
-  private static Directory directory;
-
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    directory = newDirectory();
-    RandomIndexWriter writer =
-        new RandomIndexWriter(
-            random(),
-            directory,
-            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.SIMPLE, true))
-                .setMergePolicy(newLogMergePolicy()));
-    // writer.setNoCFSRatio(1.0);
-    // writer.infoStream = System.out;
-    for (int i = 0; i < 1000; i++) {
-      Document doc = new Document();
-      FieldType ft = new FieldType(TextField.TYPE_STORED);
-      int mod3 = i % 3;
-      int mod2 = i % 2;
-      if (mod2 == 0 && mod3 == 0) {
-        ft.setStoreTermVectors(true);
-        ft.setStoreTermVectorOffsets(true);
-        ft.setStoreTermVectorPositions(true);
-      } else if (mod2 == 0) {
-        ft.setStoreTermVectors(true);
-        ft.setStoreTermVectorPositions(true);
-      } else if (mod3 == 0) {
-        ft.setStoreTermVectors(true);
-        ft.setStoreTermVectorOffsets(true);
-      } else {
-        ft.setStoreTermVectors(true);
-      }
-      doc.add(new Field("field", English.intToEnglish(i), ft));
-      // test no term vectors too
-      doc.add(new TextField("noTV", English.intToEnglish(i), Field.Store.YES));
-      writer.addDocument(doc);
-    }
-    reader = writer.getReader();
-    writer.close();
-  }
-
-  @AfterClass
-  public static void afterClass() throws Exception {
-    reader.close();
-    directory.close();
-    reader = null;
-    directory = null;
-  }
 
   private IndexWriter createWriter(Directory dir) throws IOException {
     return new IndexWriter(
@@ -165,5 +117,99 @@ public class TestTermVectors extends LuceneTestCase {
 
     verifyIndex(target);
     IOUtils.close(target, input[0], input[1]);
+  }
+
+  /**
+   * Assert that a merged segment has payloads set up in fieldInfo, if at least 1 segment has
+   * payloads for this field.
+   */
+  public void testMergeWithPayloads() throws Exception {
+    final FieldType ft1 = new FieldType(TextField.TYPE_NOT_STORED);
+    ft1.setStoreTermVectors(true);
+    ft1.setStoreTermVectorOffsets(true);
+    ft1.setStoreTermVectorPositions(true);
+    ft1.setStoreTermVectorPayloads(true);
+    ft1.freeze();
+
+    final int numDocsInSegment = 10;
+    for (boolean hasPayloads : new boolean[] {false, true}) {
+      Directory dir = newDirectory();
+      IndexWriterConfig indexWriterConfig =
+          new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(numDocsInSegment);
+      IndexWriter writer = new IndexWriter(dir, indexWriterConfig);
+      TokenStreamGenerator tkg1 = new TokenStreamGenerator(hasPayloads);
+      TokenStreamGenerator tkg2 = new TokenStreamGenerator(!hasPayloads);
+
+      // create one segment with payloads, and another without payloads
+      for (int i = 0; i < numDocsInSegment; i++) {
+        Document doc = new Document();
+        doc.add(new Field("c", tkg1.newTokenStream(), ft1));
+        writer.addDocument(doc);
+      }
+      for (int i = 0; i < numDocsInSegment; i++) {
+        Document doc = new Document();
+        doc.add(new Field("c", tkg2.newTokenStream(), ft1));
+        writer.addDocument(doc);
+      }
+
+      IndexReader reader1 = writer.getReader();
+      assertEquals(2, reader1.leaves().size());
+      assertEquals(
+          hasPayloads,
+          reader1.leaves().get(0).reader().getFieldInfos().fieldInfo("c").hasPayloads());
+      assertNotEquals(
+          hasPayloads,
+          reader1.leaves().get(1).reader().getFieldInfos().fieldInfo("c").hasPayloads());
+
+      writer.forceMerge(1);
+      IndexReader reader2 = writer.getReader();
+      assertEquals(1, reader2.leaves().size());
+      // assert that in the merged segments payloads set up for the field
+      assertTrue(reader2.leaves().get(0).reader().getFieldInfos().fieldInfo("c").hasPayloads());
+
+      IOUtils.close(writer, reader1, reader2, dir);
+    }
+  }
+
+  /** A generator for token streams with optional null payloads */
+  private static class TokenStreamGenerator {
+    private final String[] terms;
+    private final BytesRef[] termBytes;
+    private final boolean hasPayloads;
+
+    public TokenStreamGenerator(boolean hasPayloads) {
+      this.hasPayloads = hasPayloads;
+      final int termsCount = 10;
+      terms = new String[termsCount];
+      termBytes = new BytesRef[termsCount];
+      for (int i = 0; i < termsCount; ++i) {
+        terms[i] = TestUtil.randomRealisticUnicodeString(random());
+        termBytes[i] = new BytesRef(terms[i]);
+      }
+    }
+
+    public TokenStream newTokenStream() {
+      return new OptionalNullPayloadTokenStream(TestUtil.nextInt(random(), 1, 5), terms, termBytes);
+    }
+
+    private class OptionalNullPayloadTokenStream
+        extends BaseTermVectorsFormatTestCase.RandomTokenStream {
+      public OptionalNullPayloadTokenStream(
+          int len, String[] sampleTerms, BytesRef[] sampleTermBytes) {
+        super(len, sampleTerms, sampleTermBytes);
+      }
+
+      @Override
+      protected BytesRef randomPayload() {
+        if (hasPayloads == false) {
+          return null;
+        }
+        final int len = randomIntBetween(1, 5);
+        final BytesRef payload = new BytesRef(len);
+        random().nextBytes(payload.bytes);
+        payload.length = len;
+        return payload;
+      }
+    }
   }
 }

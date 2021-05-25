@@ -155,9 +155,9 @@ public class MockIndexInputWrapper extends IndexInput {
   }
 
   @Override
-  public void readLEFloats(float[] floats, int offset, int len) throws IOException {
+  public void readFloats(float[] floats, int offset, int len) throws IOException {
     ensureOpen();
-    delegate.readLEFloats(floats, offset, len);
+    delegate.readFloats(floats, offset, len);
   }
 
   @Override

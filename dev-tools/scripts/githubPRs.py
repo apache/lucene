@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-Simple script that queries Github for all open PRs, then finds the ones without
+Simple script that queries GitHub for all open PRs, then finds the ones without
 issue number in title, and the ones where the linked JIRA is already closed
 """
 

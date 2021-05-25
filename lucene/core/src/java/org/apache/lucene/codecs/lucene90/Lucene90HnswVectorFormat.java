@@ -77,7 +77,9 @@ public final class Lucene90HnswVectorFormat extends VectorFormat {
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Sole constructor */
-  public Lucene90HnswVectorFormat() {}
+  public Lucene90HnswVectorFormat() {
+    super("Lucene90HnswVectorFormat");
+  }
 
   @Override
   public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {

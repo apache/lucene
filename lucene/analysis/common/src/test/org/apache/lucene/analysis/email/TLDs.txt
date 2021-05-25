@@ -624,7 +624,6 @@ istanbul
 it
 itau
 itv
-iveco
 jaguar
 java
 jcb
@@ -1122,7 +1121,6 @@ spa
 space
 sport
 spot
-spreadbetting
 sr
 srl
 ss

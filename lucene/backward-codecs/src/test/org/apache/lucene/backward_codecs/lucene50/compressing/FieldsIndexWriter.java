@@ -22,6 +22,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicReader;
+import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicWriter;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
@@ -31,17 +34,15 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
  * Efficient index format for block-based {@link Codec}s.
  *
  * <p>For each block of compressed stored fields, this stores the first document of the block and
- * the start pointer of the block in a {@link DirectMonotonicWriter}. At read time, the docID is
- * binary-searched in the {@link DirectMonotonicReader} that records doc IDS, and the returned index
- * is used to look up the start pointer in the {@link DirectMonotonicReader} that records start
- * pointers.
+ * the start pointer of the block in a {@link LegacyDirectMonotonicWriter}. At read time, the docID
+ * is binary-searched in the {@link LegacyDirectMonotonicWriter} that records doc IDS, and the
+ * returned index is used to look up the start pointer in the {@link LegacyDirectMonotonicReader}
+ * that records start pointers.
  *
  * @lucene.internal
  */
@@ -79,11 +80,14 @@ public final class FieldsIndexWriter implements Closeable {
     this.id = id;
     this.blockShift = blockShift;
     this.ioContext = ioContext;
-    this.docsOut = dir.createTempOutput(name, codecName + "-doc_ids", ioContext);
+    this.docsOut =
+        EndiannessReverserUtil.createTempOutput(dir, name, codecName + "-doc_ids", ioContext);
     boolean success = false;
     try {
       CodecUtil.writeHeader(docsOut, codecName + "Docs", VERSION_CURRENT);
-      filePointersOut = dir.createTempOutput(name, codecName + "file_pointers", ioContext);
+      filePointersOut =
+          EndiannessReverserUtil.createTempOutput(
+              dir, name, codecName + "file_pointers", ioContext);
       CodecUtil.writeHeader(filePointersOut, codecName + "FilePointers", VERSION_CURRENT);
       success = true;
     } finally {
@@ -111,7 +115,8 @@ public final class FieldsIndexWriter implements Closeable {
     IOUtils.close(docsOut, filePointersOut);
 
     try (IndexOutput dataOut =
-        dir.createOutput(IndexFileNames.segmentFileName(name, suffix, extension), ioContext)) {
+        EndiannessReverserUtil.createOutput(
+            dir, IndexFileNames.segmentFileName(name, suffix, extension), ioContext)) {
       CodecUtil.writeIndexHeader(dataOut, codecName + "Idx", VERSION_CURRENT, id, suffix);
 
       metaOut.writeInt(numDocs);
@@ -120,12 +125,13 @@ public final class FieldsIndexWriter implements Closeable {
       metaOut.writeLong(dataOut.getFilePointer());
 
       try (ChecksumIndexInput docsIn =
-          dir.openChecksumInput(docsOut.getName(), IOContext.READONCE)) {
+          EndiannessReverserUtil.openChecksumInput(dir, docsOut.getName(), IOContext.READONCE)) {
         CodecUtil.checkHeader(docsIn, codecName + "Docs", VERSION_CURRENT, VERSION_CURRENT);
         Throwable priorE = null;
         try {
-          final DirectMonotonicWriter docs =
-              DirectMonotonicWriter.getInstance(metaOut, dataOut, totalChunks + 1, blockShift);
+          final LegacyDirectMonotonicWriter docs =
+              LegacyDirectMonotonicWriter.getInstance(
+                  metaOut, dataOut, totalChunks + 1, blockShift);
           long doc = 0;
           docs.add(doc);
           for (int i = 0; i < totalChunks; ++i) {
@@ -147,13 +153,15 @@ public final class FieldsIndexWriter implements Closeable {
 
       metaOut.writeLong(dataOut.getFilePointer());
       try (ChecksumIndexInput filePointersIn =
-          dir.openChecksumInput(filePointersOut.getName(), IOContext.READONCE)) {
+          EndiannessReverserUtil.openChecksumInput(
+              dir, filePointersOut.getName(), IOContext.READONCE)) {
         CodecUtil.checkHeader(
             filePointersIn, codecName + "FilePointers", VERSION_CURRENT, VERSION_CURRENT);
         Throwable priorE = null;
         try {
-          final DirectMonotonicWriter filePointers =
-              DirectMonotonicWriter.getInstance(metaOut, dataOut, totalChunks + 1, blockShift);
+          final LegacyDirectMonotonicWriter filePointers =
+              LegacyDirectMonotonicWriter.getInstance(
+                  metaOut, dataOut, totalChunks + 1, blockShift);
           long fp = 0;
           for (int i = 0; i < totalChunks; ++i) {
             fp += filePointersIn.readVLong();

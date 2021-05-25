@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene86;
 
 import java.io.IOException;
 import java.util.Set;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexSorter;
@@ -42,7 +43,7 @@ public class Lucene86RWSegmentInfoFormat extends Lucene86SegmentInfoFormat {
   public void write(Directory dir, SegmentInfo si, IOContext ioContext) throws IOException {
     final String fileName = IndexFileNames.segmentFileName(si.name, "", SI_EXTENSION);
 
-    try (IndexOutput output = dir.createOutput(fileName, ioContext)) {
+    try (IndexOutput output = EndiannessReverserUtil.createOutput(dir, fileName, ioContext)) {
       // Only add the file once we've successfully created it, else IFD assert can trip:
       si.addFile(fileName);
       CodecUtil.writeIndexHeader(output, CODEC_NAME, VERSION_CURRENT, si.getId(), "");
