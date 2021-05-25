@@ -25,7 +25,7 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.ConjunctionDISI;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.util.Bits;
@@ -76,7 +76,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       }
 
       DocIdSetIterator it =
-          ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         final BytesRef bytesRef = dv.binaryValue();

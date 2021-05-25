@@ -17,8 +17,9 @@
 package org.apache.lucene.search.spans;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.search.ConjunctionDISI;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TwoPhaseIterator;
 
@@ -35,7 +36,7 @@ abstract class ConjunctionSpans extends Spans {
       throw new IllegalArgumentException("Less than 2 subSpans.size():" + subSpans.size());
     }
     this.subSpans = subSpans.toArray(new Spans[subSpans.size()]);
-    this.conjunction = ConjunctionDISI.intersectSpans(subSpans);
+    this.conjunction = intersectSpans(subSpans);
     this.atFirstInCurrentDoc = true; // ensure for doc -1 that start/end positions are -1
   }
 
@@ -108,5 +109,28 @@ abstract class ConjunctionSpans extends Spans {
 
   public Spans[] getSubSpans() {
     return subSpans;
+  }
+
+  private static DocIdSetIterator intersectSpans(List<Spans> spanList) {
+    if (spanList.size() < 2) {
+      throw new IllegalArgumentException("Cannot make a ConjunctionDISI of less than 2 iterators");
+    }
+    final List<DocIdSetIterator> allIterators = new ArrayList<>();
+    final List<TwoPhaseIterator> twoPhaseIterators = new ArrayList<>();
+    for (Spans spans : spanList) {
+      addSpans(spans, allIterators, twoPhaseIterators);
+    }
+
+    return ConjunctionUtils.createConjunction(allIterators, twoPhaseIterators);
+  }
+
+  private static void addSpans(
+      Spans spans, List<DocIdSetIterator> allIterators, List<TwoPhaseIterator> twoPhaseIterators) {
+    TwoPhaseIterator twoPhaseIter = spans.asTwoPhaseIterator();
+    if (twoPhaseIter != null) {
+      ConjunctionUtils.addTwoPhaseIterator(twoPhaseIter, allIterators, twoPhaseIterators);
+    } else { // no approximation support, use the iterator as-is
+      ConjunctionUtils.addIterator(spans, allIterators, twoPhaseIterators);
+    }
   }
 }
