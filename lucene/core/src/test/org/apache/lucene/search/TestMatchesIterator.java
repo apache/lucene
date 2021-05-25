@@ -20,25 +20,15 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.FilterLeafReader;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -47,296 +37,20 @@ import org.apache.lucene.search.spans.SpanNearQuery;
 import org.apache.lucene.search.spans.SpanOrQuery;
 import org.apache.lucene.search.spans.SpanQuery;
 import org.apache.lucene.search.spans.SpanTermQuery;
-import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
-public class TestMatchesIterator extends LuceneTestCase {
-
-  protected IndexSearcher searcher;
-  protected Directory directory;
-  protected IndexReader reader = null;
-
-  private static final String FIELD_WITH_OFFSETS = "field_offsets";
-  private static final String FIELD_NO_OFFSETS = "field_no_offsets";
-  private static final String FIELD_DOCS_ONLY = "field_docs_only";
-  private static final String FIELD_FREQS = "field_freqs";
-  private static final String FIELD_POINT = "field_point";
-
-  private static final FieldType OFFSETS = new FieldType(TextField.TYPE_STORED);
-
-  static {
-    OFFSETS.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
-  }
-
-  private static final FieldType DOCS = new FieldType(TextField.TYPE_STORED);
-
-  static {
-    DOCS.setIndexOptions(IndexOptions.DOCS);
-  }
-
-  private static final FieldType DOCS_AND_FREQS = new FieldType(TextField.TYPE_STORED);
-
-  static {
-    DOCS_AND_FREQS.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
-  }
+public class TestMatchesIterator extends MatchesTestBase {
 
   @Override
-  public void tearDown() throws Exception {
-    reader.close();
-    directory.close();
-    super.tearDown();
-  }
-
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    directory = newDirectory();
-    RandomIndexWriter writer =
-        new RandomIndexWriter(
-            random(),
-            directory,
-            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
-    for (int i = 0; i < docFields.length; i++) {
-      Document doc = new Document();
-      doc.add(newField(FIELD_WITH_OFFSETS, docFields[i], OFFSETS));
-      doc.add(newField(FIELD_NO_OFFSETS, docFields[i], TextField.TYPE_STORED));
-      doc.add(newField(FIELD_DOCS_ONLY, docFields[i], DOCS));
-      doc.add(newField(FIELD_FREQS, docFields[i], DOCS_AND_FREQS));
-      doc.add(new IntPoint(FIELD_POINT, 10));
-      doc.add(new NumericDocValuesField(FIELD_POINT, 10));
-      doc.add(new NumericDocValuesField("id", i));
-      doc.add(newField("id", Integer.toString(i), TextField.TYPE_STORED));
-      writer.addDocument(doc);
-    }
-    writer.forceMerge(1);
-    reader = writer.getReader();
-    writer.close();
-    searcher = newSearcher(getOnlyLeafReader(reader));
-  }
-
-  protected String[] docFields = {
-    "w1 w2 w3 w4 w5",
-    "w1 w3 w2 w3 zz",
-    "w1 xx w2 yy w4",
-    "w1 w2 w1 w4 w2 w3",
-    "a phrase sentence with many phrase sentence iterations of a phrase sentence",
-    "nothing matches this document"
-  };
-
-  private void checkMatches(Query q, String field, int[][] expected) throws IOException {
-    Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
-    for (int i = 0; i < expected.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(expected[i][0], searcher.leafContexts));
-      int doc = expected[i][0] - ctx.docBase;
-      Matches matches = w.matches(ctx, doc);
-      if (matches == null) {
-        assertEquals(expected[i].length, 1);
-        continue;
-      }
-      MatchesIterator it = matches.getMatches(field);
-      if (expected[i].length == 1) {
-        assertNull(it);
-        continue;
-      }
-      checkFieldMatches(it, expected[i]);
-      checkFieldMatches(matches.getMatches(field), expected[i]); // test multiple calls
-    }
-  }
-
-  private void checkLabelCount(Query q, String field, int[] expected) throws IOException {
-    Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
-    for (int i = 0; i < expected.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
-      int doc = i - ctx.docBase;
-      Matches matches = w.matches(ctx, doc);
-      if (matches == null) {
-        assertEquals("Expected to get matches on document " + i, 0, expected[i]);
-        continue;
-      }
-      MatchesIterator it = matches.getMatches(field);
-      if (expected[i] == 0) {
-        assertNull(it);
-        continue;
-      } else {
-        assertNotNull(it);
-      }
-      IdentityHashMap<Query, Integer> labels = new IdentityHashMap<>();
-      while (it.next()) {
-        labels.put(it.getQuery(), 1);
-      }
-      assertEquals(expected[i], labels.size());
-    }
-  }
-
-  private void checkFieldMatches(MatchesIterator it, int[] expected) throws IOException {
-    int pos = 1;
-    while (it.next()) {
-      // System.out.println(expected[i][pos] + "->" + expected[i][pos + 1] + "[" + expected[i][pos +
-      // 2] + "->" + expected[i][pos + 3] + "]");
-      assertEquals("Wrong start position", expected[pos], it.startPosition());
-      assertEquals("Wrong end position", expected[pos + 1], it.endPosition());
-      assertEquals("Wrong start offset", expected[pos + 2], it.startOffset());
-      assertEquals("Wrong end offset", expected[pos + 3], it.endOffset());
-      pos += 4;
-    }
-    assertEquals(expected.length, pos);
-  }
-
-  private void checkNoPositionsMatches(Query q, String field, boolean[] expected)
-      throws IOException {
-    Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
-    for (int i = 0; i < expected.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
-      int doc = i - ctx.docBase;
-      Matches matches = w.matches(ctx, doc);
-      if (expected[i]) {
-        MatchesIterator mi = matches.getMatches(field);
-        assertTrue(mi.next());
-        assertEquals(-1, mi.startPosition());
-        while (mi.next()) {
-          assertEquals(-1, mi.startPosition());
-        }
-      } else {
-        assertNull(matches);
-      }
-    }
-  }
-
-  private void checkSubMatches(Query q, String[][] expectedNames) throws IOException {
-    Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE_NO_SCORES, 1);
-    for (int i = 0; i < expectedNames.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
-      int doc = i - ctx.docBase;
-      Matches matches = w.matches(ctx, doc);
-      if (matches == null) {
-        assertEquals("Expected to get no matches on document " + i, 0, expectedNames[i].length);
-        continue;
-      }
-      Set<String> expectedQueries = new HashSet<>(Arrays.asList(expectedNames[i]));
-      Set<String> actualQueries =
-          NamedMatches.findNamedMatches(matches).stream()
-              .map(NamedMatches::getName)
-              .collect(Collectors.toSet());
-
-      Set<String> unexpected = new HashSet<>(actualQueries);
-      unexpected.removeAll(expectedQueries);
-      assertEquals("Unexpected matching leaf queries: " + unexpected, 0, unexpected.size());
-      Set<String> missing = new HashSet<>(expectedQueries);
-      missing.removeAll(actualQueries);
-      assertEquals("Missing matching leaf queries: " + missing, 0, missing.size());
-    }
-  }
-
-  private void assertIsLeafMatch(Query q, String field) throws IOException {
-    Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
-    for (int i = 0; i < searcher.reader.maxDoc(); i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
-      int doc = i - ctx.docBase;
-      Matches matches = w.matches(ctx, doc);
-      if (matches == null) {
-        return;
-      }
-      MatchesIterator mi = matches.getMatches(field);
-      if (mi == null) {
-        return;
-      }
-      while (mi.next()) {
-        assertNull(mi.getSubMatches());
-      }
-    }
-  }
-
-  private void checkTermMatches(Query q, String field, TermMatch[][][] expected)
-      throws IOException {
-    Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
-    for (int i = 0; i < expected.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
-      int doc = i - ctx.docBase;
-      Matches matches = w.matches(ctx, doc);
-      if (matches == null) {
-        assertEquals(expected[i].length, 0);
-        continue;
-      }
-      MatchesIterator it = matches.getMatches(field);
-      if (expected[i].length == 0) {
-        assertNull(it);
-        continue;
-      }
-      checkTerms(expected[i], it);
-    }
-  }
-
-  private void checkTerms(TermMatch[][] expected, MatchesIterator it) throws IOException {
-    int upTo = 0;
-    while (it.next()) {
-      Set<TermMatch> expectedMatches = new HashSet<>(Arrays.asList(expected[upTo]));
-      MatchesIterator submatches = it.getSubMatches();
-      while (submatches.next()) {
-        TermMatch tm =
-            new TermMatch(
-                submatches.startPosition(), submatches.startOffset(), submatches.endOffset());
-        if (expectedMatches.remove(tm) == false) {
-          fail("Unexpected term match: " + tm);
-        }
-      }
-      if (expectedMatches.size() != 0) {
-        fail(
-            "Missing term matches: "
-                + expectedMatches.stream().map(Object::toString).collect(Collectors.joining(", ")));
-      }
-      upTo++;
-    }
-    if (upTo < expected.length - 1) {
-      fail("Missing expected match");
-    }
-  }
-
-  static class TermMatch {
-
-    public final int position;
-
-    public final int startOffset;
-
-    public final int endOffset;
-
-    public TermMatch(PostingsEnum pe, int position) throws IOException {
-      this.position = position;
-      this.startOffset = pe.startOffset();
-      this.endOffset = pe.endOffset();
-    }
-
-    public TermMatch(int position, int startOffset, int endOffset) {
-      this.position = position;
-      this.startOffset = startOffset;
-      this.endOffset = endOffset;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      TermMatch termMatch = (TermMatch) o;
-      return position == termMatch.position
-          && startOffset == termMatch.startOffset
-          && endOffset == termMatch.endOffset;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(position, startOffset, endOffset);
-    }
-
-    @Override
-    public String toString() {
-      return position + "[" + startOffset + "->" + endOffset + "]";
-    }
+  protected String[] getDocuments() {
+    return new String[] {
+      "w1 w2 w3 w4 w5",
+      "w1 w3 w2 w3 zz",
+      "w1 xx w2 yy w4",
+      "w1 w2 w1 w4 w2 w3",
+      "a phrase sentence with many phrase sentence iterations of a phrase sentence",
+      "nothing matches this document"
+    };
   }
 
   public void testTermQuery() throws IOException {
