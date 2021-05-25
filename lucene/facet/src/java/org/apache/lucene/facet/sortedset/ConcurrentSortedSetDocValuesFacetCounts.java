@@ -113,9 +113,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
     int childCount = 0;
 
     TopOrdAndIntQueue.OrdAndValue reuse = null;
-    // System.out.println("getDim : " + ordRange.start + " - " + ordRange.end);
+
     for (int ord = ordRange.start; ord <= ordRange.end; ord++) {
-      // System.out.println("  ord=" + ord + " count=" + counts[ord]);
       if (counts.get(ord) > 0) {
         dimCount += counts.get(ord);
         childCount++;
@@ -288,7 +287,6 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
   /** Does all the "real work" of tallying up the counts. */
   private final void countAll() throws IOException, InterruptedException {
-    // System.out.println("ssdv count");
 
     OrdinalMap ordinalMap;
 
