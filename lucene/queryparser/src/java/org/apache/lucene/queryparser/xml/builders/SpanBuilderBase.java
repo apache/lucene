@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.queryparser.xml.builders;
 
+import org.apache.lucene.queries.spans.SpanQuery; // javadocs
 import org.apache.lucene.queryparser.xml.ParserException;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.spans.SpanQuery; // javadocs
 import org.w3c.dom.Element;
 
 /** Base class for building {@link SpanQuery}s */

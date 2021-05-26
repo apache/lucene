@@ -20,10 +20,10 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.queries.spans.SpanNearQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanQuery;
 
 /** Factory for NEAR queries */
 public class DistanceQuery extends ComposedQuery implements DistanceSubQuery {

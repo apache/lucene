@@ -33,10 +33,6 @@ import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.util.BytesRef;
 
 public class TestMatchesIterator extends MatchesTestBase {
@@ -442,37 +438,6 @@ public class TestMatchesIterator extends MatchesTestBase {
 
   //  0         1         2         3         4         5         6         7
   // "a phrase sentence with many phrase sentence iterations of a phrase sentence",
-
-  public void testSpanQuery() throws IOException {
-    SpanQuery subq =
-        SpanNearQuery.newOrderedNearQuery(FIELD_WITH_OFFSETS)
-            .addClause(new SpanTermQuery(new Term(FIELD_WITH_OFFSETS, "with")))
-            .addClause(new SpanTermQuery(new Term(FIELD_WITH_OFFSETS, "many")))
-            .build();
-    Query q =
-        SpanNearQuery.newOrderedNearQuery(FIELD_WITH_OFFSETS)
-            .addClause(new SpanTermQuery(new Term(FIELD_WITH_OFFSETS, "sentence")))
-            .addClause(
-                new SpanOrQuery(
-                    subq, new SpanTermQuery(new Term(FIELD_WITH_OFFSETS, "iterations"))))
-            .build();
-    checkMatches(
-        q, FIELD_WITH_OFFSETS, new int[][] {{0}, {1}, {2}, {3}, {4, 2, 4, 9, 27, 6, 7, 35, 54}});
-    checkLabelCount(q, FIELD_WITH_OFFSETS, new int[] {0, 0, 0, 0, 1});
-    checkTermMatches(
-        q,
-        FIELD_WITH_OFFSETS,
-        new TermMatch[][][] {
-          {},
-          {},
-          {},
-          {},
-          {
-            {new TermMatch(2, 9, 17), new TermMatch(3, 18, 22), new TermMatch(4, 23, 27)},
-            {new TermMatch(6, 35, 43), new TermMatch(7, 44, 54)}
-          }
-        });
-  }
 
   public void testPointQuery() throws IOException {
     IndexOrDocValuesQuery pointQuery =

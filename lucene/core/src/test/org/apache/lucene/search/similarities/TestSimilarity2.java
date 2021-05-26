@@ -33,9 +33,6 @@ import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -264,35 +261,6 @@ public class TestSimilarity2 extends LuceneTestCase {
       BooleanQuery.Builder query = new BooleanQuery.Builder();
       query.add(new TermQuery(new Term("foo", "bar")), BooleanClause.Occur.SHOULD);
       assertEquals(1, is.search(query.build(), 10).totalHits.value);
-    }
-    ir.close();
-    dir.close();
-  }
-
-  /** make sure all sims work with spanOR(termX, termY) where termY does not exist */
-  public void testCrazySpans() throws Exception {
-    // historically this was a problem, but sim's no longer have to score terms that dont exist
-    Directory dir = newDirectory();
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
-    Document doc = new Document();
-    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
-    doc.add(newField("foo", "bar", ft));
-    iw.addDocument(doc);
-    IndexReader ir = iw.getReader();
-    iw.close();
-    IndexSearcher is = newSearcher(ir);
-
-    for (Similarity sim : sims) {
-      is.setSimilarity(sim);
-      SpanTermQuery s1 = new SpanTermQuery(new Term("foo", "bar"));
-      SpanTermQuery s2 = new SpanTermQuery(new Term("foo", "baz"));
-      Query query = new SpanOrQuery(s1, s2);
-      TopDocs td = is.search(query, 10);
-      assertEquals(1, td.totalHits.value);
-      float score = td.scoreDocs[0].score;
-      assertFalse("negative score for " + sim, score < 0.0f);
-      assertFalse("inf score for " + sim, Float.isInfinite(score));
-      assertFalse("nan score for " + sim, Float.isNaN(score));
     }
     ir.close();
     dir.close();
