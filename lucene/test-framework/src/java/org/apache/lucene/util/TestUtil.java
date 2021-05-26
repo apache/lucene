@@ -361,49 +361,48 @@ public final class TestUtil {
     }
 
     CheckIndex.Status.LiveDocStatus liveDocStatus =
-        CheckIndex.testLiveDocs(codecReader, infoStream, "");
+        CheckIndex.testLiveDocs(codecReader, infoStream);
     if (liveDocStatus.error != null) {
       IOUtils.rethrowAlways(liveDocStatus.error);
     }
 
     CheckIndex.Status.FieldInfoStatus fieldInfoStatus =
-        CheckIndex.testFieldInfos(codecReader, infoStream, "");
+        CheckIndex.testFieldInfos(codecReader, infoStream);
     if (fieldInfoStatus.error != null) {
       IOUtils.rethrowAlways(fieldInfoStatus.error);
     }
 
     CheckIndex.Status.FieldNormStatus fieldNormStatus =
-        CheckIndex.testFieldNorms(codecReader, infoStream, "");
+        CheckIndex.testFieldNorms(codecReader, infoStream);
     if (fieldNormStatus.error != null) {
       IOUtils.rethrowAlways(fieldInfoStatus.error);
     }
 
     CheckIndex.Status.TermIndexStatus termIndexStatus =
-        CheckIndex.testPostings(codecReader, infoStream, "", false, doSlowChecks);
+        CheckIndex.testPostings(codecReader, infoStream, false, doSlowChecks);
     if (termIndexStatus.error != null) {
       IOUtils.rethrowAlways(termIndexStatus.error);
     }
 
     CheckIndex.Status.StoredFieldStatus storedFieldStatus =
-        CheckIndex.testStoredFields(codecReader, infoStream, "");
+        CheckIndex.testStoredFields(codecReader, infoStream);
     if (storedFieldStatus.error != null) {
       IOUtils.rethrowAlways(storedFieldStatus.error);
     }
 
     CheckIndex.Status.TermVectorStatus termVectorStatus =
-        CheckIndex.testTermVectors(codecReader, infoStream, "", false, doSlowChecks);
+        CheckIndex.testTermVectors(codecReader, infoStream, false, doSlowChecks);
     if (termVectorStatus.error != null) {
       IOUtils.rethrowAlways(termVectorStatus.error);
     }
 
     CheckIndex.Status.DocValuesStatus docValuesStatus =
-        CheckIndex.testDocValues(codecReader, infoStream, "");
+        CheckIndex.testDocValues(codecReader, infoStream);
     if (docValuesStatus.error != null) {
       IOUtils.rethrowAlways(docValuesStatus.error);
     }
 
-    CheckIndex.Status.PointsStatus pointsStatus =
-        CheckIndex.testPoints(codecReader, infoStream, "");
+    CheckIndex.Status.PointsStatus pointsStatus = CheckIndex.testPoints(codecReader, infoStream);
     if (pointsStatus.error != null) {
       IOUtils.rethrowAlways(pointsStatus.error);
     }

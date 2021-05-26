@@ -126,67 +126,65 @@ public class TestCheckIndex extends BaseTestCheckIndex {
 
       assertEquals(1, status.segmentInfos.size());
 
-      String segmentId = "[Segment _0]";
       CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
 
       // confirm live docs testing status
       assertEquals(0, segStatus.liveDocStatus.numDeleted);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[LiveDocs]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: check live docs"));
       assertNull(segStatus.liveDocStatus.error);
 
       // confirm field infos testing status
       assertEquals(8, segStatus.fieldInfoStatus.totFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[FieldInfos]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: field infos"));
       assertNull(segStatus.fieldInfoStatus.error);
 
       // confirm field norm (from term vector) testing status
       assertEquals(1, segStatus.fieldNormStatus.totFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[FieldNorms]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: field norms"));
       assertNull(segStatus.fieldNormStatus.error);
 
       // confirm term index testing status
       assertTrue(segStatus.termIndexStatus.termCount > 0);
       assertTrue(segStatus.termIndexStatus.totFreq > 0);
       assertTrue(segStatus.termIndexStatus.totPos > 0);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[Postings]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: terms, freq, prox"));
       assertNull(segStatus.termIndexStatus.error);
 
       // confirm stored field testing status
       // add storedField from tombstone doc
       assertEquals(liveDocCount + 1, segStatus.storedFieldStatus.docCount);
       assertEquals(2 * liveDocCount, segStatus.storedFieldStatus.totFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[StoredFields]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: stored fields"));
       assertNull(segStatus.storedFieldStatus.error);
 
       // confirm term vector testing status
       assertEquals(liveDocCount, segStatus.termVectorStatus.docCount);
       assertEquals(liveDocCount, segStatus.termVectorStatus.totVectors);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[TermVectors]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: term vectors"));
       assertNull(segStatus.termVectorStatus.error);
 
       // confirm doc values testing status
       assertEquals(2, segStatus.docValuesStatus.totalNumericFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[DocValues]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: docvalues"));
       assertNull(segStatus.docValuesStatus.error);
 
       // confirm point values testing status
       assertEquals(1, segStatus.pointsStatus.totalValueFields);
       assertEquals(liveDocCount, segStatus.pointsStatus.totalValuePoints);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[Points]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: points"));
       assertNull(segStatus.pointsStatus.error);
 
       // confirm vector testing status
       assertEquals(2 * liveDocCount, segStatus.vectorValuesStatus.totalVectorValues);
       assertEquals(2, segStatus.vectorValuesStatus.totalVectorFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[Vectors]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: vectors"));
       assertNull(segStatus.vectorValuesStatus.error);
 
       // confirm index sort testing status
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId + "[Sort]"));
+      assertTrue(output.toString(IOUtils.UTF_8).contains("test: index sort"));
       assertNull(segStatus.indexSortStatus.error);
 
       // confirm soft deletes testing status
-      assertTrue(output.toString(IOUtils.UTF_8).contains(segmentId));
       assertTrue(output.toString(IOUtils.UTF_8).contains("test: check soft deletes"));
       assertNull(segStatus.softDeletesStatus.error);
     }
