@@ -475,7 +475,8 @@ public final class CheckIndex implements Closeable {
     threadCount = tc;
   }
 
-  private int threadCount = 1;
+  // capped threadCount at 4
+  private int threadCount = Math.min(Runtime.getRuntime().availableProcessors(), 4);
 
   /**
    * Set infoStream where messages should go. If null, no messages are printed. If verbose is true
@@ -675,7 +676,7 @@ public final class CheckIndex implements Closeable {
       if (segmentName > result.maxSegmentName) {
         result.maxSegmentName = segmentName;
       }
-      String segmentId = String.format(Locale.ROOT, "[Segment %s]", segmentName);
+      String segmentId = String.format(Locale.ROOT, "[Segment %s]", info.info.name);
       if (onlySegments != null && !onlySegments.contains(info.info.name)) {
         continue;
       }
@@ -3963,7 +3964,15 @@ public final class CheckIndex implements Closeable {
           throw new IllegalArgumentException("-threadCount requires a following number");
         }
         i++;
-        opts.threadCount = Integer.parseInt(args[i]);
+        int providedThreadCount = Integer.parseInt(args[i]);
+        // Current implementation supports up to 11 concurrent checks at any time, and no
+        // concurrency across segments.
+        // Capping the thread count to 11 to avoid unnecessary threads to be created.
+        if (providedThreadCount > 11) {
+          System.out.println(
+              "-threadCount currently only supports up to 11 threads. Value higher than that will be capped.");
+        }
+        opts.threadCount = Math.min(providedThreadCount, 11);
       } else {
         if (opts.indexPath != null) {
           throw new IllegalArgumentException("ERROR: unexpected extra argument '" + args[i] + "'");
@@ -4031,7 +4040,10 @@ public final class CheckIndex implements Closeable {
     setDoSlowChecks(opts.doSlowChecks);
     setChecksumsOnly(opts.doChecksumsOnly);
     setInfoStream(opts.out, opts.verbose);
-    setThreadCount(opts.threadCount);
+    // when threadCount was not provided via command line, don't overwrite the default
+    if (opts.threadCount > 0) {
+      setThreadCount(opts.threadCount);
+    }
 
     Status result = checkIndex(opts.onlySegments);
 

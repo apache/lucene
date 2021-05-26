@@ -126,7 +126,7 @@ public class TestCheckIndex extends BaseTestCheckIndex {
 
       assertEquals(1, status.segmentInfos.size());
 
-      String segmentId = "[Segment 0]";
+      String segmentId = "[Segment _0]";
       CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
 
       // confirm live docs testing status
