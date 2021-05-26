@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.BufferedInputStream;
@@ -321,7 +322,7 @@ public final class TestUtil {
       checker.setDoSlowChecks(doSlowChecks);
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
-      checker.setThreadCount(RandomNumbers.randomIntBetween(new Random(), 1, 5));
+      checker.setThreadCount(RandomizedTest.randomIntBetween(1, 5));
       CheckIndex.Status indexStatus = checker.checkIndex(null);
 
       if (indexStatus == null || indexStatus.clean == false) {
