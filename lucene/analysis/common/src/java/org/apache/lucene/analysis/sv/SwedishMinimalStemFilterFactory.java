@@ -32,7 +32,7 @@ import org.apache.lucene.analysis.TokenStream;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
  *
- * @since 8.9.0
+ * @since 9.0.0
  * @lucene.spi {@value #NAME}
  */
 public class SwedishMinimalStemFilterFactory extends TokenFilterFactory {

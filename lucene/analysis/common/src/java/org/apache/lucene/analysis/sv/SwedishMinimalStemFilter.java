@@ -30,7 +30,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
  * custom {@link TokenFilter} that sets the {@link KeywordAttribute} before this {@link
  * TokenStream}.
  *
- * @since 8.9.0
+ * @since 9.0.0
  */
 public final class SwedishMinimalStemFilter extends TokenFilter {
   private final SwedishMinimalStemmer stemmer = new SwedishMinimalStemmer();

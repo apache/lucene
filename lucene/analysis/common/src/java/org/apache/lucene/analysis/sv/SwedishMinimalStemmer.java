@@ -58,7 +58,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
  * -or/orna, -en. We do not strip -an or -ans suffixes, since that would require a large dictionary
  * of exceptions.
  *
- * @since 8.9.0
+ * @since 9.0.0
  */
 public class SwedishMinimalStemmer {
 
