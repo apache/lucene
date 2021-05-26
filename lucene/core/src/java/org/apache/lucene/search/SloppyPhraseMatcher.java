@@ -100,7 +100,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     }
 
     approximation =
-        ConjunctionDISI.intersectIterators(
+        ConjunctionUtils.intersectIterators(
             Arrays.stream(postings).map(p -> p.postings).collect(Collectors.toList()));
     // What would be a good upper bound of the sloppy frequency? A sum of the
     // sub frequencies would be correct, but it is usually so much higher than

@@ -62,7 +62,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
     super(matchCost);
 
     final DocIdSetIterator approximation =
-        ConjunctionDISI.intersectIterators(
+        ConjunctionUtils.intersectIterators(
             Arrays.stream(postings).map(p -> p.postings).collect(Collectors.toList()));
     final ImpactsSource impactsSource =
         mergeImpacts(Arrays.stream(postings).map(p -> p.impacts).toArray(ImpactsEnum[]::new));
