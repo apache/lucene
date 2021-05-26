@@ -30,9 +30,12 @@ Luke (atop Swing) is the GUI tool for introspecting your Lucene index. It allows
 
 ## Launching Luke
 
+Luke requires Java 11 or above.
+
 Using a binary release
 
-The [Lucene Downloads](https://lucene.apache.org/core/downloads.html) page contains stable releases of Lucene including Luke. Download the respective release, unpack and run a shell or batch scripts inside the folder 'luke' (or directly with java -jar if you prefer it that way).
+The [Lucene Downloads](https://lucene.apache.org/core/downloads.html) page contains stable releases of Lucene including Luke. You can start it with:
+java -jar lucene-luke-x.x.x-standalone.jar
 
 ## Older releases
 
