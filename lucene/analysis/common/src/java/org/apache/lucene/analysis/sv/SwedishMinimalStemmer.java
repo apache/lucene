@@ -53,10 +53,10 @@ package org.apache.lucene.analysis.sv;
 import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 /**
- * Minimal Stemmer for Swedish.
- * The algorithm is an adapted version of the SwedishLightStemmer, but only stripping the most common
- * plural suffixes for nouns: -ar/arne/arna/aren, -at, -er/erna, -et, -or/orna, -en. We do not strip
- * -an or -ans suffixes, since that would require a large dictionary of exceptions.
+ * Minimal Stemmer for Swedish. The algorithm is an adapted version of the SwedishLightStemmer, but
+ * only stripping the most common plural suffixes for nouns: -ar/arne/arna/aren, -at, -er/erna, -et,
+ * -or/orna, -en. We do not strip -an or -ans suffixes, since that would require a large dictionary
+ * of exceptions.
  *
  * @since 8.9.0
  */
