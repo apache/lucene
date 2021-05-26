@@ -17,8 +17,7 @@
 package org.apache.lucene.analysis.sv;
 
 /*
- * This algorithm is updated based on code located at:
- * http://members.unine.ch/jacques.savoy/clef/
+ * The code is inspired from original code located at: http://members.unine.ch/jacques.savoy/clef/
  *
  * Full copyright for that code follows:
  */
@@ -55,6 +54,9 @@ import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 /**
  * Minimal Stemmer for Swedish.
+ * The algorithm is an adapted version of the SwedishLightStemmer, but only stripping the most common
+ * plural suffixes for nouns: -ar/arne/arna/aren, -at, -er/erna, -et, -or/orna, -en. We do not strip
+ * -an or -ans suffixes, since that would require a large dictionary of exceptions.
  *
  * @since 8.9.0
  */
