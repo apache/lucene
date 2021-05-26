@@ -91,17 +91,6 @@ public final class CheckIndex implements Closeable {
   private Directory dir;
   private Lock writeLock;
   private volatile boolean closed;
-  static final String PART_LIVE_DOCS = "[LiveDocs]";
-  static final String PART_FIELD_INFOS = "[FieldInfos]";
-  static final String PART_FIELD_NORMS = "[FieldNorms]";
-  static final String PART_POSTINGS = "[Postings]";
-  static final String PART_STORED_FIELDS = "[StoredFields]";
-  static final String PART_TERM_VECTORS = "[TermVectors]";
-  static final String PART_DOC_VALUES = "[DocValues]";
-  static final String PART_POINTS = "[Points]";
-  static final String PART_VECTORS = "[Vectors]";
-  static final String PART_SORT = "[Sort]";
-  static final String PART_SOFT_DELETES = "[SoftDeletes]";
 
   /**
    * Returned from {@link #checkIndex()} detailing the health and status of the index.
