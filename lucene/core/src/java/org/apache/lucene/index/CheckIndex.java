@@ -588,7 +588,7 @@ public final class CheckIndex implements Closeable {
       infoStream.println(
           String.format(
               Locale.ROOT,
-              "%.2f%% total deletions; %d documents; %d deleteions",
+              "%.2f%% total deletions; %d documents; %d deletions",
               100. * delCount / maxDoc,
               maxDoc,
               delCount));
