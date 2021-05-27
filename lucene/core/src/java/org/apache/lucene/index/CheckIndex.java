@@ -22,7 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.NumberFormat;
@@ -522,6 +522,7 @@ public final class CheckIndex implements Closeable {
   public Status checkIndex(List<String> onlySegments) throws IOException {
     ExecutorService executorService =
         Executors.newFixedThreadPool(threadCount, new NamedThreadFactory("async-check-index"));
+    msg(infoStream, "Checking index with async threadCount: " + threadCount);
     try {
       return checkIndex(onlySegments, executorService);
     } finally {
@@ -805,7 +806,8 @@ public final class CheckIndex implements Closeable {
                       testLiveDocs(
                           finalReader, new PrintStream(liveDocsOutput, true, IOUtils.UTF_8)),
                   liveDocStatus -> {
-                    infoStream.println(liveDocsOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        liveDocsOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.liveDocStatus = liveDocStatus;
                   });
 
@@ -818,7 +820,8 @@ public final class CheckIndex implements Closeable {
                       testFieldInfos(
                           finalReader, new PrintStream(fieldInfosOutput, true, IOUtils.UTF_8)),
                   fieldInfoStatus -> {
-                    infoStream.println(fieldInfosOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        fieldInfosOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.fieldInfoStatus = fieldInfoStatus;
                   });
 
@@ -831,7 +834,8 @@ public final class CheckIndex implements Closeable {
                       testFieldNorms(
                           finalReader, new PrintStream(fieldNormsOutput, true, IOUtils.UTF_8)),
                   fieldNormStatus -> {
-                    infoStream.println(fieldNormsOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        fieldNormsOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.fieldNormStatus = fieldNormStatus;
                   });
 
@@ -847,7 +851,8 @@ public final class CheckIndex implements Closeable {
                           verbose,
                           doSlowChecks),
                   termIndexStatus -> {
-                    infoStream.println(termIndexOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        termIndexOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.termIndexStatus = termIndexStatus;
                   });
 
@@ -860,7 +865,8 @@ public final class CheckIndex implements Closeable {
                       testStoredFields(
                           finalReader, new PrintStream(storedFieldsOutput, true, IOUtils.UTF_8)),
                   storedFieldStatus -> {
-                    infoStream.println(storedFieldsOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        storedFieldsOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.storedFieldStatus = storedFieldStatus;
                   });
 
@@ -876,7 +882,8 @@ public final class CheckIndex implements Closeable {
                           verbose,
                           doSlowChecks),
                   termVectorStatus -> {
-                    infoStream.println(termVectorsOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        termVectorsOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.termVectorStatus = termVectorStatus;
                   });
 
@@ -889,7 +896,8 @@ public final class CheckIndex implements Closeable {
                       testDocValues(
                           finalReader, new PrintStream(docValuesOutput, true, IOUtils.UTF_8)),
                   docValuesStatus -> {
-                    infoStream.println(docValuesOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        docValuesOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.docValuesStatus = docValuesStatus;
                   });
 
@@ -902,7 +910,8 @@ public final class CheckIndex implements Closeable {
                       testPoints(
                           finalReader, new PrintStream(pointValuesOutput, true, IOUtils.UTF_8)),
                   pointsStatus -> {
-                    infoStream.println(pointValuesOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        pointValuesOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.pointsStatus = pointsStatus;
                   });
 
@@ -915,24 +924,29 @@ public final class CheckIndex implements Closeable {
                       testVectors(
                           finalReader, new PrintStream(vectorValuesOutput, true, IOUtils.UTF_8)),
                   vectorValuesStatus -> {
-                    infoStream.println(vectorValuesOutput.toString(Charset.forName("UTF-8")));
+                    infoStream.println(
+                        vectorValuesOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                     return segInfoStat.vectorValuesStatus = vectorValuesStatus;
                   });
 
           // Test index sort
-          ByteArrayOutputStream indexSortOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testSort =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testSort(
-                          finalReader,
-                          indexSort,
-                          new PrintStream(indexSortOutput, true, IOUtils.UTF_8)),
-                  indexSortStatus -> {
-                    infoStream.println(indexSortOutput.toString(Charset.forName("UTF-8")));
-                    return segInfoStat.indexSortStatus = indexSortStatus;
-                  });
+          CompletableFuture<Void> testSort = null;
+          if (indexSort != null) {
+            ByteArrayOutputStream indexSortOutput = new ByteArrayOutputStream();
+            testSort =
+                runAsyncSegmentPartCheck(
+                    executorService,
+                    () ->
+                        testSort(
+                            finalReader,
+                            indexSort,
+                            new PrintStream(indexSortOutput, true, IOUtils.UTF_8)),
+                    indexSortStatus -> {
+                      infoStream.println(
+                          indexSortOutput.toString(StandardCharsets.UTF_8).stripTrailing());
+                      return segInfoStat.indexSortStatus = indexSortStatus;
+                    });
+          }
 
           CompletableFuture<Void> testSoftDeletes = null;
           final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
@@ -948,7 +962,8 @@ public final class CheckIndex implements Closeable {
                             finalReader,
                             new PrintStream(softDeletesOutput, true, IOUtils.UTF_8)),
                     softDeletesStatus -> {
-                      infoStream.println(softDeletesOutput.toString(Charset.forName("UTF-8")));
+                      infoStream.println(
+                          softDeletesOutput.toString(StandardCharsets.UTF_8).stripTrailing());
                       return segInfoStat.softDeletesStatus = softDeletesStatus;
                     });
           }
@@ -968,7 +983,9 @@ public final class CheckIndex implements Closeable {
           testDocValues.join();
           testPointvalues.join();
           testVectors.join();
-          testSort.join();
+          if (testSort != null) {
+            testSort.join();
+          }
           if (testSoftDeletes != null) {
             testSoftDeletes.join();
           }
@@ -1016,9 +1033,11 @@ public final class CheckIndex implements Closeable {
                 "Vectors test failed", segInfoStat.vectorValuesStatus.error);
           }
 
-          if (segInfoStat.indexSortStatus.error != null) {
-            throw new CheckIndexException(
-                "Index Sort test failed", segInfoStat.indexSortStatus.error);
+          if (testSort != null) {
+            if (segInfoStat.indexSortStatus.error != null) {
+              throw new CheckIndexException(
+                  "Index Sort test failed", segInfoStat.indexSortStatus.error);
+            }
           }
 
           if (testSoftDeletes != null) {
@@ -2521,7 +2540,7 @@ public final class CheckIndex implements Closeable {
   public static Status.VectorValuesStatus testVectors(CodecReader reader, PrintStream infoStream)
       throws IOException {
     if (infoStream != null) {
-      infoStream.print("    test: vectors..............");
+      infoStream.print("    test: vectors.............");
     }
     long startNS = System.nanoTime();
     FieldInfos fieldInfos = reader.getFieldInfos();
