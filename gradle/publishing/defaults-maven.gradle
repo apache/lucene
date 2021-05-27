@@ -179,7 +179,12 @@ configure(subprojects.findAll { it.path in rootProject.published }) { prj ->
         }
 
         publications {
-          jars(MavenPublication) {
+          unsignedJars(MavenPublication)
+          jars(MavenPublication)
+        }
+
+        publications.each { publication ->
+          configure(publication) {
             from components.java
             groupId = project.group
             artifactId = project.archivesBaseName
@@ -189,12 +194,12 @@ configure(subprojects.findAll { it.path in rootProject.published }) { prj ->
 
             pom(configurePom)
 
+            // LUCENE-9561:
+            // Remove dependencyManagement section created by a combination of
+            // Palantir and the publishing plugin.
+            //
+            // https://github.com/palantir/gradle-consistent-versions/issues/550
             pom({
-              // LUCENE-9561:
-              // Remove dependencyManagement section created by a combination of
-              // Palantir and the publishing plugin.
-              //
-              // https://github.com/palantir/gradle-consistent-versions/issues/550
               withXml {
                 def dm = asNode().dependencyManagement
                 if (dm) dm.replaceNode {}
@@ -209,11 +214,11 @@ configure(subprojects.findAll { it.path in rootProject.published }) { prj ->
         group "Publishing"
         description "Publish Maven JARs and POMs to Apache Snapshots repository: ${apacheNexusSnapshots}"
 
-        dependsOn "publishJarsPublicationToApacheSnapshotsRepository"
+        dependsOn "publishUnsignedJarsPublicationToApacheSnapshotsRepository"
       }
 
+      // 'jars' publication is always signed. We currently don't use it anywhere though.
       signing {
-        required { !version.endsWith("SNAPSHOT") }
         sign publishing.publications.jars
       }
     }
