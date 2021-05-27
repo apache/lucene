@@ -208,27 +208,33 @@ public class TestCoreParser extends LuceneTestCase {
 
   public void testSpanBoosts() throws Exception {
     String topLevel = "<SpanTerm fieldName=\"field\" boost=\"2\">value</SpanTerm>";
-    try (ByteArrayInputStream is = new ByteArrayInputStream(topLevel.getBytes(StandardCharsets.UTF_8))) {
+    try (ByteArrayInputStream is =
+        new ByteArrayInputStream(topLevel.getBytes(StandardCharsets.UTF_8))) {
       Query actual = coreParser().parse(is);
       Query expected = new BoostQuery(new SpanTermQuery(new Term("field", "value")), 2);
       assertEquals(expected, actual);
     }
 
     String nested =
-            "<SpanNear fieldName=\"field\" boost=\"2\" slop=\"8\" inOrder=\"false\">" + // top level boost is preserved
-            " <SpanTerm boost=\"4\">value1</SpanTerm>" +                                // interior boost is ignored
-            " <SpanTerm>value2</SpanTerm>" +
-            "</SpanNear>";
-    try (ByteArrayInputStream is = new ByteArrayInputStream(nested.getBytes(StandardCharsets.UTF_8))) {
+        "<SpanNear fieldName=\"field\" boost=\"2\" slop=\"8\" inOrder=\"false\">"
+            + // top level boost is preserved
+            " <SpanTerm boost=\"4\">value1</SpanTerm>"
+            + // interior boost is ignored
+            " <SpanTerm>value2</SpanTerm>"
+            + "</SpanNear>";
+    try (ByteArrayInputStream is =
+        new ByteArrayInputStream(nested.getBytes(StandardCharsets.UTF_8))) {
       Query actual = coreParser().parse(is);
-      Query expected = new BoostQuery(
-              new SpanNearQuery(new SpanQuery[]{
-                      new SpanTermQuery(new Term("field", "value1")),
-                      new SpanTermQuery(new Term("field", "value2"))
-              },
-                      8, false),
-              2
-              );
+      Query expected =
+          new BoostQuery(
+              new SpanNearQuery(
+                  new SpanQuery[] {
+                    new SpanTermQuery(new Term("field", "value1")),
+                    new SpanTermQuery(new Term("field", "value2"))
+                  },
+                  8,
+                  false),
+              2);
       assertEquals(expected, actual);
     }
   }

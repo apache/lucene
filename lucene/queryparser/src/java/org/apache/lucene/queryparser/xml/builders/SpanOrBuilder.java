@@ -18,7 +18,6 @@ package org.apache.lucene.queryparser.xml.builders;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queryparser.xml.ParserException;

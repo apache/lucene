@@ -213,19 +213,23 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
 
   public void testBoosts() throws Exception {
 
-    // top-level boosts should be preserved, interior boosts are ignored as they don't apply to spans
+    // top-level boosts should be preserved, interior boosts are ignored as they don't apply to
+    // spans
     String topLevel = "(\"john^3 smit*\"~4)^2";
     ComplexPhraseQueryParser parser = new ComplexPhraseQueryParser("name", new StandardAnalyzer());
     parser.setInOrder(true);
     Query actual = searcher.rewrite(parser.parse(topLevel));
-    Query expected = new BoostQuery(
-            new SpanNearQuery(new SpanQuery[]{
-                    new SpanTermQuery(new Term("name", "john")),
-                    new SpanTermQuery(new Term("name", "smith"))
-            }, 4, true), 2
-    );
+    Query expected =
+        new BoostQuery(
+            new SpanNearQuery(
+                new SpanQuery[] {
+                  new SpanTermQuery(new Term("name", "john")),
+                  new SpanTermQuery(new Term("name", "smith"))
+                },
+                4,
+                true),
+            2);
     assertEquals(expected, actual);
-
   }
 
   @Override
