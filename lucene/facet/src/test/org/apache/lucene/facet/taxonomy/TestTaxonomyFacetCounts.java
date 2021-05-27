@@ -56,6 +56,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.TestUtil;
+import org.junit.Assert;
 
 public class TestTaxonomyFacetCounts extends FacetTestCase {
 
@@ -250,17 +251,8 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getSpecificValue("a");
-        });
-
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(10, "a");
-        });
+    Assert.assertEquals(-1, facets.getSpecificValue("a"));
+    Assert.assertNull(facets.getTopChildren(10, "a"));
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
@@ -803,6 +795,35 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     w.close();
     IOUtils.close(tw, searcher.getIndexReader(), tr, indexDir, taxoDir);
+  }
+
+  public void testNonExistentDimension() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+
+    Document doc = new Document();
+    config.setIndexFieldName("foo", "$custom");
+    doc.add(new FacetField("foo", "bar"));
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    IndexSearcher searcher = newSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    Facets facets = getAllFacets("$custom", searcher, taxoReader, config);
+    FacetResult result = facets.getTopChildren(5, "non-existent dimension");
+
+    // make sure the result is null (and no exception was thrown)
+    assertNull(result);
+
+    writer.close();
+    IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
   }
 
   private static List<List<FacetLabel>> sortedFacetLabels(List<List<FacetLabel>> allFacetLabels) {

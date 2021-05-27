@@ -133,7 +133,10 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   public Number getSpecificValue(String dim, String... path) throws IOException {
-    DimConfig dimConfig = verifyDim(dim);
+    if (!isDimIndexed(dim)) {
+      return -1;
+    }
+    DimConfig dimConfig = config.getDimConfig(dim);
     if (path.length == 0) {
       if (dimConfig.hierarchical && dimConfig.multiValued == false) {
         // ok: rolled up at search time
@@ -156,7 +159,10 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     if (topN <= 0) {
       throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
     }
-    DimConfig dimConfig = verifyDim(dim);
+    if (!isDimIndexed(dim)) {
+      return null;
+    }
+    DimConfig dimConfig = config.getDimConfig(dim);
     FacetLabel cp = new FacetLabel(dim, path);
     int dimOrd = taxoReader.getOrdinal(cp);
     if (dimOrd == -1) {

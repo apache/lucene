@@ -24,7 +24,6 @@ import java.util.List;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.FacetsConfig.DimConfig; // javadocs
 
 /** Base class for all taxonomy-based facets impls. */
 public abstract class TaxonomyFacets extends Facets {
@@ -110,17 +109,10 @@ public abstract class TaxonomyFacets extends Facets {
     return children != null;
   }
 
-  /**
-   * Throws {@code IllegalArgumentException} if the dimension is not recognized. Otherwise, returns
-   * the {@link DimConfig} for this dimension.
-   */
-  protected FacetsConfig.DimConfig verifyDim(String dim) {
+  /** Returns false if the dimension was not indexed into {@link #indexFieldName} field. */
+  protected boolean isDimIndexed(String dim) {
     FacetsConfig.DimConfig dimConfig = config.getDimConfig(dim);
-    if (!dimConfig.indexFieldName.equals(indexFieldName)) {
-      throw new IllegalArgumentException(
-          "dimension \"" + dim + "\" was not indexed into field \"" + indexFieldName + "\"");
-    }
-    return dimConfig;
+    return dimConfig.indexFieldName.equals(indexFieldName);
   }
 
   @Override

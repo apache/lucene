@@ -473,6 +473,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     Facets facets = getAllFacets(searcher, state, exec);
     FacetResult result = facets.getTopChildren(5, "non-existent dimension");
 
+    // make sure the result is null (and no exception was thrown)
     assertNull(result);
 
     writer.close();
