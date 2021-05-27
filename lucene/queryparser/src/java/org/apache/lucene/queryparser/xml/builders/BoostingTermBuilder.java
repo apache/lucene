@@ -20,7 +20,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.payloads.AveragePayloadFunction;
 import org.apache.lucene.queries.payloads.PayloadDecoder;
 import org.apache.lucene.queries.payloads.PayloadScoreQuery;
-import org.apache.lucene.queries.spans.SpanBoostQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.queryparser.xml.DOMUtils;
@@ -36,12 +35,9 @@ public class BoostingTermBuilder extends SpanBuilderBase {
     String value = DOMUtils.getNonBlankTextOrFail(e);
 
     // TODO make function and decoder pluggable somehow?
-    SpanQuery btq =
-        new PayloadScoreQuery(
-            new SpanTermQuery(new Term(fieldName, value)),
-            new AveragePayloadFunction(),
-            PayloadDecoder.FLOAT_DECODER);
-    btq = new SpanBoostQuery(btq, DOMUtils.getAttribute(e, "boost", 1.0f));
-    return btq;
+    return new PayloadScoreQuery(
+        new SpanTermQuery(new Term(fieldName, value)),
+        new AveragePayloadFunction(),
+        PayloadDecoder.FLOAT_DECODER);
   }
 }

@@ -23,7 +23,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.queries.spans.SpanBoostQuery;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
@@ -57,9 +56,7 @@ public class SpanOrTermsBuilder extends SpanBuilderBase {
         clausesList.add(stq);
       }
       ts.end();
-      SpanOrQuery soq = new SpanOrQuery(clausesList.toArray(new SpanQuery[clausesList.size()]));
-      float boost = DOMUtils.getAttribute(e, "boost", 1.0f);
-      return new SpanBoostQuery(soq, boost);
+      return new SpanOrQuery(clausesList.toArray(new SpanQuery[clausesList.size()]));
     } catch (IOException ioe) {
       throw new ParserException("IOException parsing value:" + value, ioe);
     }
