@@ -87,6 +87,7 @@ import org.apache.lucene.util.Version;
  */
 public final class CheckIndex implements Closeable {
 
+  private static final int MAX_PER_SEGMENT_CONCURRENCY = 11;
   private PrintStream infoStream;
   private Directory dir;
   private Lock writeLock;
@@ -3966,11 +3967,11 @@ public final class CheckIndex implements Closeable {
         // Current implementation supports up to 11 concurrent checks at any time, and no
         // concurrency across segments.
         // Capping the thread count to 11 to avoid unnecessary threads to be created.
-        if (providedThreadCount > 11) {
+        if (providedThreadCount > MAX_PER_SEGMENT_CONCURRENCY) {
           System.out.println(
               "-threadCount currently only supports up to 11 threads. Value higher than that will be capped.");
         }
-        opts.threadCount = Math.min(providedThreadCount, 11);
+        opts.threadCount = Math.min(providedThreadCount, MAX_PER_SEGMENT_CONCURRENCY);
       } else {
         if (opts.indexPath != null) {
           throw new IllegalArgumentException("ERROR: unexpected extra argument '" + args[i] + "'");
