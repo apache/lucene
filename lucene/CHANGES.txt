@@ -19,6 +19,8 @@ New Features
 * LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
   (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
 
+* LUCENE-9589 Swedish Minimal Stemmer (janhoy)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
