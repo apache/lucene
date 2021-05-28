@@ -18,11 +18,12 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -55,8 +56,7 @@ public final class DrillDownQuery extends Query {
   private final List<BooleanQuery.Builder> dimQueries = new ArrayList<>();
   private final Map<String, Integer> drillDownDims = new LinkedHashMap<>();
   private List<Query> builtDimQueries = new ArrayList<>();
-  private boolean isAnyDimQueryDirty = true;
-  private List<Boolean> isDimQueryDirty = new ArrayList<>();
+  private Set<Integer> dirtyDimQueryIndex = new HashSet<>();
 
   /** Used by clone() and DrillSideways */
   DrillDownQuery(
@@ -66,11 +66,12 @@ public final class DrillDownQuery extends Query {
       Map<String, Integer> drillDownDims) {
     this.baseQuery = baseQuery;
     this.dimQueries.addAll(dimQueries);
-    Boolean[] isDimQueryDirtyCopy = new Boolean[dimQueries.size()];
-    Arrays.fill(isDimQueryDirtyCopy, Boolean.TRUE);
-    this.isDimQueryDirty.addAll(Arrays.asList(isDimQueryDirtyCopy));
     this.drillDownDims.putAll(drillDownDims);
     this.config = config;
+    for (int i = 0; i < this.dimQueries.size(); i++) {
+      this.builtDimQueries.add(null);
+      this.dirtyDimQueryIndex.add(i);
+    }
   }
 
   /** Used by DrillSideways */
@@ -81,11 +82,12 @@ public final class DrillDownQuery extends Query {
             .add(filter, Occur.FILTER)
             .build();
     this.dimQueries.addAll(other.dimQueries);
-    Boolean[] isDimQueryDirtyCopy = new Boolean[dimQueries.size()];
-    Arrays.fill(isDimQueryDirtyCopy, Boolean.TRUE);
-    this.isDimQueryDirty.addAll(Arrays.asList(isDimQueryDirtyCopy));
     this.drillDownDims.putAll(other.drillDownDims);
     this.config = config;
+    for (int i = 0; i < this.dimQueries.size(); i++) {
+      this.builtDimQueries.add(null);
+      this.dirtyDimQueryIndex.add(i);
+    }
   }
 
   /**
@@ -121,18 +123,17 @@ public final class DrillDownQuery extends Query {
    * on the dimension than the indexed facet ordinals.
    */
   public void add(String dim, Query subQuery) {
-    assert dimQueries.size() == isDimQueryDirty.size();
+    assert dimQueries.size() == builtDimQueries.size();
     assert drillDownDims.size() == dimQueries.size();
     if (drillDownDims.containsKey(dim) == false) {
       drillDownDims.put(dim, drillDownDims.size());
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
       dimQueries.add(builder);
-      isDimQueryDirty.add(true);
+      builtDimQueries.add(null);
     }
     final int index = drillDownDims.get(dim);
     dimQueries.get(index).add(subQuery, Occur.SHOULD);
-    isDimQueryDirty.set(index, true);
-    isAnyDimQueryDirty = true;
+    dirtyDimQueryIndex.add(index);
   }
 
   @Override
@@ -200,28 +201,20 @@ public final class DrillDownQuery extends Query {
    * @return The array of dimQueries
    */
   public Query[] getDrillDownQueries() {
-    if (isAnyDimQueryDirty == false) {
+    if (dirtyDimQueryIndex.isEmpty()) {
       // returns previously built dimQueries
       Query[] builtDimQueriesCopy = new Query[builtDimQueries.size()];
       return builtDimQueries.toArray(builtDimQueriesCopy);
     }
-    Query[] dimQueries = new Query[this.dimQueries.size()];
-    for (int i = 0; i < dimQueries.length; ++i) {
-      if (isDimQueryDirty.get(i) == true) {
-        dimQueries[i] = this.dimQueries.get(i).build();
-        if (i >= builtDimQueries.size()) {
-          // builtDimQueries tracks the size of dimQueries
-          builtDimQueries.add(dimQueries[i]);
-        } else {
-          builtDimQueries.set(i, dimQueries[i]);
-        }
-        isDimQueryDirty.set(i, false);
-      } else {
-        dimQueries[i] = builtDimQueries.get(i);
+    for (int i = 0; i < this.dimQueries.size(); ++i) {
+      if (dirtyDimQueryIndex.contains(i)) {
+        builtDimQueries.set(i, this.dimQueries.get(i).build());
+        dirtyDimQueryIndex.remove(i);
       }
     }
-    isAnyDimQueryDirty = false;
-    return dimQueries;
+    assert dirtyDimQueryIndex.isEmpty();
+    // by this time builtDimQueries has all the built queries and dirtyDimQueryIndex is empty
+    return getDrillDownQueries();
   }
 
   Map<String, Integer> getDims() {

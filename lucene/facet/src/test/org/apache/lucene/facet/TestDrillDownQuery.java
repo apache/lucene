@@ -543,6 +543,7 @@ public class TestDrillDownQuery extends FacetTestCase {
 
     q.add("c", "1");
     q.add("a", "2");
+    q.add("a", "3");
     Query[] drillDownQueriesModified = q.getDrillDownQueries();
     Query[] drillDownQueriesModifiedCopy = q.getDrillDownQueries();
 
