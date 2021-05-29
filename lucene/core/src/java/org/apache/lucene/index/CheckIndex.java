@@ -18,11 +18,9 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.NumberFormat;
@@ -33,14 +31,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -797,176 +790,44 @@ public final class CheckIndex implements Closeable {
           SegmentReader finalReader = reader;
 
           // Test Livedocs
-          // Having BAOS outside of the future functions scope below is helpful when we start to
-          // parallalize across segments
-          ByteArrayOutputStream liveDocsOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testliveDocs =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testLiveDocs(
-                          finalReader, new PrintStream(liveDocsOutput, true, IOUtils.UTF_8)),
-                  liveDocStatus -> {
-                    infoStream.println(
-                        liveDocsOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.liveDocStatus = liveDocStatus;
-                  });
+          segInfoStat.liveDocStatus = testLiveDocs(finalReader, infoStream, failFast);
 
           // Test Fieldinfos
-          ByteArrayOutputStream fieldInfosOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testFieldInfos =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testFieldInfos(
-                          finalReader, new PrintStream(fieldInfosOutput, true, IOUtils.UTF_8)),
-                  fieldInfoStatus -> {
-                    infoStream.println(
-                        fieldInfosOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.fieldInfoStatus = fieldInfoStatus;
-                  });
+          segInfoStat.fieldInfoStatus = testFieldInfos(finalReader, infoStream, failFast);
 
           // Test Field Norms
-          ByteArrayOutputStream fieldNormsOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testFieldNorms =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testFieldNorms(
-                          finalReader, new PrintStream(fieldNormsOutput, true, IOUtils.UTF_8)),
-                  fieldNormStatus -> {
-                    infoStream.println(
-                        fieldNormsOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.fieldNormStatus = fieldNormStatus;
-                  });
+          segInfoStat.fieldNormStatus = testFieldNorms(finalReader, infoStream, failFast);
 
           // Test the Term Index
-          ByteArrayOutputStream termIndexOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testTermIndex =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testPostings(
-                          finalReader,
-                          new PrintStream(termIndexOutput, true, IOUtils.UTF_8),
-                          verbose,
-                          doSlowChecks),
-                  termIndexStatus -> {
-                    infoStream.println(
-                        termIndexOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.termIndexStatus = termIndexStatus;
-                  });
+          segInfoStat.termIndexStatus =
+              testPostings(finalReader, infoStream, verbose, doSlowChecks, failFast);
 
           // Test Stored Fields
-          ByteArrayOutputStream storedFieldsOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testStoredFields =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testStoredFields(
-                          finalReader, new PrintStream(storedFieldsOutput, true, IOUtils.UTF_8)),
-                  storedFieldStatus -> {
-                    infoStream.println(
-                        storedFieldsOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.storedFieldStatus = storedFieldStatus;
-                  });
+          segInfoStat.storedFieldStatus = testStoredFields(finalReader, infoStream, failFast);
 
           // Test Term Vectors
-          ByteArrayOutputStream termVectorsOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testTermVectors =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testTermVectors(
-                          finalReader,
-                          new PrintStream(termVectorsOutput, true, IOUtils.UTF_8),
-                          verbose,
-                          doSlowChecks),
-                  termVectorStatus -> {
-                    infoStream.println(
-                        termVectorsOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.termVectorStatus = termVectorStatus;
-                  });
+          segInfoStat.termVectorStatus =
+              testTermVectors(finalReader, infoStream, verbose, doSlowChecks, failFast);
 
           // Test Docvalues
-          ByteArrayOutputStream docValuesOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testDocValues =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testDocValues(
-                          finalReader, new PrintStream(docValuesOutput, true, IOUtils.UTF_8)),
-                  docValuesStatus -> {
-                    infoStream.println(
-                        docValuesOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.docValuesStatus = docValuesStatus;
-                  });
+          segInfoStat.docValuesStatus = testDocValues(finalReader, infoStream, failFast);
 
           // Test PointValues
-          ByteArrayOutputStream pointValuesOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testPointvalues =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testPoints(
-                          finalReader, new PrintStream(pointValuesOutput, true, IOUtils.UTF_8)),
-                  pointsStatus -> {
-                    infoStream.println(
-                        pointValuesOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.pointsStatus = pointsStatus;
-                  });
+          segInfoStat.pointsStatus = testPoints(finalReader, infoStream, failFast);
 
           // Test VectorValues
-          ByteArrayOutputStream vectorValuesOutput = new ByteArrayOutputStream();
-          CompletableFuture<Void> testVectors =
-              runAsyncSegmentPartCheck(
-                  executorService,
-                  () ->
-                      testVectors(
-                          finalReader, new PrintStream(vectorValuesOutput, true, IOUtils.UTF_8)),
-                  vectorValuesStatus -> {
-                    infoStream.println(
-                        vectorValuesOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                    return segInfoStat.vectorValuesStatus = vectorValuesStatus;
-                  });
+          segInfoStat.vectorValuesStatus = testVectors(finalReader, infoStream, failFast);
 
-          // Test index sort
-          CompletableFuture<Void> testSort = null;
+          // Test Index Sort
           if (indexSort != null) {
-            ByteArrayOutputStream indexSortOutput = new ByteArrayOutputStream();
-            testSort =
-                runAsyncSegmentPartCheck(
-                    executorService,
-                    () ->
-                        testSort(
-                            finalReader,
-                            indexSort,
-                            new PrintStream(indexSortOutput, true, IOUtils.UTF_8)),
-                    indexSortStatus -> {
-                      infoStream.println(
-                          indexSortOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                      return segInfoStat.indexSortStatus = indexSortStatus;
-                    });
+            segInfoStat.indexSortStatus = testSort(finalReader, indexSort, infoStream, failFast);
           }
 
-          CompletableFuture<Void> testSoftDeletes = null;
+          // Test Soft Deletes
           final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
           if (softDeletesField != null) {
-            ByteArrayOutputStream softDeletesOutput = new ByteArrayOutputStream();
-            testSoftDeletes =
-                runAsyncSegmentPartCheck(
-                    executorService,
-                    () ->
-                        checkSoftDeletes(
-                            softDeletesField,
-                            info,
-                            finalReader,
-                            new PrintStream(softDeletesOutput, true, IOUtils.UTF_8)),
-                    softDeletesStatus -> {
-                      infoStream.println(
-                          softDeletesOutput.toString(StandardCharsets.UTF_8).stripTrailing());
-                      return segInfoStat.softDeletesStatus = softDeletesStatus;
-                    });
+            segInfoStat.softDeletesStatus =
+                checkSoftDeletes(softDeletesField, info, finalReader, infoStream, failFast);
           }
 
           // Rethrow the first exception we encountered
@@ -975,77 +836,39 @@ public final class CheckIndex implements Closeable {
           // wait for all of them to complete before we proceed, and that we don't throw
           // CheckIndexException
           // below while the segment part check may still print out messages
-          testliveDocs.join();
-          testFieldInfos.join();
-          testFieldNorms.join();
-          testTermIndex.join();
-          testStoredFields.join();
-          testTermVectors.join();
-          testDocValues.join();
-          testPointvalues.join();
-          testVectors.join();
-          if (testSort != null) {
-            testSort.join();
-          }
-          if (testSoftDeletes != null) {
-            testSoftDeletes.join();
-          }
-
           if (segInfoStat.liveDocStatus.error != null) {
             throw new CheckIndexException("Live docs test failed", segInfoStat.liveDocStatus.error);
-          }
-
-          if (segInfoStat.fieldInfoStatus.error != null) {
+          } else if (segInfoStat.fieldInfoStatus.error != null) {
             throw new CheckIndexException(
                 "Field Info test failed", segInfoStat.fieldInfoStatus.error);
-          }
-
-          if (segInfoStat.fieldNormStatus.error != null) {
+          } else if (segInfoStat.fieldNormStatus.error != null) {
             throw new CheckIndexException(
                 "Field Norm test failed", segInfoStat.fieldNormStatus.error);
-          }
-
-          if (segInfoStat.termIndexStatus.error != null) {
+          } else if (segInfoStat.termIndexStatus.error != null) {
             throw new CheckIndexException(
                 "Term Index test failed", segInfoStat.termIndexStatus.error);
-          }
-
-          if (segInfoStat.storedFieldStatus.error != null) {
+          } else if (segInfoStat.storedFieldStatus.error != null) {
             throw new CheckIndexException(
                 "Stored Field test failed", segInfoStat.storedFieldStatus.error);
-          }
-
-          if (segInfoStat.termVectorStatus.error != null) {
+          } else if (segInfoStat.termVectorStatus.error != null) {
             throw new CheckIndexException(
                 "Term Vector test failed", segInfoStat.termVectorStatus.error);
-          }
-
-          if (segInfoStat.docValuesStatus.error != null) {
+          } else if (segInfoStat.docValuesStatus.error != null) {
             throw new CheckIndexException(
                 "DocValues test failed", segInfoStat.docValuesStatus.error);
-          }
-
-          if (segInfoStat.pointsStatus.error != null) {
+          } else if (segInfoStat.pointsStatus.error != null) {
             throw new CheckIndexException("Points test failed", segInfoStat.pointsStatus.error);
-          }
-
-          if (segInfoStat.vectorValuesStatus.error != null) {
+          } else if (segInfoStat.vectorValuesStatus.error != null) {
             throw new CheckIndexException(
                 "Vectors test failed", segInfoStat.vectorValuesStatus.error);
-          }
-
-          if (testSort != null) {
-            if (segInfoStat.indexSortStatus.error != null) {
-              throw new CheckIndexException(
-                  "Index Sort test failed", segInfoStat.indexSortStatus.error);
-            }
-          }
-
-          if (testSoftDeletes != null) {
-            if (segInfoStat.softDeletesStatus.error != null) {
-              throw new CheckIndexException(
-                  "Soft Deletes test failed", segInfoStat.softDeletesStatus.error);
-            }
+          } else if (segInfoStat.indexSortStatus != null
+              && segInfoStat.indexSortStatus.error != null) {
+            throw new CheckIndexException(
+                "Index Sort test failed", segInfoStat.indexSortStatus.error);
+          } else if (segInfoStat.softDeletesStatus != null
+              && segInfoStat.softDeletesStatus.error != null) {
+            throw new CheckIndexException(
+                "Soft Deletes test failed", segInfoStat.softDeletesStatus.error);
           }
         }
 
@@ -1104,31 +927,13 @@ public final class CheckIndex implements Closeable {
     return result;
   }
 
-  private <R> CompletableFuture<Void> runAsyncSegmentPartCheck(
-      ExecutorService executorService, Callable<R> asyncCallable, Function<R, R> resultProcessor) {
-    return CompletableFuture.supplyAsync(callableToSupplier(asyncCallable), executorService)
-        .thenAccept(arg -> resultProcessor.apply(arg));
-  }
-
-  private <T> Supplier<T> callableToSupplier(Callable<T> callable) {
-    return () -> {
-      try {
-        return callable.call();
-      } catch (RuntimeException | Error e) {
-        throw e;
-      } catch (Throwable e) {
-        throw new CompletionException(e);
-      }
-    };
-  }
-
   /**
    * Tests index sort order.
    *
    * @lucene.experimental
    */
   public static Status.IndexSortStatus testSort(
-      CodecReader reader, Sort sort, PrintStream infoStream) throws IOException {
+      CodecReader reader, Sort sort, PrintStream infoStream, boolean failFast) throws IOException {
     // This segment claims its documents are sorted according to the incoming sort ... let's make
     // sure:
 
@@ -1185,6 +990,9 @@ public final class CheckIndex implements Closeable {
             infoStream,
             String.format(Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startNS)));
       } catch (Throwable e) {
+        if (failFast) {
+          throw IOUtils.rethrowAlways(e);
+        }
         msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
         status.error = e;
         if (infoStream != null) {
@@ -1201,7 +1009,8 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.LiveDocStatus testLiveDocs(CodecReader reader, PrintStream infoStream) {
+  public static Status.LiveDocStatus testLiveDocs(
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
     final Status.LiveDocStatus status = new Status.LiveDocStatus();
 
@@ -1251,6 +1060,9 @@ public final class CheckIndex implements Closeable {
       }
 
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -1266,7 +1078,8 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.FieldInfoStatus testFieldInfos(CodecReader reader, PrintStream infoStream) {
+  public static Status.FieldInfoStatus testFieldInfos(
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
     final Status.FieldInfoStatus status = new Status.FieldInfoStatus();
 
@@ -1288,6 +1101,9 @@ public final class CheckIndex implements Closeable {
               nsToSec(System.nanoTime() - startNS)));
       status.totFields = fieldInfos.size();
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -1303,7 +1119,8 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.FieldNormStatus testFieldNorms(CodecReader reader, PrintStream infoStream) {
+  public static Status.FieldNormStatus testFieldNorms(
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
     final Status.FieldNormStatus status = new Status.FieldNormStatus();
 
@@ -1331,6 +1148,9 @@ public final class CheckIndex implements Closeable {
               status.totFields,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -2378,8 +2198,9 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.TermIndexStatus testPostings(CodecReader reader, PrintStream infoStream) {
-    return testPostings(reader, infoStream, false, true);
+  public static Status.TermIndexStatus testPostings(CodecReader reader, PrintStream infoStream)
+      throws IOException {
+    return testPostings(reader, infoStream, false, true, false);
   }
 
   /**
@@ -2388,7 +2209,12 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.TermIndexStatus testPostings(
-      CodecReader reader, PrintStream infoStream, boolean verbose, boolean doSlowChecks) {
+      CodecReader reader,
+      PrintStream infoStream,
+      boolean verbose,
+      boolean doSlowChecks,
+      boolean failFast)
+      throws IOException {
 
     // TODO: we should go and verify term vectors match, if
     // doSlowChecks is on...
@@ -2419,6 +2245,9 @@ public final class CheckIndex implements Closeable {
               verbose,
               doSlowChecks);
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR: " + e);
       status = new Status.TermIndexStatus();
       status.error = e;
@@ -2435,7 +2264,8 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.PointsStatus testPoints(CodecReader reader, PrintStream infoStream) {
+  public static Status.PointsStatus testPoints(
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
       infoStream.print("    test: points..............");
     }
@@ -2523,6 +2353,9 @@ public final class CheckIndex implements Closeable {
               nsToSec(System.nanoTime() - startNS)));
 
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR: " + e);
       status.error = e;
       if (infoStream != null) {
@@ -2538,8 +2371,8 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.VectorValuesStatus testVectors(CodecReader reader, PrintStream infoStream)
-      throws IOException {
+  public static Status.VectorValuesStatus testVectors(
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
       infoStream.print("    test: vectors.............");
     }
@@ -2605,6 +2438,9 @@ public final class CheckIndex implements Closeable {
               nsToSec(System.nanoTime() - startNS)));
 
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR: " + e);
       status.error = e;
       if (infoStream != null) {
@@ -2988,7 +2824,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.StoredFieldStatus testStoredFields(
-      CodecReader reader, PrintStream infoStream) {
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
     final Status.StoredFieldStatus status = new Status.StoredFieldStatus();
 
@@ -3027,6 +2863,9 @@ public final class CheckIndex implements Closeable {
               (((float) status.totFields) / status.docCount),
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -3042,7 +2881,8 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.DocValuesStatus testDocValues(CodecReader reader, PrintStream infoStream) {
+  public static Status.DocValuesStatus testDocValues(
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
 
     final Status.DocValuesStatus status = new Status.DocValuesStatus();
@@ -3074,6 +2914,9 @@ public final class CheckIndex implements Closeable {
               status.totalSortedSetFields,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -3485,7 +3328,7 @@ public final class CheckIndex implements Closeable {
    */
   public static Status.TermVectorStatus testTermVectors(CodecReader reader, PrintStream infoStream)
       throws IOException {
-    return testTermVectors(reader, infoStream, false, false);
+    return testTermVectors(reader, infoStream, false, false, false);
   }
 
   /**
@@ -3494,7 +3337,12 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.TermVectorStatus testTermVectors(
-      CodecReader reader, PrintStream infoStream, boolean verbose, boolean doSlowChecks) {
+      CodecReader reader,
+      PrintStream infoStream,
+      boolean verbose,
+      boolean doSlowChecks,
+      boolean failFast)
+      throws IOException {
     long startNS = System.nanoTime();
     final Status.TermVectorStatus status = new Status.TermVectorStatus();
     final FieldInfos fieldInfos = reader.getFieldInfos();
@@ -3773,6 +3621,9 @@ public final class CheckIndex implements Closeable {
               vectorAvg,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
@@ -4086,7 +3937,9 @@ public final class CheckIndex implements Closeable {
       String softDeletesField,
       SegmentCommitInfo info,
       SegmentReader reader,
-      PrintStream infoStream) {
+      PrintStream infoStream,
+      boolean failFast)
+      throws IOException {
 
     Status.SoftDeletsStatus status = new Status.SoftDeletsStatus();
     if (infoStream != null) infoStream.print("    test: check soft deletes.....");
@@ -4100,6 +3953,9 @@ public final class CheckIndex implements Closeable {
             "actual soft deletes: " + softDeletes + " but expected: " + info.getSoftDelCount());
       }
     } catch (Exception e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
       msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
       status.error = e;
       if (infoStream != null) {
