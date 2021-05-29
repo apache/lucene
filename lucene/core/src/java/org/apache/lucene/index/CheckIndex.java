@@ -683,216 +683,7 @@ public final class CheckIndex implements Closeable {
               + " maxDoc="
               + info.info.maxDoc());
 
-      Status.SegmentInfoStatus segInfoStat = new Status.SegmentInfoStatus();
-      result.segmentInfos.add(segInfoStat);
-      segInfoStat.name = info.info.name;
-      segInfoStat.maxDoc = info.info.maxDoc();
-
-      final Version version = info.info.getVersion();
-      if (info.info.maxDoc() <= 0) {
-        throw new CheckIndexException(" illegal number of documents: maxDoc=" + info.info.maxDoc());
-      }
-
-      int toLoseDocCount = info.info.maxDoc();
-
-      SegmentReader reader = null;
-
-      try {
-        msg(infoStream, "    version=" + (version == null ? "3.0" : version));
-        msg(infoStream, "    id=" + StringHelper.idToString(info.info.getId()));
-        final Codec codec = info.info.getCodec();
-        msg(infoStream, "    codec=" + codec);
-        segInfoStat.codec = codec;
-        msg(infoStream, "    compound=" + info.info.getUseCompoundFile());
-        segInfoStat.compound = info.info.getUseCompoundFile();
-        msg(infoStream, "    numFiles=" + info.files().size());
-        Sort indexSort = info.info.getIndexSort();
-        if (indexSort != null) {
-          msg(infoStream, "    sort=" + indexSort);
-        }
-        segInfoStat.numFiles = info.files().size();
-        segInfoStat.sizeMB = info.sizeInBytes() / (1024. * 1024.);
-        msg(infoStream, "    size (MB)=" + nf.format(segInfoStat.sizeMB));
-        Map<String, String> diagnostics = info.info.getDiagnostics();
-        segInfoStat.diagnostics = diagnostics;
-        if (diagnostics.size() > 0) {
-          msg(infoStream, "    diagnostics = " + diagnostics);
-        }
-
-        if (!info.hasDeletions()) {
-          msg(infoStream, "    no deletions");
-          segInfoStat.hasDeletions = false;
-        } else {
-          msg(infoStream, "    has deletions [delGen=" + info.getDelGen() + "]");
-          segInfoStat.hasDeletions = true;
-          segInfoStat.deletionsGen = info.getDelGen();
-        }
-
-        long startOpenReaderNS = System.nanoTime();
-        if (infoStream != null) infoStream.print("    test: open reader.........");
-        reader = new SegmentReader(info, sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
-        msg(
-            infoStream,
-            String.format(
-                Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startOpenReaderNS)));
-
-        segInfoStat.openReaderPassed = true;
-
-        long startIntegrityNS = System.nanoTime();
-        if (infoStream != null) infoStream.print("    test: check integrity.....");
-        reader.checkIntegrity();
-        msg(
-            infoStream,
-            String.format(
-                Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startIntegrityNS)));
-
-        if (reader.maxDoc() != info.info.maxDoc()) {
-          throw new CheckIndexException(
-              "SegmentReader.maxDoc() "
-                  + reader.maxDoc()
-                  + " != SegmentInfo.maxDoc "
-                  + info.info.maxDoc());
-        }
-
-        final int numDocs = reader.numDocs();
-        toLoseDocCount = numDocs;
-
-        if (reader.hasDeletions()) {
-          if (reader.numDocs() != info.info.maxDoc() - info.getDelCount()) {
-            throw new CheckIndexException(
-                "delete count mismatch: info="
-                    + (info.info.maxDoc() - info.getDelCount())
-                    + " vs reader="
-                    + reader.numDocs());
-          }
-          if ((info.info.maxDoc() - reader.numDocs()) > reader.maxDoc()) {
-            throw new CheckIndexException(
-                "too many deleted docs: maxDoc()="
-                    + reader.maxDoc()
-                    + " vs del count="
-                    + (info.info.maxDoc() - reader.numDocs()));
-          }
-          if (info.info.maxDoc() - reader.numDocs() != info.getDelCount()) {
-            throw new CheckIndexException(
-                "delete count mismatch: info="
-                    + info.getDelCount()
-                    + " vs reader="
-                    + (info.info.maxDoc() - reader.numDocs()));
-          }
-        } else {
-          if (info.getDelCount() != 0) {
-            throw new CheckIndexException(
-                "delete count mismatch: info="
-                    + info.getDelCount()
-                    + " vs reader="
-                    + (info.info.maxDoc() - reader.numDocs()));
-          }
-        }
-
-        if (checksumsOnly == false) {
-          // This redundant assignment is done to make compiler happy
-          SegmentReader finalReader = reader;
-
-          // Test Livedocs
-          segInfoStat.liveDocStatus = testLiveDocs(finalReader, infoStream, failFast);
-
-          // Test Fieldinfos
-          segInfoStat.fieldInfoStatus = testFieldInfos(finalReader, infoStream, failFast);
-
-          // Test Field Norms
-          segInfoStat.fieldNormStatus = testFieldNorms(finalReader, infoStream, failFast);
-
-          // Test the Term Index
-          segInfoStat.termIndexStatus =
-              testPostings(finalReader, infoStream, verbose, doSlowChecks, failFast);
-
-          // Test Stored Fields
-          segInfoStat.storedFieldStatus = testStoredFields(finalReader, infoStream, failFast);
-
-          // Test Term Vectors
-          segInfoStat.termVectorStatus =
-              testTermVectors(finalReader, infoStream, verbose, doSlowChecks, failFast);
-
-          // Test Docvalues
-          segInfoStat.docValuesStatus = testDocValues(finalReader, infoStream, failFast);
-
-          // Test PointValues
-          segInfoStat.pointsStatus = testPoints(finalReader, infoStream, failFast);
-
-          // Test VectorValues
-          segInfoStat.vectorValuesStatus = testVectors(finalReader, infoStream, failFast);
-
-          // Test Index Sort
-          if (indexSort != null) {
-            segInfoStat.indexSortStatus = testSort(finalReader, indexSort, infoStream, failFast);
-          }
-
-          // Test Soft Deletes
-          final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
-          if (softDeletesField != null) {
-            segInfoStat.softDeletesStatus =
-                checkSoftDeletes(softDeletesField, info, finalReader, infoStream, failFast);
-          }
-
-          // Rethrow the first exception we encountered
-          //  This will cause stats for failed segments to be incremented properly
-          // We won't be able to (easily) stop check running in another thread, so we may as well
-          // wait for all of them to complete before we proceed, and that we don't throw
-          // CheckIndexException
-          // below while the segment part check may still print out messages
-          if (segInfoStat.liveDocStatus.error != null) {
-            throw new CheckIndexException("Live docs test failed", segInfoStat.liveDocStatus.error);
-          } else if (segInfoStat.fieldInfoStatus.error != null) {
-            throw new CheckIndexException(
-                "Field Info test failed", segInfoStat.fieldInfoStatus.error);
-          } else if (segInfoStat.fieldNormStatus.error != null) {
-            throw new CheckIndexException(
-                "Field Norm test failed", segInfoStat.fieldNormStatus.error);
-          } else if (segInfoStat.termIndexStatus.error != null) {
-            throw new CheckIndexException(
-                "Term Index test failed", segInfoStat.termIndexStatus.error);
-          } else if (segInfoStat.storedFieldStatus.error != null) {
-            throw new CheckIndexException(
-                "Stored Field test failed", segInfoStat.storedFieldStatus.error);
-          } else if (segInfoStat.termVectorStatus.error != null) {
-            throw new CheckIndexException(
-                "Term Vector test failed", segInfoStat.termVectorStatus.error);
-          } else if (segInfoStat.docValuesStatus.error != null) {
-            throw new CheckIndexException(
-                "DocValues test failed", segInfoStat.docValuesStatus.error);
-          } else if (segInfoStat.pointsStatus.error != null) {
-            throw new CheckIndexException("Points test failed", segInfoStat.pointsStatus.error);
-          } else if (segInfoStat.vectorValuesStatus.error != null) {
-            throw new CheckIndexException(
-                "Vectors test failed", segInfoStat.vectorValuesStatus.error);
-          } else if (segInfoStat.indexSortStatus != null
-              && segInfoStat.indexSortStatus.error != null) {
-            throw new CheckIndexException(
-                "Index Sort test failed", segInfoStat.indexSortStatus.error);
-          } else if (segInfoStat.softDeletesStatus != null
-              && segInfoStat.softDeletesStatus.error != null) {
-            throw new CheckIndexException(
-                "Soft Deletes test failed", segInfoStat.softDeletesStatus.error);
-          }
-        }
-
-        msg(infoStream, "");
-      } catch (Throwable t) {
-        if (failFast) {
-          throw IOUtils.rethrowAlways(t);
-        }
-        msg(infoStream, "FAILED");
-        String comment;
-        comment = "exorciseIndex() would remove reference to this segment";
-        msg(infoStream, "    WARNING: " + comment + "; full exception:");
-        if (infoStream != null) t.printStackTrace(infoStream);
-        msg(infoStream, "");
-        result.totLoseDocCount += toLoseDocCount;
-        result.numBadSegments++;
-        continue;
-      } finally {
-        if (reader != null) reader.close();
-      }
+      if (testSegment(sis, result, info)) continue;
 
       // Keeper
       result.newSegments.add(info.clone());
@@ -929,6 +720,220 @@ public final class CheckIndex implements Closeable {
         String.format(Locale.ROOT, "Took %.3f sec total.", nsToSec(System.nanoTime() - startNS)));
 
     return result;
+  }
+
+  private boolean testSegment(SegmentInfos sis, Status result, SegmentCommitInfo info) throws IOException {
+    Status.SegmentInfoStatus segInfoStat = new Status.SegmentInfoStatus();
+    result.segmentInfos.add(segInfoStat);
+    segInfoStat.name = info.info.name;
+    segInfoStat.maxDoc = info.info.maxDoc();
+
+    final Version version = info.info.getVersion();
+    if (info.info.maxDoc() <= 0) {
+      throw new CheckIndexException(" illegal number of documents: maxDoc=" + info.info.maxDoc());
+    }
+
+    int toLoseDocCount = info.info.maxDoc();
+
+    SegmentReader reader = null;
+
+    try {
+      msg(infoStream, "    version=" + (version == null ? "3.0" : version));
+      msg(infoStream, "    id=" + StringHelper.idToString(info.info.getId()));
+      final Codec codec = info.info.getCodec();
+      msg(infoStream, "    codec=" + codec);
+      segInfoStat.codec = codec;
+      msg(infoStream, "    compound=" + info.info.getUseCompoundFile());
+      segInfoStat.compound = info.info.getUseCompoundFile();
+      msg(infoStream, "    numFiles=" + info.files().size());
+      Sort indexSort = info.info.getIndexSort();
+      if (indexSort != null) {
+        msg(infoStream, "    sort=" + indexSort);
+      }
+      segInfoStat.numFiles = info.files().size();
+      segInfoStat.sizeMB = info.sizeInBytes() / (1024. * 1024.);
+      msg(infoStream, "    size (MB)=" + nf.format(segInfoStat.sizeMB));
+      Map<String, String> diagnostics = info.info.getDiagnostics();
+      segInfoStat.diagnostics = diagnostics;
+      if (diagnostics.size() > 0) {
+        msg(infoStream, "    diagnostics = " + diagnostics);
+      }
+
+      if (!info.hasDeletions()) {
+        msg(infoStream, "    no deletions");
+        segInfoStat.hasDeletions = false;
+      } else {
+        msg(infoStream, "    has deletions [delGen=" + info.getDelGen() + "]");
+        segInfoStat.hasDeletions = true;
+        segInfoStat.deletionsGen = info.getDelGen();
+      }
+
+      long startOpenReaderNS = System.nanoTime();
+      if (infoStream != null) infoStream.print("    test: open reader.........");
+      reader = new SegmentReader(info, sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
+      msg(
+          infoStream,
+          String.format(
+              Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startOpenReaderNS)));
+
+      segInfoStat.openReaderPassed = true;
+
+      long startIntegrityNS = System.nanoTime();
+      if (infoStream != null) infoStream.print("    test: check integrity.....");
+      reader.checkIntegrity();
+      msg(
+          infoStream,
+          String.format(
+              Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startIntegrityNS)));
+
+      if (reader.maxDoc() != info.info.maxDoc()) {
+        throw new CheckIndexException(
+            "SegmentReader.maxDoc() "
+                + reader.maxDoc()
+                + " != SegmentInfo.maxDoc "
+                + info.info.maxDoc());
+      }
+
+      final int numDocs = reader.numDocs();
+      toLoseDocCount = numDocs;
+
+      if (reader.hasDeletions()) {
+        if (reader.numDocs() != info.info.maxDoc() - info.getDelCount()) {
+          throw new CheckIndexException(
+              "delete count mismatch: info="
+                  + (info.info.maxDoc() - info.getDelCount())
+                  + " vs reader="
+                  + reader.numDocs());
+        }
+        if ((info.info.maxDoc() - reader.numDocs()) > reader.maxDoc()) {
+          throw new CheckIndexException(
+              "too many deleted docs: maxDoc()="
+                  + reader.maxDoc()
+                  + " vs del count="
+                  + (info.info.maxDoc() - reader.numDocs()));
+        }
+        if (info.info.maxDoc() - reader.numDocs() != info.getDelCount()) {
+          throw new CheckIndexException(
+              "delete count mismatch: info="
+                  + info.getDelCount()
+                  + " vs reader="
+                  + (info.info.maxDoc() - reader.numDocs()));
+        }
+      } else {
+        if (info.getDelCount() != 0) {
+          throw new CheckIndexException(
+              "delete count mismatch: info="
+                  + info.getDelCount()
+                  + " vs reader="
+                  + (info.info.maxDoc() - reader.numDocs()));
+        }
+      }
+
+      if (checksumsOnly == false) {
+        // This redundant assignment is done to make compiler happy
+        SegmentReader finalReader = reader;
+
+        // Test Livedocs
+        segInfoStat.liveDocStatus = testLiveDocs(finalReader, infoStream, failFast);
+
+        // Test Fieldinfos
+        segInfoStat.fieldInfoStatus = testFieldInfos(finalReader, infoStream, failFast);
+
+        // Test Field Norms
+        segInfoStat.fieldNormStatus = testFieldNorms(finalReader, infoStream, failFast);
+
+        // Test the Term Index
+        segInfoStat.termIndexStatus =
+            testPostings(finalReader, infoStream, verbose, doSlowChecks, failFast);
+
+        // Test Stored Fields
+        segInfoStat.storedFieldStatus = testStoredFields(finalReader, infoStream, failFast);
+
+        // Test Term Vectors
+        segInfoStat.termVectorStatus =
+            testTermVectors(finalReader, infoStream, verbose, doSlowChecks, failFast);
+
+        // Test Docvalues
+        segInfoStat.docValuesStatus = testDocValues(finalReader, infoStream, failFast);
+
+        // Test PointValues
+        segInfoStat.pointsStatus = testPoints(finalReader, infoStream, failFast);
+
+        // Test VectorValues
+        segInfoStat.vectorValuesStatus = testVectors(finalReader, infoStream, failFast);
+
+        // Test Index Sort
+        if (indexSort != null) {
+          segInfoStat.indexSortStatus = testSort(finalReader, indexSort, infoStream, failFast);
+        }
+
+        // Test Soft Deletes
+        final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
+        if (softDeletesField != null) {
+          segInfoStat.softDeletesStatus =
+              checkSoftDeletes(softDeletesField, info, finalReader, infoStream, failFast);
+        }
+
+        // Rethrow the first exception we encountered
+        //  This will cause stats for failed segments to be incremented properly
+        // We won't be able to (easily) stop check running in another thread, so we may as well
+        // wait for all of them to complete before we proceed, and that we don't throw
+        // CheckIndexException
+        // below while the segment part check may still print out messages
+        if (segInfoStat.liveDocStatus.error != null) {
+          throw new CheckIndexException("Live docs test failed", segInfoStat.liveDocStatus.error);
+        } else if (segInfoStat.fieldInfoStatus.error != null) {
+          throw new CheckIndexException(
+              "Field Info test failed", segInfoStat.fieldInfoStatus.error);
+        } else if (segInfoStat.fieldNormStatus.error != null) {
+          throw new CheckIndexException(
+              "Field Norm test failed", segInfoStat.fieldNormStatus.error);
+        } else if (segInfoStat.termIndexStatus.error != null) {
+          throw new CheckIndexException(
+              "Term Index test failed", segInfoStat.termIndexStatus.error);
+        } else if (segInfoStat.storedFieldStatus.error != null) {
+          throw new CheckIndexException(
+              "Stored Field test failed", segInfoStat.storedFieldStatus.error);
+        } else if (segInfoStat.termVectorStatus.error != null) {
+          throw new CheckIndexException(
+              "Term Vector test failed", segInfoStat.termVectorStatus.error);
+        } else if (segInfoStat.docValuesStatus.error != null) {
+          throw new CheckIndexException(
+              "DocValues test failed", segInfoStat.docValuesStatus.error);
+        } else if (segInfoStat.pointsStatus.error != null) {
+          throw new CheckIndexException("Points test failed", segInfoStat.pointsStatus.error);
+        } else if (segInfoStat.vectorValuesStatus.error != null) {
+          throw new CheckIndexException(
+              "Vectors test failed", segInfoStat.vectorValuesStatus.error);
+        } else if (segInfoStat.indexSortStatus != null
+            && segInfoStat.indexSortStatus.error != null) {
+          throw new CheckIndexException(
+              "Index Sort test failed", segInfoStat.indexSortStatus.error);
+        } else if (segInfoStat.softDeletesStatus != null
+            && segInfoStat.softDeletesStatus.error != null) {
+          throw new CheckIndexException(
+              "Soft Deletes test failed", segInfoStat.softDeletesStatus.error);
+        }
+      }
+
+      msg(infoStream, "");
+    } catch (Throwable t) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(t);
+      }
+      msg(infoStream, "FAILED");
+      String comment;
+      comment = "exorciseIndex() would remove reference to this segment";
+      msg(infoStream, "    WARNING: " + comment + "; full exception:");
+      if (infoStream != null) t.printStackTrace(infoStream);
+      msg(infoStream, "");
+      result.totLoseDocCount += toLoseDocCount;
+      result.numBadSegments++;
+      return true;
+    } finally {
+      if (reader != null) reader.close();
+    }
+    return false;
   }
 
   /**
