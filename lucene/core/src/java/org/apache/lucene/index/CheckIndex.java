@@ -187,6 +187,9 @@ public final class CheckIndex implements Closeable {
       /** True if we were able to open a CodecReader on this segment. */
       public boolean openReaderPassed;
 
+      /** doc count in this segment */
+      public int toLoseDocCount;
+
       /**
        * Map that includes certain debugging details that IndexWriter records into each segment it
        * creates
@@ -683,10 +686,16 @@ public final class CheckIndex implements Closeable {
               + " maxDoc="
               + info.info.maxDoc());
 
-      if (testSegment(sis, result, info)) continue;
+      Status.SegmentInfoStatus segmentInfoStatus = testSegment(sis, info, infoStream);
 
-      // Keeper
-      result.newSegments.add(info.clone());
+      result.segmentInfos.add(segmentInfoStatus);
+      if (segmentInfoStatus.error != null) {
+        result.totLoseDocCount += segmentInfoStatus.toLoseDocCount;
+        result.numBadSegments++;
+      } else {
+        // Keeper
+        result.newSegments.add(info.clone());
+      }
     }
 
     if (0 == result.numBadSegments) {
@@ -722,9 +731,9 @@ public final class CheckIndex implements Closeable {
     return result;
   }
 
-  private boolean testSegment(SegmentInfos sis, Status result, SegmentCommitInfo info) throws IOException {
+  private Status.SegmentInfoStatus testSegment(
+      SegmentInfos sis, SegmentCommitInfo info, PrintStream infoStream) throws IOException {
     Status.SegmentInfoStatus segInfoStat = new Status.SegmentInfoStatus();
-    result.segmentInfos.add(segInfoStat);
     segInfoStat.name = info.info.name;
     segInfoStat.maxDoc = info.info.maxDoc();
 
@@ -898,8 +907,7 @@ public final class CheckIndex implements Closeable {
           throw new CheckIndexException(
               "Term Vector test failed", segInfoStat.termVectorStatus.error);
         } else if (segInfoStat.docValuesStatus.error != null) {
-          throw new CheckIndexException(
-              "DocValues test failed", segInfoStat.docValuesStatus.error);
+          throw new CheckIndexException("DocValues test failed", segInfoStat.docValuesStatus.error);
         } else if (segInfoStat.pointsStatus.error != null) {
           throw new CheckIndexException("Points test failed", segInfoStat.pointsStatus.error);
         } else if (segInfoStat.vectorValuesStatus.error != null) {
@@ -921,19 +929,18 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(t);
       }
+      segInfoStat.error = t;
+      segInfoStat.toLoseDocCount = toLoseDocCount;
       msg(infoStream, "FAILED");
       String comment;
       comment = "exorciseIndex() would remove reference to this segment";
       msg(infoStream, "    WARNING: " + comment + "; full exception:");
       if (infoStream != null) t.printStackTrace(infoStream);
       msg(infoStream, "");
-      result.totLoseDocCount += toLoseDocCount;
-      result.numBadSegments++;
-      return true;
     } finally {
       if (reader != null) reader.close();
     }
-    return false;
+    return segInfoStat;
   }
 
   /**
