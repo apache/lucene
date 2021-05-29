@@ -53,7 +53,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.TestUtil;
-import org.junit.Assert;
 
 public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
 
@@ -238,8 +237,17 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
 
-    Assert.assertEquals(-1, facets.getSpecificValue("a"));
-    Assert.assertNull(facets.getTopChildren(10, "a"));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getSpecificValue("a");
+        });
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(10, "a");
+        });
 
     IOUtils.close(searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }

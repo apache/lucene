@@ -16,11 +16,14 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import static org.apache.lucene.facet.FacetsConfig.*;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsConfig;
@@ -109,10 +112,28 @@ public abstract class TaxonomyFacets extends Facets {
     return children != null;
   }
 
-  /** Returns false if the dimension was not indexed into {@link #indexFieldName} field. */
-  protected boolean isDimIndexed(String dim) {
+  /**
+   * Verifies and returns {@link DimConfig} the given dimension name.
+   *
+   * @return {@link DimConfig} for the given dim, or {@link FacetsConfig#DEFAULT_DIM_CONFIG} if it
+   *     was never manually configured.
+   * @throws IllegalArgumentException if the provided dimension was manually configured, but its
+   *     {@link DimConfig#indexFieldName} does not match {@link #indexFieldName}.
+   */
+  protected DimConfig verifyDim(String dim) {
     FacetsConfig.DimConfig dimConfig = config.getDimConfig(dim);
-    return dimConfig.indexFieldName.equals(indexFieldName);
+    if (config.isDimConfigured(dim) == true
+        && dimConfig.indexFieldName.equals(indexFieldName) == false) {
+      throw new IllegalArgumentException(
+          String.format(
+              Locale.ROOT,
+              "dimension \"%s\" cannot be found in field \"%s\", since it was configured "
+                  + "to be indexed into field \"%s\"",
+              dim,
+              indexFieldName,
+              dimConfig.indexFieldName));
+    }
+    return dimConfig;
   }
 
   @Override

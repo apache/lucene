@@ -31,7 +31,6 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 
 /** Test for associations */
@@ -169,8 +168,17 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     IndexSearcher searcher = newSearcher(reader);
     searcher.search(new MatchAllDocsQuery(), fc);
     Facets facets = new TaxonomyFacetSumFloatAssociations(taxoReader, config, fc);
-    Assert.assertEquals(-1, facets.getSpecificValue("float"));
-    Assert.assertNull(facets.getTopChildren(10, "float"));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getSpecificValue("float");
+        });
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(10, "float");
+        });
   }
 
   public void testMixedTypesInSameIndexField() throws Exception {

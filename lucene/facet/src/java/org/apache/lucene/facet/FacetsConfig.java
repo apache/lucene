@@ -157,6 +157,11 @@ public class FacetsConfig {
     return dimConfig;
   }
 
+  /** Returns false if the dimension was never configured. */
+  public boolean isDimConfigured(String dimName) {
+    return fieldTypes.get(dimName) != null;
+  }
+
   /** Pass {@code true} if this dimension is hierarchical (has depth &gt; 1 paths). */
   public synchronized void setHierarchical(String dimName, boolean v) {
     DimConfig dimConfig = fieldTypes.get(dimName);
