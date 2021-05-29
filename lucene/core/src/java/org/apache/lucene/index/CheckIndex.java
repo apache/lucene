@@ -85,6 +85,7 @@ public final class CheckIndex implements Closeable {
   private Directory dir;
   private Lock writeLock;
   private volatile boolean closed;
+  private NumberFormat nf = NumberFormat.getInstance(Locale.ROOT);
 
   /**
    * Returned from {@link #checkIndex()} detailing the health and status of the index.
@@ -224,6 +225,9 @@ public final class CheckIndex implements Closeable {
 
       /** Status of soft deletes */
       public SoftDeletsStatus softDeletesStatus;
+
+      /** Exception thrown during segment test (null on success) */
+      public Throwable error;
     }
 
     /** Status from testing livedocs */
@@ -234,7 +238,7 @@ public final class CheckIndex implements Closeable {
       public int numDeleted;
 
       /** Exception thrown during term index test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
     /** Status from testing field infos. */
@@ -546,7 +550,6 @@ public final class CheckIndex implements Closeable {
     ensureOpen();
     long startNS = System.nanoTime();
 
-    NumberFormat nf = NumberFormat.getInstance(Locale.ROOT);
     SegmentInfos sis = null;
     Status result = new Status();
     result.dir = dir;
@@ -670,8 +673,6 @@ public final class CheckIndex implements Closeable {
       if (onlySegments != null && !onlySegments.contains(info.info.name)) {
         continue;
       }
-      Status.SegmentInfoStatus segInfoStat = new Status.SegmentInfoStatus();
-      result.segmentInfos.add(segInfoStat);
       msg(
           infoStream,
           (1 + i)
@@ -681,6 +682,9 @@ public final class CheckIndex implements Closeable {
               + info.info.name
               + " maxDoc="
               + info.info.maxDoc());
+
+      Status.SegmentInfoStatus segInfoStat = new Status.SegmentInfoStatus();
+      result.segmentInfos.add(segInfoStat);
       segInfoStat.name = info.info.name;
       segInfoStat.maxDoc = info.info.maxDoc();
 
