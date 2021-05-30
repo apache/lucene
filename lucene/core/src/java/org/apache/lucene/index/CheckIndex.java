@@ -877,7 +877,11 @@ public final class CheckIndex implements Closeable {
       }
       segInfoStat.numFiles = info.files().size();
       segInfoStat.sizeMB = info.sizeInBytes() / (1024. * 1024.);
-      msg(infoStream, "    size (MB)=" + nf.format(segInfoStat.sizeMB));
+      // nf#format is not thread-safe, and would generate random non valid results in concurrent
+      // setting
+      synchronized (nf) {
+        msg(infoStream, "    size (MB)=" + nf.format(segInfoStat.sizeMB));
+      }
       Map<String, String> diagnostics = info.info.getDiagnostics();
       segInfoStat.diagnostics = diagnostics;
       if (diagnostics.size() > 0) {
