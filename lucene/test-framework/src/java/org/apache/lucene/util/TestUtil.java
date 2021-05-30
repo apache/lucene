@@ -302,7 +302,7 @@ public final class TestUtil {
 
   public static CheckIndex.Status checkIndex(Directory dir, boolean doSlowChecks)
       throws IOException {
-    return checkIndex(dir, doSlowChecks, false, null);
+    return checkIndex(dir, doSlowChecks, false, true, null);
   }
 
   /**
@@ -310,7 +310,11 @@ public final class TestUtil {
    * moving on to other fields/segments to look for any other corruption.
    */
   public static CheckIndex.Status checkIndex(
-      Directory dir, boolean doSlowChecks, boolean failFast, ByteArrayOutputStream output)
+      Directory dir,
+      boolean doSlowChecks,
+      boolean failFast,
+      boolean concurrent,
+      ByteArrayOutputStream output)
       throws IOException {
     if (output == null) {
       output = new ByteArrayOutputStream(1024);
@@ -322,7 +326,11 @@ public final class TestUtil {
       checker.setDoSlowChecks(doSlowChecks);
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
-      checker.setThreadCount(RandomizedTest.randomIntBetween(1, 5));
+      if (concurrent) {
+        checker.setThreadCount(RandomizedTest.randomIntBetween(1, 5));
+      } else {
+        checker.setThreadCount(0);
+      }
       CheckIndex.Status indexStatus = checker.checkIndex(null);
 
       if (indexStatus == null || indexStatus.clean == false) {

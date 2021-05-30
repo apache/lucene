@@ -18,9 +18,11 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.NumberFormat;
@@ -31,9 +33,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -80,7 +87,6 @@ import org.apache.lucene.util.Version;
  */
 public final class CheckIndex implements Closeable {
 
-  private static final int MAX_PER_SEGMENT_CONCURRENCY = 11;
   private PrintStream infoStream;
   private Directory dir;
   private Lock writeLock;
@@ -521,22 +527,29 @@ public final class CheckIndex implements Closeable {
    *     quite a long time to run.
    */
   public Status checkIndex(List<String> onlySegments) throws IOException {
-    ExecutorService executorService =
-        Executors.newFixedThreadPool(threadCount, new NamedThreadFactory("async-check-index"));
+    ExecutorService executorService = null;
+
+    if (threadCount > 0) {
+      executorService =
+          Executors.newFixedThreadPool(threadCount, new NamedThreadFactory("async-check-index"));
+    }
+
     msg(infoStream, "Checking index with async threadCount: " + threadCount);
     try {
       return checkIndex(onlySegments, executorService);
     } finally {
-      executorService.shutdown();
-      try {
-        executorService.awaitTermination(5, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        msg(
-            infoStream,
-            "ERROR: Interrupted exception occurred when shutting down executor service");
-        if (infoStream != null) e.printStackTrace(infoStream);
-      } finally {
-        executorService.shutdownNow();
+      if (executorService != null) {
+        executorService.shutdown();
+        try {
+          executorService.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+          msg(
+              infoStream,
+              "ERROR: Interrupted exception occurred when shutting down executor service");
+          if (infoStream != null) e.printStackTrace(infoStream);
+        } finally {
+          executorService.shutdownNow();
+        }
       }
     }
   }
@@ -667,34 +680,101 @@ public final class CheckIndex implements Closeable {
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
-    for (int i = 0; i < numSegments; i++) {
-      final SegmentCommitInfo info = sis.info(i);
-      long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
-      if (segmentName > result.maxSegmentName) {
-        result.maxSegmentName = segmentName;
-      }
-      if (onlySegments != null && !onlySegments.contains(info.info.name)) {
-        continue;
-      }
-      msg(
-          infoStream,
-          (1 + i)
-              + " of "
-              + numSegments
-              + ": name="
-              + info.info.name
-              + " maxDoc="
-              + info.info.maxDoc());
+    // checks segments sequentially
+    if (executorService == null) {
+      for (int i = 0; i < numSegments; i++) {
+        final SegmentCommitInfo info = sis.info(i);
+        updateMaxSegmentName(result, info);
+        if (onlySegments != null && !onlySegments.contains(info.info.name)) {
+          continue;
+        }
 
-      Status.SegmentInfoStatus segmentInfoStatus = testSegment(sis, info, infoStream);
+        msg(
+            infoStream,
+            (1 + i)
+                + " of "
+                + numSegments
+                + ": name="
+                + info.info.name
+                + " maxDoc="
+                + info.info.maxDoc());
+        Status.SegmentInfoStatus segmentInfoStatus = testSegment(sis, info, infoStream);
 
-      result.segmentInfos.add(segmentInfoStatus);
-      if (segmentInfoStatus.error != null) {
-        result.totLoseDocCount += segmentInfoStatus.toLoseDocCount;
-        result.numBadSegments++;
-      } else {
-        // Keeper
-        result.newSegments.add(info.clone());
+        processSegmentInfoStatusResult(result, info, segmentInfoStatus);
+      }
+    } else {
+      List<ByteArrayOutputStream> outputs = new ArrayList<>();
+      List<CompletableFuture<Status.SegmentInfoStatus>> futures = new ArrayList<>();
+
+      // checks segments concurrently
+      for (int i = 0; i < numSegments; i++) {
+        final SegmentCommitInfo info = sis.info(i);
+        updateMaxSegmentName(result, info);
+        if (onlySegments != null && !onlySegments.contains(info.info.name)) {
+          continue;
+        }
+
+        SegmentInfos finalSis = sis;
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream stream;
+        if (i > 0) {
+          // buffer the messages for segment starting from the 2nd one so that they can later be
+          // printed in order
+          stream = new PrintStream(output, true, IOUtils.UTF_8);
+        } else {
+          // optimize for first segment to print real-time
+          stream = infoStream;
+        }
+        msg(
+            stream,
+            (1 + i)
+                + " of "
+                + numSegments
+                + ": name="
+                + info.info.name
+                + " maxDoc="
+                + info.info.maxDoc());
+
+        outputs.add(output);
+        futures.add(
+            runAsyncSegmentCheck(() -> testSegment(finalSis, info, stream), executorService));
+      }
+
+      for (int i = 0; i < numSegments; i++) {
+        SegmentCommitInfo info = sis.info(i);
+        if (onlySegments != null && !onlySegments.contains(info.info.name)) {
+          continue;
+        }
+
+        ByteArrayOutputStream output = outputs.get(i);
+
+        // print segment results in order
+        Status.SegmentInfoStatus segmentInfoStatus = null;
+        try {
+          segmentInfoStatus = futures.get(i).get();
+        } catch (InterruptedException e) {
+          // the segment test output should come before interrupted exception message that follows,
+          // hence it's not emitted from finally clause
+          infoStream.println(output.toString(StandardCharsets.UTF_8).stripTrailing());
+          msg(
+              infoStream,
+              "ERROR: Interrupted exception occurred when getting segment check result for segment "
+                  + info.info.name);
+          if (infoStream != null) e.printStackTrace(infoStream);
+        } catch (ExecutionException e) {
+          infoStream.println(output.toString(StandardCharsets.UTF_8).stripTrailing());
+
+          assert failFast;
+          throw new CheckIndexException("Segment " + info.info.name + " check failed.", e);
+        }
+
+        if (i > 0) {
+          // first segment output already printed by infoStream
+          infoStream.println(output.toString(StandardCharsets.UTF_8).stripTrailing());
+        }
+
+        processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
     }
 
@@ -729,6 +809,42 @@ public final class CheckIndex implements Closeable {
         String.format(Locale.ROOT, "Took %.3f sec total.", nsToSec(System.nanoTime() - startNS)));
 
     return result;
+  }
+
+  private void updateMaxSegmentName(Status result, SegmentCommitInfo info) {
+    long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
+    if (segmentName > result.maxSegmentName) {
+      result.maxSegmentName = segmentName;
+    }
+  }
+
+  private void processSegmentInfoStatusResult(
+      Status result, SegmentCommitInfo info, Status.SegmentInfoStatus segmentInfoStatus) {
+    result.segmentInfos.add(segmentInfoStatus);
+    if (segmentInfoStatus.error != null) {
+      result.totLoseDocCount += segmentInfoStatus.toLoseDocCount;
+      result.numBadSegments++;
+    } else {
+      // Keeper
+      result.newSegments.add(info.clone());
+    }
+  }
+
+  private <R> CompletableFuture<R> runAsyncSegmentCheck(
+      Callable<R> asyncCallable, ExecutorService executorService) {
+    return CompletableFuture.supplyAsync(callableToSupplier(asyncCallable), executorService);
+  }
+
+  private <T> Supplier<T> callableToSupplier(Callable<T> callable) {
+    return () -> {
+      try {
+        return callable.call();
+      } catch (RuntimeException | Error e) {
+        throw e;
+      } catch (Throwable e) {
+        throw new CompletionException(e);
+      }
+    };
   }
 
   private Status.SegmentInfoStatus testSegment(
@@ -923,8 +1039,6 @@ public final class CheckIndex implements Closeable {
               "Soft Deletes test failed", segInfoStat.softDeletesStatus.error);
         }
       }
-
-      msg(infoStream, "");
     } catch (Throwable t) {
       if (failFast) {
         throw IOUtils.rethrowAlways(t);
@@ -3830,15 +3944,7 @@ public final class CheckIndex implements Closeable {
           throw new IllegalArgumentException("-threadCount requires a following number");
         }
         i++;
-        int providedThreadCount = Integer.parseInt(args[i]);
-        // Current implementation supports up to 11 concurrent checks at any time, and no
-        // concurrency across segments.
-        // Capping the thread count to 11 to avoid unnecessary threads to be created.
-        if (providedThreadCount > MAX_PER_SEGMENT_CONCURRENCY) {
-          System.out.println(
-              "-threadCount currently only supports up to 11 threads. Value higher than that will be capped.");
-        }
-        opts.threadCount = Math.min(providedThreadCount, MAX_PER_SEGMENT_CONCURRENCY);
+        opts.threadCount = Integer.parseInt(args[i]);
       } else {
         if (opts.indexPath != null) {
           throw new IllegalArgumentException("ERROR: unexpected extra argument '" + args[i] + "'");
@@ -3906,10 +4012,9 @@ public final class CheckIndex implements Closeable {
     setDoSlowChecks(opts.doSlowChecks);
     setChecksumsOnly(opts.doChecksumsOnly);
     setInfoStream(opts.out, opts.verbose);
-    // when threadCount was not provided via command line, don't overwrite the default
-    if (opts.threadCount > 0) {
-      setThreadCount(opts.threadCount);
-    }
+    // when threadCount was not provided via command line, override it with 0 to turn of concurrent
+    // check
+    setThreadCount(opts.threadCount);
 
     Status result = checkIndex(opts.onlySegments);
 

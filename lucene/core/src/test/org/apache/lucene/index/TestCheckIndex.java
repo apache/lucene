@@ -122,7 +122,7 @@ public class TestCheckIndex extends BaseTestCheckIndex {
       }
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, output);
+      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
 
       assertEquals(1, status.segmentInfos.size());
 
