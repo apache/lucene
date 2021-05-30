@@ -14,9 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.facet.taxonomy;
 
-import static org.apache.lucene.facet.FacetsConfig.*;
+package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,6 +26,7 @@ import java.util.Locale;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.FacetsConfig.DimConfig;
 
 /** Base class for all taxonomy-based facets impls. */
 public abstract class TaxonomyFacets extends Facets {
@@ -113,7 +113,7 @@ public abstract class TaxonomyFacets extends Facets {
   }
 
   /**
-   * Verifies and returns {@link DimConfig} the given dimension name.
+   * Verifies and returns {@link DimConfig} for the given dimension name.
    *
    * @return {@link DimConfig} for the given dim, or {@link FacetsConfig#DEFAULT_DIM_CONFIG} if it
    *     was never manually configured.
