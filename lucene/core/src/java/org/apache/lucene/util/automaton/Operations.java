@@ -29,6 +29,7 @@
 
 package org.apache.lucene.util.automaton;
 
+import com.carrotsearch.hppc.BitMixer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -690,7 +691,7 @@ public final class Operations {
     // a.writeDot("/l/la/lucene/core/detin.dot");
 
     // Same initial values and state will always have the same hashCode
-    FrozenIntSet initialset = new FrozenIntSet(new int[] {0}, 683, 0);
+    FrozenIntSet initialset = new FrozenIntSet(new int[] {0}, BitMixer.mix(0) + 1, 0);
 
     // Create state 0:
     b.createState();
@@ -707,7 +708,7 @@ public final class Operations {
     final PointTransitionSet points = new PointTransitionSet();
 
     // like SortedMap<Integer,Integer>
-    final SortedIntSet statesSet = new SortedIntSet(5);
+    final StateSet statesSet = new StateSet(5);
 
     Transition t = new Transition();
 
@@ -759,7 +760,7 @@ public final class Operations {
 
         final int point = points.points[i].point;
 
-        if (statesSet.upto > 0) {
+        if (statesSet.size() > 0) {
           assert lastPoint != -1;
 
           statesSet.computeHash();
@@ -812,7 +813,7 @@ public final class Operations {
         points.points[i].starts.next = 0;
       }
       points.reset();
-      assert statesSet.upto == 0 : "upto=" + statesSet.upto;
+      assert statesSet.size() == 0 : "size=" + statesSet.size();
     }
 
     Automaton result = b.finish();
