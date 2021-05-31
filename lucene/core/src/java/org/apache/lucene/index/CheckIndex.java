@@ -703,8 +703,9 @@ public final class CheckIndex implements Closeable {
         processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
     } else {
-      List<ByteArrayOutputStream> outputs = new ArrayList<>();
-      List<CompletableFuture<Status.SegmentInfoStatus>> futures = new ArrayList<>();
+      ByteArrayOutputStream[] outputs = new ByteArrayOutputStream[numSegments];
+      @SuppressWarnings({"unchecked", "rawtypes"})
+      CompletableFuture<Status.SegmentInfoStatus>[] futures = new CompletableFuture[numSegments];
 
       // checks segments concurrently
       for (int i = 0; i < numSegments; i++) {
@@ -736,9 +737,9 @@ public final class CheckIndex implements Closeable {
                 + " maxDoc="
                 + info.info.maxDoc());
 
-        outputs.add(output);
-        futures.add(
-            runAsyncSegmentCheck(() -> testSegment(finalSis, info, stream), executorService));
+        outputs[i] = output;
+        futures[i] =
+            runAsyncSegmentCheck(() -> testSegment(finalSis, info, stream), executorService);
       }
 
       for (int i = 0; i < numSegments; i++) {
@@ -747,12 +748,12 @@ public final class CheckIndex implements Closeable {
           continue;
         }
 
-        ByteArrayOutputStream output = outputs.get(i);
+        ByteArrayOutputStream output = outputs[i];
 
         // print segment results in order
         Status.SegmentInfoStatus segmentInfoStatus = null;
         try {
-          segmentInfoStatus = futures.get(i).get();
+          segmentInfoStatus = futures[i].get();
         } catch (InterruptedException e) {
           // the segment test output should come before interrupted exception message that follows,
           // hence it's not emitted from finally clause
