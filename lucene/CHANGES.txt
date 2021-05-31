@@ -266,6 +266,10 @@ Bug fixes
 * LUCENE-9940: The order of disjuncts in DisjunctionMaxQuery does not matter
   for equality checks (Alan Woodward)
 
+* LUCENE-9971: Requesting facet counts for unseen dimensions in SortedSetDocValueFacetCounts and
+  ConcurrentSortedSetDocValueFacetCounts now returns null / -1 instead of throwing
+  IllegalArgumentException as per Javadoc spec in Facets. (Alexander Lukyanchikov)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
