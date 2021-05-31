@@ -30,7 +30,6 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CloseableThreadLocal;
-import org.apache.lucene.util.Version;
 
 /**
  * An Analyzer builds TokenStreams, which analyze text. It thus represents a policy for extracting
@@ -86,7 +85,6 @@ import org.apache.lucene.util.Version;
 public abstract class Analyzer implements Closeable {
 
   private final ReuseStrategy reuseStrategy;
-  private Version version = Version.LATEST;
 
   // non final as it gets nulled if closed; pkg private for access by ReuseStrategy's final helper
   // methods:
@@ -327,16 +325,6 @@ public abstract class Analyzer implements Closeable {
   /** Returns the used {@link ReuseStrategy}. */
   public final ReuseStrategy getReuseStrategy() {
     return reuseStrategy;
-  }
-
-  /** Set the version of Lucene this analyzer should mimic the behavior for for analysis. */
-  public void setVersion(Version v) {
-    version = v; // TODO: make write once?
-  }
-
-  /** Return the version of Lucene this analyzer will mimic the behavior of for analysis. */
-  public Version getVersion() {
-    return version;
   }
 
   /** Frees persistent resources used by this Analyzer */

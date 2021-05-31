@@ -261,7 +261,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
       }
 
       final DocIdSetIterator conjunction =
-          ConjunctionDISI.intersectScorers(Arrays.asList(iterators));
+          ConjunctionUtils.intersectScorers(Arrays.asList(iterators));
       assertEquals(intersect(sets), toBitSet(maxDoc, conjunction));
     }
   }
@@ -298,7 +298,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
       }
 
       final DocIdSetIterator conjunction =
-          ConjunctionDISI.intersectScorers(Arrays.asList(iterators));
+          ConjunctionUtils.intersectScorers(Arrays.asList(iterators));
       TwoPhaseIterator twoPhaseIterator = TwoPhaseIterator.unwrap(conjunction);
       assertEquals(hasApproximation, twoPhaseIterator != null);
       if (hasApproximation) {
@@ -354,7 +354,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
           conjunction = newIterator;
         } else {
           final DocIdSetIterator conj =
-              ConjunctionDISI.intersectScorers(Arrays.asList(conjunction, newIterator));
+              ConjunctionUtils.intersectScorers(Arrays.asList(conjunction, newIterator));
           conjunction = scorer(conj, TwoPhaseIterator.unwrap(conj));
         }
       }
@@ -412,7 +412,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
                   new FakeWeight(),
                   0f,
                   ScoreMode.TOP_SCORES,
-                  ConjunctionDISI.intersectScorers(subIterators));
+                  ConjunctionUtils.intersectScorers(subIterators));
         }
         scorers.set(subSeqStart, subConjunction);
         int toRemove = subSeqEnd - subSeqStart - 1;
@@ -427,7 +427,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
                 new FakeWeight(), 0f, ScoreMode.TOP_SCORES, DocIdSetIterator.all(maxDoc)));
       }
 
-      final DocIdSetIterator conjunction = ConjunctionDISI.intersectScorers(scorers);
+      final DocIdSetIterator conjunction = ConjunctionUtils.intersectScorers(scorers);
       assertEquals(intersect(sets), toBitSet(maxDoc, conjunction));
     }
   }
@@ -451,7 +451,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
       iterators[i] = new BitDocIdSet(set).iterator();
     }
     final DocIdSetIterator conjunction =
-        ConjunctionDISI.intersectIterators(Arrays.asList(iterators));
+        ConjunctionUtils.intersectIterators(Arrays.asList(iterators));
     int idx = TestUtil.nextInt(random(), 0, iterators.length - 1);
     iterators[idx]
         .nextDoc(); // illegally advancing one of the sub-iterators outside of the conjunction

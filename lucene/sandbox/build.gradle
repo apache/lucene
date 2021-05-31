@@ -21,5 +21,6 @@ description = 'Various third party contributions and new ideas'
 
 dependencies {
   api project(':lucene:core')
+  api project(':lucene:queries')
   testImplementation project(':lucene:test-framework')
 }

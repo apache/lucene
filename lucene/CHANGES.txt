@@ -19,6 +19,8 @@ New Features
 * LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
   (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
 
+* LUCENE-9589 Swedish Minimal Stemmer (janhoy)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
@@ -125,6 +127,8 @@ API Changes
 
 Improvements
 
+* LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
+
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
   fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
 
@@ -224,21 +228,18 @@ Improvements
 
 * LUCENE-9794: Speed up implementations of DataInput.skipBytes(). (Greg Miller)
 
-* LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
-  (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
-
 * LUCENE-9898: Removes no longer used scorePayload method from BM25Similarity
   (Pieter van Boxtel)
 
 * LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
 
+* LUCENE-9946: Support for multi-value fields in LongRangeFacetCounts and
+  DoubleRangeFacetCounts. (Greg Miller)
+
 * LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
   it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
 
-* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
-
 Bug fixes
-
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
   Julie Tibshirani)
@@ -266,6 +267,10 @@ Bug fixes
 
 * LUCENE-9940: The order of disjuncts in DisjunctionMaxQuery does not matter
   for equality checks (Alan Woodward)
+
+* LUCENE-9971: Requesting facet counts for unseen dimensions in SortedSetDocValueFacetCounts and
+  ConcurrentSortedSetDocValueFacetCounts now returns null / -1 instead of throwing
+  IllegalArgumentException as per Javadoc spec in Facets. (Alexander Lukyanchikov)
 
 Changes in Backwards Compatibility Policy
 
@@ -364,6 +369,9 @@ New Features
 * LUCENE-9385: Add FacetsConfig option to control which drill-down
   terms are indexed for a FacetLabel (Zachary Chen)
 
+* LUCENE-9950: New facet counting implementation for general string doc value fields
+  (SortedSetDocValues / SortedDocValues) not created through FacetsConfig (Greg Miller)
+
 Improvements
 ---------------------
 
@@ -375,9 +383,15 @@ Improvements
 
 * LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
 
+* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
+
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-9932: Performance improvement for BKD index building (neoremind)
+
+* LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
+  (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
 
 Bug Fixes
 ---------------------
@@ -388,6 +402,16 @@ Bug Fixes
 
 * LUCENE-9887: Fixed parameter use in RadixSelector.
   (liupanfeng via Adrien Grand)
+
+* LUCENE-9958: Fixed performance regression for boolean queries that configure a
+  minimum number of matching clauses. (Adrien Grand, Matt Weber)
+  
+* LUCENE-9953: LongValueFacetCounts should count each document at most once when determining
+  the total count for a dimension. Prior to this fix, multi-value docs could contribute a > 1
+  count to the dimension count. (Greg Miller)
+
+* LUCEDNE-9967: Do not throw NullPointerException while trying to handle another exception in
+  ReplicaNode.start (Steven Schlansker)
 
 Other
 ---------------------

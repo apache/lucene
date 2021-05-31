@@ -26,6 +26,7 @@ import java.util.Map;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.CharFilterFactory;
+import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -69,7 +70,6 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
     assertSame(LowerCaseFilterFactory.class, tokenFilters.get(1).getClass());
     assertEquals(0, a.getPositionIncrementGap("dummy"));
     assertEquals(1, a.getOffsetGap("dummy"));
-    assertSame(Version.LATEST, a.getVersion());
 
     assertAnalyzesTo(
         a, "foo bar FOO BAR", new String[] {"foo", "bar", "foo", "bar"}, new int[] {1, 1, 1, 1});
@@ -97,7 +97,6 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
     assertSame(LowerCaseFilterFactory.class, tokenFilters.get(1).getClass());
     assertEquals(0, a.getPositionIncrementGap("dummy"));
     assertEquals(1, a.getOffsetGap("dummy"));
-    assertSame(Version.LATEST, a.getVersion());
 
     assertAnalyzesTo(
         a, "foo bar FOO BAR", new String[] {"foo", "bar", "foo", "bar"}, new int[] {1, 1, 1, 1});
@@ -107,6 +106,23 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         new String[] {"foo", "föó", "bar", "bär", "foo", "föö", "bar"},
         new int[] {1, 0, 1, 0, 1, 0, 1});
     a.close();
+  }
+
+  public void testVersionAwareFilter() throws Exception {
+    CustomAnalyzer a =
+        CustomAnalyzer.builder()
+            .withDefaultMatchVersion(Version.LUCENE_8_0_0)
+            .withTokenizer(StandardTokenizerFactory.class)
+            .addTokenFilter(DummyVersionAwareTokenFilterFactory.class)
+            .build();
+    assertAnalyzesTo(a, "HELLO WORLD", new String[] {"HELLO", "WORLD"});
+
+    CustomAnalyzer b =
+        CustomAnalyzer.builder()
+            .withTokenizer(StandardTokenizerFactory.class)
+            .addTokenFilter(DummyVersionAwareTokenFilterFactory.class)
+            .build();
+    assertAnalyzesTo(b, "HELLO WORLD", new String[] {"hello", "world"});
   }
 
   public void testFactoryHtmlStripClassicFolding() throws Exception {
@@ -131,7 +147,6 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
     assertSame(LowerCaseFilterFactory.class, tokenFilters.get(1).getClass());
     assertEquals(100, a.getPositionIncrementGap("dummy"));
     assertEquals(1000, a.getOffsetGap("dummy"));
-    assertSame(LUCENE_8_0_0, a.getVersion());
 
     assertAnalyzesTo(
         a,
@@ -168,7 +183,6 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
     assertSame(LowerCaseFilterFactory.class, tokenFilters.get(1).getClass());
     assertEquals(100, a.getPositionIncrementGap("dummy"));
     assertEquals(1000, a.getOffsetGap("dummy"));
-    assertSame(LUCENE_8_0_0, a.getVersion());
 
     assertAnalyzesTo(
         a,
@@ -204,7 +218,6 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
     assertSame(StopFilterFactory.class, tokenFilters.get(0).getClass());
     assertEquals(0, a.getPositionIncrementGap("dummy"));
     assertEquals(1, a.getOffsetGap("dummy"));
-    assertSame(Version.LATEST, a.getVersion());
 
     assertAnalyzesTo(a, "foo Foo Bar", new String[0]);
     a.close();
@@ -483,6 +496,21 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
     @Override
     public TokenStream normalize(TokenStream input) {
       return new ASCIIFoldingFilterFactory(Collections.emptyMap()).normalize(input);
+    }
+  }
+
+  public static class DummyVersionAwareTokenFilterFactory extends TokenFilterFactory {
+
+    public DummyVersionAwareTokenFilterFactory(Map<String, String> args) {
+      super(args);
+    }
+
+    @Override
+    public TokenStream create(TokenStream input) {
+      if (luceneMatchVersion.equals(Version.LUCENE_8_0_0)) {
+        return input;
+      }
+      return new LowerCaseFilter(input);
     }
   }
 
