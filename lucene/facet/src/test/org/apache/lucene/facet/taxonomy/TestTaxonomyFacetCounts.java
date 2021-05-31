@@ -266,6 +266,37 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
   }
 
+  public void testNonExistentDimension() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setIndexFieldName("foo", "$custom");
+
+    Document doc = new Document();
+    doc.add(new FacetField("foo", "bar"));
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    IndexSearcher searcher = newSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    Facets facets = getAllFacets("$custom", searcher, taxoReader, config);
+
+    // get facets for the dimension, which was never configured or indexed before
+    FacetResult result = facets.getTopChildren(5, "non-existent dimension");
+
+    // make sure the result is null (and no exception was thrown)
+    assertNull(result);
+
+    writer.close();
+    IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
+  }
+
   public void testReallyNoNormsForDrillDown() throws Exception {
     Directory dir = newDirectory();
     Directory taxoDir = newDirectory();

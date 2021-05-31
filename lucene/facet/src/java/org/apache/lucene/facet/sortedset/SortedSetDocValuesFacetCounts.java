@@ -96,7 +96,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     }
     OrdRange ordRange = state.getOrdRange(dim);
     if (ordRange == null) {
-      throw new IllegalArgumentException("dimension \"" + dim + "\" was not indexed");
+      return null; // means dimension was never indexed
     }
     return getDim(dim, ordRange, topN);
   }
@@ -111,9 +111,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     int childCount = 0;
 
     TopOrdAndIntQueue.OrdAndValue reuse = null;
-    // System.out.println("getDim : " + ordRange.start + " - " + ordRange.end);
     for (int ord = ordRange.start; ord <= ordRange.end; ord++) {
-      // System.out.println("  ord=" + ord + " count=" + counts[ord]);
       if (counts[ord] > 0) {
         dimCount += counts[ord];
         childCount++;
@@ -181,26 +179,21 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       int numSegOrds = (int) segValues.getValueCount();
 
       if (hits != null && hits.totalHits < numSegOrds / 10) {
-        // System.out.println("    remap as-we-go");
         // Remap every ord to global ord as we iterate:
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           int term = (int) segValues.nextOrd();
           while (term != SortedSetDocValues.NO_MORE_ORDS) {
-            // System.out.println("      segOrd=" + segOrd + " ord=" + term + " globalOrd=" +
             // ordinalMap.getGlobalOrd(segOrd, term));
             counts[(int) ordMap.get(term)]++;
             term = (int) segValues.nextOrd();
           }
         }
       } else {
-        // System.out.println("    count in seg ord first");
-
         // First count in seg-ord space:
         final int[] segCounts = new int[numSegOrds];
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           int term = (int) segValues.nextOrd();
           while (term != SortedSetDocValues.NO_MORE_ORDS) {
-            // System.out.println("      ord=" + term);
             segCounts[term]++;
             term = (int) segValues.nextOrd();
           }
@@ -210,7 +203,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
         for (int ord = 0; ord < numSegOrds; ord++) {
           int count = segCounts[ord];
           if (count != 0) {
-            // System.out.println("    migrate segOrd=" + segOrd + " ord=" + ord + " globalOrd=" +
             // ordinalMap.getGlobalOrd(segOrd, ord));
             counts[(int) ordMap.get(ord)] += count;
           }
@@ -231,7 +223,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   /** Does all the "real work" of tallying up the counts. */
   private final void count(List<MatchingDocs> matchingDocs) throws IOException {
-    // System.out.println("ssdv count");
 
     OrdinalMap ordinalMap;
 
@@ -263,7 +254,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   /** Does all the "real work" of tallying up the counts. */
   private final void countAll() throws IOException {
-    // System.out.println("ssdv count");
 
     OrdinalMap ordinalMap;
 

@@ -157,6 +157,14 @@ public class FacetsConfig {
     return dimConfig;
   }
 
+  /**
+   * Returns true if the dimension for provided name has ever been manually configured. The opposite
+   * means that dimension is still valid and {@link #DEFAULT_DIM_CONFIG} is being used for it.
+   */
+  public boolean isDimConfigured(String dimName) {
+    return fieldTypes.get(dimName) != null;
+  }
+
   /** Pass {@code true} if this dimension is hierarchical (has depth &gt; 1 paths). */
   public synchronized void setHierarchical(String dimName, boolean v) {
     DimConfig dimConfig = fieldTypes.get(dimName);
