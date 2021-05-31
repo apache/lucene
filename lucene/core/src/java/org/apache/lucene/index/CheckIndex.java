@@ -28,6 +28,7 @@ import java.nio.file.Paths;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -708,8 +709,29 @@ public final class CheckIndex implements Closeable {
       CompletableFuture<Status.SegmentInfoStatus>[] futures = new CompletableFuture[numSegments];
 
       // checks segments concurrently
+      List<SegmentCommitInfo> segmentCommitInfos = new ArrayList<>();
+      for (SegmentCommitInfo sci : sis) {
+        segmentCommitInfos.add(sci);
+      }
+
+      // sort segmentCommitInfos by segment size, as smaller segment tends to finish faster, and
+      // hence its output can be printed out faster
+      Collections.sort(
+          segmentCommitInfos,
+          (info1, info2) -> {
+            try {
+              return Long.compare(info1.sizeInBytes(), info2.sizeInBytes());
+            } catch (IOException e) {
+              msg(
+                  infoStream,
+                  "ERROR: IOException occurred when comparing SegmentCommitInfo file sizes");
+              if (infoStream != null) e.printStackTrace(infoStream);
+              return 0;
+            }
+          });
+
       for (int i = 0; i < numSegments; i++) {
-        final SegmentCommitInfo info = sis.info(i);
+        final SegmentCommitInfo info = segmentCommitInfos.get(i);
         updateMaxSegmentName(result, info);
         if (onlySegments != null && !onlySegments.contains(info.info.name)) {
           continue;
@@ -718,15 +740,7 @@ public final class CheckIndex implements Closeable {
         SegmentInfos finalSis = sis;
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        PrintStream stream;
-        if (i > 0) {
-          // buffer the messages for segment starting from the 2nd one so that they can later be
-          // printed in order
-          stream = new PrintStream(output, true, IOUtils.UTF_8);
-        } else {
-          // optimize for first segment to print real-time
-          stream = infoStream;
-        }
+        PrintStream stream = new PrintStream(output, true, IOUtils.UTF_8);
         msg(
             stream,
             (1 + i)
@@ -743,7 +757,7 @@ public final class CheckIndex implements Closeable {
       }
 
       for (int i = 0; i < numSegments; i++) {
-        SegmentCommitInfo info = sis.info(i);
+        SegmentCommitInfo info = segmentCommitInfos.get(i);
         if (onlySegments != null && !onlySegments.contains(info.info.name)) {
           continue;
         }
@@ -767,13 +781,11 @@ public final class CheckIndex implements Closeable {
           infoStream.println(output.toString(StandardCharsets.UTF_8));
 
           assert failFast;
-          throw new CheckIndexException("Segment " + info.info.name + " check failed.", e);
+          throw new CheckIndexException(
+              "Segment " + info.info.name + " check failed.", e.getCause());
         }
 
-        if (i > 0) {
-          // first segment output already printed by infoStream
-          infoStream.print(output.toString(StandardCharsets.UTF_8));
-        }
+        infoStream.print(output.toString(StandardCharsets.UTF_8));
 
         processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
