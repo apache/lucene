@@ -116,6 +116,11 @@ API Changes
 
 * LUCENE-9843: Remove compression option on default codec's docvalues. (Jack Conradson)
 
+* LUCENE-9204: SpanQuery and its subclasses have been moved from core/ into the
+  queries/ module. (Alan Woodward)
+
+* LUCENE-9454: Analyzer no longer has a mutable version field. (Alan Woodward)
+
 * LUCENE-9956: Expose the getBaseQuery, getDrillDownQueries APIs from DrillDownQuery (Gautam Worah)
 
 Improvements
