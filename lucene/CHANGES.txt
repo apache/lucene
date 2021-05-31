@@ -383,6 +383,8 @@ Improvements
 
 * LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
 
+* LUCENE-9983: Stop sorting determinize powersets unnecessarily. (Patrick Zhai)
+
 Optimizations
 ---------------------
 

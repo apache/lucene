@@ -31,7 +31,7 @@ public class TestIntSet extends LuceneTestCase {
   }
 
   private void testFreezeEquality(int size) {
-    SortedIntSet sortedSet = new SortedIntSet(0);
+    StateSet sortedSet = new StateSet(0);
 
     for (int i = 0; i < size; i++) {
       // Some duplicates is nice but not critical
@@ -51,7 +51,7 @@ public class TestIntSet extends LuceneTestCase {
 
   @Test
   public void testMapCutover() {
-    SortedIntSet set = new SortedIntSet(10);
+    StateSet set = new StateSet(10);
     for (int i = 0; i < 35; i++) {
       // No duplicates so there are enough elements to trigger impl cutover
       set.incr(i);
@@ -71,7 +71,7 @@ public class TestIntSet extends LuceneTestCase {
 
   @Test
   public void testModify() {
-    SortedIntSet set = new SortedIntSet(2);
+    StateSet set = new StateSet(2);
     set.incr(1);
     set.incr(2);
     set.computeHash();
