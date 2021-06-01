@@ -44,10 +44,6 @@ class DrillSidewaysQuery extends Query {
 
   final Query baseQuery;
 
-  // The caller must either directly provide FacetsCollectors for the drill down and sideways
-  // collecting, or provide FacetsCollectorManagers used to create the FacetsCollectors. If
-  // this query will be executed concurrently, FacetsCollectorManagers should be used to ensure
-  // multiple threads aren't collecting into the same FacetsCollector.
   final FacetsCollectorManager drillDownCollectorManager;
   final FacetsCollectorManager[] drillSidewaysCollectorManagers;
   final List<FacetsCollector> managedDrillDownCollectors;
