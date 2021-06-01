@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -615,10 +615,9 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
   private void assertSameLanguage(Automaton expected, Automaton actual) {
     Automaton expectedDet =
         Operations.determinize(
-            Operations.removeDeadStates(expected), DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.removeDeadStates(expected), DEFAULT_DETERMINIZE_WORK_LIMIT);
     Automaton actualDet =
-        Operations.determinize(
-            Operations.removeDeadStates(actual), DEFAULT_MAX_DETERMINIZED_STATES);
+        Operations.determinize(Operations.removeDeadStates(actual), DEFAULT_DETERMINIZE_WORK_LIMIT);
     if (Operations.sameLanguage(expectedDet, actualDet) == false) {
       Set<String> expectedPaths = toPathStrings(expectedDet);
       Set<String> actualPaths = toPathStrings(actualDet);

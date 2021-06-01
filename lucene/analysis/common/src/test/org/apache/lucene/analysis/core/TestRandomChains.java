@@ -616,7 +616,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               random -> {
                 return Operations.determinize(
                     new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE).toAutomaton(),
-                    Operations.DEFAULT_MAX_DETERMINIZED_STATES);
+                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
               });
           put(
               PatternTypingFilter.PatternTypingRule[].class,
