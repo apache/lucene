@@ -25,6 +25,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -67,6 +69,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.TestUtil;
 
 public class TestDrillSideways extends FacetTestCase {
@@ -1246,6 +1249,115 @@ public class TestDrillSideways extends FacetTestCase {
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, dir, taxoDir);
+  }
+
+  public void testNoDrillDownFacetCollection() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    // Writes facet ords to a separate directory from the
+    // main index:
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Publish Date", true);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new FacetField("Author", "Bob"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "15"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new FacetField("Author", "Lisa"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "20"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new FacetField("Author", "Lisa"));
+    doc.add(new FacetField("Publish Date", "2012", "1", "1"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new FacetField("Author", "Susan"));
+    doc.add(new FacetField("Publish Date", "2012", "1", "7"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new FacetField("Author", "Frank"));
+    doc.add(new FacetField("Publish Date", "1999", "5", "5"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    // NRT open
+    IndexSearcher searcher = getNewSearcher(writer.getReader());
+
+    // NRT open
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    // Sometimes pass an ExecutorService to test both paths for providing null drill down collectors
+    // The actual configuration of the ExecutorService doesn't matter at all:
+    ExecutorService executorService = null;
+    if (random().nextBoolean()) {
+      executorService = Executors.newSingleThreadExecutor(new NamedThreadFactory("ds_test"));
+    }
+
+    // Don't collect for drill down faceting
+    DrillSideways ds =
+        new DrillSideways(searcher, config, taxoReader, null, executorService) {
+          @Override
+          protected FacetsCollector createDrillDownFacetsCollector() {
+            return null;
+          }
+
+          @Override
+          protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
+            return null;
+          }
+        };
+
+    // Another simple case: drill-down on single fields
+    // but OR of two values
+    DrillDownQuery ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    ddq.add("Author", "Bob");
+    DrillSidewaysResult r = ds.search(null, ddq, 10);
+    Facets facets = r.facets;
+    assertEquals(3, r.hits.totalHits.value);
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        facets.getTopChildren(10, "Author").toString());
+    // Because we don't collect drill-downs, we shouldn't be able to get counts for Publish Date
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(10, "Publish Date"));
+
+    assertTrue(facets instanceof MultiFacets);
+    List<FacetResult> allResults = facets.getAllDims(10);
+    // Should only have the one dimension because we didn't collect for drill down
+    assertEquals(1, allResults.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        allResults.get(0).toString());
+
+    // More interesting case: drill-down on two fields
+    ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    ddq.add("Publish Date", "2010");
+    r = ds.search(null, ddq, 10);
+    assertEquals(1, r.hits.totalHits.value);
+    // Should be able to count on both fields since they're both drill sideways cases
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    if (executorService != null) {
+      executorService.shutdown();
+    }
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
 
   public void testScorer() throws Exception {
