@@ -730,7 +730,8 @@ public final class CheckIndex implements Closeable {
             }
           });
 
-      for (int i = 0; i < numSegments; i++) {
+      // start larger segments earlier
+      for (int i = numSegments - 1; i >= 0; i--) {
         final SegmentCommitInfo info = segmentCommitInfos.get(i);
         updateMaxSegmentName(result, info);
         if (onlySegments != null && !onlySegments.contains(info.info.name)) {
