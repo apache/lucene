@@ -17,12 +17,12 @@
 package org.apache.lucene.queries.payloads;
 
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.spans.SpanBoostQuery;
+import org.apache.lucene.queries.spans.SpanNearQuery;
+import org.apache.lucene.queries.spans.SpanOrQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.search.BaseExplanationTestCase;
-import org.apache.lucene.search.spans.SpanBoostQuery;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 
 /** TestExplanations subclass focusing on payload queries */
 public class TestPayloadExplanations extends BaseExplanationTestCase {

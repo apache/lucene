@@ -133,16 +133,34 @@ public class DrillSideways {
     this.executor = executor;
   }
 
+  /**
+   * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
+   * if no drill down facet collection is needed.
+   */
+  protected FacetsCollector createDrillDownFacetsCollector() {
+    return new FacetsCollector();
+  }
+
+  /**
+   * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
+   * if no drill down facet collection is needed.
+   */
+  protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
+    return new FacetsCollectorManager();
+  }
+
   /** Subclass can override to customize per-dim Facets impl. */
   protected Facets buildFacetsResult(
       FacetsCollector drillDowns, FacetsCollector[] drillSideways, String[] drillSidewaysDims)
       throws IOException {
 
-    Facets drillDownFacets;
+    Facets drillDownFacets = null;
     Map<String, Facets> drillSidewaysFacets = new HashMap<>();
 
     if (taxoReader != null) {
-      drillDownFacets = new FastTaxonomyFacetCounts(taxoReader, config, drillDowns);
+      if (drillDowns != null) {
+        drillDownFacets = new FastTaxonomyFacetCounts(taxoReader, config, drillDowns);
+      }
       if (drillSideways != null) {
         for (int i = 0; i < drillSideways.length; i++) {
           drillSidewaysFacets.put(
@@ -151,7 +169,9 @@ public class DrillSideways {
         }
       }
     } else {
-      drillDownFacets = new SortedSetDocValuesFacetCounts(state, drillDowns);
+      if (drillDowns != null) {
+        drillDownFacets = new SortedSetDocValuesFacetCounts(state, drillDowns);
+      }
       if (drillSideways != null) {
         for (int i = 0; i < drillSideways.length; i++) {
           drillSidewaysFacets.put(
@@ -180,11 +200,17 @@ public class DrillSideways {
 
     Map<String, Integer> drillDownDims = query.getDims();
 
+    FacetsCollector drillDownCollector = createDrillDownFacetsCollector();
+
     if (drillDownDims.isEmpty()) {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
-      FacetsCollector drillDownCollector = new FacetsCollector();
-      searcher.search(query, MultiCollector.wrap(hitCollector, drillDownCollector));
+      if (drillDownCollector != null) {
+        // Make sure we still populate a facet collector for the base query if desired:
+        searcher.search(query, MultiCollector.wrap(hitCollector, drillDownCollector));
+      } else {
+        searcher.search(query, hitCollector);
+      }
       return new DrillSidewaysResult(buildFacetsResult(drillDownCollector, null, null), null);
     }
 
@@ -515,12 +541,17 @@ public class DrillSideways {
     final List<CallableCollector> callableCollectors = new ArrayList<>(drillDownDims.size() + 1);
 
     // Add the main DrillDownQuery
-    callableCollectors.add(
-        new CallableCollector(
-            -1,
-            searcher,
-            query,
-            new MultiCollectorManager(new FacetsCollectorManager(), hitCollectorManager)));
+    FacetsCollectorManager drillDownFacetsCollectorManager =
+        createDrillDownFacetsCollectorManager();
+    CollectorManager<?, ?> mainCollectorManager;
+    if (drillDownFacetsCollectorManager != null) {
+      // Make sure we populate a facet collector corresponding to the base query if desired:
+      mainCollectorManager =
+          new MultiCollectorManager(drillDownFacetsCollectorManager, hitCollectorManager);
+    } else {
+      mainCollectorManager = hitCollectorManager;
+    }
+    callableCollectors.add(new CallableCollector(-1, searcher, query, mainCollectorManager));
     int i = 0;
     final Query[] filters = query.getDrillDownQueries();
     for (String dim : drillDownDims.keySet())
@@ -537,9 +568,15 @@ public class DrillSideways {
       final List<Future<CallableResult>> futures = executor.invokeAll(callableCollectors);
 
       // Extract the results
-      final Object[] mainResults = (Object[]) futures.get(0).get().result;
-      mainFacetsCollector = (FacetsCollector) mainResults[0];
-      collectorResult = (R) mainResults[1];
+      if (drillDownFacetsCollectorManager != null) {
+        // If we populated a facets collector for the main query, make sure to unpack it properly
+        final Object[] mainResults = (Object[]) futures.get(0).get().result;
+        mainFacetsCollector = (FacetsCollector) mainResults[0];
+        collectorResult = (R) mainResults[1];
+      } else {
+        mainFacetsCollector = null;
+        collectorResult = (R) futures.get(0).get().result;
+      }
       for (i = 1; i < futures.size(); i++) {
         final CallableResult result = futures.get(i).get();
         facetsCollectors[result.pos] = (FacetsCollector) result.result;

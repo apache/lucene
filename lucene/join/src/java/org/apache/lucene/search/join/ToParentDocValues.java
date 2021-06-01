@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.search.ConjunctionDISI;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.join.BlockJoinSelector.Type;
 import org.apache.lucene.util.BitSet;
@@ -177,7 +177,7 @@ class ToParentDocValues extends DocIdSetIterator {
   private ToParentDocValues(
       DocIdSetIterator values, BitSet parents, DocIdSetIterator children, Accumulator collect) {
     this.parents = parents;
-    childWithValues = ConjunctionDISI.intersectIterators(Arrays.asList(children, values));
+    childWithValues = ConjunctionUtils.intersectIterators(Arrays.asList(children, values));
     this.collector = collect;
   }
 

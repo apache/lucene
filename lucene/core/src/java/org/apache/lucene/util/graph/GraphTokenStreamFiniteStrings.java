@@ -17,7 +17,7 @@
 
 package org.apache.lucene.util.graph;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -80,7 +80,7 @@ public final class GraphTokenStreamFiniteStrings {
   public GraphTokenStreamFiniteStrings(TokenStream in) throws IOException {
     Automaton aut = build(in);
     this.det =
-        Operations.removeDeadStates(Operations.determinize(aut, DEFAULT_MAX_DETERMINIZED_STATES));
+        Operations.removeDeadStates(Operations.determinize(aut, DEFAULT_DETERMINIZE_WORK_LIMIT));
   }
 
   /**
