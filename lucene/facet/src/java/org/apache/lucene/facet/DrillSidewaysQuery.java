@@ -152,12 +152,6 @@ class DrillSidewaysQuery extends Query {
 
         int drillDownCount = drillDowns.length;
 
-        // TODO: If the caller provided a FacetsCollectorManager instead of directly providing
-        // FacetsCollectors, we assume this will be invoked during a concurrent search. Ideally
-        // we'd only create new FacetsCollectors for each "leaf slice" that will be concurrently
-        // searched, as opposed to each actual leaf, but we don't have that information at this
-        // level so we always provide a new FacetsCollector. There might be a better way to
-        // refactor this logic.
         FacetsCollector[] sidewaysCollectors = new FacetsCollector[drillDownCount];
         managedDrillSidewaysCollectors.add(sidewaysCollectors);
 
@@ -173,9 +167,6 @@ class DrillSidewaysQuery extends Query {
                 new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
           }
 
-          // If the caller directly provided FacetsCollectors to use for the sideways dimensions,
-          // go ahead and use them. Otherwise, create new ones from the provided
-          // FacetsCollectorManager and keep track of them.
           FacetsCollector sidewaysCollector = drillSidewaysCollectorManagers[dim].newCollector();
           sidewaysCollectors[dim] = sidewaysCollector;
 
@@ -205,13 +196,16 @@ class DrillSidewaysQuery extends Query {
           return null;
         }
 
-        // If the caller directly provided a FacetsCollector for the drill downs, go ahead and
-        // use it. Otherwise, create a new one from the provided FacetsCollectorManager and
-        // keep track of it.
-        FacetsCollector ddc = drillDownCollectorManager.newCollector();
-        managedDrillDownCollectors.add(ddc);
+        FacetsCollector drillDownCollector;
+        if (drillDownCollectorManager != null) {
+          drillDownCollector = drillDownCollectorManager.newCollector();
+          managedDrillDownCollectors.add(drillDownCollector);
+        } else {
+          drillDownCollector = null;
+        }
 
-        return new DrillSidewaysScorer(context, baseScorer, ddc, dims, scoreSubDocsAtOnce);
+        return new DrillSidewaysScorer(
+            context, baseScorer, drillDownCollector, dims, scoreSubDocsAtOnce);
       }
     };
   }

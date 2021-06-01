@@ -200,11 +200,10 @@ public class DrillSideways {
 
     Map<String, Integer> drillDownDims = query.getDims();
 
-    FacetsCollector drillDownCollector = createDrillDownFacetsCollector();
-
     if (drillDownDims.isEmpty()) {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
+      FacetsCollector drillDownCollector = createDrillDownFacetsCollector();
       if (drillDownCollector != null) {
         // Make sure we still populate a facet collector for the base query if desired:
         searcher.search(query, MultiCollector.wrap(hitCollector, drillDownCollector));
@@ -224,7 +223,7 @@ public class DrillSideways {
 
     int numDims = drillDownDims.size();
 
-    FacetsCollectorManager drillDownCollectorManager = new FacetsCollectorManager();
+    FacetsCollectorManager drillDownCollectorManager = createDrillDownFacetsCollectorManager();
 
     FacetsCollectorManager[] drillSidewaysFacetsCollectorManagers =
         new FacetsCollectorManager[numDims];
@@ -252,8 +251,12 @@ public class DrillSideways {
     }
     searcher.search(dsq, hitCollector);
 
-    FacetsCollector drillDownCollector =
-        drillDownCollectorManager.reduce(dsq.managedDrillDownCollectors);
+    FacetsCollector drillDownCollector;
+    if (drillDownCollectorManager != null) {
+      drillDownCollector = drillDownCollectorManager.reduce(dsq.managedDrillDownCollectors);
+    } else {
+      drillDownCollector = null;
+    }
 
     FacetsCollector[] drillSidewaysCollectors = new FacetsCollector[numDims];
     int numSlices = dsq.managedDrillSidewaysCollectors.size();
@@ -470,7 +473,9 @@ public class DrillSideways {
       // drill-sideways to compute:
       final Object[] mainResults =
           searcher.search(
-              query, new MultiCollectorManager(new FacetsCollectorManager(), hitCollectorManager));
+              query,
+              new MultiCollectorManager(
+                  createDrillDownFacetsCollectorManager(), hitCollectorManager));
       // Extract the results
       final FacetsCollector mainFacetsCollector = (FacetsCollector) mainResults[0];
       final R collectorResult = (R) mainResults[1];
@@ -488,7 +493,7 @@ public class DrillSideways {
 
     int numDims = drillDownDims.size();
 
-    FacetsCollectorManager drillDownCollectorManager = new FacetsCollectorManager();
+    FacetsCollectorManager drillDownCollectorManager = createDrillDownFacetsCollectorManager();
 
     FacetsCollectorManager[] drillSidewaysFacetsCollectorManagers =
         new FacetsCollectorManager[numDims];
@@ -506,8 +511,12 @@ public class DrillSideways {
 
     R collectorResult = searcher.search(dsq, hitCollectorManager);
 
-    FacetsCollector drillDownCollector =
-        drillDownCollectorManager.reduce(dsq.managedDrillDownCollectors);
+    FacetsCollector drillDownCollector;
+    if (drillDownCollectorManager != null) {
+      drillDownCollector = drillDownCollectorManager.reduce(dsq.managedDrillDownCollectors);
+    } else {
+      drillDownCollector = null;
+    }
 
     FacetsCollector[] drillSidewaysCollectors = new FacetsCollector[numDims];
     int numSlices = dsq.managedDrillSidewaysCollectors.size();
