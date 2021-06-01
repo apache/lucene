@@ -38,17 +38,11 @@ public final class HnswGraphBuilder {
   // expose for testing.
   public static long randSeed = DEFAULT_RAND_SEED;
 
-  /* These "default" hyper-parameter settings are exposed (and non-final) to enable performance
-   * testing since the indexing API doesn't provide any control over them.
-   */
-
   // default max connections per node
   public static final int DEFAULT_MAX_CONN = 16;
-  public static String HNSW_MAX_CONN_ATTRIBUTE_KEY = "max_connections";
 
   // default candidate list size
   public static final int DEFAULT_BEAM_WIDTH = 16;
-  public static String HNSW_BEAM_WIDTH_ATTRIBUTE_KEY = "beam_width";
 
   private final int maxConn;
   private final int beamWidth;

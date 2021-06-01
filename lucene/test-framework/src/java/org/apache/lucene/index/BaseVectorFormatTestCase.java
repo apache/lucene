@@ -85,28 +85,6 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     expectThrows(IllegalArgumentException.class, () -> field.setVectorValue(null));
   }
 
-  public void testFieldCreateFieldType() {
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> VectorField.createHnswType(0, VectorValues.SimilarityFunction.EUCLIDEAN, 16, 16));
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            VectorField.createHnswType(
-                VectorValues.MAX_DIMENSIONS + 1,
-                VectorValues.SimilarityFunction.EUCLIDEAN,
-                16,
-                16));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> VectorField.createHnswType(VectorValues.MAX_DIMENSIONS + 1, null, 16, 16));
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            VectorField.createHnswType(
-                VectorValues.MAX_DIMENSIONS + 1, VectorValues.SimilarityFunction.NONE, 16, 16));
-  }
-
   // Illegal schema change tests:
   public void testIllegalDimChangeTwoDocs() throws Exception {
     // illegal change in the same segment
