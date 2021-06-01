@@ -22,7 +22,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import org.apache.lucene.search.spans.Spans;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
@@ -32,71 +31,16 @@ import org.apache.lucene.util.CollectionUtil;
  * A conjunction of DocIdSetIterators. Requires that all of its sub-iterators must be on the same
  * document all the time. This iterates over the doc ids that are present in each given
  * DocIdSetIterator. <br>
- * Public only for use in {@link org.apache.lucene.search.spans}.
  *
  * @lucene.internal
  */
-public final class ConjunctionDISI extends DocIdSetIterator {
-
-  /**
-   * Create a conjunction over the provided {@link Scorer}s. Note that the returned {@link
-   * DocIdSetIterator} might leverage two-phase iteration in which case it is possible to retrieve
-   * the {@link TwoPhaseIterator} using {@link TwoPhaseIterator#unwrap}.
-   */
-  public static DocIdSetIterator intersectScorers(Collection<Scorer> scorers) {
-    if (scorers.size() < 2) {
-      throw new IllegalArgumentException("Cannot make a ConjunctionDISI of less than 2 iterators");
-    }
-    final List<DocIdSetIterator> allIterators = new ArrayList<>();
-    final List<TwoPhaseIterator> twoPhaseIterators = new ArrayList<>();
-    for (Scorer scorer : scorers) {
-      addScorer(scorer, allIterators, twoPhaseIterators);
-    }
-
-    return createConjunction(allIterators, twoPhaseIterators);
-  }
-
-  /**
-   * Create a conjunction over the provided DocIdSetIterators. Note that the returned {@link
-   * DocIdSetIterator} might leverage two-phase iteration in which case it is possible to retrieve
-   * the {@link TwoPhaseIterator} using {@link TwoPhaseIterator#unwrap}.
-   */
-  public static DocIdSetIterator intersectIterators(List<DocIdSetIterator> iterators) {
-    if (iterators.size() < 2) {
-      throw new IllegalArgumentException("Cannot make a ConjunctionDISI of less than 2 iterators");
-    }
-    final List<DocIdSetIterator> allIterators = new ArrayList<>();
-    final List<TwoPhaseIterator> twoPhaseIterators = new ArrayList<>();
-    for (DocIdSetIterator iterator : iterators) {
-      addIterator(iterator, allIterators, twoPhaseIterators);
-    }
-
-    return createConjunction(allIterators, twoPhaseIterators);
-  }
-
-  /**
-   * Create a conjunction over the provided {@link Spans}. Note that the returned {@link
-   * DocIdSetIterator} might leverage two-phase iteration in which case it is possible to retrieve
-   * the {@link TwoPhaseIterator} using {@link TwoPhaseIterator#unwrap}.
-   */
-  public static DocIdSetIterator intersectSpans(List<Spans> spanList) {
-    if (spanList.size() < 2) {
-      throw new IllegalArgumentException("Cannot make a ConjunctionDISI of less than 2 iterators");
-    }
-    final List<DocIdSetIterator> allIterators = new ArrayList<>();
-    final List<TwoPhaseIterator> twoPhaseIterators = new ArrayList<>();
-    for (Spans spans : spanList) {
-      addSpans(spans, allIterators, twoPhaseIterators);
-    }
-
-    return createConjunction(allIterators, twoPhaseIterators);
-  }
+final class ConjunctionDISI extends DocIdSetIterator {
 
   /**
    * Adds the scorer, possibly splitting up into two phases or collapsing if it is another
    * conjunction
    */
-  private static void addScorer(
+  static void addScorer(
       Scorer scorer,
       List<DocIdSetIterator> allIterators,
       List<TwoPhaseIterator> twoPhaseIterators) {
@@ -108,18 +52,7 @@ public final class ConjunctionDISI extends DocIdSetIterator {
     }
   }
 
-  /** Adds the Spans. */
-  private static void addSpans(
-      Spans spans, List<DocIdSetIterator> allIterators, List<TwoPhaseIterator> twoPhaseIterators) {
-    TwoPhaseIterator twoPhaseIter = spans.asTwoPhaseIterator();
-    if (twoPhaseIter != null) {
-      addTwoPhaseIterator(twoPhaseIter, allIterators, twoPhaseIterators);
-    } else { // no approximation support, use the iterator as-is
-      addIterator(spans, allIterators, twoPhaseIterators);
-    }
-  }
-
-  private static void addIterator(
+  static void addIterator(
       DocIdSetIterator disi,
       List<DocIdSetIterator> allIterators,
       List<TwoPhaseIterator> twoPhaseIterators) {
@@ -144,7 +77,7 @@ public final class ConjunctionDISI extends DocIdSetIterator {
     }
   }
 
-  private static void addTwoPhaseIterator(
+  static void addTwoPhaseIterator(
       TwoPhaseIterator twoPhaseIter,
       List<DocIdSetIterator> allIterators,
       List<TwoPhaseIterator> twoPhaseIterators) {
@@ -158,7 +91,7 @@ public final class ConjunctionDISI extends DocIdSetIterator {
     }
   }
 
-  private static DocIdSetIterator createConjunction(
+  static DocIdSetIterator createConjunction(
       List<DocIdSetIterator> allIterators, List<TwoPhaseIterator> twoPhaseIterators) {
 
     // check that all sub-iterators are on the same doc ID

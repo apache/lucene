@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import org.apache.lucene.search.spans.Spans;
-
 /**
  * Wrapper used in {@link DisiPriorityQueue}.
  *
@@ -41,14 +39,8 @@ public class DisiWrapper {
   // For WANDScorer
   long maxScore;
 
-  // FOR SPANS
-  public final Spans spans;
-  public int lastApproxMatchDoc; // last doc of approximation that did match
-  public int lastApproxNonMatchDoc; // last doc of approximation that did not match
-
   public DisiWrapper(Scorer scorer) {
     this.scorer = scorer;
-    this.spans = null;
     this.iterator = scorer.iterator();
     this.cost = iterator.cost();
     this.doc = -1;
@@ -61,24 +53,5 @@ public class DisiWrapper {
       approximation = iterator;
       matchCost = 0f;
     }
-  }
-
-  public DisiWrapper(Spans spans) {
-    this.scorer = null;
-    this.spans = spans;
-    this.iterator = spans;
-    this.cost = iterator.cost();
-    this.doc = -1;
-    this.twoPhaseView = spans.asTwoPhaseIterator();
-
-    if (twoPhaseView != null) {
-      approximation = twoPhaseView.approximation();
-      matchCost = twoPhaseView.matchCost();
-    } else {
-      approximation = iterator;
-      matchCost = 0f;
-    }
-    this.lastApproxNonMatchDoc = -2;
-    this.lastApproxMatchDoc = -2;
   }
 }

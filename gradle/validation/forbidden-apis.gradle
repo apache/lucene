@@ -136,5 +136,15 @@ allprojects { prj ->
           'jdk-system-out'
       ]
     }
+
+    // the test-framework module is special in that its main sources are exported for all tests.
+    // include the test signature file (defaults.tests.txt) to the main sourceset.
+    if (prj.path in [
+        ":lucene:test-framework"
+    ]) {
+      forbiddenApisMain.signaturesFiles += files(
+          file("${resources}/defaults.tests.txt")
+      )
+    }
   })
 }

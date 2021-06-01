@@ -30,7 +30,7 @@ public class PrefixQuery extends AutomatonQuery {
 
   /** Constructs a query for terms starting with <code>prefix</code>. */
   public PrefixQuery(Term prefix) {
-    // It's OK to pass unlimited maxDeterminizedStates: the automaton is born small and
+    // It's OK to pass unlimited determinizeWorkLimit: the automaton is born small and
     // determinized:
     super(prefix, toAutomaton(prefix.bytes()), Integer.MAX_VALUE, true);
   }
