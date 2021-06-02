@@ -32,6 +32,7 @@ import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -465,5 +466,27 @@ public class TestSynonymQuery extends LuceneTestCase {
     }
     reader.close();
     dir.close();
+  }
+
+  public void testRewrite() throws IOException {
+    // zero length SynonymQuery is rewritten
+    SynonymQuery q = new SynonymQuery.Builder("f").build();
+    assertTrue(q.getTerms().isEmpty());
+    assertEquals(q.rewrite(new MultiReader()), new BooleanQuery.Builder().build());
+
+    // non-boosted single term SynonymQuery is rewritten
+    q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 1f).build();
+    assertEquals(q.getTerms().size(), 1);
+    assertEquals(q.rewrite(new MultiReader()), new TermQuery(new Term("f")));
+
+    // boosted single term SynonymQuery is not rewritten
+    q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 0.8f).build();
+    assertEquals(q.getTerms().size(), 1);
+    assertEquals(q.rewrite(new MultiReader()), q);
+
+    // multiple term SynonymQuery is not rewritten
+    q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 1f).addTerm(new Term("f"), 1f).build();
+    assertEquals(q.getTerms().size(), 2);
+    assertEquals(q.rewrite(new MultiReader()), q);
   }
 }
