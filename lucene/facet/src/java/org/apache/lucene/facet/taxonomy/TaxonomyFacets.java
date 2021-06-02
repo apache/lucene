@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
@@ -21,10 +22,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.FacetsConfig.DimConfig; // javadocs
+import org.apache.lucene.facet.FacetsConfig.DimConfig;
 
 /** Base class for all taxonomy-based facets impls. */
 public abstract class TaxonomyFacets extends Facets {
@@ -111,14 +113,25 @@ public abstract class TaxonomyFacets extends Facets {
   }
 
   /**
-   * Throws {@code IllegalArgumentException} if the dimension is not recognized. Otherwise, returns
-   * the {@link DimConfig} for this dimension.
+   * Verifies and returns {@link DimConfig} for the given dimension name.
+   *
+   * @return {@link DimConfig} for the given dim, or {@link FacetsConfig#DEFAULT_DIM_CONFIG} if it
+   *     was never manually configured.
+   * @throws IllegalArgumentException if the provided dimension was manually configured, but its
+   *     {@link DimConfig#indexFieldName} does not match {@link #indexFieldName}.
    */
-  protected FacetsConfig.DimConfig verifyDim(String dim) {
+  protected DimConfig verifyDim(String dim) {
     FacetsConfig.DimConfig dimConfig = config.getDimConfig(dim);
-    if (!dimConfig.indexFieldName.equals(indexFieldName)) {
+    if (config.isDimConfigured(dim) == true
+        && dimConfig.indexFieldName.equals(indexFieldName) == false) {
       throw new IllegalArgumentException(
-          "dimension \"" + dim + "\" was not indexed into field \"" + indexFieldName + "\"");
+          String.format(
+              Locale.ROOT,
+              "dimension \"%s\" cannot be found in field \"%s\", since it was configured "
+                  + "to be indexed into field \"%s\"",
+              dim,
+              indexFieldName,
+              dimConfig.indexFieldName));
     }
     return dimConfig;
   }

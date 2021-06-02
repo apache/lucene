@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -91,7 +91,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
       String reg = AutomatonTestUtil.randomRegexp(random());
       Automaton automaton =
           Operations.determinize(
-              new RegExp(reg, RegExp.NONE).toAutomaton(), DEFAULT_MAX_DETERMINIZED_STATES);
+              new RegExp(reg, RegExp.NONE).toAutomaton(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       final List<BytesRef> matchedTerms = new ArrayList<>();
       for (BytesRef t : terms) {
         if (Operations.run(automaton, t.utf8ToString())) {
@@ -119,7 +119,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
       String reg = AutomatonTestUtil.randomRegexp(random());
       Automaton automaton =
           Operations.determinize(
-              new RegExp(reg, RegExp.NONE).toAutomaton(), DEFAULT_MAX_DETERMINIZED_STATES);
+              new RegExp(reg, RegExp.NONE).toAutomaton(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       TermsEnum te = MultiTerms.getTerms(reader, "field").iterator();
       ArrayList<BytesRef> unsortedTerms = new ArrayList<>(terms);
       Collections.shuffle(unsortedTerms, random());
@@ -169,14 +169,14 @@ public class TestTermsEnum2 extends LuceneTestCase {
       TermsEnum te = MultiTerms.getTerms(reader, "field").intersect(ca, null);
       Automaton expected =
           Operations.determinize(
-              Operations.intersection(termsAutomaton, automaton), DEFAULT_MAX_DETERMINIZED_STATES);
+              Operations.intersection(termsAutomaton, automaton), DEFAULT_DETERMINIZE_WORK_LIMIT);
       TreeSet<BytesRef> found = new TreeSet<>();
       while (te.next() != null) {
         found.add(BytesRef.deepCopyOf(te.term()));
       }
 
       Automaton actual =
-          Operations.determinize(Automata.makeStringUnion(found), DEFAULT_MAX_DETERMINIZED_STATES);
+          Operations.determinize(Automata.makeStringUnion(found), DEFAULT_DETERMINIZE_WORK_LIMIT);
       assertTrue(Operations.sameLanguage(expected, actual));
     }
   }

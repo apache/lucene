@@ -52,53 +52,54 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     return codec;
   }
 
-  // just a simple trivial test
   public void testTwoFieldsTwoFormats() throws IOException {
     Analyzer analyzer = new MockAnalyzer(random());
 
     try (Directory directory = newDirectory()) {
       // we don't use RandomIndexWriter because it might add more values than we expect !!!!1
       IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
-      final VectorFormat fast = TestUtil.getDefaultVectorFormat();
-      final VectorFormat slow = VectorFormat.forName("Asserting");
+      VectorFormat defaultFormat = TestUtil.getDefaultVectorFormat();
+      VectorFormat emptyFormat = VectorFormat.EMPTY;
       iwc.setCodec(
           new AssertingCodec() {
             @Override
             public VectorFormat getVectorFormatForField(String field) {
-              if ("v1".equals(field)) {
-                return fast;
+              if ("empty".equals(field)) {
+                return emptyFormat;
               } else {
-                return slow;
+                return defaultFormat;
               }
             }
           });
+
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
         Document doc = new Document();
         doc.add(newTextField("id", "1", Field.Store.YES));
-        doc.add(new VectorField("v1", new float[] {1, 2, 3}));
+        doc.add(new VectorField("field", new float[] {1, 2, 3}));
         iwriter.addDocument(doc);
-        doc = new Document();
+        iwriter.commit();
+
+        // Check that we use the empty vector format, which doesn't support writes
+        doc.clear();
         doc.add(newTextField("id", "2", Field.Store.YES));
-        doc.add(new VectorField("v2", new float[] {4, 5, 6}));
-        iwriter.addDocument(doc);
+        doc.add(new VectorField("empty", new float[] {4, 5, 6}));
+        expectThrows(
+            RuntimeException.class,
+            () -> {
+              iwriter.addDocument(doc);
+              iwriter.commit();
+            });
       }
 
-      // Now search the index:
+      // Now search for the field that was successfully indexed
       try (IndexReader ireader = DirectoryReader.open(directory)) {
         TopDocs hits1 =
             ireader
                 .leaves()
                 .get(0)
                 .reader()
-                .searchNearestVectors("v1", new float[] {1, 2, 3}, 10, 1);
+                .searchNearestVectors("field", new float[] {1, 2, 3}, 10, 1);
         assertEquals(1, hits1.scoreDocs.length);
-        TopDocs hits2 =
-            ireader
-                .leaves()
-                .get(0)
-                .reader()
-                .searchNearestVectors("v2", new float[] {1, 2, 3}, 10, 1);
-        assertEquals(1, hits2.scoreDocs.length);
       }
     }
   }

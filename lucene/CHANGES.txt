@@ -123,6 +123,11 @@ API Changes
 
 * LUCENE-9454: Analyzer no longer has a mutable version field. (Alan Woodward)
 
+* LUCENE-9956: Expose the getBaseQuery, getDrillDownQueries APIs from DrillDownQuery (Gautam Worah)
+
+* LUCENE-9962: DrillSideways allows sub-classes to provide "drill down" FacetsCollectors. They
+  may provide a null collector if they choose to bypass "drill down" facet collection. (Greg Miller)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
@@ -231,8 +236,26 @@ Improvements
 
 * LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
 
+* LUCENE-9946: Support for multi-value fields in LongRangeFacetCounts and
+  DoubleRangeFacetCounts. (Greg Miller)
+
 * LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
   it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
+
+* LUCENE-9981: Operations.getCommonSuffix/Prefix(Automaton) is now much more
+  efficient, from a worst case exponential down to quadratic cost in the
+  number of states + transitions in the Automaton.  These methods no longer
+  use the costly determinize method, removing the risk of
+  TooComplexToDeterminizeException (Robert Muir, Mike McCandless)
+
+* LUCENE-9981: Operations.determinize now throws TooComplexToDeterminizeException
+  based on too much "effort" spent determinizing rather than a precise state
+  count on the resulting returned automaton, to better handle adversarial
+  cases like det(rev(regexp("(.*a){2000}"))) that spend lots of effort but
+  result in smallish eventual returned automata.  (Robert Muir, Mike McCandless)
+
+* LUCENE-9944: Allow DrillSideways users to provide their own CollectorManager without also requiring
+  them to provide an ExecutorService. (Greg Miller)
 
 Bug fixes
 
@@ -262,6 +285,10 @@ Bug fixes
 
 * LUCENE-9940: The order of disjuncts in DisjunctionMaxQuery does not matter
   for equality checks (Alan Woodward)
+
+* LUCENE-9971: Requesting facet counts for unseen dimensions in SortedSetDocValueFacetCounts and
+  ConcurrentSortedSetDocValueFacetCounts now returns null / -1 instead of throwing
+  IllegalArgumentException as per Javadoc spec in Facets. (Alexander Lukyanchikov)
 
 * LUCENE-9823: Prevent unsafe rewrites for SynonymQuery and CombinedFieldQuery. Before, rewriting
   could slightly change the scoring when weights were specified. (Naoto Minami via Julie Tibshirani)
@@ -399,7 +426,7 @@ Bug Fixes
 
 * LUCENE-9958: Fixed performance regression for boolean queries that configure a
   minimum number of matching clauses. (Adrien Grand, Matt Weber)
-  
+
 * LUCENE-9953: LongValueFacetCounts should count each document at most once when determining
   the total count for a dimension. Prior to this fix, multi-value docs could contribute a > 1
   count to the dimension count. (Greg Miller)

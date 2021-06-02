@@ -16,42 +16,39 @@
  */
 package org.apache.lucene.util.automaton;
 
-/**
- * This exception is thrown when determinizing an automaton would result in one which has too many
- * states.
- */
+/** This exception is thrown when determinizing an automaton would require too much work. */
 public class TooComplexToDeterminizeException extends RuntimeException {
   private final transient Automaton automaton;
   private final transient RegExp regExp;
-  private final transient int maxDeterminizedStates;
+  private final transient int determinizeWorkLimit;
 
   /** Use this constructor when the RegExp failed to convert to an automaton. */
   public TooComplexToDeterminizeException(RegExp regExp, TooComplexToDeterminizeException cause) {
     super(
         "Determinizing "
             + regExp.getOriginalString()
-            + " would result in more than "
-            + cause.maxDeterminizedStates
-            + " states.",
+            + " would require more than "
+            + cause.determinizeWorkLimit
+            + " effort.",
         cause);
     this.regExp = regExp;
     this.automaton = cause.automaton;
-    this.maxDeterminizedStates = cause.maxDeterminizedStates;
+    this.determinizeWorkLimit = cause.determinizeWorkLimit;
   }
 
   /** Use this constructor when the automaton failed to determinize. */
-  public TooComplexToDeterminizeException(Automaton automaton, int maxDeterminizedStates) {
+  public TooComplexToDeterminizeException(Automaton automaton, int determinizeWorkLimit) {
     super(
         "Determinizing automaton with "
             + automaton.getNumStates()
             + " states and "
             + automaton.getNumTransitions()
-            + " transitions would result in more than "
-            + maxDeterminizedStates
-            + " states.");
+            + " transitions would require more than "
+            + determinizeWorkLimit
+            + " effort.");
     this.automaton = automaton;
     this.regExp = null;
-    this.maxDeterminizedStates = maxDeterminizedStates;
+    this.determinizeWorkLimit = determinizeWorkLimit;
   }
 
   /** Returns the automaton that caused this exception, if any. */
@@ -64,8 +61,8 @@ public class TooComplexToDeterminizeException extends RuntimeException {
     return regExp;
   }
 
-  /** Get the maximum number of allowed determinized states. */
-  public int getMaxDeterminizedStates() {
-    return maxDeterminizedStates;
+  /** Get the maximum allowed determinize effort. */
+  public int getDeterminizeWorkLimit() {
+    return determinizeWorkLimit;
   }
 }

@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.queryparser.classic;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.StringReader;
 import java.text.DateFormat;
@@ -79,7 +79,7 @@ public abstract class QueryParserBase extends QueryBuilder
   Map<String, DateTools.Resolution> fieldToDateResolution = null;
 
   boolean autoGeneratePhraseQueries;
-  int maxDeterminizedStates = DEFAULT_MAX_DETERMINIZED_STATES;
+  int determinizeWorkLimit = DEFAULT_DETERMINIZE_WORK_LIMIT;
 
   // So the generated QueryParser(CharStream) won't error out
   protected QueryParserBase() {
@@ -328,20 +328,19 @@ public abstract class QueryParserBase extends QueryBuilder
   }
 
   /**
-   * @param maxDeterminizedStates the maximum number of states that determinizing a regexp query can
-   *     result in. If the query results in any more states a TooComplexToDeterminizeException is
-   *     thrown.
+   * @param determinizeWorkLimit the maximum effort that determinizing a regexp query can spend. If
+   *     the query requires more effort, a TooComplexToDeterminizeException is thrown.
    */
-  public void setMaxDeterminizedStates(int maxDeterminizedStates) {
-    this.maxDeterminizedStates = maxDeterminizedStates;
+  public void setDeterminizeWorkLimit(int determinizeWorkLimit) {
+    this.determinizeWorkLimit = determinizeWorkLimit;
   }
 
   /**
-   * @return the maximum number of states that determinizing a regexp query can result in. If the
-   *     query results in any more states a TooComplexToDeterminizeException is thrown.
+   * @return the maximum effort that determinizing a regexp query can spend. If the query requires
+   *     more effort, a TooComplexToDeterminizeException is thrown.
    */
-  public int getMaxDeterminizedStates() {
-    return maxDeterminizedStates;
+  public int getDeterminizeWorkLimit() {
+    return determinizeWorkLimit;
   }
 
   protected void addClause(List<BooleanClause> clauses, int conj, int mods, Query q) {
@@ -554,7 +553,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new RegexpQuery instance
    */
   protected Query newRegexpQuery(Term regexp) {
-    RegexpQuery query = new RegexpQuery(regexp, RegExp.ALL, maxDeterminizedStates);
+    RegexpQuery query = new RegexpQuery(regexp, RegExp.ALL, determinizeWorkLimit);
     query.setRewriteMethod(multiTermRewriteMethod);
     return query;
   }
@@ -625,7 +624,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new WildcardQuery instance
    */
   protected Query newWildcardQuery(Term t) {
-    WildcardQuery query = new WildcardQuery(t, maxDeterminizedStates);
+    WildcardQuery query = new WildcardQuery(t, determinizeWorkLimit);
     query.setRewriteMethod(multiTermRewriteMethod);
     return query;
   }
