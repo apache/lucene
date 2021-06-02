@@ -471,14 +471,21 @@ public class DrillSideways {
     if (drillDownDims.isEmpty()) {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
-      final Object[] mainResults =
-          searcher.search(
-              query,
-              new MultiCollectorManager(
-                  createDrillDownFacetsCollectorManager(), hitCollectorManager));
-      // Extract the results
-      final FacetsCollector mainFacetsCollector = (FacetsCollector) mainResults[0];
-      final R collectorResult = (R) mainResults[1];
+      FacetsCollectorManager drillDownCollectorManager = createDrillDownFacetsCollectorManager();
+      FacetsCollector mainFacetsCollector;
+      R collectorResult;
+      if (drillDownCollectorManager != null) {
+        Object[] mainResults =
+            searcher.search(
+                query, new MultiCollectorManager(drillDownCollectorManager, hitCollectorManager));
+        // Extract the results:
+        mainFacetsCollector = (FacetsCollector) mainResults[0];
+        collectorResult = (R) mainResults[1];
+      } else {
+        mainFacetsCollector = null;
+        collectorResult = searcher.search(query, hitCollectorManager);
+      }
+
       return new ConcurrentDrillSidewaysResult<>(
           buildFacetsResult(mainFacetsCollector, null, null), null, collectorResult);
     }

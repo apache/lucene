@@ -553,10 +553,34 @@ public class TestDrillSideways extends FacetTestCase {
     ddq = new DrillDownQuery(config, new TermQuery(new Term("foobar", "baz")));
     ddq.add("Author", "Lisa");
     r = ds.search(ddq, manager);
-
     assertEquals(0, r.collectorResult.size());
     assertNull(r.facets.getTopChildren(10, "Publish Date"));
     assertNull(r.facets.getTopChildren(10, "Author"));
+
+    // Test no drill down dims:
+    ddq = new DrillDownQuery(config, new MatchAllDocsQuery());
+    r = ds.search(ddq, manager);
+    assertEquals(5, r.collectorResult.size());
+    assertEquals(
+        "dim=Publish Date path=[] value=5 childCount=3\n  2010 (2)\n  2012 (2)\n  1999 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    // Test no drill down dims with null FacetsCollectorManager for the main query:
+    ddq = new DrillDownQuery(config, new MatchAllDocsQuery());
+    r =
+        new DrillSideways(searcher, config, taxoReader) {
+          @Override
+          protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
+            return null;
+          }
+        }.search(ddq, manager);
+    assertEquals(5, r.collectorResult.size());
+    // Expect null facets since we provided a null FacetsCollectorManager
+    assertNull(r.facets);
+
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
