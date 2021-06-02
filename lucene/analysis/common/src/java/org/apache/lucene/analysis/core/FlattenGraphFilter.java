@@ -196,22 +196,17 @@ public final class FlattenGraphFilter extends TokenFilter {
           assert inputNode.nextOut == 0;
           // Hole dest nodes should never be merged since 1) we always
           // assign them to a new output position, and 2) since they never
-          // have arriving tokens they cannot be pushed:
-          // skip hole sources, but don't free until every input is checked
+          // have arriving tokens they cannot be pushed. Skip them but don't free
+          // input until all are checked.
+          // Related tests testAltPathLastStepLongHole, testAltPathLastStepHoleFollowedByHole,
+          // testAltPathLastStepHoleWithoutEndToken
           if (output.inputNodes.size() > 1) {
             output.inputNodes.remove(output.nextOut);
             if (output.nextOut < output.inputNodes.size()) {
               continue;
             }
           }
-
-          outputFrom++;
-          int freeBefore = Collections.min(output.inputNodes);
-          assert outputNodes.get(outputFrom).inputNodes.stream().filter(n -> freeBefore < n).count()
-                  > 0
-              : "FreeBefore " + output.inputNodes.get(0) + " will free in use nodes";
-          inputNodes.freeBefore(freeBefore);
-          outputNodes.freeBefore(outputFrom);
+          freeBefore(output);
 
           continue;
         }
@@ -251,15 +246,7 @@ public final class FlattenGraphFilter extends TokenFilter {
         if (inputNode.nextOut == inputNode.tokens.size()) {
           output.nextOut++;
           if (output.nextOut == output.inputNodes.size()) {
-            outputFrom++;
-            int freeBefore = Collections.min(output.inputNodes);
-            assert outputNodes.get(outputFrom).inputNodes.stream()
-                        .filter(n -> freeBefore < n)
-                        .count()
-                    > 0
-                : "FreeBefore " + output.inputNodes.get(0) + " will free in use nodes";
-            inputNodes.freeBefore(freeBefore);
-            outputNodes.freeBefore(outputFrom);
+            freeBefore(output);
           }
         }
 
@@ -271,6 +258,32 @@ public final class FlattenGraphFilter extends TokenFilter {
 
     // System.out.println("    break false");
     return false;
+  }
+
+  /**
+   * Free output nodes before the given outputs. Free inputs nodes before the minimum input node for
+   * this output.
+   *
+   * @param output target output node
+   */
+  private void freeBefore(OutputNode output) {
+    // We've released all of the tokens that end at the current output,
+    // so free all output nodes before this. Input nodes are more complex.
+    // The second shingled tokens with alternate paths can appear later in the output graph than
+    // than some of their alternate path tokens.
+    // Because of this case we can only free from the minimum because the minimum node will have
+    // come from before the second shingled token.
+    // This means we have to hold onto input nodes who's tokens get stacked on previous nodes until
+    // we've completely passed those inputs.
+    // Related tests testShingledGap, testShingledGapWithHoles
+    outputFrom++;
+    int freeBefore = Collections.min(output.inputNodes);
+    // This will catch a node being freed early if it's input to the next output.
+    // Could a freed early node be input to a later output?
+    assert outputNodes.get(outputFrom).inputNodes.stream().filter(n -> freeBefore < n).count() > 0
+        : "FreeBefore " + output.inputNodes.get(0) + " will free in use nodes";
+    inputNodes.freeBefore(freeBefore);
+    outputNodes.freeBefore(outputFrom);
   }
 
   @Override
@@ -310,8 +323,11 @@ public final class FlattenGraphFilter extends TokenFilter {
           int outMax = outputNodes.getMaxPos();
           // If positionIncrement > 1 this node should be at the end of the flattened graph
           if (positionIncrement > 1 && src.outputNode < outMax) {
-            // We crossed a gap that we need to account for. This node exists from a length >1 path
-            // jumping to get here.
+            // If there was a hole at the end of an alternate path then the input and output nodes
+            // have been created,
+            // but the offsets and increments have not been maintained correctly. Here we go back
+            // and fix them.
+            // Related test testAltPathLastStepHole
             // The last node in the alt path didn't arrive to remove this reference.
             assert inputNodes.get(inputFrom).tokens.isEmpty() : "about to remove non empty edge";
             outSrc.inputNodes.remove(Integer.valueOf(inputFrom));
@@ -392,12 +408,20 @@ public final class FlattenGraphFilter extends TokenFilter {
     int maxOutIndex = outputNodes.getMaxPos();
     OutputNode outSrc = outputNodes.get(maxOutIndex);
     // There are two types of holes, neighbor holes and consumed holes. A neighbor hole is between
-    // two tokens. A consumed hole is
-    // between the start a long token and the next token that is "under" the path of the long token.
-    // A consumed hole should have the outputsrc node of the short token be the out dest
+    // two tokens, it looks like a->*hole*->b.
+    // A consumed hole is between the start a long token and the next token that is "under" the path
+    // of the long token.
+    // It looks like :    ___abc__
+    //                   |        |
+    //                   |        V
+    //                 *hole*->b->c
+    // A consumed hole should have the outputsrc node of the short token after the hole be the out
+    // dest
     // of the long token as that's how we'd resolve it if the missing token were present.
     // neighbor holes should start a new output node and continue as if the hole didn't
     // exist.
+    // Related tests testAltPathLastStepHoleFollowedByHole, testAltPathFirstStepHole,
+    // testShingledGapWithHoles
     if (outSrc.endOffset < startOffset) {
       maxOutIndex += 1;
       outSrc = outputNodes.get(maxOutIndex);
