@@ -232,10 +232,6 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     if (terms.length == 0) {
       return new BooleanQuery.Builder().build();
     }
-    // single field and one term
-    if (fieldTerms.length == 1) {
-      return new TermQuery(fieldTerms[0]);
-    }
     return this;
   }
 

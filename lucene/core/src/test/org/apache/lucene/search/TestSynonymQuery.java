@@ -469,24 +469,26 @@ public class TestSynonymQuery extends LuceneTestCase {
   }
 
   public void testRewrite() throws IOException {
+    IndexSearcher searcher = new IndexSearcher(new MultiReader());
+
     // zero length SynonymQuery is rewritten
     SynonymQuery q = new SynonymQuery.Builder("f").build();
     assertTrue(q.getTerms().isEmpty());
-    assertEquals(q.rewrite(new MultiReader()), new BooleanQuery.Builder().build());
+    assertEquals(searcher.rewrite(q), new MatchNoDocsQuery());
 
     // non-boosted single term SynonymQuery is rewritten
     q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 1f).build();
     assertEquals(q.getTerms().size(), 1);
-    assertEquals(q.rewrite(new MultiReader()), new TermQuery(new Term("f")));
+    assertEquals(searcher.rewrite(q), new TermQuery(new Term("f")));
 
     // boosted single term SynonymQuery is not rewritten
     q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 0.8f).build();
     assertEquals(q.getTerms().size(), 1);
-    assertEquals(q.rewrite(new MultiReader()), q);
+    assertEquals(searcher.rewrite(q), q);
 
     // multiple term SynonymQuery is not rewritten
     q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 1f).addTerm(new Term("f"), 1f).build();
     assertEquals(q.getTerms().size(), 2);
-    assertEquals(q.rewrite(new MultiReader()), q);
+    assertEquals(searcher.rewrite(q), q);
   }
 }

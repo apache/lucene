@@ -67,9 +67,6 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     actual = searcher.rewrite(builder.build());
     assertEquals(actual, new MatchNoDocsQuery());
     builder.addTerm(new BytesRef("foo"));
-    actual = searcher.rewrite(builder.build());
-    assertEquals(actual, new TermQuery(new Term("field", "foo")));
-    builder.addTerm(new BytesRef("bar"));
     Query query = builder.build();
     actual = searcher.rewrite(query);
     assertEquals(actual, query);
