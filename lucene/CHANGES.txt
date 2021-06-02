@@ -323,6 +323,14 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)   
 
+======================= Lucene 8.10.0 =======================
+
+Bug Fixes
+---------------------
+
+* LUCENE-9823: Prevent unsafe rewrites for SynonymQuery and CombinedFieldQuery. Before, rewriting
+could slightly change the scoring when weights were specified. (Naoto Minami via Julie Tibshirani)
+
 ======================= Lucene 8.9.0 =======================
 
 API Changes
