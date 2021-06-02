@@ -48,7 +48,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermScorer;
 import org.apache.lucene.search.TermStatistics;
@@ -236,14 +235,6 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     // single field and one term
     if (fieldTerms.length == 1) {
       return new TermQuery(fieldTerms[0]);
-    }
-    // single field and multiple terms
-    if (fieldAndWeights.size() == 1) {
-      SynonymQuery.Builder builder = new SynonymQuery.Builder(fieldTerms[0].field());
-      for (Term term : fieldTerms) {
-        builder.addTerm(term);
-      }
-      return builder.build();
     }
     return this;
   }
