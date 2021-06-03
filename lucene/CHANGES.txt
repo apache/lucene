@@ -290,6 +290,9 @@ Bug fixes
   ConcurrentSortedSetDocValueFacetCounts now returns null / -1 instead of throwing
   IllegalArgumentException as per Javadoc spec in Facets. (Alexander Lukyanchikov)
 
+* LUCENE-9823: Prevent unsafe rewrites for SynonymQuery and CombinedFieldQuery. Before, rewriting
+  could slightly change the scoring when weights were specified. (Naoto Minami via Julie Tibshirani)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
@@ -348,7 +351,7 @@ Other
   the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)  
   
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
-  method to backwards codec. (Ignacio Vera)   
+  method to backwards codec. (Ignacio Vera)
 
 ======================= Lucene 8.9.0 =======================
 
