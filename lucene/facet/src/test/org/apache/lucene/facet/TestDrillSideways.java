@@ -358,26 +358,31 @@ public class TestDrillSideways extends FacetTestCase {
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
     Document doc = new Document();
+    doc.add(newStringField("content", "foo", Field.Store.NO));
     doc.add(new FacetField("Author", "Bob"));
     doc.add(new FacetField("Publish Date", "2010", "10", "15"));
     writer.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
+    doc.add(newStringField("content", "foo", Field.Store.NO));
     doc.add(new FacetField("Author", "Lisa"));
     doc.add(new FacetField("Publish Date", "2010", "10", "20"));
     writer.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
+    doc.add(newStringField("content", "foo", Field.Store.NO));
     doc.add(new FacetField("Author", "Lisa"));
     doc.add(new FacetField("Publish Date", "2012", "1", "1"));
     writer.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
+    doc.add(newStringField("content", "bar", Field.Store.NO));
     doc.add(new FacetField("Author", "Susan"));
     doc.add(new FacetField("Publish Date", "2012", "1", "7"));
     writer.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
+    doc.add(newStringField("content", "bar", Field.Store.NO));
     doc.add(new FacetField("Author", "Frank"));
     doc.add(new FacetField("Publish Date", "1999", "5", "5"));
     writer.addDocument(config.build(taxoWriter, doc));
@@ -580,6 +585,27 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(5, r.collectorResult.size());
     // Expect null facets since we provided a null FacetsCollectorManager
     assertNull(r.facets);
+
+    // Test the case where the base query rewrites itself. See LUCENE-9988:
+    Query baseQuery =
+        new TermQuery(new Term("content", "foo")) {
+          @Override
+          public Query rewrite(IndexReader reader) {
+            // return a new instance, forcing the DrillDownQuery to also rewrite itself, exposing
+            // the bug in LUCENE-9988:
+            return new TermQuery(getTerm());
+          }
+        };
+    ddq = new DrillDownQuery(config, baseQuery);
+    ddq.add("Author", "Lisa");
+    r = ds.search(ddq, manager);
+    assertEquals(2, r.collectorResult.size());
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    assertEquals(
+        "dim=Author path=[] value=3 childCount=2\n  Lisa (2)\n  Bob (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);

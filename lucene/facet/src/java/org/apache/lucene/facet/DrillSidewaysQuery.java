@@ -65,11 +65,34 @@ class DrillSidewaysQuery extends Query {
       FacetsCollectorManager[] drillSidewaysCollectorManagers,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
+    this(
+        baseQuery,
+        drillDownCollectorManager,
+        drillSidewaysCollectorManagers,
+        new ArrayList<>(),
+        new ArrayList<>(),
+        drillDownQueries,
+        scoreSubDocsAtOnce);
+  }
+
+  /**
+   * Needed for {@link #rewrite(IndexReader)}. Ensures the same "managed" lists get used since
+   * {@link DrillSideways} accesses references to these through the original {@code
+   * DrillSidewaysQuery}.
+   */
+  private DrillSidewaysQuery(
+      Query baseQuery,
+      FacetsCollectorManager drillDownCollectorManager,
+      FacetsCollectorManager[] drillSidewaysCollectorManagers,
+      List<FacetsCollector> managedDrillDownCollectors,
+      List<FacetsCollector[]> managedDrillSidewaysCollectors,
+      Query[] drillDownQueries,
+      boolean scoreSubDocsAtOnce) {
     this.baseQuery = Objects.requireNonNull(baseQuery);
     this.drillDownCollectorManager = drillDownCollectorManager;
     this.drillSidewaysCollectorManagers = drillSidewaysCollectorManagers;
-    this.managedDrillDownCollectors = new ArrayList<>();
-    this.managedDrillSidewaysCollectors = new ArrayList<>();
+    this.managedDrillDownCollectors = managedDrillDownCollectors;
+    this.managedDrillSidewaysCollectors = managedDrillSidewaysCollectors;
     this.drillDownQueries = drillDownQueries;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
@@ -96,6 +119,8 @@ class DrillSidewaysQuery extends Query {
           newQuery,
           drillDownCollectorManager,
           drillSidewaysCollectorManagers,
+          managedDrillDownCollectors,
+          managedDrillSidewaysCollectors,
           drillDownQueries,
           scoreSubDocsAtOnce);
     }
