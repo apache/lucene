@@ -39,7 +39,7 @@ public class TestLucene90HnswVectorFormat extends BaseVectorFormatTestCase {
     return TestUtil.getDefaultCodec();
   }
 
-  public void testCodecParameters() throws Exception {
+  public void testFormatParameters() throws Exception {
     Directory dir = newDirectory();
 
     // Create a segment using the default parameters
