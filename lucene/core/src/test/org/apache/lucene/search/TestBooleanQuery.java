@@ -178,11 +178,18 @@ public class TestBooleanQuery extends LuceneTestCase {
     assertEquals(hashCode, bq.hashCode());
   }
 
-  public void testException() {
+  public void testTooManyClauses() {
+    // Bad code (such as in a Query.rewrite() impl) should be prevented from creating a BooleanQuery
+    // that directly exceeds the maxClauseCount (prior to needing IndexSearcher.rewrite() to do a
+    // full walk of the final result)
+    BooleanQuery.Builder bq = new BooleanQuery.Builder();
+    for (int i = 0; i < IndexSearcher.getMaxClauseCount(); i++) {
+      bq.add(new TermQuery(new Term("foo", "bar-" + i)), Occur.SHOULD);
+    }
     expectThrows(
-        IllegalArgumentException.class,
+        IndexSearcher.TooManyClauses.class,
         () -> {
-          IndexSearcher.setMaxClauseCount(0);
+          bq.add(new TermQuery(new Term("foo", "bar-MAX")), Occur.SHOULD);
         });
   }
 
