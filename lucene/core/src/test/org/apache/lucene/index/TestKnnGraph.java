@@ -55,7 +55,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int maxConn = HnswGraphBuilder.DEFAULT_MAX_CONN;
+  private static int maxConn = Lucene90HnswVectorFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
   private SimilarityFunction similarityFunction;
@@ -71,7 +71,8 @@ public class TestKnnGraph extends LuceneTestCase {
         new Lucene90Codec() {
           @Override
           public VectorFormat getVectorFormatForField(String field) {
-            return new Lucene90HnswVectorFormat(maxConn, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+            return new Lucene90HnswVectorFormat(
+                maxConn, Lucene90HnswVectorFormat.DEFAULT_BEAM_WIDTH);
           }
         };
 
@@ -81,7 +82,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   @After
   public void cleanup() {
-    maxConn = HnswGraphBuilder.DEFAULT_MAX_CONN;
+    maxConn = Lucene90HnswVectorFormat.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */

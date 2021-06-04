@@ -38,12 +38,6 @@ public final class HnswGraphBuilder {
   // expose for testing.
   public static long randSeed = DEFAULT_RAND_SEED;
 
-  // default max connections per node
-  public static final int DEFAULT_MAX_CONN = 16;
-
-  // default candidate list size
-  public static final int DEFAULT_BEAM_WIDTH = 16;
-
   private final int maxConn;
   private final int beamWidth;
   private final NeighborArray scratch;
