@@ -60,11 +60,6 @@ public final class HnswGraphBuilder {
   // colliding
   private RandomAccessVectorValues buildVectors;
 
-  /** Construct the builder with default configurations */
-  public HnswGraphBuilder(RandomAccessVectorValuesProducer vectors) {
-    this(vectors, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, randSeed);
-  }
-
   /**
    * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.

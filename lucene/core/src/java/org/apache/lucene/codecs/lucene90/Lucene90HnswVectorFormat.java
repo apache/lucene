@@ -21,7 +21,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.codecs.VectorWriter;
-import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -79,10 +78,6 @@ public final class Lucene90HnswVectorFormat extends VectorFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
-  static final String BEAM_WIDTH_KEY =
-      Lucene90HnswVectorFormat.class.getSimpleName() + ".beam_width";
-  static final String MAX_CONN_KEY = Lucene90HnswVectorFormat.class.getSimpleName() + ".max_conn";
-
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. See {@link
    * HnswGraph} for details.
@@ -109,25 +104,7 @@ public final class Lucene90HnswVectorFormat extends VectorFormat {
 
   @Override
   public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    SegmentInfo segmentInfo = state.segmentInfo;
-    putFormatAttribute(segmentInfo, MAX_CONN_KEY, String.valueOf(maxConn));
-    putFormatAttribute(segmentInfo, BEAM_WIDTH_KEY, String.valueOf(beamWidth));
     return new Lucene90HnswVectorWriter(state, maxConn, beamWidth);
-  }
-
-  private void putFormatAttribute(SegmentInfo si, String key, String value) {
-    String previousValue = si.putAttribute(key, value);
-    if (previousValue != null && previousValue.equals(value) == false) {
-      throw new IllegalStateException(
-          "found existing value for "
-              + key
-              + " for segment: "
-              + si.name
-              + "old="
-              + previousValue
-              + ", new="
-              + value);
-    }
   }
 
   @Override
