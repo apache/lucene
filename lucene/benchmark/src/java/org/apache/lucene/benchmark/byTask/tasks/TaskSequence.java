@@ -340,7 +340,7 @@ public class TaskSequence extends PerfTask {
 
     initTasksArray();
     ParallelTask t[] = runningParallelTasks = new ParallelTask[repetitions * tasks.size()];
-    //Get number of parallel threads from algo file and set it to use in ReuersContentSource.java's fileIndexArrInit()
+    //Get number of parallel threads from algo file and set it to use in ReuersContentSource.java's docCountArrInit()
     this.getRunData().getConfig().setNumThreads(t.length);
     // prepare threads
     int index = 0;
