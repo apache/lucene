@@ -28,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
+import org.apache.lucene.benchmark.Constants;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 
 /**
@@ -104,13 +105,24 @@ public class ReutersContentSource extends ContentSource {
       docCountArrInit();
     }
 
-    //Extract ThreadIndex from unique ThreadName (at position 12), which is set with '"IndexThread-"+index', in TaskSequence.java's doParallelTasks()
-    int threadIndex = Integer.parseInt(Thread.currentThread().getName().substring(12));
-    assert (threadIndex >= 0 && threadIndex < docCountArr.length):"Please check threadIndex or docCountArr length";
+    int threadIndexSize = Thread.currentThread().getName().length();
+    int parallelTaskThreadSize = Constants.PARALLEL_TASK_THREAD_NAME_PREFIX.length();
+
+    // Extract ThreadIndex from unique ThreadName which is set with '"ParallelTaskThread-"+index',
+    // in TaskSequence.java's doParallelTasks()
+    int threadIndex =
+        Integer.parseInt(
+            Thread.currentThread()
+                .getName()
+                .substring(parallelTaskThreadSize + 1, threadIndexSize));
+
+    assert (threadIndex >= 0 && threadIndex < docCountArr.length)
+        : "Please check threadIndex or docCountArr length";
     int stride = threadIndex + docCountArr[threadIndex] * docCountArr.length;
     int inFileSize = inputFiles.size();
 
-    //Modulo Operator covers all three possible senarios i.e. 1. If inputFiles.size() < Num Of Threads 2.inputFiles.size() == Num Of Threads 3.inputFiles.size() > Num Of Threads
+    // Modulo Operator covers all three possible senarios i.e. 1. If inputFiles.size() < Num Of
+    // Threads 2.inputFiles.size() == Num Of Threads 3.inputFiles.size() > Num Of Threads
     int fileIndex = stride % inFileSize;
     int iteration = stride / inFileSize;
     docCountArr[threadIndex]++;

@@ -20,6 +20,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.apache.lucene.benchmark.Constants;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.NoMoreDataException;
 import org.apache.lucene.benchmark.byTask.stats.TaskStats;
@@ -340,7 +341,8 @@ public class TaskSequence extends PerfTask {
 
     initTasksArray();
     ParallelTask t[] = runningParallelTasks = new ParallelTask[repetitions * tasks.size()];
-    //Get number of parallel threads from algo file and set it to use in ReuersContentSource.java's docCountArrInit()
+    // Get number of parallel threads from algo file and set it to use in ReuersContentSource.java's
+    // docCountArrInit()
     this.getRunData().getConfig().setNumThreads(t.length);
     // prepare threads
     int index = 0;
@@ -348,8 +350,13 @@ public class TaskSequence extends PerfTask {
       for (int i = 0; i < tasksArray.length; i++) {
         final PerfTask task = tasksArray[i].clone();
         t[index] = new ParallelTask(task);
-        //Setting unique ThreadName with index value which is used in ReuersContentSource.java's getNextDocData()
-        t[index].setName("IndexThread-" + index);
+        // Setting unique ThreadName with index value which is used in ReuersContentSource.java's
+        // getNextDocData().Please make changes
+        // in ReuersContentSource.java's getNextDocData() for
+        // Integer.parseInt(Thread.currentThread().getName().substring(parallelTaskThreadSize + 1,
+        // threadIndexSize))
+        // before making any modifications here
+        t[index].setName(Constants.PARALLEL_TASK_THREAD_NAME_PREFIX + "-" + index);
         index++;
       }
     }
