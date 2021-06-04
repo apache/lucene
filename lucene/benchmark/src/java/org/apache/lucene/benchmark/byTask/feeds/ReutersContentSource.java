@@ -115,7 +115,7 @@ public class ReutersContentSource extends ContentSource {
     int iteration = stride / inFileSize;
     docCountArr[threadIndex]++;
 
-    Path f = inputFiles.get(fIndex);
+    Path f = inputFiles.get(fileIndex);
     String name = f.toRealPath() + "_" + iteration;
 
     try (BufferedReader reader = Files.newBufferedReader(f, StandardCharsets.UTF_8)) {
