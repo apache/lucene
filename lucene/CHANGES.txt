@@ -355,6 +355,32 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
+======================= Lucene 8.10.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 8.9.0 =======================
 
 API Changes
