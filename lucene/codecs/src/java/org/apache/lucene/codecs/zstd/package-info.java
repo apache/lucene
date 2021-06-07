@@ -15,12 +15,5 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
-
-description = 'Lucene codecs and postings formats'
-
-dependencies {
-    implementation project(':lucene:core')
-    implementation 'net.java.dev.jna:jna:5.6.0'
-    testImplementation project(':lucene:test-framework')
-}
+/** ZSTD compression for stored fields. */
+package org.apache.lucene.codecs.zstd;

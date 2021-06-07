@@ -14,13 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.zstd;
 
-apply plugin: 'java-library'
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.BaseStoredFieldsFormatTestCase;
+import org.junit.Before;
 
-description = 'Lucene codecs and postings formats'
+public class TestZstdStoredFieldsFormat extends BaseStoredFieldsFormatTestCase {
 
-dependencies {
-    implementation project(':lucene:core')
-    implementation 'net.java.dev.jna:jna:5.6.0'
-    testImplementation project(':lucene:test-framework')
+  private static final Codec CODEC = new Zstd90Codec();
+
+  @Before
+  public void checkZstdAvailable() {
+    assumeTrue("Zstd is not available on this system", Zstd.available());
+  }
+
+  @Override
+  protected Codec getCodec() {
+    return CODEC;
+  }
 }

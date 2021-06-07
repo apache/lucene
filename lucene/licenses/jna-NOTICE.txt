@@ -1,0 +1,3 @@
+This library is licensed under the LGPL, version 2.1 or later, or (from version 4.0 onward) the Apache License, version 2.0.
+Commercial support may be available, please e-mail twall[at]users[dot]sf[dot]net.
+See LICENSE for more information.
