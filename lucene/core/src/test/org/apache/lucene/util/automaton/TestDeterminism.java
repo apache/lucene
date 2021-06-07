@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.util.automaton;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -45,30 +45,30 @@ public class TestDeterminism extends LuceneTestCase {
   }
 
   private static void assertAutomaton(Automaton a) {
-    a = Operations.determinize(Operations.removeDeadStates(a), DEFAULT_MAX_DETERMINIZED_STATES);
+    a = Operations.determinize(Operations.removeDeadStates(a), DEFAULT_DETERMINIZE_WORK_LIMIT);
 
     // complement(complement(a)) = a
     Automaton equivalent =
         Operations.complement(
-            Operations.complement(a, DEFAULT_MAX_DETERMINIZED_STATES),
-            DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.complement(a, DEFAULT_DETERMINIZE_WORK_LIMIT),
+            DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.sameLanguage(a, equivalent));
 
     // a union a = a
     equivalent =
         Operations.determinize(
-            Operations.removeDeadStates(Operations.union(a, a)), DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.removeDeadStates(Operations.union(a, a)), DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.sameLanguage(a, equivalent));
 
     // a intersect a = a
     equivalent =
         Operations.determinize(
             Operations.removeDeadStates(Operations.intersection(a, a)),
-            DEFAULT_MAX_DETERMINIZED_STATES);
+            DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.sameLanguage(a, equivalent));
 
     // a minus a = empty
-    Automaton empty = Operations.minus(a, a, DEFAULT_MAX_DETERMINIZED_STATES);
+    Automaton empty = Operations.minus(a, a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.isEmpty(empty));
 
     // as long as don't accept the empty string
@@ -78,7 +78,7 @@ public class TestDeterminism extends LuceneTestCase {
       Automaton optional = Operations.optional(a);
       // System.out.println("optional " + optional);
       equivalent =
-          Operations.minus(optional, Automata.makeEmptyString(), DEFAULT_MAX_DETERMINIZED_STATES);
+          Operations.minus(optional, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       // System.out.println("equiv " + equivalent);
       assertTrue(Operations.sameLanguage(a, equivalent));
     }

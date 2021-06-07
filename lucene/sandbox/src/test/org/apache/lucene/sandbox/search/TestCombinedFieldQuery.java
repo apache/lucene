@@ -34,7 +34,6 @@ import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.TopDocs;
@@ -68,17 +67,6 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     actual = searcher.rewrite(builder.build());
     assertEquals(actual, new MatchNoDocsQuery());
     builder.addTerm(new BytesRef("foo"));
-    actual = searcher.rewrite(builder.build());
-    assertEquals(actual, new TermQuery(new Term("field", "foo")));
-    builder.addTerm(new BytesRef("bar"));
-    actual = searcher.rewrite(builder.build());
-    assertEquals(
-        actual,
-        new SynonymQuery.Builder("field")
-            .addTerm(new Term("field", "foo"))
-            .addTerm(new Term("field", "bar"))
-            .build());
-    builder.addField("another_field", 1f);
     Query query = builder.build();
     actual = searcher.rewrite(query);
     assertEquals(actual, query);
