@@ -128,6 +128,8 @@ API Changes
 * LUCENE-9962: DrillSideways allows sub-classes to provide "drill down" FacetsCollectors. They
   may provide a null collector if they choose to bypass "drill down" facet collection. (Greg Miller)
 
+* LUCENE-8143: SpanBoostQuery has been removed. (Alan Woodward)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
