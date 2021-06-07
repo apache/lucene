@@ -104,14 +104,9 @@ public abstract class VectorWriter implements Closeable {
         }
       }
     }
-    if (subs.size() == 0) {
-      // all segments being merged have no vectors
-      writeField(mergeFieldInfo, VectorValues.EMPTY);
-    } else {
-      // Create a new VectorValues by iterating over the sub vectors, mapping the resulting
-      // docids using docMaps in the mergeState.
-      writeField(mergeFieldInfo, new VectorValuesMerger(subs, mergeState));
-    }
+    // Create a new VectorValues by iterating over the sub vectors, mapping the resulting
+    // docids using docMaps in the mergeState.
+    writeField(mergeFieldInfo, new VectorValuesMerger(subs, mergeState));
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
     }

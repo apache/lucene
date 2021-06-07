@@ -142,18 +142,16 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
       }
     }
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-    if (vectorDataLength > 0) {
-      writeMeta(
-          fieldInfo,
-          vectorDataOffset,
-          vectorDataLength,
-          vectorIndexOffset,
-          vectorIndexLength,
-          count,
-          docIds);
-      if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
-        writeGraphOffsets(meta, offsets);
-      }
+    writeMeta(
+        fieldInfo,
+        vectorDataOffset,
+        vectorDataLength,
+        vectorIndexOffset,
+        vectorIndexLength,
+        count,
+        docIds);
+    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
+      writeGraphOffsets(meta, offsets);
     }
   }
 
