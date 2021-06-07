@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
-import org.junit.Ignore;
 
 /** Tests MMapDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
@@ -40,10 +39,9 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
     assumeTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 
-  @Ignore(
-      "This test is for JVM testing purposes. There are no guarantees that it may not fail with SIGSEGV!")
   public void testAceWithThreads() throws Exception {
-    for (int iter = 0; iter < 10; iter++) {
+    final int iters = RANDOM_MULTIPLIER * (TEST_NIGHTLY ? 50 : 10);
+    for (int iter = 0; iter < iters; iter++) {
       Directory dir = getDirectory(createTempDir("testAceWithThreads"));
       IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
       Random random = random();
@@ -72,7 +70,12 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
               });
       t1.start();
       shotgun.countDown();
-      in.close();
+      try {
+        in.close();
+      } catch (IllegalStateException ise) {
+        // this may also happen and is a valid exception, informing our user that, e.g., a query is running!
+        // "java.lang.IllegalStateException: Cannot close while another thread is accessing the segment"
+      }
       t1.join();
       dir.close();
     }
