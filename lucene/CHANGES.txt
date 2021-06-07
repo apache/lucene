@@ -130,6 +130,9 @@ API Changes
 
 Improvements
 
+* LUCENE-9476: Add new getBulkPath API to DirectoryTaxonomyReader to more efficiently retrieve FacetLabels for multiple
+  facet ordinals at once (Gautam Worah, Mike McCandless)
+
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
