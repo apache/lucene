@@ -22,42 +22,42 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
-
-import org.apache.lucene.util.IOUtils;
-
 import jdk.incubator.foreign.MemoryHandles;
 import jdk.incubator.foreign.MemorySegment;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
  *
- * <p>For efficiency, this class requires that the segment size are a power-of-two
- * (<code>chunkSizePower</code>).
+ * <p>For efficiency, this class requires that the segment size are a power-of-two (<code>
+ * chunkSizePower</code>).
  */
 public abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
   // We pass 1L as alignment, because currently Lucene file formats are heavy unaligned: :(
-  static final VarHandle VH_getByte = MemoryHandles.varHandle(byte.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
-  static final VarHandle VH_getShort = MemoryHandles.varHandle(short.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
-  static final VarHandle VH_getInt = MemoryHandles.varHandle(int.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
-  static final VarHandle VH_getLong = MemoryHandles.varHandle(long.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
-  
+  static final VarHandle VH_getByte =
+      MemoryHandles.varHandle(byte.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
+  static final VarHandle VH_getShort =
+      MemoryHandles.varHandle(short.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
+  static final VarHandle VH_getInt =
+      MemoryHandles.varHandle(int.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
+  static final VarHandle VH_getLong =
+      MemoryHandles.varHandle(long.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
+
   static final boolean IS_LITTLE_ENDIAN = (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN);
-  
+
   final boolean isClone;
   final long length;
   final long chunkSizeMask;
   final int chunkSizePower;
   final MemorySegment[] segments;
-  
+
   int curSegmentIndex = -1;
-  MemorySegment curSegment; // redundant for speed: segments[curSegmentIndex], also marker if closed!
+  MemorySegment
+      curSegment; // redundant for speed: segments[curSegmentIndex], also marker if closed!
   long curPosition; // relative to curSegment, not globally
 
   public static MemorySegmentIndexInput newInstance(
-      String resourceDescription,
-      MemorySegment[] segments,
-      long length,
-      int chunkSizePower) {
+      String resourceDescription, MemorySegment[] segments, long length, int chunkSizePower) {
     if (segments.length == 1) {
       return new SingleSegmentImpl(resourceDescription, segments[0], length, chunkSizePower, false);
     } else {
@@ -79,7 +79,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
     this.isClone = isClone;
     this.curSegment = segments[0];
   }
-  
+
   void ensureOpen() {
     if (curSegment == null) {
       throw alreadyClosed();
@@ -97,7 +97,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
     }
     return e;
   }
-  
+
   RuntimeException handlePositionalIOOBE(String action, long pos) throws IOException {
     if (pos < 0L) {
       return new IllegalArgumentException(action + " negative position: " + this);
@@ -105,11 +105,11 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       throw new EOFException(action + " past EOF: " + this);
     }
   }
-  
+
   private AlreadyClosedException alreadyClosed() {
     return new AlreadyClosedException("Already closed: " + this);
   }
-  
+
   @Override
   public final byte readByte() throws IOException {
     try {
@@ -146,7 +146,8 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
     }
   }
 
-  private void readBytesBoundary(final MemorySegment arraySegment, int offset, int len) throws IOException {
+  private void readBytesBoundary(final MemorySegment arraySegment, int offset, int len)
+      throws IOException {
     try {
       long curAvail = curSegment.byteSize() - curPosition;
       while (len > curAvail) {
@@ -171,8 +172,8 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
   @Override
   public void readLongs(long[] dst, int offset, int length) throws IOException {
     if (IS_LITTLE_ENDIAN) {
-      final MemorySegment targetSlice =  MemorySegment.ofArray(dst)
-          .asSlice((long) offset << 3, (long) length << 3);
+      final MemorySegment targetSlice =
+          MemorySegment.ofArray(dst).asSlice((long) offset << 3, (long) length << 3);
       try {
         targetSlice.copyFrom(curSegment.asSlice(curPosition, targetSlice.byteSize()));
         curPosition += targetSlice.byteSize();
@@ -189,8 +190,8 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
   @Override
   public void readFloats(float[] dst, int offset, int length) throws IOException {
     if (IS_LITTLE_ENDIAN) {
-      final MemorySegment targetSlice =  MemorySegment.ofArray(dst)
-          .asSlice((long) offset << 2, (long) length << 2);
+      final MemorySegment targetSlice =
+          MemorySegment.ofArray(dst).asSlice((long) offset << 2, (long) length << 2);
       try {
         targetSlice.copyFrom(curSegment.asSlice(curPosition, targetSlice.byteSize()));
         curPosition += targetSlice.byteSize();
@@ -380,20 +381,21 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
   MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
     ensureOpen();
-    
+
     final long sliceEnd = offset + length;
     final int startIndex = (int) (offset >>> chunkSizePower);
     final int endIndex = (int) (sliceEnd >>> chunkSizePower);
 
-    // we always allocate one more slice, the last one may be a 0 byte one after truncating with asSlice():
+    // we always allocate one more slice, the last one may be a 0 byte one after truncating with
+    // asSlice():
     final MemorySegment slices[] = Arrays.copyOfRange(segments, startIndex, endIndex + 1);
 
     // set the last segment's limit for the sliced view.
     slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
-    
+
     offset = offset & chunkSizeMask;
-    
-    final String newResourceDescription = getFullSliceDescription(sliceDescription);    
+
+    final String newResourceDescription = getFullSliceDescription(sliceDescription);
     if (slices.length == 1) {
       return new SingleSegmentImpl(
           newResourceDescription, slices[0].asSlice(offset, length), length, chunkSizePower, true);
@@ -406,7 +408,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
   @Override
   public final void close() throws IOException {
     if (curSegment == null) return;
-    
+
     try {
       curSegment = null;
       if (isClone == false) {

@@ -17,9 +17,8 @@
 package org.apache.lucene.util;
 
 /**
- * An object with this interface is a wrapper around another object
- * (e.g., a filter with a delegate). The method {@link #unwrap()} can
- * be called to get the wrapped object
+ * An object with this interface is a wrapper around another object (e.g., a filter with a
+ * delegate). The method {@link #unwrap()} can be called to get the wrapped object
  *
  * @lucene.internal
  */
@@ -27,10 +26,8 @@ public interface Unwrapable<T> {
 
   /** Unwraps this instance */
   T unwrap();
-  
-  /**
-   * Unwraps all {@code Unwrapable}s around the given object.
-   */
+
+  /** Unwraps all {@code Unwrapable}s around the given object. */
   @SuppressWarnings("unchecked")
   public static <T> T unwrapAll(T o) {
     while (o instanceof Unwrapable) {

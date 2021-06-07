@@ -35,7 +35,7 @@ import org.apache.lucene.util.Unwrapable;
  * A {@code FilterPath} contains another {@code Path}, which it uses as its basic source of data,
  * possibly transforming the data along the way or providing additional functionality.
  */
-public class FilterPath implements Path,Unwrapable<Path> {
+public class FilterPath implements Path, Unwrapable<Path> {
 
   /** The underlying {@code Path} instance. */
   protected final Path delegate;

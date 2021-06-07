@@ -24,13 +24,11 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.Future;
-
+import jdk.incubator.foreign.MappedMemorySegments;
+import jdk.incubator.foreign.MemorySegment;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.Unwrapable;
-
-import jdk.incubator.foreign.MappedMemorySegments;
-import jdk.incubator.foreign.MemorySegment;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -81,7 +79,8 @@ public class MMapDirectory extends FSDirectory {
    *
    * @see #MMapDirectory(Path, LockFactory, long)
    */
-  public static final long DEFAULT_MAX_CHUNK_SIZE = Constants.JRE_IS_64BIT ? (1L << 34) : (1L << 28);
+  public static final long DEFAULT_MAX_CHUNK_SIZE =
+      Constants.JRE_IS_64BIT ? (1L << 34) : (1L << 28);
 
   final int chunkSizePower;
 
@@ -128,10 +127,10 @@ public class MMapDirectory extends FSDirectory {
    * <p>Especially on 32 bit platform, the address space can be very fragmented, so large index
    * files cannot be mapped. Using a lower chunk size makes the directory implementation a little
    * bit slower (as the correct chunk may be resolved on lots of seeks) but the chance is higher
-   * that mmap does not fail. On 64 bit Java platforms, this parameter should always be large
-   * (like 16 GiBytes), as the address space is big enough. If it is larger, fragmentation of
-   * address space increases, but number of file handles and mappings is lower for huge
-   * installations with many open indexes.
+   * that mmap does not fail. On 64 bit Java platforms, this parameter should always be large (like
+   * 16 GiBytes), as the address space is big enough. If it is larger, fragmentation of address
+   * space increases, but number of file handles and mappings is lower for huge installations with
+   * many open indexes.
    *
    * <p><b>Please note:</b> The chunk size is always rounded down to a power of 2.
    *
@@ -231,24 +230,19 @@ public class MMapDirectory extends FSDirectory {
     final long fileSize = Files.size(path);
     MemorySegment[] segments = map(resourceDescription, path, fileSize);
     return MemorySegmentIndexInput.newInstance(
-        resourceDescription,
-        segments,
-        fileSize,
-        chunkSizePower);
+        resourceDescription, segments, fileSize, chunkSizePower);
   }
 
   /** Maps a file into a set of segments */
-  final MemorySegment[] map(String resourceDescription, Path path, long length)
-      throws IOException {
+  final MemorySegment[] map(String resourceDescription, Path path, long length) throws IOException {
     if ((length >>> chunkSizePower) >= Integer.MAX_VALUE)
-      throw new IllegalArgumentException(
-          "File too big for chunk size: " + resourceDescription);
+      throw new IllegalArgumentException("File too big for chunk size: " + resourceDescription);
 
     final long chunkSize = 1L << chunkSizePower;
 
     // we always allocate one more segments, the last one may be a 0 byte one
     final int nrSegments = (int) (length >>> chunkSizePower) + 1;
-    
+
     final MemorySegment segments[] = new MemorySegment[nrSegments];
 
     boolean success = false;
@@ -257,8 +251,7 @@ public class MMapDirectory extends FSDirectory {
       path = Unwrapable.unwrapAll(path);
       long startOffset = 0L;
       for (int segNr = 0; segNr < nrSegments; segNr++) {
-        long segSize =
-            (length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset);
+        long segSize = (length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset);
         final MemorySegment segment;
         try {
           segment = MemorySegment.mapFile(path, startOffset, segSize, MapMode.READ_ONLY);
@@ -279,7 +272,7 @@ public class MMapDirectory extends FSDirectory {
       }
     }
   }
-  
+
   private static IOException convertMapFailedIOException(
       IOException ioe, String resourceDescription, long bufSize) {
     final String originalMessage;
@@ -330,5 +323,4 @@ public class MMapDirectory extends FSDirectory {
    * supported.
    */
   public static final String UNMAP_NOT_SUPPORTED_REASON = null; // nocommit: cleanup
-
 }
