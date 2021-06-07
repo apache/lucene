@@ -36,10 +36,10 @@ import jdk.incubator.foreign.MemorySegment;
  */
 public abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
   // We pass 1L as alignment, because currently Lucene file formats are heavy unaligned: :(
-  static final VarHandle VH_getByte = MemoryHandles.varHandle(byte.class, 1L, ByteOrder.BIG_ENDIAN).withInvokeExactBehavior();
-  static final VarHandle VH_getShort = MemoryHandles.varHandle(short.class, 1L, ByteOrder.BIG_ENDIAN).withInvokeExactBehavior();
-  static final VarHandle VH_getInt = MemoryHandles.varHandle(int.class, 1L, ByteOrder.BIG_ENDIAN).withInvokeExactBehavior();
-  static final VarHandle VH_getLong = MemoryHandles.varHandle(long.class, 1L, ByteOrder.BIG_ENDIAN).withInvokeExactBehavior();
+  static final VarHandle VH_getByte = MemoryHandles.varHandle(byte.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
+  static final VarHandle VH_getShort = MemoryHandles.varHandle(short.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
+  static final VarHandle VH_getInt = MemoryHandles.varHandle(int.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
+  static final VarHandle VH_getLong = MemoryHandles.varHandle(long.class, 1L, ByteOrder.LITTLE_ENDIAN).withInvokeExactBehavior();
   
   static final boolean IS_LITTLE_ENDIAN = (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN);
   
@@ -169,7 +169,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
   }
 
   @Override
-  public void readLELongs(long[] dst, int offset, int length) throws IOException {
+  public void readLongs(long[] dst, int offset, int length) throws IOException {
     if (IS_LITTLE_ENDIAN) {
       final MemorySegment targetSlice =  MemorySegment.ofArray(dst)
           .asSlice((long) offset << 3, (long) length << 3);
@@ -177,17 +177,17 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         targetSlice.copyFrom(curSegment.asSlice(curPosition, targetSlice.byteSize()));
         curPosition += targetSlice.byteSize();
       } catch (IndexOutOfBoundsException iobe) {
-        super.readLELongs(dst, offset, length);
+        super.readLongs(dst, offset, length);
       } catch (NullPointerException | IllegalStateException e) {
         throw wrapAlreadyClosedException(e);
       }
     } else {
-      super.readLELongs(dst, offset, length);
+      super.readLongs(dst, offset, length);
     }
   }
 
   @Override
-  public void readLEFloats(float[] dst, int offset, int length) throws IOException {
+  public void readFloats(float[] dst, int offset, int length) throws IOException {
     if (IS_LITTLE_ENDIAN) {
       final MemorySegment targetSlice =  MemorySegment.ofArray(dst)
           .asSlice((long) offset << 2, (long) length << 2);
@@ -195,12 +195,12 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         targetSlice.copyFrom(curSegment.asSlice(curPosition, targetSlice.byteSize()));
         curPosition += targetSlice.byteSize();
       } catch (IndexOutOfBoundsException iobe) {
-        super.readLEFloats(dst, offset, length);
+        super.readFloats(dst, offset, length);
       } catch (NullPointerException | IllegalStateException e) {
         throw wrapAlreadyClosedException(e);
       }
     } else {
-      super.readLEFloats(dst, offset, length);
+      super.readFloats(dst, offset, length);
     }
   }
 
