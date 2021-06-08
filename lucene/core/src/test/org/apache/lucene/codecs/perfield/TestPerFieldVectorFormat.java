@@ -38,6 +38,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.RandomCodec;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -121,6 +122,8 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
   public void testMergeUsesNewFormat() throws IOException {
     try (Directory directory = newDirectory()) {
       IndexWriterConfig initialConfig = newIndexWriterConfig(new MockAnalyzer(random()));
+      initialConfig.setMergePolicy(NoMergePolicy.INSTANCE);
+
       try (IndexWriter iw = new IndexWriter(directory, initialConfig)) {
         for (int i = 0; i < 3; i++) {
           Document doc = new Document();
