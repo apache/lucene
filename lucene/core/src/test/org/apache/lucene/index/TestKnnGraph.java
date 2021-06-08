@@ -147,7 +147,6 @@ public class TestKnnGraph extends LuceneTestCase {
    * Verify that we get the *same* graph by indexing one segment as we do by indexing two segments
    * and merging.
    */
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9905")
   public void testMergeProducesSameGraph() throws Exception {
     long seed = random().nextLong();
     int numDoc = atLeast(100);

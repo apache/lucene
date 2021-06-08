@@ -114,14 +114,7 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
     }
 
     private VectorWriter getInstance(FieldInfo field) throws IOException {
-      VectorFormat format = null;
-      String fieldFormatName = field.getAttribute(PER_FIELD_FORMAT_KEY);
-      if (fieldFormatName != null) {
-        format = VectorFormat.forName(fieldFormatName);
-      }
-      if (format == null) {
-        format = getVectorFormatForField(field.name);
-      }
+      VectorFormat format = getVectorFormatForField(field.name);
       if (format == null) {
         throw new IllegalStateException(
             "invalid null VectorFormat for field=\"" + field.name + "\"");
