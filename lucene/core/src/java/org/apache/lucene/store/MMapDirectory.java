@@ -21,13 +21,11 @@ import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.Future;
-import jdk.incubator.foreign.MappedMemorySegments;
 import jdk.incubator.foreign.MemorySegment;
+import jdk.incubator.foreign.ResourceScope;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.Unwrapable;
 
 /**
@@ -196,7 +194,7 @@ public class MMapDirectory extends FSDirectory {
    * Set to {@code true} to ask mapped pages to be loaded into physical memory on init. The behavior
    * is best-effort and operating system dependent.
    *
-   * @see MappedMemorySegments#load
+   * @see MemorySegment#load
    */
   public void setPreload(boolean preload) {
     this.preload = preload;
@@ -228,13 +226,24 @@ public class MMapDirectory extends FSDirectory {
     Path path = directory.resolve(name);
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
     final long fileSize = Files.size(path);
-    MemorySegment[] segments = map(resourceDescription, path, fileSize);
-    return MemorySegmentIndexInput.newInstance(
-        resourceDescription, segments, fileSize, chunkSizePower);
+
+    boolean success = false;
+    final ResourceScope scope = ResourceScope.newSharedScope();
+    try {
+      final MemorySegment[] segments = map(scope, resourceDescription, path, fileSize);
+      success = true;
+      return MemorySegmentIndexInput.newInstance(
+          resourceDescription, scope, segments, fileSize, chunkSizePower);
+    } finally {
+      if (success == false) {
+        scope.close();
+      }
+    }
   }
 
   /** Maps a file into a set of segments */
-  final MemorySegment[] map(String resourceDescription, Path path, long length) throws IOException {
+  final MemorySegment[] map(ResourceScope scope, String resourceDescription, Path path, long length)
+      throws IOException {
     if ((length >>> chunkSizePower) >= Integer.MAX_VALUE)
       throw new IllegalArgumentException("File too big for chunk size: " + resourceDescription);
 
@@ -245,32 +254,24 @@ public class MMapDirectory extends FSDirectory {
 
     final MemorySegment segments[] = new MemorySegment[nrSegments];
 
-    boolean success = false;
-    try {
-      // Work around for JDK-8259028: we need to unwrap our test-only file system layers
-      path = Unwrapable.unwrapAll(path);
-      long startOffset = 0L;
-      for (int segNr = 0; segNr < nrSegments; segNr++) {
-        long segSize = (length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset);
-        final MemorySegment segment;
-        try {
-          segment = MemorySegment.mapFile(path, startOffset, segSize, MapMode.READ_ONLY);
-        } catch (IOException ioe) {
-          throw convertMapFailedIOException(ioe, resourceDescription, segSize);
-        }
-        if (preload) {
-          MappedMemorySegments.load(segment);
-        }
-        segments[segNr] = segment.share();
-        startOffset += segSize;
+    // Work around for JDK-8259028: we need to unwrap our test-only file system layers
+    path = Unwrapable.unwrapAll(path);
+    long startOffset = 0L;
+    for (int segNr = 0; segNr < nrSegments; segNr++) {
+      long segSize = (length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset);
+      final MemorySegment segment;
+      try {
+        segment = MemorySegment.mapFile(path, startOffset, segSize, MapMode.READ_ONLY, scope);
+      } catch (IOException ioe) {
+        throw convertMapFailedIOException(ioe, resourceDescription, segSize);
       }
-      success = true;
-      return segments;
-    } finally {
-      if (success == false) {
-        IOUtils.applyToAll(Arrays.asList(segments), MemorySegment::close);
+      if (preload) {
+        segment.load();
       }
+      segments[segNr] = segment;
+      startOffset += segSize;
     }
+    return segments;
   }
 
   private static IOException convertMapFailedIOException(
