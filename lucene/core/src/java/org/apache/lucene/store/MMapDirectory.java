@@ -231,9 +231,11 @@ public class MMapDirectory extends FSDirectory {
     final ResourceScope scope = ResourceScope.newSharedScope();
     try {
       final MemorySegment[] segments = map(scope, resourceDescription, path, fileSize);
+      final IndexInput in =
+          MemorySegmentIndexInput.newInstance(
+              resourceDescription, scope, segments, fileSize, chunkSizePower);
       success = true;
-      return MemorySegmentIndexInput.newInstance(
-          resourceDescription, scope, segments, fileSize, chunkSizePower);
+      return in;
     } finally {
       if (success == false) {
         scope.close();
