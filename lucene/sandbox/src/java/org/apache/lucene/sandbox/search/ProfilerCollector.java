@@ -45,8 +45,7 @@ public class ProfilerCollector implements Collector {
   /** A list of "embedded" children collectors */
   private final List<ProfilerCollector> children;
 
-  public ProfilerCollector(
-      Collector collector, String reason, List<ProfilerCollector> children) {
+  public ProfilerCollector(Collector collector, String reason, List<ProfilerCollector> children) {
     this.collector = new ProfilerCollectorWrapper(collector);
     this.reason = reason;
     this.collectorName = deriveCollectorName(collector);
@@ -92,8 +91,7 @@ public class ProfilerCollector implements Collector {
     return ProfilerCollector.doGetCollectorTree(this);
   }
 
-  private static ProfilerCollectorResult doGetCollectorTree(
-      ProfilerCollector collector) {
+  private static ProfilerCollectorResult doGetCollectorTree(ProfilerCollector collector) {
     List<ProfilerCollectorResult> childResults = new ArrayList<>(collector.children.size());
     for (ProfilerCollector child : collector.children) {
       ProfilerCollectorResult result = doGetCollectorTree(child);

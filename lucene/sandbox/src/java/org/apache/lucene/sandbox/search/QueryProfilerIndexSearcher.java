@@ -19,7 +19,6 @@ package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -27,8 +26,8 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Weight;
 
 /**
- * An extension of {@link IndexSearcher} that records profile information
- * for all queries it executes.
+ * An extension of {@link IndexSearcher} that records profile information for all queries it
+ * executes.
  */
 public class QueryProfilerIndexSearcher extends IndexSearcher {
 
@@ -38,7 +37,6 @@ public class QueryProfilerIndexSearcher extends IndexSearcher {
     super(reader);
     profiler = new QueryProfilerTree();
   }
-
 
   @Override
   public Query rewrite(Query original) throws IOException {
