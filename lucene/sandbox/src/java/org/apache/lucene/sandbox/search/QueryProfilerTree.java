@@ -30,15 +30,15 @@ import org.apache.lucene.search.Query;
  */
 class QueryProfilerTree {
 
-  private ArrayList<QueryProfilerBreakdown> breakdowns;
+  private final ArrayList<QueryProfilerBreakdown> breakdowns;
   /** Maps the Query to it's list of children. This is basically the dependency tree */
-  private ArrayList<ArrayList<Integer>> tree;
+  private final ArrayList<ArrayList<Integer>> tree;
   /** A list of the original queries, keyed by index position */
-  private ArrayList<Query> queries;
+  private final ArrayList<Query> queries;
   /** A list of top-level "roots". Each root can have its own tree of profiles */
-  private ArrayList<Integer> roots;
+  private final ArrayList<Integer> roots;
   /** A temporary stack used to record where we are in the dependency tree. */
-  private Deque<Integer> stack;
+  private final Deque<Integer> stack;
 
   private int currentToken = 0;
 

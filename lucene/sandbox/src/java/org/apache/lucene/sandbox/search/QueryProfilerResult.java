@@ -25,10 +25,9 @@ import java.util.Objects;
 /**
  * This class is the internal representation of a profiled Query, corresponding to a single node in
  * the query tree. It is built after the query has finished executing and is merely a structured
- * representation, rather than the entity that collects the timing profile (see InternalProfiler for
- * that)
+ * representation, rather than the entity that collects the timing profile.
  *
- * <p>Each InternalProfileResult has a List of InternalProfileResults, which will contain "children"
+ * <p>Each QueryProfilerResult has a List of QueryProfilerResult, which will contain "children"
  * queries if applicable
  */
 public class QueryProfilerResult {

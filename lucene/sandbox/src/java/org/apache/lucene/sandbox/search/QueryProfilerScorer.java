@@ -41,8 +41,7 @@ class QueryProfilerScorer extends Scorer {
       computeMaxScoreTimer,
       setMinCompetitiveScoreTimer;
 
-  QueryProfilerScorer(QueryProfilerWeight w, Scorer scorer, QueryProfilerBreakdown profile)
-      throws IOException {
+  QueryProfilerScorer(QueryProfilerWeight w, Scorer scorer, QueryProfilerBreakdown profile) {
     super(w);
     this.scorer = scorer;
     this.profileWeight = w;

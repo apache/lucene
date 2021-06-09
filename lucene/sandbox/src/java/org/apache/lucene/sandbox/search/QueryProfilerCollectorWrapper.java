@@ -88,7 +88,7 @@ public class QueryProfilerCollectorWrapper implements Collector {
     return collector.scoreMode();
   }
 
-  public QueryProfilerCollectorResult getCollectorTree() {
+  public QueryProfilerCollectorResult getProfileResult() {
     return QueryProfilerCollectorWrapper.doGetCollectorTree(this);
   }
 

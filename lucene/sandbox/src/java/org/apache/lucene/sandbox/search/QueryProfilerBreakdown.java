@@ -42,10 +42,6 @@ class QueryProfilerBreakdown {
     return timers[type.ordinal()];
   }
 
-  public void setTimer(QueryProfilerTimingType type, QueryProfilerTimer timer) {
-    timers[type.ordinal()] = timer;
-  }
-
   /** Build a timing count breakdown. */
   public final Map<String, Long> toBreakdownMap() {
     Map<String, Long> map = new HashMap<>(timers.length * 2);

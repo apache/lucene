@@ -52,7 +52,7 @@ public class QueryProfiler {
   }
 
   /** @return a hierarchical representation of the profiled tree */
-  public List<QueryProfilerResult> getTree() {
+  public List<QueryProfilerResult> getProfileResult() {
     return profileTree.getTree();
   }
 
@@ -89,6 +89,6 @@ public class QueryProfiler {
 
   /** Return the current root Collector for this search */
   public QueryProfilerCollectorResult getCollector() {
-    return collector.getCollectorTree();
+    return collector.getProfileResult();
   }
 }

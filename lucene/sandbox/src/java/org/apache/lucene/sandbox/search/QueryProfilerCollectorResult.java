@@ -32,13 +32,13 @@ public class QueryProfilerCollectorResult {
   private final String reason;
 
   /** The total elapsed time for this Collector */
-  private final Long time;
+  private final long time;
 
   /** A list of children collectors "embedded" inside this collector */
-  private List<QueryProfilerCollectorResult> children;
+  private final List<QueryProfilerCollectorResult> children;
 
   public QueryProfilerCollectorResult(
-      String collectorName, String reason, Long time, List<QueryProfilerCollectorResult> children) {
+      String collectorName, String reason, long time, List<QueryProfilerCollectorResult> children) {
     this.collectorName = collectorName;
     this.reason = reason;
     this.time = time;

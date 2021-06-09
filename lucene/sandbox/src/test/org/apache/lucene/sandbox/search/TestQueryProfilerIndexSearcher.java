@@ -92,7 +92,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     searcher.setProfiler(profiler);
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.search(query, 1);
-    List<QueryProfilerResult> results = profiler.getTree();
+    List<QueryProfilerResult> results = profiler.getProfileResult();
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
@@ -130,7 +130,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     searcher.setProfiler(profiler);
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.search(query, 1, Sort.INDEXORDER); // scores are not needed
-    List<QueryProfilerResult> results = profiler.getTree();
+    List<QueryProfilerResult> results = profiler.getProfileResult();
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
@@ -167,7 +167,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     searcher.setProfiler(profiler);
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.count(query); // will use index stats
-    List<QueryProfilerResult> results = profiler.getTree();
+    List<QueryProfilerResult> results = profiler.getProfileResult();
     assertEquals(0, results.size());
 
     long rewriteTime = profiler.getRewriteTime();
@@ -179,7 +179,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     searcher.setProfiler(profiler);
     Query query = new RandomApproximationQuery(new TermQuery(new Term("foo", "bar")), random());
     searcher.count(query);
-    List<QueryProfilerResult> results = profiler.getTree();
+    List<QueryProfilerResult> results = profiler.getProfileResult();
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(

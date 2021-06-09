@@ -36,11 +36,6 @@ public class QueryProfilerCollector extends FilterCollector {
     super(in);
   }
 
-  /** Return the wrapped collector. */
-  public Collector getDelegate() {
-    return in;
-  }
-
   @Override
   public ScoreMode scoreMode() {
     final long start = System.nanoTime();

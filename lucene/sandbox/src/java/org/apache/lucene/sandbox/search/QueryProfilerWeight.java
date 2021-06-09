@@ -35,8 +35,7 @@ class QueryProfilerWeight extends Weight {
   private final Weight subQueryWeight;
   private final QueryProfilerBreakdown profile;
 
-  public QueryProfilerWeight(Query query, Weight subQueryWeight, QueryProfilerBreakdown profile)
-      throws IOException {
+  public QueryProfilerWeight(Query query, Weight subQueryWeight, QueryProfilerBreakdown profile) {
     super(query);
     this.subQueryWeight = subQueryWeight;
     this.profile = profile;
