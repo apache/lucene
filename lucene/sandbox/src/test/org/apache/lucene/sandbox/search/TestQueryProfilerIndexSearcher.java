@@ -29,6 +29,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
@@ -49,7 +50,6 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
 
   private static Directory dir;
   private static IndexReader reader;
-  private static QueryProfilerIndexSearcher searcher;
 
   @BeforeClass
   public static void setup() throws IOException {
@@ -67,16 +67,6 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     }
     reader = w.getReader();
     w.close();
-    searcher = new QueryProfilerIndexSearcher(reader);
-  }
-
-  @After
-  public void checkNoCache() {
-    LRUQueryCache cache = (LRUQueryCache) searcher.getQueryCache();
-    MatcherAssert.assertThat(cache.getHitCount(), equalTo(0L));
-    MatcherAssert.assertThat(cache.getCacheCount(), equalTo(0L));
-    MatcherAssert.assertThat(cache.getTotalCount(), equalTo(cache.getMissCount()));
-    MatcherAssert.assertThat(cache.getCacheSize(), equalTo(0L));
   }
 
   @AfterClass
@@ -84,15 +74,14 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     IOUtils.close(reader, dir);
     dir = null;
     reader = null;
-    searcher = null;
   }
 
   public void testBasic() throws IOException {
-    QueryProfiler profiler = new QueryProfiler();
-    searcher.setProfiler(profiler);
+    QueryProfilerIndexSearcher searcher = new QueryProfilerIndexSearcher(reader);
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.search(query, 1);
-    List<QueryProfilerResult> results = profiler.getProfileResult();
+
+    List<QueryProfilerResult> results = searcher.getProfileResult();
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
@@ -121,16 +110,51 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.MATCH.toString() + "_count"), equalTo(0L));
 
-    long rewriteTime = profiler.getRewriteTime();
+    long rewriteTime = searcher.getRewriteTime();
     MatcherAssert.assertThat(rewriteTime, greaterThan(0L));
   }
 
+  public void testTwoQueries() throws IOException {
+    QueryProfilerIndexSearcher searcher = new QueryProfilerIndexSearcher(reader);
+    Query firstQuery = new TermQuery(new Term("foo", "bar"));
+    searcher.search(firstQuery, 1);
+
+    Query secondQuery = new TermQuery(new Term("foo", "baz"));
+    searcher.search(secondQuery, 1);
+
+    List<QueryProfilerResult> results = searcher.getProfileResult();
+    assertEquals(2, results.size());
+
+    Map<String, Long> firstResult = results.get(0).getTimeBreakdown();
+    MatcherAssert.assertThat(
+        firstResult.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
+
+    Map<String, Long> secondResult = results.get(1).getTimeBreakdown();
+    MatcherAssert.assertThat(
+        secondResult.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
+
+    long rewriteTime = searcher.getRewriteTime();
+    MatcherAssert.assertThat(rewriteTime, greaterThan(0L));
+  }
+
+  public void testNoCaching() throws IOException {
+    IndexSearcher searcher = new QueryProfilerIndexSearcher(reader);
+    Query query = new TermQuery(new Term("foo", "bar"));
+    searcher.search(query, 1);
+
+    LRUQueryCache cache = (LRUQueryCache) searcher.getQueryCache();
+    MatcherAssert.assertThat(cache.getHitCount(), equalTo(0L));
+    MatcherAssert.assertThat(cache.getCacheCount(), equalTo(0L));
+    MatcherAssert.assertThat(cache.getTotalCount(), equalTo(cache.getMissCount()));
+    MatcherAssert.assertThat(cache.getCacheSize(), equalTo(0L));
+  }
+
   public void testNoScoring() throws IOException {
-    QueryProfiler profiler = new QueryProfiler();
-    searcher.setProfiler(profiler);
+    QueryProfilerIndexSearcher searcher = new QueryProfilerIndexSearcher(reader);
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.search(query, 1, Sort.INDEXORDER); // scores are not needed
-    List<QueryProfilerResult> results = profiler.getProfileResult();
+
+    List<QueryProfilerResult> results = searcher.getProfileResult();
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
@@ -158,28 +182,27 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.MATCH.toString() + "_count"), equalTo(0L));
 
-    long rewriteTime = profiler.getRewriteTime();
+    long rewriteTime = searcher.getRewriteTime();
     MatcherAssert.assertThat(rewriteTime, greaterThan(0L));
   }
 
   public void testUseIndexStats() throws IOException {
-    QueryProfiler profiler = new QueryProfiler();
-    searcher.setProfiler(profiler);
+    QueryProfilerIndexSearcher searcher = new QueryProfilerIndexSearcher(reader);
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.count(query); // will use index stats
-    List<QueryProfilerResult> results = profiler.getProfileResult();
+
+    List<QueryProfilerResult> results = searcher.getProfileResult();
     assertEquals(0, results.size());
 
-    long rewriteTime = profiler.getRewriteTime();
+    long rewriteTime = searcher.getRewriteTime();
     MatcherAssert.assertThat(rewriteTime, greaterThan(0L));
   }
 
   public void testApproximations() throws IOException {
-    QueryProfiler profiler = new QueryProfiler();
-    searcher.setProfiler(profiler);
+    QueryProfilerIndexSearcher searcher = new QueryProfilerIndexSearcher(reader);
     Query query = new RandomApproximationQuery(new TermQuery(new Term("foo", "bar")), random());
     searcher.count(query);
-    List<QueryProfilerResult> results = profiler.getProfileResult();
+    List<QueryProfilerResult> results = searcher.getProfileResult();
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
@@ -208,7 +231,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.MATCH.toString() + "_count"), greaterThan(0L));
 
-    long rewriteTime = profiler.getRewriteTime();
+    long rewriteTime = searcher.getRewriteTime();
     MatcherAssert.assertThat(rewriteTime, greaterThan(0L));
   }
 
