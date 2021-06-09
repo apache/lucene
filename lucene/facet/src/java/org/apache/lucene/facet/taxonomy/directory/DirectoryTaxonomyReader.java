@@ -434,6 +434,9 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
 
     for (int i = 0; i < ordinalsLength; i++) {
       if (bulkPath[originalPosition[i]] == null) {
+        /*
+        If ordinals[i] >= leafReaderMaxDoc then we find the next leaf that contains our ordinal
+         */
         if (values == null || ordinals[i] >= leafReaderMaxDoc) {
 
           readerIndex = ReaderUtil.subIndex(ordinals[i], indexReader.leaves());
