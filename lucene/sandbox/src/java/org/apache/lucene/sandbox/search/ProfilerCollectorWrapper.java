@@ -27,12 +27,12 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 
 /** A collector that profiles how much time is spent calling it. */
-public class QueryProfilerCollector extends FilterCollector {
+class ProfilerCollectorWrapper extends FilterCollector {
 
   private long time;
 
   /** Sole constructor. */
-  QueryProfilerCollector(Collector in) {
+  ProfilerCollectorWrapper(Collector in) {
     super(in);
   }
 

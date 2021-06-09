@@ -234,18 +234,4 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     long rewriteTime = searcher.getRewriteTime();
     MatcherAssert.assertThat(rewriteTime, greaterThan(0L));
   }
-
-  public void testCollector() throws IOException {
-    TotalHitCountCollector collector = new TotalHitCountCollector();
-    QueryProfilerCollector profileCollector = new QueryProfilerCollector(collector);
-    assertEquals(0, profileCollector.getTime());
-    final LeafCollector leafCollector = profileCollector.getLeafCollector(reader.leaves().get(0));
-    MatcherAssert.assertThat(profileCollector.getTime(), greaterThan(0L));
-    long time = profileCollector.getTime();
-    leafCollector.setScorer(null);
-    MatcherAssert.assertThat(profileCollector.getTime(), greaterThan(time));
-    time = profileCollector.getTime();
-    leafCollector.collect(0);
-    MatcherAssert.assertThat(profileCollector.getTime(), greaterThan(time));
-  }
 }

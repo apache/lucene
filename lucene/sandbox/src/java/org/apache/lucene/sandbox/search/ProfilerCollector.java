@@ -31,7 +31,7 @@ import org.apache.lucene.search.ScoreMode;
  *
  * <p>QueryProfiler facilitates the linking of the Collector graph
  */
-public class QueryProfilerCollectorWrapper implements Collector {
+public class ProfilerCollector implements Collector {
 
   /** A more friendly representation of the Collector's class name */
   private final String collectorName;
@@ -40,14 +40,14 @@ public class QueryProfilerCollectorWrapper implements Collector {
   private final String reason;
 
   /** The wrapped collector */
-  private final QueryProfilerCollector collector;
+  private final ProfilerCollectorWrapper collector;
 
   /** A list of "embedded" children collectors */
-  private final List<QueryProfilerCollectorWrapper> children;
+  private final List<ProfilerCollector> children;
 
-  public QueryProfilerCollectorWrapper(
-      Collector collector, String reason, List<QueryProfilerCollectorWrapper> children) {
-    this.collector = new QueryProfilerCollector(collector);
+  public ProfilerCollector(
+      Collector collector, String reason, List<ProfilerCollector> children) {
+    this.collector = new ProfilerCollectorWrapper(collector);
     this.reason = reason;
     this.collectorName = deriveCollectorName(collector);
     this.children = children;
@@ -88,18 +88,18 @@ public class QueryProfilerCollectorWrapper implements Collector {
     return collector.scoreMode();
   }
 
-  public QueryProfilerCollectorResult getProfileResult() {
-    return QueryProfilerCollectorWrapper.doGetCollectorTree(this);
+  public ProfilerCollectorResult getProfileResult() {
+    return ProfilerCollector.doGetCollectorTree(this);
   }
 
-  private static QueryProfilerCollectorResult doGetCollectorTree(
-      QueryProfilerCollectorWrapper collector) {
-    List<QueryProfilerCollectorResult> childResults = new ArrayList<>(collector.children.size());
-    for (QueryProfilerCollectorWrapper child : collector.children) {
-      QueryProfilerCollectorResult result = doGetCollectorTree(child);
+  private static ProfilerCollectorResult doGetCollectorTree(
+      ProfilerCollector collector) {
+    List<ProfilerCollectorResult> childResults = new ArrayList<>(collector.children.size());
+    for (ProfilerCollector child : collector.children) {
+      ProfilerCollectorResult result = doGetCollectorTree(child);
       childResults.add(result);
     }
-    return new QueryProfilerCollectorResult(
+    return new ProfilerCollectorResult(
         collector.getName(), collector.getReason(), collector.getTime(), childResults);
   }
 }

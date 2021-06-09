@@ -23,7 +23,7 @@ import java.util.List;
  * Public class for profiled timings of the Collectors used in the search. Children
  * CollectorResult's may be embedded inside of a parent CollectorResult
  */
-public class QueryProfilerCollectorResult {
+public class ProfilerCollectorResult {
 
   /** A more friendly representation of the Collector's class name */
   private final String collectorName;
@@ -35,10 +35,10 @@ public class QueryProfilerCollectorResult {
   private final long time;
 
   /** A list of children collectors "embedded" inside this collector */
-  private final List<QueryProfilerCollectorResult> children;
+  private final List<ProfilerCollectorResult> children;
 
-  public QueryProfilerCollectorResult(
-      String collectorName, String reason, long time, List<QueryProfilerCollectorResult> children) {
+  public ProfilerCollectorResult(
+      String collectorName, String reason, Long time, List<ProfilerCollectorResult> children) {
     this.collectorName = collectorName;
     this.reason = reason;
     this.time = time;
@@ -61,7 +61,7 @@ public class QueryProfilerCollectorResult {
   }
 
   /** @return a list of children collectors */
-  public List<QueryProfilerCollectorResult> getProfiledChildren() {
+  public List<ProfilerCollectorResult> getProfiledChildren() {
     return children;
   }
 }
