@@ -33,11 +33,11 @@ import java.util.Objects;
  */
 public class QueryProfilerResult {
 
-  protected final String type;
-  protected final String description;
-  protected final Map<String, Long> breakdown;
-  protected final long totalTime;
-  protected final List<QueryProfilerResult> children;
+  private final String type;
+  private final String description;
+  private final Map<String, Long> breakdown;
+  private final long totalTime;
+  private final List<QueryProfilerResult> children;
 
   public QueryProfilerResult(
       String type,

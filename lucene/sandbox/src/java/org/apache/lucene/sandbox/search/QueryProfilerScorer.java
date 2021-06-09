@@ -28,10 +28,10 @@ import org.apache.lucene.search.Weight;
  * {@link Scorer} wrapper that will compute how much time is spent on moving the iterator,
  * confirming matches and computing scores.
  */
-public class QueryProfilerScorer extends Scorer {
+class QueryProfilerScorer extends Scorer {
 
-  protected final Scorer scorer;
-  protected QueryProfilerWeight profileWeight;
+  private final Scorer scorer;
+  private QueryProfilerWeight profileWeight;
 
   private final QueryProfilerTimer scoreTimer,
       nextDocTimer,

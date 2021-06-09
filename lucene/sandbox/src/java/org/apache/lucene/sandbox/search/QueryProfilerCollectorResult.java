@@ -26,16 +26,16 @@ import java.util.List;
 public class QueryProfilerCollectorResult {
 
   /** A more friendly representation of the Collector's class name */
-  protected final String collectorName;
+  private final String collectorName;
 
   /** A "hint" to help provide some context about this Collector */
-  protected final String reason;
+  private final String reason;
 
   /** The total elapsed time for this Collector */
-  protected final Long time;
+  private final Long time;
 
   /** A list of children collectors "embedded" inside this collector */
-  protected List<QueryProfilerCollectorResult> children;
+  private List<QueryProfilerCollectorResult> children;
 
   public QueryProfilerCollectorResult(
       String collectorName, String reason, Long time, List<QueryProfilerCollectorResult> children) {

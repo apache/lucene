@@ -25,10 +25,10 @@ import java.util.Map;
  * A record of timings for the various operations that may happen during query execution. A node's
  * time may be composed of several internal attributes (rewriting, weighting, scoring, etc).
  */
-public class QueryProfilerBreakdown {
+class QueryProfilerBreakdown {
 
   /** The accumulated timings for this query node */
-  protected final QueryProfilerTimer[] timers;
+  private final QueryProfilerTimer[] timers;
 
   /** Sole constructor. */
   public QueryProfilerBreakdown() {

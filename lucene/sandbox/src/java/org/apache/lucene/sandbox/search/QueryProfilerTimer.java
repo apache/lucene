@@ -32,10 +32,10 @@ package org.apache.lucene.sandbox.search;
  *  }
  *  </pre>
  */
-public class QueryProfilerTimer {
+class QueryProfilerTimer {
 
-  protected boolean doTiming;
-  protected long timing, count, lastCount, start;
+  private boolean doTiming;
+  private long timing, count, lastCount, start;
 
   /** pkg-private for testing */
   long nanoTime() {

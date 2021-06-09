@@ -30,7 +30,7 @@ import org.apache.lucene.search.Weight;
  */
 public class QueryProfilerIndexSearcher extends IndexSearcher {
 
-  protected QueryProfiler profiler;
+  private QueryProfiler profiler;
 
   public QueryProfilerIndexSearcher(IndexReader reader) {
     super(reader);

@@ -34,16 +34,16 @@ import org.apache.lucene.search.ScoreMode;
 public class QueryProfilerCollectorWrapper implements Collector {
 
   /** A more friendly representation of the Collector's class name */
-  protected final String collectorName;
+  private final String collectorName;
 
   /** A "hint" to help provide some context about this Collector */
-  protected final String reason;
+  private final String reason;
 
   /** The wrapped collector */
-  protected final QueryProfilerCollector collector;
+  private final QueryProfilerCollector collector;
 
   /** A list of "embedded" children collectors */
-  protected final List<QueryProfilerCollectorWrapper> children;
+  private final List<QueryProfilerCollectorWrapper> children;
 
   public QueryProfilerCollectorWrapper(
       Collector collector, String reason, List<QueryProfilerCollectorWrapper> children) {

@@ -30,10 +30,10 @@ import org.apache.lucene.search.Weight;
  * Weight wrapper that will compute how much time it takes to build the {@link Scorer} and then
  * return a {@link Scorer} that is wrapped in order to compute timings as well.
  */
-public class QueryProfilerWeight extends Weight {
+class QueryProfilerWeight extends Weight {
 
-  protected final Weight subQueryWeight;
-  protected final QueryProfilerBreakdown profile;
+  private final Weight subQueryWeight;
+  private final QueryProfilerBreakdown profile;
 
   public QueryProfilerWeight(Query query, Weight subQueryWeight, QueryProfilerBreakdown profile)
       throws IOException {

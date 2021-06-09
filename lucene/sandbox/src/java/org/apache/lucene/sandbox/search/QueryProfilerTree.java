@@ -28,24 +28,24 @@ import org.apache.lucene.search.Query;
  * This class tracks the dependency tree for queries (scoring and rewriting) and generates {@link
  * QueryProfilerBreakdown} for each node in the tree.
  */
-public class QueryProfilerTree {
+class QueryProfilerTree {
 
-  protected ArrayList<QueryProfilerBreakdown> breakdowns;
+  private ArrayList<QueryProfilerBreakdown> breakdowns;
   /** Maps the Query to it's list of children. This is basically the dependency tree */
-  protected ArrayList<ArrayList<Integer>> tree;
+  private ArrayList<ArrayList<Integer>> tree;
   /** A list of the original queries, keyed by index position */
-  protected ArrayList<Query> queries;
+  private ArrayList<Query> queries;
   /** A list of top-level "roots". Each root can have its own tree of profiles */
-  protected ArrayList<Integer> roots;
+  private ArrayList<Integer> roots;
   /** A temporary stack used to record where we are in the dependency tree. */
-  protected Deque<Integer> stack;
+  private Deque<Integer> stack;
 
-  protected int currentToken = 0;
+  private int currentToken = 0;
 
   /** Rewrite time */
-  protected long rewriteTime;
+  private long rewriteTime;
 
-  protected long rewriteScratch;
+  private long rewriteScratch;
 
   public QueryProfilerTree() {
     breakdowns = new ArrayList<>(10);
@@ -106,7 +106,7 @@ public class QueryProfilerTree {
    * @param token The assigned token for this query
    * @return A {@link QueryProfilerBreakdown} to profile this query
    */
-  protected QueryProfilerBreakdown addDependencyNode(Query query, int token) {
+  private QueryProfilerBreakdown addDependencyNode(Query query, int token) {
 
     // Add a new slot in the dependency tree
     tree.add(new ArrayList<>(5));
@@ -119,7 +119,7 @@ public class QueryProfilerTree {
     return breakdown;
   }
 
-  protected QueryProfilerBreakdown createProfileBreakdown() {
+  private QueryProfilerBreakdown createProfileBreakdown() {
     return new QueryProfilerBreakdown();
   }
 
@@ -148,7 +148,7 @@ public class QueryProfilerTree {
    * @param token The node we are currently finalizing
    * @return A hierarchical representation of the tree inclusive of children at this level
    */
-  protected QueryProfilerResult doGetTree(int token) {
+  private QueryProfilerResult doGetTree(int token) {
     Query query = queries.get(token);
     QueryProfilerBreakdown breakdown = breakdowns.get(token);
     List<Integer> children = tree.get(token);
@@ -174,7 +174,7 @@ public class QueryProfilerTree {
         childrenProfileResults);
   }
 
-  protected String getTypeFromQuery(Query query) {
+  private String getTypeFromQuery(Query query) {
     // Anonymous classes won't have a name,
     // we need to get the super class
     if (query.getClass().getSimpleName().isEmpty()) {
@@ -183,7 +183,7 @@ public class QueryProfilerTree {
     return query.getClass().getSimpleName();
   }
 
-  protected String getDescriptionFromQuery(Query query) {
+  private String getDescriptionFromQuery(Query query) {
     return query.toString();
   }
 
@@ -192,7 +192,7 @@ public class QueryProfilerTree {
    *
    * @param childToken The child to add to the current parent
    */
-  protected void updateParent(int childToken) {
+  private void updateParent(int childToken) {
     Integer parent = stack.peekLast();
     ArrayList<Integer> parentNode = tree.get(parent);
     parentNode.add(childToken);

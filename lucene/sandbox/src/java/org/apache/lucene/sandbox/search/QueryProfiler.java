@@ -29,10 +29,10 @@ import org.apache.lucene.search.Query;
  */
 public class QueryProfiler {
 
-  protected final QueryProfilerTree profileTree;
+  private final QueryProfilerTree profileTree;
 
   /** The root Collector used in the search */
-  protected QueryProfilerCollectorWrapper collector;
+  private QueryProfilerCollectorWrapper collector;
 
   public QueryProfiler() {
     this.profileTree = new QueryProfilerTree();

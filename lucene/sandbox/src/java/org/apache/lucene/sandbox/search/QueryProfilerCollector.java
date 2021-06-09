@@ -29,7 +29,7 @@ import org.apache.lucene.search.ScoreMode;
 /** A collector that profiles how much time is spent calling it. */
 public class QueryProfilerCollector extends FilterCollector {
 
-  protected long time;
+  private long time;
 
   /** Sole constructor. */
   QueryProfilerCollector(Collector in) {
