@@ -391,7 +391,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     int ordinalsLength = ordinals.length;
     FacetLabel[] bulkPath = new FacetLabel[ordinalsLength];
     // remember the original positions of ordinals before they are sorted
-    int originalPosition[] = new int[ordinalsLength];
+    int[] originalPosition = new int[ordinalsLength];
     Arrays.setAll(originalPosition, IntUnaryOperator.identity());
     int indexReaderMaxDoc = indexReader.maxDoc();
 
@@ -405,8 +405,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
       }
     }
 
-    // parallel sort the ordinals and originalPosition array based on the values in the ordinals
-    // array
+    /* parallel sort the ordinals and originalPosition array based on the values in the ordinals array */
     new InPlaceMergeSorter() {
       @Override
       protected void swap(int i, int j) {
@@ -444,9 +443,10 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
           leafReaderDocBase = leafReaderContext.docBase;
           values = leafReader.getBinaryDocValues(Consts.FULL);
 
-          // this check is only needed once to confirm that the index uses BinaryDocValues
-          boolean success = values.advanceExact(ordinals[i] - leafReaderDocBase);
-          if (success == false) {
+          /*
+          If the index is constructed with the older StoredFields it will not have any BinaryDocValues field and will return null
+           */
+          if (values == null) {
             return getBulkPathForOlderIndexes(ordinals);
           }
         }
@@ -454,12 +454,11 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         assert success;
         bulkPath[originalPosition[i]] =
             new FacetLabel(FacetsConfig.stringToPath(values.binaryValue().utf8ToString()));
-      }
-    }
 
-    for (int i = 0; i < ordinalsLength; i++) {
-      synchronized (categoryCache) {
-        categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+        // add the value to the categoryCache after computation
+        synchronized (categoryCache) {
+          categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+        }
       }
     }
 
