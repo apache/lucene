@@ -535,12 +535,16 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       w.commit();
 
       try (DirectoryReader r = w.getReader()) {
-        assertNotNull(getOnlyLeafReader(r).getVectorValues("v"));
+        VectorValues values = getOnlyLeafReader(r).getVectorValues("v");
+        assertNotNull(values);
+        assertEquals(1, values.size());
       }
       w.deleteDocuments(new Term("id", "0"));
       w.forceMerge(1);
       try (DirectoryReader r = w.getReader()) {
-        assertNull(getOnlyLeafReader(r).getVectorValues("v"));
+        VectorValues values = getOnlyLeafReader(r).getVectorValues("v");
+        assertNotNull(values);
+        assertEquals(0, values.size());
       }
     }
   }
