@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
+import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
 import org.apache.lucene.util.TestUtil;
 
 /** Acts like the default codec but with additional asserts. */
@@ -58,6 +59,14 @@ public class AssertingCodec extends FilterCodec {
         @Override
         public DocValuesFormat getDocValuesFormatForField(String field) {
           return AssertingCodec.this.getDocValuesFormatForField(field);
+        }
+      };
+
+  private final VectorFormat vectorFormat =
+      new PerFieldVectorFormat() {
+        @Override
+        public VectorFormat getVectorFormatForField(String field) {
+          return AssertingCodec.this.getVectorFormatForField(field);
         }
       };
 
@@ -111,7 +120,7 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public VectorFormat vectorFormat() {
-    return defaultVectorFormat;
+    return vectorFormat;
   }
 
   @Override
@@ -138,6 +147,11 @@ public class AssertingCodec extends FilterCodec {
     return defaultDVFormat;
   }
 
+  /**
+   * Returns the vectors format that should be used for writing new segments of <code>field</code>.
+   *
+   * <p>The default implementation always returns "Asserting"
+   */
   public VectorFormat getVectorFormatForField(String field) {
     return defaultVectorFormat;
   }

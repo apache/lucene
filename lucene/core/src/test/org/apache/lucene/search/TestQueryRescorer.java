@@ -32,9 +32,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LuceneTestCase;
@@ -184,18 +181,6 @@ public class TestQueryRescorer extends LuceneTestCase {
     assertEquals(2, hits2.totalHits.value);
     assertEquals("1", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
     assertEquals("0", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
-
-    // Resort using SpanNearQuery:
-    SpanTermQuery t1 = new SpanTermQuery(new Term("field", "wizard"));
-    SpanTermQuery t2 = new SpanTermQuery(new Term("field", "oz"));
-    SpanNearQuery snq = new SpanNearQuery(new SpanQuery[] {t1, t2}, 0, true);
-
-    TopDocs hits3 = QueryRescorer.rescore(searcher, hits, snq, 2.0, 10);
-
-    // Resorting changed the order:
-    assertEquals(2, hits3.totalHits.value);
-    assertEquals("1", searcher.doc(hits3.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits3.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();
@@ -403,18 +388,6 @@ public class TestQueryRescorer extends LuceneTestCase {
     assertEquals(2, hits2.totalHits.value);
     assertEquals("1", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
     assertEquals("0", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
-
-    // Resort using SpanNearQuery:
-    SpanTermQuery t1 = new SpanTermQuery(new Term("field", "wizard"));
-    SpanTermQuery t2 = new SpanTermQuery(new Term("field", "oz"));
-    SpanNearQuery snq = new SpanNearQuery(new SpanQuery[] {t1, t2}, 0, true);
-
-    TopDocs hits3 = QueryRescorer.rescore(searcher, hits, snq, 2.0, 10);
-
-    // Resorting changed the order:
-    assertEquals(2, hits3.totalHits.value);
-    assertEquals("1", searcher.doc(hits3.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits3.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();

@@ -44,7 +44,7 @@ import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.search.ConjunctionDISI;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.util.BytesRef;
@@ -98,7 +98,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
     }
     OrdRange ordRange = state.getOrdRange(dim);
     if (ordRange == null) {
-      throw new IllegalArgumentException("dimension \"" + dim + "\" was not indexed");
+      return null; // means dimension was never indexed
     }
     return getDim(dim, ordRange, topN);
   }
@@ -113,9 +113,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
     int childCount = 0;
 
     TopOrdAndIntQueue.OrdAndValue reuse = null;
-    // System.out.println("getDim : " + ordRange.start + " - " + ordRange.end);
+
     for (int ord = ordRange.start; ord <= ordRange.end; ord++) {
-      // System.out.println("  ord=" + ord + " count=" + counts[ord]);
       if (counts.get(ord) > 0) {
         dimCount += counts.get(ord);
         childCount++;
@@ -189,7 +188,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
         // count all
         it = segValues;
       } else {
-        it = ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), segValues));
+        it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), segValues));
       }
 
       if (ordinalMap != null) {
@@ -288,7 +287,6 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
   /** Does all the "real work" of tallying up the counts. */
   private final void countAll() throws IOException, InterruptedException {
-    // System.out.println("ssdv count");
 
     OrdinalMap ordinalMap;
 

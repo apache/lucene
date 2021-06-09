@@ -45,9 +45,14 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
 
+  private final int maxConn;
+  private final int beamWidth;
   private boolean finished;
 
-  Lucene90HnswVectorWriter(SegmentWriteState state) throws IOException {
+  Lucene90HnswVectorWriter(SegmentWriteState state, int maxConn, int beamWidth) throws IOException {
+    this.maxConn = maxConn;
+    this.beamWidth = beamWidth;
+
     assert state.fieldInfos.hasVectorValues();
     segmentWriteState = state;
 
@@ -129,26 +134,24 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
             vectorIndexOffset,
             offsets,
             count,
-            fieldInfo.getAttribute(HnswGraphBuilder.HNSW_MAX_CONN_ATTRIBUTE_KEY),
-            fieldInfo.getAttribute(HnswGraphBuilder.HNSW_BEAM_WIDTH_ATTRIBUTE_KEY));
+            maxConn,
+            beamWidth);
       } else {
         throw new IllegalArgumentException(
             "Indexing an HNSW graph requires a random access vector values, got " + vectors);
       }
     }
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-    if (vectorDataLength > 0) {
-      writeMeta(
-          fieldInfo,
-          vectorDataOffset,
-          vectorDataLength,
-          vectorIndexOffset,
-          vectorIndexLength,
-          count,
-          docIds);
-      if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
-        writeGraphOffsets(meta, offsets);
-      }
+    writeMeta(
+        fieldInfo,
+        vectorDataOffset,
+        vectorDataLength,
+        vectorIndexOffset,
+        vectorIndexLength,
+        count,
+        docIds);
+    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
+      writeGraphOffsets(meta, offsets);
     }
   }
 
@@ -196,36 +199,9 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
       long graphDataOffset,
       long[] offsets,
       int count,
-      String maxConnStr,
-      String beamWidthStr)
+      int maxConn,
+      int beamWidth)
       throws IOException {
-    int maxConn, beamWidth;
-    if (maxConnStr == null) {
-      maxConn = HnswGraphBuilder.DEFAULT_MAX_CONN;
-    } else {
-      try {
-        maxConn = Integer.parseInt(maxConnStr);
-      } catch (
-          @SuppressWarnings("unused")
-          NumberFormatException e) {
-        throw new NumberFormatException(
-            "Received non integer value for max-connections parameter of HnswGraphBuilder, value: "
-                + maxConnStr);
-      }
-    }
-    if (beamWidthStr == null) {
-      beamWidth = HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
-    } else {
-      try {
-        beamWidth = Integer.parseInt(beamWidthStr);
-      } catch (
-          @SuppressWarnings("unused")
-          NumberFormatException e) {
-        throw new NumberFormatException(
-            "Received non integer value for beam-width parameter of HnswGraphBuilder, value: "
-                + beamWidthStr);
-      }
-    }
     HnswGraphBuilder hnswGraphBuilder =
         new HnswGraphBuilder(vectorValues, maxConn, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);

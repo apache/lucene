@@ -53,11 +53,11 @@ configure(rootProject) {
         }
       }
 
-      tasks.matching { it.name == "publishJarsPublicationToMavenLocal" }.all { task ->
+      tasks.matching { it.name == "publishUnsignedJarsPublicationToMavenLocal" }.all { task ->
         mavenToLocalRepo.dependsOn task
       }
 
-      tasks.matching { it.name == "publishJarsPublicationToBuildRepository" }.all { task ->
+      tasks.matching { it.name == "publishUnsignedJarsPublicationToBuildRepository" }.all { task ->
         // Clean local repo prior to republishing artifacts.
         task.dependsOn mavenLocalClean
         // Attach to root project's mavenLocal task.

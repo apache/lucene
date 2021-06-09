@@ -406,3 +406,12 @@ it was decided to remove the ability to estimate their RAM usage.
 LongValueFacetCounts will now automatically detect whether-or-not an indexed field is single- or
 multi-valued. The user no longer needs to provide this information to the ctors. Migrating should
 be as simple as no longer providing this boolean.
+
+## SpanQuery and subclasses have moved from core/ to the queries module
+
+They can now be found in the o.a.l.queries.spans package.
+
+## SpanBoostQuery has been removed (LUCENE-8143)
+
+SpanBoostQuery was a no-op unless used at the top level of a SpanQuery nested
+structure. Use a standard BoostQuery here instead.

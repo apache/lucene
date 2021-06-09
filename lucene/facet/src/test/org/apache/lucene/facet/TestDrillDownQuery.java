@@ -17,6 +17,7 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenizer;
@@ -528,5 +529,26 @@ public class TestDrillDownQuery extends FacetTestCase {
     assertEquals(1, searcher.count(q));
 
     IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
+  }
+
+  public void testGetDrillDownQueries() throws Exception {
+    DrillDownQuery q = new DrillDownQuery(config);
+    q.add("a", "1");
+    q.add("b", "1");
+
+    Query[] drillDownQueries = q.getDrillDownQueries();
+    Query[] drillDownQueriesCopy = q.getDrillDownQueries();
+
+    assert Arrays.equals(drillDownQueries, drillDownQueriesCopy);
+
+    q.add("c", "1");
+    q.add("a", "2");
+    q.add("a", "3");
+    Query[] drillDownQueriesModified = q.getDrillDownQueries();
+    Query[] drillDownQueriesModifiedCopy = q.getDrillDownQueries();
+
+    // the cached builtDimQueries object is now stale
+    assert Arrays.equals(drillDownQueriesModified, drillDownQueriesCopy) == false;
+    assert Arrays.equals(drillDownQueriesModified, drillDownQueriesModifiedCopy);
   }
 }
