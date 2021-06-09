@@ -352,6 +352,8 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
+* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
+
 ======================= Lucene 8.9.0 =======================
 
 API Changes
