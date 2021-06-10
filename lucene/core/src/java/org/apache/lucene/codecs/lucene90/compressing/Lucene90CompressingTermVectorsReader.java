@@ -91,7 +91,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   private final long numDirtyChunks; // number of incomplete compressed blocks written
   private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private final long maxPointer; // end of the data section
-  private BlockState blockState = new BlockState(-1, -1, -1);
+  private BlockState blockState = new BlockState(-1, -1, 0);
 
   // used by clone
   private Lucene90CompressingTermVectorsReader(Lucene90CompressingTermVectorsReader reader) {
