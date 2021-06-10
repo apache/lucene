@@ -24,7 +24,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90Codec;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
 import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
 import org.apache.lucene.document.Document;
@@ -49,23 +51,34 @@ import org.apache.lucene.util.VectorUtil;
 /** Tests HNSW KNN graphs */
 public class TestHnsw extends LuceneTestCase {
 
-  // test writing out and reading in a graph gives the same graph
+  // test writing out and reading in a graph gives the expected graph
   public void testReadWrite() throws IOException {
     int dim = random().nextInt(100) + 1;
     int nDoc = random().nextInt(100) + 1;
     RandomVectorValues vectors = new RandomVectorValues(nDoc, dim, random());
     RandomVectorValues v2 = vectors.copy(), v3 = vectors.copy();
+
+    int maxConn = random().nextInt(10) + 5;
+    int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();
-    HnswGraphBuilder.randSeed = seed;
-    HnswGraphBuilder builder = new HnswGraphBuilder(vectors);
+    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, maxConn, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors);
+
     // Recreate the graph while indexing with the same random seed and write it out
     HnswGraphBuilder.randSeed = seed;
     try (Directory dir = newDirectory()) {
       int nVec = 0, indexedDoc = 0;
       // Don't merge randomly, create a single segment because we rely on the docid ordering for
       // this test
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(Codec.forName("Lucene90"));
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setCodec(
+                  new Lucene90Codec() {
+                    @Override
+                    public VectorFormat getVectorFormatForField(String field) {
+                      return new Lucene90HnswVectorFormat(maxConn, beamWidth);
+                    }
+                  });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
         while (v2.nextDoc() != NO_MORE_DOCS) {
           while (indexedDoc < v2.docID()) {

@@ -18,7 +18,6 @@ package org.apache.lucene.queryparser.xml.builders;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.queries.spans.SpanBoostQuery;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queryparser.xml.DOMUtils;
@@ -47,8 +46,6 @@ public class SpanNearBuilder extends SpanBuilderBase {
       }
     }
     SpanQuery[] spanQueries = spans.toArray(new SpanQuery[spans.size()]);
-    SpanQuery snq = new SpanNearQuery(spanQueries, slop, inOrder);
-    float boost = DOMUtils.getAttribute(e, "boost", 1.0f);
-    return new SpanBoostQuery(snq, boost);
+    return new SpanNearQuery(spanQueries, slop, inOrder);
   }
 }

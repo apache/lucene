@@ -410,3 +410,8 @@ be as simple as no longer providing this boolean.
 ## SpanQuery and subclasses have moved from core/ to the queries module
 
 They can now be found in the o.a.l.queries.spans package.
+
+## SpanBoostQuery has been removed (LUCENE-8143)
+
+SpanBoostQuery was a no-op unless used at the top level of a SpanQuery nested
+structure. Use a standard BoostQuery here instead.
