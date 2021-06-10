@@ -709,7 +709,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           for (SortField sortField : indexSort.getSort()) {
             doc.add(
                 new NumericDocValuesField(
-                    sortField.getField(), TestUtil.nextInt(random(), 0, 10000)));
+                    sortField.getField(), TestUtil.nextInt(random(), 0, 1024)));
           }
         }
         if (random().nextInt(100) < 5) {
