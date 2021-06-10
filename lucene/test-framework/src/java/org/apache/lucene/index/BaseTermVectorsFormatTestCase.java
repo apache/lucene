@@ -756,7 +756,6 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     }
     doTestMerge(new Sort(sortFields), false);
     doTestMerge(new Sort(sortFields), true);
-
   }
 
   public void testMergeWithoutIndexSort() throws IOException {
