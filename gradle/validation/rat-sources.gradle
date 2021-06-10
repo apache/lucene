@@ -74,6 +74,9 @@ allprojects {
                     exclude ".idea"
                     exclude ".muse"
 
+                    // Exclude github stuff (templates, workflows).
+                    exclude ".github"
+
                     // The root project also includes patterns for the boostrap (buildSrc) and composite
                     // projects. Include their sources in the scan.
                     include "buildSrc/src/**"
