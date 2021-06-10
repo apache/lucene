@@ -73,6 +73,7 @@ allprojects {
                     exclude ".gradle"
                     exclude ".idea"
                     exclude ".muse"
+                    exclude ".git"
 
                     // Exclude github stuff (templates, workflows).
                     exclude ".github"
