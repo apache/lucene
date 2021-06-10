@@ -673,7 +673,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     dir.close();
   }
 
-  private void doTestMerge(Sort indexSort) throws IOException {
+  private void doTestMerge(Sort indexSort, boolean allowDeletes) throws IOException {
     final RandomDocumentFactory docFactory = new RandomDocumentFactory(5, 20);
     final int numDocs = atLeast(100);
     for (Options options : validOptions()) {
@@ -729,7 +729,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           writer.addDocument(doc);
         }
         liveDocIDs.add(id);
-        if (random().nextInt(100) < 5) {
+        if (allowDeletes && random().nextInt(100) < 5) {
           final String deleteId = liveDocIDs.remove(random().nextInt(liveDocIDs.size()));
           writer.deleteDocuments(new Term("id", deleteId));
         }
@@ -754,11 +754,14 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     for (int i = 0; i < sortFields.length; i++) {
       sortFields[i] = new SortField("sort_field_" + i, SortField.Type.LONG);
     }
-    doTestMerge(new Sort(sortFields));
+    doTestMerge(new Sort(sortFields), false);
+    doTestMerge(new Sort(sortFields), true);
+
   }
 
   public void testMergeWithoutIndexSort() throws IOException {
-    doTestMerge(null);
+    doTestMerge(null, false);
+    doTestMerge(null, true);
   }
 
   // run random tests from different threads to make sure the per-thread clones
