@@ -40,8 +40,8 @@ import org.apache.lucene.index.IndexReader;
  *   <li>{@link MatchAllDocsQuery}
  * </ul>
  *
- * <p>See also the family of {@link org.apache.lucene.search.spans Span Queries} and additional
- * queries available in the <a href="{@docRoot}/../queries/overview-summary.html">Queries module</a>
+ * <p>See also additional queries available in the <a
+ * href="{@docRoot}/../queries/overview-summary.html">Queries module</a>
  */
 public abstract class Query {
 

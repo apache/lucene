@@ -91,7 +91,7 @@ public class AssertingVectorFormat extends VectorFormat {
       VectorValues values = delegate.getVectorValues(field);
       if (values != null) {
         assert values.docID() == -1;
-        assert values.size() > 0;
+        assert values.size() >= 0;
         assert values.dimension() > 0;
         assert values.similarityFunction() != null;
       }

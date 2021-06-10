@@ -35,6 +35,9 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90Codec;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
@@ -566,13 +569,19 @@ public class KnnGraphTester {
 
   private int createIndex(Path docsPath, Path indexPath) throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+    iwc.setCodec(
+        new Lucene90Codec() {
+          @Override
+          public VectorFormat getVectorFormatForField(String field) {
+            return new Lucene90HnswVectorFormat(maxConn, beamWidth);
+          }
+        });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setRAMBufferSizeMB(1994d);
     // iwc.setMaxBufferedDocs(10000);
 
     FieldType fieldType =
-        VectorField.createHnswType(
-            dim, VectorValues.SimilarityFunction.DOT_PRODUCT, maxConn, beamWidth);
+        VectorField.createFieldType(dim, VectorValues.SimilarityFunction.DOT_PRODUCT);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);

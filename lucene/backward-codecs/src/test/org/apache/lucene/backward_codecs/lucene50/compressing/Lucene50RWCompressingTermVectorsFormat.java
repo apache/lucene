@@ -32,8 +32,9 @@ public class Lucene50RWCompressingTermVectorsFormat extends Lucene50CompressingT
       String segmentSuffix,
       CompressionMode compressionMode,
       int chunkSize,
+      int maxDocsPerChunk,
       int blockSize) {
-    super(formatName, segmentSuffix, compressionMode, chunkSize, blockSize);
+    super(formatName, segmentSuffix, compressionMode, chunkSize, maxDocsPerChunk, blockSize);
   }
 
   @Override
@@ -47,6 +48,7 @@ public class Lucene50RWCompressingTermVectorsFormat extends Lucene50CompressingT
         formatName,
         compressionMode,
         chunkSize,
+        maxDocsPerChunk,
         blockSize);
   }
 }

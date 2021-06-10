@@ -455,6 +455,34 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), indexDir, taxoDir);
   }
 
+  public void testNonExistentDimension() throws Exception {
+    Directory dir = newDirectory();
+    FacetsConfig config = new FacetsConfig();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new SortedSetDocValuesFacetField("foo", "bar"));
+    writer.addDocument(config.build(doc));
+    writer.commit();
+
+    IndexSearcher searcher = newSearcher(writer.getReader());
+    SortedSetDocValuesReaderState state =
+        new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader());
+
+    ExecutorService exec = randomExecutorServiceOrNull();
+    Facets facets = getAllFacets(searcher, state, exec);
+    FacetResult result = facets.getTopChildren(5, "non-existent dimension");
+
+    // make sure the result is null (and no exception was thrown)
+    assertNull(result);
+
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), dir);
+    if (exec != null) {
+      exec.shutdownNow();
+    }
+  }
+
   private static Facets getAllFacets(
       IndexSearcher searcher, SortedSetDocValuesReaderState state, ExecutorService exec)
       throws IOException, InterruptedException {

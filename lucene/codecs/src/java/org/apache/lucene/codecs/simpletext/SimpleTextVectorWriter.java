@@ -80,9 +80,7 @@ public class SimpleTextVectorWriter extends VectorWriter {
       docIds.add(docV);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-    if (vectorDataLength > 0) {
-      writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
-    }
+    writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
   private void writeVectorValue(VectorValues vectors) throws IOException {

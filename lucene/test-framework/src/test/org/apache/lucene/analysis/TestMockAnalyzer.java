@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.Reader;
 import java.io.StringReader;
@@ -155,7 +155,7 @@ public class TestMockAnalyzer extends BaseTokenStreamTestCase {
             Operations.complement(
                 Operations.union(
                     Arrays.asList(Automata.makeString("foo"), Automata.makeString("bar"))),
-                DEFAULT_MAX_DETERMINIZED_STATES));
+                DEFAULT_DETERMINIZE_WORK_LIMIT));
     Analyzer a = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true, keepWords);
     assertAnalyzesTo(
         a,

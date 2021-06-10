@@ -30,7 +30,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConjunctionDISI;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -138,7 +138,6 @@ public class LongValueFacetCounts extends Facets {
 
   /** Counts from the field's indexed doc values. */
   private void count(String field, List<MatchingDocs> matchingDocs) throws IOException {
-
     for (MatchingDocs hits : matchingDocs) {
 
       SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
@@ -147,7 +146,7 @@ public class LongValueFacetCounts extends Facets {
       if (singleValues != null) {
 
         DocIdSetIterator it =
-            ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), singleValues));
+            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), singleValues));
 
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           increment(singleValues.longValue());
@@ -156,11 +155,13 @@ public class LongValueFacetCounts extends Facets {
       } else {
 
         DocIdSetIterator it =
-            ConjunctionDISI.intersectIterators(Arrays.asList(hits.bits.iterator(), multiValues));
+            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), multiValues));
 
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           int limit = multiValues.docValueCount();
-          totCount += limit;
+          if (limit > 0) {
+            totCount++;
+          }
           for (int i = 0; i < limit; i++) {
             increment(multiValues.nextValue());
           }
@@ -204,7 +205,9 @@ public class LongValueFacetCounts extends Facets {
 
         while (multiValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
           int limit = multiValues.docValueCount();
-          totCount += limit;
+          if (limit > 0) {
+            totCount++;
+          }
           for (int i = 0; i < limit; i++) {
             increment(multiValues.nextValue());
           }

@@ -16,8 +16,7 @@ New Features
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
-* LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
-  (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
+* LUCENE-9589: Swedish Minimal Stemmer (janhoy)
 
 System Requirements
 
@@ -116,7 +115,21 @@ API Changes
 
 * LUCENE-9843: Remove compression option on default codec's docvalues. (Jack Conradson)
 
+* LUCENE-9204: SpanQuery and its subclasses have been moved from core/ into the
+  queries/ module. (Alan Woodward)
+
+* LUCENE-9454: Analyzer no longer has a mutable version field. (Alan Woodward)
+
+* LUCENE-9956: Expose the getBaseQuery, getDrillDownQueries APIs from DrillDownQuery (Gautam Worah)
+
+* LUCENE-9962: DrillSideways allows sub-classes to provide "drill down" FacetsCollectors. They
+  may provide a null collector if they choose to bypass "drill down" facet collection. (Greg Miller)
+
+* LUCENE-8143: SpanBoostQuery has been removed. (Alan Woodward)
+
 Improvements
+
+* LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
 
 * LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
   fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
@@ -154,10 +167,8 @@ Improvements
 
 * LUCENE-8958: Shared count early termination for relevance sorted indices (Atri Sharma)
 
-* LUCENE-8937: Avoid agressive stemming on numbers in the FrenchMinimalStemmer.
+* LUCENE-8937: Avoid aggressive stemming on numbers in the FrenchMinimalStemmer.
   (Adrien Gallou via Tomoko Uchida)
-
-* LUCENE-8984: MoreLikeThis MLT is biased for uncommon fields (Andy Hind via Anshum Gupta)
 
 * LUCENE-8596: Kuromoji user dictionary now accepts entries containing hash mark (#) that were
   previously treated as beginning a line-ending comment (Satoshi Kato and Masaru Hasegawa via
@@ -222,13 +233,28 @@ Improvements
 
 * LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
 
+* LUCENE-9946: Support for multi-value fields in LongRangeFacetCounts and
+  DoubleRangeFacetCounts. (Greg Miller)
+
 * LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
   it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
 
-* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
+* LUCENE-9981: Operations.getCommonSuffix/Prefix(Automaton) is now much more
+  efficient, from a worst case exponential down to quadratic cost in the
+  number of states + transitions in the Automaton.  These methods no longer
+  use the costly determinize method, removing the risk of
+  TooComplexToDeterminizeException (Robert Muir, Mike McCandless)
+
+* LUCENE-9981: Operations.determinize now throws TooComplexToDeterminizeException
+  based on too much "effort" spent determinizing rather than a precise state
+  count on the resulting returned automaton, to better handle adversarial
+  cases like det(rev(regexp("(.*a){2000}"))) that spend lots of effort but
+  result in smallish eventual returned automata.  (Robert Muir, Mike McCandless)
+
+* LUCENE-9944: Allow DrillSideways users to provide their own CollectorManager without also requiring
+  them to provide an ExecutorService. (Greg Miller)
 
 Bug fixes
-
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
   Julie Tibshirani)
@@ -256,6 +282,15 @@ Bug fixes
 
 * LUCENE-9940: The order of disjuncts in DisjunctionMaxQuery does not matter
   for equality checks (Alan Woodward)
+
+* LUCENE-9971: Requesting facet counts for unseen dimensions in SortedSetDocValueFacetCounts and
+  ConcurrentSortedSetDocValueFacetCounts now returns null / -1 instead of throwing
+  IllegalArgumentException as per Javadoc spec in Facets. (Alexander Lukyanchikov)
+
+* LUCENE-9823: Prevent unsafe rewrites for SynonymQuery and CombinedFieldQuery. Before, rewriting
+  could slightly change the scoring when weights were specified. (Naoto Minami via Julie Tibshirani)
+
+* LUCENE-9988: Fix DrillSideways correctness bug introduced in LUCENE-9944 (Greg Miller)
 
 Changes in Backwards Compatibility Policy
 
@@ -291,7 +326,7 @@ Other
 * LUCENE-9267: Update MatchingQueries documentation to correct
   time unit. (Pierre-Luc Perron via Mike Drob)
 
-* LUCENE-9411: Fail complation on warnings, 9x gradle-only (Erick Erickson, Dawid Weiss)
+* LUCENE-9411: Fail compilation on warnings, 9x gradle-only (Erick Erickson, Dawid Weiss)
   Deserves mention here as well as Lucene CHANGES.txt since it affects both.
 
 * LUCENE-9077 LUCENE-9433: Support Gradle build, remove Ant support from trunk (Dawid Weiss, Erick Erickson, Uwe Schindler et.al.)
@@ -315,7 +350,36 @@ Other
   the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)  
   
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
-  method to backwards codec. (Ignacio Vera)   
+  method to backwards codec. (Ignacio Vera)
+
+* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
+
+======================= Lucene 8.10.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+* LUCENE-9965: Added QueryProfilerIndexSearcher and ProfilerCollector to support debugging
+  query execution strategy and timing. (Jack Conradson, Julie Tibshirani)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
 
 ======================= Lucene 8.9.0 =======================
 
@@ -328,6 +392,8 @@ API Changes
 
 New Features
 ---------------------
+* LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
+  (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
 
 * LUCENE-9575: PatternTypingFilter has been added to allow setting a type attribute on tokens based on
   a configured set of regular expressions (Gus Heck).
@@ -354,6 +420,9 @@ New Features
 * LUCENE-9385: Add FacetsConfig option to control which drill-down
   terms are indexed for a FacetLabel (Zachary Chen)
 
+* LUCENE-9950: New facet counting implementation for general string doc value fields
+  (SortedSetDocValues / SortedDocValues) not created through FacetsConfig (Greg Miller)
+
 Improvements
 ---------------------
 
@@ -365,8 +434,12 @@ Improvements
 
 * LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
 
+* LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
+
 Optimizations
 ---------------------
+
+* LUCENE-9932: Performance improvement for BKD index building (neoremind)
 
 * LUCENE-9827: Speed up merging of stored fields and term vectors for smaller segments.
   (Daniel Mitterdorfer, Dimitrios Liapis, Adrien Grand, Robert Muir)
@@ -381,6 +454,18 @@ Bug Fixes
 * LUCENE-9887: Fixed parameter use in RadixSelector.
   (liupanfeng via Adrien Grand)
 
+* LUCENE-9958: Fixed performance regression for boolean queries that configure a
+  minimum number of matching clauses. (Adrien Grand, Matt Weber)
+
+* LUCENE-9953: LongValueFacetCounts should count each document at most once when determining
+  the total count for a dimension. Prior to this fix, multi-value docs could contribute a > 1
+  count to the dimension count. (Greg Miller)
+
+* LUCENE-9967: Do not throw NullPointerException while trying to handle another exception in
+  ReplicaNode.start (Steven Schlansker)
+
+* LUCENE-9991: Fix edge case failure in TestStringValueFacetCounts (Greg Miller)
+
 Other
 ---------------------
 
@@ -393,6 +478,8 @@ Other
 
 * LUCENE-9836: Migrate Maven tasks to use "maven-resolver-ant-tasks"
   instead of the no longer maintained "maven-ant-tasks".  (Uwe Schindler)
+
+* LUCENE-9985: Upgrade jetty to 9.4.41 (janhoy)
 
 ======================= Lucene 8.8.2 =======================
 
@@ -1201,6 +1288,8 @@ Improvements
 * LUCENE-8976: Use exact distance between point and bounding rectangle in FloatPointNearestNeighbor. (Ignacio Vera)
 
 * LUCENE-8966: The Korean analyzer now splits tokens on boundaries between digits and alphabetic characters. (Jim Ferenczi)
+
+* LUCENE-8984: MoreLikeThis MLT is biased for uncommon fields (Andy Hind via Anshum Gupta)
 
 Optimizations
 

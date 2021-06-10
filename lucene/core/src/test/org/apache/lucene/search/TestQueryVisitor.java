@@ -30,9 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.util.LuceneTestCase;
 
 public class TestQueryVisitor extends LuceneTestCase {
@@ -56,15 +53,6 @@ public class TestQueryVisitor extends LuceneTestCase {
                       .build(),
                   3),
               BooleanClause.Occur.MUST)
-          .add(
-              new SpanNearQuery(
-                  new SpanQuery[] {
-                    new SpanTermQuery(new Term("field1", "term6")),
-                    new SpanTermQuery(new Term("field1", "term7"))
-                  },
-                  2,
-                  true),
-              BooleanClause.Occur.MUST)
           .add(new TermQuery(new Term("field1", "term8")), BooleanClause.Occur.MUST_NOT)
           .add(new PrefixQuery(new Term("field1", "term9")), BooleanClause.Occur.SHOULD)
           .add(
@@ -85,8 +73,7 @@ public class TestQueryVisitor extends LuceneTestCase {
             Arrays.asList(
                 new Term("field1", "t1"), new Term("field1", "tm2"),
                 new Term("field1", "tm3"), new Term("field1", "term4"),
-                new Term("field1", "term5"), new Term("field1", "term6"),
-                new Term("field1", "term7"), new Term("field2", "term10")));
+                new Term("field1", "term5"), new Term("field2", "term10")));
     query.visit(QueryVisitor.termCollector(terms));
     assertThat(terms, equalTo(expected));
   }
@@ -113,8 +100,6 @@ public class TestQueryVisitor extends LuceneTestCase {
                 new Term("field1", "tm3"),
                 new Term("field1", "term4"),
                 new Term("field1", "term5"),
-                new Term("field1", "term6"),
-                new Term("field1", "term7"),
                 new Term("field1", "term8"),
                 new Term("field2", "term10")));
     query.visit(visitor);
@@ -174,8 +159,6 @@ public class TestQueryVisitor extends LuceneTestCase {
     expected.put(new Term("field1", "tm3"), 2f);
     expected.put(new Term("field1", "term4"), 3f);
     expected.put(new Term("field1", "term5"), 3f);
-    expected.put(new Term("field1", "term6"), 1f);
-    expected.put(new Term("field1", "term7"), 1f);
     expected.put(new Term("field2", "term10"), 6f);
     assertThat(termsToBoosts, equalTo(expected));
   }

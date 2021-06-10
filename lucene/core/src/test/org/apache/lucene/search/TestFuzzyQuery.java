@@ -578,7 +578,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
 
   public void testErrorMessage() {
     // 45 states per vector from Lev2TParametricDescription
-    final int length = (Operations.DEFAULT_MAX_DETERMINIZED_STATES / 45) + 10;
+    final int length = (Operations.DEFAULT_DETERMINIZE_WORK_LIMIT / 5) + 10;
     final String value = randomRealisticMultiByteUnicode(length);
 
     FuzzyTermsEnum.FuzzyTermsException expected =
