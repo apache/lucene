@@ -729,7 +729,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           writer.addDocument(doc);
         }
         liveDocIDs.add(id);
-        if (allowDeletes && random().nextInt(100) < 5) {
+        if (allowDeletes && random().nextInt(100) < 20) {
           final String deleteId = liveDocIDs.remove(random().nextInt(liveDocIDs.size()));
           writer.deleteDocuments(new Term("id", deleteId));
         }
