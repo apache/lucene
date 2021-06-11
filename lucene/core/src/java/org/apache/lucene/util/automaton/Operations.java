@@ -29,7 +29,6 @@
 
 package org.apache.lucene.util.automaton;
 
-import com.carrotsearch.hppc.BitMixer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitMixer;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
@@ -762,8 +762,6 @@ public final class Operations {
 
         if (statesSet.size() > 0) {
           assert lastPoint != -1;
-
-          statesSet.computeHash();
 
           Integer q = newstate.get(statesSet);
           if (q == null) {

@@ -38,7 +38,6 @@ public class TestIntSet extends LuceneTestCase {
       sortedSet.incr(random().nextInt(i + 1));
     }
 
-    sortedSet.computeHash();
     IntSet frozen0 = sortedSet.freeze(0);
 
     assertEquals("Frozen set not equal to origin sorted set.", sortedSet, frozen0);
@@ -57,7 +56,6 @@ public class TestIntSet extends LuceneTestCase {
       set.incr(i);
     }
 
-    set.computeHash();
     assertTrue(set.size() > 32);
 
     for (int i = 0; i < 35; i++) {
@@ -65,7 +63,6 @@ public class TestIntSet extends LuceneTestCase {
       set.decr(i);
     }
 
-    set.computeHash();
     assertTrue(set.size() == 0);
   }
 
@@ -74,21 +71,17 @@ public class TestIntSet extends LuceneTestCase {
     StateSet set = new StateSet(2);
     set.incr(1);
     set.incr(2);
-    set.computeHash();
 
     FrozenIntSet set2 = set.freeze(0);
     assertEquals(set, set2);
 
     set.incr(1);
-    set.computeHash();
     assertEquals(set, set2);
 
     set.decr(1);
-    set.computeHash();
     assertEquals(set, set2);
 
     set.decr(1);
-    set.computeHash();
     assertNotEquals(set, set2);
   }
 
@@ -100,8 +93,6 @@ public class TestIntSet extends LuceneTestCase {
       set.incr(i);
       set2.incr(99 - i);
     }
-    set.computeHash();
-    set2.computeHash();
     assertEquals(set.hashCode(), set2.hashCode());
   }
 }

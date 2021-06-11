@@ -17,17 +17,17 @@
 
 package org.apache.lucene.util.automaton;
 
-import com.carrotsearch.hppc.BitMixer;
-import com.carrotsearch.hppc.IntIntHashMap;
-import com.carrotsearch.hppc.cursors.IntCursor;
 import java.util.Arrays;
+import org.apache.lucene.util.BitMixer;
+import org.apache.lucene.util.IntIntHashMap;
 
-/** A thin wrapper of {@link com.carrotsearch.hppc.IntIntHashMap} */
+/** A thin wrapper of {@link IntIntHashMap} */
 final class StateSet extends IntSet {
 
   private final IntIntHashMap inner;
-  private int hashCode;
-  private boolean changed;
+  private long hashCode;
+  private boolean hashUpdated = true;
+  private boolean arrayUpdated = true;
   private int[] arrayCache = new int[0];
 
   StateSet(int capacity) {
@@ -37,7 +37,7 @@ final class StateSet extends IntSet {
   // Adds this state to the set
   void incr(int num) {
     if (inner.addTo(num, 1) == 1) {
-      changed = true;
+      keyChanged();
     }
   }
 
@@ -48,19 +48,9 @@ final class StateSet extends IntSet {
     int count = inner.indexGet(keyIndex) - 1;
     if (count == 0) {
       inner.remove(num);
-      changed = true;
+      keyChanged();
     } else {
       inner.indexReplace(keyIndex, count);
-    }
-  }
-
-  void computeHash() {
-    if (changed == false) {
-      return;
-    }
-    hashCode = inner.size();
-    for (IntCursor cursor : inner.keys()) {
-      hashCode += BitMixer.mix(cursor.value);
     }
   }
 
@@ -68,30 +58,31 @@ final class StateSet extends IntSet {
    * Create a snapshot of this int set associated with a given state. The snapshot will not retain
    * any frequency information about the elements of this set, only existence.
    *
-   * <p>It is the caller's responsibility to ensure that the hashCode and data are up to date via
-   * the {@link #computeHash()} method before calling this method.
-   *
    * @param state the state to associate with the frozen set.
    * @return A new FrozenIntSet with the same values as this set.
    */
   FrozenIntSet freeze(int state) {
-    if (changed == false) {
-      assert arrayCache != null;
-      return new FrozenIntSet(arrayCache, hashCode, state);
-    }
-    return new FrozenIntSet(getArray(), hashCode, state);
+    return new FrozenIntSet(getArray(), longHashCode(), state);
+  }
+
+  private void keyChanged() {
+    hashUpdated = false;
+    arrayUpdated = false;
   }
 
   @Override
   int[] getArray() {
-    if (changed == false) {
-      assert arrayCache != null;
+    if (arrayUpdated) {
       return arrayCache;
     }
-    changed = false;
-    arrayCache = inner.keys().toArray();
+    arrayCache = new int[inner.size()];
+    int i = 0;
+    for (IntIntHashMap.IntCursor cursor : inner.keys()) {
+      arrayCache[i++] = cursor.value;
+    }
     // we need to sort this array since "equals" method depend on this
     Arrays.sort(arrayCache);
+    arrayUpdated = true;
     return arrayCache;
   }
 
@@ -101,7 +92,15 @@ final class StateSet extends IntSet {
   }
 
   @Override
-  public int hashCode() {
+  long longHashCode() {
+    if (hashUpdated) {
+      return hashCode;
+    }
+    hashCode = inner.size();
+    for (IntIntHashMap.IntCursor cursor : inner.keys()) {
+      hashCode += BitMixer.mix(cursor.value);
+    }
+    hashUpdated = true;
     return hashCode;
   }
 }
