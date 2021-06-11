@@ -1619,13 +1619,18 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           iw.addDocument(doc);
         });
 
-    assertNull(iw.getTragicException());
+    assertNoTragic(iw);
     iw.close();
     // make sure we see our good doc
     DirectoryReader r = DirectoryReader.open(dir);
     assertEquals(1, r.numDocs());
     r.close();
     dir.close();
+  }
+
+  private void assertNoTragic(IndexWriter iw) {
+    assertNull(iw.getTragicException());
+    assertEquals(0, iw.getTragicTime());
   }
 
   /** test a null string value doesn't abort the entire segment */
@@ -1646,7 +1651,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           iw.addDocument(doc);
         });
 
-    assertNull(iw.getTragicException());
+    assertNoTragic(iw);
     iw.close();
     // make sure we see our good doc
     DirectoryReader r = DirectoryReader.open(dir);
@@ -1674,7 +1679,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           iw.addDocument(doc);
         });
 
-    assertNull(iw.getTragicException());
+    assertNoTragic(iw);
     iw.close();
     // make sure we see our good doc
     DirectoryReader r = DirectoryReader.open(dir);
@@ -1702,7 +1707,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           iw.addDocument(doc);
         });
 
-    assertNull(iw.getTragicException());
+    assertNoTragic(iw);
     iw.close();
     // make sure we see our good doc
     DirectoryReader r = DirectoryReader.open(dir);
@@ -1731,7 +1736,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           fail("didn't get expected exception");
         });
 
-    assertNull(iw.getTragicException());
+    assertNoTragic(iw);
     iw.close();
     // make sure we see our good doc
     DirectoryReader r = DirectoryReader.open(dir);
@@ -1760,7 +1765,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           fail("didn't get expected exception");
         });
 
-    assertNull(iw.getTragicException());
+    assertNoTragic(iw);
     iw.close();
     // make sure we see our good doc
     DirectoryReader r = DirectoryReader.open(dir);
@@ -1795,7 +1800,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           iw.addDocument(doc);
         });
 
-    assertNull(iw.getTragicException());
+    assertNoTragic(iw);
     iw.close();
 
     // make sure we see our good doc
@@ -2172,6 +2177,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     }
 
     assertNotNull(w.getTragicException());
+    assertEquals("tragicTime should be filled out", 0, w.getTragicTime());
     assertFalse(w.isOpen());
     assertTrue(didFail.get());
 
