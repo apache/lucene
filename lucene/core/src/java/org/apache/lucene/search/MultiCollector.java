@@ -83,7 +83,7 @@ public class MultiCollector implements Collector {
   }
 
   private final boolean cacheScores;
-  private final Collector[] collectors;
+  final Collector[] collectors;
 
   private MultiCollector(Collector... collectors) {
     this.collectors = collectors;
