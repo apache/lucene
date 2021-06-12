@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import org.apache.lucene.analysis.MockAnalyzer;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -116,6 +117,11 @@ public class TestFilterLeafReader extends LuceneTestCase {
 
     @Override
     public CacheHelper getCoreCacheHelper() {
+      return null;
+    }
+
+    @Override
+    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
       return null;
     }
 
@@ -225,6 +231,11 @@ public class TestFilterLeafReader extends LuceneTestCase {
           @Override
           public CacheHelper getCoreCacheHelper() {
             return in.getCoreCacheHelper();
+          }
+
+          @Override
+          public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+            return null;
           }
 
           @Override

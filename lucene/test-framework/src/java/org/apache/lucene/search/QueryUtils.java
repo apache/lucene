@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -239,6 +240,11 @@ public class QueryUtils {
 
       @Override
       public void checkIntegrity() throws IOException {}
+
+      @Override
+      public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+        return null;
+      }
 
       @Override
       public Fields getTermVectors(int docID) throws IOException {

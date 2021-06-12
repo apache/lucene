@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
@@ -336,6 +337,11 @@ public class PhraseHelper {
 
     @Override
     public CacheHelper getCoreCacheHelper() {
+      return null;
+    }
+
+    @Override
+    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
       return null;
     }
 

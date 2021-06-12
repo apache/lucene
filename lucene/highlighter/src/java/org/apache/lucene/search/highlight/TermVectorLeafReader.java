@@ -19,6 +19,7 @@ package org.apache.lucene.search.highlight;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -173,6 +174,11 @@ public class TermVectorLeafReader extends LeafReader {
       return null;
     }
     return fields;
+  }
+
+  @Override
+  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    return null;
   }
 
   @Override

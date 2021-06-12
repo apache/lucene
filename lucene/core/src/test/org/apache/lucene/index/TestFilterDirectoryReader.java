@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.FilterDirectoryReader.SubReaderWrapper;
 import org.apache.lucene.store.Directory;
@@ -84,6 +85,11 @@ public class TestFilterDirectoryReader extends LuceneTestCase {
     @Override
     public LeafReader wrap(LeafReader reader) {
       return new FilterLeafReader(reader) {
+        @Override
+        public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+          return null;
+        }
+
         @Override
         public int numDocs() {
           numDocsCallCount.incrementAndGet();

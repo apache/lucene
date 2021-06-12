@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
@@ -296,6 +297,11 @@ public class ParallelLeafReader extends LeafReader {
         && parallelReaders[0] == storedFieldsReaders[0]) {
       return parallelReaders[0].getReaderCacheHelper();
     }
+    return null;
+  }
+
+  @Override
+  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
     return null;
   }
 

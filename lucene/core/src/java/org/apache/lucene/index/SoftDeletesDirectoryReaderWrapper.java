@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesFieldExistsQuery;
@@ -207,6 +208,11 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     }
 
     @Override
+    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+      return null;
+    }
+
+    @Override
     public int numDocs() {
       return numDocs;
     }
@@ -242,6 +248,11 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     @Override
     public Bits getLiveDocs() {
       return bits;
+    }
+
+    @Override
+    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+      return null;
     }
 
     @Override

@@ -61,6 +61,7 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -3430,6 +3431,11 @@ public class TestIndexWriter extends LuceneTestCase {
                           @Override
                           public Bits getLiveDocs() {
                             return null; // everything is live
+                          }
+
+                          @Override
+                          public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+                            return null;
                           }
 
                           @Override

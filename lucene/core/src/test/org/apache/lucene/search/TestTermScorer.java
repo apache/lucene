@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.MockAnalyzer;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -193,6 +194,11 @@ public class TestTermScorer extends LuceneTestCase {
           @Override
           public CacheHelper getCoreCacheHelper() {
             return in.getCoreCacheHelper();
+          }
+
+          @Override
+          public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+            return null;
           }
 
           @Override

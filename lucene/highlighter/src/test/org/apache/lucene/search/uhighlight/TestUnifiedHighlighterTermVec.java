@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenizer;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -147,6 +148,11 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
                 }
 
                 return super.getTermVectors(docID);
+              }
+
+              @Override
+              public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+                return null;
               }
 
               @Override

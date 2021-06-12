@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.analysis.MockAnalyzer;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -52,6 +53,11 @@ public class TestIndexReaderClose extends LuceneTestCase {
             @Override
             public CacheHelper getReaderCacheHelper() {
               return in.getReaderCacheHelper();
+            }
+
+            @Override
+            public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+              return null;
             }
 
             @Override

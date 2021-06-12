@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.analysis.MockAnalyzer;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
@@ -480,6 +481,11 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     @Override
     public CacheHelper getCoreCacheHelper() {
       return in.getCoreCacheHelper();
+    }
+
+    @Override
+    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+      return null;
     }
 
     @Override

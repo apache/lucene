@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.util.Bits;
 
 /** Filters the incoming reader and makes all documents appear deleted. */
@@ -31,6 +32,11 @@ public class AllDeletedFilterReader extends FilterLeafReader {
   @Override
   public Bits getLiveDocs() {
     return liveDocs;
+  }
+
+  @Override
+  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    return null;
   }
 
   @Override

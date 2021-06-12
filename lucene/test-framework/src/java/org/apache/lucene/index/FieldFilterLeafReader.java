@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.util.FilterIterator;
 
 /**
@@ -53,6 +54,11 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
   @Override
   public FieldInfos getFieldInfos() {
     return fieldInfos;
+  }
+
+  @Override
+  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    return null;
   }
 
   @Override

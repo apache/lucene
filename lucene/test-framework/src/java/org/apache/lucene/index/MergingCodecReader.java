@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.StoredFieldsReader;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.util.CloseableThreadLocal;
 
 /**
@@ -66,6 +67,11 @@ public class MergingCodecReader extends FilterCodecReader {
   public CacheHelper getCoreCacheHelper() {
     // same content, we can delegate
     return in.getCoreCacheHelper();
+  }
+
+  @Override
+  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    return null;
   }
 
   @Override

@@ -34,6 +34,7 @@ import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.BaseCompositeReader;
 import org.apache.lucene.index.FieldInfo;
@@ -1142,6 +1143,11 @@ public class UnifiedHighlighter {
         tvFields = in.getTermVectors(docID);
       }
       return tvFields;
+    }
+
+    @Override
+    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+      return null;
     }
 
     @Override

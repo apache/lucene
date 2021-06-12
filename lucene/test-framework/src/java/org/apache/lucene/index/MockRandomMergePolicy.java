@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
@@ -204,6 +205,11 @@ public class MockRandomMergePolicy extends MergePolicy {
               @Override
               public CacheHelper getCoreCacheHelper() {
                 return in.getCoreCacheHelper();
+              }
+
+              @Override
+              public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+                return null;
               }
 
               @Override

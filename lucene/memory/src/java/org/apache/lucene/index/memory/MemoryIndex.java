@@ -32,6 +32,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.*;
@@ -1233,6 +1234,11 @@ public class MemoryIndex {
       }
 
       fieldInfos = new FieldInfos(fieldInfosArr);
+    }
+
+    @Override
+    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+      return null;
     }
 
     private Info getInfoForExpectedDocValuesType(String fieldName, DocValuesType expectedType) {

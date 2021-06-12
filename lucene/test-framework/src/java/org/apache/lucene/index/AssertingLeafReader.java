@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -84,6 +85,11 @@ public class AssertingLeafReader extends FilterLeafReader {
   public Terms terms(String field) throws IOException {
     Terms terms = super.terms(field);
     return terms == null ? null : new AssertingTerms(terms);
+  }
+
+  @Override
+  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    return null;
   }
 
   @Override
