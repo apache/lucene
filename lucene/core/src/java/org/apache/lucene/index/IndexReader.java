@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -309,6 +310,9 @@ public abstract class IndexReader implements Closeable {
    * Fields instance acts like a single-document inverted index (the docID will be 0).
    */
   public abstract Fields getTermVectors(int docID) throws IOException;
+
+  /** Get TermVectorsReader from this index. */
+  public abstract TermVectorsReader getTermVectorsReaderNonThreadLocal();
 
   /**
    * Retrieve term vector for this document and field, or null if term vectors were not indexed. The

@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.MockAnalyzer;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
@@ -123,11 +124,13 @@ public class TestMultiThreadTermVectors extends LuceneTestCase {
     private void testTermVectors() throws Exception {
       // check:
       int numDocs = reader.numDocs();
+      TermVectorsReader termVectorsReader = reader.getTermVectorsReaderNonThreadLocal();
       for (int docId = 0; docId < numDocs; docId++) {
-        Fields vectors = reader.getTermVectors(docId);
+        // reader is StandardDirectoryReader, method impl from BaseCompositeReader
+        Fields vectors = termVectorsReader.get(docId);
         // verify vectors result
         verifyVectors(vectors, docId);
-        Terms vector = reader.getTermVectors(docId).terms("field");
+        Terms vector = termVectorsReader.get(docId).terms("field");
         verifyVector(vector.iterator(), docId);
       }
     }

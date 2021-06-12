@@ -311,6 +311,12 @@ public final class SegmentReader extends CodecReader {
   private final Set<ClosedListener> readerClosedListeners = new CopyOnWriteArraySet<>();
 
   @Override
+  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    ensureOpen();
+    return core.termVectorsReaderOrig;
+  }
+
+  @Override
   void notifyReaderClosedListeners() throws IOException {
     synchronized (readerClosedListeners) {
       IOUtils.applyToAll(readerClosedListeners, l -> l.onClose(readerCacheHelper.getKey()));
