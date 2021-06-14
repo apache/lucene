@@ -29,13 +29,13 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.Iterator;
 import org.apache.lucene.util.SuppressForbidden;
-import org.apache.lucene.util.Unwrapable;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * A {@code FilterPath} contains another {@code Path}, which it uses as its basic source of data,
  * possibly transforming the data along the way or providing additional functionality.
  */
-public class FilterPath implements Path, Unwrapable<Path> {
+public class FilterPath implements Path, Unwrappable<Path> {
 
   /** The underlying {@code Path} instance. */
   protected final Path delegate;
@@ -267,7 +267,7 @@ public class FilterPath implements Path, Unwrapable<Path> {
    * @return innermost Path instance
    */
   public static Path unwrap(Path path) {
-    return Unwrapable.unwrapAll(path);
+    return Unwrappable.unwrapAll(path);
   }
 
   /** Override this to customize the return wrapped path from various operations */

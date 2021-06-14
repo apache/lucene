@@ -26,7 +26,7 @@ import java.util.concurrent.Future;
 import jdk.incubator.foreign.MemorySegment;
 import jdk.incubator.foreign.ResourceScope;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.Unwrapable;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -257,7 +257,7 @@ public class MMapDirectory extends FSDirectory {
     final MemorySegment segments[] = new MemorySegment[nrSegments];
 
     // Work around for JDK-8259028: we need to unwrap our test-only file system layers
-    path = Unwrapable.unwrapAll(path);
+    path = Unwrappable.unwrapAll(path);
     long startOffset = 0L;
     for (int segNr = 0; segNr < nrSegments; segNr++) {
       long segSize = (length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset);
