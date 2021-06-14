@@ -56,7 +56,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.queries.spans.SpanBoostQuery;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
@@ -115,11 +114,6 @@ public class SpanNearClauseFactory { // FIXME: rename to SpanClauseFactory
     if (!(q instanceof SpanQuery))
       throw new AssertionError("Expected SpanQuery: " + q.toString(getFieldName()));
     float boost = 1f;
-    if (q instanceof SpanBoostQuery) {
-      SpanBoostQuery bq = (SpanBoostQuery) q;
-      boost = bq.getBoost();
-      q = bq.getQuery();
-    }
     addSpanQueryWeighted((SpanQuery) q, boost);
   }
 
@@ -129,10 +123,6 @@ public class SpanNearClauseFactory { // FIXME: rename to SpanClauseFactory
     int i = 0;
     while (sqi.hasNext()) {
       SpanQuery sq = sqi.next();
-      float boost = weightBySpanQuery.get(sq);
-      if (boost != 1f) {
-        sq = new SpanBoostQuery(sq, boost);
-      }
       spanQueries[i++] = sq;
     }
 
