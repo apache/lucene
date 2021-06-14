@@ -369,6 +369,8 @@ Improvements
 * LUCENE-9965: Added QueryProfilerIndexSearcher and ProfilerCollector to support debugging
   query execution strategy and timing. (Jack Conradson, Julie Tibshirani)
 
+* LUCENE-9983: Stop sorting determinize powersets unnecessarily. (Patrick Zhai)
+
 Optimizations
 ---------------------
 (No changes)
@@ -435,8 +437,6 @@ Improvements
 * LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
 
 * LUCENE-9935: Enable bulk merge for stored fields with index sort. (Robert Muir, Adrien Grand, Nhat Nguyen)
-
-* LUCENE-9983: Stop sorting determinize powersets unnecessarily. (Patrick Zhai)
 
 Optimizations
 ---------------------
