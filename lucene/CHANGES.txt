@@ -127,6 +127,10 @@ API Changes
 
 * LUCENE-8143: SpanBoostQuery has been removed. (Alan Woodward)
 
+* LUCENE-10001: MultiCollector allows users to specify whether to early terminate all collecting
+  when a wrapped Collector throws a CollectionTerminatedException vs. continuing to collect others
+  that have not indicated early termination. The latter is maintained as the default. (Greg Miller)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
