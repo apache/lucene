@@ -18,7 +18,6 @@
 package org.apache.lucene.document;
 
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 
 /**
  * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
@@ -57,34 +56,16 @@ public class VectorField extends Field {
   }
 
   /**
-   * Public method to create HNSW field type with the given max-connections and beam-width
-   * parameters that would be used by HnswGraphBuilder while constructing HNSW graph.
+   * A convenience method for creating a vector field type.
    *
    * @param dimension dimension of vectors
    * @param similarityFunction a function defining vector proximity.
-   * @param maxConn max-connections at each HNSW graph node
-   * @param beamWidth size of list to be used while constructing HNSW graph
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
-  public static FieldType createHnswType(
-      int dimension,
-      VectorValues.SimilarityFunction similarityFunction,
-      int maxConn,
-      int beamWidth) {
-    if (dimension == 0) {
-      throw new IllegalArgumentException("cannot index an empty vector");
-    }
-    if (dimension > VectorValues.MAX_DIMENSIONS) {
-      throw new IllegalArgumentException(
-          "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
-    }
-    if (similarityFunction == null || similarityFunction == VectorValues.SimilarityFunction.NONE) {
-      throw new IllegalArgumentException("similarity function must not be: " + similarityFunction);
-    }
+  public static FieldType createFieldType(
+      int dimension, VectorValues.SimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
-    type.putAttribute(HnswGraphBuilder.HNSW_MAX_CONN_ATTRIBUTE_KEY, String.valueOf(maxConn));
-    type.putAttribute(HnswGraphBuilder.HNSW_BEAM_WIDTH_ATTRIBUTE_KEY, String.valueOf(beamWidth));
     type.freeze();
     return type;
   }

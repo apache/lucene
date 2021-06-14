@@ -14,25 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.xml.builders;
 
-import org.apache.lucene.queries.spans.SpanQuery; // javadocs
-import org.apache.lucene.queryparser.xml.DOMUtils;
-import org.apache.lucene.queryparser.xml.ParserException;
-import org.apache.lucene.search.BoostQuery;
-import org.apache.lucene.search.Query;
-import org.w3c.dom.Element;
+package org.apache.lucene.sandbox.search;
 
-/** Base class for building {@link SpanQuery}s */
-public abstract class SpanBuilderBase implements SpanQueryBuilder {
+import java.util.Locale;
+
+/** This enum breaks down the query into different sections to describe what was timed. */
+public enum QueryProfilerTimingType {
+  CREATE_WEIGHT,
+  BUILD_SCORER,
+  NEXT_DOC,
+  ADVANCE,
+  MATCH,
+  SCORE,
+  SHALLOW_ADVANCE,
+  COMPUTE_MAX_SCORE,
+  SET_MIN_COMPETITIVE_SCORE;
 
   @Override
-  public Query getQuery(Element e) throws ParserException {
-    float boost = DOMUtils.getAttribute(e, "boost", 1.0f);
-    SpanQuery q = getSpanQuery(e);
-    if (boost == 1.0f) {
-      return q;
-    }
-    return new BoostQuery(q, boost);
+  public String toString() {
+    return name().toLowerCase(Locale.ROOT);
   }
 }

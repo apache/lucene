@@ -16,10 +16,7 @@ New Features
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
-* LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
-  (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
-
-* LUCENE-9589 Swedish Minimal Stemmer (janhoy)
+* LUCENE-9589: Swedish Minimal Stemmer (janhoy)
 
 System Requirements
 
@@ -128,6 +125,8 @@ API Changes
 * LUCENE-9962: DrillSideways allows sub-classes to provide "drill down" FacetsCollectors. They
   may provide a null collector if they choose to bypass "drill down" facet collection. (Greg Miller)
 
+* LUCENE-8143: SpanBoostQuery has been removed. (Alan Woodward)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
@@ -168,10 +167,8 @@ Improvements
 
 * LUCENE-8958: Shared count early termination for relevance sorted indices (Atri Sharma)
 
-* LUCENE-8937: Avoid agressive stemming on numbers in the FrenchMinimalStemmer.
+* LUCENE-8937: Avoid aggressive stemming on numbers in the FrenchMinimalStemmer.
   (Adrien Gallou via Tomoko Uchida)
-
-* LUCENE-8984: MoreLikeThis MLT is biased for uncommon fields (Andy Hind via Anshum Gupta)
 
 * LUCENE-8596: Kuromoji user dictionary now accepts entries containing hash mark (#) that were
   previously treated as beginning a line-ending comment (Satoshi Kato and Masaru Hasegawa via
@@ -329,7 +326,7 @@ Other
 * LUCENE-9267: Update MatchingQueries documentation to correct
   time unit. (Pierre-Luc Perron via Mike Drob)
 
-* LUCENE-9411: Fail complation on warnings, 9x gradle-only (Erick Erickson, Dawid Weiss)
+* LUCENE-9411: Fail compilation on warnings, 9x gradle-only (Erick Erickson, Dawid Weiss)
   Deserves mention here as well as Lucene CHANGES.txt since it affects both.
 
 * LUCENE-9077 LUCENE-9433: Support Gradle build, remove Ant support from trunk (Dawid Weiss, Erick Erickson, Uwe Schindler et.al.)
@@ -355,6 +352,35 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
+* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
+
+======================= Lucene 8.10.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+* LUCENE-9965: Added QueryProfilerIndexSearcher and ProfilerCollector to support debugging
+  query execution strategy and timing. (Jack Conradson, Julie Tibshirani)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 8.9.0 =======================
 
 API Changes
@@ -366,6 +392,8 @@ API Changes
 
 New Features
 ---------------------
+* LUCENE-9507: Custom order for leaves in IndexReader and IndexWriter
+  (Mayya Sharipova, Mike McCandless, Jim Ferenczi)
 
 * LUCENE-9575: PatternTypingFilter has been added to allow setting a type attribute on tokens based on
   a configured set of regular expressions (Gus Heck).
@@ -1260,6 +1288,8 @@ Improvements
 * LUCENE-8976: Use exact distance between point and bounding rectangle in FloatPointNearestNeighbor. (Ignacio Vera)
 
 * LUCENE-8966: The Korean analyzer now splits tokens on boundaries between digits and alphabetic characters. (Jim Ferenczi)
+
+* LUCENE-8984: MoreLikeThis MLT is biased for uncommon fields (Andy Hind via Anshum Gupta)
 
 Optimizations
 

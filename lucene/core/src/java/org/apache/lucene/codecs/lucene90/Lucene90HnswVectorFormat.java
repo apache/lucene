@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.codecs.VectorWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Lucene 9.0 vector format, which encodes numeric vector values and an optional associated graph
@@ -76,14 +77,37 @@ public final class Lucene90HnswVectorFormat extends VectorFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
-  /** Sole constructor */
+  public static final int DEFAULT_MAX_CONN = 16;
+  public static final int DEFAULT_BEAM_WIDTH = 16;
+
+  /**
+   * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
+   * {@link Lucene90HnswVectorFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
+   */
+  private final int maxConn;
+
+  /**
+   * The number of candidate neighbors to track while searching the graph for each newly inserted
+   * node. Defaults to to {@link Lucene90HnswVectorFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
+   * for details.
+   */
+  private final int beamWidth;
+
   public Lucene90HnswVectorFormat() {
     super("Lucene90HnswVectorFormat");
+    this.maxConn = DEFAULT_MAX_CONN;
+    this.beamWidth = DEFAULT_BEAM_WIDTH;
+  }
+
+  public Lucene90HnswVectorFormat(int maxConn, int beamWidth) {
+    super("Lucene90HnswVectorFormat");
+    this.maxConn = maxConn;
+    this.beamWidth = beamWidth;
   }
 
   @Override
   public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90HnswVectorWriter(state);
+    return new Lucene90HnswVectorWriter(state, maxConn, beamWidth);
   }
 
   @Override

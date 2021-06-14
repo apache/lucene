@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.queryparser.xml.builders;
 
-import org.apache.lucene.queries.spans.SpanBoostQuery;
 import org.apache.lucene.queries.spans.SpanPositionRangeQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queryparser.xml.DOMUtils;
@@ -39,9 +38,6 @@ public class SpanPositionRangeBuilder extends SpanBuilderBase {
     Element child = DOMUtils.getFirstChildElement(e);
     SpanQuery q = factory.getSpanQuery(child);
 
-    SpanPositionRangeQuery query = new SpanPositionRangeQuery(q, start, end);
-
-    float boost = DOMUtils.getAttribute(e, "boost", 1.0f);
-    return new SpanBoostQuery(query, boost);
+    return new SpanPositionRangeQuery(q, start, end);
   }
 }
