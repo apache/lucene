@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util;
+package org.apache.lucene.util.hppc;
 
 import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
 
@@ -31,6 +31,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * probing for collision resolution.
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntIntHashMap
+ *
+ * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
  */
 public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Cloneable {
 
@@ -366,6 +368,20 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
 
       assigned++;
     }
+  }
+
+  public int indexRemove(int index) {
+    assert index >= 0 : "The index must point at an existing key.";
+    assert index <= mask || (index == mask + 1 && hasEmptyKey);
+
+    int previousValue = values[index];
+    if (index > mask) {
+      hasEmptyKey = false;
+      values[index] = 0;
+    } else {
+      shiftConflictingKeys(index);
+    }
+    return previousValue;
   }
 
   public void clear() {

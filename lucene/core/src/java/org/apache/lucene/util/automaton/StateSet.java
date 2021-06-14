@@ -18,8 +18,8 @@
 package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
-import org.apache.lucene.util.BitMixer;
-import org.apache.lucene.util.IntIntHashMap;
+import org.apache.lucene.util.hppc.BitMixer;
+import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /** A thin wrapper of {@link IntIntHashMap} */
 final class StateSet extends IntSet {
@@ -47,7 +47,7 @@ final class StateSet extends IntSet {
     int keyIndex = inner.indexOf(num);
     int count = inner.indexGet(keyIndex) - 1;
     if (count == 0) {
-      inner.remove(num);
+      inner.indexRemove(keyIndex);
       keyChanged();
     } else {
       inner.indexReplace(keyIndex, count);

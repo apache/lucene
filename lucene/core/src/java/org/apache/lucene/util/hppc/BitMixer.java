@@ -15,13 +15,15 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util;
+package org.apache.lucene.util.hppc;
 
 /**
  * Bit mixing utilities. The purpose of these methods is to evenly distribute key space over int32
  * range.
  *
  * <p>Forked from com.carrotsearch.hppc.BitMixer
+ *
+ * <p>github: https://github.com/carrotsearch/hppc release: 0.9.0
  */
 public final class BitMixer {
 

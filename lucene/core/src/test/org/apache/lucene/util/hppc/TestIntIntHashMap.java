@@ -15,12 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util;
+package org.apache.lucene.util.hppc;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.util.LuceneTestCase;
 import org.junit.After;
 import org.junit.Test;
 
@@ -28,6 +29,8 @@ import org.junit.Test;
  * Tests for {@link IntIntHashMap}.
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntIntHashMapTest
+ *
+ * <p>github: https://github.com/carrotsearch/hppc release: 0.9.0
  */
 public class TestIntIntHashMap extends LuceneTestCase {
   /* Ready to use key values. */
@@ -231,6 +234,14 @@ public class TestIntIntHashMap extends LuceneTestCase {
     map.indexInsert(map.indexOf(key2), key2, value1);
     assertEquals(value1, map.indexGet(map.indexOf(key2)));
     assertEquals(3, map.size());
+
+    assertEquals(value3, map.indexRemove(map.indexOf(keyE)));
+    assertEquals(2, map.size());
+    assertEquals(value1, map.indexRemove(map.indexOf(key2)));
+    assertEquals(1, map.size());
+    assertTrue(map.indexOf(keyE) < 0);
+    assertTrue(map.indexOf(key1) >= 0);
+    assertTrue(map.indexOf(key2) < 0);
   }
 
   /* */
