@@ -31,20 +31,20 @@ public class TestIntSet extends LuceneTestCase {
   }
 
   private void testFreezeEquality(int size) {
-    StateSet sortedSet = new StateSet(0);
+    StateSet stateSet = new StateSet(0);
 
     for (int i = 0; i < size; i++) {
       // Some duplicates is nice but not critical
-      sortedSet.incr(random().nextInt(i + 1));
+      stateSet.incr(random().nextInt(i + 1));
     }
 
-    IntSet frozen0 = sortedSet.freeze(0);
+    IntSet frozen0 = stateSet.freeze(0);
 
-    assertEquals("Frozen set not equal to origin sorted set.", sortedSet, frozen0);
-    assertEquals("Symmetry: Sorted set not equal to frozen set.", frozen0, sortedSet);
+    assertEquals("Frozen set not equal to origin sorted set.", stateSet, frozen0);
+    assertEquals("Symmetry: Sorted set not equal to frozen set.", frozen0, stateSet);
 
-    IntSet frozen1 = sortedSet.freeze(random().nextInt());
-    assertEquals("Sorted set modified while freezing?", sortedSet, frozen1);
+    IntSet frozen1 = stateSet.freeze(random().nextInt());
+    assertEquals("Sorted set modified while freezing?", stateSet, frozen1);
     assertEquals("Frozen sets were not equal", frozen0, frozen1);
   }
 

@@ -21,7 +21,10 @@ import java.util.Arrays;
 import org.apache.lucene.util.hppc.BitMixer;
 import org.apache.lucene.util.hppc.IntIntHashMap;
 
-/** A thin wrapper of {@link IntIntHashMap} */
+/**
+ * A thin wrapper of {@link IntIntHashMap} Maps from state in integer representation to its
+ * reference count Whenever the count of a state is 0, that state will be removed from the set
+ */
 final class StateSet extends IntSet {
 
   private final IntIntHashMap inner;
@@ -34,17 +37,26 @@ final class StateSet extends IntSet {
     inner = new IntIntHashMap(capacity);
   }
 
-  // Adds this state to the set
-  void incr(int num) {
-    if (inner.addTo(num, 1) == 1) {
+  /**
+   * Add the state into this set, if it is already there, increase its reference count by 1
+   *
+   * @param state an integer representing this state
+   */
+  void incr(int state) {
+    if (inner.addTo(state, 1) == 1) {
       keyChanged();
     }
   }
 
-  // Removes this state from the set, if count decrs to 0
-  void decr(int num) {
-    assert inner.containsKey(num);
-    int keyIndex = inner.indexOf(num);
+  /**
+   * Decrease the reference count of the state, if the count down to 0, remove the state from this
+   * set
+   *
+   * @param state an integer representing this state
+   */
+  void decr(int state) {
+    assert inner.containsKey(state);
+    int keyIndex = inner.indexOf(state);
     int count = inner.indexGet(keyIndex) - 1;
     if (count == 0) {
       inner.indexRemove(keyIndex);

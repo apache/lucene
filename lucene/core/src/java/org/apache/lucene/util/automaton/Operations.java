@@ -707,7 +707,7 @@ public final class Operations {
     // like Set<Integer,PointTransitions>
     final PointTransitionSet points = new PointTransitionSet();
 
-    // like SortedMap<Integer,Integer>
+    // like HashMap<Integer,Integer>, maps state to its count
     final StateSet statesSet = new StateSet(5);
 
     Transition t = new Transition();
