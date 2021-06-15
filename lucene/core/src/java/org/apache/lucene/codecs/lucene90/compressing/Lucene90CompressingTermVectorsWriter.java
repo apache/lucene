@@ -37,7 +37,6 @@ import org.apache.lucene.codecs.compressing.MatchingReaders;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
@@ -721,7 +720,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   @Override
-  public void finish(FieldInfos fis, int numDocs) throws IOException {
+  public void finish(int numDocs) throws IOException {
     if (!pendingDocs.isEmpty()) {
       flush(true);
     }
@@ -939,7 +938,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         sub = docIDMerger.next();
       }
     }
-    finish(mergeState.mergeFieldInfos, docCount);
+    finish(docCount);
     return docCount;
   }
 

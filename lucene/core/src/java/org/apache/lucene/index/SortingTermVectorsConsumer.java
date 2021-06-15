@@ -75,7 +75,7 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
           Fields vectors = reader.get(sortMap == null ? docID : sortMap.newToOld(docID));
           writeTermVectors(writer, vectors, state.fieldInfos);
         }
-        writer.finish(state.fieldInfos, state.segmentInfo.maxDoc());
+        writer.finish(state.segmentInfo.maxDoc());
       } finally {
         IOUtils.close(reader, writer);
         IOUtils.deleteFiles(tmpDirectory, tmpDirectory.getTemporaryFiles().values());

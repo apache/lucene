@@ -185,12 +185,12 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
     }
 
     @Override
-    public void finish(FieldInfos fis, int numDocs) throws IOException {
+    public void finish(int numDocs) throws IOException {
       assert docCount == numDocs;
       assert docStatus == (numDocs > 0 ? Status.FINISHED : Status.UNDEFINED);
       assert fieldStatus != Status.STARTED;
       assert termStatus != Status.STARTED;
-      in.finish(fis, numDocs);
+      in.finish(numDocs);
     }
 
     @Override
