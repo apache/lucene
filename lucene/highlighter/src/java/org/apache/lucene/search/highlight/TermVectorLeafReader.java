@@ -177,7 +177,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+  public TermVectorsReader getTermVectorsNonThreadLocal() {
     return null;
   }
 

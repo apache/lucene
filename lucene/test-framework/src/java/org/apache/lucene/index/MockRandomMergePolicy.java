@@ -208,7 +208,7 @@ public class MockRandomMergePolicy extends MergePolicy {
               }
 
               @Override
-              public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+              public TermVectorsReader getTermVectorsNonThreadLocal() {
                 return null;
               }
 

@@ -121,7 +121,7 @@ public class TestFilterLeafReader extends LuceneTestCase {
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 
@@ -234,7 +234,7 @@ public class TestFilterLeafReader extends LuceneTestCase {
           }
 
           @Override
-          public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+          public TermVectorsReader getTermVectorsNonThreadLocal() {
             return null;
           }
 

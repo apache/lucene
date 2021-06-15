@@ -301,7 +301,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+  public TermVectorsReader getTermVectorsNonThreadLocal() {
     return null;
   }
 

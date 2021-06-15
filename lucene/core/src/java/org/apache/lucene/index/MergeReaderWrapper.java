@@ -184,7 +184,7 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+  public TermVectorsReader getTermVectorsNonThreadLocal() {
     return null;
   }
 

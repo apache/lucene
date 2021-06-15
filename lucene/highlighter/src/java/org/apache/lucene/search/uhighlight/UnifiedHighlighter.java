@@ -1146,7 +1146,7 @@ public class UnifiedHighlighter {
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

@@ -139,7 +139,7 @@ final class IndexingChain implements Accountable {
   private LeafReader getDocValuesLeafReader() {
     return new DocValuesLeafReader() {
       @Override
-      public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+      public TermVectorsReader getTermVectorsNonThreadLocal() {
         return null;
       }
 
@@ -876,7 +876,7 @@ final class IndexingChain implements Accountable {
       sorter.getDocComparator(
           new DocValuesLeafReader() {
             @Override
-            public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+            public TermVectorsReader getTermVectorsNonThreadLocal() {
               return null;
             }
 

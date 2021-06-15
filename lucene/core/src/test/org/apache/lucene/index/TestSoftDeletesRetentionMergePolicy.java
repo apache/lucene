@@ -379,7 +379,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
               }
 
               @Override
-              public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+              public TermVectorsReader getTermVectorsNonThreadLocal() {
                 return null;
               }
 
@@ -831,7 +831,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
       }
       return new FilterLeafReader(reader) {
         @Override
-        public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+        public TermVectorsReader getTermVectorsNonThreadLocal() {
           return null;
         }
 

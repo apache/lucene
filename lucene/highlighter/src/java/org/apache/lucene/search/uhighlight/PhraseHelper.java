@@ -341,7 +341,7 @@ public class PhraseHelper {
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

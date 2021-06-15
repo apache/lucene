@@ -208,7 +208,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 
@@ -251,7 +251,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

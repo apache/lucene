@@ -484,7 +484,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

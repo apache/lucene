@@ -95,7 +95,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

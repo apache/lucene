@@ -135,7 +135,7 @@ public abstract class FieldOffsetStrategy {
           }
 
           @Override
-          public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+          public TermVectorsReader getTermVectorsNonThreadLocal() {
             return null;
           }
 

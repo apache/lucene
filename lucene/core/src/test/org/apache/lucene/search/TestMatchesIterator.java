@@ -623,7 +623,7 @@ public class TestMatchesIterator extends MatchesTestBase {
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

@@ -168,7 +168,7 @@ public final class SortingCodecReader extends FilterCodecReader {
         }
 
         @Override
-        public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+        public TermVectorsReader getTermVectorsNonThreadLocal() {
           return null;
         }
 
@@ -487,7 +487,7 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+  public TermVectorsReader getTermVectorsNonThreadLocal() {
     return null;
   }
 

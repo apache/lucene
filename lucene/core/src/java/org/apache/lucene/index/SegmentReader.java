@@ -311,7 +311,7 @@ public final class SegmentReader extends CodecReader {
   private final Set<ClosedListener> readerClosedListeners = new CopyOnWriteArraySet<>();
 
   @Override
-  public TermVectors getTermVectorsNonThreadLocal() {
+  public TermVectorsReader getTermVectorsNonThreadLocal() {
     ensureOpen();
     return core.termVectorsReaderOrig;
   }

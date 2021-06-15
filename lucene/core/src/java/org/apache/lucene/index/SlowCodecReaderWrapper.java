@@ -109,7 +109,7 @@ public final class SlowCodecReaderWrapper {
         }
 
         @Override
-        public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+        public TermVectorsReader getTermVectorsNonThreadLocal() {
           return null;
         }
 

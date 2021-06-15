@@ -242,7 +242,7 @@ public class QueryUtils {
       public void checkIntegrity() throws IOException {}
 
       @Override
-      public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+      public TermVectorsReader getTermVectorsNonThreadLocal() {
         return null;
       }
 

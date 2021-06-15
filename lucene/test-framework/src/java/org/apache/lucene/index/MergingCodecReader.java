@@ -70,7 +70,7 @@ public class MergingCodecReader extends FilterCodecReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+  public TermVectorsReader getTermVectorsNonThreadLocal() {
     return null;
   }
 

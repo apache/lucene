@@ -43,7 +43,7 @@ public class MismatchedLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+  public TermVectorsReader getTermVectorsNonThreadLocal() {
     return null;
   }
 

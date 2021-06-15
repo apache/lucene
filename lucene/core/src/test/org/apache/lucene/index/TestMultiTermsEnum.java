@@ -243,7 +243,7 @@ public class TestMultiTermsEnum extends LuceneTestCase {
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

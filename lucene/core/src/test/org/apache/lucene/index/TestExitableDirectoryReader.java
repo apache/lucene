@@ -83,7 +83,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     }
 
     @Override
-    public TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 
