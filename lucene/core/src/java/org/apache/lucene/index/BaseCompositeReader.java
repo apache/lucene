@@ -144,6 +144,14 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
       }
       return null;
     }
+
+    @Override
+    public void close() throws IOException {
+      for (TermVectors termVectors : termVectors) {
+        // the actual implementations would / should use IOUtils.close variants
+        termVectors.close();
+      }
+    }
   }
 
   @Override

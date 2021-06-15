@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs;
 
-import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.TermVectors;
 
@@ -25,7 +24,7 @@ import org.apache.lucene.index.TermVectors;
  *
  * @lucene.experimental
  */
-public abstract class TermVectorsReader extends TermVectors implements Cloneable, Closeable {
+public abstract class TermVectorsReader extends TermVectors {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected TermVectorsReader() {}
