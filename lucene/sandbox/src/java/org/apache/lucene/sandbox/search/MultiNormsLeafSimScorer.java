@@ -129,7 +129,8 @@ final class MultiNormsLeafSimScorer {
       boolean found = false;
       for (int i = 0; i < normsArr.length; i++) {
         if (normsArr[i].advanceExact(target)) {
-          normValue += weightArr[i] * LENGTH_TABLE[Byte.toUnsignedInt((byte) normsArr[i].longValue())];
+          normValue +=
+              weightArr[i] * LENGTH_TABLE[Byte.toUnsignedInt((byte) normsArr[i].longValue())];
           found = true;
         }
       }

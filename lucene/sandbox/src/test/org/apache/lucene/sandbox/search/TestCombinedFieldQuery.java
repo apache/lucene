@@ -20,7 +20,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -112,16 +111,16 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     for (Similarity searchSimilarity : compatibleSimilarity()) {
       searcher.setSimilarity(searchSimilarity);
-      for (String field : new String[] { "string", "text" }) {
+      for (String field : new String[] {"string", "text"}) {
         CombinedFieldQuery query =
-                new CombinedFieldQuery.Builder()
-                        .addField(field + "_a", 1f)
-                        .addField(field + "_b", 1f)
-                        .addTerm(new BytesRef("a"))
-                        .build();
+            new CombinedFieldQuery.Builder()
+                .addField(field + "_a", 1f)
+                .addField(field + "_b", 1f)
+                .addTerm(new BytesRef("a"))
+                .build();
         TopScoreDocCollector collector =
-                TopScoreDocCollector.create(
-                        Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
+            TopScoreDocCollector.create(
+                Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
         searcher.search(query, collector);
         TopDocs topDocs = collector.topDocs();
         assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
@@ -131,14 +130,14 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
         }
       }
       CombinedFieldQuery query =
-              new CombinedFieldQuery.Builder()
-                      .addField("text_a", 1f)
-                      .addField("string_b", 1f)
-                      .addTerm(new BytesRef("a"))
-                      .build();
+          new CombinedFieldQuery.Builder()
+              .addField("text_a", 1f)
+              .addField("string_b", 1f)
+              .addTerm(new BytesRef("a"))
+              .build();
       TopScoreDocCollector collector =
-              TopScoreDocCollector.create(
-                      Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
+          TopScoreDocCollector.create(
+              Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
       searcher.search(query, collector);
       TopDocs topDocs = collector.topDocs();
       assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
@@ -260,11 +259,11 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
   private static Collection<Similarity> compatibleSimilarity() {
     return Arrays.asList(
-                    new BM25Similarity(),
-                    new BooleanSimilarity(),
-                    new ClassicSimilarity(),
-                    new LMDirichletSimilarity(),
-                    new LMJelinekMercerSimilarity(0.1f));
+        new BM25Similarity(),
+        new BooleanSimilarity(),
+        new ClassicSimilarity(),
+        new LMDirichletSimilarity(),
+        new LMJelinekMercerSimilarity(0.1f));
   }
 
   private void checkExpectedHits(
