@@ -127,6 +127,9 @@ API Changes
 
 * LUCENE-8143: SpanBoostQuery has been removed. (Alan Woodward)
 
+* LUCENE-9998: Remove unused parameter fis in StoredFieldsWriter.finish() and TermVectorsWriter.finish(),
+  including those subclasses. (kkewwei)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
