@@ -17,14 +17,11 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import org.apache.lucene.codecs.TermVectorsReader;
 
 /**
  * Base class for implementing {@link CompositeReader}s based on an array of sub-readers. The
@@ -121,63 +118,44 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     return subReaders[i].getTermVectors(docID - starts[i]); // dispatch to subreader
   }
 
-  private class CompositeTermVectorsReader extends TermVectorsReader {
-    List<TermVectorsReader> termVectorsReaders;
+  private class CompositeTermVectors extends TermVectors {
+    private final TermVectors[] termVectors;
 
-    public CompositeTermVectorsReader(List<TermVectorsReader> termVectorsReaders) {
-      this.termVectorsReaders = termVectorsReaders;
+    public CompositeTermVectors(TermVectors[] termVectors) {
+      this.termVectors = termVectors;
     }
 
     @Override
     public Fields get(int doc) throws IOException {
       ensureOpen();
       final int i = readerIndex(doc); // find subreader num
-      return termVectorsReaders.get(i).get(doc - starts[i]); // dispatch to subreader
+      return termVectors[i].get(doc - starts[i]); // dispatch to subreader
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      termVectorsReaders.stream()
-          .forEach(
-              r -> {
-                try {
-                  r.checkIntegrity();
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
-                }
-              });
-    }
+    public TermVectors clone() {
+      if (termVectors != null) {
+        TermVectors[] newTermVectors = new TermVectors[termVectors.length];
+        for (int i = 0; i < termVectors.length; i++) {
+          newTermVectors[i] = termVectors[i].clone();
+        }
 
-    @Override
-    public TermVectorsReader clone() {
-      List<TermVectorsReader> newTermVectorReaders =
-          termVectorsReaders.stream().map(r -> r.clone()).collect(Collectors.toList());
-
-      return new CompositeTermVectorsReader(newTermVectorReaders);
-    }
-
-    @Override
-    public void close() throws IOException {
-      termVectorsReaders.stream()
-          .forEach(
-              r -> {
-                try {
-                  r.close();
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
-                }
-              });
+        return new CompositeTermVectors(termVectors);
+      }
+      return null;
     }
   }
 
   @Override
-  public final TermVectorsReader getTermVectorsReaderNonThreadLocal() {
+  public final TermVectors getTermVectorsNonThreadLocal() {
+    TermVectors[] termVectors = new TermVectors[subReaders.length];
+
     // subReaders is a collection of segmentReaders
-    List<TermVectorsReader> termVectorsReaders =
-        Arrays.stream(subReaders)
-            .map(r -> r.getTermVectorsReaderNonThreadLocal().clone())
-            .collect(Collectors.toList());
-    return new CompositeTermVectorsReader(termVectorsReaders);
+    for (int i = 0; i < subReaders.length; i++) {
+      termVectors[i] = subReaders[i].getTermVectorsNonThreadLocal().clone();
+    }
+
+    return new CompositeTermVectors(termVectors);
   }
 
   @Override

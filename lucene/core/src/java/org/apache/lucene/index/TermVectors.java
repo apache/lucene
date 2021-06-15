@@ -14,43 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs;
+package org.apache.lucene.index;
 
-import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-/**
- * Codec API for reading term vectors:
- *
- * @lucene.experimental
- */
-public abstract class TermVectorsReader extends TermVectors implements Cloneable, Closeable {
-
+/** Index API to access TermVectors */
+public abstract class TermVectors {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  protected TermVectorsReader() {}
+  protected TermVectors() {}
 
   /**
-   * Checks consistency of this reader.
-   *
-   * <p>Note that this may be costly in terms of I/O, e.g. may involve computing a checksum value
-   * against large data files.
-   *
-   * @lucene.internal
+   * Returns term vectors for this document, or null if term vectors were not indexed. If offsets
+   * are available they are in an {@link OffsetAttribute} available from the {@link
+   * org.apache.lucene.index.PostingsEnum}.
    */
-  public abstract void checkIntegrity() throws IOException;
+  public abstract Fields get(int doc) throws IOException;
 
   /** Create a clone that one caller at a time may use to read term vectors. */
   @Override
-  public abstract TermVectorsReader clone();
-
-  /**
-   * Returns an instance optimized for merging. This instance may only be consumed in the thread
-   * that called {@link #getMergeInstance()}.
-   *
-   * <p>The default implementation returns {@code this}
-   */
-  public TermVectorsReader getMergeInstance() {
-    return this;
-  }
+  public abstract TermVectors clone();
 }

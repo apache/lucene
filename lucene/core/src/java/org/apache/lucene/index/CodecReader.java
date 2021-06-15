@@ -48,6 +48,18 @@ public abstract class CodecReader extends LeafReader {
   public abstract TermVectorsReader getTermVectorsReader();
 
   /**
+   * Expert: retrieve TermVectorsReader
+   *
+   * @lucene.internal
+   */
+  // nocommit This actually fails TestFilterCodecReader#implTestDeclaredMethodsOverridden return
+  // type comparison,
+  // as IndexReader#getTermVectorsNonThreadLocal and CodecReader#getTermVectorsNonThreadLocal
+  // would be listed twice by superClass#getDeclaredMethods, causing failure for one of them
+  @Override
+  public abstract TermVectorsReader getTermVectorsNonThreadLocal();
+
+  /**
    * Expert: retrieve underlying NormsProducer
    *
    * @lucene.internal
