@@ -115,7 +115,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
         reader.visitDocument(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
         sortWriter.finishDocument();
       }
-      sortWriter.finish(state.fieldInfos, state.segmentInfo.maxDoc());
+      sortWriter.finish(state.segmentInfo.maxDoc());
     } finally {
       IOUtils.close(reader, sortWriter);
       IOUtils.deleteFiles(tmpDirectory, tmpDirectory.getTemporaryFiles().values());

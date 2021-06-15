@@ -529,7 +529,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
       consumer.finishTerm();
       consumer.finishField();
       consumer.finishDocument();
-      consumer.finish(fieldInfos, 1);
+      consumer.finish(1);
       IOUtils.close(consumer);
       IOUtils.close(consumer);
     }
@@ -545,7 +545,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
       consumer.startDocument();
       consumer.writeField(field, customField);
       consumer.finishDocument();
-      consumer.finish(fieldInfos, 1);
+      consumer.finish(1);
       IOUtils.close(consumer);
       IOUtils.close(consumer);
     }
