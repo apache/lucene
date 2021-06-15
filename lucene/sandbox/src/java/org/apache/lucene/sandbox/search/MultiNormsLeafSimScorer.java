@@ -80,9 +80,7 @@ final class MultiNormsLeafSimScorer {
   }
 
   private long getNormValue(int doc) throws IOException {
-    if (norms != null) {
-      boolean found = norms.advanceExact(doc);
-      assert found;
+    if (norms != null && norms.advanceExact(doc)) {
       return norms.longValue();
     } else {
       return 1L; // default norm
@@ -128,14 +126,15 @@ final class MultiNormsLeafSimScorer {
     @Override
     public boolean advanceExact(int target) throws IOException {
       float normValue = 0;
+      boolean found = false;
       for (int i = 0; i < normsArr.length; i++) {
-        boolean found = normsArr[i].advanceExact(target);
-        assert found;
-        normValue +=
-            weightArr[i] * LENGTH_TABLE[Byte.toUnsignedInt((byte) normsArr[i].longValue())];
+        if (normsArr[i].advanceExact(target)) {
+          normValue += weightArr[i] * LENGTH_TABLE[Byte.toUnsignedInt((byte) normsArr[i].longValue())];
+          found = true;
+        }
       }
       current = SmallFloat.intToByte4(Math.round(normValue));
-      return true;
+      return found;
     }
 
     @Override

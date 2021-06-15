@@ -375,7 +375,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* LUCENE-9999: CombinedFieldQuery can fail with an exception when document is missing some fields.
 
 Other
 ---------------------
