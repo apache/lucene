@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -278,7 +277,8 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
   private static class FieldsReader extends FieldsProducer {
 
-    private final Map<String, FieldsProducer> fields = new TreeMap<>();
+    private final Map<String, FieldsProducer> fields = new HashMap<>();
+    private final List<String> fieldList;
     private final Map<String, FieldsProducer> formats = new HashMap<>();
     private final String segment;
 
@@ -298,6 +298,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
         assert producer != null;
         fields.put(ent.getKey(), producer);
       }
+      fieldList = buildFieldList(fields);
 
       segment = other.segment;
     }
@@ -330,6 +331,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
             }
           }
         }
+        fieldList = buildFieldList(fields);
         success = true;
       } finally {
         if (!success) {
@@ -340,9 +342,15 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       this.segment = readState.segmentInfo.name;
     }
 
+    private static List<String> buildFieldList(Map<String, FieldsProducer> fields) {
+      List<String> fieldList = new ArrayList<>(fields.keySet());
+      fieldList.sort(null);
+      return Collections.unmodifiableList(fieldList);
+    }
+
     @Override
     public Iterator<String> iterator() {
-      return Collections.unmodifiableSet(fields.keySet()).iterator();
+      return fieldList.iterator();
     }
 
     @Override
