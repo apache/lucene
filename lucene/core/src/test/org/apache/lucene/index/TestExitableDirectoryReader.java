@@ -19,8 +19,14 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.document.*;
+import org.apache.lucene.document.BinaryDocValuesField;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.ExitableDirectoryReader.ExitingReaderException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -80,11 +86,6 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     @Override
     public CacheHelper getCoreCacheHelper() {
       return in.getCoreCacheHelper();
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
-      return null;
     }
 
     @Override

@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.StoredFieldsFormat;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -593,11 +592,6 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
 
     public DummyFilterLeafReader(LeafReader in) {
       super(in);
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
-      return null;
     }
 
     @Override

@@ -111,13 +111,6 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     starts[subReaders.length] = this.maxDoc;
   }
 
-  @Override
-  public final Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    final int i = readerIndex(docID); // find subreader num
-    return subReaders[i].getTermVectors(docID - starts[i]); // dispatch to subreader
-  }
-
   private class CompositeTermVectors extends TermVectors {
     private final TermVectors[] termVectors;
 
@@ -129,7 +122,13 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     public Fields get(int doc) throws IOException {
       ensureOpen();
       final int i = readerIndex(doc); // find subreader num
-      return termVectors[i].get(doc - starts[i]); // dispatch to subreader
+
+      TermVectors tv = termVectors[i];
+      if (tv != null) {
+        return termVectors[i].get(doc - starts[i]); // dispatch to subreader
+      } else {
+        return null;
+      }
     }
 
     @Override
@@ -137,7 +136,10 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
       if (termVectors != null) {
         TermVectors[] newTermVectors = new TermVectors[termVectors.length];
         for (int i = 0; i < termVectors.length; i++) {
-          newTermVectors[i] = termVectors[i].clone();
+          TermVectors tv = termVectors[i];
+          if (tv != null) {
+            newTermVectors[i] = tv.clone();
+          }
         }
 
         return new CompositeTermVectors(termVectors);
@@ -155,12 +157,15 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
-  public final TermVectors getTermVectorsNonThreadLocal() {
+  public final TermVectors getTermVectorsReader() {
     TermVectors[] termVectors = new TermVectors[subReaders.length];
 
     // subReaders is a collection of segmentReaders
     for (int i = 0; i < subReaders.length; i++) {
-      termVectors[i] = subReaders[i].getTermVectorsNonThreadLocal().clone();
+      TermVectors tv = subReaders[i].getTermVectorsReader();
+      if (tv != null) {
+        termVectors[i] = tv.clone();
+      }
     }
 
     return new CompositeTermVectors(termVectors);

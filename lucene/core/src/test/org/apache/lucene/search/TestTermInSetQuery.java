@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -239,11 +238,6 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
       @Override
       public CacheHelper getCoreCacheHelper() {
-        return null;
-      }
-
-      @Override
-      public TermVectorsReader getTermVectorsNonThreadLocal() {
         return null;
       }
 

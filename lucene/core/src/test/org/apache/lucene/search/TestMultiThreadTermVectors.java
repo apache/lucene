@@ -127,7 +127,7 @@ public class TestMultiThreadTermVectors extends LuceneTestCase {
     private void testTermVectors() throws Exception {
       // check:
       int numDocs = reader.numDocs();
-      TermVectors termVectors = reader.getTermVectorsNonThreadLocal();
+      TermVectors termVectors = reader.getTermVectorsReader();
       for (int docId = 0; docId < numDocs; docId++) {
         // reader is StandardDirectoryReader, method impl from BaseCompositeReader
         Fields vectors = termVectors.get(docId);

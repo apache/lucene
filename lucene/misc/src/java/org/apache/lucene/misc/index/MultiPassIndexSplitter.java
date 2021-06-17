@@ -22,7 +22,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BaseCompositeReader;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -237,11 +236,6 @@ public class MultiPassIndexSplitter {
     public FakeDeleteLeafIndexReader(CodecReader reader) {
       super(reader);
       undeleteAll(); // initialize main bitset
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
-      return null;
     }
 
     @Override

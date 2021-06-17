@@ -24,7 +24,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterCodecReader;
@@ -107,11 +106,6 @@ public class IndexRearranger {
       super(in);
       filteredLiveDocs = selector.getFilteredLiveDocs(in);
       numDocs = filteredLiveDocs.cardinality();
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
-      return null;
     }
 
     @Override

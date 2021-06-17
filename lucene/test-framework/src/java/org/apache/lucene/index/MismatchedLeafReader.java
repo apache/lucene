@@ -22,7 +22,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
-import org.apache.lucene.codecs.TermVectorsReader;
 
 /**
  * Shuffles field numbers around to try to trip bugs where field numbers are assumed to always be
@@ -40,11 +39,6 @@ public class MismatchedLeafReader extends FilterLeafReader {
   @Override
   public FieldInfos getFieldInfos() {
     return shuffled;
-  }
-
-  @Override
-  public TermVectorsReader getTermVectorsNonThreadLocal() {
-    return null;
   }
 
   @Override

@@ -26,7 +26,6 @@ import java.util.Random;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -242,12 +241,7 @@ public class QueryUtils {
       public void checkIntegrity() throws IOException {}
 
       @Override
-      public TermVectorsReader getTermVectorsNonThreadLocal() {
-        return null;
-      }
-
-      @Override
-      public Fields getTermVectors(int docID) throws IOException {
+      public TermVectorsReader getTermVectorsReader() {
         return null;
       }
 

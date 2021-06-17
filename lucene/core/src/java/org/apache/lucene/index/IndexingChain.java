@@ -35,7 +35,6 @@ import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.VectorWriter;
 import org.apache.lucene.document.FieldType;
@@ -138,11 +137,6 @@ final class IndexingChain implements Accountable {
 
   private LeafReader getDocValuesLeafReader() {
     return new DocValuesLeafReader() {
-      @Override
-      public TermVectorsReader getTermVectorsNonThreadLocal() {
-        return null;
-      }
-
       @Override
       public NumericDocValues getNumericDocValues(String field) {
         PerField pf = getPerField(field);
@@ -875,11 +869,6 @@ final class IndexingChain implements Accountable {
       }
       sorter.getDocComparator(
           new DocValuesLeafReader() {
-            @Override
-            public TermVectorsReader getTermVectorsNonThreadLocal() {
-              return null;
-            }
-
             @Override
             public NumericDocValues getNumericDocValues(String field) {
               if (Objects.equals(field, fieldToValidate) && dvType != DocValuesType.NUMERIC) {

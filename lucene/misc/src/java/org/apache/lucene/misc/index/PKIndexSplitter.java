@@ -18,7 +18,6 @@ package org.apache.lucene.misc.index;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterCodecReader;
@@ -183,11 +182,6 @@ public class PKIndexSplitter {
 
       this.liveDocs = bits;
       this.numDocs = bits.cardinality();
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
-      return null;
     }
 
     @Override

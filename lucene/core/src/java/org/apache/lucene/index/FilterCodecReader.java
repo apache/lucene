@@ -70,11 +70,6 @@ public abstract class FilterCodecReader extends CodecReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsNonThreadLocal() {
-    return in.getTermVectorsNonThreadLocal();
-  }
-
-  @Override
   public NormsProducer getNormsReader() {
     return in.getNormsReader();
   }
@@ -158,7 +153,7 @@ public abstract class FilterCodecReader extends CodecReader {
       }
 
       @Override
-      public TermVectorsReader getTermVectorsNonThreadLocal() {
+      public TermVectorsReader getTermVectorsReader() {
         return null;
       }
 

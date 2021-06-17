@@ -168,11 +168,6 @@ public final class SortingCodecReader extends FilterCodecReader {
         }
 
         @Override
-        public TermVectorsReader getTermVectorsNonThreadLocal() {
-          return null;
-        }
-
-        @Override
         public CacheHelper getReaderCacheHelper() {
           return null;
         }
@@ -483,11 +478,6 @@ public final class SortingCodecReader extends FilterCodecReader {
   // no caching on sorted views
   @Override
   public CacheHelper getCoreCacheHelper() {
-    return null;
-  }
-
-  @Override
-  public TermVectorsReader getTermVectorsNonThreadLocal() {
     return null;
   }
 

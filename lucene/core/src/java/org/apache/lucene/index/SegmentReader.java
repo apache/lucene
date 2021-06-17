@@ -243,12 +243,6 @@ public final class SegmentReader extends CodecReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReader() {
-    ensureOpen();
-    return core.termVectorsLocal.get();
-  }
-
-  @Override
   public StoredFieldsReader getFieldsReader() {
     ensureOpen();
     return core.fieldsReaderLocal.get();
@@ -311,9 +305,9 @@ public final class SegmentReader extends CodecReader {
   private final Set<ClosedListener> readerClosedListeners = new CopyOnWriteArraySet<>();
 
   @Override
-  public TermVectorsReader getTermVectorsNonThreadLocal() {
+  public TermVectorsReader getTermVectorsReader() {
     ensureOpen();
-    return core.termVectorsReaderOrig;
+    return core.termVectorsReader;
   }
 
   @Override

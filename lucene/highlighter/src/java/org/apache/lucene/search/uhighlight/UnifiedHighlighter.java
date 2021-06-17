@@ -34,13 +34,9 @@ import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.index.BaseCompositeReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -61,7 +57,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 
 /**
@@ -592,9 +587,6 @@ public class UnifiedHighlighter {
 
     int cacheCharsThreshold = calculateOptimalCacheCharsThreshold(numTermVectors, numPostings);
 
-    IndexReader indexReaderWithTermVecCache =
-        (numTermVectors >= 2) ? TermVectorReusingLeafReader.wrap(searcher.getIndexReader()) : null;
-
     // [fieldIdx][docIdInIndex] of highlightDoc result
     Object[][] highlightDocsInByField = new Object[fields.length][docIds.length];
     // Highlight in doc batches determined by loadFieldValues (consumes from docIdIter)
@@ -615,11 +607,10 @@ public class UnifiedHighlighter {
           if (content == null) {
             continue;
           }
-          IndexReader indexReader =
-              (fieldHighlighter.getOffsetSource() == OffsetSource.TERM_VECTORS
-                      && indexReaderWithTermVecCache != null)
-                  ? indexReaderWithTermVecCache
-                  : searcher.getIndexReader();
+          // nocommit TermVectorReusingLeafReader is no longer valid given
+          // IndexReader#getTermVectors(int) is final.
+          // Will this be a performance concern?
+          IndexReader indexReader = searcher.getIndexReader();
           final LeafReader leafReader;
           if (indexReader instanceof LeafReader) {
             leafReader = (LeafReader) indexReader;
@@ -638,7 +629,6 @@ public class UnifiedHighlighter {
 
       batchDocIdx += fieldValsByDoc.size();
     }
-    IOUtils.close(indexReaderWithTermVecCache); // FYI won't close underlying reader
     assert docIdIter.docID() == DocIdSetIterator.NO_MORE_DOCS
         || docIdIter.nextDoc() == DocIdSetIterator.NO_MORE_DOCS;
 
@@ -1101,63 +1091,6 @@ public class UnifiedHighlighter {
 
     CharSequence[] getValuesByField() {
       return this.values;
-    }
-  }
-
-  /**
-   * Wraps an IndexReader that remembers/caches the last call to {@link
-   * LeafReader#getTermVectors(int)} so that if the next call has the same ID, then it is reused. If
-   * TV's were column-stride (like doc-values), there would be no need for this.
-   */
-  private static class TermVectorReusingLeafReader extends FilterLeafReader {
-
-    static IndexReader wrap(IndexReader reader) throws IOException {
-      LeafReader[] leafReaders =
-          reader.leaves().stream()
-              .map(LeafReaderContext::reader)
-              .map(TermVectorReusingLeafReader::new)
-              .toArray(LeafReader[]::new);
-      return new BaseCompositeReader<IndexReader>(leafReaders, null) {
-        @Override
-        protected void doClose() { // don't close the underlying reader
-        }
-
-        @Override
-        public CacheHelper getReaderCacheHelper() {
-          return null;
-        }
-      };
-    }
-
-    private int lastDocId = -1;
-    private Fields tvFields;
-
-    TermVectorReusingLeafReader(LeafReader in) {
-      super(in);
-    }
-
-    @Override
-    public Fields getTermVectors(int docID) throws IOException {
-      if (docID != lastDocId) {
-        lastDocId = docID;
-        tvFields = in.getTermVectors(docID);
-      }
-      return tvFields;
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
-      return null;
-    }
-
-    @Override
-    public CacheHelper getCoreCacheHelper() {
-      return null;
-    }
-
-    @Override
-    public CacheHelper getReaderCacheHelper() {
-      return null;
     }
   }
 

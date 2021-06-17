@@ -56,21 +56,38 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
     return fieldInfos;
   }
 
-  @Override
-  public TermVectorsReader getTermVectorsNonThreadLocal() {
-    return null;
+  private class FieldFilterTermVectorsReader extends TermVectorsReader {
+    @Override
+    public void checkIntegrity() throws IOException {
+      in.checkIntegrity();
+    }
+
+    @Override
+    public TermVectorsReader clone() {
+      return new FieldFilterTermVectorsReader();
+    }
+
+    @Override
+    public Fields get(int docID) throws IOException {
+      Fields f = in.getTermVectorsReader().get(docID);
+      if (f == null) {
+        return null;
+      }
+      f = new FieldFilterFields(f);
+      // we need to check for emptyness, so we can return
+      // null:
+      return f.iterator().hasNext() ? f : null;
+    }
+
+    @Override
+    public void close() throws IOException {
+      // don't close the underlying reader
+    }
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    Fields f = super.getTermVectors(docID);
-    if (f == null) {
-      return null;
-    }
-    f = new FieldFilterFields(f);
-    // we need to check for emptyness, so we can return
-    // null:
-    return f.iterator().hasNext() ? f : null;
+  public TermVectors getTermVectorsReader() {
+    return new FieldFilterTermVectorsReader();
   }
 
   @Override

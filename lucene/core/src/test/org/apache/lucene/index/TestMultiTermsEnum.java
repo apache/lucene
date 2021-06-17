@@ -21,7 +21,6 @@ import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.FieldsProducer;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -239,11 +238,6 @@ public class TestMultiTermsEnum extends LuceneTestCase {
 
     @Override
     public CacheHelper getCoreCacheHelper() {
-      return null;
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

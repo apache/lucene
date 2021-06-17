@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FilterLeafReader;
@@ -619,11 +618,6 @@ public class TestMatchesIterator extends MatchesTestBase {
 
     @Override
     public CacheHelper getCoreCacheHelper() {
-      return null;
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

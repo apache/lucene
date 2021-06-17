@@ -19,7 +19,6 @@ package org.apache.lucene.search.uhighlight;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.PostingsEnum;
@@ -131,11 +130,6 @@ public abstract class FieldOffsetStrategy {
           // "FilterTransientLeafReader" (exception on close).
           @Override
           public CacheHelper getCoreCacheHelper() {
-            return null;
-          }
-
-          @Override
-          public TermVectorsReader getTermVectorsNonThreadLocal() {
             return null;
           }
 

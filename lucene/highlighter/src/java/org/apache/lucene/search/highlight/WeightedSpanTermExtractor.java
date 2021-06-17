@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FilterLeafReader;
@@ -488,11 +487,6 @@ public class WeightedSpanTermExtractor {
 
     @Override
     public CacheHelper getCoreCacheHelper() {
-      return null;
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
       return null;
     }
 

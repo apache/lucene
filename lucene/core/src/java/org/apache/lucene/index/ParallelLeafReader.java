@@ -300,27 +300,40 @@ public class ParallelLeafReader extends LeafReader {
     return null;
   }
 
-  @Override
-  public TermVectorsReader getTermVectorsNonThreadLocal() {
-    return null;
+  private class ParallelLeafTermVectorsReader extends TermVectorsReader {
+    @Override
+    public void checkIntegrity() throws IOException {}
+
+    @Override
+    public TermVectorsReader clone() {
+      return new ParallelLeafTermVectorsReader();
+    }
+
+    @Override
+    public Fields get(int doc) throws IOException {
+      ensureOpen();
+      ParallelFields fields = null;
+      for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
+        String fieldName = ent.getKey();
+        Terms vector = ent.getValue().getTermVector(doc, fieldName);
+        if (vector != null) {
+          if (fields == null) {
+            fields = new ParallelFields();
+          }
+          fields.addField(fieldName, vector);
+        }
+      }
+
+      return fields;
+    }
+
+    @Override
+    public void close() throws IOException {}
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    ParallelFields fields = null;
-    for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-      String fieldName = ent.getKey();
-      Terms vector = ent.getValue().getTermVector(docID, fieldName);
-      if (vector != null) {
-        if (fields == null) {
-          fields = new ParallelFields();
-        }
-        fields.addField(fieldName, vector);
-      }
-    }
-
-    return fields;
+  public TermVectorsReader getTermVectorsReader() {
+    return new ParallelLeafTermVectorsReader();
   }
 
   @Override

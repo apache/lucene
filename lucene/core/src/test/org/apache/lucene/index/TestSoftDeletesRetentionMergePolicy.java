@@ -29,7 +29,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -375,11 +374,6 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
 
               @Override
               public Bits getLiveDocs() {
-                return null;
-              }
-
-              @Override
-              public TermVectorsReader getTermVectorsNonThreadLocal() {
                 return null;
               }
 
@@ -830,11 +824,6 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
         numDocs = bits;
       }
       return new FilterLeafReader(reader) {
-        @Override
-        public TermVectorsReader getTermVectorsNonThreadLocal() {
-          return null;
-        }
-
         @Override
         public int numDocs() {
           return numDocs;

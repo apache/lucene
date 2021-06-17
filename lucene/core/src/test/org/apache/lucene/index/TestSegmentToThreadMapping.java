@@ -67,12 +67,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public TermVectorsReader getTermVectorsNonThreadLocal() {
-        return null;
-      }
-
-      @Override
-      public Fields getTermVectors(int doc) {
+      public TermVectorsReader getTermVectorsReader() {
         return null;
       }
 

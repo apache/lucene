@@ -168,17 +168,31 @@ public class TermVectorLeafReader extends LeafReader {
   @Override
   public void checkIntegrity() throws IOException {}
 
-  @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    if (docID != 0) {
-      return null;
+  private class InnerTermVectorsLeafReader extends TermVectorsReader {
+
+    @Override
+    public void checkIntegrity() {}
+
+    @Override
+    public TermVectorsReader clone() {
+      return new InnerTermVectorsLeafReader();
     }
-    return fields;
+
+    @Override
+    public Fields get(int docID) {
+      if (docID != 0) {
+        return null;
+      }
+      return fields;
+    }
+
+    @Override
+    public void close() throws IOException {}
   }
 
   @Override
-  public TermVectorsReader getTermVectorsNonThreadLocal() {
-    return null;
+  public TermVectorsReader getTermVectorsReader() {
+    return new InnerTermVectorsLeafReader();
   }
 
   @Override

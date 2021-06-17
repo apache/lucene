@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -92,11 +91,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
         return null;
       }
       return (queryTimeout.isTimeoutEnabled()) ? new ExitableTerms(terms, queryTimeout) : terms;
-    }
-
-    @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
-      return null;
     }
 
     // this impl does not change deletes or data so we can delegate the

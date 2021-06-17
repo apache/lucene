@@ -19,7 +19,6 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.taxonomy.OrdinalsReader.OrdinalsSegmentReader;
@@ -156,11 +155,6 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
 
   @Override
   public CacheHelper getCoreCacheHelper() {
-    return null;
-  }
-
-  @Override
-  public TermVectorsReader getTermVectorsNonThreadLocal() {
     return null;
   }
 

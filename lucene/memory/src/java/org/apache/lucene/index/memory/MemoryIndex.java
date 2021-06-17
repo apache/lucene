@@ -1236,9 +1236,31 @@ public class MemoryIndex {
       fieldInfos = new FieldInfos(fieldInfosArr);
     }
 
+    private class MemoryIndexTermVectorsReader extends TermVectorsReader {
+      @Override
+      public void checkIntegrity() {}
+
+      @Override
+      public TermVectorsReader clone() {
+        return new MemoryIndexTermVectorsReader();
+      }
+
+      @Override
+      public Fields get(int docID) {
+        if (docID == 0) {
+          return memoryFields;
+        } else {
+          return null;
+        }
+      }
+
+      @Override
+      public void close() {}
+    }
+
     @Override
-    public TermVectorsReader getTermVectorsNonThreadLocal() {
-      return null;
+    public TermVectors getTermVectorsReader() {
+      return new MemoryIndexTermVectorsReader();
     }
 
     private Info getInfoForExpectedDocValuesType(String fieldName, DocValuesType expectedType) {
@@ -1725,15 +1747,6 @@ public class MemoryIndex {
       @Override
       public int getDocCount() {
         return 1;
-      }
-    }
-
-    @Override
-    public Fields getTermVectors(int docID) {
-      if (docID == 0) {
-        return memoryFields;
-      } else {
-        return null;
       }
     }
 
