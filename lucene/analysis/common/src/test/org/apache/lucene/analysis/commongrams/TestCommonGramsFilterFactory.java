@@ -100,7 +100,7 @@ public class TestCommonGramsFilterFactory extends BaseTokenStreamFactoryTestCase
 
   /**
    * Test that ignoreCase flag is honored when no words are provided and default stopwords are used.
-   * */
+   */
   public void testIgnoreCase() throws Exception {
     ResourceLoader loader = new ClasspathResourceLoader(getClass());
     CommonGramsFilterFactory factory =
