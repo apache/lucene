@@ -98,6 +98,22 @@ public class TestCommonGramsFilterFactory extends BaseTokenStreamFactoryTestCase
         stream, new String[] {"testing", "testing_the", "the", "the_factory", "factory"});
   }
 
+  /** Test that ignoreCase flag is honored when no words are provided and default stopwords are used. */
+  public void testIgnoreCase() throws Exception {
+    ResourceLoader loader = new ClasspathResourceLoader(getClass());
+    CommonGramsFilterFactory factory = (CommonGramsFilterFactory) tokenFilterFactory("CommonGrams",
+        Version.LATEST, loader, "ignoreCase", "true");
+    CharArraySet words = factory.getCommonWords();
+    assertTrue("words is null and it shouldn't be", words != null);
+    assertTrue(words.contains("the"));
+    assertTrue(words.contains("The"));
+    Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    tokenizer.setReader(new StringReader("testing The factory"));
+    TokenStream stream = factory.create(tokenizer);
+    assertTokenStreamContents(
+        stream, new String[] {"testing", "testing_The", "The", "The_factory", "factory"});
+  }
+
   /** Test that bogus arguments result in exception */
   public void testBogusArguments() throws Exception {
     IllegalArgumentException expected =

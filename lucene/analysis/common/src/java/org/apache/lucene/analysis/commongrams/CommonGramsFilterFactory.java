@@ -76,7 +76,7 @@ public class CommonGramsFilterFactory extends TokenFilterFactory implements Reso
         commonWords = getWordSet(loader, commonWordFiles, ignoreCase);
       }
     } else {
-      commonWords = EnglishAnalyzer.ENGLISH_STOP_WORDS_SET;
+      commonWords = new CharArraySet(EnglishAnalyzer.ENGLISH_STOP_WORDS_SET, ignoreCase);
     }
   }
 
