@@ -7,9 +7,6 @@ http://s.apache.org/luceneversions
 
 New Features
 
-* LUCENE-9680: IndexWriter#getFieldNames() method added to get fields present in index.
-  This method was removed in LUCENE-8909. (Oren Ovadia)
-
 * LUCENE-9322: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
 * LUCENE-9004: Approximate nearest vector search via NSW graphs
@@ -133,9 +130,6 @@ API Changes
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
-
-* LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
-  fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
 
 * LUCENE-9633: Improve match highlighter behavior for degenerate intervals (on non-existing positions).
   (Dawid Weiss)
@@ -358,7 +352,6 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
-* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
 
 ======================= Lucene 8.10.0 =======================
 
@@ -397,6 +390,9 @@ API Changes
 * LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
   Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
   Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
+
+* LUCENE-9680: IndexWriter#getFieldNames() method added to get fields present in index.
+  This method was removed in LUCENE-8909. (Oren Ovadia)
 
 New Features
 ---------------------
@@ -439,6 +435,9 @@ Improvements
 
 * LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
   (Jaison Bi via Bruno Roustant)
+
+* LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
+  fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
 
 * LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
 
@@ -489,6 +488,7 @@ Other
 
 * LUCENE-9985: Upgrade jetty to 9.4.41 (janhoy)
 
+* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
 ======================= Lucene 8.8.2 =======================
 
 Bug Fixes
