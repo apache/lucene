@@ -24,7 +24,7 @@ import org.apache.lucene.index.TermVectors;
  *
  * @lucene.experimental
  */
-public abstract class TermVectorsReader extends TermVectors {
+public abstract class TermVectorsReader extends TermVectors implements Cloneable {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected TermVectorsReader() {}

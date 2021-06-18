@@ -307,7 +307,11 @@ public final class SegmentReader extends CodecReader {
   @Override
   public TermVectorsReader getTermVectorsReader() {
     ensureOpen();
-    return core.termVectorsReader;
+    if (core.termVectorsReader != null) {
+      return core.termVectorsReader.clone();
+    } else {
+      return null;
+    }
   }
 
   @Override

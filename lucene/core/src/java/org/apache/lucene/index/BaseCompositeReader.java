@@ -111,64 +111,38 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     starts[subReaders.length] = this.maxDoc;
   }
 
-  private class CompositeTermVectors extends TermVectors {
-    private final TermVectors[] termVectors;
-
-    public CompositeTermVectors(TermVectors[] termVectors) {
-      this.termVectors = termVectors;
-    }
-
-    @Override
-    public Fields get(int doc) throws IOException {
-      ensureOpen();
-      final int i = readerIndex(doc); // find subreader num
-
-      TermVectors tv = termVectors[i];
-      if (tv != null) {
-        return termVectors[i].get(doc - starts[i]); // dispatch to subreader
-      } else {
-        return null;
-      }
-    }
-
-    @Override
-    public TermVectors clone() {
-      if (termVectors != null) {
-        TermVectors[] newTermVectors = new TermVectors[termVectors.length];
-        for (int i = 0; i < termVectors.length; i++) {
-          TermVectors tv = termVectors[i];
-          if (tv != null) {
-            newTermVectors[i] = tv.clone();
-          }
-        }
-
-        return new CompositeTermVectors(termVectors);
-      }
-      return null;
-    }
-
-    @Override
-    public void close() throws IOException {
-      for (TermVectors termVectors : termVectors) {
-        // the actual implementations would / should use IOUtils.close variants
-        termVectors.close();
-      }
-    }
-  }
-
   @Override
   public final TermVectors getTermVectorsReader() {
     TermVectors[] termVectors = new TermVectors[subReaders.length];
 
     // subReaders is a collection of segmentReaders
     for (int i = 0; i < subReaders.length; i++) {
-      TermVectors tv = subReaders[i].getTermVectorsReader();
-      if (tv != null) {
-        termVectors[i] = tv.clone();
-      }
+      // the getTermVectorsReader would clone a new instance, hence saving it into an array
+      // to avoid re-cloning from direct subReaders[i].getTermVectorsReader() call
+      termVectors[i] = subReaders[i].getTermVectorsReader();
     }
 
-    return new CompositeTermVectors(termVectors);
+    return new TermVectors() {
+      @Override
+      public Fields get(int doc) throws IOException {
+        ensureOpen();
+        final int i = readerIndex(doc); // find subreader num
+
+        if (termVectors[i] != null) {
+          return termVectors[i].get(doc - starts[i]); // dispatch to subreader
+        } else {
+          return null;
+        }
+      }
+
+      @Override
+      public void close() throws IOException {
+        for (TermVectors termVectors : termVectors) {
+          // the actual implementations would / should use IOUtils.close variants
+          termVectors.close();
+        }
+      }
+    };
   }
 
   @Override

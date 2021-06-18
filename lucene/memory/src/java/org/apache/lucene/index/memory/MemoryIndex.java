@@ -32,7 +32,6 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.*;
@@ -1236,31 +1235,21 @@ public class MemoryIndex {
       fieldInfos = new FieldInfos(fieldInfosArr);
     }
 
-    private class MemoryIndexTermVectorsReader extends TermVectorsReader {
-      @Override
-      public void checkIntegrity() {}
-
-      @Override
-      public TermVectorsReader clone() {
-        return new MemoryIndexTermVectorsReader();
-      }
-
-      @Override
-      public Fields get(int docID) {
-        if (docID == 0) {
-          return memoryFields;
-        } else {
-          return null;
-        }
-      }
-
-      @Override
-      public void close() {}
-    }
-
     @Override
     public TermVectors getTermVectorsReader() {
-      return new MemoryIndexTermVectorsReader();
+      return new TermVectors() {
+        @Override
+        public Fields get(int docID) {
+          if (docID == 0) {
+            return memoryFields;
+          } else {
+            return null;
+          }
+        }
+
+        @Override
+        public void close() {}
+      };
     }
 
     private Info getInfoForExpectedDocValuesType(String fieldName, DocValuesType expectedType) {

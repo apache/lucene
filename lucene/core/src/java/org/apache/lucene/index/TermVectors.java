@@ -21,7 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 /** Index API to access TermVectors */
-public abstract class TermVectors implements Cloneable, Closeable {
+public abstract class TermVectors implements Closeable {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected TermVectors() {}
 
@@ -31,8 +31,4 @@ public abstract class TermVectors implements Cloneable, Closeable {
    * org.apache.lucene.index.PostingsEnum}.
    */
   public abstract Fields get(int doc) throws IOException;
-
-  /** Create a clone that one caller at a time may use to read term vectors. */
-  @Override
-  public abstract TermVectors clone();
 }

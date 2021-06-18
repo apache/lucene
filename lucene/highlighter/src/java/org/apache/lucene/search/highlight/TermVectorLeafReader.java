@@ -19,7 +19,7 @@ package org.apache.lucene.search.highlight;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
-import org.apache.lucene.codecs.TermVectorsReader;
+
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -34,6 +34,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
@@ -168,31 +169,20 @@ public class TermVectorLeafReader extends LeafReader {
   @Override
   public void checkIntegrity() throws IOException {}
 
-  private class InnerTermVectorsLeafReader extends TermVectorsReader {
-
-    @Override
-    public void checkIntegrity() {}
-
-    @Override
-    public TermVectorsReader clone() {
-      return new InnerTermVectorsLeafReader();
-    }
-
-    @Override
-    public Fields get(int docID) {
-      if (docID != 0) {
-        return null;
-      }
-      return fields;
-    }
-
-    @Override
-    public void close() throws IOException {}
-  }
-
   @Override
-  public TermVectorsReader getTermVectorsReader() {
-    return new InnerTermVectorsLeafReader();
+  public TermVectors getTermVectorsReader() {
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) {
+        if (docID != 0) {
+          return null;
+        }
+        return fields;
+      }
+
+      @Override
+      public void close() throws IOException {}
+    };
   }
 
   @Override

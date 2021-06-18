@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
@@ -300,40 +299,30 @@ public class ParallelLeafReader extends LeafReader {
     return null;
   }
 
-  private class ParallelLeafTermVectorsReader extends TermVectorsReader {
-    @Override
-    public void checkIntegrity() throws IOException {}
-
-    @Override
-    public TermVectorsReader clone() {
-      return new ParallelLeafTermVectorsReader();
-    }
-
-    @Override
-    public Fields get(int doc) throws IOException {
-      ensureOpen();
-      ParallelFields fields = null;
-      for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-        String fieldName = ent.getKey();
-        Terms vector = ent.getValue().getTermVector(doc, fieldName);
-        if (vector != null) {
-          if (fields == null) {
-            fields = new ParallelFields();
+  @Override
+  public TermVectors getTermVectorsReader() {
+    return new TermVectors() {
+      @Override
+      public Fields get(int doc) throws IOException {
+        ensureOpen();
+        ParallelFields fields = null;
+        for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
+          String fieldName = ent.getKey();
+          Terms vector = ent.getValue().getTermVector(doc, fieldName);
+          if (vector != null) {
+            if (fields == null) {
+              fields = new ParallelFields();
+            }
+            fields.addField(fieldName, vector);
           }
-          fields.addField(fieldName, vector);
         }
+
+        return fields;
       }
 
-      return fields;
-    }
-
-    @Override
-    public void close() throws IOException {}
-  }
-
-  @Override
-  public TermVectorsReader getTermVectorsReader() {
-    return new ParallelLeafTermVectorsReader();
+      @Override
+      public void close() throws IOException {}
+    };
   }
 
   @Override

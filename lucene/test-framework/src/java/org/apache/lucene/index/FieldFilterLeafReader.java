@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.util.FilterIterator;
 
 /**
@@ -56,38 +55,26 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
     return fieldInfos;
   }
 
-  private class FieldFilterTermVectorsReader extends TermVectorsReader {
-    @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
-    }
-
-    @Override
-    public TermVectorsReader clone() {
-      return new FieldFilterTermVectorsReader();
-    }
-
-    @Override
-    public Fields get(int docID) throws IOException {
-      Fields f = in.getTermVectorsReader().get(docID);
-      if (f == null) {
-        return null;
-      }
-      f = new FieldFilterFields(f);
-      // we need to check for emptyness, so we can return
-      // null:
-      return f.iterator().hasNext() ? f : null;
-    }
-
-    @Override
-    public void close() throws IOException {
-      // don't close the underlying reader
-    }
-  }
-
   @Override
   public TermVectors getTermVectorsReader() {
-    return new FieldFilterTermVectorsReader();
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) throws IOException {
+        Fields f = in.getTermVectorsReader().get(docID);
+        if (f == null) {
+          return null;
+        }
+        f = new FieldFilterFields(f);
+        // we need to check for emptyness, so we can return
+        // null:
+        return f.iterator().hasNext() ? f : null;
+      }
+
+      @Override
+      public void close() throws IOException {
+        // don't close the underlying reader
+      }
+    };
   }
 
   @Override
