@@ -127,6 +127,9 @@ API Changes
 
 * LUCENE-8143: SpanBoostQuery has been removed. (Alan Woodward)
 
+* LUCENE-9998: Remove unused parameter fis in StoredFieldsWriter.finish() and TermVectorsWriter.finish(),
+  including those subclasses. (kkewwei)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
@@ -254,6 +257,9 @@ Improvements
 * LUCENE-9944: Allow DrillSideways users to provide their own CollectorManager without also requiring
   them to provide an ExecutorService. (Greg Miller)
 
+* LUCENE-9535: Improve DocumentsWriterPerThreadPool to prefer larger instances.
+  (Adrien Grand)
+
 Bug fixes
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
@@ -353,6 +359,33 @@ Other
   method to backwards codec. (Ignacio Vera)
 
 * LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
+
+======================= Lucene 8.10.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+* LUCENE-9965: Added QueryProfilerIndexSearcher and ProfilerCollector to support debugging
+  query execution strategy and timing. (Jack Conradson, Julie Tibshirani)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
 
 ======================= Lucene 8.9.0 =======================
 

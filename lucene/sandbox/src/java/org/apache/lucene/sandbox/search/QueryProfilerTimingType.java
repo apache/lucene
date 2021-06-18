@@ -15,18 +15,24 @@
  * limitations under the License.
  */
 
-// Declare script dependency versions outside of palantir's
-// version unification control. These are not our main dependencies
-// but are reused in buildSrc and across applied scripts.
+package org.apache.lucene.sandbox.search;
 
-ext {
-  scriptDepVersions = [
-      "apache-rat": "0.11",
-      "commons-codec": "1.13",
-      "ecj": "3.25.0",
-      "flexmark": "0.61.24",
-      "javacc": "7.0.4",
-      "jflex": "1.7.0",
-      "jgit": "5.9.0.202009080501-r",
-  ]
+import java.util.Locale;
+
+/** This enum breaks down the query into different sections to describe what was timed. */
+public enum QueryProfilerTimingType {
+  CREATE_WEIGHT,
+  BUILD_SCORER,
+  NEXT_DOC,
+  ADVANCE,
+  MATCH,
+  SCORE,
+  SHALLOW_ADVANCE,
+  COMPUTE_MAX_SCORE,
+  SET_MIN_COMPETITIVE_SCORE;
+
+  @Override
+  public String toString() {
+    return name().toLowerCase(Locale.ROOT);
+  }
 }
