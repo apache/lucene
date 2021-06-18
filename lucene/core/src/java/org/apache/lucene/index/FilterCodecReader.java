@@ -153,11 +153,6 @@ public abstract class FilterCodecReader extends CodecReader {
       }
 
       @Override
-      public TermVectorsReader getTermVectorsReader() {
-        return null;
-      }
-
-      @Override
       public int numDocs() {
         return numDocs;
       }
