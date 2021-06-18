@@ -69,11 +69,6 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
         // null:
         return f.iterator().hasNext() ? f : null;
       }
-
-      @Override
-      public void close() throws IOException {
-        // don't close the underlying reader
-      }
     };
   }
 

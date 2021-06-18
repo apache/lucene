@@ -1246,9 +1246,6 @@ public class MemoryIndex {
             return null;
           }
         }
-
-        @Override
-        public void close() {}
       };
     }
 

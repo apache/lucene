@@ -16,12 +16,11 @@
  */
 package org.apache.lucene.index;
 
-import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 /** Index API to access TermVectors */
-public abstract class TermVectors implements Closeable {
+public abstract class TermVectors {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected TermVectors() {}
 

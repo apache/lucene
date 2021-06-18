@@ -319,9 +319,6 @@ public class ParallelLeafReader extends LeafReader {
 
         return fields;
       }
-
-      @Override
-      public void close() throws IOException {}
     };
   }
 
