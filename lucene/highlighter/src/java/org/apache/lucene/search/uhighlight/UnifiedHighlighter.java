@@ -638,7 +638,7 @@ public class UnifiedHighlighter {
 
       batchDocIdx += fieldValsByDoc.size();
     }
-    IOUtils.close(indexReaderWithTermVecCache);
+    IOUtils.close(indexReaderWithTermVecCache); // FYI won't close underlying reader
     assert docIdIter.docID() == DocIdSetIterator.NO_MORE_DOCS
         || docIdIter.nextDoc() == DocIdSetIterator.NO_MORE_DOCS;
 
