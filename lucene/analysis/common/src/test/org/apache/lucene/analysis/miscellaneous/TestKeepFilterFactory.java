@@ -43,7 +43,13 @@ public class TestKeepFilterFactory extends BaseTokenStreamFactoryTestCase {
     factory =
         (KeepWordFilterFactory)
             tokenFilterFactory(
-                "KeepWord", "words", "keep-snowball.txt", "format", "snowball", "ignoreCase", "true");
+                "KeepWord",
+                "words",
+                "keep-snowball.txt",
+                "format",
+                "snowball",
+                "ignoreCase",
+                "true");
     words = factory.getWords();
     assertEquals(8, words.size());
     assertTrue(words.contains("he"));

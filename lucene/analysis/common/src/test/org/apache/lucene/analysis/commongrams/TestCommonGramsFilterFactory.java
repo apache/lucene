@@ -34,7 +34,13 @@ public class TestCommonGramsFilterFactory extends BaseTokenStreamFactoryTestCase
     CommonGramsFilterFactory factory =
         (CommonGramsFilterFactory)
             tokenFilterFactory(
-                "CommonGrams", Version.LATEST, loader, "words", "common-1.txt", "ignoreCase", "true");
+                "CommonGrams",
+                Version.LATEST,
+                loader,
+                "words",
+                "common-1.txt",
+                "ignoreCase",
+                "true");
     CharArraySet words = factory.getCommonWords();
     assertTrue("words is null and it shouldn't be", words != null);
     assertTrue("words Size: " + words.size() + " is not: " + 2, words.size() == 2);

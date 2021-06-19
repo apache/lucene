@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.analysis.en;
 
 import java.io.IOException;
@@ -11,14 +27,14 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Abstract parent class for analysis factories that accept a stopwords file as input.
  *
- * <p>Concrete implementations can leverage the following input attributes.
- * All attributes are optional:
+ * <p>Concrete implementations can leverage the following input attributes. All attributes are
+ * optional:
  *
  * <ul>
  *   <li><code>ignoreCase</code> defaults to <code>false</code>
  *   <li><code>words</code> should be the name of a stopwords file to parse, if not specified the
- *       factory will use the value provided by {@link #createDefaultWords()} implementation in concrete
- *       subclass. Defaults to {@link EnglishAnalyzer#ENGLISH_STOP_WORDS_SET}
+ *       factory will use the value provided by {@link #createDefaultWords()} implementation in
+ *       concrete subclass. Defaults to {@link EnglishAnalyzer#ENGLISH_STOP_WORDS_SET}
  *   <li><code>format</code> defines how the <code>words</code> file will be parsed, and defaults to
  *       <code>wordset</code>. If <code>words</code> is not specified, then <code>format</code> must
  *       not be specified.
@@ -37,7 +53,8 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *       for details.
  * </ul>
  */
-public abstract class AbstractWordsFileFilterFactory extends TokenFilterFactory implements ResourceLoaderAware {
+public abstract class AbstractWordsFileFilterFactory extends TokenFilterFactory
+    implements ResourceLoaderAware {
 
   public static final String FORMAT_WORDSET = "wordset";
   public static final String FORMAT_SNOWBALL = "snowball";
@@ -47,16 +64,12 @@ public abstract class AbstractWordsFileFilterFactory extends TokenFilterFactory 
   private final String format;
   private final boolean ignoreCase;
 
-  /**
-   * Default ctor for compatibility with SPI
-   */
+  /** Default ctor for compatibility with SPI */
   protected AbstractWordsFileFilterFactory() {
     throw defaultCtorException();
   }
 
-  /**
-   * Initialize this factory via a set of key-value pairs.
-   */
+  /** Initialize this factory via a set of key-value pairs. */
   public AbstractWordsFileFilterFactory(Map<String, String> args) {
     super(args);
     wordFiles = get(args, "words");
@@ -67,9 +80,7 @@ public abstract class AbstractWordsFileFilterFactory extends TokenFilterFactory 
     }
   }
 
-  /**
-   * Initialize the set of stopwords provided via ResourceLoader, or using defaults.
-   */
+  /** Initialize the set of stopwords provided via ResourceLoader, or using defaults. */
   @Override
   public void inform(ResourceLoader loader) throws IOException {
     if (wordFiles != null) {
@@ -90,9 +101,7 @@ public abstract class AbstractWordsFileFilterFactory extends TokenFilterFactory 
     }
   }
 
-  /**
-   * Default word set implementation.
-   */
+  /** Default word set implementation. */
   protected CharArraySet createDefaultWords() {
     return new CharArraySet(EnglishAnalyzer.ENGLISH_STOP_WORDS_SET, ignoreCase);
   }
