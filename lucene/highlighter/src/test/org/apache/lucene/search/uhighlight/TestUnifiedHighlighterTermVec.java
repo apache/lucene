@@ -19,6 +19,7 @@ package org.apache.lucene.search.uhighlight;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -29,11 +30,14 @@ import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.ParallelLeafReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermVectors;
@@ -132,7 +136,21 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
             return new FilterLeafReader(reader) {
               @Override
               public TermVectors getTermVectorsReader() {
-                return reader.getTermVectorsReader();
+                BitSet seenDocIDs = new BitSet();
+                return new TermVectors() {
+                  @Override
+                  public Fields get(int docID) throws IOException {
+                    // if we're invoked by ParallelLeafReader then we can't do our assertion. TODO
+                    // see LUCENE-6868
+                    if (callStackContains(ParallelLeafReader.class) == false
+                        && callStackContains(CheckIndex.class) == false) {
+                      assertFalse(
+                          "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
+                      seenDocIDs.set(docID);
+                    }
+                    return reader.getTermVectorsReader().get(docID);
+                  }
+                };
               }
 
               @Override
