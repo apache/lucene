@@ -22,7 +22,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.en.AbstractWordsFileFilterFactory;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
-import org.apache.lucene.util.ResourceLoaderAware;
 
 /**
  * Factory for {@link StopFilter}.
@@ -63,7 +62,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  * @since 3.1
  * @lucene.spi {@value #NAME}
  */
-public class StopFilterFactory extends AbstractWordsFileFilterFactory implements ResourceLoaderAware {
+public class StopFilterFactory extends AbstractWordsFileFilterFactory {
 
   /** SPI name */
   public static final String NAME = "stop";
