@@ -20,7 +20,6 @@ import java.util.Map;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.en.AbstractWordsFileFilterFactory;
-import org.apache.lucene.util.ResourceLoaderAware;
 
 /**
  * Factory for {@link KeepWordFilter}.
@@ -36,7 +35,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  * @since 3.1
  * @lucene.spi {@value #NAME}
  */
-public class KeepWordFilterFactory extends AbstractWordsFileFilterFactory implements ResourceLoaderAware {
+public class KeepWordFilterFactory extends AbstractWordsFileFilterFactory {
 
   /** SPI name */
   public static final String NAME = "keepWord";

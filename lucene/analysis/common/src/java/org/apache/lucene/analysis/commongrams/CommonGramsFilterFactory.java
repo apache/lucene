@@ -21,7 +21,6 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.en.AbstractWordsFileFilterFactory;
-import org.apache.lucene.util.ResourceLoaderAware;
 
 /**
  * Constructs a {@link CommonGramsFilter}.
@@ -37,7 +36,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  * @since 3.1
  * @lucene.spi {@value #NAME}
  */
-public class CommonGramsFilterFactory extends AbstractWordsFileFilterFactory implements ResourceLoaderAware {
+public class CommonGramsFilterFactory extends AbstractWordsFileFilterFactory {
 
   /** SPI name */
   public static final String NAME = "commonGrams";
