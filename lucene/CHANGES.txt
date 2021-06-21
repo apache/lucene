@@ -292,6 +292,8 @@ Bug fixes
 
 * LUCENE-9988: Fix DrillSideways correctness bug introduced in LUCENE-9944 (Greg Miller)
 
+* LUCENE-9964: Duplicate long values in a document field should only be counted once when using SortedNumericDocValuesFields
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top

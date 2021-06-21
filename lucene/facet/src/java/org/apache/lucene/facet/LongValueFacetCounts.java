@@ -23,7 +23,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
@@ -162,8 +164,14 @@ public class LongValueFacetCounts extends Facets {
           if (limit > 0) {
             totCount++;
           }
+          Set<Long> uniqueLongValues =
+              new HashSet<>(); // count each repeated long value in a field as the same
           for (int i = 0; i < limit; i++) {
-            increment(multiValues.nextValue());
+            Long value = multiValues.nextValue();
+            if (uniqueLongValues.contains(value) == false) {
+              increment(value);
+              uniqueLongValues.add(value);
+            }
           }
         }
       }
@@ -208,8 +216,14 @@ public class LongValueFacetCounts extends Facets {
           if (limit > 0) {
             totCount++;
           }
+          Set<Long> uniqueLongValues =
+              new HashSet<>(); // count each repeated long value in a field as the same
           for (int i = 0; i < limit; i++) {
-            increment(multiValues.nextValue());
+            Long value = multiValues.nextValue();
+            if (uniqueLongValues.contains(value) == false) {
+              increment(value);
+              uniqueLongValues.add(value);
+            }
           }
         }
       }

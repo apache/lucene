@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.document.Document;
@@ -131,11 +132,11 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     d.close();
   }
 
-  public void testRandom() throws Exception {
+  public void testRandomSingleValued() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
-    int valueCount = atLeast(1000);
+    int docCount = atLeast(1000);
     double missingChance = random().nextDouble();
     long maxValue;
     if (random().nextBoolean()) {
@@ -146,7 +147,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println(
           "TEST: valueCount="
-              + valueCount
+              + docCount
               + " valueRange=-"
               + maxValue
               + "-"
@@ -154,9 +155,9 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
               + " missingChance="
               + missingChance);
     }
-    Long[] values = new Long[valueCount];
+    Long[] values = new Long[docCount];
     int missingCount = 0;
-    for (int i = 0; i < valueCount; i++) {
+    for (int i = 0; i < docCount; i++) {
       Document doc = new Document();
       doc.add(new IntPoint("id", i));
       if (random().nextDouble() > missingChance) {
@@ -185,7 +186,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
       // all docs
       Map<Long, Integer> expected = new HashMap<>();
       int expectedChildCount = 0;
-      for (int i = 0; i < valueCount; i++) {
+      for (int i = 0; i < docCount; i++) {
         if (values[i] != null) {
           Integer curCount = expected.get(values[i]);
           if (curCount == null) {
@@ -237,7 +238,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           "all docs, sort facets by value",
           expectedCounts,
           expectedChildCount,
-          valueCount - missingCount,
+          docCount - missingCount,
           actual,
           Integer.MAX_VALUE);
 
@@ -253,9 +254,9 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           });
       int topN;
       if (random().nextBoolean()) {
-        topN = valueCount;
+        topN = docCount;
       } else {
-        topN = random().nextInt(valueCount);
+        topN = random().nextInt(docCount);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -265,13 +266,13 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           "all docs, sort facets by count",
           expectedCounts,
           expectedChildCount,
-          valueCount - missingCount,
+          docCount - missingCount,
           actual,
           topN);
 
       // subset of docs
-      int minId = random().nextInt(valueCount);
-      int maxId = random().nextInt(valueCount);
+      int minId = random().nextInt(docCount);
+      int maxId = random().nextInt(docCount);
       if (minId > maxId) {
         int tmp = minId;
         minId = maxId;
@@ -334,9 +335,9 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
             return cmp;
           });
       if (random().nextBoolean()) {
-        topN = valueCount;
+        topN = docCount;
       } else {
-        topN = random().nextInt(valueCount);
+        topN = random().nextInt(docCount);
       }
       actual = facetCounts.getTopChildrenSortByCount(topN);
       assertSame(
@@ -355,7 +356,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
-    int valueCount = atLeast(1000);
+    int docCount = atLeast(1000);
     double missingChance = random().nextDouble();
 
     // sometimes exercise codec optimizations when a claimed multi valued field is in fact single
@@ -371,7 +372,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println(
           "TEST: valueCount="
-              + valueCount
+              + docCount
               + " valueRange=-"
               + maxValue
               + "-"
@@ -382,19 +383,19 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
               + allSingleValued);
     }
 
-    long[][] values = new long[valueCount][];
-    for (int i = 0; i < valueCount; i++) {
+    Long[][] values = new Long[docCount][];
+    for (int i = 0; i < docCount; i++) {
       Document doc = new Document();
       doc.add(new IntPoint("id", i));
       if (random().nextDouble() > missingChance) {
         if (allSingleValued) {
-          values[i] = new long[1];
+          values[i] = new Long[1];
         } else {
-          values[i] = new long[TestUtil.nextInt(random(), 1, 5)];
+          values[i] = new Long[TestUtil.nextInt(random(), 1, 5)];
         }
 
         for (int j = 0; j < values[i].length; j++) {
-          long value = TestUtil.nextLong(random(), -maxValue, maxValue);
+          Long value = TestUtil.nextLong(random(), -maxValue, maxValue);
           values[i][j] = value;
           doc.add(new SortedNumericDocValuesField("field", value));
         }
@@ -428,10 +429,10 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
       Map<Long, Integer> expected = new HashMap<>();
       int expectedChildCount = 0;
       int expectedTotalCount = 0;
-      for (int i = 0; i < valueCount; i++) {
+      for (int i = 0; i < docCount; i++) {
         if (values[i] != null && values[i].length > 0) {
           expectedTotalCount++;
-          for (long value : values[i]) {
+          for (Long value : new HashSet<>(Arrays.asList(values[i]))) {
             Integer curCount = expected.get(value);
             if (curCount == null) {
               curCount = 0;
@@ -483,9 +484,9 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           });
       int topN;
       if (random().nextBoolean()) {
-        topN = valueCount;
+        topN = docCount;
       } else {
-        topN = random().nextInt(valueCount);
+        topN = random().nextInt(docCount);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -500,8 +501,8 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           topN);
 
       // subset of docs
-      int minId = random().nextInt(valueCount);
-      int maxId = random().nextInt(valueCount);
+      int minId = random().nextInt(docCount);
+      int maxId = random().nextInt(docCount);
       if (minId > maxId) {
         int tmp = minId;
         minId = maxId;
@@ -522,7 +523,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
       for (int i = minId; i <= maxId; i++) {
         if (values[i] != null && values[i].length > 0) {
           totCount++;
-          for (long value : values[i]) {
+          for (Long value : new HashSet<>(Arrays.asList(values[i]))) {
             Integer curCount = expected.get(value);
             if (curCount == null) {
               expectedChildCount++;
@@ -556,9 +557,9 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
             return cmp;
           });
       if (random().nextBoolean()) {
-        topN = valueCount;
+        topN = docCount;
       } else {
-        topN = random().nextInt(valueCount);
+        topN = random().nextInt(docCount);
       }
       actual = facetCounts.getTopChildrenSortByCount(topN);
       assertSame(
@@ -618,5 +619,36 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           expectedCounts.get(i).getValue().intValue(),
           actual.labelValues[i].value.intValue());
     }
+  }
+
+  /**
+   * LUCENE-9964: Duplicate long values in a document field should only be counted once when using
+   * SortedNumericDocValuesFields
+   */
+  public void testDuplicateLongValues() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    // these two values are not unique in a document
+    doc.add(new SortedNumericDocValuesField("field", 42));
+    doc.add(new SortedNumericDocValuesField("field", 42));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new SortedNumericDocValuesField("field", 43));
+    doc.add(new SortedNumericDocValuesField("field", 43));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    w.close();
+    LongValueFacetCounts facetCounts = new LongValueFacetCounts("field", r);
+
+    FacetResult fr = facetCounts.getAllChildrenSortByValue();
+    for (LabelAndValue labelAndValue : fr.labelValues) {
+      assert labelAndValue.value.equals(1);
+    }
+
+    r.close();
+    dir.close();
   }
 }
