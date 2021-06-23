@@ -30,7 +30,12 @@ import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.SmallFloat;
 
-/** Copy of {@link LeafSimScorer} that sums document's norms from multiple fields. */
+/**
+ * Copy of {@link LeafSimScorer} that sums document's norms from multiple fields.
+ *
+ * <p>This scorer requires that either all fields or no fields have norms enabled. It will throw an
+ * error if some fields have norms enabled, while others have norms disabled.
+ */
 final class MultiNormsLeafSimScorer {
   /** Cache of decoded norms. */
   private static final float[] LENGTH_TABLE = new float[256];
@@ -62,6 +67,14 @@ final class MultiNormsLeafSimScorer {
           weightList.add(field.weight);
         }
       }
+
+      if (normsList.isEmpty() == false && normsList.size() != normFields.size()) {
+        throw new IllegalArgumentException(
+            getClass().getSimpleName()
+                + " requires norms to be consistent across fields: some fields cannot "
+                + " have norms enabled, while others have norms disabled");
+      }
+
       if (normsList.isEmpty()) {
         norms = null;
       } else if (normsList.size() == 1) {
@@ -80,7 +93,9 @@ final class MultiNormsLeafSimScorer {
   }
 
   private long getNormValue(int doc) throws IOException {
-    if (norms != null && norms.advanceExact(doc)) {
+    if (norms != null) {
+      boolean found = norms.advanceExact(doc);
+      assert found;
       return norms.longValue();
     } else {
       return 1L; // default norm

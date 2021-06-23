@@ -130,6 +130,53 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     dir.close();
   }
 
+  public void testNormsDisabled() throws IOException {
+    Directory dir = newDirectory();
+    Similarity similarity = randomCompatibleSimilarity();
+
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setSimilarity(similarity);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    Document doc = new Document();
+    doc.add(new StringField("a", "value", Store.NO));
+    doc.add(new StringField("b", "value", Store.NO));
+    doc.add(new TextField("c", "value", Store.NO));
+    w.addDocument(doc);
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    Similarity searchSimilarity = randomCompatibleSimilarity();
+    searcher.setSimilarity(searchSimilarity);
+    TopScoreDocCollector collector = TopScoreDocCollector.create(10, null, 10);
+
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("a", 1.0f)
+            .addField("b", 1.0f)
+            .addTerm(new BytesRef("value"))
+            .build();
+    searcher.search(query, collector);
+    TopDocs topDocs = collector.topDocs();
+    assertEquals(new TotalHits(1, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
+
+    CombinedFieldQuery invalidQuery =
+        new CombinedFieldQuery.Builder()
+            .addField("b", 1.0f)
+            .addField("c", 1.0f)
+            .addTerm(new BytesRef("value"))
+            .build();
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class, () -> searcher.search(invalidQuery, collector));
+    assertTrue(e.getMessage().contains("requires norms to be consistent across fields"));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
   public void testCopyField() throws IOException {
     Directory dir = newDirectory();
     Similarity similarity = randomCompatibleSimilarity();
