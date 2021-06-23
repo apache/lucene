@@ -82,7 +82,7 @@ class TermVectorsConsumer extends TermsHash {
       try {
         fill(numDocs);
         assert state.segmentInfo != null;
-        writer.finish(state.fieldInfos, numDocs);
+        writer.finish(numDocs);
       } finally {
         IOUtils.close(writer);
       }

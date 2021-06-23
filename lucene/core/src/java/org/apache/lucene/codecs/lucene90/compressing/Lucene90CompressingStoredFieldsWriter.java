@@ -31,7 +31,6 @@ import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFi
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MergeState;
@@ -478,7 +477,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   @Override
-  public void finish(FieldInfos fis, int numDocs) throws IOException {
+  public void finish(int numDocs) throws IOException {
     if (numBufferedDocs > 0) {
       flush(true);
     } else {
@@ -654,7 +653,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         throw new AssertionError("Unknown merge strategy [" + sub.mergeStrategy + "]");
       }
     }
-    finish(mergeState.mergeFieldInfos, docCount);
+    finish(docCount);
     return docCount;
   }
 

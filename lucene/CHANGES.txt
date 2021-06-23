@@ -7,9 +7,6 @@ http://s.apache.org/luceneversions
 
 New Features
 
-* LUCENE-9680: IndexWriter#getFieldNames() method added to get fields present in index.
-  This method was removed in LUCENE-8909. (Oren Ovadia)
-
 * LUCENE-9322: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
 * LUCENE-9004: Approximate nearest vector search via NSW graphs
@@ -127,12 +124,12 @@ API Changes
 
 * LUCENE-8143: SpanBoostQuery has been removed. (Alan Woodward)
 
+* LUCENE-9998: Remove unused parameter fis in StoredFieldsWriter.finish() and TermVectorsWriter.finish(),
+  including those subclasses. (kkewwei)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
-
-* LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
-  fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
 
 * LUCENE-9633: Improve match highlighter behavior for degenerate intervals (on non-existing positions).
   (Dawid Weiss)
@@ -239,20 +236,11 @@ Improvements
 * LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
   it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
 
-* LUCENE-9981: Operations.getCommonSuffix/Prefix(Automaton) is now much more
-  efficient, from a worst case exponential down to quadratic cost in the
-  number of states + transitions in the Automaton.  These methods no longer
-  use the costly determinize method, removing the risk of
-  TooComplexToDeterminizeException (Robert Muir, Mike McCandless)
-
-* LUCENE-9981: Operations.determinize now throws TooComplexToDeterminizeException
-  based on too much "effort" spent determinizing rather than a precise state
-  count on the resulting returned automaton, to better handle adversarial
-  cases like det(rev(regexp("(.*a){2000}"))) that spend lots of effort but
-  result in smallish eventual returned automata.  (Robert Muir, Mike McCandless)
-
 * LUCENE-9944: Allow DrillSideways users to provide their own CollectorManager without also requiring
   them to provide an ExecutorService. (Greg Miller)
+
+* LUCENE-9535: Improve DocumentsWriterPerThreadPool to prefer larger instances.
+  (Adrien Grand)
 
 Bug fixes
 
@@ -352,7 +340,6 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
-* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
 
 ======================= Lucene 8.10.0 =======================
 
@@ -369,11 +356,25 @@ Improvements
 * LUCENE-9965: Added QueryProfilerIndexSearcher and ProfilerCollector to support debugging
   query execution strategy and timing. (Jack Conradson, Julie Tibshirani)
 
+* LUCENE-9981: Operations.getCommonSuffix/Prefix(Automaton) is now much more
+  efficient, from a worst case exponential down to quadratic cost in the
+  number of states + transitions in the Automaton.  These methods no longer
+  use the costly determinize method, removing the risk of
+  TooComplexToDeterminizeException (Robert Muir, Mike McCandless)
+
+* LUCENE-9981: Operations.determinize now throws TooComplexToDeterminizeException
+  based on too much "effort" spent determinizing rather than a precise state
+  count on the resulting returned automaton, to better handle adversarial
+  cases like det(rev(regexp("(.*a){2000}"))) that spend lots of effort but
+  result in smallish eventual returned automata.  (Robert Muir, Mike McCandless)
+
 * LUCENE-9983: Stop sorting determinize powersets unnecessarily. (Patrick Zhai)
 
 Optimizations
 ---------------------
-(No changes)
+* LUCENE-9996: Improved memory efficiency of IndexWriter's RAM buffer, in
+  particular in the case of many fields and many indexing threads.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -391,6 +392,9 @@ API Changes
 * LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
   Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
   Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
+
+* LUCENE-9680: IndexWriter#getFieldNames() method added to get fields present in index.
+  This method was removed in LUCENE-8909. (Oren Ovadia)
 
 New Features
 ---------------------
@@ -433,6 +437,9 @@ Improvements
 
 * LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
   (Jaison Bi via Bruno Roustant)
+
+* LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
+  fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
 
 * LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
 
@@ -483,6 +490,7 @@ Other
 
 * LUCENE-9985: Upgrade jetty to 9.4.41 (janhoy)
 
+* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
 ======================= Lucene 8.8.2 =======================
 
 Bug Fixes

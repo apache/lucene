@@ -304,6 +304,11 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return new Lucene90CompressingTermVectorsReader(this);
   }
 
+  @Override
+  public TermVectorsReader getMergeInstance() {
+    return new Lucene90CompressingTermVectorsReader(this);
+  }
+
   private static RandomAccessInput slice(IndexInput in) throws IOException {
     final int length = in.readVInt();
     final byte[] bytes = new byte[length];

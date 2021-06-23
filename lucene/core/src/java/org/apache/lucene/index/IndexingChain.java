@@ -64,6 +64,8 @@ final class IndexingChain implements Accountable {
 
   // Writes postings and term vectors:
   final TermsHash termsHash;
+  // Shared pool for doc-value terms
+  final ByteBlockPool docValuesBytePool;
   // Writes stored fields
   final StoredFieldsConsumer storedFieldsConsumer;
   final TermVectorsConsumer termVectorsWriter;
@@ -127,6 +129,7 @@ final class IndexingChain implements Accountable {
     termsHash =
         new FreqProxTermsWriter(
             intBlockAllocator, byteBlockAllocator, bytesUsed, termVectorsWriter);
+    docValuesBytePool = new ByteBlockPool(byteBlockAllocator);
   }
 
   private void onAbortingException(Throwable th) {
@@ -696,19 +699,19 @@ final class IndexingChain implements Accountable {
         pf.docValuesWriter = new BinaryDocValuesWriter(fi, bytesUsed);
         break;
       case SORTED:
-        pf.docValuesWriter = new SortedDocValuesWriter(fi, bytesUsed);
+        pf.docValuesWriter = new SortedDocValuesWriter(fi, bytesUsed, docValuesBytePool);
         break;
       case SORTED_NUMERIC:
         pf.docValuesWriter = new SortedNumericDocValuesWriter(fi, bytesUsed);
         break;
       case SORTED_SET:
-        pf.docValuesWriter = new SortedSetDocValuesWriter(fi, bytesUsed);
+        pf.docValuesWriter = new SortedSetDocValuesWriter(fi, bytesUsed, docValuesBytePool);
         break;
       default:
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }
     if (fi.getPointDimensionCount() != 0) {
-      pf.pointValuesWriter = new PointValuesWriter(byteBlockAllocator, bytesUsed, fi);
+      pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
     if (fi.getVectorDimension() != 0) {
       pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed);
