@@ -19,7 +19,6 @@ package org.apache.lucene.sandbox.search;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -47,6 +46,7 @@ import org.apache.lucene.search.similarities.LMDirichletSimilarity;
 import org.apache.lucene.search.similarities.LMJelinekMercerSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -86,7 +86,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     assertEquals("CombinedFieldQuery((foo title^3.0)(bar baz))", builder.build().toString());
   }
 
-  public void testSparseFieldSameScore() throws IOException {
+  public void testSameScore() throws IOException {
     Directory dir = newDirectory();
     Similarity similarity = randomCompatibleSimilarity();
 
@@ -95,56 +95,34 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
 
     Document doc = new Document();
-    doc.add(new StringField("string_a", "a", Store.NO));
-    doc.add(new TextField("text_a", "a", Store.NO));
+    doc.add(new StringField("f", "a", Store.NO));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new StringField("string_b", "a", Store.NO));
-    doc.add(new TextField("text_b", "a", Store.NO));
+    doc.add(new StringField("g", "a", Store.NO));
     for (int i = 0; i < 10; ++i) {
       w.addDocument(doc);
     }
 
     IndexReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(similarity);
 
-    for (Similarity searchSimilarity : compatibleSimilarity()) {
-      searcher.setSimilarity(searchSimilarity);
-      for (String field : new String[] {"string", "text"}) {
-        CombinedFieldQuery query =
-            new CombinedFieldQuery.Builder()
-                .addField(field + "_a", 1f)
-                .addField(field + "_b", 1f)
-                .addTerm(new BytesRef("a"))
-                .build();
-        TopScoreDocCollector collector =
-            TopScoreDocCollector.create(
-                Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
-        searcher.search(query, collector);
-        TopDocs topDocs = collector.topDocs();
-        assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
-        // All docs must have the same score
-        for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
-          assertEquals(topDocs.scoreDocs[0].score, topDocs.scoreDocs[i].score, 0.0f);
-        }
-      }
-      CombinedFieldQuery query =
-          new CombinedFieldQuery.Builder()
-              .addField("text_a", 1f)
-              .addField("string_b", 1f)
-              .addTerm(new BytesRef("a"))
-              .build();
-      TopScoreDocCollector collector =
-          TopScoreDocCollector.create(
-              Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
-      searcher.search(query, collector);
-      TopDocs topDocs = collector.topDocs();
-      assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
-      // All docs must have the same score
-      for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
-        assertEquals(topDocs.scoreDocs[0].score, topDocs.scoreDocs[i].score, 0.0f);
-      }
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("f", 1f)
+            .addField("g", 1f)
+            .addTerm(new BytesRef("a"))
+            .build();
+    TopScoreDocCollector collector =
+        TopScoreDocCollector.create(
+            Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
+    searcher.search(query, collector);
+    TopDocs topDocs = collector.topDocs();
+    assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
+    // All docs must have the same score
+    for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
+      assertEquals(topDocs.scoreDocs[0].score, topDocs.scoreDocs[i].score, 0.0f);
     }
 
     reader.close();
@@ -253,17 +231,64 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     dir.close();
   }
 
-  private static Similarity randomCompatibleSimilarity() {
-    return RandomPicks.randomFrom(random(), compatibleSimilarity());
+  public void testCopyFieldWithMissingFields() throws IOException {
+    Directory dir = new MMapDirectory(createTempDir());
+    Similarity similarity = randomCompatibleSimilarity();
+
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setSimilarity(similarity);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int boost1 = Math.max(1, random().nextInt(5));
+    int boost2 = Math.max(1, random().nextInt(5));
+    int numMatches = 10;
+    for (int i = 0; i < numMatches; i++) {
+      Document doc = new Document();
+      int freqA = random().nextInt(5) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "foo", Store.NO));
+      }
+
+      // Choose frequencies such that sometimes we don't add field B
+      int freqB = random().nextInt(5) + 1;
+      for (int j = 0; j < freqB; j++) {
+        doc.add(new TextField("b", "foo", Store.NO));
+      }
+
+      int freqAB = freqA * boost1 + freqB * boost2;
+      for (int j = 0; j < freqAB; j++) {
+        doc.add(new TextField("ab", "foo", Store.NO));
+      }
+
+      w.addDocument(doc);
+    }
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(similarity);
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("a", (float) boost1)
+            .addField("b", (float) boost2)
+            .addTerm(new BytesRef("foo"))
+            .build();
+
+    checkExpectedHits(searcher, numMatches, query, new TermQuery(new Term("ab", "foo")));
+
+    reader.close();
+    w.close();
+    dir.close();
   }
 
-  private static Collection<Similarity> compatibleSimilarity() {
-    return Arrays.asList(
-        new BM25Similarity(),
-        new BooleanSimilarity(),
-        new ClassicSimilarity(),
-        new LMDirichletSimilarity(),
-        new LMJelinekMercerSimilarity(0.1f));
+  private static Similarity randomCompatibleSimilarity() {
+    return RandomPicks.randomFrom(
+        random(),
+        Arrays.asList(
+            new BM25Similarity(),
+            new BooleanSimilarity(),
+            new ClassicSimilarity(),
+            new LMDirichletSimilarity(),
+            new LMJelinekMercerSimilarity(0.1f)));
   }
 
   private void checkExpectedHits(
