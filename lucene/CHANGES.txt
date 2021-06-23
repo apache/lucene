@@ -345,7 +345,9 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
+  Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
+  Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
 
 New Features
 ---------------------
@@ -388,10 +390,6 @@ Other
 
 API Changes
 ---------------------
-
-* LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
-  Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
-  Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
 
 * LUCENE-9680: IndexWriter#getFieldNames() method added to get fields present in index.
   This method was removed in LUCENE-8909. (Oren Ovadia)
