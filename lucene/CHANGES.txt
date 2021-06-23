@@ -127,10 +127,6 @@ API Changes
 * LUCENE-9998: Remove unused parameter fis in StoredFieldsWriter.finish() and TermVectorsWriter.finish(),
   including those subclasses. (kkewwei)
 
-* LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
-  Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
-  Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
-
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
@@ -361,7 +357,10 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
+  Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
+  Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
 
 New Features
 ---------------------
