@@ -288,8 +288,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     int boost1 = Math.max(1, random().nextInt(5));
     int boost2 = Math.max(1, random().nextInt(5));
-    int numMatches = 10;
-    for (int i = 0; i < numMatches; i++) {
+    int numMatch = atLeast(10);
+    for (int i = 0; i < numMatch; i++) {
       Document doc = new Document();
       int freqA = random().nextInt(5) + 1;
       for (int j = 0; j < freqA; j++) {
@@ -297,7 +297,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
       }
 
       // Choose frequencies such that sometimes we don't add field B
-      int freqB = random().nextInt(5) + 1;
+      int freqB = random().nextInt(3);
       for (int j = 0; j < freqB; j++) {
         doc.add(new TextField("b", "foo", Store.NO));
       }
@@ -320,7 +320,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addTerm(new BytesRef("foo"))
             .build();
 
-    checkExpectedHits(searcher, numMatches, query, new TermQuery(new Term("ab", "foo")));
+    checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("ab", "foo")));
 
     reader.close();
     w.close();

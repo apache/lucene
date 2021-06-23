@@ -71,7 +71,7 @@ final class MultiNormsLeafSimScorer {
       if (normsList.isEmpty() == false && normsList.size() != normFields.size()) {
         throw new IllegalArgumentException(
             getClass().getSimpleName()
-                + " requires norms to be consistent across fields: some fields cannot "
+                + " requires norms to be consistent across fields: some fields cannot"
                 + " have norms enabled, while others have norms disabled");
       }
 
