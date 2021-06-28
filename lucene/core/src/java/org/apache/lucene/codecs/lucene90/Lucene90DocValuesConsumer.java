@@ -34,6 +34,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.EmptyDocValuesProducer;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -49,6 +50,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.compress.LZ4;
@@ -466,54 +468,47 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private void doAddSortedField(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
-    SortedDocValues values = valuesProducer.getSorted(field);
-    int numDocsWithField = 0;
-    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      numDocsWithField++;
-    }
+    writeValues(
+        field,
+        new EmptyDocValuesProducer() {
+          @Override
+          public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
+            SortedDocValues sorted = valuesProducer.getSorted(field);
+            NumericDocValues sortedOrds =
+                new NumericDocValues() {
+                  @Override
+                  public long longValue() throws IOException {
+                    return sorted.ordValue();
+                  }
 
-    if (numDocsWithField == 0) {
-      meta.writeLong(-2); // docsWithFieldOffset
-      meta.writeLong(0L); // docsWithFieldLength
-      meta.writeShort((short) -1); // jumpTableEntryCount
-      meta.writeByte((byte) -1); // denseRankPower
-    } else if (numDocsWithField == maxDoc) {
-      meta.writeLong(-1); // docsWithFieldOffset
-      meta.writeLong(0L); // docsWithFieldLength
-      meta.writeShort((short) -1); // jumpTableEntryCount
-      meta.writeByte((byte) -1); // denseRankPower
-    } else {
-      long offset = data.getFilePointer();
-      meta.writeLong(offset); // docsWithFieldOffset
-      values = valuesProducer.getSorted(field);
-      final short jumpTableentryCount =
-          IndexedDISI.writeBitSet(values, data, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-      meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
-      meta.writeShort(jumpTableentryCount);
-      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-    }
+                  @Override
+                  public boolean advanceExact(int target) throws IOException {
+                    return sorted.advanceExact(target);
+                  }
 
-    meta.writeInt(numDocsWithField);
-    if (values.getValueCount() <= 1) {
-      meta.writeByte((byte) 0); // bitsPerValue
-      meta.writeLong(0L); // ordsOffset
-      meta.writeLong(0L); // ordsLength
-    } else {
-      int numberOfBitsPerOrd = DirectWriter.unsignedBitsRequired(values.getValueCount() - 1);
-      meta.writeByte((byte) numberOfBitsPerOrd); // bitsPerValue
-      long start = data.getFilePointer();
-      meta.writeLong(start); // ordsOffset
-      DirectWriter writer = DirectWriter.getInstance(data, numDocsWithField, numberOfBitsPerOrd);
-      values = valuesProducer.getSorted(field);
-      for (int doc = values.nextDoc();
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = values.nextDoc()) {
-        writer.add(values.ordValue());
-      }
-      writer.finish();
-      meta.writeLong(data.getFilePointer() - start); // ordsLength
-    }
+                  @Override
+                  public int docID() {
+                    return sorted.docID();
+                  }
 
+                  @Override
+                  public int nextDoc() throws IOException {
+                    return sorted.nextDoc();
+                  }
+
+                  @Override
+                  public int advance(int target) throws IOException {
+                    return sorted.advance(target);
+                  }
+
+                  @Override
+                  public long cost() {
+                    return sorted.cost();
+                  }
+                };
+            return DocValues.singleton(sortedOrds);
+          }
+        });
     addTermsDict(DocValues.singleton(valuesProducer.getSorted(field)));
   }
 
@@ -669,7 +664,11 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       throws IOException {
     meta.writeInt(field.number);
     meta.writeByte(Lucene90DocValuesFormat.SORTED_NUMERIC);
+    doAddSortedNumericField(field, valuesProducer);
+  }
 
+  private void doAddSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer)
+      throws IOException {
     long[] stats = writeValues(field, valuesProducer);
     int numDocsWithField = Math.toIntExact(stats[0]);
     long numValues = stats[1];
@@ -731,60 +730,65 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
     meta.writeByte((byte) 1); // multiValued (1 = multiValued)
 
-    assert numDocsWithField != 0;
-    if (numDocsWithField == maxDoc) {
-      meta.writeLong(-1); // docsWithFieldOffset
-      meta.writeLong(0L); // docsWithFieldLength
-      meta.writeShort((short) -1); // jumpTableEntryCount
-      meta.writeByte((byte) -1); // denseRankPower
-    } else {
-      long offset = data.getFilePointer();
-      meta.writeLong(offset); // docsWithFieldOffset
-      values = valuesProducer.getSortedSet(field);
-      final short jumpTableEntryCount =
-          IndexedDISI.writeBitSet(values, data, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-      meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
-      meta.writeShort(jumpTableEntryCount);
-      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-    }
+    doAddSortedNumericField(
+        field,
+        new EmptyDocValuesProducer() {
+          @Override
+          public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
+            SortedSetDocValues values = valuesProducer.getSortedSet(field);
+            return new SortedNumericDocValues() {
 
-    int numberOfBitsPerOrd = DirectWriter.unsignedBitsRequired(values.getValueCount() - 1);
-    meta.writeByte((byte) numberOfBitsPerOrd); // bitsPerValue
-    long start = data.getFilePointer();
-    meta.writeLong(start); // ordsOffset
-    DirectWriter writer = DirectWriter.getInstance(data, numOrds, numberOfBitsPerOrd);
-    values = valuesProducer.getSortedSet(field);
-    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
-        writer.add(ord);
-      }
-    }
-    writer.finish();
-    meta.writeLong(data.getFilePointer() - start); // ordsLength
+              long[] ords = LongsRef.EMPTY_LONGS;
+              int i, docValueCount;
 
-    meta.writeInt(numDocsWithField);
-    start = data.getFilePointer();
-    meta.writeLong(start); // addressesOffset
-    meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
+              @Override
+              public long nextValue() throws IOException {
+                return ords[i++];
+              }
 
-    final DirectMonotonicWriter addressesWriter =
-        DirectMonotonicWriter.getInstance(
-            meta, data, numDocsWithField + 1, DIRECT_MONOTONIC_BLOCK_SHIFT);
-    long addr = 0;
-    addressesWriter.add(addr);
-    values = valuesProducer.getSortedSet(field);
-    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      values.nextOrd();
-      addr++;
-      while (values.nextOrd() != SortedSetDocValues.NO_MORE_ORDS) {
-        addr++;
-      }
-      addressesWriter.add(addr);
-    }
-    addressesWriter.finish();
-    meta.writeLong(data.getFilePointer() - start); // addressesLength
+              @Override
+              public int docValueCount() {
+                return docValueCount;
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int docID() {
+                return values.docID();
+              }
+
+              @Override
+              public int nextDoc() throws IOException {
+                int doc = values.nextDoc();
+                if (doc != NO_MORE_DOCS) {
+                  docValueCount = 0;
+                  for (long ord = values.nextOrd();
+                      ord != SortedSetDocValues.NO_MORE_ORDS;
+                      ord = values.nextOrd()) {
+                    ords = ArrayUtil.grow(ords, docValueCount + 1);
+                    ords[docValueCount++] = ord;
+                  }
+                  i = 0;
+                }
+                return doc;
+              }
+
+              @Override
+              public int advance(int target) throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public long cost() {
+                return values.cost();
+              }
+            };
+          }
+        });
 
     addTermsDict(values);
   }

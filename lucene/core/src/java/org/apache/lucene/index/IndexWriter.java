@@ -5001,7 +5001,7 @@ public class IndexWriter
                   + ("; "
                       + (mergeState.mergeFieldInfos.hasDocValues() ? "docValues" : "no docValues"))
                   + ("; " + (mergeState.mergeFieldInfos.hasProx() ? "prox" : "no prox"))
-                  + ("; " + (mergeState.mergeFieldInfos.hasProx() ? "freqs" : "no freqs"))
+                  + ("; " + (mergeState.mergeFieldInfos.hasFreq() ? "freqs" : "no freqs"))
                   + ("; " + (mergeState.mergeFieldInfos.hasPointValues() ? "points" : "no points"))
                   + ("; "
                       + String.format(
