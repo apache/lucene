@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.document.Document;
@@ -383,15 +382,15 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
               + allSingleValued);
     }
 
-    Long[][] values = new Long[docCount][];
+    long[][] values = new long[docCount][];
     for (int i = 0; i < docCount; i++) {
       Document doc = new Document();
       doc.add(new IntPoint("id", i));
       if (random().nextDouble() > missingChance) {
         if (allSingleValued) {
-          values[i] = new Long[1];
+          values[i] = new long[1];
         } else {
-          values[i] = new Long[TestUtil.nextInt(random(), 1, 5)];
+          values[i] = new long[TestUtil.nextInt(random(), 1, 5)];
         }
 
         for (int j = 0; j < values[i].length; j++) {
@@ -404,6 +403,8 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           System.out.println("  doc=" + i + " values=" + Arrays.toString(values[i]));
         }
 
+        // sort values to enable duplicate detection by comparing with the previous value
+        Arrays.sort(values[i]);
       } else {
         if (VERBOSE) {
           System.out.println("  doc=" + i + " missing values");
@@ -427,23 +428,16 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
 
       // all docs
       Map<Long, Integer> expected = new HashMap<>();
-      int expectedChildCount = 0;
       int expectedTotalCount = 0;
       for (int i = 0; i < docCount; i++) {
         if (values[i] != null && values[i].length > 0) {
           expectedTotalCount++;
-          for (Long value : new HashSet<>(Arrays.asList(values[i]))) {
-            Integer curCount = expected.get(value);
-            if (curCount == null) {
-              curCount = 0;
-              expectedChildCount++;
-            }
-            expected.put(value, curCount + 1);
-          }
+          setExpectedFrequencies(values[i], expected);
         }
       }
 
       List<Map.Entry<Long, Integer>> expectedCounts = new ArrayList<>(expected.entrySet());
+      int expectedChildCount = expected.size();
 
       // sort by value
       expectedCounts.sort(Comparator.comparingLong(Map.Entry::getKey));
@@ -518,22 +512,15 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
       facetCounts = new LongValueFacetCounts("field", fc);
 
       expected = new HashMap<>();
-      expectedChildCount = 0;
-      int totCount = 0;
+      expectedTotalCount = 0;
       for (int i = minId; i <= maxId; i++) {
         if (values[i] != null && values[i].length > 0) {
-          totCount++;
-          for (Long value : new HashSet<>(Arrays.asList(values[i]))) {
-            Integer curCount = expected.get(value);
-            if (curCount == null) {
-              expectedChildCount++;
-              curCount = 0;
-            }
-            expected.put(value, curCount + 1);
-          }
+          expectedTotalCount++;
+          setExpectedFrequencies(values[i], expected);
         }
       }
       expectedCounts = new ArrayList<>(expected.entrySet());
+      expectedChildCount = expected.size();
 
       // sort by value
       expectedCounts.sort(Comparator.comparingLong(Map.Entry::getKey));
@@ -542,7 +529,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           "id " + minId + "-" + maxId + ", sort facets by value",
           expectedCounts,
           expectedChildCount,
-          totCount,
+          expectedTotalCount,
           actual,
           Integer.MAX_VALUE);
 
@@ -566,12 +553,26 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           "id " + minId + "-" + maxId + ", sort facets by count",
           expectedCounts,
           expectedChildCount,
-          totCount,
+          expectedTotalCount,
           actual,
           topN);
     }
     r.close();
     dir.close();
+  }
+
+  private void setExpectedFrequencies(long[] values, Map<Long, Integer> expected) {
+    long previousValue = 0;
+    for (int j = 0; j < values.length; j++) {
+      if (j == 0 || previousValue != values[j]) {
+        Integer curCount = expected.get(values[j]);
+        if (curCount == null) {
+          curCount = 0;
+        }
+        expected.put(values[j], curCount + 1);
+      }
+      previousValue = values[j];
+    }
   }
 
   private static void assertSame(
