@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
@@ -32,6 +34,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.http.HttpStatus;
 import org.apache.lucene.replicator.Replicator;
 import org.apache.lucene.replicator.SessionToken;
+import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.SuppressForbidden;
 
 /**
@@ -78,6 +81,11 @@ public class ReplicationService {
   public static final String REPLICATE_FILENAME_PARAM = "filename";
 
   private static final int SHARD_IDX = 0, ACTION_IDX = 1;
+
+  /** The component name to use with {@link InfoStream#isEnabled(String)}. */
+  public static final String INFO_STREAM_COMPONENT = "ReplicationService";
+
+  private volatile InfoStream infoStream = InfoStream.getDefault();
 
   private final Map<String, Replicator> replicators;
 
@@ -161,6 +169,16 @@ public class ReplicationService {
           final String sessionID = extractRequestParam(req, REPLICATE_SESSION_ID_PARAM);
           final String fileName = extractRequestParam(req, REPLICATE_FILENAME_PARAM);
           final String source = extractRequestParam(req, REPLICATE_SOURCE_PARAM);
+          if (infoStream.isEnabled(INFO_STREAM_COMPONENT)) {
+            infoStream.message(
+                INFO_STREAM_COMPONENT,
+                "OBTAIN called for file "
+                    + fileName
+                    + " from source "
+                    + source
+                    + " by session "
+                    + sessionID);
+          }
           InputStream in = replicator.obtainFile(sessionID, source, fileName);
           try {
             copy(in, resOut);
@@ -169,11 +187,20 @@ public class ReplicationService {
           }
           break;
         case RELEASE:
-          replicator.release(extractRequestParam(req, REPLICATE_SESSION_ID_PARAM));
+          final String _sessionID = extractRequestParam(req, REPLICATE_SESSION_ID_PARAM);
+          if (infoStream.isEnabled(INFO_STREAM_COMPONENT)) {
+            infoStream.message(INFO_STREAM_COMPONENT, "RELEASE called for session " + _sessionID);
+          }
+          replicator.release(_sessionID);
           break;
         case UPDATE:
           String currVersion = req.getParameter(REPLICATE_VERSION_PARAM);
           SessionToken token = replicator.checkForUpdate(currVersion);
+          if (infoStream.isEnabled(INFO_STREAM_COMPONENT)) {
+            infoStream.message(
+                INFO_STREAM_COMPONENT,
+                "UPDATE called for version " + currVersion + " returned " + token);
+          }
           if (token == null) {
             resOut.write(0); // marker for null token
           } else {
@@ -183,6 +210,17 @@ public class ReplicationService {
           break;
       }
     } catch (Exception e) {
+      if (infoStream.isEnabled(INFO_STREAM_COMPONENT)) {
+        final StringWriter sw = new StringWriter();
+        sw.append("an error occurred during replication service call (");
+        sw.append(req.getRequestURI());
+        if (req.getQueryString() != null) {
+          sw.append('?').append(req.getQueryString());
+        }
+        sw.append("): ");
+        e.printStackTrace(new PrintWriter(sw));
+        infoStream.message(INFO_STREAM_COMPONENT, sw.toString());
+      }
       resp.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR); // propagate the failure
       try {
         /*
@@ -198,5 +236,13 @@ public class ReplicationService {
     } finally {
       resp.flushBuffer();
     }
+  }
+
+  /** Sets the {@link InfoStream} to use for logging messages. */
+  public void setInfoStream(InfoStream infoStream) {
+    if (infoStream == null) {
+      infoStream = InfoStream.NO_OUTPUT;
+    }
+    this.infoStream = infoStream;
   }
 }
