@@ -1,13 +1,28 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.analysis;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -25,10 +40,10 @@ public class AutomatonToTokenStream {
    * converts an automaton into a TokenStream. This is done by first Topo sorting the nodes in the
    * Automaton. Nodes that have the same distance from the start are grouped together to form the
    * position nodes for the TokenStream. The resulting TokenStream releases edges from the automaton
-   * as tokens in order from the position nodes. This requires the automaton be a deterministic DAG.
+   * as tokens in order from the position nodes. This requires the automaton be a finite DAG.
    *
-   * @param automaton automaton to convert. Must be deterministic DAG.
-   * @return TokenStream representing
+   * @param automaton automaton to convert. Must be a finite DAG.
+   * @return TokenStream representation of automaton.
    */
   public static TokenStream toTokenStream(Automaton automaton) {
     if (Operations.isFinite(automaton) == false) {
@@ -39,29 +54,27 @@ public class AutomatonToTokenStream {
 
     Transition[][] transitions = automaton.getSortedTransitions();
 
-    List<Set<Integer>> incomingEdges = new ArrayList<>(transitions.length);
-    for (int i = 0; i < transitions.length; i++) {
-      incomingEdges.add(new HashSet<>());
-    }
+    int[] indegree = new int[transitions.length];
+
     for (int i = 0; i < transitions.length; i++) {
       for (int edge = 0; edge < transitions[i].length; edge++) {
-        incomingEdges.get(transitions[i][edge].dest).add(i);
+        indegree[transitions[i][edge].dest] += 1;
       }
     }
-    if (incomingEdges.get(0).isEmpty() == false) {
+    if (indegree[0] != 0) {
       throw new IllegalArgumentException("Start node has incoming edges, creating cycle");
     }
 
-    LinkedList<RemapNode> noInputs = new LinkedList<>();
+    LinkedList<RemapNode> noIncomingEdges = new LinkedList<>();
     Map<Integer, Integer> idToPos = new HashMap<>();
-    noInputs.addLast(new RemapNode(0, 0));
-    while (noInputs.size() > 0) {
-      RemapNode currState = noInputs.removeFirst();
+    noIncomingEdges.addLast(new RemapNode(0, 0));
+    while (noIncomingEdges.isEmpty() == false) {
+      RemapNode currState = noIncomingEdges.removeFirst();
       for (int i = 0; i < transitions[currState.id].length; i++) {
-        Set<Integer> destInputs = incomingEdges.get(transitions[currState.id][i].dest);
-        destInputs.remove(currState.id);
-        if (destInputs.isEmpty()) {
-          noInputs.addLast(new RemapNode(transitions[currState.id][i].dest, currState.pos + 1));
+        indegree[transitions[currState.id][i].dest] -= 1;
+        if (indegree[transitions[currState.id][i].dest] == 0) {
+          noIncomingEdges.addLast(
+              new RemapNode(transitions[currState.id][i].dest, currState.pos + 1));
         }
       }
       if (positionNodes.size() == currState.pos) {
@@ -74,8 +87,8 @@ public class AutomatonToTokenStream {
       idToPos.put(currState.id, currState.pos);
     }
 
-    for (Set<Integer> edges : incomingEdges) {
-      if (edges.isEmpty() == false) {
+    for (int i = 0; i < indegree.length; i++) {
+      if (indegree[i] != 0) {
         throw new IllegalArgumentException("Cycle found in automaton");
       }
     }
@@ -94,6 +107,7 @@ public class AutomatonToTokenStream {
     return new TopoTokenStream(edgesByLayer);
   }
 
+  /** Token Stream that outputs tokens from a topo sorted graph. */
   private static class TopoTokenStream extends TokenStream {
 
     private final List<List<EdgeToken>> edgesByPos;
@@ -151,6 +165,7 @@ public class AutomatonToTokenStream {
     }
   }
 
+  /** Edge between position nodes. These edges will be output as tokens in the TokenStream */
   private static class EdgeToken {
     public final int destination;
     public final int value;
@@ -161,6 +176,7 @@ public class AutomatonToTokenStream {
     }
   }
 
+  /** Node that contains original node id and position in TokenStream */
   private static class RemapNode {
     public final int id;
     public final int pos;

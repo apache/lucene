@@ -62,7 +62,7 @@ public final class FlattenGraphFilter extends TokenFilter {
      */
     int maxToNode = -1;
 
-    /** Minimum to input node for all tokens leaving here; we use this to check if hole exist. */
+    /** Minimum to input node for all tokens leaving here; we use this to check if holes exist. */
     int minToNode = Integer.MAX_VALUE;
 
     /**
@@ -213,7 +213,6 @@ public final class FlattenGraphFilter extends TokenFilter {
           // Don't free from a hole src. Since no edge leaves here book keeping may be incorrect.
           // Later output nodes may point to earlier input nodes. So we don't want to free them yet.
           outputFrom++;
-
           continue;
         }
 
@@ -326,10 +325,10 @@ public final class FlattenGraphFilter extends TokenFilter {
           OutputNode outSrc = outputNodes.get(src.outputNode);
           /* If positionIncrement > 1 and the position we're incrementing from doesn't come to the current node we've crossed a hole.
            * example:
-           *  _____abc_____
-           * |             |
-           * |             V
-           * O-a->O-b->O   O-d->O
+           *  _____abc______
+           * |              |
+           * |              V
+           * O-a->O- ->O- ->O-d->O
            */
           if (positionIncrement > 1
               && inputNodes.get(inputFrom - positionIncrement).minToNode != inputFrom) {
@@ -347,6 +346,41 @@ public final class FlattenGraphFilter extends TokenFilter {
 
             outSrc = recoverFromHole(src, startOffset, positionIncrement);
             outSrc.endOffset = prevEndOffset;
+          }
+
+          if (inputFrom - positionIncrement > 0) {
+            InputNode offsetSrc = inputNodes.get(inputFrom - positionIncrement);
+            /*
+             The current inputSrc has an output before the node it is offset from in the input. The node we're offset from also has no connection into the existing graph.
+             This inserts a gap in the output, which disconnects edges that should be sequential when flattened.
+             The disconnected node will also be freed before its edge is released in freeBefore.
+             Example:
+                    INPUT GRAPH
+              ____________
+             |      ......|.......
+             |      .     V      V
+             1      3     4----->5
+             :       ,   .       :
+             :        , .        :
+             :         .         :
+             :       _. _,______ :
+             :      |.    ,     V:
+             A----->B      C---->D
+                    OUTPUT GRAPH
+
+             If nothing is done when 4->5 is added the above graph is created. Instead change 4 to point to C.
+             tests testShingleWithLargeLeadingGap
+            */
+            if (offsetSrc.outputNode > src.outputNode
+                && outSrc.inputNodes.stream().filter(node -> node < offsetSrc.node).count() == 0) {
+              OutputNode outputOffset = outputNodes.get(offsetSrc.outputNode);
+              outputOffset.inputNodes.add(inputFrom);
+              outSrc.inputNodes.remove((Integer) inputFrom);
+              outputOffset.endOffset = outSrc.endOffset;
+              outSrc = outputOffset;
+              src.outputNode = offsetSrc.outputNode;
+              offsetSrc.outputNode = src.outputNode;
+            }
           }
           if (outSrc.startOffset == -1 || startOffset > outSrc.startOffset) {
             // "shrink wrap" the offsets so the original tokens (with most
