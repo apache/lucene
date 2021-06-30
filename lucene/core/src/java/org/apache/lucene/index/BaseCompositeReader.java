@@ -115,13 +115,6 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   public final TermVectors getTermVectorsReader() {
     TermVectors[] termVectors = new TermVectors[subReaders.length];
 
-    // subReaders is a collection of segmentReaders
-    for (int i = 0; i < subReaders.length; i++) {
-      // the getTermVectorsReader would clone a new instance, hence saving it into an array
-      // to avoid re-cloning from direct subReaders[i].getTermVectorsReader() call
-      termVectors[i] = subReaders[i].getTermVectorsReader();
-    }
-
     return new TermVectors() {
       @Override
       public Fields get(int doc) throws IOException {
@@ -131,6 +124,13 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
         if (termVectors[i] != null) {
           return termVectors[i].get(doc - starts[i]); // dispatch to subreader
         } else {
+          TermVectors reader = subReaders[i].getTermVectorsReader();
+          if (reader != null) {
+            // the getTermVectorsReader would clone a new instance, hence saving it into an array
+            // to avoid re-cloning from direct subReaders[i].getTermVectorsReader() call
+            termVectors[i] = reader;
+            return reader.get(doc - starts[i]);
+          }
           return null;
         }
       }
