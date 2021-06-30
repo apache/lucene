@@ -17,14 +17,16 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.facet.DrillSidewaysScorer.DocsAndCost;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
@@ -40,21 +42,61 @@ import org.apache.lucene.search.Weight;
 // TODO change the way DrillSidewaysScorer is used, this query does not work
 // with filter caching
 class DrillSidewaysQuery extends Query {
+
   final Query baseQuery;
-  final Collector drillDownCollector;
-  final Collector[] drillSidewaysCollectors;
+
+  final FacetsCollectorManager drillDownCollectorManager;
+  final FacetsCollectorManager[] drillSidewaysCollectorManagers;
+  final List<FacetsCollector> managedDrillDownCollectors;
+  final List<FacetsCollector[]> managedDrillSidewaysCollectors;
+
   final Query[] drillDownQueries;
+
   final boolean scoreSubDocsAtOnce;
 
+  /**
+   * Construct a new {@code DrillSidewaysQuery} that will create new {@link FacetsCollector}s for
+   * each {@link LeafReaderContext} using the provided {@link FacetsCollectorManager}s. The caller
+   * can access the created {@link FacetsCollector}s through {@link #managedDrillDownCollectors} and
+   * {@link #managedDrillSidewaysCollectors}.
+   */
   DrillSidewaysQuery(
       Query baseQuery,
-      Collector drillDownCollector,
-      Collector[] drillSidewaysCollectors,
+      FacetsCollectorManager drillDownCollectorManager,
+      FacetsCollectorManager[] drillSidewaysCollectorManagers,
+      Query[] drillDownQueries,
+      boolean scoreSubDocsAtOnce) {
+    // Note that the "managed" facet collector lists are synchronized here since bulkScorer()
+    // can be invoked concurrently and needs to remain thread-safe. We're OK with synchronizing
+    // on the whole list as contention is expected to remain very low:
+    this(
+        baseQuery,
+        drillDownCollectorManager,
+        drillSidewaysCollectorManagers,
+        Collections.synchronizedList(new ArrayList<>()),
+        Collections.synchronizedList(new ArrayList<>()),
+        drillDownQueries,
+        scoreSubDocsAtOnce);
+  }
+
+  /**
+   * Needed for {@link #rewrite(IndexReader)}. Ensures the same "managed" lists get used since
+   * {@link DrillSideways} accesses references to these through the original {@code
+   * DrillSidewaysQuery}.
+   */
+  private DrillSidewaysQuery(
+      Query baseQuery,
+      FacetsCollectorManager drillDownCollectorManager,
+      FacetsCollectorManager[] drillSidewaysCollectorManagers,
+      List<FacetsCollector> managedDrillDownCollectors,
+      List<FacetsCollector[]> managedDrillSidewaysCollectors,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
     this.baseQuery = Objects.requireNonNull(baseQuery);
-    this.drillDownCollector = drillDownCollector;
-    this.drillSidewaysCollectors = drillSidewaysCollectors;
+    this.drillDownCollectorManager = drillDownCollectorManager;
+    this.drillSidewaysCollectorManagers = drillSidewaysCollectorManagers;
+    this.managedDrillDownCollectors = managedDrillDownCollectors;
+    this.managedDrillSidewaysCollectors = managedDrillSidewaysCollectors;
     this.drillDownQueries = drillDownQueries;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
@@ -79,8 +121,10 @@ class DrillSidewaysQuery extends Query {
     } else {
       return new DrillSidewaysQuery(
           newQuery,
-          drillDownCollector,
-          drillSidewaysCollectors,
+          drillDownCollectorManager,
+          drillSidewaysCollectorManagers,
+          managedDrillDownCollectors,
+          managedDrillSidewaysCollectors,
           drillDownQueries,
           scoreSubDocsAtOnce);
     }
@@ -131,8 +175,14 @@ class DrillSidewaysQuery extends Query {
       public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
         Scorer baseScorer = baseWeight.scorer(context);
 
+        int drillDownCount = drillDowns.length;
+
+        FacetsCollector[] sidewaysCollectors = new FacetsCollector[drillDownCount];
+        managedDrillSidewaysCollectors.add(sidewaysCollectors);
+
         DrillSidewaysScorer.DocsAndCost[] dims =
-            new DrillSidewaysScorer.DocsAndCost[drillDowns.length];
+            new DrillSidewaysScorer.DocsAndCost[drillDownCount];
+
         int nullCount = 0;
         for (int dim = 0; dim < dims.length; dim++) {
           Scorer scorer = drillDowns[dim].scorer(context);
@@ -142,7 +192,10 @@ class DrillSidewaysQuery extends Query {
                 new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
           }
 
-          dims[dim] = new DrillSidewaysScorer.DocsAndCost(scorer, drillSidewaysCollectors[dim]);
+          FacetsCollector sidewaysCollector = drillSidewaysCollectorManagers[dim].newCollector();
+          sidewaysCollectors[dim] = sidewaysCollector;
+
+          dims[dim] = new DrillSidewaysScorer.DocsAndCost(scorer, sidewaysCollector);
         }
 
         // If more than one dim has no matches, then there
@@ -168,6 +221,14 @@ class DrillSidewaysQuery extends Query {
           return null;
         }
 
+        FacetsCollector drillDownCollector;
+        if (drillDownCollectorManager != null) {
+          drillDownCollector = drillDownCollectorManager.newCollector();
+          managedDrillDownCollectors.add(drillDownCollector);
+        } else {
+          drillDownCollector = null;
+        }
+
         return new DrillSidewaysScorer(
             context, baseScorer, drillDownCollector, dims, scoreSubDocsAtOnce);
       }
@@ -181,9 +242,9 @@ class DrillSidewaysQuery extends Query {
     final int prime = 31;
     int result = classHash();
     result = prime * result + Objects.hashCode(baseQuery);
-    result = prime * result + Objects.hashCode(drillDownCollector);
+    result = prime * result + Objects.hashCode(drillDownCollectorManager);
     result = prime * result + Arrays.hashCode(drillDownQueries);
-    result = prime * result + Arrays.hashCode(drillSidewaysCollectors);
+    result = prime * result + Arrays.hashCode(drillSidewaysCollectorManagers);
     return result;
   }
 
@@ -194,8 +255,8 @@ class DrillSidewaysQuery extends Query {
 
   private boolean equalsTo(DrillSidewaysQuery other) {
     return Objects.equals(baseQuery, other.baseQuery)
-        && Objects.equals(drillDownCollector, other.drillDownCollector)
+        && Objects.equals(drillDownCollectorManager, other.drillDownCollectorManager)
         && Arrays.equals(drillDownQueries, other.drillDownQueries)
-        && Arrays.equals(drillSidewaysCollectors, other.drillSidewaysCollectors);
+        && Arrays.equals(drillSidewaysCollectorManagers, other.drillSidewaysCollectorManagers);
   }
 }

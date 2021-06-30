@@ -611,7 +611,15 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         7);
   }
 
-  private CharsRef buildMultiTokenCarRef(
+  /**
+   * build CharsRef containing 2-4 tokens
+   *
+   * @param tokens vocabulary of tokens
+   * @param charsRefBuilder CharsRefBuilder
+   * @param random Random for selecting tokens
+   * @return Charsref containing 2-4 tokens.
+   */
+  private CharsRef buildMultiTokenCharsRef(
       String[] tokens, CharsRefBuilder charsRefBuilder, Random random) {
     int srcLen = random.nextInt(2) + 2;
     String[] srcTokens = new String[srcLen];
@@ -647,7 +655,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
           break;
         case 1:
           // many:1
-          src = buildMultiTokenCarRef(baseTokens, charRefBuilder, random);
+          src = buildMultiTokenCharsRef(baseTokens, charRefBuilder, random);
           charRefBuilder.clear();
           dest = charRefBuilder.append(synTokens[random.nextInt(synTokens.length)]).toCharsRef();
           charRefBuilder.clear();
@@ -656,14 +664,14 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
           // 1:many
           src = charRefBuilder.append(baseTokens[random.nextInt(baseTokens.length)]).toCharsRef();
           charRefBuilder.clear();
-          dest = buildMultiTokenCarRef(synTokens, charRefBuilder, random);
+          dest = buildMultiTokenCharsRef(synTokens, charRefBuilder, random);
           charRefBuilder.clear();
           break;
         default:
           // many:many
-          src = buildMultiTokenCarRef(baseTokens, charRefBuilder, random);
+          src = buildMultiTokenCharsRef(baseTokens, charRefBuilder, random);
           charRefBuilder.clear();
-          dest = buildMultiTokenCarRef(synTokens, charRefBuilder, random);
+          dest = buildMultiTokenCharsRef(synTokens, charRefBuilder, random);
           charRefBuilder.clear();
       }
       mapBuilder.add(src, dest, true);
@@ -695,7 +703,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
           }
         };
 
-    int tokenCount = random.nextInt(10) + 10;
+    int tokenCount = random.nextInt(20) + 20;
     List<String> stringTokens = new ArrayList<>();
     while (stringTokens.size() < tokenCount) {
       stringTokens.add(baseTokens[random.nextInt(baseTokens.length)]);

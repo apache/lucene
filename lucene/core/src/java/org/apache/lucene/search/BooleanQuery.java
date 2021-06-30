@@ -108,6 +108,10 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       // We do the final deep check for max clauses count limit during
       // <code>IndexSearcher.rewrite</code> but do this check to short
       // circuit in case a single query holds more than numClauses
+      //
+      // NOTE: this is not just an early check for optimization -- it's
+      // neccessary to prevent run-away 'rewriting' of bad queries from
+      // creating BQ objects that might eat up all the Heap.
       if (clauses.size() >= IndexSearcher.maxClauseCount) {
         throw new IndexSearcher.TooManyClauses();
       }

@@ -20,11 +20,17 @@ import java.util.HashSet;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockSynonymAnalyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.spans.SpanNearQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.queries.spans.SpanTermQuery;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -203,6 +209,27 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     assertTrue(q.hashCode() != q2.hashCode());
     assertTrue(!q.equals(q2));
     assertTrue(!q2.equals(q));
+  }
+
+  public void testBoosts() throws Exception {
+
+    // top-level boosts should be preserved, interior boosts are ignored as they don't apply to
+    // spans
+    String topLevel = "(\"john^3 smit*\"~4)^2";
+    ComplexPhraseQueryParser parser = new ComplexPhraseQueryParser("name", new StandardAnalyzer());
+    parser.setInOrder(true);
+    Query actual = searcher.rewrite(parser.parse(topLevel));
+    Query expected =
+        new BoostQuery(
+            new SpanNearQuery(
+                new SpanQuery[] {
+                  new SpanTermQuery(new Term("name", "john")),
+                  new SpanTermQuery(new Term("name", "smith"))
+                },
+                4,
+                true),
+            2);
+    assertEquals(expected, actual);
   }
 
   @Override

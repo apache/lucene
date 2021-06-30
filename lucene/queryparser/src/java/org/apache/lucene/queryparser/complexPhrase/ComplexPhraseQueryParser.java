@@ -24,6 +24,11 @@ import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.spans.SpanNearQuery;
+import org.apache.lucene.queries.spans.SpanNotQuery;
+import org.apache.lucene.queries.spans.SpanOrQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause;
@@ -38,12 +43,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.spans.SpanBoostQuery;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanNotQuery;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 
 /**
  * QueryParser which permits complex phrase query syntax eg "(john jon jonathan~) peters*".
@@ -380,10 +379,8 @@ public class ComplexPhraseQueryParser extends QueryParser {
       for (BooleanClause clause : qc) {
         Query childQuery = clause.getQuery();
 
-        float boost = 1f;
         while (childQuery instanceof BoostQuery) {
           BoostQuery bq = (BoostQuery) childQuery;
-          boost *= bq.getBoost();
           childQuery = bq.getQuery();
         }
 
@@ -396,9 +393,6 @@ public class ComplexPhraseQueryParser extends QueryParser {
         if (childQuery instanceof TermQuery) {
           TermQuery tq = (TermQuery) childQuery;
           SpanQuery stq = new SpanTermQuery(tq.getTerm());
-          if (boost != 1f) {
-            stq = new SpanBoostQuery(stq, boost);
-          }
           chosenList.add(stq);
         } else if (childQuery instanceof BooleanQuery) {
           BooleanQuery cbq = (BooleanQuery) childQuery;

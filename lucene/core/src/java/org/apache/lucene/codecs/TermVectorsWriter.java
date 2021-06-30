@@ -25,7 +25,6 @@ import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PostingsEnum;
@@ -49,7 +48,7 @@ import org.apache.lucene.util.BytesRefBuilder;
  *   <li>Within each field, {@link #startTerm(BytesRef, int)} is called for each term.
  *   <li>If offsets and/or positions are enabled, then {@link #addPosition(int, int, int, BytesRef)}
  *       will be called for each term occurrence.
- *   <li>After all documents have been written, {@link #finish(FieldInfos, int)} is called for
+ *   <li>After all documents have been written, {@link #finish(int)} is called for
  *       verification/sanity-checks.
  *   <li>Finally the writer is closed ({@link #close()})
  * </ol>
@@ -105,7 +104,7 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
    * #startDocument(int)}, but a Codec should check that this is the case to detect the JRE bug
    * described in LUCENE-1282.
    */
-  public abstract void finish(FieldInfos fis, int numDocs) throws IOException;
+  public abstract void finish(int numDocs) throws IOException;
 
   /**
    * Called by IndexWriter when writing new segments.
@@ -193,9 +192,9 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
    * Merges in the term vectors from the readers in <code>mergeState</code>. The default
    * implementation skips over deleted documents, and uses {@link #startDocument(int)}, {@link
    * #startField(FieldInfo, int, boolean, boolean, boolean)}, {@link #startTerm(BytesRef, int)},
-   * {@link #addPosition(int, int, int, BytesRef)}, and {@link #finish(FieldInfos, int)}, returning
-   * the number of documents that were written. Implementations can override this method for more
-   * sophisticated merging (bulk-byte copying, etc).
+   * {@link #addPosition(int, int, int, BytesRef)}, and {@link #finish(int)}, returning the number
+   * of documents that were written. Implementations can override this method for more sophisticated
+   * merging (bulk-byte copying, etc).
    */
   public int merge(MergeState mergeState) throws IOException {
 
@@ -229,7 +228,7 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
       addAllDocVectors(vectors, mergeState);
       docCount++;
     }
-    finish(mergeState.mergeFieldInfos, docCount);
+    finish(docCount);
     return docCount;
   }
 

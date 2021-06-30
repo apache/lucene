@@ -71,9 +71,9 @@ import org.apache.lucene.util.mutable.MutableValueBool;
  * multi-term expansions.
  *
  * <p>This query is equivalent to building an ordered {@link
- * org.apache.lucene.search.spans.SpanNearQuery} with a list of {@link
- * org.apache.lucene.search.spans.SpanTermQuery} and {@link
- * org.apache.lucene.search.spans.SpanMultiTermQueryWrapper}. But it optimizes the multi-term
+ * org.apache.lucene.queries.spans.SpanNearQuery} with a list of {@link
+ * org.apache.lucene.queries.spans.SpanTermQuery} and {@link
+ * org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper}. But it optimizes the multi-term
  * expansions and the segment accesses. It first resolves the single-terms to early stop if some
  * does not match. Then it expands each multi-term sequentially, stopping immediately if one does
  * not match. It detects the segments that do not match to skip them for the next expansions. This
@@ -585,7 +585,7 @@ public class PhraseWildcardQuery extends Query {
      *     across all segments. It counts expansions for each segments individually, that allows
      *     optimizations per segment and unused expansions are credited to next segments. This is
      *     different from {@link MultiPhraseQuery} and {@link
-     *     org.apache.lucene.search.spans.SpanMultiTermQueryWrapper} which have an expansion limit
+     *     org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper} which have an expansion limit
      *     per multi-term.
      */
     public Builder(String field, int maxMultiTermExpansions) {
@@ -598,7 +598,7 @@ public class PhraseWildcardQuery extends Query {
      *     across all segments. It counts expansions for each segments individually, that allows
      *     optimizations per segment and unused expansions are credited to next segments. This is
      *     different from {@link MultiPhraseQuery} and {@link
-     *     org.apache.lucene.search.spans.SpanMultiTermQueryWrapper} which have an expansion limit
+     *     org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper} which have an expansion limit
      *     per multi-term.
      * @param segmentOptimizationEnabled Whether to enable the segment optimization which consists
      *     in ignoring a segment for further analysis as soon as a term is not present inside it.

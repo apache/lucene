@@ -1,0 +1,83 @@
+#
+# Tests for Swedish minimal stemmer
+# It only tries to stem nouns, i.e. being very little agressive
+#
+bil	bil
+bilen	bil
+biler	bil
+bilar	bil
+bilarna	bil
+bilens	bil
+bilarnas	bil
+pojke	pojk
+pojken	pojk
+pojkar	pojk
+pojkarna	pojk
+flaska	flask
+flaskor	flask
+flaskorna	flask
+stol	stol
+stolen	stol
+stolar	stol
+stolarna	stol
+gubbe	gubb
+gubbar	gubb
+gubben	gubb
+gubbarna	gubb
+sak	sak
+saker	sak
+saken	sak
+sakerna	sak
+bakelse	bakels
+bakelser	bakels
+bakelsen	bakels
+bakelserna	bakels
+parti	parti
+partier	parti
+partiet	parti
+partierna	parti
+# Expected mismatch for short noun
+horn	hor
+hornet	horn
+hornen	horn
+bagar	bag
+bagare	bag
+bagaren	bag
+bagare	bag
+bagarna	bag
+# The -a vs -an, -ana endings are not explicitly handled
+hjärta	hjärt
+hjärtat	hjärt
+hjärtan	hjärta
+hjärtana	hjärtan
+#########################################
+# Words that should not be stemmed
+#
+# Irregular masculine nouns (not supposed to be handled correctly)
+abc	abc
+123	123
+Jens	Jens
+# Too short words should not be stemmed
+ba	ba
+nnn	nnn
+ttt	ttt
+eee	eee
+# Some common examples that SwedishLightStemmer do stem but this one don't
+åre	åre
+årets	året
+grann	gran
+gran	gra
+starar	star
+start	start
+måsar	mås
+måste	måst
+# Some examples that will still clash and must be handled with e.g. protwords
+villa	vill
+vill	vill
+timmer	timm
+timme	timm
+timmar	timm
+tomter	tomt
+tomtar	tomt
+änderna	änd
+ändar	änd
