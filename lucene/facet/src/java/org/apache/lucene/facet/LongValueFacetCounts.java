@@ -162,8 +162,14 @@ public class LongValueFacetCounts extends Facets {
           if (limit > 0) {
             totCount++;
           }
+          long previousValue = 0;
           for (int i = 0; i < limit; i++) {
-            increment(multiValues.nextValue());
+            long value = multiValues.nextValue();
+            // do not increment the count for duplicate values
+            if (i == 0 || value != previousValue) {
+              increment(value);
+            }
+            previousValue = value;
           }
         }
       }
@@ -208,8 +214,14 @@ public class LongValueFacetCounts extends Facets {
           if (limit > 0) {
             totCount++;
           }
+          long previousValue = 0;
           for (int i = 0; i < limit; i++) {
-            increment(multiValues.nextValue());
+            long value = multiValues.nextValue();
+            // do not increment the count for duplicate values
+            if (i == 0 || value != previousValue) {
+              increment(value);
+            }
+            previousValue = value;
           }
         }
       }
