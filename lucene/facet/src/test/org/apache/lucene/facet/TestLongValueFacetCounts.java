@@ -394,7 +394,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
         }
 
         for (int j = 0; j < values[i].length; j++) {
-          Long value = TestUtil.nextLong(random(), -maxValue, maxValue);
+          long value = TestUtil.nextLong(random(), -maxValue, maxValue);
           values[i][j] = value;
           doc.add(new SortedNumericDocValuesField("field", value));
         }
@@ -565,10 +565,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     long previousValue = 0;
     for (int j = 0; j < values.length; j++) {
       if (j == 0 || previousValue != values[j]) {
-        Integer curCount = expected.get(values[j]);
-        if (curCount == null) {
-          curCount = 0;
-        }
+        Integer curCount = expected.getOrDefault(values[j], 0);
         expected.put(values[j], curCount + 1);
       }
       previousValue = values[j];
