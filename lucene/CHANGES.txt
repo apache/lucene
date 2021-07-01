@@ -370,6 +370,10 @@ Improvements
 * LUCENE-9944: Allow DrillSideways users to provide their own CollectorManager without also requiring
   them to provide an ExecutorService. (Greg Miller)
 
+* LUCENE-9177: ICUNormalizer2CharFilter no longer requires normalization-inert
+  characters as boundaries for incremental processing, vastly improving worst-case
+  performance. (Michael Gibney)
+
 Optimizations
 ---------------------
 * LUCENE-9996: Improved memory efficiency of IndexWriter's RAM buffer, in
