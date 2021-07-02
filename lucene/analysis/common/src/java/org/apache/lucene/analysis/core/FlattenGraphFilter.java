@@ -212,7 +212,7 @@ public final class FlattenGraphFilter extends TokenFilter {
           }
           // Don't free from a hole src. Since no edge leaves here book keeping may be incorrect.
           // Later output nodes may point to earlier input nodes. So we don't want to free them yet.
-          outputFrom++;
+          freeBefore(output);
           continue;
         }
 
@@ -324,13 +324,22 @@ public final class FlattenGraphFilter extends TokenFilter {
         } else {
           OutputNode outSrc = outputNodes.get(src.outputNode);
           /* If positionIncrement > 1 and the position we're incrementing from doesn't come to the current node we've crossed a hole.
+           * The long edge will point too far back and not account for the holes unless it gets fixed.
            * example:
            *  _____abc______
            * |              |
            * |              V
            * O-a->O- ->O- ->O-d->O
+           *
+           * A long edge may have already made this fix though, if src is more than 1 position ahead in the output there's no additional work to do
+           * example:
+           *  _____abc______
+           * |    ....bc....|
+           * |    .        VV
+           * O-a->O- ->O- ->O-d->O
            */
           if (positionIncrement > 1
+              && src.outputNode - inputNodes.get(inputFrom - positionIncrement).outputNode <= 1
               && inputNodes.get(inputFrom - positionIncrement).minToNode != inputFrom) {
             /* If there was a hole at the end of an alternate path then the input and output nodes
              * have been created,
@@ -348,40 +357,6 @@ public final class FlattenGraphFilter extends TokenFilter {
             outSrc.endOffset = prevEndOffset;
           }
 
-          if (inputFrom - positionIncrement > 0) {
-            InputNode offsetSrc = inputNodes.get(inputFrom - positionIncrement);
-            /*
-             The current inputSrc has an output before the node it is offset from in the input. The node we're offset from also has no connection into the existing graph.
-             This inserts a gap in the output, which disconnects edges that should be sequential when flattened.
-             The disconnected node will also be freed before its edge is released in freeBefore.
-             Example:
-                    INPUT GRAPH
-              ____________
-             |      ......|.......
-             |      .     V      V
-             1      3     4----->5
-             :       ,   .       :
-             :        , .        :
-             :         .         :
-             :       _. _,______ :
-             :      |.    ,     V:
-             A----->B      C---->D
-                    OUTPUT GRAPH
-
-             If nothing is done when 4->5 is added the above graph is created. Instead change 4 to point to C.
-             tests testShingleWithLargeLeadingGap
-            */
-            if (offsetSrc.outputNode > src.outputNode
-                && outSrc.inputNodes.stream().filter(node -> node < offsetSrc.node).count() == 0) {
-              OutputNode outputOffset = outputNodes.get(offsetSrc.outputNode);
-              outputOffset.inputNodes.add(inputFrom);
-              outSrc.inputNodes.remove((Integer) inputFrom);
-              outputOffset.endOffset = outSrc.endOffset;
-              outSrc = outputOffset;
-              src.outputNode = offsetSrc.outputNode;
-              offsetSrc.outputNode = src.outputNode;
-            }
-          }
           if (outSrc.startOffset == -1 || startOffset > outSrc.startOffset) {
             // "shrink wrap" the offsets so the original tokens (with most
             // restrictive offsets) win:
@@ -451,21 +426,26 @@ public final class FlattenGraphFilter extends TokenFilter {
     assert src.outputNode == -1;
     src.node = inputFrom;
 
-    /* Select output src node by getting the input src node we're incrementing from, find the largest position before the current position that has been combined onto the same output, and calculate the new position increment from that position.
-     * This new position increment is used to find the position in the output graph.
-     * Related test testLongHole testAltPathLastStepHoleFollowedByHole, testAltPathFirstStepHole, testShingledGapWithHoles
-     */
     int outIndex;
     int previousInputFrom = inputFrom - posinc;
-
     if (previousInputFrom >= 0) {
-      int newPosInc =
-          inputFrom
-              - outputNodes.get(inputNodes.get(previousInputFrom).outputNode).inputNodes.stream()
-                  .filter(node -> node < inputFrom)
-                  .max(Integer::compare)
-                  .get();
-      outIndex = inputNodes.get(previousInputFrom).outputNode + newPosInc;
+      InputNode offsetSrc = inputNodes.get(previousInputFrom);
+      /* Select output src node. Need to make sure the new output node isn't placed too far ahead.
+       * If a disconnected node is placed at the end of the output graph that may place it after output nodes that map to input nodes that are after src in the input.
+       * Since it is disconnected there is no path to it, and there could be holes after meaning no paths to following nodes. This "floating" edge will cause problems in FreeBefore.
+       * In the following section make sure the edge connects to something.
+       * Related test testLongHole testAltPathLastStepHoleFollowedByHole, testAltPathFirstStepHole, testShingledGapWithHoles
+       */
+      if (offsetSrc.minToNode < inputFrom) {
+        // There is a possible path to this node.
+        // place this node one position off from the possible path keeping a 1 inc gap.
+        // Can't be larger than 1 inc or risk getting disconnected.
+        outIndex = inputNodes.get(offsetSrc.minToNode).outputNode + 1;
+      } else {
+        // no information about how the current node was previously connected.
+        // Connect it to the end.
+        outIndex = outputNodes.getMaxPos();
+      }
     } else {
       // in case the first token in the stream is a hole we have no input node to increment from.
       outIndex = outputNodes.getMaxPos() + 1;
@@ -473,11 +453,14 @@ public final class FlattenGraphFilter extends TokenFilter {
     OutputNode outSrc = outputNodes.get(outIndex);
     src.outputNode = outIndex;
 
-    // Not assigned yet:
-    assert outSrc.node == -1;
-    outSrc.node = src.outputNode;
+    // OutSrc may have other inputs
+    if (outSrc.node == -1) {
+      outSrc.node = src.outputNode;
+      outSrc.startOffset = startOffset;
+    } else {
+      outSrc.startOffset = Math.max(startOffset, outSrc.startOffset);
+    }
     outSrc.inputNodes.add(inputFrom);
-    outSrc.startOffset = startOffset;
     return outSrc;
   }
 

@@ -98,7 +98,15 @@ public class AutomatonToTokenStream {
       List<EdgeToken> edges = new ArrayList<>();
       for (int state : layer) {
         for (Transition t : transitions[state]) {
-          edges.add(new EdgeToken(idToPos.get(t.dest), t.min));
+          // each edge in the token stream can only be on value, though a transition takes a range.
+          for (int val = t.min; val <= t.max; val++) {
+            int destLayer = idToPos.get(t.dest);
+            edges.add(new EdgeToken(destLayer, val));
+            // If there's an intermediate accept state, add an edge to the terminal state.
+            if (automaton.isAccept(t.dest) && destLayer != positionNodes.size() - 1) {
+              edges.add(new EdgeToken(positionNodes.size() - 1, val));
+            }
+          }
         }
       }
       edgesByLayer.add(edges);
