@@ -298,7 +298,7 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new WikipediaTokenizer();
             TokenStream stream = new SopTokenFilter(tokenizer);
-            stream = new WordDelimiterGraphFilter(stream, false, table, 0, protWords);
+            stream = new WordDelimiterGraphFilter(stream, false, table, 1024-50, protWords);
             stream = new SopTokenFilter(stream);
             return new TokenStreamComponents(tokenizer, stream);
           }
