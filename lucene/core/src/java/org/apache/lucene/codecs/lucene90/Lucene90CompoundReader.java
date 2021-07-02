@@ -19,7 +19,7 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
@@ -69,7 +69,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
     long expectedLength = CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, "");
     for (Map.Entry<String, FileEntry> ent : entries.entrySet()) {
-      expectedLength += ent.getValue().length;
+      expectedLength = Lucene90CompoundFormat.alignOffset(expectedLength) + ent.getValue().length;
     }
     expectedLength += CodecUtil.footerLength();
 
@@ -130,7 +130,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   private Map<String, FileEntry> readMapping(IndexInput entriesStream) throws IOException {
     final int numEntries = entriesStream.readVInt();
-    Map<String, FileEntry> mapping = new HashMap<>(numEntries);
+    Map<String, FileEntry> mapping = new LinkedHashMap<>(numEntries);
     for (int i = 0; i < numEntries; i++) {
       final FileEntry fileEntry = new FileEntry();
       final String id = entriesStream.readString();
