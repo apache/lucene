@@ -19,14 +19,12 @@ package org.apache.lucene.store;
 import java.io.EOFException;
 import java.io.IOException;
 import java.lang.invoke.VarHandle;
-import java.lang.reflect.Field;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import jdk.incubator.foreign.MemoryHandles;
 import jdk.incubator.foreign.MemorySegment;
 import jdk.incubator.foreign.ResourceScope;
-import sun.misc.Unsafe;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -47,7 +45,6 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
 
   static final boolean IS_LITTLE_ENDIAN = (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN);
 
-  final boolean isClone;
   final long length;
   final long chunkSizeMask;
   final int chunkSizePower;
@@ -65,12 +62,11 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       MemorySegment[] segments,
       long length,
       int chunkSizePower) {
+    assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(scope::equals);
     if (segments.length == 1) {
-      return new SingleSegmentImpl(
-          resourceDescription, scope, segments[0], length, chunkSizePower, false);
+      return new SingleSegmentImpl(resourceDescription, scope, segments[0], length, chunkSizePower);
     } else {
-      return new MultiSegmentImpl(
-          resourceDescription, scope, segments, 0, length, chunkSizePower, false);
+      return new MultiSegmentImpl(resourceDescription, scope, segments, 0, length, chunkSizePower);
     }
   }
 
@@ -79,16 +75,13 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       ResourceScope scope,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower,
-      boolean isClone) {
+      int chunkSizePower) {
     super(resourceDescription);
     this.scope = scope;
     this.segments = segments;
-    assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(scope::equals);
     this.length = length;
     this.chunkSizePower = chunkSizePower;
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
-    this.isClone = isClone;
     this.curSegment = segments[0];
   }
 
@@ -146,43 +139,30 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       throw wrapAlreadyClosedException(e);
     }
   }
-  
-  /*
-  private static final Unsafe theUnsafe;
-  static {
-    try {
-      Field f = Unsafe.class.getDeclaredField("theUnsafe");
-      f.setAccessible(true);
-      theUnsafe = (Unsafe) f.get(null);
-    } catch (ReflectiveOperationException e) {
-      throw new RuntimeException(e);
-    }
-  }
-  */
-  
-  private static long copySegmentToHeap(MemorySegment src, long srcOffset, byte[] target, int targetOffset, int len) {
-    /*Objects.checkFromIndexSize(srcOffset, len, src.byteSize());
-    theUnsafe.copyMemory(null, src.address().toRawLongValue() + srcOffset, 
-        target, Unsafe.ARRAY_BYTE_BASE_OFFSET + targetOffset, len);
-    */MemorySegment.ofArray(target).asSlice(targetOffset, len).copyFrom(src.asSlice(srcOffset, len));
+
+  // TODO: Replace those methods by MemoryCopy in Java 18:
+
+  private static long copySegmentToHeap(
+      MemorySegment src, long srcOffset, byte[] target, int targetOffset, int len) {
+    MemorySegment.ofArray(target).asSlice(targetOffset, len).copyFrom(src.asSlice(srcOffset, len));
     return len;
   }
 
-  private static long copySegmentToHeap(MemorySegment src, long srcOffset, long[] target, int targetOffset, int len) {
+  private static long copySegmentToHeap(
+      MemorySegment src, long srcOffset, long[] target, int targetOffset, int len) {
     final long bytesLen = (long) len << 3;
-    /*Objects.checkFromIndexSize(srcOffset, bytesLen, src.byteSize());
-    theUnsafe.copyMemory(null, src.address().toRawLongValue() + srcOffset,
-        target, Unsafe.ARRAY_LONG_BASE_OFFSET + ((long) targetOffset << 3), bytesLen);
-    */MemorySegment.ofArray(target).asSlice((long) targetOffset << 3, bytesLen).copyFrom(src.asSlice(srcOffset, bytesLen));
+    MemorySegment.ofArray(target)
+        .asSlice((long) targetOffset << 3, bytesLen)
+        .copyFrom(src.asSlice(srcOffset, bytesLen));
     return bytesLen;
   }
 
-  private static long copySegmentToHeap(MemorySegment src, long srcOffset, float[] target, int targetOffset, int len) {
+  private static long copySegmentToHeap(
+      MemorySegment src, long srcOffset, float[] target, int targetOffset, int len) {
     final long bytesLen = (long) len << 2;
-    /*Objects.checkFromIndexSize(srcOffset, bytesLen, src.byteSize());
-    theUnsafe.copyMemory(null, src.address().toRawLongValue() + srcOffset,
-        target, Unsafe.ARRAY_FLOAT_BASE_OFFSET + ((long) targetOffset << 2), bytesLen);
-    */MemorySegment.ofArray(target).asSlice((long) targetOffset << 2, bytesLen).copyFrom(src.asSlice(srcOffset, bytesLen));
+    MemorySegment.ofArray(target)
+        .asSlice((long) targetOffset << 2, bytesLen)
+        .copyFrom(src.asSlice(srcOffset, bytesLen));
     return bytesLen;
   }
 
@@ -199,8 +179,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
     }
   }
 
-  private void readBytesBoundary(byte[] b, int offset, int len)
-      throws IOException {
+  private void readBytesBoundary(byte[] b, int offset, int len) throws IOException {
     try {
       long curAvail = curSegment.byteSize() - curPosition;
       while (len > curAvail) {
@@ -467,30 +446,37 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
     if (slices.length == 1) {
       return new SingleSegmentImpl(
           newResourceDescription,
-          scope,
+          null, // clones don't have a resource scope, as they can't close)
           slices[0].asSlice(offset, length),
           length,
-          chunkSizePower,
-          true);
+          chunkSizePower);
     } else {
       return new MultiSegmentImpl(
-          newResourceDescription, scope, slices, offset, length, chunkSizePower, true);
+          newResourceDescription,
+          null, // clones don't have a resource scope, as they can't close)
+          slices,
+          offset,
+          length,
+          chunkSizePower);
     }
   }
 
   @Override
   public final void close() throws IOException {
-    if (curSegment == null) return;
+    if (curSegment == null) {
+      return;
+    }
 
-    try {
-      curSegment = null;
-      if (isClone == false) {
-        scope.close();
-      }
-    } finally {
-      // make sure that after close all segments are nulled,
-      // so clones can throw AlreadyClosed on NPE:
-      Arrays.fill(segments, null);
+    // make sure all accesses to this IndexInput instance throw NPE:
+    curSegment = null;
+    Arrays.fill(segments, null);
+
+    // the master IndexInput has a scope and is able
+    // to release all resources (unmap segments) - a
+    // side effect is that other threads still using clones
+    // will throw IllegalStateException
+    if (scope != null) {
+      scope.close();
     }
   }
 
@@ -502,15 +488,8 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         ResourceScope scope,
         MemorySegment segment,
         long length,
-        int chunkSizePower,
-        boolean isClone) {
-      super(
-          resourceDescription,
-          scope,
-          new MemorySegment[] {segment},
-          length,
-          chunkSizePower,
-          isClone);
+        int chunkSizePower) {
+      super(resourceDescription, scope, new MemorySegment[] {segment}, length, chunkSizePower);
       this.curSegmentIndex = 0;
     }
 
@@ -595,9 +574,8 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         MemorySegment[] segments,
         long offset,
         long length,
-        int chunkSizePower,
-        boolean isClone) {
-      super(resourceDescription, scope, segments, length, chunkSizePower, isClone);
+        int chunkSizePower) {
+      super(resourceDescription, scope, segments, length, chunkSizePower);
       this.offset = offset;
       try {
         seek(0L);
