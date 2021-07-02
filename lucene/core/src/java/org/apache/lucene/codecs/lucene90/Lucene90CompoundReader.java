@@ -139,6 +139,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
         throw new CorruptIndexException("Duplicate cfs entry id=" + id + " in CFS ", entriesStream);
       }
       fileEntry.offset = entriesStream.readLong();
+      assert (fileEntry.offset & 7) == 0L : "cfs file alignment mismatch";
       fileEntry.length = entriesStream.readLong();
     }
     return mapping;
