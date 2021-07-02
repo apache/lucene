@@ -147,7 +147,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     initBrokenConstructors();
   }
 
-  @SuppressWarnings("deprecation")
   private static void initBrokenConstructors() {
     try {
       brokenConstructors.put(
