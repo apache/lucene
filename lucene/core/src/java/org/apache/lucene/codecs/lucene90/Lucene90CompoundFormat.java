@@ -143,7 +143,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
       entries.writeLong(length);
     }
   }
-  
+
   static long alignOffset(long v) {
     return (v + 7L) & (-8L);
   }
