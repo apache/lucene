@@ -36,7 +36,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 /**
  * Splits words into subwords and performs optional transformations on subword groups, producing a
  * correct token graph so that e.g. {@link PhraseQuery} can work correctly when this filter is used
- * in the search-time analyzer. Unlike the deprecated {@link WordDelimiterFilter}, this token filter
+ * in the search-time analyzer. Unlike the now removed <code>WordDelimiterFilter</code>, this token filter
  * produces a correct token graph as output. However, it cannot consume an input token graph
  * correctly. Processing is suppressed by {@link KeywordAttribute#isKeyword()}=true.
  *

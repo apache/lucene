@@ -35,7 +35,7 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.MappingCharFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
 import org.apache.lucene.analysis.commongrams.CommonGramsFilter;
-import org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter;
+import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
 import org.apache.lucene.analysis.ngram.EdgeNGramTokenizer;
 import org.apache.lucene.analysis.ngram.NGramTokenFilter;
 import org.apache.lucene.analysis.shingle.ShingleFilter;
@@ -299,7 +299,7 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new WikipediaTokenizer();
             TokenStream stream = new SopTokenFilter(tokenizer);
-            stream = new WordDelimiterFilter(stream, table, -50, protWords);
+            stream = new WordDelimiterGraphFilter(stream, false, table, -50, protWords);
             stream = new SopTokenFilter(stream);
             return new TokenStreamComponents(tokenizer, stream);
           }
