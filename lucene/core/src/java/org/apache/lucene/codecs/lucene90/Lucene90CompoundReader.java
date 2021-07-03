@@ -31,6 +31,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -69,7 +70,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
     long expectedLength = CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, "");
     for (Map.Entry<String, FileEntry> ent : entries.entrySet()) {
-      expectedLength = Lucene90CompoundFormat.alignOffset(expectedLength) + ent.getValue().length;
+      expectedLength = IndexOutput.alignOffset(expectedLength) + ent.getValue().length;
     }
     expectedLength += CodecUtil.footerLength();
 
@@ -139,7 +140,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
         throw new CorruptIndexException("Duplicate cfs entry id=" + id + " in CFS ", entriesStream);
       }
       fileEntry.offset = entriesStream.readLong();
-      assert (fileEntry.offset & 7) == 0L : "cfs file alignment mismatch";
+      assert (fileEntry.offset & 7L) == 0L : "cfs file alignment mismatch";
       fileEntry.length = entriesStream.readLong();
     }
     return mapping;

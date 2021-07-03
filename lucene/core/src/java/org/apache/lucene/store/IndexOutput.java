@@ -73,4 +73,24 @@ public abstract class IndexOutput extends DataOutput implements Closeable {
   public String toString() {
     return resourceDescription;
   }
+
+  /**
+   * Aligns the current file pointer to multiples of 8 bytes to improve reads with mmap. This will
+   * write between 0 and 7 zero bytes using {@link #writeByte(byte)}.
+   *
+   * @return the new file pointer after alignment
+   */
+  public final long alignFilePointer() throws IOException {
+    final long offset = getFilePointer(), alignedOffset = alignOffset(offset);
+    final int count = (int) (alignedOffset - offset);
+    for (int i = 0; i < count; i++) {
+      writeByte((byte) 0);
+    }
+    return alignedOffset;
+  }
+
+  /** Aligns the given offset to multiples of 8 bytes by rounding up. */
+  public static final long alignOffset(long v) {
+    return (v + 7L) & (-8L);
+  }
 }

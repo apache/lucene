@@ -108,11 +108,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
     entries.writeVInt(si.files().size());
     for (String file : si.files()) {
       // align file start offset
-      long startOffset = data.getFilePointer(), alignedStartOffset = alignOffset(startOffset);
-      for (long o = startOffset; o < alignedStartOffset; o++) {
-        data.writeByte((byte) 0);
-      }
-      startOffset = alignedStartOffset;
+      long startOffset = data.alignFilePointer();
       // write bytes for file
       try (ChecksumIndexInput in = dir.openChecksumInput(file, IOContext.READONCE)) {
 
@@ -142,9 +138,5 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
       entries.writeLong(startOffset);
       entries.writeLong(length);
     }
-  }
-
-  static long alignOffset(long v) {
-    return (v + 7L) & (-8L);
   }
 }
