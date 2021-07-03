@@ -37,7 +37,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 
-public class TestFieldSortOptimizationSkipping extends LuceneTestCase {
+public class TestSortOptimization extends LuceneTestCase {
 
   public void testLongSortOptimization() throws IOException {
 
