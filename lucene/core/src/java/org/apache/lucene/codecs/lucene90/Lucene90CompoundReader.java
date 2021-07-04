@@ -19,7 +19,7 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
@@ -31,7 +31,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -68,11 +67,13 @@ final class Lucene90CompoundReader extends CompoundDirectory {
     this.entries = readEntries(si.getId(), directory, entriesFileName);
     boolean success = false;
 
-    long expectedLength = CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, "");
-    for (Map.Entry<String, FileEntry> ent : entries.entrySet()) {
-      expectedLength = IndexOutput.alignOffset(expectedLength) + ent.getValue().length;
-    }
-    expectedLength += CodecUtil.footerLength();
+    // find the last FileEntry in the map (largest offset+length) and add length of codec footer:
+    final long expectedLength =
+        entries.values().stream()
+                .mapToLong(e -> e.offset + e.length)
+                .max()
+                .orElseGet(() -> CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, ""))
+            + CodecUtil.footerLength();
 
     handle = directory.openInput(dataFileName, context);
     try {
@@ -131,7 +132,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   private Map<String, FileEntry> readMapping(IndexInput entriesStream) throws IOException {
     final int numEntries = entriesStream.readVInt();
-    Map<String, FileEntry> mapping = new LinkedHashMap<>(numEntries);
+    Map<String, FileEntry> mapping = new HashMap<>(numEntries);
     for (int i = 0; i < numEntries; i++) {
       final FileEntry fileEntry = new FileEntry();
       final String id = entriesStream.readString();
@@ -140,7 +141,6 @@ final class Lucene90CompoundReader extends CompoundDirectory {
         throw new CorruptIndexException("Duplicate cfs entry id=" + id + " in CFS ", entriesStream);
       }
       fileEntry.offset = entriesStream.readLong();
-      assert (fileEntry.offset & 7L) == 0L : "cfs file alignment mismatch";
       fileEntry.length = entriesStream.readLong();
     }
     return mapping;
