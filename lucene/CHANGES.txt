@@ -383,6 +383,9 @@ Bug Fixes
 * LUCENE-9964: Duplicate long values in a document field should only be counted once when using SortedNumericDocValuesFields
   (Gautam Worah)
 
+* LUCENE-10020: DocComparator should not skip docs with the same docID on
+  multiple sorts with search after (Mayya Sharipova)
+
 Other
 ---------------------
 (No changes)

@@ -33,12 +33,18 @@ public class DocComparator extends FieldComparator<Integer> {
   private boolean topValueSet;
   private boolean bottomValueSet;
   private boolean hitsThresholdReached;
+  protected boolean singleSort; // singleSort is true, if sort is based on a single sort field.
 
   /** Creates a new comparator based on document ids for {@code numHits} */
   public DocComparator(int numHits, boolean reverse, int sortPost) {
     this.docIDs = new int[numHits];
     // skipping functionality is enabled if we are sorting by _doc in asc order as a primary sort
     this.enableSkipping = (reverse == false && sortPost == 0);
+  }
+
+  @Override
+  public void setSingleSort() {
+    singleSort = true;
   }
 
   @Override
@@ -81,7 +87,12 @@ public class DocComparator extends FieldComparator<Integer> {
     public DocLeafComparator(LeafReaderContext context) {
       this.docBase = context.docBase;
       if (enableSkipping) {
-        this.minDoc = topValue + 1;
+        // For a single sort on _doc, we want to skip all docs before topValue.
+        // For multiple fields sort on [_doc, other fields], we want to include docs with the same
+        // docID.
+        // This is needed in a distributed search, where there are docs from different indices with
+        // the same docID.
+        this.minDoc = singleSort ? topValue + 1 : topValue;
         this.maxDoc = context.reader().maxDoc();
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
       } else {
