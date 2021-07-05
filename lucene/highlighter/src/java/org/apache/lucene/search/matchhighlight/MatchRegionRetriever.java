@@ -262,7 +262,7 @@ public class MatchRegionRetriever {
 
       switch (fieldInfo.getIndexOptions()) {
         case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS:
-          return new OffsetsFromMatchIterator(field);
+          return new OffsetsFromMatchIterator(field, analyzer);
 
         case DOCS_AND_FREQS_AND_POSITIONS:
           return new OffsetsFromPositions(field, analyzer);

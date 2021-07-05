@@ -25,7 +25,8 @@ import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.QueryVisitor;
 
-class ExtendedIntervalsSource extends IntervalsSource {
+/** IntervalSource that supports before and after extension around current intervals */
+public class ExtendedIntervalsSource extends IntervalsSource {
 
   final IntervalsSource source;
   private final int before;
@@ -99,5 +100,13 @@ class ExtendedIntervalsSource extends IntervalsSource {
   @Override
   public String toString() {
     return "EXTEND(" + source + "," + before + "," + after + ")";
+  }
+
+  public int getBefore() {
+    return before;
+  }
+
+  public int getAfter() {
+    return after;
   }
 }

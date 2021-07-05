@@ -145,6 +145,11 @@ public final class IntervalQuery extends Query {
     return Objects.hash(field, intervalsSource);
   }
 
+  public IntervalsSource getIntervalsSource() {
+    // nocommit clone?
+    return intervalsSource;
+  }
+
   private class IntervalWeight extends Weight {
 
     final float boost;

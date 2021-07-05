@@ -250,6 +250,10 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
 
   @Override
   public Query getQuery() {
-    return queue.top().getQuery();
+    if (queue.size() > 0) {
+      return queue.top().getQuery();
+    } else {
+      return null;
+    }
   }
 }
