@@ -16,7 +16,7 @@ public class HindiStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among a_0[] = {
+  private static final Among[] a_0 = {
     new Among("\u0906\u0901", -1, -1),
     new Among("\u093E\u0901", -1, -1),
     new Among("\u0907\u092F\u093E\u0901", 1, -1),
@@ -151,7 +151,7 @@ public class HindiStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u094D", -1, -1)
   };
 
-  private static final char g_consonant[] = {255, 255, 255, 255, 159, 0, 0, 0, 248, 7};
+  private static final char[] g_consonant = {255, 255, 255, 255, 159, 0, 0, 0, 248, 7};
 
   private int I_p;
 

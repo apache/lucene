@@ -21,7 +21,7 @@ import java.util.zip.Checksum;
 /** Wraps another {@link Checksum} with an internal buffer to speed up checksum calculations. */
 public class BufferedChecksum implements Checksum {
   private final Checksum in;
-  private final byte buffer[];
+  private final byte[] buffer;
   private int upto;
   /** Default buffer size: 1024 */
   public static final int DEFAULT_BUFFERSIZE = 1024;

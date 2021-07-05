@@ -33,9 +33,9 @@ public final class LevenshteinDistance implements StringDistance {
   public float getDistance(String target, String other) {
     char[] sa;
     int n;
-    int p[]; // 'previous' cost array, horizontally
-    int d[]; // cost array, horizontally
-    int _d[]; // placeholder to assist in swapping p and d
+    int[] p; // 'previous' cost array, horizontally
+    int[] d; // cost array, horizontally
+    int[] _d; // placeholder to assist in swapping p and d
 
     /*
       The difference between this impl. and the previous is that, rather

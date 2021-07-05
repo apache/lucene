@@ -173,7 +173,7 @@ public class WordDelimiterFilterFactory extends TokenFilterFactory implements Re
     }
 
     // ensure the table is always at least as big as DEFAULT_WORD_DELIM_TABLE for performance
-    byte types[] =
+    byte[] types =
         new byte
             [Math.max(
                 typeMap.lastKey() + 1, WordDelimiterIterator.DEFAULT_WORD_DELIM_TABLE.length)];

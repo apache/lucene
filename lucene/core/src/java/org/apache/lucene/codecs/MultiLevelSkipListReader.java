@@ -55,10 +55,10 @@ public abstract class MultiLevelSkipListReader implements Closeable {
   private IndexInput[] skipStream;
 
   /** The start pointer of each skip level. */
-  private long skipPointer[];
+  private long[] skipPointer;
 
   /** skipInterval of each level. */
-  private int skipInterval[];
+  private int[] skipInterval;
 
   /**
    * Number of docs skipped per level. It's possible for some values to overflow a signed int, but

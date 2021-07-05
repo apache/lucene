@@ -73,7 +73,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
    *                  at the beginning of a line
    * l is of the form l = 2*k, k a non negative integer
    */
-  private static final int ZZ_LEXSTATE[] = { 
+  private static final int[] ZZ_LEXSTATE = {
      0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7, 
      8,  8,  9,  9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 
     16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22
@@ -29678,7 +29678,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
   private static final int ZZ_PUSHBACK_2BIG = 2;
 
   /* error messages for the codes above */
-  private static final String ZZ_ERROR_MSG[] = {
+  private static final String[] ZZ_ERROR_MSG = {
     "Unknown internal scanner error",
     "Error: could not match input",
     "Error: pushback value was too large"
@@ -29806,7 +29806,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
 
   /** this buffer contains the current text to be matched and is
       the source of the yytext() string */
-  private char zzBuffer[] = new char[ZZ_BUFFERSIZE];
+  private char[] zzBuffer = new char[ZZ_BUFFERSIZE];
 
   /** the textposition at the last accepting state */
   private int zzMarkedPos;
@@ -30017,7 +30017,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
   }
 
   @Override
-  public int read(char cbuf[], int off, int len) throws IOException {
+  public int read(char[] cbuf, int off, int len) throws IOException {
     int i = 0;
     for ( ; i < len ; ++i) {
       int ch = read();
@@ -30131,7 +30131,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
     /* is the buffer big enough? */
     if (zzCurrentPos >= zzBuffer.length - zzFinalHighSurrogate) {
       /* if not: blow it up */
-      char newBuffer[] = new char[zzBuffer.length*2];
+      char[] newBuffer = new char[zzBuffer.length*2];
       System.arraycopy(zzBuffer, 0, newBuffer, 0, zzBuffer.length);
       zzBuffer = newBuffer;
       zzEndRead += zzFinalHighSurrogate;

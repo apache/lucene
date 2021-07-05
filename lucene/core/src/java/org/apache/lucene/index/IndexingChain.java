@@ -531,7 +531,7 @@ final class IndexingChain implements Accountable {
     int newHashSize = (fieldHash.length * 2);
     assert newHashSize > fieldHash.length;
 
-    PerField newHashArray[] = new PerField[newHashSize];
+    PerField[] newHashArray = new PerField[newHashSize];
 
     // Rehash
     int newHashMask = newHashSize - 1;

@@ -440,7 +440,7 @@ public class PhraseQuery extends Query {
       throws IOException {
     return new PhraseWeight(this, field, searcher, scoreMode) {
 
-      private transient TermStates states[];
+      private transient TermStates[] states;
 
       @Override
       protected Similarity.SimScorer getStats(IndexSearcher searcher) throws IOException {
@@ -454,7 +454,7 @@ public class PhraseQuery extends Query {
         }
         final IndexReaderContext context = searcher.getTopReaderContext();
         states = new TermStates[terms.length];
-        TermStatistics termStats[] = new TermStatistics[terms.length];
+        TermStatistics[] termStats = new TermStatistics[terms.length];
         int termUpTo = 0;
         for (int i = 0; i < terms.length; i++) {
           final Term term = terms[i];

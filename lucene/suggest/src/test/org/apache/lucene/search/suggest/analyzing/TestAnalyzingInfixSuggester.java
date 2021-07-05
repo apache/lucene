@@ -53,7 +53,7 @@ import org.junit.Test;
 public class TestAnalyzingInfixSuggester extends LuceneTestCase {
 
   public void testBasic() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("lend me your ear", 8, new BytesRef("foobar")),
           new Input("a penny saved is a penny earned", 10, new BytesRef("foobaz")),
@@ -152,7 +152,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
   }
 
   public void testAfterLoad() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("lend me your ear", 8, new BytesRef("foobar")),
           new Input("a penny saved is a penny earned", 10, new BytesRef("foobaz")),
@@ -202,7 +202,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
 
   @SuppressWarnings("unchecked")
   public void testHighlightAsObject() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("a penny saved is a penny earned", 10, new BytesRef("foobaz")),
         };
@@ -290,7 +290,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
   }
 
   public void testRandomMinPrefixLength() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("lend me your ear", 8, new BytesRef("foobar")),
           new Input("a penny saved is a penny earned", 10, new BytesRef("foobaz")),
@@ -367,7 +367,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
   }
 
   public void testHighlight() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("a penny saved is a penny earned", 10, new BytesRef("foobaz")),
         };
@@ -385,7 +385,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
   }
 
   public void testHighlightCaseChange() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("a Penny saved is a penny earned", 10, new BytesRef("foobaz")),
         };
@@ -422,7 +422,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
   }
 
   public void testDoubleClose() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("a penny saved is a penny earned", 10, new BytesRef("foobaz")),
         };
@@ -458,7 +458,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
     AnalyzingInfixSuggester suggester =
         new AnalyzingInfixSuggester(newDirectory(), indexAnalyzer, queryAnalyzer, 3, false);
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("a bob for apples", 10, new BytesRef("foobaz")),
         };
@@ -861,7 +861,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
   }
 
   public void testBasicNRT() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("lend me your ear", 8, new BytesRef("foobar")),
         };
@@ -1025,7 +1025,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
 
   // LUCENE-5528 and LUCENE-6464
   public void testBasicContext() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("lend me your ear", 8, new BytesRef("foobar"), asSet("foo", "bar")),
           new Input(
@@ -1320,7 +1320,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
     byte[] context3 = new byte[1];
     context3[0] = (byte) 0xff;
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("lend me your ear", 8, new BytesRef("foobar"), asSet(context1, context2)),
           new Input(
@@ -1376,7 +1376,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
 
   public void testContextNotAllTermsRequired() throws Exception {
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("lend me your ear", 8, new BytesRef("foobar"), asSet("foo", "bar")),
           new Input(
@@ -1561,7 +1561,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
         suggester -> expectThrows(IllegalStateException.class, suggester::refresh));
   }
 
-  private Input sharedInputs[] =
+  private Input[] sharedInputs =
       new Input[] {
         new Input("lend me your ear", 8, new BytesRef("foobar")),
         new Input("a penny saved is a penny earned", 10, new BytesRef("foobaz")),

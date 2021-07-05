@@ -608,10 +608,10 @@ public abstract class DocValuesConsumer implements Closeable {
     }
 
     final int numReaders = toMerge.size();
-    final SortedDocValues dvs[] = toMerge.toArray(new SortedDocValues[numReaders]);
+    final SortedDocValues[] dvs = toMerge.toArray(new SortedDocValues[numReaders]);
 
     // step 1: iterate thru each sub and mark terms still in use
-    TermsEnum liveTerms[] = new TermsEnum[dvs.length];
+    TermsEnum[] liveTerms = new TermsEnum[dvs.length];
     long[] weights = new long[liveTerms.length];
     for (int sub = 0; sub < numReaders; sub++) {
       SortedDocValues dv = dvs[sub];
@@ -793,7 +793,7 @@ public abstract class DocValuesConsumer implements Closeable {
     }
 
     // step 1: iterate thru each sub and mark terms still in use
-    TermsEnum liveTerms[] = new TermsEnum[toMerge.size()];
+    TermsEnum[] liveTerms = new TermsEnum[toMerge.size()];
     long[] weights = new long[liveTerms.length];
     for (int sub = 0; sub < liveTerms.length; sub++) {
       SortedSetDocValues dv = toMerge.get(sub);

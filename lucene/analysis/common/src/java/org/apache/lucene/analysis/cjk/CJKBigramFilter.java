@@ -93,9 +93,9 @@ public final class CJKBigramFilter extends TokenFilter {
   private final PositionLengthAttribute posLengthAtt = addAttribute(PositionLengthAttribute.class);
 
   // buffers containing codepoint and offsets in parallel
-  int buffer[] = new int[8];
-  int startOffset[] = new int[8];
-  int endOffset[] = new int[8];
+  int[] buffer = new int[8];
+  int[] startOffset = new int[8];
+  int[] endOffset = new int[8];
   // length of valid buffer
   int bufferLen;
   // current buffer index
@@ -264,7 +264,7 @@ public final class CJKBigramFilter extends TokenFilter {
       index -= last;
     }
 
-    char termBuffer[] = termAtt.buffer();
+    char[] termBuffer = termAtt.buffer();
     int len = termAtt.length();
     int start = offsetAtt.startOffset();
     int end = offsetAtt.endOffset();
@@ -300,7 +300,7 @@ public final class CJKBigramFilter extends TokenFilter {
    */
   private void flushBigram() {
     clearAttributes();
-    char termBuffer[] =
+    char[] termBuffer =
         termAtt.resizeBuffer(4); // maximum bigram length in code units (2 supplementaries)
     int len1 = Character.toChars(buffer[index], termBuffer, 0);
     int len2 = len1 + Character.toChars(buffer[index + 1], termBuffer, len1);
@@ -322,7 +322,7 @@ public final class CJKBigramFilter extends TokenFilter {
    */
   private void flushUnigram() {
     clearAttributes();
-    char termBuffer[] = termAtt.resizeBuffer(2); // maximum unigram length (2 surrogates)
+    char[] termBuffer = termAtt.resizeBuffer(2); // maximum unigram length (2 surrogates)
     int len = Character.toChars(buffer[index], termBuffer, 0);
     termAtt.setLength(len);
     offsetAtt.setOffset(startOffset[index], endOffset[index]);

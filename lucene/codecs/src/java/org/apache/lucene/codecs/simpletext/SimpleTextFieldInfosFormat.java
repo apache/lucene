@@ -86,7 +86,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), NUMFIELDS);
       final int size = Integer.parseInt(readString(NUMFIELDS.length, scratch));
-      FieldInfo infos[] = new FieldInfo[size];
+      FieldInfo[] infos = new FieldInfo[size];
 
       for (int i = 0; i < size; i++) {
         SimpleTextUtil.readLine(input, scratch);

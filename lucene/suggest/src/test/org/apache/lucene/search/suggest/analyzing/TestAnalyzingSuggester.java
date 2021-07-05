@@ -233,7 +233,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
   public void testStandard() throws Exception {
     final String input =
         "the ghost of christmas past the"; // trailing stopword there just to perturb possible bugs
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input(input, 50),
         };
@@ -407,7 +407,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
             new CannedTokenStream(
                 token("wifi", 1, 1), token("hotspot", 0, 2), token("network", 1, 1)));
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("wifi network is slow", 50), new Input("wi fi network is fast", 10),
         };
@@ -444,7 +444,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
             new CannedTokenStream(token("ba", 1, 1), token("xd", 1, 1)),
             new CannedTokenStream(token("ab", 1, 1), token("ba", 0, 1), token("x", 1, 1)));
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("ab xc", 50), new Input("ba xd", 50),
         };
