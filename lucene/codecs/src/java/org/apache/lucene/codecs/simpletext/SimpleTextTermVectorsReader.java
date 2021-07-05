@@ -24,7 +24,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
@@ -54,7 +54,7 @@ import org.apache.lucene.util.StringHelper;
  *
  * @lucene.experimental
  */
-public class SimpleTextTermVectorsReader extends TermVectorsReader {
+public class SimpleTextTermVectorsReader extends TermVectorsReaderBase {
 
   private long offsets[]; /* docid -> offset in .vec file */
   private IndexInput in;
@@ -210,7 +210,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
   }
 
   @Override
-  public TermVectorsReader clone() {
+  public TermVectorsReaderBase clone() {
     if (in == null) {
       throw new AlreadyClosedException("this TermVectorsReader is closed");
     }

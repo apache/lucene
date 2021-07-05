@@ -26,10 +26,10 @@ import org.apache.lucene.index.Fields;
  *
  * @lucene.experimental
  */
-public abstract class TermVectorsReader implements Cloneable, Closeable {
+public abstract class TermVectorsReaderBase implements Cloneable, Closeable {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  protected TermVectorsReader() {}
+  protected TermVectorsReaderBase() {}
 
   /**
    * Returns term vectors for this document, or null if term vectors were not indexed. If offsets
@@ -50,7 +50,7 @@ public abstract class TermVectorsReader implements Cloneable, Closeable {
 
   /** Create a clone that one caller at a time may use to read term vectors. */
   @Override
-  public abstract TermVectorsReader clone();
+  public abstract TermVectorsReaderBase clone();
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
@@ -58,7 +58,7 @@ public abstract class TermVectorsReader implements Cloneable, Closeable {
    *
    * <p>The default implementation returns {@code this}
    */
-  public TermVectorsReader getMergeInstance() {
+  public TermVectorsReaderBase getMergeInstance() {
     return this;
   }
 }

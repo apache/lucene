@@ -23,7 +23,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.TopDocs;
 
@@ -45,7 +45,7 @@ public abstract class CodecReader extends LeafReader {
    *
    * @lucene.internal
    */
-  public abstract TermVectorsReader getTermVectorsReader();
+  public abstract TermVectorsReaderBase getTermVectorsReader();
 
   /**
    * Expert: retrieve underlying NormsProducer
@@ -90,7 +90,7 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final Fields getTermVectors(int docID) throws IOException {
-    TermVectorsReader termVectorsReader = getTermVectorsReader();
+    TermVectorsReaderBase termVectorsReader = getTermVectorsReader();
     if (termVectorsReader == null) {
       return null;
     }

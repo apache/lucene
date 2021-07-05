@@ -21,7 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Random;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -43,7 +43,7 @@ class CrankyTermVectorsFormat extends TermVectorsFormat {
   }
 
   @Override
-  public TermVectorsReader vectorsReader(
+  public TermVectorsReaderBase vectorsReader(
       Directory directory, SegmentInfo segmentInfo, FieldInfos fieldInfos, IOContext context)
       throws IOException {
     return delegate.vectorsReader(directory, segmentInfo, fieldInfos, context);

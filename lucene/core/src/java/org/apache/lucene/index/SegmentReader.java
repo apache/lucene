@@ -27,7 +27,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -243,7 +243,7 @@ public final class SegmentReader extends CodecReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReader() {
+  public TermVectorsReaderBase getTermVectorsReader() {
     ensureOpen();
     return core.termVectorsLocal.get();
   }

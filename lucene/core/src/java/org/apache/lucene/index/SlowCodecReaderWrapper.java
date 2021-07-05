@@ -25,7 +25,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
@@ -54,7 +54,7 @@ public final class SlowCodecReaderWrapper {
       return new CodecReader() {
 
         @Override
-        public TermVectorsReader getTermVectorsReader() {
+        public TermVectorsReaderBase getTermVectorsReader() {
           reader.ensureOpen();
           return readerToTermVectorsReader(reader);
         }
@@ -264,15 +264,15 @@ public final class SlowCodecReaderWrapper {
     };
   }
 
-  private static TermVectorsReader readerToTermVectorsReader(final LeafReader reader) {
-    return new TermVectorsReader() {
+  private static TermVectorsReaderBase readerToTermVectorsReader(final LeafReader reader) {
+    return new TermVectorsReaderBase() {
       @Override
       public Fields get(int docID) throws IOException {
         return reader.getTermVectors(docID);
       }
 
       @Override
-      public TermVectorsReader clone() {
+      public TermVectorsReaderBase clone() {
         return readerToTermVectorsReader(reader);
       }
 

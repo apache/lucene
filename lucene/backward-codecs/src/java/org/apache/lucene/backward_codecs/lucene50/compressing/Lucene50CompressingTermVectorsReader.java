@@ -22,7 +22,7 @@ import java.util.NoSuchElementException;
 import org.apache.lucene.backward_codecs.packed.LegacyPackedInts;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.BaseTermsEnum;
@@ -51,11 +51,11 @@ import org.apache.lucene.util.packed.BlockPackedReaderIterator;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
- * {@link TermVectorsReader} for {@link Lucene50CompressingTermVectorsFormat}.
+ * {@link TermVectorsReaderBase} for {@link Lucene50CompressingTermVectorsFormat}.
  *
  * @lucene.experimental
  */
-public final class Lucene50CompressingTermVectorsReader extends TermVectorsReader {
+public final class Lucene50CompressingTermVectorsReader extends TermVectorsReaderBase {
 
   static final String VECTORS_EXTENSION = "tvd";
   static final String VECTORS_INDEX_EXTENSION = "tvx";
@@ -270,7 +270,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
   }
 
   @Override
-  public TermVectorsReader clone() {
+  public TermVectorsReaderBase clone() {
     return new Lucene50CompressingTermVectorsReader(this);
   }
 

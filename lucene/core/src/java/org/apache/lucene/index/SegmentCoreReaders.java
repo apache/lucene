@@ -32,7 +32,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.index.IndexReader.CacheKey;
 import org.apache.lucene.index.IndexReader.ClosedListener;
@@ -57,7 +57,7 @@ final class SegmentCoreReaders {
   final NormsProducer normsProducer;
 
   final StoredFieldsReader fieldsReaderOrig;
-  final TermVectorsReader termVectorsReaderOrig;
+  final TermVectorsReaderBase termVectorsReaderOrig;
   final PointsReader pointsReader;
   final VectorReader vectorReader;
   final CompoundDirectory cfsReader;
@@ -80,10 +80,10 @@ final class SegmentCoreReaders {
         }
       };
 
-  final CloseableThreadLocal<TermVectorsReader> termVectorsLocal =
-      new CloseableThreadLocal<TermVectorsReader>() {
+  final CloseableThreadLocal<TermVectorsReaderBase> termVectorsLocal =
+      new CloseableThreadLocal<TermVectorsReaderBase>() {
         @Override
-        protected TermVectorsReader initialValue() {
+        protected TermVectorsReaderBase initialValue() {
           return (termVectorsReaderOrig == null) ? null : termVectorsReaderOrig.clone();
         }
       };

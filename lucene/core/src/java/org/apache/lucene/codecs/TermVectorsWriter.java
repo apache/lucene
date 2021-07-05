@@ -167,11 +167,11 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
   }
 
   private static class TermVectorsMergeSub extends DocIDMerger.Sub {
-    private final TermVectorsReader reader;
+    private final TermVectorsReaderBase reader;
     private final int maxDoc;
     int docID = -1;
 
-    public TermVectorsMergeSub(MergeState.DocMap docMap, TermVectorsReader reader, int maxDoc) {
+    public TermVectorsMergeSub(MergeState.DocMap docMap, TermVectorsReaderBase reader, int maxDoc) {
       super(docMap);
       this.maxDoc = maxDoc;
       this.reader = reader;
@@ -200,7 +200,7 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
 
     List<TermVectorsMergeSub> subs = new ArrayList<>();
     for (int i = 0; i < mergeState.termVectorsReaders.length; i++) {
-      TermVectorsReader reader = mergeState.termVectorsReaders[i];
+      TermVectorsReaderBase reader = mergeState.termVectorsReaders[i];
       if (reader != null) {
         reader.checkIntegrity();
       }
