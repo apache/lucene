@@ -20,7 +20,6 @@ import static org.apache.lucene.search.SortField.FIELD_DOC;
 import static org.apache.lucene.search.SortField.FIELD_SCORE;
 
 import java.io.IOException;
-import java.util.function.Function;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
@@ -344,12 +343,10 @@ public class TestSortOptimization extends LuceneTestCase {
     IndexReader[] readers = new IndexReader[numIndices];
     for (int i = 0; i < numIndices; i++) {
       dirs[i] = newDirectory();
-      final int remainder = i % 3;
-      Function<Integer, Integer> valueSupplier = docID -> (docID * 3 + remainder);
       try (IndexWriter writer = new IndexWriter(dirs[i], new IndexWriterConfig())) {
         for (int docID = 0; docID < numDocsInIndex; docID++) {
           final Document doc = new Document();
-          doc.add(new NumericDocValuesField("my_field", valueSupplier.apply(docID)));
+          doc.add(new NumericDocValuesField("my_field", docID * numIndices + i));
           writer.addDocument(doc);
         }
         writer.flush();
