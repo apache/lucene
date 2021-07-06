@@ -35,8 +35,8 @@ import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsFormat;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.VectorField;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -430,7 +430,7 @@ final class IndexingChain implements Accountable {
 
   /** Writes all buffered vectors. */
   private void writeVectors(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    VectorWriter vectorWriter = null;
+    NnVectorsWriter nnVectorsWriter = null;
     boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
@@ -446,19 +446,19 @@ final class IndexingChain implements Accountable {
                       + perField.fieldInfo.name
                       + "\" has no vectors but wrote them");
             }
-            if (vectorWriter == null) {
+            if (nnVectorsWriter == null) {
               // lazy init
-              VectorFormat fmt = state.segmentInfo.getCodec().vectorFormat();
+              NnVectorsFormat fmt = state.segmentInfo.getCodec().nnVectorsFormat();
               if (fmt == null) {
                 throw new IllegalStateException(
                     "field=\""
                         + perField.fieldInfo.name
                         + "\" was indexed as vectors but codec does not support vectors");
               }
-              vectorWriter = fmt.fieldsWriter(state);
+              nnVectorsWriter = fmt.fieldsWriter(state);
             }
 
-            perField.vectorValuesWriter.flush(sortMap, vectorWriter);
+            perField.vectorValuesWriter.flush(sortMap, nnVectorsWriter);
             perField.vectorValuesWriter = null;
           } else if (perField.fieldInfo != null && perField.fieldInfo.getVectorDimension() != 0) {
             // BUG
@@ -472,15 +472,15 @@ final class IndexingChain implements Accountable {
           perField = perField.next;
         }
       }
-      if (vectorWriter != null) {
-        vectorWriter.finish();
+      if (nnVectorsWriter != null) {
+        nnVectorsWriter.finish();
       }
       success = true;
     } finally {
       if (success) {
-        IOUtils.close(vectorWriter);
+        IOUtils.close(nnVectorsWriter);
       } else {
-        IOUtils.closeWhileHandlingException(vectorWriter);
+        IOUtils.closeWhileHandlingException(nnVectorsWriter);
       }
     }
   }

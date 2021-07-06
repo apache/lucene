@@ -29,10 +29,10 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.NnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
-import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
+import org.apache.lucene.codecs.perfield.PerFieldNnVectorsFormat;
 
 /**
  * Implements the Lucene 9.0 index format
@@ -83,12 +83,12 @@ public class Lucene90Codec extends Codec {
         }
       };
 
-  private final VectorFormat defaultVectorFormat;
-  private final VectorFormat vectorFormat =
-      new PerFieldVectorFormat() {
+  private final NnVectorsFormat defaultNnVectorsFormat;
+  private final NnVectorsFormat nnVectorsFormat =
+      new PerFieldNnVectorsFormat() {
         @Override
-        public VectorFormat getVectorFormatForField(String field) {
-          return Lucene90Codec.this.getVectorFormatForField(field);
+        public NnVectorsFormat getNnVectorsFormatForField(String field) {
+          return Lucene90Codec.this.getNnVectorsFormatForField(field);
         }
       };
 
@@ -110,7 +110,7 @@ public class Lucene90Codec extends Codec {
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene90PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
-    this.defaultVectorFormat = new Lucene90HnswVectorFormat();
+    this.defaultNnVectorsFormat = new Lucene90HnswVectorsFormat();
   }
 
   @Override
@@ -154,8 +154,8 @@ public class Lucene90Codec extends Codec {
   }
 
   @Override
-  public final VectorFormat vectorFormat() {
-    return vectorFormat;
+  public final NnVectorsFormat nnVectorsFormat() {
+    return nnVectorsFormat;
   }
 
   /**
@@ -191,8 +191,8 @@ public class Lucene90Codec extends Codec {
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation.
    */
-  public VectorFormat getVectorFormatForField(String field) {
-    return defaultVectorFormat;
+  public NnVectorsFormat getNnVectorsFormatForField(String field) {
+    return defaultNnVectorsFormat;
   }
 
   @Override

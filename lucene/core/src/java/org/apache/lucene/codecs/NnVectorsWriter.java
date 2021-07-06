@@ -33,10 +33,10 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
-public abstract class VectorWriter implements Closeable {
+public abstract class NnVectorsWriter implements Closeable {
 
   /** Sole constructor */
-  protected VectorWriter() {}
+  protected NnVectorsWriter() {}
 
   /** Write all values contained in the provided reader */
   public abstract void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException;
@@ -47,7 +47,7 @@ public abstract class VectorWriter implements Closeable {
   /** Merge the vector values from multiple segments, for all fields */
   public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
-      VectorReader reader = mergeState.vectorReaders[i];
+      NnVectorsReader reader = mergeState.nnVectorsReaders[i];
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
       if (reader != null) {
         reader.checkIntegrity();
@@ -55,13 +55,13 @@ public abstract class VectorWriter implements Closeable {
     }
     for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
       if (fieldInfo.hasVectorValues()) {
-        mergeVectors(fieldInfo, mergeState);
+        mergeNnVectors(fieldInfo, mergeState);
       }
     }
     finish();
   }
 
-  private void mergeVectors(FieldInfo mergeFieldInfo, final MergeState mergeState)
+  private void mergeNnVectors(FieldInfo mergeFieldInfo, final MergeState mergeState)
       throws IOException {
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
@@ -70,9 +70,9 @@ public abstract class VectorWriter implements Closeable {
     int dimension = -1;
     VectorValues.SimilarityFunction similarityFunction = null;
     int nonEmptySegmentIndex = 0;
-    for (int i = 0; i < mergeState.vectorReaders.length; i++) {
-      VectorReader vectorReader = mergeState.vectorReaders[i];
-      if (vectorReader != null) {
+    for (int i = 0; i < mergeState.nnVectorsReaders.length; i++) {
+      NnVectorsReader nnVectorsReader = mergeState.nnVectorsReaders[i];
+      if (nnVectorsReader != null) {
         if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
           int segmentDimension = mergeFieldInfo.getVectorDimension();
           VectorValues.SimilarityFunction segmentSimilarityFunction =
@@ -97,7 +97,7 @@ public abstract class VectorWriter implements Closeable {
                     + "!="
                     + segmentSimilarityFunction);
           }
-          VectorValues values = vectorReader.getVectorValues(mergeFieldInfo.name);
+          VectorValues values = nnVectorsReader.getVectorValues(mergeFieldInfo.name);
           if (values != null) {
             subs.add(new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
           }

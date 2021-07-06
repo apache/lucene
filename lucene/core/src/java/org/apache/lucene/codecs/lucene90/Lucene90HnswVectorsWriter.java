@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
@@ -40,7 +40,7 @@ import org.apache.lucene.util.hnsw.NeighborArray;
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorWriter extends VectorWriter {
+public final class Lucene90HnswVectorsWriter extends NnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
@@ -49,7 +49,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
   private final int beamWidth;
   private boolean finished;
 
-  Lucene90HnswVectorWriter(SegmentWriteState state, int maxConn, int beamWidth) throws IOException {
+  Lucene90HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth) throws IOException {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
@@ -58,19 +58,19 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
 
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorFormat.VECTOR_DATA_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_DATA_EXTENSION);
 
     String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorFormat.VECTOR_INDEX_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
 
     boolean success = false;
     try {
@@ -80,20 +80,20 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene90HnswVectorFormat.META_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.META_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene90HnswVectorFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
-          Lucene90HnswVectorFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;

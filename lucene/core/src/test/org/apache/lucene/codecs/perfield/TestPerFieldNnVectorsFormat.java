@@ -25,14 +25,14 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsFormat;
+import org.apache.lucene.codecs.NnVectorsReader;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.VectorField;
-import org.apache.lucene.index.BaseVectorFormatTestCase;
+import org.apache.lucene.index.BaseNnVectorsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -49,7 +49,7 @@ import org.apache.lucene.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
-public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
+public class TestPerFieldNnVectorsFormat extends BaseNnVectorsFormatTestCase {
   private Codec codec;
 
   @Override
@@ -67,14 +67,14 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     try (Directory directory = newDirectory()) {
       // we don't use RandomIndexWriter because it might add more values than we expect !!!!1
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingVectorFormat format1 =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
-      WriteRecordingVectorFormat format2 =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
+      WriteRecordingNnVectorsFormat format1 =
+          new WriteRecordingNnVectorsFormat(TestUtil.getDefaultNnVectorsFormat());
+      WriteRecordingNnVectorsFormat format2 =
+          new WriteRecordingNnVectorsFormat(TestUtil.getDefaultNnVectorsFormat());
       iwc.setCodec(
           new AssertingCodec() {
             @Override
-            public VectorFormat getVectorFormatForField(String field) {
+            public NnVectorsFormat getNnVectorsFormatForField(String field) {
               if ("field1".equals(field)) {
                 return format1;
               } else {
@@ -135,12 +135,12 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
       }
 
       IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingVectorFormat newFormat =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
+      WriteRecordingNnVectorsFormat newFormat =
+          new WriteRecordingNnVectorsFormat(TestUtil.getDefaultNnVectorsFormat());
       newConfig.setCodec(
           new AssertingCodec() {
             @Override
-            public VectorFormat getVectorFormatForField(String field) {
+            public NnVectorsFormat getNnVectorsFormatForField(String field) {
               return newFormat;
             }
           });
@@ -154,20 +154,20 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     }
   }
 
-  private static class WriteRecordingVectorFormat extends VectorFormat {
-    private final VectorFormat delegate;
+  private static class WriteRecordingNnVectorsFormat extends NnVectorsFormat {
+    private final NnVectorsFormat delegate;
     private final Set<String> fieldsWritten;
 
-    public WriteRecordingVectorFormat(VectorFormat delegate) {
+    public WriteRecordingNnVectorsFormat(NnVectorsFormat delegate) {
       super(delegate.getName());
       this.delegate = delegate;
       this.fieldsWritten = new HashSet<>();
     }
 
     @Override
-    public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-      VectorWriter writer = delegate.fieldsWriter(state);
-      return new VectorWriter() {
+    public NnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+      NnVectorsWriter writer = delegate.fieldsWriter(state);
+      return new NnVectorsWriter() {
         @Override
         public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
           fieldsWritten.add(fieldInfo.name);
@@ -187,7 +187,7 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     }
 
     @Override
-    public VectorReader fieldsReader(SegmentReadState state) throws IOException {
+    public NnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
       return delegate.fieldsReader(state);
     }
   }

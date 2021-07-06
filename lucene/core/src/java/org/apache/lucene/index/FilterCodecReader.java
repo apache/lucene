@@ -24,7 +24,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -100,7 +100,7 @@ public abstract class FilterCodecReader extends CodecReader {
   }
 
   @Override
-  public VectorReader getVectorReader() {
+  public NnVectorsReader getVectorReader() {
     return in.getVectorReader();
   }
 

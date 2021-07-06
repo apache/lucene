@@ -27,7 +27,7 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.NnVectorsFormat;
 
 /**
  * plain text index format.
@@ -47,7 +47,7 @@ public final class SimpleTextCodec extends Codec {
   private final DocValuesFormat dvFormat = new SimpleTextDocValuesFormat();
   private final CompoundFormat compoundFormat = new SimpleTextCompoundFormat();
   private final PointsFormat pointsFormat = new SimpleTextPointsFormat();
-  private final VectorFormat vectorFormat = new SimpleTextVectorFormat();
+  private final NnVectorsFormat nnVectorsFormat = new SimpleTextNnVectorsFormat();
 
   public SimpleTextCodec() {
     super("SimpleText");
@@ -104,7 +104,7 @@ public final class SimpleTextCodec extends Codec {
   }
 
   @Override
-  public VectorFormat vectorFormat() {
-    return vectorFormat;
+  public NnVectorsFormat nnVectorsFormat() {
+    return nnVectorsFormat;
   }
 }

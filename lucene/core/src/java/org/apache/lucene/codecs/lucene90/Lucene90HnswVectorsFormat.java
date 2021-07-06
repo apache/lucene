@@ -18,9 +18,9 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsFormat;
+import org.apache.lucene.codecs.NnVectorsReader;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -65,11 +65,11 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorFormat extends VectorFormat {
+public final class Lucene90HnswVectorsFormat extends NnVectorsFormat {
 
-  static final String META_CODEC_NAME = "Lucene90HnswVectorFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene90HnswVectorFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "Lucene90HnswVectorFormatIndex";
+  static final String META_CODEC_NAME = "Lucene90HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene90HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "Lucene90HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -82,36 +82,34 @@ public final class Lucene90HnswVectorFormat extends VectorFormat {
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
-   * {@link Lucene90HnswVectorFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
+   * {@link Lucene90HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
   private final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene90HnswVectorFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
+   * node. Defaults to to {@link Lucene90HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
    * for details.
    */
   private final int beamWidth;
 
-  public Lucene90HnswVectorFormat() {
-    super("Lucene90HnswVectorFormat");
-    this.maxConn = DEFAULT_MAX_CONN;
-    this.beamWidth = DEFAULT_BEAM_WIDTH;
+  public Lucene90HnswVectorsFormat() {
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
-  public Lucene90HnswVectorFormat(int maxConn, int beamWidth) {
-    super("Lucene90HnswVectorFormat");
+  public Lucene90HnswVectorsFormat(int maxConn, int beamWidth) {
+    super("Lucene90HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
   }
 
   @Override
-  public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90HnswVectorWriter(state, maxConn, beamWidth);
+  public NnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene90HnswVectorsWriter(state, maxConn, beamWidth);
   }
 
   @Override
-  public VectorReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene90HnswVectorReader(state);
+  public NnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new Lucene90HnswVectorsReader(state);
   }
 }

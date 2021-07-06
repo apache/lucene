@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -103,10 +103,10 @@ class VectorValuesWriter {
    *
    * @param sortMap specifies the order of documents being flushed, or null if they are to be
    *     flushed in docid order
-   * @param vectorWriter the Codec's vector writer that handles the actual encoding and I/O
+   * @param nnVectorsWriter the Codec's vector writer that handles the actual encoding and I/O
    * @throws IOException if there is an error writing the field and its values
    */
-  public void flush(Sorter.DocMap sortMap, VectorWriter vectorWriter) throws IOException {
+  public void flush(Sorter.DocMap sortMap, NnVectorsWriter nnVectorsWriter) throws IOException {
     VectorValues vectorValues =
         new BufferedVectorValues(
             docsWithField,
@@ -114,9 +114,9 @@ class VectorValuesWriter {
             fieldInfo.getVectorDimension(),
             fieldInfo.getVectorSimilarityFunction());
     if (sortMap != null) {
-      vectorWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
+      nnVectorsWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
     } else {
-      vectorWriter.writeField(fieldInfo, vectorValues);
+      nnVectorsWriter.writeField(fieldInfo, vectorValues);
     }
   }
 

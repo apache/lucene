@@ -28,7 +28,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
@@ -80,7 +80,7 @@ public class MergeState {
   public final PointsReader[] pointsReaders;
 
   /** Vector readers to merge */
-  public final VectorReader[] vectorReaders;
+  public final NnVectorsReader[] nnVectorsReaders;
 
   /** Max docs per reader */
   public final int[] maxDocs;
@@ -109,7 +109,7 @@ public class MergeState {
     termVectorsReaders = new TermVectorsReader[numReaders];
     docValuesProducers = new DocValuesProducer[numReaders];
     pointsReaders = new PointsReader[numReaders];
-    vectorReaders = new VectorReader[numReaders];
+    nnVectorsReaders = new NnVectorsReader[numReaders];
     fieldInfos = new FieldInfos[numReaders];
     liveDocs = new Bits[numReaders];
 
@@ -147,9 +147,9 @@ public class MergeState {
         pointsReaders[i] = pointsReaders[i].getMergeInstance();
       }
 
-      vectorReaders[i] = reader.getVectorReader();
-      if (vectorReaders[i] != null) {
-        vectorReaders[i] = vectorReaders[i].getMergeInstance();
+      nnVectorsReaders[i] = reader.getVectorReader();
+      if (nnVectorsReaders[i] != null) {
+        nnVectorsReaders[i] = nnVectorsReaders[i].getMergeInstance();
       }
 
       numDocs += reader.numDocs();

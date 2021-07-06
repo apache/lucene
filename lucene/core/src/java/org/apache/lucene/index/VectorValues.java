@@ -20,7 +20,7 @@ import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
@@ -82,7 +82,7 @@ public abstract class VectorValues extends DocIdSetIterator {
   public enum SimilarityFunction {
 
     /**
-     * No similarity function is provided. Note: {@link VectorReader#search(String, float[], int,
+     * No similarity function is provided. Note: {@link NnVectorsReader#search(String, float[], int,
      * int)} is not supported for fields specifying this.
      */
     NONE,

@@ -22,7 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.NnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -39,13 +39,13 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Base class aiming at testing {@link VectorFormat vectors formats}. To test a new format, all you
+ * Base class aiming at testing {@link NnVectorsFormat vectors formats}. To test a new format, all you
  * need is to register a new {@link Codec} which uses it and extend this class and override {@link
  * #getCodec()}.
  *
  * @lucene.experimental
  */
-public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCase {
+public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTestCase {
 
   @Override
   protected void addRandomFields(Document doc) {

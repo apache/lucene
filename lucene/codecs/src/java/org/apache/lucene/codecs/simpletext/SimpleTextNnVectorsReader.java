@@ -17,14 +17,14 @@
 
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextVectorWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextNnVectorsWriter.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -49,10 +49,10 @@ import org.apache.lucene.util.StringHelper;
  *
  * @lucene.experimental
  */
-public class SimpleTextVectorReader extends VectorReader {
+public class SimpleTextNnVectorsReader extends NnVectorsReader {
   // shallowSizeOfInstance for fieldEntries map is included in ramBytesUsed() calculation
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextVectorReader.class)
+      RamUsageEstimator.shallowSizeOfInstance(SimpleTextNnVectorsReader.class)
           + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class);
 
   private static final BytesRef EMPTY = new BytesRef("");
@@ -62,18 +62,18 @@ public class SimpleTextVectorReader extends VectorReader {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
   private final Map<String, FieldEntry> fieldEntries = new HashMap<>();
 
-  SimpleTextVectorReader(SegmentReadState readState) throws IOException {
+  SimpleTextNnVectorsReader(SegmentReadState readState) throws IOException {
     this.readState = readState;
     String metaFileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
             readState.segmentSuffix,
-            SimpleTextVectorFormat.META_EXTENSION);
+            SimpleTextNnVectorsFormat.META_EXTENSION);
     String vectorFileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
             readState.segmentSuffix,
-            SimpleTextVectorFormat.VECTOR_EXTENSION);
+            SimpleTextNnVectorsFormat.VECTOR_EXTENSION);
 
     boolean success = false;
     try (ChecksumIndexInput in =
@@ -115,7 +115,7 @@ public class SimpleTextVectorReader extends VectorReader {
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     if (info == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextVectorFormat#testDeleteAllVectorDocs
+      // needed to pass TestSimpleTextNnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
     int dimension = info.getVectorDimension();
@@ -125,7 +125,7 @@ public class SimpleTextVectorReader extends VectorReader {
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextVectorFormat#testDeleteAllVectorDocs
+      // needed to pass TestSimpleTextNnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
     if (dimension != fieldEntry.dimension) {
@@ -158,7 +158,7 @@ public class SimpleTextVectorReader extends VectorReader {
     ChecksumIndexInput input = new BufferedChecksumIndexInput(clone);
 
     // when there's no actual vector data written (e.g. tested in
-    // TestSimpleTextVectorFormat#testDeleteAllVectorDocs)
+    // TestSimpleTextNnVectorsFormat#testDeleteAllVectorDocs)
     // the first line in dataInput will be, checksum 00000000000000000000
     if (footerStartPos == 0) {
       SimpleTextUtil.checkFooter(input);
@@ -185,7 +185,7 @@ public class SimpleTextVectorReader extends VectorReader {
 
   @Override
   public long ramBytesUsed() {
-    // mirror implementation of Lucene90VectorReader#ramBytesUsed
+    // mirror implementation of Lucene90HnswVectorsReader#ramBytesUsed
     long totalBytes = BASE_RAM_BYTES_USED;
     totalBytes += RamUsageEstimator.sizeOf(scratch.bytes());
     totalBytes +=
@@ -288,7 +288,7 @@ public class SimpleTextVectorReader extends VectorReader {
       } else if (curOrd >= entry.size()) {
         // when call to advance / nextDoc below already returns NO_MORE_DOCS, calling docID
         // immediately afterward should also return NO_MORE_DOCS
-        // this is needed for TestSimpleTextVectorFormat.testAdvance test case
+        // this is needed for TestSimpleTextNnVectorsFormat.testAdvance test case
         return NO_MORE_DOCS;
       }
 

@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -53,7 +53,7 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorReader extends VectorReader {
+public final class Lucene90HnswVectorsReader extends NnVectorsReader {
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
@@ -61,10 +61,10 @@ public final class Lucene90HnswVectorReader extends VectorReader {
   private final IndexInput vectorIndex;
   private final long checksumSeed;
 
-  Lucene90HnswVectorReader(SegmentReadState state) throws IOException {
+  Lucene90HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
 
-    int versionMeta = readMetadata(state, Lucene90HnswVectorFormat.META_EXTENSION);
+    int versionMeta = readMetadata(state, Lucene90HnswVectorsFormat.META_EXTENSION);
     long[] checksumRef = new long[1];
     boolean success = false;
     try {
@@ -72,15 +72,15 @@ public final class Lucene90HnswVectorReader extends VectorReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene90HnswVectorFormat.VECTOR_DATA_EXTENSION,
-              Lucene90HnswVectorFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene90HnswVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene90HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
               checksumRef);
       vectorIndex =
           openDataInput(
               state,
               versionMeta,
-              Lucene90HnswVectorFormat.VECTOR_INDEX_EXTENSION,
-              Lucene90HnswVectorFormat.VECTOR_INDEX_CODEC_NAME,
+              Lucene90HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
+              Lucene90HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
               checksumRef);
       success = true;
     } finally {
@@ -101,9 +101,9 @@ public final class Lucene90HnswVectorReader extends VectorReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene90HnswVectorFormat.META_CODEC_NAME,
-                Lucene90HnswVectorFormat.VERSION_START,
-                Lucene90HnswVectorFormat.VERSION_CURRENT,
+                Lucene90HnswVectorsFormat.META_CODEC_NAME,
+                Lucene90HnswVectorsFormat.VERSION_START,
+                Lucene90HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -130,8 +130,8 @@ public final class Lucene90HnswVectorReader extends VectorReader {
         CodecUtil.checkIndexHeader(
             in,
             codecName,
-            Lucene90HnswVectorFormat.VERSION_START,
-            Lucene90HnswVectorFormat.VERSION_CURRENT,
+            Lucene90HnswVectorsFormat.VERSION_START,
+            Lucene90HnswVectorsFormat.VERSION_CURRENT,
             state.segmentInfo.getId(),
             state.segmentSuffix);
     if (versionMeta != versionVectorData) {
@@ -214,7 +214,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
 
   @Override
   public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90HnswVectorReader.class);
+    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90HnswVectorsReader.class);
     totalBytes +=
         RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));

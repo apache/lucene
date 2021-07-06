@@ -23,9 +23,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.TreeMap;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsFormat;
+import org.apache.lucene.codecs.NnVectorsReader;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -50,30 +50,30 @@ import org.apache.lucene.util.IOUtils;
  * @see ServiceLoader
  * @lucene.experimental
  */
-public abstract class PerFieldVectorFormat extends VectorFormat {
-  /** Name of this {@link VectorFormat}. */
-  public static final String PER_FIELD_NAME = "PerFieldVectors90";
+public abstract class PerFieldNnVectorsFormat extends NnVectorsFormat {
+  /** Name of this {@link NnVectorsFormat}. */
+  public static final String PER_FIELD_NAME = "PerFieldNnVectors90";
 
   /** {@link FieldInfo} attribute name used to store the format name for each field. */
   public static final String PER_FIELD_FORMAT_KEY =
-      PerFieldVectorFormat.class.getSimpleName() + ".format";
+      PerFieldNnVectorsFormat.class.getSimpleName() + ".format";
 
   /** {@link FieldInfo} attribute name used to store the segment suffix name for each field. */
   public static final String PER_FIELD_SUFFIX_KEY =
-      PerFieldVectorFormat.class.getSimpleName() + ".suffix";
+      PerFieldNnVectorsFormat.class.getSimpleName() + ".suffix";
 
   /** Sole constructor. */
-  protected PerFieldVectorFormat() {
+  protected PerFieldNnVectorsFormat() {
     super(PER_FIELD_NAME);
   }
 
   @Override
-  public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
+  public NnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new FieldsWriter(state);
   }
 
   @Override
-  public VectorReader fieldsReader(SegmentReadState state) throws IOException {
+  public NnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new FieldsReader(state);
   }
 
@@ -84,10 +84,10 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
    * <p>The field to format mapping is written to the index, so this method is only invoked when
    * writing, not when reading.
    */
-  public abstract VectorFormat getVectorFormatForField(String field);
+  public abstract NnVectorsFormat getNnVectorsFormatForField(String field);
 
-  private class FieldsWriter extends VectorWriter {
-    private final Map<VectorFormat, WriterAndSuffix> formats;
+  private class FieldsWriter extends NnVectorsWriter {
+    private final Map<NnVectorsFormat, WriterAndSuffix> formats;
     private final Map<String, Integer> suffixes = new HashMap<>();
     private final SegmentWriteState segmentWriteState;
 
@@ -113,11 +113,11 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
       IOUtils.close(formats.values());
     }
 
-    private VectorWriter getInstance(FieldInfo field) throws IOException {
-      VectorFormat format = getVectorFormatForField(field.name);
+    private NnVectorsWriter getInstance(FieldInfo field) throws IOException {
+      NnVectorsFormat format = getNnVectorsFormatForField(field.name);
       if (format == null) {
         throw new IllegalStateException(
-            "invalid null VectorFormat for field=\"" + field.name + "\"");
+            "invalid null NnVectorsFormat for field=\"" + field.name + "\"");
       }
       final String formatName = format.getName();
 
@@ -164,12 +164,12 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
   }
 
   /** VectorReader that can wrap multiple delegate readers, selected by field. */
-  public static class FieldsReader extends VectorReader {
+  public static class FieldsReader extends NnVectorsReader {
 
-    private final Map<String, VectorReader> fields = new TreeMap<>();
+    private final Map<String, NnVectorsReader> fields = new TreeMap<>();
 
     /**
-     * Create a FieldsReader over a segment, opening VectorReaders for each VectorFormat specified
+     * Create a FieldsReader over a segment, opening {@link NnVectorsReader} for each {@link NnVectorsFormat} specified
      * by the indexed numeric vector fields.
      *
      * @param readState defines the fields
@@ -179,7 +179,7 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
 
       // Init each unique format:
       boolean success = false;
-      Map<String, VectorReader> formats = new HashMap<>();
+      Map<String, NnVectorsReader> formats = new HashMap<>();
       try {
         // Read field name -> format name
         for (FieldInfo fi : readState.fieldInfos) {
@@ -193,7 +193,7 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
                 throw new IllegalStateException(
                     "missing attribute: " + PER_FIELD_SUFFIX_KEY + " for field: " + fieldName);
               }
-              VectorFormat format = VectorFormat.forName(formatName);
+              NnVectorsFormat format = NnVectorsFormat.forName(formatName);
               String segmentSuffix =
                   getFullSegmentSuffix(readState.segmentSuffix, getSuffix(formatName, suffix));
               if (!formats.containsKey(segmentSuffix)) {
@@ -214,38 +214,38 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
     }
 
     /**
-     * Return the underlying VectorReader for the given field
+     * Return the underlying {@link NnVectorsReader} for the given field
      *
      * @param field the name of a numeric vector field
      */
-    public VectorReader getFieldReader(String field) {
+    public NnVectorsReader getFieldReader(String field) {
       return fields.get(field);
     }
 
     @Override
     public void checkIntegrity() throws IOException {
-      for (VectorReader reader : fields.values()) {
+      for (NnVectorsReader reader : fields.values()) {
         reader.checkIntegrity();
       }
     }
 
     @Override
     public VectorValues getVectorValues(String field) throws IOException {
-      VectorReader vectorReader = fields.get(field);
-      if (vectorReader == null) {
+      NnVectorsReader nnVectorsReader = fields.get(field);
+      if (nnVectorsReader == null) {
         return null;
       } else {
-        return vectorReader.getVectorValues(field);
+        return nnVectorsReader.getVectorValues(field);
       }
     }
 
     @Override
     public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
-      VectorReader vectorReader = fields.get(field);
-      if (vectorReader == null) {
+      NnVectorsReader nnVectorsReader = fields.get(field);
+      if (nnVectorsReader == null) {
         return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
       } else {
-        return vectorReader.search(field, target, k, fanout);
+        return nnVectorsReader.search(field, target, k, fanout);
       }
     }
 
@@ -257,7 +257,7 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
     @Override
     public long ramBytesUsed() {
       long total = 0;
-      for (VectorReader reader : fields.values()) {
+      for (NnVectorsReader reader : fields.values()) {
         total += reader.ramBytesUsed();
       }
       return total;
@@ -277,10 +277,10 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
   }
 
   private static class WriterAndSuffix implements Closeable {
-    final VectorWriter writer;
+    final NnVectorsWriter writer;
     final int suffix;
 
-    WriterAndSuffix(VectorWriter writer, int suffix) {
+    WriterAndSuffix(NnVectorsWriter writer, int suffix) {
       this.writer = writer;
       this.suffix = suffix;
     }

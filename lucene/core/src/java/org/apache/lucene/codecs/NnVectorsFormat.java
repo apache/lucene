@@ -29,23 +29,23 @@ import org.apache.lucene.util.NamedSPILoader;
  * Encodes/decodes per-document vector and any associated indexing structures required to support
  * nearest-neighbor search
  */
-public abstract class VectorFormat implements NamedSPILoader.NamedSPI {
+public abstract class NnVectorsFormat implements NamedSPILoader.NamedSPI {
 
   /**
    * This static holder class prevents classloading deadlock by delaying init of doc values formats
    * until needed.
    */
   private static final class Holder {
-    private static final NamedSPILoader<VectorFormat> LOADER =
-        new NamedSPILoader<>(VectorFormat.class);
+    private static final NamedSPILoader<NnVectorsFormat> LOADER =
+        new NamedSPILoader<>(NnVectorsFormat.class);
 
     private Holder() {}
 
-    static NamedSPILoader<VectorFormat> getLoader() {
+    static NamedSPILoader<NnVectorsFormat> getLoader() {
       if (LOADER == null) {
         throw new IllegalStateException(
-            "You tried to lookup a VectorFormat name before all formats could be initialized. "
-                + "This likely happens if you call VectorFormat#forName from a VectorFormat's ctor.");
+            "You tried to lookup a NnVectorsFormat name before all formats could be initialized. "
+                + "This likely happens if you call NnVectorsFormat#forName from a NnVectorsFormat's ctor.");
       }
       return LOADER;
     }
@@ -54,7 +54,7 @@ public abstract class VectorFormat implements NamedSPILoader.NamedSPI {
   private final String name;
 
   /** Sole constructor */
-  protected VectorFormat(String name) {
+  protected NnVectorsFormat(String name) {
     NamedSPILoader.checkServiceName(name);
     this.name = name;
   }
@@ -65,31 +65,31 @@ public abstract class VectorFormat implements NamedSPILoader.NamedSPI {
   }
 
   /** looks up a format by name */
-  public static VectorFormat forName(String name) {
+  public static NnVectorsFormat forName(String name) {
     return Holder.getLoader().lookup(name);
   }
 
-  /** Returns a {@link VectorWriter} to write the vectors to the index. */
-  public abstract VectorWriter fieldsWriter(SegmentWriteState state) throws IOException;
+  /** Returns a {@link NnVectorsWriter} to write the vectors to the index. */
+  public abstract NnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException;
 
-  /** Returns a {@link VectorReader} to read the vectors from the index. */
-  public abstract VectorReader fieldsReader(SegmentReadState state) throws IOException;
+  /** Returns a {@link NnVectorsReader} to read the vectors from the index. */
+  public abstract NnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 
   /**
    * EMPTY throws an exception when written. It acts as a sentinel indicating a Codec that does not
    * support vectors.
    */
-  public static final VectorFormat EMPTY =
-      new VectorFormat("EMPTY") {
+  public static final NnVectorsFormat EMPTY =
+      new NnVectorsFormat("EMPTY") {
         @Override
-        public VectorWriter fieldsWriter(SegmentWriteState state) {
+        public NnVectorsWriter fieldsWriter(SegmentWriteState state) {
           throw new UnsupportedOperationException(
               "Attempt to write EMPTY VectorValues: maybe you forgot to use codec=Lucene90");
         }
 
         @Override
-        public VectorReader fieldsReader(SegmentReadState state) {
-          return new VectorReader() {
+        public NnVectorsReader fieldsReader(SegmentReadState state) {
+          return new NnVectorsReader() {
             @Override
             public void checkIntegrity() {}
 
