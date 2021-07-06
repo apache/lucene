@@ -75,13 +75,17 @@ public abstract class IndexOutput extends DataOutput implements Closeable {
   }
 
   /**
-   * Aligns the current file pointer to multiples of 8 bytes to improve reads with mmap. This will
-   * write between 0 and 7 zero bytes using {@link #writeByte(byte)}.
+   * Aligns the current file pointer to multiples of {@code alignmentBytes} bytes to improve reads
+   * with mmap. This will write between 0 and {@code (alignmentBytes-1)} zero bytes using {@link
+   * #writeByte(byte)}.
    *
+   * @param alignmentBytes the alignment to which it should forward file pointer (must be a power of
+   *     2)
    * @return the new file pointer after alignment
+   * @see #alignOffset(long, int)
    */
-  public final long alignFilePointer() throws IOException {
-    final long offset = getFilePointer(), alignedOffset = alignOffset(offset);
+  public final long alignFilePointer(int alignmentBytes) throws IOException {
+    final long offset = getFilePointer(), alignedOffset = alignOffset(offset, alignmentBytes);
     final int count = (int) (alignedOffset - offset);
     for (int i = 0; i < count; i++) {
       writeByte((byte) 0);
@@ -89,8 +93,14 @@ public abstract class IndexOutput extends DataOutput implements Closeable {
     return alignedOffset;
   }
 
-  /** Aligns the given offset to multiples of 8 bytes by rounding up. */
-  public static final long alignOffset(long v) {
-    return (v + 7L) & (-8L);
+  /**
+   * Aligns the given {@code offset} to multiples of {@code alignmentBytes} bytes by rounding up.
+   * The alignment must be a power of 2.
+   */
+  public static final long alignOffset(long offset, int alignmentBytes) {
+    if (1 != Integer.bitCount(alignmentBytes)) {
+      throw new IllegalArgumentException("Alignment must be a power of 2");
+    }
+    return (offset - 1L + alignmentBytes) & (-alignmentBytes);
   }
 }
