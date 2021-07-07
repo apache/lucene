@@ -39,6 +39,32 @@ public class TestKeepFilterFactory extends BaseTokenStreamFactoryTestCase {
     words = factory.getWords();
     assertTrue("words is null and it shouldn't be", words != null);
     assertTrue("words Size: " + words.size() + " is not: " + 4, words.size() == 4);
+
+    factory =
+        (KeepWordFilterFactory)
+            tokenFilterFactory(
+                "KeepWord",
+                "words",
+                "keep-snowball.txt",
+                "format",
+                "snowball",
+                "ignoreCase",
+                "true");
+    words = factory.getWords();
+    assertEquals(8, words.size());
+    assertTrue(words.contains("he"));
+    assertTrue(words.contains("him"));
+    assertTrue(words.contains("his"));
+    assertTrue(words.contains("himself"));
+    assertTrue(words.contains("she"));
+    assertTrue(words.contains("her"));
+    assertTrue(words.contains("hers"));
+    assertTrue(words.contains("herself"));
+
+    // defaults
+    factory = (KeepWordFilterFactory) tokenFilterFactory("KeepWord");
+    assertTrue(factory.getWords() == null);
+    assertEquals(false, factory.isIgnoreCase());
   }
 
   /** Test that bogus arguments result in exception */
