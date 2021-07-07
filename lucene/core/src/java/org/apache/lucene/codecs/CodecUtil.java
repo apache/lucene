@@ -490,12 +490,17 @@ public final class CodecUtil {
 
           // now check the footer
           long checksum = checkFooter(in);
-          priorException.addSuppressed(
-              new CorruptIndexException(
-                  "checksum passed ("
-                      + Long.toHexString(checksum)
-                      + "). possibly transient resource issue, or a Lucene or JVM bug",
-                  in));
+          if (!(priorException instanceof IndexFormatTooOldException)) {
+            // If the index format is too old and no corruption, do not add checksums
+            // matching message since this may tend to unnecessarily alarm people who
+            // see "JVM bug" in their logs
+            priorException.addSuppressed(
+                new CorruptIndexException(
+                    "checksum passed ("
+                        + Long.toHexString(checksum)
+                        + "). possibly transient resource issue, or a Lucene or JVM bug",
+                    in));
+          }
         }
       } catch (CorruptIndexException corruptException) {
         corruptException.addSuppressed(priorException);
