@@ -106,7 +106,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) {
+      public NnVectors getNnVectors(String field) {
         return null;
       }
 

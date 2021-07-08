@@ -55,7 +55,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final boolean hasNorms;
   private final boolean hasDocValues;
   private final boolean hasPointValues;
-  private final boolean hasVectorValues;
+  private final boolean hasNnVectors;
   private final String softDeletesField;
 
   // used only by fieldInfo(int)
@@ -74,7 +74,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     boolean hasNorms = false;
     boolean hasDocValues = false;
     boolean hasPointValues = false;
-    boolean hasVectorValues = false;
+    boolean hasNnVectors = false;
     String softDeletesField = null;
 
     int size = 0; // number of elements in byNumberTemp, number of used array slots
@@ -121,7 +121,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       hasDocValues |= info.getDocValuesType() != DocValuesType.NONE;
       hasPayloads |= info.hasPayloads();
       hasPointValues |= (info.getPointDimensionCount() != 0);
-      hasVectorValues |= (info.getVectorDimension() != 0);
+      hasNnVectors |= (info.getNnVectorDimension() != 0);
       if (info.isSoftDeletesField()) {
         if (softDeletesField != null && softDeletesField.equals(info.name) == false) {
           throw new IllegalArgumentException(
@@ -139,7 +139,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.hasNorms = hasNorms;
     this.hasDocValues = hasDocValues;
     this.hasPointValues = hasPointValues;
-    this.hasVectorValues = hasVectorValues;
+    this.hasNnVectors = hasNnVectors;
     this.softDeletesField = softDeletesField;
 
     List<FieldInfo> valuesTemp = new ArrayList<>();
@@ -235,9 +235,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     return hasPointValues;
   }
 
-  /** Returns true if any fields have VectorValues */
-  public boolean hasVectorValues() {
-    return hasVectorValues;
+  /** Returns true if any fields have NnVectors */
+  public boolean hasNnVectors() {
+    return hasNnVectors;
   }
 
   /** Returns the soft-deletes field name if exists; otherwise returns null */
@@ -299,9 +299,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   static final class FieldVectorProperties {
     final int numDimensions;
-    final VectorValues.SimilarityFunction similarityFunction;
+    final NnVectors.SimilarityFunction similarityFunction;
 
-    FieldVectorProperties(int numDimensions, VectorValues.SimilarityFunction similarityFunction) {
+    FieldVectorProperties(int numDimensions, NnVectors.SimilarityFunction similarityFunction) {
       this.numDimensions = numDimensions;
       this.similarityFunction = similarityFunction;
     }
@@ -384,7 +384,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 fi.getPointNumBytes()));
         vectorProps.put(
             fieldName,
-            new FieldVectorProperties(fi.getVectorDimension(), fi.getVectorSimilarityFunction()));
+            new FieldVectorProperties(fi.getNnVectorDimension(), fi.getVectorSimilarityFunction()));
       }
       return fieldNumber.intValue();
     }
@@ -443,7 +443,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fieldName,
           props.numDimensions,
           props.similarityFunction,
-          fi.getVectorDimension(),
+          fi.getNnVectorDimension(),
           fi.getVectorSimilarityFunction());
     }
 
@@ -486,7 +486,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   0,
                   0,
-                  VectorValues.SimilarityFunction.NONE,
+                  NnVectors.SimilarityFunction.NONE,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
           addOrGet(fi);
         }
@@ -567,7 +567,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           0,
           0,
-          VectorValues.SimilarityFunction.NONE,
+          NnVectors.SimilarityFunction.NONE,
           isSoftDeletesField);
     }
 
@@ -680,7 +680,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getPointDimensionCount(),
               fi.getPointIndexDimensionCount(),
               fi.getPointNumBytes(),
-              fi.getVectorDimension(),
+              fi.getNnVectorDimension(),
               fi.getVectorSimilarityFunction(),
               fi.isSoftDeletesField());
       byName.put(fiNew.getName(), fiNew);

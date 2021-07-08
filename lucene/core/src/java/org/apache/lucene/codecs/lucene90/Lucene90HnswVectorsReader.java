@@ -32,10 +32,10 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnGraphValues;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.RandomAccessNnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -162,7 +162,7 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
   }
 
   private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
-    int dimension = info.getVectorDimension();
+    int dimension = info.getNnVectorDimension();
     if (dimension != fieldEntry.dimension) {
       throw new IllegalStateException(
           "Inconsistent vector dimension for field=\""
@@ -187,19 +187,19 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
     }
   }
 
-  private VectorValues.SimilarityFunction readSimilarityFunction(DataInput input)
+  private NnVectors.SimilarityFunction readSimilarityFunction(DataInput input)
       throws IOException {
     int similarityFunctionId = input.readInt();
     if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorValues.SimilarityFunction.values().length) {
+        || similarityFunctionId >= NnVectors.SimilarityFunction.values().length) {
       throw new CorruptIndexException(
           "Invalid similarity function id: " + similarityFunctionId, input);
     }
-    return VectorValues.SimilarityFunction.values()[similarityFunctionId];
+    return NnVectors.SimilarityFunction.values()[similarityFunctionId];
   }
 
   private FieldEntry readField(DataInput input) throws IOException {
-    VectorValues.SimilarityFunction similarityFunction = readSimilarityFunction(input);
+    NnVectors.SimilarityFunction similarityFunction = readSimilarityFunction(input);
     switch (similarityFunction) {
       case NONE:
         return new FieldEntry(input, similarityFunction);
@@ -231,13 +231,13 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public NnVectors getNnVectors(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
     }
 
-    return getOffHeapVectorValues(fieldEntry);
+    return getOffHeapNnVectors(fieldEntry);
   }
 
   @Override
@@ -247,12 +247,12 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
       return null;
     }
 
-    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+    OffHeapNnVectors nnVectors = getOffHeapNnVectors(fieldEntry);
 
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final Random random = new Random(checksumSeed);
     NeighborQueue results =
-        HnswGraph.search(target, k, k + fanout, vectorValues, getGraphValues(fieldEntry), random);
+        HnswGraph.search(target, k, k + fanout, nnVectors, getGraphValues(fieldEntry), random);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     boolean reversed = fieldEntry.similarityFunction.reversed;
@@ -272,10 +272,10 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
         scoreDocs);
   }
 
-  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
+  private OffHeapNnVectors getOffHeapNnVectors(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new OffHeapVectorValues(fieldEntry, bytesSlice);
+    return new OffHeapNnVectors(fieldEntry, bytesSlice);
   }
 
   public KnnGraphValues getGraphValues(String field) throws IOException {
@@ -292,7 +292,7 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
   }
 
   private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
-    if (entry.similarityFunction != VectorValues.SimilarityFunction.NONE) {
+    if (entry.similarityFunction != NnVectors.SimilarityFunction.NONE) {
       HnswGraphFieldEntry graphEntry = (HnswGraphFieldEntry) entry;
       IndexInput bytesSlice =
           vectorIndex.slice("graph-data", entry.indexDataOffset, entry.indexDataLength);
@@ -310,7 +310,7 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SimilarityFunction similarityFunction;
+    final NnVectors.SimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -318,7 +318,7 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
     final long indexDataLength;
     final int[] ordToDoc;
 
-    FieldEntry(DataInput input, VectorValues.SimilarityFunction similarityFunction)
+    FieldEntry(DataInput input, NnVectors.SimilarityFunction similarityFunction)
         throws IOException {
       this.similarityFunction = similarityFunction;
       vectorDataOffset = input.readVLong();
@@ -343,7 +343,7 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
 
     final long[] ordOffsets;
 
-    HnswGraphFieldEntry(DataInput input, VectorValues.SimilarityFunction similarityFunction)
+    HnswGraphFieldEntry(DataInput input, NnVectors.SimilarityFunction similarityFunction)
         throws IOException {
       super(input, similarityFunction);
       ordOffsets = new long[size()];
@@ -356,8 +356,8 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  private class OffHeapVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  private class OffHeapNnVectors extends NnVectors
+      implements RandomAccessNnVectors, RandomAccessNnVectorsProducer {
 
     final FieldEntry fieldEntry;
     final IndexInput dataIn;
@@ -370,7 +370,7 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
     int ord = -1;
     int doc = -1;
 
-    OffHeapVectorValues(FieldEntry fieldEntry, IndexInput dataIn) {
+    OffHeapNnVectors(FieldEntry fieldEntry, IndexInput dataIn) {
       this.fieldEntry = fieldEntry;
       this.dataIn = dataIn;
       byteSize = Float.BYTES * fieldEntry.dimension;
@@ -445,8 +445,8 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new OffHeapVectorValues(fieldEntry, dataIn.clone());
+    public RandomAccessNnVectors randomAccess() {
+      return new OffHeapNnVectors(fieldEntry, dataIn.clone());
     }
 
     @Override

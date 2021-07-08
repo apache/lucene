@@ -32,7 +32,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
@@ -88,10 +88,10 @@ public class TestPerFieldConsistency extends LuceneTestCase {
   }
 
   private static Field randomVectorField(Random random, String fieldName) {
-    VectorValues.SimilarityFunction similarityFunction =
-        RandomPicks.randomFrom(random, VectorValues.SimilarityFunction.values());
-    while (similarityFunction == VectorValues.SimilarityFunction.NONE) {
-      similarityFunction = RandomPicks.randomFrom(random, VectorValues.SimilarityFunction.values());
+    NnVectors.SimilarityFunction similarityFunction =
+        RandomPicks.randomFrom(random, NnVectors.SimilarityFunction.values());
+    while (similarityFunction == NnVectors.SimilarityFunction.NONE) {
+      similarityFunction = RandomPicks.randomFrom(random, NnVectors.SimilarityFunction.values());
     }
     float[] values = new float[randomIntBetween(1, 10)];
     for (int i = 0; i < values.length; i++) {

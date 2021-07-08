@@ -28,10 +28,10 @@ import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.RandomAccessNnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -82,8 +82,8 @@ public class SimpleTextNnVectorsReader extends NnVectorsReader {
       while (fieldNumber != -1) {
         String fieldName = readString(in, FIELD_NAME);
         String scoreFunctionName = readString(in, SCORE_FUNCTION);
-        VectorValues.SimilarityFunction similarityFunction =
-            VectorValues.SimilarityFunction.valueOf(scoreFunctionName);
+        NnVectors.SimilarityFunction similarityFunction =
+            NnVectors.SimilarityFunction.valueOf(scoreFunctionName);
         long vectorDataOffset = readLong(in, VECTOR_DATA_OFFSET);
         long vectorDataLength = readLong(in, VECTOR_DATA_LENGTH);
         int dimension = readInt(in, VECTOR_DIMENSION);
@@ -111,20 +111,20 @@ public class SimpleTextNnVectorsReader extends NnVectorsReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public NnVectors getNnVectors(String field) throws IOException {
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     if (info == null) {
-      // mirror the handling in Lucene90VectorReader#getVectorValues
+      // mirror the handling in Lucene90HnswVectorsReader#geNnVectors
       // needed to pass TestSimpleTextNnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
-    int dimension = info.getVectorDimension();
+    int dimension = info.getNnVectorDimension();
     if (dimension == 0) {
-      return VectorValues.EMPTY;
+      return NnVectors.EMPTY;
     }
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {
-      // mirror the handling in Lucene90VectorReader#getVectorValues
+      // mirror the handling in Lucene90HnswVectorsReader#getNnVectors
       // needed to pass TestSimpleTextNnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
@@ -139,7 +139,7 @@ public class SimpleTextNnVectorsReader extends NnVectorsReader {
     }
     IndexInput bytesSlice =
         dataIn.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new SimpleTextVectorValues(fieldEntry, bytesSlice);
+    return new SimpleTextNnVectors(fieldEntry, bytesSlice);
   }
 
   @Override
@@ -205,7 +205,7 @@ public class SimpleTextNnVectorsReader extends NnVectorsReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SimilarityFunction similarityFunction;
+    final NnVectors.SimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -213,7 +213,7 @@ public class SimpleTextNnVectorsReader extends NnVectorsReader {
 
     FieldEntry(
         int dimension,
-        VectorValues.SimilarityFunction similarityFunction,
+        NnVectors.SimilarityFunction similarityFunction,
         long vectorDataOffset,
         long vectorDataLength,
         int[] ordToDoc) {
@@ -229,8 +229,8 @@ public class SimpleTextNnVectorsReader extends NnVectorsReader {
     }
   }
 
-  private static class SimpleTextVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  private static class SimpleTextNnVectors extends NnVectors
+      implements RandomAccessNnVectors, RandomAccessNnVectorsProducer {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -240,7 +240,7 @@ public class SimpleTextNnVectorsReader extends NnVectorsReader {
 
     int curOrd;
 
-    SimpleTextVectorValues(FieldEntry entry, IndexInput in) throws IOException {
+    SimpleTextNnVectors(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new float[entry.size()][entry.dimension];
@@ -277,7 +277,7 @@ public class SimpleTextNnVectorsReader extends NnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessNnVectors randomAccess() {
       return this;
     }
 

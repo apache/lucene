@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.codecs.NnVectorsWriter;
+
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -34,7 +34,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * @lucene.experimental
  */
-class VectorValuesWriter {
+class NnVectorsConsumer {
 
   private final FieldInfo fieldInfo;
   private final Counter iwBytesUsed;
@@ -45,7 +45,7 @@ class VectorValuesWriter {
 
   private long bytesUsed;
 
-  VectorValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed) {
+  NnVectorsConsumer(FieldInfo fieldInfo, Counter iwBytesUsed) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = iwBytesUsed;
     this.docsWithField = new DocsWithFieldSet();
@@ -69,14 +69,14 @@ class VectorValuesWriter {
               + fieldInfo.name
               + "\" appears more than once in this document (only one value is allowed per field)");
     }
-    if (vectorValue.length != fieldInfo.getVectorDimension()) {
+    if (vectorValue.length != fieldInfo.getNnVectorDimension()) {
       throw new IllegalArgumentException(
           "Attempt to index a vector of dimension "
               + vectorValue.length
               + " but \""
               + fieldInfo.name
               + "\" has dimension "
-              + fieldInfo.getVectorDimension());
+              + fieldInfo.getNnVectorDimension());
     }
     assert docID > lastDocID;
     docsWithField.add(docID);
@@ -106,32 +106,32 @@ class VectorValuesWriter {
    * @param nnVectorsWriter the Codec's vector writer that handles the actual encoding and I/O
    * @throws IOException if there is an error writing the field and its values
    */
-  public void flush(Sorter.DocMap sortMap, NnVectorsWriter nnVectorsWriter) throws IOException {
-    VectorValues vectorValues =
-        new BufferedVectorValues(
+  public void flush(Sorter.DocMap sortMap, org.apache.lucene.codecs.NnVectorsWriter nnVectorsWriter) throws IOException {
+    NnVectors nnVectors =
+        new BufferedNnVectors(
             docsWithField,
             vectors,
-            fieldInfo.getVectorDimension(),
+            fieldInfo.getNnVectorDimension(),
             fieldInfo.getVectorSimilarityFunction());
     if (sortMap != null) {
-      nnVectorsWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
+      nnVectorsWriter.writeField(fieldInfo, new SortingNnVectors(nnVectors, sortMap));
     } else {
-      nnVectorsWriter.writeField(fieldInfo, vectorValues);
+      nnVectorsWriter.writeField(fieldInfo, nnVectors);
     }
   }
 
-  static class SortingVectorValues extends VectorValues
-      implements RandomAccessVectorValuesProducer {
+  static class SortingNnVectors extends NnVectors
+      implements RandomAccessNnVectorsProducer {
 
-    private final VectorValues delegate;
-    private final RandomAccessVectorValues randomAccess;
+    private final NnVectors delegate;
+    private final RandomAccessNnVectors randomAccess;
     private final int[] docIdOffsets;
     private final int[] ordMap;
     private int docId = -1;
 
-    SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+    SortingNnVectors(NnVectors delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
-      randomAccess = ((RandomAccessVectorValuesProducer) delegate).randomAccess();
+      randomAccess = ((RandomAccessNnVectorsProducer) delegate).randomAccess();
       docIdOffsets = new int[sortMap.size()];
 
       int offset = 1; // 0 means no vector for this (field, document)
@@ -205,13 +205,13 @@ class VectorValuesWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessNnVectors randomAccess() {
 
       // Must make a new delegate randomAccess so that we have our own distinct float[]
-      final RandomAccessVectorValues delegateRA =
-          ((RandomAccessVectorValuesProducer) SortingVectorValues.this.delegate).randomAccess();
+      final RandomAccessNnVectors delegateRA =
+          ((RandomAccessNnVectorsProducer) SortingNnVectors.this.delegate).randomAccess();
 
-      return new RandomAccessVectorValues() {
+      return new RandomAccessNnVectors() {
 
         @Override
         public int size() {
@@ -241,12 +241,12 @@ class VectorValuesWriter {
     }
   }
 
-  private static class BufferedVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  private static class BufferedNnVectors extends NnVectors
+      implements RandomAccessNnVectors, RandomAccessNnVectorsProducer {
 
     final DocsWithFieldSet docsWithField;
 
-    // These are always the vectors of a VectorValuesWriter, which are copied when added to it
+    // These are always the vectors of a NnVectorsConsumer, which are copied when added to it
     final List<float[]> vectors;
     final SimilarityFunction similarityFunction;
     final int dimension;
@@ -259,7 +259,7 @@ class VectorValuesWriter {
     DocIdSetIterator docsWithFieldIter;
     int ord = -1;
 
-    BufferedVectorValues(
+    BufferedNnVectors(
         DocsWithFieldSet docsWithField,
         List<float[]> vectors,
         int dimension,
@@ -276,8 +276,8 @@ class VectorValuesWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new BufferedVectorValues(docsWithField, vectors, dimension, similarityFunction);
+    public RandomAccessNnVectors randomAccess() {
+      return new BufferedNnVectors(docsWithField, vectors, dimension, similarityFunction);
     }
 
     @Override

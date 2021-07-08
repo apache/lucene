@@ -20,9 +20,9 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Random;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.RandomAccessNnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -42,8 +42,8 @@ public final class HnswGraphBuilder {
   private final int beamWidth;
   private final NeighborArray scratch;
 
-  private final VectorValues.SimilarityFunction similarityFunction;
-  private final RandomAccessVectorValues vectorValues;
+  private final NnVectors.SimilarityFunction similarityFunction;
+  private final RandomAccessNnVectors nnVectors;
   private final Random random;
   private final BoundsChecker bound;
   final HnswGraph hnsw;
@@ -52,10 +52,10 @@ public final class HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private RandomAccessVectorValues buildVectors;
+  private RandomAccessNnVectors buildVectors;
 
   /**
-   * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense
+   * Reads all the vectors from a {@link NnVectors}, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
    * @param vectors the vectors whose relations are represented by the graph - must provide a
@@ -67,11 +67,11 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors, int maxConn, int beamWidth, long seed) {
-    vectorValues = vectors.randomAccess();
+    RandomAccessNnVectorsProducer vectors, int maxConn, int beamWidth, long seed) {
+    nnVectors = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
-    similarityFunction = vectorValues.similarityFunction();
-    if (similarityFunction == VectorValues.SimilarityFunction.NONE) {
+    similarityFunction = nnVectors.similarityFunction();
+    if (similarityFunction == NnVectors.SimilarityFunction.NONE) {
       throw new IllegalStateException("No distance function");
     }
     if (maxConn <= 0) {
@@ -89,15 +89,15 @@ public final class HnswGraphBuilder {
   }
 
   /**
-   * Reads all the vectors from two copies of a random access VectorValues. Providing two copies
+   * Reads all the vectors from two copies of a random access {@link NnVectors}. Providing two copies
    * enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public HnswGraph build(RandomAccessVectorValues vectors) throws IOException {
-    if (vectors == vectorValues) {
+  public HnswGraph build(RandomAccessNnVectors vectors) throws IOException {
+    if (vectors == nnVectors) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
     }
@@ -133,7 +133,7 @@ public final class HnswGraphBuilder {
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(float[] value) throws IOException {
     NeighborQueue candidates =
-        HnswGraph.search(value, beamWidth, beamWidth, vectorValues, hnsw, random);
+        HnswGraph.search(value, beamWidth, beamWidth, nnVectors, hnsw, random);
 
     int node = hnsw.addNode();
 
@@ -180,7 +180,7 @@ public final class HnswGraphBuilder {
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
       assert cNode < hnsw.size();
-      if (diversityCheck(vectorValues.vectorValue(cNode), cScore, neighbors, buildVectors)) {
+      if (diversityCheck(nnVectors.vectorValue(cNode), cScore, neighbors, buildVectors)) {
         neighbors.add(cNode, cScore);
       }
     }
@@ -202,7 +202,7 @@ public final class HnswGraphBuilder {
    * @param score the score of the new candidate and node n, to be compared with scores of the
    *     candidate and n's neighbors
    * @param neighbors the neighbors selected so far
-   * @param vectorValues source of values used for making comparisons between candidate and existing
+   * @param nnVectors source of values used for making comparisons between candidate and existing
    *     neighbors
    * @return whether the candidate is diverse given the existing neighbors
    */
@@ -210,12 +210,12 @@ public final class HnswGraphBuilder {
       float[] candidate,
       float score,
       NeighborArray neighbors,
-      RandomAccessVectorValues vectorValues)
+      RandomAccessNnVectors nnVectors)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
       float diversityCheck =
-          similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
+          similarityFunction.compare(candidate, nnVectors.vectorValue(neighbors.node[i]));
       if (bound.check(diversityCheck) == false) {
         return false;
       }
@@ -249,7 +249,7 @@ public final class HnswGraphBuilder {
       // them, drop it
       int nbrNode = neighbors.node[i];
       bound.set(neighbors.score[i]);
-      float[] nbrVector = vectorValues.vectorValue(nbrNode);
+      float[] nbrVector = nnVectors.vectorValue(nbrNode);
       for (int j = maxConn; j > i; j--) {
         float diversityCheck =
             similarityFunction.compare(nbrVector, buildVectors.vectorValue(neighbors.node[j]));

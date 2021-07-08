@@ -24,7 +24,7 @@ import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.TestUtil;
 
@@ -56,7 +56,7 @@ public class AssertingNnVectorsFormat extends NnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+    public void writeField(FieldInfo fieldInfo, NnVectors values) throws IOException {
       assert fieldInfo != null;
       assert values != null;
       delegate.writeField(fieldInfo, values);
@@ -87,8 +87,8 @@ public class AssertingNnVectorsFormat extends NnVectorsFormat {
     }
 
     @Override
-    public VectorValues getVectorValues(String field) throws IOException {
-      VectorValues values = delegate.getVectorValues(field);
+    public NnVectors getNnVectors(String field) throws IOException {
+      NnVectors values = delegate.getNnVectors(field);
       if (values != null) {
         assert values.docID() == -1;
         assert values.size() >= 0;

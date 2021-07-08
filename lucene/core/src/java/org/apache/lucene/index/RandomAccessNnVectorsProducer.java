@@ -18,16 +18,16 @@
 package org.apache.lucene.index;
 
 /**
- * Something (generally a {@link VectorValues}) that provides a {@link RandomAccessVectorValues}.
+ * Something (generally a {@link NnVectors}) that provides a {@link RandomAccessNnVectors}.
  *
  * @lucene.experimental
  */
-public interface RandomAccessVectorValuesProducer {
+public interface RandomAccessNnVectorsProducer {
   /**
    * Return a random access interface over this iterator's vectors. Calling the RandomAccess methods
    * will have no effect on the progress of the iteration or the values returned by this iterator.
    * Successive calls will retrieve independent copies that do not overwrite each others' returned
    * values.
    */
-  RandomAccessVectorValues randomAccess();
+  RandomAccessNnVectors randomAccess();
 }

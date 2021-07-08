@@ -215,7 +215,7 @@ public final class CheckIndex implements Closeable {
       public IndexSortStatus indexSortStatus;
 
       /** Status of vectors */
-      public VectorValuesStatus vectorValuesStatus;
+      public NnVectorsStatus nnVectorsStatus;
     }
 
     /** Status from testing livedocs */
@@ -350,13 +350,13 @@ public final class CheckIndex implements Closeable {
       public Throwable error = null;
     }
 
-    /** Status from testing VectorValues */
-    public static final class VectorValuesStatus {
+    /** Status from testing NnVectors */
+    public static final class NnVectorsStatus {
 
-      VectorValuesStatus() {}
+      NnVectorsStatus() {}
 
       /** Total number of vector values tested. */
-      public long totalVectorValues;
+      public long totalNnVectors;
 
       /** Total number of fields with vectors. */
       public int totalVectorFields;
@@ -757,8 +757,8 @@ public final class CheckIndex implements Closeable {
           // Test PointValues
           segInfoStat.pointsStatus = testPoints(reader, infoStream, failFast);
 
-          // Test VectorValues
-          segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
+          // Test NnVectors
+          segInfoStat.nnVectorsStatus = testVectors(reader, infoStream, failFast);
 
           // Test index sort
           segInfoStat.indexSortStatus = testSort(reader, indexSort, infoStream, failFast);
@@ -2284,20 +2284,20 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
-  public static Status.VectorValuesStatus testVectors(
+  public static Status.NnVectorsStatus testVectors(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
       infoStream.print("    test: vectors..............");
     }
     long startNS = System.nanoTime();
     FieldInfos fieldInfos = reader.getFieldInfos();
-    Status.VectorValuesStatus status = new Status.VectorValuesStatus();
+    Status.NnVectorsStatus status = new Status.NnVectorsStatus();
     try {
 
-      if (fieldInfos.hasVectorValues()) {
+      if (fieldInfos.hasNnVectors()) {
         for (FieldInfo fieldInfo : fieldInfos) {
-          if (fieldInfo.hasVectorValues()) {
-            int dimension = fieldInfo.getVectorDimension();
+          if (fieldInfo.hasNnVectors()) {
+            int dimension = fieldInfo.getNnVectorDimension();
             if (dimension <= 0) {
               throw new RuntimeException(
                   "Field \""
@@ -2305,7 +2305,7 @@ public final class CheckIndex implements Closeable {
                       + "\" has vector values but dimension is "
                       + dimension);
             }
-            VectorValues values = reader.getVectorValues(fieldInfo.name);
+            NnVectors values = reader.getNnVectors(fieldInfo.name);
             if (values == null) {
               continue;
             }
@@ -2336,7 +2336,7 @@ public final class CheckIndex implements Closeable {
                       + docCount
                       + " docs with values");
             }
-            status.totalVectorValues += docCount;
+            status.totalNnVectors += docCount;
           }
         }
       }
@@ -2347,7 +2347,7 @@ public final class CheckIndex implements Closeable {
               Locale.ROOT,
               "OK [%d fields, %d vectors] [took %.3f sec]",
               status.totalVectorFields,
-              status.totalVectorValues,
+              status.totalNnVectors,
               nsToSec(System.nanoTime() - startNS)));
 
     } catch (Throwable e) {

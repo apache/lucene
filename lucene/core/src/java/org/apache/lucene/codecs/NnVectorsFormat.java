@@ -20,7 +20,7 @@ package org.apache.lucene.codecs;
 import java.io.IOException;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.util.NamedSPILoader;
@@ -84,7 +84,7 @@ public abstract class NnVectorsFormat implements NamedSPILoader.NamedSPI {
         @Override
         public NnVectorsWriter fieldsWriter(SegmentWriteState state) {
           throw new UnsupportedOperationException(
-              "Attempt to write EMPTY VectorValues: maybe you forgot to use codec=Lucene90");
+              "Attempt to write EMPTY NnVectors: maybe you forgot to use codec=Lucene90");
         }
 
         @Override
@@ -94,8 +94,8 @@ public abstract class NnVectorsFormat implements NamedSPILoader.NamedSPI {
             public void checkIntegrity() {}
 
             @Override
-            public VectorValues getVectorValues(String field) {
-              return VectorValues.EMPTY;
+            public NnVectors getNnVectors(String field) {
+              return NnVectors.EMPTY;
             }
 
             @Override

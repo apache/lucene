@@ -36,7 +36,7 @@ public abstract class KnnGraphValues {
    * returns, call {@link #nextNeighbor()} to return successive (ordered) connected node ordinals.
    *
    * @param target must be a valid node in the graph, ie. &ge; 0 and &lt; {@link
-   *     VectorValues#size()}.
+   *     NnVectors#size()}.
    */
   public abstract void seek(int target) throws IOException;
 

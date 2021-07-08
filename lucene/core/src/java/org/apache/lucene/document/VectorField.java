@@ -17,14 +17,14 @@
 
 package org.apache.lucene.document;
 
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 
 /**
  * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
  * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
- * {@link VectorValues}, which is a forward-only docID-based iterator and also offers random-access
- * by dense ordinal (not docId). VectorValues.SearchSimlarity may be used to compare vectors at
+ * {@link NnVectors}, which is a forward-only docID-based iterator and also offers random-access
+ * by dense ordinal (not docId). NnVectors.SimilarityFunction may be used to compare vectors at
  * query time (for example as part of result ranking). A VectorField may be associated with a search
  * similarity function defining the metric used for nearest-neighbor search among vectors of that
  * field.
@@ -34,7 +34,7 @@ import org.apache.lucene.index.VectorValues;
 public class VectorField extends Field {
 
   private static FieldType createType(
-      float[] v, VectorValues.SimilarityFunction similarityFunction) {
+      float[] v, NnVectors.SimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -42,9 +42,9 @@ public class VectorField extends Field {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
-    if (dimension > VectorValues.MAX_DIMENSIONS) {
+    if (dimension > NnVectors.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
-          "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
+          "cannot index vectors with dimension greater than " + NnVectors.MAX_DIMENSIONS);
     }
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
@@ -63,7 +63,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, VectorValues.SimilarityFunction similarityFunction) {
+      int dimension, NnVectors.SimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
     type.freeze();
@@ -83,7 +83,7 @@ public class VectorField extends Field {
    *     dimension &gt; 1024.
    */
   public VectorField(
-      String name, float[] vector, VectorValues.SimilarityFunction similarityFunction) {
+      String name, float[] vector, NnVectors.SimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }
@@ -99,7 +99,7 @@ public class VectorField extends Field {
    *     dimension &gt; 1024.
    */
   public VectorField(String name, float[] vector) {
-    this(name, vector, VectorValues.SimilarityFunction.EUCLIDEAN);
+    this(name, vector, NnVectors.SimilarityFunction.EUCLIDEAN);
   }
 
   /**

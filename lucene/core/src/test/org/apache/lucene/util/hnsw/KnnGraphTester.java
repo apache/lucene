@@ -51,9 +51,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.RandomAccessNnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -73,8 +73,8 @@ public class KnnGraphTester {
 
   private static final String KNN_FIELD = "knn";
   private static final String ID_FIELD = "id";
-  private static final VectorValues.SimilarityFunction SIMILARITY_FUNCTION =
-      VectorValues.SimilarityFunction.DOT_PRODUCT;
+  private static final NnVectors.SimilarityFunction SIMILARITY_FUNCTION =
+      NnVectors.SimilarityFunction.DOT_PRODUCT;
 
   private int numDocs;
   private int dim;
@@ -250,7 +250,7 @@ public class KnnGraphTester {
 
   private void dumpGraph(Path docsPath) throws IOException {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
-      RandomAccessVectorValues values = vectors.randomAccess();
+      RandomAccessNnVectors values = vectors.randomAccess();
       HnswGraphBuilder builder = new HnswGraphBuilder(vectors, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
@@ -581,7 +581,7 @@ public class KnnGraphTester {
     // iwc.setMaxBufferedDocs(10000);
 
     FieldType fieldType =
-        VectorField.createFieldType(dim, VectorValues.SimilarityFunction.DOT_PRODUCT);
+        VectorField.createFieldType(dim, NnVectors.SimilarityFunction.DOT_PRODUCT);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
@@ -630,7 +630,7 @@ public class KnnGraphTester {
     System.exit(1);
   }
 
-  class BinaryFileVectors implements RandomAccessVectorValuesProducer, Closeable {
+  class BinaryFileVectors implements RandomAccessNnVectorsProducer, Closeable {
 
     private final int size;
     private final FileChannel in;
@@ -656,11 +656,11 @@ public class KnnGraphTester {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessNnVectors randomAccess() {
       return new Values();
     }
 
-    class Values implements RandomAccessVectorValues {
+    class Values implements RandomAccessNnVectors {
 
       float[] vector = new float[dim];
       FloatBuffer source = mmap.slice();
@@ -676,7 +676,7 @@ public class KnnGraphTester {
       }
 
       @Override
-      public VectorValues.SimilarityFunction similarityFunction() {
+      public NnVectors.SimilarityFunction similarityFunction() {
         return SIMILARITY_FUNCTION;
       }
 

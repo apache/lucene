@@ -38,7 +38,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.VectorField;
-import org.apache.lucene.index.VectorValues.SimilarityFunction;
+import org.apache.lucene.index.NnVectors.SimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -272,7 +272,7 @@ public class TestKnnGraph extends LuceneTestCase {
          * approximate KNN search algorithm
          */
         assertGraphSearch(new int[] {0, 15, 3, 18, 5}, new float[] {0f, 0.1f}, dr);
-        // Tiebreaking by docid must be done after VectorValues.search.
+        // Tiebreaking by docid must be done after NnVectorsReader.search.
         // assertGraphSearch(new int[]{11, 1, 8, 14, 21}, new float[]{2, 2}, dr);
         assertGraphSearch(new int[] {15, 18, 0, 3, 5}, new float[] {0.3f, 0.8f}, dr);
       }
@@ -323,7 +323,7 @@ public class TestKnnGraph extends LuceneTestCase {
     try (DirectoryReader dr = DirectoryReader.open(iw)) {
       for (LeafReaderContext ctx : dr.leaves()) {
         LeafReader reader = ctx.reader();
-        VectorValues vectorValues = reader.getVectorValues(KNN_GRAPH_FIELD);
+        NnVectors nnVectors = reader.getNnVectors(KNN_GRAPH_FIELD);
         PerFieldNnVectorsFormat.FieldsReader perFieldReader =
             (PerFieldNnVectorsFormat.FieldsReader) ((CodecReader) reader).getVectorReader();
         if (perFieldReader == null) {
@@ -332,15 +332,15 @@ public class TestKnnGraph extends LuceneTestCase {
         Lucene90HnswVectorsReader vectorReader =
             (Lucene90HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
         KnnGraphValues graphValues = vectorReader.getGraphValues(KNN_GRAPH_FIELD);
-        assertEquals((vectorValues == null), (graphValues == null));
-        if (vectorValues == null) {
+        assertEquals((nnVectors == null), (graphValues == null));
+        if (nnVectors == null) {
           continue;
         }
         int[][] graph = new int[reader.maxDoc()][];
         boolean foundOrphan = false;
         int graphSize = 0;
         for (int i = 0; i < reader.maxDoc(); i++) {
-          int nextDocWithVectors = vectorValues.advance(i);
+          int nextDocWithVectors = nnVectors.advance(i);
           // System.out.println("advanced to " + nextDocWithVectors);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
             int id = Integer.parseInt(reader.document(i).get("id"));
@@ -353,7 +353,7 @@ public class TestKnnGraph extends LuceneTestCase {
           int id = Integer.parseInt(reader.document(i).get("id"));
           graphValues.seek(graphSize);
           // documents with KnnGraphValues have the expected vectors
-          float[] scratch = vectorValues.vectorValue();
+          float[] scratch = nnVectors.vectorValue();
           assertArrayEquals(
               "vector did not match for doc " + i + ", id=" + id + ": " + Arrays.toString(scratch),
               values[id],
@@ -380,7 +380,7 @@ public class TestKnnGraph extends LuceneTestCase {
           }
           graphSize++;
         }
-        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        assertEquals(NO_MORE_DOCS, nnVectors.nextDoc());
         if (foundOrphan) {
           assertEquals("graph is not fully connected", 1, graphSize);
         } else {

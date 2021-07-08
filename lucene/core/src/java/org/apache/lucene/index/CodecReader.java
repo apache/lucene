@@ -208,15 +208,15 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final NnVectors getNnVectors(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null || fi.getNnVectorDimension() == 0) {
       // Field does not exist or does not index vectors
       return null;
     }
 
-    return getVectorReader().getVectorValues(field);
+    return getVectorReader().getNnVectors(field);
   }
 
   @Override
@@ -224,7 +224,7 @@ public abstract class CodecReader extends LeafReader {
       throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null || fi.getNnVectorDimension() == 0) {
       // Field does not exist or does not index vectors
       return null;
     }

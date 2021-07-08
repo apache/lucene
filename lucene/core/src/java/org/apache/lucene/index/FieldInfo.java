@@ -55,8 +55,8 @@ public final class FieldInfo {
   private int pointNumBytes;
 
   // if it is a positive value, it means this field indexes vectors
-  private final int vectorDimension;
-  private final VectorValues.SimilarityFunction vectorSimilarityFunction;
+  private final int nnVectorDimension;
+  private final NnVectors.SimilarityFunction vectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -79,8 +79,8 @@ public final class FieldInfo {
       int pointDimensionCount,
       int pointIndexDimensionCount,
       int pointNumBytes,
-      int vectorDimension,
-      VectorValues.SimilarityFunction vectorSimilarityFunction,
+      int nnVectorDimension,
+      NnVectors.SimilarityFunction vectorSimilarityFunction,
       boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
@@ -104,7 +104,7 @@ public final class FieldInfo {
     this.pointDimensionCount = pointDimensionCount;
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
-    this.vectorDimension = vectorDimension;
+    this.nnVectorDimension = nnVectorDimension;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.checkConsistency();
@@ -198,11 +198,11 @@ public final class FieldInfo {
       throw new IllegalArgumentException(
           "Vector similarity function must not be null (field: '" + name + "')");
     }
-    if (vectorDimension < 0) {
+    if (nnVectorDimension < 0) {
       throw new IllegalArgumentException(
-          "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
+          "vectorDimension must be >=0; got " + nnVectorDimension + " (field: '" + name + "')");
     }
-    if (vectorDimension == 0 && vectorSimilarityFunction != VectorValues.SimilarityFunction.NONE) {
+    if (nnVectorDimension == 0 && vectorSimilarityFunction != NnVectors.SimilarityFunction.NONE) {
       throw new IllegalArgumentException(
           "vector similarity function must be NONE when dimension = 0; got "
               + vectorSimilarityFunction
@@ -236,9 +236,9 @@ public final class FieldInfo {
         o.pointNumBytes);
     verifySameVectorOptions(
         fieldName,
-        this.vectorDimension,
+        this.nnVectorDimension,
         this.vectorSimilarityFunction,
-        o.vectorDimension,
+        o.nnVectorDimension,
         o.vectorSimilarityFunction);
   }
 
@@ -355,9 +355,9 @@ public final class FieldInfo {
   static void verifySameVectorOptions(
       String fieldName,
       int vd1,
-      VectorValues.SimilarityFunction vsf1,
+      NnVectors.SimilarityFunction vsf1,
       int vd2,
-      VectorValues.SimilarityFunction vsf2) {
+      NnVectors.SimilarityFunction vsf2) {
     if (vd1 != vd2 || vsf1 != vsf2) {
       throw new IllegalArgumentException(
           "cannot change field \""
@@ -474,12 +474,12 @@ public final class FieldInfo {
   }
 
   /** Returns the number of dimensions of the vector value */
-  public int getVectorDimension() {
-    return vectorDimension;
+  public int getNnVectorDimension() {
+    return nnVectorDimension;
   }
 
-  /** Returns {@link VectorValues.SimilarityFunction} for the field */
-  public VectorValues.SimilarityFunction getVectorSimilarityFunction() {
+  /** Returns {@link NnVectors.SimilarityFunction} for the field */
+  public NnVectors.SimilarityFunction getVectorSimilarityFunction() {
     return vectorSimilarityFunction;
   }
 
@@ -587,9 +587,9 @@ public final class FieldInfo {
     return storeTermVector;
   }
 
-  /** Returns whether any (numeric) vector values exist for this field */
-  public boolean hasVectorValues() {
-    return vectorDimension > 0;
+  /** Returns whether any (numeric) vectors exist for this field */
+  public boolean hasNnVectors() {
+    return nnVectorDimension > 0;
   }
 
   /** Get a codec attribute value, or null if it does not exist */

@@ -27,7 +27,7 @@ import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -48,7 +48,7 @@ public class SimpleTextNnVectorsWriter extends NnVectorsWriter {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
   SimpleTextNnVectorsWriter(SegmentWriteState state) throws IOException {
-    assert state.fieldInfos.hasVectorValues();
+    assert state.fieldInfos.hasNnVectors();
 
     boolean success = false;
     // exception handling to pass TestSimpleTextNnVectorsFormat#testRandomExceptions
@@ -71,19 +71,19 @@ public class SimpleTextNnVectorsWriter extends NnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
+  public void writeField(FieldInfo fieldInfo, NnVectors vectors) throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     int docV;
     for (docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-      writeVectorValue(vectors);
+      writeNnVectors(vectors);
       docIds.add(docV);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeVectorValue(VectorValues vectors) throws IOException {
+  private void writeNnVectors(NnVectors vectors) throws IOException {
     // write vector value
     float[] value = vectors.vectorValue();
     assert value.length == vectors.dimension();
@@ -99,7 +99,7 @@ public class SimpleTextNnVectorsWriter extends NnVectorsWriter {
     writeField(meta, SCORE_FUNCTION, field.getVectorSimilarityFunction().name());
     writeField(meta, VECTOR_DATA_OFFSET, vectorDataOffset);
     writeField(meta, VECTOR_DATA_LENGTH, vectorDataLength);
-    writeField(meta, VECTOR_DIMENSION, field.getVectorDimension());
+    writeField(meta, VECTOR_DIMENSION, field.getNnVectorDimension());
     writeField(meta, SIZE, docIds.size());
     for (Integer docId : docIds) {
       writeInt(meta, docId);

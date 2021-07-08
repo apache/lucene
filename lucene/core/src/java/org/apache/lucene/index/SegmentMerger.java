@@ -143,8 +143,8 @@ final class SegmentMerger {
       mergeWithLogging(() -> mergePoints(segmentWriteState), "points", numMerged);
     }
 
-    if (mergeState.mergeFieldInfos.hasVectorValues()) {
-      mergeWithLogging(() -> mergeVectorValues(segmentWriteState), "numeric vectors", numMerged);
+    if (mergeState.mergeFieldInfos.hasNnVectors()) {
+      mergeWithLogging(() -> mergeNnVectors(segmentWriteState), "numeric vectors", numMerged);
     }
 
     if (mergeState.mergeFieldInfos.hasVectors()) {
@@ -235,7 +235,7 @@ final class SegmentMerger {
     }
   }
 
-  private void mergeVectorValues(SegmentWriteState segmentWriteState) throws IOException {
+  private void mergeNnVectors(SegmentWriteState segmentWriteState) throws IOException {
     try (NnVectorsWriter writer = codec.nnVectorsFormat().fieldsWriter(segmentWriteState)) {
       writer.merge(mergeState);
     }

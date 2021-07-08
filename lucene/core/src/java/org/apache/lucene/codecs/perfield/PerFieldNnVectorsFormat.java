@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -97,7 +97,7 @@ public abstract class PerFieldNnVectorsFormat extends NnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+    public void writeField(FieldInfo fieldInfo, NnVectors values) throws IOException {
       getInstance(fieldInfo).writeField(fieldInfo, values);
     }
 
@@ -183,7 +183,7 @@ public abstract class PerFieldNnVectorsFormat extends NnVectorsFormat {
       try {
         // Read field name -> format name
         for (FieldInfo fi : readState.fieldInfos) {
-          if (fi.hasVectorValues()) {
+          if (fi.hasNnVectors()) {
             final String fieldName = fi.name;
             final String formatName = fi.getAttribute(PER_FIELD_FORMAT_KEY);
             if (formatName != null) {
@@ -230,12 +230,12 @@ public abstract class PerFieldNnVectorsFormat extends NnVectorsFormat {
     }
 
     @Override
-    public VectorValues getVectorValues(String field) throws IOException {
+    public NnVectors getNnVectors(String field) throws IOException {
       NnVectorsReader nnVectorsReader = fields.get(field);
       if (nnVectorsReader == null) {
         return null;
       } else {
-        return nnVectorsReader.getVectorValues(field);
+        return nnVectorsReader.getNnVectors(field);
       }
     }
 

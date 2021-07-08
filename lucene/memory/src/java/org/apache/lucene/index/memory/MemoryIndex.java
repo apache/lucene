@@ -543,7 +543,7 @@ public class MemoryIndex {
               info.fieldInfo.getPointDimensionCount(),
               info.fieldInfo.getPointIndexDimensionCount(),
               info.fieldInfo.getPointNumBytes(),
-              info.fieldInfo.getVectorDimension(),
+              info.fieldInfo.getNnVectorDimension(),
               info.fieldInfo.getVectorSimilarityFunction(),
               info.fieldInfo.isSoftDeletesField());
     } else if (existingDocValuesType != docValuesType) {
@@ -1354,7 +1354,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public VectorValues getVectorValues(String fieldName) {
+    public NnVectors getNnVectors(String fieldName) {
       return null;
     }
 

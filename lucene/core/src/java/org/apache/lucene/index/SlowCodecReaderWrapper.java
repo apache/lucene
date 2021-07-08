@@ -162,8 +162,8 @@ public final class SlowCodecReaderWrapper {
   private static NnVectorsReader readerToVectorReader(LeafReader reader) {
     return new NnVectorsReader() {
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
-        return reader.getVectorValues(field);
+      public NnVectors getNnVectors(String field) throws IOException {
+        return reader.getNnVectors(field);
       }
 
       @Override

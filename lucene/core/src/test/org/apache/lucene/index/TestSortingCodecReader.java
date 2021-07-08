@@ -197,7 +197,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
                 leaf.getSortedNumericDocValues("sorted_numeric_dv");
             SortedSetDocValues sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
             SortedDocValues binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
-            VectorValues vectorValues = leaf.getVectorValues("vector");
+            NnVectors nnVectors = leaf.getNnVectors("vector");
             NumericDocValues ids = leaf.getNumericDocValues("id");
             long prevValue = -1;
             boolean usingAltIds = false;
@@ -212,7 +212,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
                 sorted_numeric_dv = leaf.getSortedNumericDocValues("sorted_numeric_dv");
                 sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
                 binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
-                vectorValues = leaf.getVectorValues("vector");
+                nnVectors = leaf.getNnVectors("vector");
                 prevValue = -1;
               }
               assertTrue(prevValue + " < " + ids.longValue(), prevValue < ids.longValue());
@@ -221,7 +221,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertTrue(sorted_numeric_dv.advanceExact(idNext));
               assertTrue(sorted_set_dv.advanceExact(idNext));
               assertTrue(binary_sorted_dv.advanceExact(idNext));
-              assertEquals(idNext, vectorValues.advance(idNext));
+              assertEquals(idNext, nnVectors.advance(idNext));
               assertEquals(new BytesRef(ids.longValue() + ""), binary_dv.binaryValue());
               assertEquals(
                   new BytesRef(ids.longValue() + ""),
@@ -232,7 +232,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertEquals(1, sorted_numeric_dv.docValueCount());
               assertEquals(ids.longValue(), sorted_numeric_dv.nextValue());
 
-              float[] vectorValue = vectorValues.vectorValue();
+              float[] vectorValue = nnVectors.vectorValue();
               assertEquals(1, vectorValue.length);
               assertEquals((float) ids.longValue(), vectorValue[0], 0.001f);
 

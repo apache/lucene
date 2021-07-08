@@ -23,7 +23,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {
@@ -42,8 +42,8 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
-  private VectorValues.SimilarityFunction vectorSimilarityFunction =
-      VectorValues.SimilarityFunction.NONE;
+  private NnVectors.SimilarityFunction vectorSimilarityFunction =
+      NnVectors.SimilarityFunction.NONE;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -371,15 +371,15 @@ public class FieldType implements IndexableFieldType {
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
   public void setVectorDimensionsAndSimilarityFunction(
-      int numDimensions, VectorValues.SimilarityFunction distFunc) {
+      int numDimensions, NnVectors.SimilarityFunction distFunc) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
     }
-    if (numDimensions > VectorValues.MAX_DIMENSIONS) {
+    if (numDimensions > NnVectors.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
-          "vector numDimensions must be <= VectorValues.MAX_DIMENSIONS (="
-              + VectorValues.MAX_DIMENSIONS
+          "vector numDimensions must be <= NnVectors.MAX_DIMENSIONS (="
+              + NnVectors.MAX_DIMENSIONS
               + "); got "
               + numDimensions);
     }
@@ -393,7 +393,7 @@ public class FieldType implements IndexableFieldType {
   }
 
   @Override
-  public VectorValues.SimilarityFunction vectorSimilarityFunction() {
+  public NnVectors.SimilarityFunction vectorSimilarityFunction() {
     return vectorSimilarityFunction;
   }
 

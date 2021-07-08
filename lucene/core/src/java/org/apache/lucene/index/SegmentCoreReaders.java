@@ -149,7 +149,7 @@ final class SegmentCoreReaders {
         pointsReader = null;
       }
 
-      if (coreFieldInfos.hasVectorValues()) {
+      if (coreFieldInfos.hasNnVectors()) {
         nnVectorsReader = codec.nnVectorsFormat().fieldsReader(segmentReadState);
       } else {
         nnVectorsReader = null;

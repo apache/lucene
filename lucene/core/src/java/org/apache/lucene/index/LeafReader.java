@@ -206,12 +206,12 @@ public abstract class LeafReader extends IndexReader {
   public abstract NumericDocValues getNormValues(String field) throws IOException;
 
   /**
-   * Returns {@link VectorValues} for this field, or null if no {@link VectorValues} were indexed.
+   * Returns {@link NnVectors} for this field, or null if no {@link NnVectors} were indexed.
    * The returned instance should only be used by a single thread.
    *
    * @lucene.experimental
    */
-  public abstract VectorValues getVectorValues(String field) throws IOException;
+  public abstract NnVectors getNnVectors(String field) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for

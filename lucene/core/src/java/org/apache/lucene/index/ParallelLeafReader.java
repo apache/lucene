@@ -386,10 +386,10 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String fieldName) throws IOException {
+  public NnVectors getNnVectors(String fieldName) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null ? null : reader.getVectorValues(fieldName);
+    return reader == null ? null : reader.getNnVectors(fieldName);
   }
 
   @Override

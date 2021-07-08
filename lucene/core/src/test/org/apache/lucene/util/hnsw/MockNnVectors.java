@@ -17,14 +17,14 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.RandomAccessNnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
-class MockVectorValues extends VectorValues
-    implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+class MockNnVectors extends NnVectors
+    implements RandomAccessNnVectors, RandomAccessNnVectorsProducer {
   private final float[] scratch;
 
   protected final int dimension;
@@ -35,7 +35,7 @@ class MockVectorValues extends VectorValues
 
   private int pos = -1;
 
-  MockVectorValues(SimilarityFunction similarityFunction, float[][] values) {
+  MockNnVectors(SimilarityFunction similarityFunction, float[][] values) {
     this.similarityFunction = similarityFunction;
     this.dimension = values[0].length;
     this.values = values;
@@ -51,8 +51,8 @@ class MockVectorValues extends VectorValues
     scratch = new float[dimension];
   }
 
-  public MockVectorValues copy() {
-    return new MockVectorValues(similarityFunction, values);
+  public MockNnVectors copy() {
+    return new MockNnVectors(similarityFunction, values);
   }
 
   @Override
@@ -76,7 +76,7 @@ class MockVectorValues extends VectorValues
       return values[pos];
     } else {
       // Sometimes use the same scratch array repeatedly, mimicing what the codec will do.
-      // This should help us catch cases of aliasing where the same VectorValues source is used
+      // This should help us catch cases of aliasing where the same NnVectors source is used
       // twice in a
       // single computation.
       System.arraycopy(values[pos], 0, scratch, 0, dimension);
@@ -85,7 +85,7 @@ class MockVectorValues extends VectorValues
   }
 
   @Override
-  public RandomAccessVectorValues randomAccess() {
+  public RandomAccessNnVectors randomAccess() {
     return copy();
   }
 

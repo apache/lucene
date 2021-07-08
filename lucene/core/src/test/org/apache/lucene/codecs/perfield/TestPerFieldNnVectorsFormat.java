@@ -42,7 +42,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.RandomCodec;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestUtil;
@@ -169,7 +169,7 @@ public class TestPerFieldNnVectorsFormat extends BaseNnVectorsFormatTestCase {
       NnVectorsWriter writer = delegate.fieldsWriter(state);
       return new NnVectorsWriter() {
         @Override
-        public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+        public void writeField(FieldInfo fieldInfo, NnVectors values) throws IOException {
           fieldsWritten.add(fieldInfo.name);
           writer.writeField(fieldInfo, values);
         }

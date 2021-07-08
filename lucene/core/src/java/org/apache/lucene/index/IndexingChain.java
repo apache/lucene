@@ -36,7 +36,6 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.NnVectorsFormat;
-import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.VectorField;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -430,14 +429,14 @@ final class IndexingChain implements Accountable {
 
   /** Writes all buffered vectors. */
   private void writeVectors(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    NnVectorsWriter nnVectorsWriter = null;
+    org.apache.lucene.codecs.NnVectorsWriter nnVectorsWriter = null;
     boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
         while (perField != null) {
-          if (perField.vectorValuesWriter != null) {
-            if (perField.fieldInfo.getVectorDimension() == 0) {
+          if (perField.nnVectorsWriter != null) {
+            if (perField.fieldInfo.getNnVectorDimension() == 0) {
               // BUG
               throw new AssertionError(
                   "segment="
@@ -458,9 +457,9 @@ final class IndexingChain implements Accountable {
               nnVectorsWriter = fmt.fieldsWriter(state);
             }
 
-            perField.vectorValuesWriter.flush(sortMap, nnVectorsWriter);
-            perField.vectorValuesWriter = null;
-          } else if (perField.fieldInfo != null && perField.fieldInfo.getVectorDimension() != 0) {
+            perField.nnVectorsWriter.flush(sortMap, nnVectorsWriter);
+            perField.nnVectorsWriter = null;
+          } else if (perField.fieldInfo != null && perField.fieldInfo.getNnVectorDimension() != 0) {
             // BUG
             throw new AssertionError(
                 "segment="
@@ -713,8 +712,8 @@ final class IndexingChain implements Accountable {
     if (fi.getPointDimensionCount() != 0) {
       pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
-    if (fi.getVectorDimension() != 0) {
-      pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed);
+    if (fi.getNnVectorDimension() != 0) {
+      pf.nnVectorsWriter = new NnVectorsConsumer(fi, bytesUsed);
     }
   }
 
@@ -761,7 +760,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      pf.vectorValuesWriter.addValue(docID, ((VectorField) field).vectorValue());
+      pf.nnVectorsWriter.addValue(docID, ((VectorField) field).vectorValue());
     }
     return indexedField;
   }
@@ -1033,7 +1032,7 @@ final class IndexingChain implements Accountable {
     PointValuesWriter pointValuesWriter;
 
     // Non-null if this field ever had vector values in this segment:
-    VectorValuesWriter vectorValuesWriter;
+    NnVectorsConsumer nnVectorsWriter;
 
     /** We use this to know when a PerField is seen for the first time in the current document. */
     long fieldGen = -1;
@@ -1327,8 +1326,8 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
-    private VectorValues.SimilarityFunction vectorSimilarityFunction =
-        VectorValues.SimilarityFunction.NONE;
+    private NnVectors.SimilarityFunction vectorSimilarityFunction =
+        NnVectors.SimilarityFunction.NONE;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1383,8 +1382,8 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setVectors(VectorValues.SimilarityFunction similarityFunction, int dimension) {
-      if (vectorSimilarityFunction == VectorValues.SimilarityFunction.NONE) {
+    void setVectors(NnVectors.SimilarityFunction similarityFunction, int dimension) {
+      if (vectorSimilarityFunction == NnVectors.SimilarityFunction.NONE) {
         this.vectorDimension = dimension;
         this.vectorSimilarityFunction = similarityFunction;
       } else {
@@ -1403,7 +1402,7 @@ final class IndexingChain implements Accountable {
       pointIndexDimensionCount = 0;
       pointNumBytes = 0;
       vectorDimension = 0;
-      vectorSimilarityFunction = VectorValues.SimilarityFunction.NONE;
+      vectorSimilarityFunction = NnVectors.SimilarityFunction.NONE;
     }
 
     void assertSameSchema(FieldInfo fi) {
@@ -1416,7 +1415,7 @@ final class IndexingChain implements Accountable {
               && pointDimensionCount == fi.getPointDimensionCount()
               && pointIndexDimensionCount == fi.getPointIndexDimensionCount()
               && pointNumBytes == fi.getPointNumBytes()
-              && vectorDimension == fi.getVectorDimension()
+              && vectorDimension == fi.getNnVectorDimension()
               && vectorSimilarityFunction == fi.getVectorSimilarityFunction());
     }
   }

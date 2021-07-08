@@ -30,13 +30,13 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public abstract class VectorValues extends DocIdSetIterator {
+public abstract class NnVectors extends DocIdSetIterator {
 
   /** The maximum length of a vector */
   public static int MAX_DIMENSIONS = 1024;
 
   /** Sole constructor */
-  protected VectorValues() {}
+  protected NnVectors() {}
 
   /** Return the dimension of the vectors */
   public abstract int dimension();
@@ -130,10 +130,10 @@ public abstract class VectorValues extends DocIdSetIterator {
 
   /**
    * Represents the lack of vector values. It is returned by providers that do not support
-   * VectorValues.
+   * {@link NnVectors}.
    */
-  public static final VectorValues EMPTY =
-      new VectorValues() {
+  public static final NnVectors EMPTY =
+      new NnVectors() {
 
         @Override
         public int size() {
@@ -158,7 +158,7 @@ public abstract class VectorValues extends DocIdSetIterator {
 
         @Override
         public int docID() {
-          throw new IllegalStateException("VectorValues is EMPTY, and not positioned on a doc");
+          throw new IllegalStateException("NnVectors is EMPTY, and not positioned on a doc");
         }
 
         @Override

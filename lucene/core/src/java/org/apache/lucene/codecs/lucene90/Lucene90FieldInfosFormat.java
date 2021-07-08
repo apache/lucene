@@ -29,7 +29,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.VectorValues.SimilarityFunction;
+import org.apache.lucene.index.NnVectors.SimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -345,7 +345,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
           output.writeVInt(fi.getPointIndexDimensionCount());
           output.writeVInt(fi.getPointNumBytes());
         }
-        output.writeVInt(fi.getVectorDimension());
+        output.writeVInt(fi.getNnVectorDimension());
         output.writeByte((byte) fi.getVectorSimilarityFunction().ordinal());
       }
       CodecUtil.writeFooter(output);

@@ -27,9 +27,9 @@ import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.RandomAccessNnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
@@ -39,7 +39,7 @@ public abstract class NnVectorsWriter implements Closeable {
   protected NnVectorsWriter() {}
 
   /** Write all values contained in the provided reader */
-  public abstract void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException;
+  public abstract void writeField(FieldInfo fieldInfo, NnVectors values) throws IOException;
 
   /** Called once at the end before close */
   public abstract void finish() throws IOException;
@@ -48,13 +48,13 @@ public abstract class NnVectorsWriter implements Closeable {
   public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
       NnVectorsReader reader = mergeState.nnVectorsReaders[i];
-      assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
+      assert reader != null || mergeState.fieldInfos[i].hasNnVectors() == false;
       if (reader != null) {
         reader.checkIntegrity();
       }
     }
     for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
-      if (fieldInfo.hasVectorValues()) {
+      if (fieldInfo.hasNnVectors()) {
         mergeNnVectors(fieldInfo, mergeState);
       }
     }
@@ -66,16 +66,16 @@ public abstract class NnVectorsWriter implements Closeable {
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
     }
-    List<VectorValuesSub> subs = new ArrayList<>();
+    List<NnVectorsSub> subs = new ArrayList<>();
     int dimension = -1;
-    VectorValues.SimilarityFunction similarityFunction = null;
+    NnVectors.SimilarityFunction similarityFunction = null;
     int nonEmptySegmentIndex = 0;
     for (int i = 0; i < mergeState.nnVectorsReaders.length; i++) {
       NnVectorsReader nnVectorsReader = mergeState.nnVectorsReaders[i];
       if (nnVectorsReader != null) {
-        if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
-          int segmentDimension = mergeFieldInfo.getVectorDimension();
-          VectorValues.SimilarityFunction segmentSimilarityFunction =
+        if (mergeFieldInfo != null && mergeFieldInfo.hasNnVectors()) {
+          int segmentDimension = mergeFieldInfo.getNnVectorDimension();
+          NnVectors.SimilarityFunction segmentSimilarityFunction =
               mergeFieldInfo.getVectorSimilarityFunction();
           if (dimension == -1) {
             dimension = segmentDimension;
@@ -97,29 +97,29 @@ public abstract class NnVectorsWriter implements Closeable {
                     + "!="
                     + segmentSimilarityFunction);
           }
-          VectorValues values = nnVectorsReader.getVectorValues(mergeFieldInfo.name);
+          NnVectors values = nnVectorsReader.getNnVectors(mergeFieldInfo.name);
           if (values != null) {
-            subs.add(new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
+            subs.add(new NnVectorsSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
           }
         }
       }
     }
-    // Create a new VectorValues by iterating over the sub vectors, mapping the resulting
+    // Create a new NnVectors by iterating over the sub vectors, mapping the resulting
     // docids using docMaps in the mergeState.
-    writeField(mergeFieldInfo, new VectorValuesMerger(subs, mergeState));
+    writeField(mergeFieldInfo, new NnVectorsMerger(subs, mergeState));
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
     }
   }
 
   /** Tracks state of one sub-reader that we are merging */
-  private static class VectorValuesSub extends DocIDMerger.Sub {
+  private static class NnVectorsSub extends DocIDMerger.Sub {
 
-    final VectorValues values;
+    final NnVectors values;
     final int segmentIndex;
     int count;
 
-    VectorValuesSub(int segmentIndex, MergeState.DocMap docMap, VectorValues values) {
+    NnVectorsSub(int segmentIndex, MergeState.DocMap docMap, NnVectors values) {
       super(docMap);
       this.values = values;
       this.segmentIndex = segmentIndex;
@@ -138,31 +138,31 @@ public abstract class NnVectorsWriter implements Closeable {
   }
 
   /**
-   * View over multiple VectorValues supporting iterator-style access via DocIdMerger. Maintains a
+   * View over multiple {@link NnVectors} supporting iterator-style access via DocIdMerger. Maintains a
    * reverse ordinal mapping for documents having values in order to support random access by dense
    * ordinal.
    */
-  private static class VectorValuesMerger extends VectorValues
-      implements RandomAccessVectorValuesProducer {
-    private final List<VectorValuesSub> subs;
-    private final DocIDMerger<VectorValuesSub> docIdMerger;
+  private static class NnVectorsMerger extends NnVectors
+      implements RandomAccessNnVectorsProducer {
+    private final List<NnVectorsSub> subs;
+    private final DocIDMerger<NnVectorsSub> docIdMerger;
     private final int[] ordBase;
     private final int cost;
     private int size;
 
     private int docId;
-    private VectorValuesSub current;
+    private NnVectorsSub current;
     /* For each doc with a vector, record its ord in the segments being merged. This enables random
      * access into the unmerged segments using the ords from the merged segment.
      */
     private int[] ordMap;
     private int ord;
 
-    VectorValuesMerger(List<VectorValuesSub> subs, MergeState mergeState) throws IOException {
+    NnVectorsMerger(List<NnVectorsSub> subs, MergeState mergeState) throws IOException {
       this.subs = subs;
       docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
       int totalCost = 0, totalSize = 0;
-      for (VectorValuesSub sub : subs) {
+      for (NnVectorsSub sub : subs) {
         totalCost += sub.values.cost();
         totalSize += sub.values.size();
       }
@@ -214,7 +214,7 @@ public abstract class NnVectorsWriter implements Closeable {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessNnVectors randomAccess() {
       return new MergerRandomAccess();
     }
 
@@ -243,18 +243,18 @@ public abstract class NnVectorsWriter implements Closeable {
       return subs.get(0).values.similarityFunction();
     }
 
-    class MergerRandomAccess implements RandomAccessVectorValues {
+    class MergerRandomAccess implements RandomAccessNnVectors {
 
-      private final List<RandomAccessVectorValues> raSubs;
+      private final List<RandomAccessNnVectors> raSubs;
 
       MergerRandomAccess() {
         raSubs = new ArrayList<>(subs.size());
-        for (VectorValuesSub sub : subs) {
-          if (sub.values instanceof RandomAccessVectorValuesProducer) {
-            raSubs.add(((RandomAccessVectorValuesProducer) sub.values).randomAccess());
+        for (NnVectorsSub sub : subs) {
+          if (sub.values instanceof RandomAccessNnVectorsProducer) {
+            raSubs.add(((RandomAccessNnVectorsProducer) sub.values).randomAccess());
           } else {
             throw new IllegalStateException(
-                "Cannot merge VectorValues without support for random access");
+                "Cannot merge NnVectors without support for random access");
           }
         }
       }
@@ -266,12 +266,12 @@ public abstract class NnVectorsWriter implements Closeable {
 
       @Override
       public int dimension() {
-        return VectorValuesMerger.this.dimension();
+        return NnVectorsMerger.this.dimension();
       }
 
       @Override
       public SimilarityFunction similarityFunction() {
-        return VectorValuesMerger.this.similarityFunction();
+        return NnVectorsMerger.this.similarityFunction();
       }
 
       @Override

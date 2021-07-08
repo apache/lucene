@@ -39,9 +39,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.RandomAccessNnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -55,8 +55,8 @@ public class TestHnsw extends LuceneTestCase {
   public void testReadWrite() throws IOException {
     int dim = random().nextInt(100) + 1;
     int nDoc = random().nextInt(100) + 1;
-    RandomVectorValues vectors = new RandomVectorValues(nDoc, dim, random());
-    RandomVectorValues v2 = vectors.copy(), v3 = vectors.copy();
+    RandomNnVectors vectors = new RandomNnVectors(nDoc, dim, random());
+    RandomNnVectors v2 = vectors.copy(), v3 = vectors.copy();
 
     int maxConn = random().nextInt(10) + 5;
     int beamWidth = random().nextInt(10) + 5;
@@ -96,7 +96,7 @@ public class TestHnsw extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
-          VectorValues values = ctx.reader().getVectorValues("field");
+          NnVectors values = ctx.reader().getNnVectors("field");
           assertEquals(vectors.similarityFunction, values.similarityFunction());
           assertEquals(dim, values.dimension());
           assertEquals(nVec, values.size());
@@ -120,7 +120,7 @@ public class TestHnsw extends LuceneTestCase {
   // oriented in the right directions
   public void testAknnDiverse() throws IOException {
     int nDoc = 100;
-    CircularVectorValues vectors = new CircularVectorValues(nDoc);
+    CircularNnVectors vectors = new CircularNnVectors(nDoc);
     HnswGraphBuilder builder = new HnswGraphBuilder(vectors, 16, 100, random().nextInt());
     HnswGraph hnsw = builder.build(vectors);
     // run some searches
@@ -171,17 +171,17 @@ public class TestHnsw extends LuceneTestCase {
     expectThrows(NullPointerException.class, () -> new HnswGraphBuilder(null, 0, 0, 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new HnswGraphBuilder(new RandomVectorValues(1, 1, random()), 0, 10, 0));
+        () -> new HnswGraphBuilder(new RandomNnVectors(1, 1, random()), 0, 10, 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new HnswGraphBuilder(new RandomVectorValues(1, 1, random()), 10, 0, 0));
+        () -> new HnswGraphBuilder(new RandomNnVectors(1, 1, random()), 10, 0, 0));
   }
 
   public void testDiversity() throws IOException {
     // Some carefully checked test cases with simple 2d vectors on the unit circle:
-    MockVectorValues vectors =
-        new MockVectorValues(
-            VectorValues.SimilarityFunction.DOT_PRODUCT,
+    MockNnVectors vectors =
+        new MockNnVectors(
+            NnVectors.SimilarityFunction.DOT_PRODUCT,
             new float[][] {
               unitVector2d(0.5),
               unitVector2d(0.75),
@@ -246,7 +246,7 @@ public class TestHnsw extends LuceneTestCase {
     int size = atLeast(100);
     int dim = atLeast(10);
     int topK = 5;
-    RandomVectorValues vectors = new RandomVectorValues(size, dim, random());
+    RandomNnVectors vectors = new RandomNnVectors(size, dim, random());
     HnswGraphBuilder builder = new HnswGraphBuilder(vectors, 10, 30, random().nextLong());
     HnswGraph hnsw = builder.build(vectors);
     int totalMatches = 0;
@@ -288,20 +288,20 @@ public class TestHnsw extends LuceneTestCase {
   }
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
-  static class CircularVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  static class CircularNnVectors extends NnVectors
+      implements RandomAccessNnVectors, RandomAccessNnVectorsProducer {
     private final int size;
     private final float[] value;
 
     int doc = -1;
 
-    CircularVectorValues(int size) {
+    CircularNnVectors(int size) {
       this.size = size;
       value = new float[2];
     }
 
-    public CircularVectorValues copy() {
-      return new CircularVectorValues(size);
+    public CircularNnVectors copy() {
+      return new CircularNnVectors(size);
     }
 
     @Override
@@ -325,8 +325,8 @@ public class TestHnsw extends LuceneTestCase {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new CircularVectorValues(size);
+    public RandomAccessNnVectors randomAccess() {
+      return new CircularNnVectors(size);
     }
 
     @Override
@@ -391,7 +391,7 @@ public class TestHnsw extends LuceneTestCase {
     return neighbors;
   }
 
-  private void assertVectorsEqual(VectorValues u, VectorValues v) throws IOException {
+  private void assertVectorsEqual(NnVectors u, NnVectors v) throws IOException {
     int uDoc, vDoc;
     while (true) {
       uDoc = u.nextDoc();
@@ -406,21 +406,21 @@ public class TestHnsw extends LuceneTestCase {
   }
 
   /** Produces random vectors and caches them for random-access. */
-  static class RandomVectorValues extends MockVectorValues {
+  static class RandomNnVectors extends MockNnVectors {
 
-    RandomVectorValues(int size, int dimension, Random random) {
+    RandomNnVectors(int size, int dimension, Random random) {
       super(
           SimilarityFunction.values()[random.nextInt(SimilarityFunction.values().length - 1) + 1],
           createRandomVectors(size, dimension, random));
     }
 
-    RandomVectorValues(RandomVectorValues other) {
+    RandomNnVectors(RandomNnVectors other) {
       super(other.similarityFunction, other.values);
     }
 
     @Override
-    public RandomVectorValues copy() {
-      return new RandomVectorValues(this);
+    public RandomNnVectors copy() {
+      return new RandomNnVectors(this);
     }
 
     private static float[][] createRandomVectors(int size, int dimension, Random random) {

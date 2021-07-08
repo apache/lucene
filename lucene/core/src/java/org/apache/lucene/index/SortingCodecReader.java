@@ -310,8 +310,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
-        return new VectorValuesWriter.SortingVectorValues(delegate.getVectorValues(field), docMap);
+      public NnVectors getNnVectors(String field) throws IOException {
+        return new NnVectorsConsumer.SortingNnVectors(delegate.getNnVectors(field), docMap);
       }
 
       @Override
