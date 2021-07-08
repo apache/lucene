@@ -19,7 +19,13 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 
-abstract class DocValuesIterator extends DocIdSetIterator {
+/** TODO: flesh this out since we made this class public */
+public abstract class DocValuesIterator extends DocIdSetIterator {
+
+  /** TODO: flesh this out since we made this class public */
+  protected DocValuesIterator() {
+    // no-op
+  }
 
   /**
    * Advance the iterator to exactly {@code target} and return whether {@code target} has a value.
