@@ -126,6 +126,9 @@ API Changes
 
 Improvements
 
+* LUCENE-9476: Add new getBulkPath API to DirectoryTaxonomyReader to more efficiently retrieve FacetLabels for multiple
+  facet ordinals at once (Gautam Worah, Mike McCandless)
+
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
 
 * LUCENE-9633: Improve match highlighter behavior for degenerate intervals (on non-existing positions).
