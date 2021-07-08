@@ -322,8 +322,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     // doOpenIfChanged, we need to ensure that the ordinal is one that this DTR
     // instance recognizes. Therefore we do this check up front, before we hit
     // the cache.
-    int indexReaderMaxDoc = indexReader.maxDoc();
-    checkOrdinalBounds(ordinal, indexReaderMaxDoc);
+    checkOrdinalBounds(ordinal);
 
     FacetLabel ordinalPath = getPathFromCache(ordinal);
 
@@ -363,14 +362,14 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
   }
 
-  private void checkOrdinalBounds(int ordinal, int indexReaderMaxDoc)
+  private void checkOrdinalBounds(int ordinal)
       throws IllegalArgumentException {
-    if (ordinal < 0 || ordinal >= indexReaderMaxDoc) {
+    if (ordinal < 0 || ordinal >= indexReader.maxDoc()) {
       throw new IllegalArgumentException(
           "ordinal "
               + ordinal
               + " is out of the range of the indexReader "
-              + indexReader.toString());
+              + indexReader.toString() + ". The maximum possible ordinal number is " + (indexReader.maxDoc() - 1));
     }
   }
 
@@ -380,7 +379,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
    * <p>This API is generally faster than iteratively calling {@link #getPath(int)} over an array of
    * ordinals. It uses the {@link #getPath(int)} method iteratively when it detects that the index
    * was created using StoredFields (with no performance gains) and uses DocValues based iteration
-   * when the index is based on DocValues.
+   * when the index is based on BinaryDocValues. Lucene switched to BinaryDocValues in version 9.0
    *
    * @param ordinals Array of ordinals that are assigned to categories inserted into the taxonomy
    *     index
@@ -393,11 +392,10 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     // remember the original positions of ordinals before they are sorted
     int[] originalPosition = new int[ordinalsLength];
     Arrays.setAll(originalPosition, IntUnaryOperator.identity());
-    int indexReaderMaxDoc = indexReader.maxDoc();
 
     for (int i = 0; i < ordinalsLength; i++) {
       // check whether the ordinal is valid before accessing the cache
-      checkOrdinalBounds(ordinals[i], indexReaderMaxDoc);
+      checkOrdinalBounds(ordinals[i]);
       // check the cache before trying to find it in the index
       FacetLabel ordinalPath = getPathFromCache(ordinals[i]);
       if (ordinalPath != null) {
@@ -416,8 +414,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         x = originalPosition[i];
         originalPosition[i] = originalPosition[j];
         originalPosition[j] = x;
-      }
-      ;
+      };
 
       @Override
       public int compare(int i, int j) {
@@ -435,9 +432,11 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     for (int i = 0; i < ordinalsLength; i++) {
       if (bulkPath[originalPosition[i]] == null) {
         /*
-        If ordinals[i] >= leafReaderMaxDoc then we find the next leaf that contains our ordinal
+        If ordinals[i] >= leafReaderDocBase + leafReaderMaxDoc then we find the next leaf that contains our ordinal.
+        Remember: ordinals[i] operates in the global ordinal space and hence we add leafReaderDocBase to the leafReaderMaxDoc
+        (which is the maxDoc of the specific leaf)
          */
-        if (values == null || ordinals[i] >= leafReaderMaxDoc) {
+        if (values == null || ordinals[i] >= leafReaderDocBase + leafReaderMaxDoc) {
 
           readerIndex = ReaderUtil.subIndex(ordinals[i], indexReader.leaves());
           leafReaderContext = indexReader.leaves().get(readerIndex);
