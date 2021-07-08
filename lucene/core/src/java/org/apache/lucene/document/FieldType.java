@@ -22,8 +22,8 @@ import org.apache.lucene.analysis.Analyzer; // javadocs
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.NnVectors;
+import org.apache.lucene.index.PointValues;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {
@@ -42,8 +42,7 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
-  private NnVectors.SimilarityFunction vectorSimilarityFunction =
-      NnVectors.SimilarityFunction.NONE;
+  private NnVectors.SimilarityFunction vectorSimilarityFunction = NnVectors.SimilarityFunction.NONE;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */

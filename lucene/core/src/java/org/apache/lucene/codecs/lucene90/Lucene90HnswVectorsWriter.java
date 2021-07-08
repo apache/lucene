@@ -25,9 +25,9 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.RandomAccessNnVectorsProducer;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -49,7 +49,8 @@ public final class Lucene90HnswVectorsWriter extends NnVectorsWriter {
   private final int beamWidth;
   private boolean finished;
 
-  Lucene90HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth) throws IOException {
+  Lucene90HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth)
+      throws IOException {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 

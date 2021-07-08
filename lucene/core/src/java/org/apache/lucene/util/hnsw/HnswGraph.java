@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.Random;
 import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.index.KnnGraphValues;
-import org.apache.lucene.index.RandomAccessNnVectors;
 import org.apache.lucene.index.NnVectors;
+import org.apache.lucene.index.RandomAccessNnVectors;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**

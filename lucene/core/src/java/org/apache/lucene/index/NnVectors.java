@@ -130,8 +130,8 @@ public abstract class NnVectors extends DocIdSetIterator {
   }
 
   /**
-   * Represents the lack of vector values. It is returned by providers that do not support
-   * {@link NnVectors}.
+   * Represents the lack of vector values. It is returned by providers that do not support {@link
+   * NnVectors}.
    */
   public static final NnVectors EMPTY =
       new NnVectors() {

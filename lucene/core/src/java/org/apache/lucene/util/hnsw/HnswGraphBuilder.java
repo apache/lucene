@@ -20,9 +20,9 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Random;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.RandomAccessNnVectors;
 import org.apache.lucene.index.RandomAccessNnVectorsProducer;
-import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -67,7 +67,7 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public HnswGraphBuilder(
-    RandomAccessNnVectorsProducer vectors, int maxConn, int beamWidth, long seed) {
+      RandomAccessNnVectorsProducer vectors, int maxConn, int beamWidth, long seed) {
     nnVectors = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     similarityFunction = nnVectors.similarityFunction();
@@ -89,8 +89,8 @@ public final class HnswGraphBuilder {
   }
 
   /**
-   * Reads all the vectors from two copies of a random access {@link NnVectors}. Providing two copies
-   * enables efficient retrieval without extra data copying, while avoiding collision of the
+   * Reads all the vectors from two copies of a random access {@link NnVectors}. Providing two
+   * copies enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
@@ -207,10 +207,7 @@ public final class HnswGraphBuilder {
    * @return whether the candidate is diverse given the existing neighbors
    */
   private boolean diversityCheck(
-      float[] candidate,
-      float score,
-      NeighborArray neighbors,
-      RandomAccessNnVectors nnVectors)
+      float[] candidate, float score, NeighborArray neighbors, RandomAccessNnVectors nnVectors)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {

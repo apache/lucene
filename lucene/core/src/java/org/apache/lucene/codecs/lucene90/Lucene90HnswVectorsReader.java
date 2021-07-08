@@ -32,10 +32,10 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnGraphValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.RandomAccessNnVectors;
 import org.apache.lucene.index.RandomAccessNnVectorsProducer;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -187,8 +187,7 @@ public final class Lucene90HnswVectorsReader extends NnVectorsReader {
     }
   }
 
-  private NnVectors.SimilarityFunction readSimilarityFunction(DataInput input)
-      throws IOException {
+  private NnVectors.SimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
     int similarityFunctionId = input.readInt();
     if (similarityFunctionId < 0
         || similarityFunctionId >= NnVectors.SimilarityFunction.values().length) {

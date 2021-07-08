@@ -26,9 +26,9 @@ import org.apache.lucene.codecs.NnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NnVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.NnVectorField;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
@@ -39,9 +39,9 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Base class aiming at testing {@link NnVectorsFormat vectors formats}. To test a new format, all you
- * need is to register a new {@link Codec} which uses it and extend this class and override {@link
- * #getCodec()}.
+ * Base class aiming at testing {@link NnVectorsFormat vectors formats}. To test a new format, all
+ * you need is to register a new {@link Codec} which uses it and extend this class and override
+ * {@link #getCodec()}.
  *
  * @lucene.experimental
  */
@@ -231,8 +231,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         w.addDocument(doc);
       }
-      doc.add(
-          new NnVectorField(fieldName, new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new NnVectorField(fieldName, new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         w2.addDocument(doc);
         w2.addIndexes(dir);
@@ -464,8 +463,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
           expectThrows(
               IllegalArgumentException.class,
               () ->
-                  doc.add(
-                      new NnVectorField("f", new float[0], NnVectors.SimilarityFunction.NONE)));
+                  doc.add(new NnVectorField("f", new float[0], NnVectors.SimilarityFunction.NONE)));
       assertEquals("cannot index an empty vector", e.getMessage());
 
       Document doc2 = new Document();
@@ -555,15 +553,13 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
       doc.add(
-          new NnVectorField(
-              "v0", new float[] {2, 3, 5}, NnVectors.SimilarityFunction.DOT_PRODUCT));
+          new NnVectorField("v0", new float[] {2, 3, 5}, NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       doc = new Document();
       doc.add(
-          new NnVectorField(
-              "v1", new float[] {2, 3, 5}, NnVectors.SimilarityFunction.DOT_PRODUCT));
+          new NnVectorField("v1", new float[] {2, 3, 5}, NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.forceMerge(1);
     }
@@ -677,8 +673,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
         assertEquals(0, nnVectors.vectorValue()[0], 0);
         assertEquals(NO_MORE_DOCS, nnVectors.nextDoc());
 
-        RandomAccessNnVectors ra =
-            ((RandomAccessNnVectorsProducer) nnVectors).randomAccess();
+        RandomAccessNnVectors ra = ((RandomAccessNnVectorsProducer) nnVectors).randomAccess();
         assertEquals(-1f, ra.vectorValue(0)[0], 0);
         assertEquals(1f, ra.vectorValue(1)[0], 0);
         assertEquals(0f, ra.vectorValue(2)[0], 0);

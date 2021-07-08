@@ -18,9 +18,9 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.util.NamedSPILoader;

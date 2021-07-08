@@ -27,9 +27,9 @@ import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.RandomAccessNnVectors;
 import org.apache.lucene.index.RandomAccessNnVectorsProducer;
-import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
@@ -138,12 +138,11 @@ public abstract class NnVectorsWriter implements Closeable {
   }
 
   /**
-   * View over multiple {@link NnVectors} supporting iterator-style access via DocIdMerger. Maintains a
-   * reverse ordinal mapping for documents having values in order to support random access by dense
-   * ordinal.
+   * View over multiple {@link NnVectors} supporting iterator-style access via DocIdMerger.
+   * Maintains a reverse ordinal mapping for documents having values in order to support random
+   * access by dense ordinal.
    */
-  private static class NnVectorsMerger extends NnVectors
-      implements RandomAccessNnVectorsProducer {
+  private static class NnVectorsMerger extends NnVectors implements RandomAccessNnVectorsProducer {
     private final List<NnVectorsSub> subs;
     private final DocIDMerger<NnVectorsSub> docIdMerger;
     private final int[] ordBase;

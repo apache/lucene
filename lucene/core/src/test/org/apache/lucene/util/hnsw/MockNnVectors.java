@@ -17,9 +17,9 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.RandomAccessNnVectors;
 import org.apache.lucene.index.RandomAccessNnVectorsProducer;
-import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 

@@ -88,8 +88,8 @@ public final class Lucene90HnswVectorsFormat extends NnVectorsFormat {
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene90HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
-   * for details.
+   * node. Defaults to to {@link Lucene90HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
+   * HnswGraph} for details.
    */
   private final int beamWidth;
 

@@ -49,8 +49,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
-import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.NnVectorsFormat;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.codecs.blockterms.LuceneFixedGap;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
@@ -1297,7 +1297,8 @@ public final class TestUtil {
   }
 
   /**
-   * Returns the actual default vector format (e.g. LuceneMNVectorsFormat for this version of Lucene.
+   * Returns the actual default vector format (e.g. LuceneMNVectorsFormat for this version of
+   * Lucene.
    */
   public static NnVectorsFormat getDefaultNnVectorsFormat() {
     return new Lucene90HnswVectorsFormat();

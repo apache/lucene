@@ -27,9 +27,9 @@ import org.apache.lucene.codecs.NnVectorsFormat;
 import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -169,8 +169,8 @@ public abstract class PerFieldNnVectorsFormat extends NnVectorsFormat {
     private final Map<String, NnVectorsReader> fields = new TreeMap<>();
 
     /**
-     * Create a FieldsReader over a segment, opening {@link NnVectorsReader} for each {@link NnVectorsFormat} specified
-     * by the indexed numeric vector fields.
+     * Create a FieldsReader over a segment, opening {@link NnVectorsReader} for each {@link
+     * NnVectorsFormat} specified by the indexed numeric vector fields.
      *
      * @param readState defines the fields
      * @throws IOException if one of the delegate readers throws

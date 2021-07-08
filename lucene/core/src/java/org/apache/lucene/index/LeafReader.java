@@ -206,8 +206,8 @@ public abstract class LeafReader extends IndexReader {
   public abstract NumericDocValues getNormValues(String field) throws IOException;
 
   /**
-   * Returns {@link NnVectors} for this field, or null if no {@link NnVectors} were indexed.
-   * The returned instance should only be used by a single thread.
+   * Returns {@link NnVectors} for this field, or null if no {@link NnVectors} were indexed. The
+   * returned instance should only be used by a single thread.
    *
    * @lucene.experimental
    */

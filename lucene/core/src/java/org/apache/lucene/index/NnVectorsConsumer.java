@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -106,7 +105,8 @@ class NnVectorsConsumer {
    * @param nnVectorsWriter the Codec's vector writer that handles the actual encoding and I/O
    * @throws IOException if there is an error writing the field and its values
    */
-  public void flush(Sorter.DocMap sortMap, org.apache.lucene.codecs.NnVectorsWriter nnVectorsWriter) throws IOException {
+  public void flush(Sorter.DocMap sortMap, org.apache.lucene.codecs.NnVectorsWriter nnVectorsWriter)
+      throws IOException {
     NnVectors nnVectors =
         new BufferedNnVectors(
             docsWithField,
@@ -120,8 +120,7 @@ class NnVectorsConsumer {
     }
   }
 
-  static class SortingNnVectors extends NnVectors
-      implements RandomAccessNnVectorsProducer {
+  static class SortingNnVectors extends NnVectors implements RandomAccessNnVectorsProducer {
 
     private final NnVectors delegate;
     private final RandomAccessNnVectors randomAccess;
