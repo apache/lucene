@@ -362,14 +362,15 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
   }
 
-  private void checkOrdinalBounds(int ordinal)
-      throws IllegalArgumentException {
+  private void checkOrdinalBounds(int ordinal) throws IllegalArgumentException {
     if (ordinal < 0 || ordinal >= indexReader.maxDoc()) {
       throw new IllegalArgumentException(
           "ordinal "
               + ordinal
               + " is out of the range of the indexReader "
-              + indexReader.toString() + ". The maximum possible ordinal number is " + (indexReader.maxDoc() - 1));
+              + indexReader.toString()
+              + ". The maximum possible ordinal number is "
+              + (indexReader.maxDoc() - 1));
     }
   }
 
@@ -414,7 +415,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         x = originalPosition[i];
         originalPosition[i] = originalPosition[j];
         originalPosition[j] = x;
-      };
+      }
+      ;
 
       @Override
       public int compare(int i, int j) {
