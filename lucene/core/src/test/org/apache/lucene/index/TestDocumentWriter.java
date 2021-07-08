@@ -40,7 +40,7 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.document.VectorField;
+import org.apache.lucene.document.NnVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.AttributeSource;
@@ -381,7 +381,7 @@ public class TestDocumentWriter extends LuceneTestCase {
   public void testRAMUsageVector() throws IOException {
     doTestRAMUsage(
         field ->
-            new VectorField(
+            new NnVectorField(
                 field, new float[] {1, 2, 3, 4}, NnVectors.SimilarityFunction.EUCLIDEAN));
   }
 }

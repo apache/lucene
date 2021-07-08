@@ -28,7 +28,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.VectorField;
+import org.apache.lucene.document.NnVectorField;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
@@ -49,12 +49,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
 
   @Override
   protected void addRandomFields(Document doc) {
-    doc.add(new VectorField("v2", randomVector(30), NnVectors.SimilarityFunction.NONE));
+    doc.add(new NnVectorField("v2", randomVector(30), NnVectors.SimilarityFunction.NONE));
   }
 
   public void testFieldConstructor() {
     float[] v = new float[1];
-    VectorField field = new VectorField("f", v);
+    NnVectorField field = new NnVectorField("f", v);
     assertEquals(1, field.fieldType().vectorDimension());
     assertEquals(
         NnVectors.SimilarityFunction.EUCLIDEAN, field.fieldType().vectorSimilarityFunction());
@@ -62,22 +62,22 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
   }
 
   public void testFieldConstructorExceptions() {
-    expectThrows(IllegalArgumentException.class, () -> new VectorField(null, new float[1]));
-    expectThrows(IllegalArgumentException.class, () -> new VectorField("f", null));
+    expectThrows(IllegalArgumentException.class, () -> new NnVectorField(null, new float[1]));
+    expectThrows(IllegalArgumentException.class, () -> new NnVectorField("f", null));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new VectorField("f", new float[1], (NnVectors.SimilarityFunction) null));
-    expectThrows(IllegalArgumentException.class, () -> new VectorField("f", new float[0]));
+        () -> new NnVectorField("f", new float[1], (NnVectors.SimilarityFunction) null));
+    expectThrows(IllegalArgumentException.class, () -> new NnVectorField("f", new float[0]));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new VectorField("f", new float[NnVectors.MAX_DIMENSIONS + 1]));
+        () -> new NnVectorField("f", new float[NnVectors.MAX_DIMENSIONS + 1]));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new VectorField("f", new float[NnVectors.MAX_DIMENSIONS + 1], (FieldType) null));
+        () -> new NnVectorField("f", new float[NnVectors.MAX_DIMENSIONS + 1], (FieldType) null));
   }
 
   public void testFieldSetValue() {
-    VectorField field = new VectorField("f", new float[1]);
+    NnVectorField field = new NnVectorField("f", new float[1]);
     float[] v1 = new float[1];
     field.setVectorValue(v1);
     assertSame(v1, field.vectorValue());
@@ -91,11 +91,11 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[3], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc2.add(new NnVectorField("f", new float[3], NnVectors.SimilarityFunction.DOT_PRODUCT));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -107,12 +107,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[3], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc2.add(new NnVectorField("f", new float[3], NnVectors.SimilarityFunction.DOT_PRODUCT));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -127,11 +127,11 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
+      doc2.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -143,12 +143,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
+      doc2.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -162,13 +162,13 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new VectorField("f", new float[1], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc2.add(new NnVectorField("f", new float[1], NnVectors.SimilarityFunction.DOT_PRODUCT));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -183,13 +183,13 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
+        doc2.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -203,7 +203,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
   public void testAddIndexesDirectory0() throws Exception {
     String fieldName = "field";
     Document doc = new Document();
-    doc.add(new VectorField(fieldName, new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+    doc.add(new NnVectorField(fieldName, new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -232,7 +232,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
         w.addDocument(doc);
       }
       doc.add(
-          new VectorField(fieldName, new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+          new NnVectorField(fieldName, new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         w2.addDocument(doc);
         w2.addIndexes(dir);
@@ -252,7 +252,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     String fieldName = "field";
     float[] vector = new float[1];
     Document doc = new Document();
-    doc.add(new VectorField(fieldName, vector, NnVectors.SimilarityFunction.DOT_PRODUCT));
+    doc.add(new NnVectorField(fieldName, vector, NnVectors.SimilarityFunction.DOT_PRODUCT));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -283,12 +283,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[5], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w2.addDocument(doc);
         IllegalArgumentException expected =
             expectThrows(
@@ -306,12 +306,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
         w2.addDocument(doc);
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addIndexes(dir));
@@ -328,12 +328,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[5], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -354,12 +354,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -380,12 +380,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[5], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -404,12 +404,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.EUCLIDEAN));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -427,12 +427,12 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
-      doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
       assertEquals(
-          "VectorValuesField \"f\" appears more than once in this document (only one value is allowed per field)",
+          "NnVectorField \"f\" appears more than once in this document (only one value is allowed per field)",
           expected.getMessage());
     }
   }
@@ -445,13 +445,13 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
           IllegalArgumentException.class,
           () ->
               doc.add(
-                  new VectorField(
+                  new NnVectorField(
                       "f",
                       new float[NnVectors.MAX_DIMENSIONS + 1],
                       NnVectors.SimilarityFunction.DOT_PRODUCT)));
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[1], NnVectors.SimilarityFunction.EUCLIDEAN));
+      doc2.add(new NnVectorField("f", new float[1], NnVectors.SimilarityFunction.EUCLIDEAN));
       w.addDocument(doc2);
     }
   }
@@ -465,11 +465,11 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
               IllegalArgumentException.class,
               () ->
                   doc.add(
-                      new VectorField("f", new float[0], NnVectors.SimilarityFunction.NONE)));
+                      new NnVectorField("f", new float[0], NnVectors.SimilarityFunction.NONE)));
       assertEquals("cannot index an empty vector", e.getMessage());
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[1], NnVectors.SimilarityFunction.NONE));
+      doc2.add(new NnVectorField("f", new float[1], NnVectors.SimilarityFunction.NONE));
       w.addDocument(doc2);
     }
   }
@@ -479,14 +479,14 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       IndexWriterConfig iwc = newIndexWriterConfig();
       iwc.setCodec(Codec.forName("SimpleText"));
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
         w.forceMerge(1);
       }
@@ -500,21 +500,21 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new NnVectorField("f", new float[4], NnVectors.SimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
         w.forceMerge(1);
       }
     }
   }
 
-  public void testInvalidVectorFieldUsage() {
-    VectorField field =
-        new VectorField("field", new float[2], NnVectors.SimilarityFunction.NONE);
+  public void testInvalidNnVectorFieldUsage() {
+    NnVectorField field =
+        new NnVectorField("field", new float[2], NnVectors.SimilarityFunction.NONE);
 
     expectThrows(IllegalArgumentException.class, () -> field.setIntValue(14));
 
@@ -523,13 +523,13 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     assertNull(field.numericValue());
   }
 
-  public void testDeleteAllVectorDocs() throws Exception {
+  public void testDeleteAllNnVectorDocs() throws Exception {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
       doc.add(
-          new VectorField("v", new float[] {2, 3, 5}, NnVectors.SimilarityFunction.DOT_PRODUCT));
+          new NnVectorField("v", new float[] {2, 3, 5}, NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.addDocument(new Document());
       w.commit();
@@ -549,20 +549,20 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     }
   }
 
-  public void testVectorFieldMissingFromOneSegment() throws Exception {
+  public void testNnVectorFieldMissingFromOneSegment() throws Exception {
     try (Directory dir = FSDirectory.open(createTempDir());
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
       doc.add(
-          new VectorField(
+          new NnVectorField(
               "v0", new float[] {2, 3, 5}, NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       doc = new Document();
       doc.add(
-          new VectorField(
+          new NnVectorField(
               "v1", new float[] {2, 3, 5}, NnVectors.SimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.forceMerge(1);
@@ -591,7 +591,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
           String fieldName = "int" + field;
           if (random().nextInt(100) == 17) {
             float[] v = randomVector(fieldDims[field]);
-            doc.add(new VectorField(fieldName, v, fieldSearchStrategies[field]));
+            doc.add(new NnVectorField(fieldName, v, fieldSearchStrategies[field]));
             fieldDocCounts[field]++;
             fieldTotals[field] += v[0];
           }
@@ -628,15 +628,15 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc1 = new Document();
-      doc1.add(new VectorField(fieldName, v, NnVectors.SimilarityFunction.EUCLIDEAN));
+      doc1.add(new NnVectorField(fieldName, v, NnVectors.SimilarityFunction.EUCLIDEAN));
       v[0] = 1;
       Document doc2 = new Document();
-      doc2.add(new VectorField(fieldName, v, NnVectors.SimilarityFunction.EUCLIDEAN));
+      doc2.add(new NnVectorField(fieldName, v, NnVectors.SimilarityFunction.EUCLIDEAN));
       iw.addDocument(doc1);
       iw.addDocument(doc2);
       v[0] = 2;
       Document doc3 = new Document();
-      doc3.add(new VectorField(fieldName, v, NnVectors.SimilarityFunction.EUCLIDEAN));
+      doc3.add(new NnVectorField(fieldName, v, NnVectors.SimilarityFunction.EUCLIDEAN));
       iw.addDocument(doc3);
       iw.forceMerge(1);
       try (IndexReader reader = iw.getReader()) {
@@ -686,20 +686,20 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     }
   }
 
-  public void testIndexMultipleVectorFields() throws Exception {
+  public void testIndexMultipleNnVectorFields() throws Exception {
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       float[] v = new float[] {1};
-      doc.add(new VectorField("field1", v, NnVectors.SimilarityFunction.EUCLIDEAN));
+      doc.add(new NnVectorField("field1", v, NnVectors.SimilarityFunction.EUCLIDEAN));
       doc.add(
-          new VectorField("field2", new float[] {1, 2, 3}, NnVectors.SimilarityFunction.NONE));
+          new NnVectorField("field2", new float[] {1, 2, 3}, NnVectors.SimilarityFunction.NONE));
       iw.addDocument(doc);
       v[0] = 2;
       iw.addDocument(doc);
       doc = new Document();
       doc.add(
-          new VectorField(
+          new NnVectorField(
               "field3", new float[] {1, 2, 3}, NnVectors.SimilarityFunction.DOT_PRODUCT));
       iw.addDocument(doc);
       iw.forceMerge(1);
@@ -891,7 +891,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      doc.add(new VectorField(field, vector, similarityFunction));
+      doc.add(new NnVectorField(field, vector, similarityFunction));
     }
     doc.add(new NumericDocValuesField("sortkey", sortkey));
     String idString = Integer.toString(id);
@@ -913,10 +913,10 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("v1", randomVector(3), NnVectors.SimilarityFunction.NONE));
+        doc.add(new NnVectorField("v1", randomVector(3), NnVectors.SimilarityFunction.NONE));
         w.addDocument(doc);
 
-        doc.add(new VectorField("v2", randomVector(3), NnVectors.SimilarityFunction.NONE));
+        doc.add(new NnVectorField("v2", randomVector(3), NnVectors.SimilarityFunction.NONE));
         w.addDocument(doc);
       }
 
@@ -927,7 +927,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
       // total 3 vector values were indexed:
       assertEquals(3, segStatus.nnVectorsStatus.totalNnVectors);
       // ... across 2 fields:
-      assertEquals(2, segStatus.nnVectorsStatus.totalVectorFields);
+      assertEquals(2, segStatus.nnVectorsStatus.totalNnVectorFields);
 
       // Make sure CheckIndex in fact declares that it is testing vectors!
       assertTrue(output.toString(IOUtils.UTF_8).contains("test: vectors..."));
@@ -952,7 +952,7 @@ public abstract class BaseNnVectorsFormatTestCase extends BaseIndexFileFormatTes
           Document doc = new Document();
           // randomly add a vector field
           if (random().nextInt(4) == 3) {
-            doc.add(new VectorField(fieldName, new float[4], NnVectors.SimilarityFunction.NONE));
+            doc.add(new NnVectorField(fieldName, new float[4], NnVectors.SimilarityFunction.NONE));
           }
           w.addDocument(doc);
         }

@@ -37,7 +37,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.VectorField;
+import org.apache.lucene.document.NnVectorField;
 import org.apache.lucene.index.NnVectors.SimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -458,8 +458,8 @@ public class TestKnnGraph extends LuceneTestCase {
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      FieldType fieldType = VectorField.createFieldType(vector.length, similarityFunction);
-      doc.add(new VectorField(KNN_GRAPH_FIELD, vector, fieldType));
+      FieldType fieldType = NnVectorField.createFieldType(vector.length, similarityFunction);
+      doc.add(new NnVectorField(KNN_GRAPH_FIELD, vector, fieldType));
     }
     String idString = Integer.toString(id);
     doc.add(new StringField("id", idString, Field.Store.YES));

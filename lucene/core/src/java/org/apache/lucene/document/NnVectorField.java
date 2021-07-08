@@ -25,13 +25,13 @@ import org.apache.lucene.index.NnVectors;
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
  * {@link NnVectors}, which is a forward-only docID-based iterator and also offers random-access
  * by dense ordinal (not docId). NnVectors.SimilarityFunction may be used to compare vectors at
- * query time (for example as part of result ranking). A VectorField may be associated with a search
+ * query time (for example as part of result ranking). A {@link NnVectorField} may be associated with a search
  * similarity function defining the metric used for nearest-neighbor search among vectors of that
  * field.
  *
  * @lucene.experimental
  */
-public class VectorField extends Field {
+public class NnVectorField extends Field {
 
   private static FieldType createType(
       float[] v, NnVectors.SimilarityFunction similarityFunction) {
@@ -82,7 +82,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(
+  public NnVectorField(
       String name, float[] vector, NnVectors.SimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector;
@@ -98,7 +98,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector) {
+  public NnVectorField(String name, float[] vector) {
     this(name, vector, NnVectors.SimilarityFunction.EUCLIDEAN);
   }
 
@@ -112,7 +112,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector, FieldType fieldType) {
+  public NnVectorField(String name, float[] vector, FieldType fieldType) {
     super(name, fieldType);
     fieldsData = vector;
   }

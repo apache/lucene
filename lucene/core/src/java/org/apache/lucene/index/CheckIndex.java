@@ -359,7 +359,7 @@ public final class CheckIndex implements Closeable {
       public long totalNnVectors;
 
       /** Total number of fields with vectors. */
-      public int totalVectorFields;
+      public int totalNnVectorFields;
 
       /** Exception thrown during vector values test (null on success) */
       public Throwable error = null;
@@ -2310,7 +2310,7 @@ public final class CheckIndex implements Closeable {
               continue;
             }
 
-            status.totalVectorFields++;
+            status.totalNnVectorFields++;
 
             int docCount = 0;
             while (values.nextDoc() != NO_MORE_DOCS) {
@@ -2346,7 +2346,7 @@ public final class CheckIndex implements Closeable {
           String.format(
               Locale.ROOT,
               "OK [%d fields, %d vectors] [took %.3f sec]",
-              status.totalVectorFields,
+              status.totalNnVectorFields,
               status.totalNnVectors,
               nsToSec(System.nanoTime() - startNS)));
 

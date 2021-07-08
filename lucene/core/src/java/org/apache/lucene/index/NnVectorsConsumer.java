@@ -65,7 +65,7 @@ class NnVectorsConsumer {
   public void addValue(int docID, float[] vectorValue) {
     if (docID == lastDocID) {
       throw new IllegalArgumentException(
-          "VectorValuesField \""
+          "NnVectorField \""
               + fieldInfo.name
               + "\" appears more than once in this document (only one value is allowed per field)");
     }

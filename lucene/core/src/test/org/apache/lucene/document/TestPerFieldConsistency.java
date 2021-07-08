@@ -87,7 +87,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     }
   }
 
-  private static Field randomVectorField(Random random, String fieldName) {
+  private static Field randomNnVectorField(Random random, String fieldName) {
     NnVectors.SimilarityFunction similarityFunction =
         RandomPicks.randomFrom(random, NnVectors.SimilarityFunction.values());
     while (similarityFunction == NnVectors.SimilarityFunction.NONE) {
@@ -97,15 +97,15 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();
     }
-    return new VectorField(fieldName, values, similarityFunction);
+    return new NnVectorField(fieldName, values, similarityFunction);
   }
 
   private static Field[] randomFieldsWithTheSameName(String fieldName) {
     final Field textField = randomIndexedField(random(), fieldName);
     final Field docValuesField = randomDocValuesField(random(), fieldName);
     final Field pointField = randomPointField(random(), fieldName);
-    final Field vectorField = randomVectorField(random(), fieldName);
-    return new Field[] {textField, docValuesField, pointField, vectorField};
+    final Field nnVectorField = randomNnVectorField(random(), fieldName);
+    return new Field[] {textField, docValuesField, pointField, nnVectorField};
   }
 
   private static void doTestDocWithMissingSchemaOptionsThrowsError(

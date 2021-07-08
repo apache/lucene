@@ -21,12 +21,13 @@ import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.NnVectorsReader;
+import org.apache.lucene.document.NnVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
- * org.apache.lucene.document.VectorField}.
+ * NnVectorField}.
  *
  * @lucene.experimental
  */
