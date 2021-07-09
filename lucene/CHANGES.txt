@@ -294,6 +294,8 @@ Other
 
 * LUCENE-9391: Upgrade HPPC to 0.8.2. (Haoyu Zhai)
 
+* LUCENE-10021: Upgrade HPPC to 0.9.0. Replace usage of ...ScatterMap to ...HashMap. (Patrick Zhai)
+
 * LUCENE-8768: Fix Javadocs build in Java 11. (Namgyu Kim)
 
 * LUCENE-9092: upgrade randomizedtesting to 2.7.5 (Dawid Weiss)
