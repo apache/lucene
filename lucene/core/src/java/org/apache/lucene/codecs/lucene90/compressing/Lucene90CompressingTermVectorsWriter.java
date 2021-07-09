@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
@@ -906,7 +906,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     final MatchingReaders matchingReaders = new MatchingReaders(mergeState);
     final List<CompressingTermVectorsSub> subs = new ArrayList<>(numReaders);
     for (int i = 0; i < numReaders; i++) {
-      final TermVectorsReader reader = mergeState.termVectorsReaders[i];
+      final TermVectorsReaderBase reader = mergeState.termVectorsReaders[i];
       if (reader != null) {
         reader.checkIntegrity();
       }
@@ -931,7 +931,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         copyChunks(mergeState, current, fromDocID, toDocID);
         docCount += toDocID - fromDocID;
       } else {
-        final TermVectorsReader reader = mergeState.termVectorsReaders[sub.readerIndex];
+        final TermVectorsReaderBase reader = mergeState.termVectorsReaders[sub.readerIndex];
         final Fields vectors = reader != null ? reader.get(sub.docID) : null;
         addAllDocVectors(vectors, mergeState);
         ++docCount;

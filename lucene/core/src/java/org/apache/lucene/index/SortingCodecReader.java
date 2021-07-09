@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -442,12 +442,12 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReader() {
+  public TermVectorsReaderBase getTermVectorsReader() {
     return newTermVectorsReader(in.getTermVectorsReader());
   }
 
-  private TermVectorsReader newTermVectorsReader(TermVectorsReader delegate) {
-    return new TermVectorsReader() {
+  private TermVectorsReaderBase newTermVectorsReader(TermVectorsReaderBase delegate) {
+    return new TermVectorsReaderBase() {
       @Override
       public Fields get(int doc) throws IOException {
         return delegate.get(docMap.newToOld(doc));
@@ -459,7 +459,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public TermVectorsReader clone() {
+      public TermVectorsReaderBase clone() {
         return newTermVectorsReader(delegate.clone());
       }
 

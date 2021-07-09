@@ -35,7 +35,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.BaseTermsEnum;
@@ -70,11 +70,11 @@ import org.apache.lucene.util.packed.DirectWriter;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
- * {@link TermVectorsReader} for {@link Lucene90CompressingTermVectorsFormat}.
+ * {@link TermVectorsReaderBase} for {@link Lucene90CompressingTermVectorsFormat}.
  *
  * @lucene.experimental
  */
-public final class Lucene90CompressingTermVectorsReader extends TermVectorsReader {
+public final class Lucene90CompressingTermVectorsReader extends TermVectorsReaderBase {
 
   private final FieldInfos fieldInfos;
   final FieldsIndex indexReader;
@@ -300,12 +300,12 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   }
 
   @Override
-  public TermVectorsReader clone() {
+  public TermVectorsReaderBase clone() {
     return new Lucene90CompressingTermVectorsReader(this);
   }
 
   @Override
-  public TermVectorsReader getMergeInstance() {
+  public TermVectorsReaderBase getMergeInstance() {
     return new Lucene90CompressingTermVectorsReader(this);
   }
 

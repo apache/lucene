@@ -44,7 +44,7 @@ import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
@@ -533,7 +533,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
       IOUtils.close(consumer);
       IOUtils.close(consumer);
     }
-    try (TermVectorsReader producer =
+    try (TermVectorsReaderBase producer =
         codec.termVectorsFormat().vectorsReader(dir, segmentInfo, fieldInfos, readState.context)) {
       IOUtils.close(producer);
       IOUtils.close(producer);

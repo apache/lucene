@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.index.AssertingLeafReader;
 import org.apache.lucene.index.FieldInfo;
@@ -38,7 +38,7 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
   private final TermVectorsFormat in = TestUtil.getDefaultCodec().termVectorsFormat();
 
   @Override
-  public TermVectorsReader vectorsReader(
+  public TermVectorsReaderBase vectorsReader(
       Directory directory, SegmentInfo segmentInfo, FieldInfos fieldInfos, IOContext context)
       throws IOException {
     return new AssertingTermVectorsReader(
@@ -51,10 +51,10 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
     return new AssertingTermVectorsWriter(in.vectorsWriter(directory, segmentInfo, context));
   }
 
-  static class AssertingTermVectorsReader extends TermVectorsReader {
-    private final TermVectorsReader in;
+  static class AssertingTermVectorsReader extends TermVectorsReaderBase {
+    private final TermVectorsReaderBase in;
 
-    AssertingTermVectorsReader(TermVectorsReader in) {
+    AssertingTermVectorsReader(TermVectorsReaderBase in) {
       this.in = in;
       // do a few simple checks on init
       assert toString() != null;
@@ -73,7 +73,7 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
     }
 
     @Override
-    public TermVectorsReader clone() {
+    public TermVectorsReaderBase clone() {
       return new AssertingTermVectorsReader(in.clone());
     }
 
@@ -83,7 +83,7 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
     }
 
     @Override
-    public TermVectorsReader getMergeInstance() {
+    public TermVectorsReaderBase getMergeInstance() {
       return new AssertingTermVectorsReader(in.getMergeInstance());
     }
 

@@ -23,7 +23,7 @@ import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -37,7 +37,7 @@ class MergeReaderWrapper extends LeafReader {
   final NormsProducer norms;
   final DocValuesProducer docValues;
   final StoredFieldsReader store;
-  final TermVectorsReader vectors;
+  final TermVectorsReaderBase vectors;
 
   MergeReaderWrapper(CodecReader in) throws IOException {
     this.in = in;
@@ -66,7 +66,7 @@ class MergeReaderWrapper extends LeafReader {
     }
     this.store = store;
 
-    TermVectorsReader vectors = in.getTermVectorsReader();
+    TermVectorsReaderBase vectors = in.getTermVectorsReader();
     if (vectors != null) {
       vectors = vectors.getMergeInstance();
     }

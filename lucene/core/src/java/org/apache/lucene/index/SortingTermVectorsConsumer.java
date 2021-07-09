@@ -22,7 +22,7 @@ import java.util.Map;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsFormat;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -59,7 +59,7 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
       throws IOException {
     super.flush(fieldsToFlush, state, sortMap, norms);
     if (tmpDirectory != null) {
-      TermVectorsReader reader =
+      TermVectorsReaderBase reader =
           TEMP_TERM_VECTORS_FORMAT.vectorsReader(
               tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.DEFAULT);
       // Don't pull a merge instance, since merge instances optimize for

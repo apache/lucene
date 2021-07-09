@@ -37,7 +37,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
@@ -3279,7 +3279,7 @@ public final class CheckIndex implements Closeable {
         postingsFields = null;
       }
 
-      TermVectorsReader vectorsReader = reader.getTermVectorsReader();
+      TermVectorsReaderBase vectorsReader = reader.getTermVectorsReader();
 
       if (vectorsReader != null) {
         vectorsReader = vectorsReader.getMergeInstance();

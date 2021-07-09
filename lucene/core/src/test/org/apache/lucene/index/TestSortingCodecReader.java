@@ -26,7 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -181,8 +181,8 @@ public class TestSortingCodecReader extends LuceneTestCase {
               CodecReader wrap =
                   SortingCodecReader.wrap(SlowCodecReaderWrapper.wrap(ctx.reader()), indexSort);
               readers.add(wrap);
-              TermVectorsReader termVectorsReader = wrap.getTermVectorsReader();
-              TermVectorsReader clone = termVectorsReader.clone();
+              TermVectorsReaderBase termVectorsReader = wrap.getTermVectorsReader();
+              TermVectorsReaderBase clone = termVectorsReader.clone();
               assertNotSame(termVectorsReader, clone);
               clone.close();
             }

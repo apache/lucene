@@ -24,7 +24,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -36,7 +36,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
-public class TestTermVectorsReader extends LuceneTestCase {
+public class TestTermVectorsReaderBase extends LuceneTestCase {
   // Must be lexicographically sorted, will do in setup, versus trying to maintain here
   private String[] testFields = {"f1", "f2", "f3", "f4"};
   private boolean[] testFieldsStorePos = {true, false, true, false};
@@ -193,7 +193,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
   }
 
   public void testReader() throws IOException {
-    TermVectorsReader reader =
+    TermVectorsReaderBase reader =
         Codec.getDefault()
             .termVectorsFormat()
             .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));
@@ -215,7 +215,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
   }
 
   public void testDocsEnum() throws IOException {
-    TermVectorsReader reader =
+    TermVectorsReaderBase reader =
         Codec.getDefault()
             .termVectorsFormat()
             .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));
@@ -245,7 +245,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
   }
 
   public void testPositionReader() throws IOException {
-    TermVectorsReader reader =
+    TermVectorsReaderBase reader =
         Codec.getDefault()
             .termVectorsFormat()
             .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));
@@ -304,7 +304,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
   }
 
   public void testOffsetReader() throws IOException {
-    TermVectorsReader reader =
+    TermVectorsReaderBase reader =
         Codec.getDefault()
             .termVectorsFormat()
             .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));

@@ -20,7 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.index.FieldInfos;
@@ -96,7 +96,7 @@ public class Lucene50CompressingTermVectorsFormat extends TermVectorsFormat {
   }
 
   @Override
-  public final TermVectorsReader vectorsReader(
+  public final TermVectorsReaderBase vectorsReader(
       Directory directory, SegmentInfo segmentInfo, FieldInfos fieldInfos, IOContext context)
       throws IOException {
     return new Lucene50CompressingTermVectorsReader(

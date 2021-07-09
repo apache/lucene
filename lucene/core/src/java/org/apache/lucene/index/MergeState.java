@@ -27,7 +27,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.TermVectorsReaderBase;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Bits;
@@ -59,7 +59,7 @@ public class MergeState {
   public final StoredFieldsReader[] storedFieldsReaders;
 
   /** Term vector producers being merged */
-  public final TermVectorsReader[] termVectorsReaders;
+  public final TermVectorsReaderBase[] termVectorsReaders;
 
   /** Norms producers being merged */
   public final NormsProducer[] normsProducers;
@@ -106,7 +106,7 @@ public class MergeState {
     fieldsProducers = new FieldsProducer[numReaders];
     normsProducers = new NormsProducer[numReaders];
     storedFieldsReaders = new StoredFieldsReader[numReaders];
-    termVectorsReaders = new TermVectorsReader[numReaders];
+    termVectorsReaders = new TermVectorsReaderBase[numReaders];
     docValuesProducers = new DocValuesProducer[numReaders];
     pointsReaders = new PointsReader[numReaders];
     vectorReaders = new VectorReader[numReaders];
