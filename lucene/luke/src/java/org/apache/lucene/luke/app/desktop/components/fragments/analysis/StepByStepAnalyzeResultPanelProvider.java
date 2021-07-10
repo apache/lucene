@@ -370,7 +370,7 @@ public class StepByStepAnalyzeResultPanelProvider implements StepByStepAnalyzeRe
 
     // Currently this only show each tokenizer/filters result independently,
     // so the result doesn't show deletion/separation by next filter,
-    // e.g. "library" by WordDelimiterFilter is different position between other output.
+    // e.g. "library" by WordDelimiterGraphFilter is different position between other output.
     NamedTokensTableModel(List<Analysis.NamedTokens> namedTokens) {
       int maxColumnSize = 0;
       Analysis.NamedTokens namedToken;

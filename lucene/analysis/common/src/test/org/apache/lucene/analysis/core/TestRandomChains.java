@@ -81,7 +81,6 @@ import org.apache.lucene.analysis.miscellaneous.LimitTokenOffsetFilter;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenPositionFilter;
 import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter;
 import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter.StemmerOverrideMap;
-import org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter;
 import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
 import org.apache.lucene.analysis.path.PathHierarchyTokenizer;
 import org.apache.lucene.analysis.path.ReversePathHierarchyTokenizer;
@@ -148,7 +147,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     initBrokenConstructors();
   }
 
-  @SuppressWarnings("deprecation")
   private static void initBrokenConstructors() {
     try {
       brokenConstructors.put(
@@ -200,9 +198,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               ValidatingTokenFilter.class,
               // TODO: it seems to mess up offsets!?
               WikipediaTokenizer.class,
-              // TODO: needs to be a tokenizer, doesnt handle graph inputs properly (a shingle or
-              // similar following will then cause pain)
-              WordDelimiterFilter.class,
               // Cannot correct offsets when a char filter had changed them:
               WordDelimiterGraphFilter.class,
               // requires a special encoded token value, so it may fail with random data:

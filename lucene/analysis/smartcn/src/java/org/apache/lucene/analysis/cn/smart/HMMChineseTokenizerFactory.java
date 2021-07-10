@@ -25,7 +25,7 @@ import org.apache.lucene.util.AttributeFactory;
  * Factory for {@link HMMChineseTokenizer}
  *
  * <p>Note: this class will currently emit tokens for punctuation. So you should either add a
- * WordDelimiterFilter after to remove these (with concatenate off), or use the SmartChinese
+ * WordDelimiterGraphFilter after to remove these (with concatenate off), or use the SmartChinese
  * stoplist with a StopFilterFactory via: <code>
  * words="org/apache/lucene/analysis/cn/smart/stopwords.txt"</code>
  *
