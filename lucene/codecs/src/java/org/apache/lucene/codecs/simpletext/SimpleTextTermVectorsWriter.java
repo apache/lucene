@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.simpletext;
 import java.io.IOException;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -165,7 +164,7 @@ public class SimpleTextTermVectorsWriter extends TermVectorsWriter {
   }
 
   @Override
-  public void finish(FieldInfos fis, int numDocs) throws IOException {
+  public void finish(int numDocs) throws IOException {
     if (numDocsWritten != numDocs) {
       throw new RuntimeException(
           "mergeVectors produced an invalid result: mergedDocs is "
