@@ -51,12 +51,9 @@ public abstract class VectorReader implements Closeable, Accountable {
    * @param field the vector field to search
    * @param target the vector-valued query
    * @param k the number of docs to return
-   * @param fanout control the accuracy/speed tradeoff - larger values give better recall at higher
-   *     cost
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    */
-  public abstract TopDocs search(String field, float[] target, int k, int fanout)
-      throws IOException;
+  public abstract TopDocs search(String field, float[] target, int k) throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

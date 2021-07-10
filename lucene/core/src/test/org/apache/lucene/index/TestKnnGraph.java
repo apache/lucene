@@ -292,7 +292,7 @@ public class TestKnnGraph extends LuceneTestCase {
   private static TopDocs doKnnSearch(IndexReader reader, float[] vector, int k) throws IOException {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      results[ctx.ord] = ctx.reader().searchNearestVectors(KNN_GRAPH_FIELD, vector, k, 10);
+      results[ctx.ord] = ctx.reader().searchNearestVectors(KNN_GRAPH_FIELD, vector, k);
       if (ctx.docBase > 0) {
         for (ScoreDoc doc : results[ctx.ord].scoreDocs) {
           doc.doc += ctx.docBase;

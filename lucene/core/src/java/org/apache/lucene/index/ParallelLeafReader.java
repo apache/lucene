@@ -393,11 +393,10 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(String fieldName, float[] target, int k, int fanout)
-      throws IOException {
+  public TopDocs searchNearestVectors(String fieldName, float[] target, int k) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null ? null : reader.searchNearestVectors(fieldName, target, k, fanout);
+    return reader == null ? null : reader.searchNearestVectors(fieldName, target, k);
   }
 
   @Override

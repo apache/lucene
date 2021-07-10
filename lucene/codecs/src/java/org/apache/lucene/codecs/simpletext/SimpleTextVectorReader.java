@@ -143,7 +143,7 @@ public class SimpleTextVectorReader extends VectorReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+  public TopDocs search(String field, float[] target, int k) throws IOException {
     throw new UnsupportedOperationException();
   }
 

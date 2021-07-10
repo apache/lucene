@@ -99,8 +99,8 @@ public class AssertingVectorFormat extends VectorFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
-      TopDocs hits = delegate.search(field, target, k, fanout);
+    public TopDocs search(String field, float[] target, int k) throws IOException {
+      TopDocs hits = delegate.search(field, target, k);
       assert hits != null;
       assert hits.scoreDocs.length <= k;
       return hits;

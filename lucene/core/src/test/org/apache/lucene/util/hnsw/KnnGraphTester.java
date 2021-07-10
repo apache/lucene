@@ -423,7 +423,7 @@ public class KnnGraphTester {
       IndexReader reader, String field, float[] vector, int k, int fanout) throws IOException {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      results[ctx.ord] = ctx.reader().searchNearestVectors(field, vector, k, fanout);
+      results[ctx.ord] = ctx.reader().searchNearestVectors(field, vector, k + fanout);
       int docBase = ctx.docBase;
       for (ScoreDoc scoreDoc : results[ctx.ord].scoreDocs) {
         scoreDoc.doc += docBase;
