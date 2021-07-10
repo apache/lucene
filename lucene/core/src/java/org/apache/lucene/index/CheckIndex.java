@@ -2287,7 +2287,7 @@ public final class CheckIndex implements Closeable {
   public static Status.NnVectorsStatus testVectors(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
-      infoStream.print("    test: vectors..............");
+      infoStream.print("    test: nn vectors..............");
     }
     long startNS = System.nanoTime();
     FieldInfos fieldInfos = reader.getFieldInfos();
@@ -2302,7 +2302,7 @@ public final class CheckIndex implements Closeable {
               throw new RuntimeException(
                   "Field \""
                       + fieldInfo.name
-                      + "\" has vector values but dimension is "
+                      + "\" has nearest-neighbor vector values but dimension is "
                       + dimension);
             }
             NnVectors values = reader.getNnVectors(fieldInfo.name);
