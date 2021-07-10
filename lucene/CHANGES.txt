@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 New Features
 
-* LUCENE-9322: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
+* LUCENE-9322 LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
 * LUCENE-9004: Approximate nearest vector search via NSW graphs
 
