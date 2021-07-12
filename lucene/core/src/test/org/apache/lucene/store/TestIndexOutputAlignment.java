@@ -45,6 +45,8 @@ public class TestIndexOutputAlignment extends LuceneTestCase {
     assertEquals(val, IndexOutput.alignOffset(val - 1, Short.BYTES));
     // byte alignment never changes anything:
     assertEquals(val - 1, IndexOutput.alignOffset(val - 1, Byte.BYTES));
+
+    assertEquals(Long.MAX_VALUE, IndexOutput.alignOffset(Long.MAX_VALUE, Byte.BYTES));
   }
 
   public void testInvalidAlignments() {
@@ -53,6 +55,10 @@ public class TestIndexOutputAlignment extends LuceneTestCase {
     assertInvalidAligment(-2);
     assertInvalidAligment(6);
     assertInvalidAligment(43);
+    assertInvalidAligment(Integer.MIN_VALUE);
+
+    assertThrows(IllegalArgumentException.class, () -> IndexOutput.alignOffset(-1L, 1));
+    assertThrows(ArithmeticException.class, () -> IndexOutput.alignOffset(Long.MAX_VALUE, 2));
   }
 
   private static void assertInvalidAligment(int size) {

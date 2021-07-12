@@ -98,9 +98,12 @@ public abstract class IndexOutput extends DataOutput implements Closeable {
    * The alignment must be a power of 2.
    */
   public static final long alignOffset(long offset, int alignmentBytes) {
-    if (1 != Integer.bitCount(alignmentBytes)) {
+    if (offset < 0L) {
+      throw new IllegalArgumentException("Offset must be positive");
+    }
+    if (1 != Integer.bitCount(alignmentBytes) || alignmentBytes < 0) {
       throw new IllegalArgumentException("Alignment must be a power of 2");
     }
-    return (offset - 1L + alignmentBytes) & (-alignmentBytes);
+    return Math.addExact(offset - 1L, alignmentBytes) & (-alignmentBytes);
   }
 }
