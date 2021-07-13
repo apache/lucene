@@ -212,7 +212,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
   }
 
   @Override
-  public int read(char cbuf[], int off, int len) throws IOException {
+  public int read(char[] cbuf, int off, int len) throws IOException {
     int i = 0;
     for ( ; i < len ; ++i) {
       int ch = read();

@@ -75,7 +75,7 @@ public class TestMultiFieldQPHelper extends LuceneTestCase {
   // verify parsing of query using a stopping analyzer
   private void assertStopQueryEquals(String qtxt, String expectedRes) throws Exception {
     String[] fields = {"b", "t"};
-    Occur occur[] = {Occur.SHOULD, Occur.SHOULD};
+    Occur[] occur = {Occur.SHOULD, Occur.SHOULD};
     TestQPHelper.QPTestAnalyzer a = new TestQPHelper.QPTestAnalyzer();
     StandardQueryParser mfqp = new StandardQueryParser();
     mfqp.setMultiFields(fields);

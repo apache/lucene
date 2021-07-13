@@ -155,7 +155,7 @@ public final class CommonGramsFilter extends TokenFilter {
     clearAttributes();
 
     int length = buffer.length();
-    char termText[] = termAttribute.buffer();
+    char[] termText = termAttribute.buffer();
     if (length > termText.length) {
       termText = termAttribute.resizeBuffer(length);
     }

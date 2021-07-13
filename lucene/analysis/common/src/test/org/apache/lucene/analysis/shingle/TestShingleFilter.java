@@ -1194,9 +1194,9 @@ public class TestShingleFilter extends BaseTokenStreamTestCase {
   protected void shingleFilterTestCommon(
       ShingleFilter filter, Token[] tokensToCompare, int[] positionIncrements, String[] types)
       throws IOException {
-    String text[] = new String[tokensToCompare.length];
-    int startOffsets[] = new int[tokensToCompare.length];
-    int endOffsets[] = new int[tokensToCompare.length];
+    String[] text = new String[tokensToCompare.length];
+    int[] startOffsets = new int[tokensToCompare.length];
+    int[] endOffsets = new int[tokensToCompare.length];
 
     for (int i = 0; i < tokensToCompare.length; i++) {
       text[i] = new String(tokensToCompare[i].buffer(), 0, tokensToCompare[i].length());

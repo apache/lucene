@@ -136,7 +136,7 @@ public class WindowsDirectory extends FSDirectory {
   private static native long open(String filename) throws IOException;
 
   /** Reads data from a file at pos into bytes */
-  private static native int read(long fd, byte bytes[], int offset, int length, long pos)
+  private static native int read(long fd, byte[] bytes, int offset, int length, long pos)
       throws IOException;
 
   /** Closes a handle to a file */

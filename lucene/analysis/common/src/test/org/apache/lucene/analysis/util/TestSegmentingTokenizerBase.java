@@ -116,7 +116,7 @@ public class TestSegmentingTokenizerBase extends BaseTokenStreamTestCase {
   /** Tests terms which span across boundaries */
   public void testHugeDoc() throws IOException {
     StringBuilder sb = new StringBuilder();
-    char whitespace[] = new char[4094];
+    char[] whitespace = new char[4094];
     Arrays.fill(whitespace, '\n');
     sb.append(whitespace);
     sb.append("testing 1234");
@@ -131,10 +131,10 @@ public class TestSegmentingTokenizerBase extends BaseTokenStreamTestCase {
       sb.append('a');
     }
     String input = sb.toString();
-    char token[] = new char[1024];
+    char[] token = new char[1024];
     Arrays.fill(token, 'a');
     String expectedToken = new String(token);
-    String expected[] = {
+    String[] expected = {
       expectedToken, expectedToken, expectedToken,
       expectedToken, expectedToken, expectedToken,
       expectedToken, expectedToken, expectedToken,

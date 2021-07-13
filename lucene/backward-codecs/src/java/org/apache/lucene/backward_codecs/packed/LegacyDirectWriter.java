@@ -172,6 +172,6 @@ public final class LegacyDirectWriter {
     return roundBits(PackedInts.unsignedBitsRequired(maxValue));
   }
 
-  static final int SUPPORTED_BITS_PER_VALUE[] =
+  static final int[] SUPPORTED_BITS_PER_VALUE =
       new int[] {1, 2, 4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64};
 }

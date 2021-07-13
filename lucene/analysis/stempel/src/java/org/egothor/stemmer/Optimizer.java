@@ -79,7 +79,7 @@ public class Optimizer extends Reduce {
     List<CharSequence> cmds = orig.cmds;
     List<Row> rows = new ArrayList<>();
     List<Row> orows = orig.rows;
-    int remap[] = new int[orows.size()];
+    int[] remap = new int[orows.size()];
 
     for (int j = orows.size() - 1; j >= 0; j--) {
       Row now = new Remap(orows.get(j), remap);

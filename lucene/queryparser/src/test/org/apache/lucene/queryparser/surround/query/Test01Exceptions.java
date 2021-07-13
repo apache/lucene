@@ -22,7 +22,7 @@ import org.apache.lucene.util.LuceneTestCase;
 
 public class Test01Exceptions extends LuceneTestCase {
   /** Main for running test case by itself. */
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     TestRunner.run(new TestSuite(Test01Exceptions.class));
   }
 

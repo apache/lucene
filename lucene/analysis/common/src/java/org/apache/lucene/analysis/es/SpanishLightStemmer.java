@@ -59,7 +59,7 @@ package org.apache.lucene.analysis.es;
  */
 public class SpanishLightStemmer {
 
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     if (len < 5) return len;
 
     for (int i = 0; i < len; i++)

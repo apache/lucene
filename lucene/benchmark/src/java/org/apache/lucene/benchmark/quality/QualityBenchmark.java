@@ -42,7 +42,7 @@ import org.apache.lucene.search.TopDocs;
 public class QualityBenchmark {
 
   /** Quality Queries that this quality benchmark would execute. */
-  protected QualityQuery qualityQueries[];
+  protected QualityQuery[] qualityQueries;
 
   /** Parser for turning QualityQueries into Lucene Queries. */
   protected QualityQueryParser qqParser;
@@ -72,7 +72,7 @@ public class QualityBenchmark {
    *     name for search results, and is important for judging the results.
    */
   public QualityBenchmark(
-      QualityQuery qqs[],
+      QualityQuery[] qqs,
       QualityQueryParser qqParser,
       IndexSearcher searcher,
       String docNameField) {
@@ -95,7 +95,7 @@ public class QualityBenchmark {
   public QualityStats[] execute(Judge judge, SubmissionReport submitRep, PrintWriter qualityLog)
       throws Exception {
     int nQueries = Math.min(maxQueries, qualityQueries.length);
-    QualityStats stats[] = new QualityStats[nQueries];
+    QualityStats[] stats = new QualityStats[nQueries];
     for (int i = 0; i < nQueries; i++) {
       QualityQuery qq = qualityQueries[i];
       // generate query
@@ -123,7 +123,7 @@ public class QualityBenchmark {
       QualityQuery qq, Query q, TopDocs td, Judge judge, PrintWriter logger, long searchTime)
       throws IOException {
     QualityStats stts = new QualityStats(judge.maxRecall(qq), searchTime);
-    ScoreDoc sd[] = td.scoreDocs;
+    ScoreDoc[] sd = td.scoreDocs;
     long t1 =
         System.currentTimeMillis(); // extraction of first doc name we measure also construction of
     // doc name extractor, just in case.

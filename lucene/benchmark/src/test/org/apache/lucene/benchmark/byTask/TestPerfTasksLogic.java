@@ -71,7 +71,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test index creation logic */
   public void testIndexAndSearchTasks() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "ResetSystemErase",
       "CreateIndex",
       "{ AddDoc } : 1000",
@@ -110,7 +110,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
   /** Test timed sequence task. */
   public void testTimedSearchTask() throws Exception {
-    String algLines[] = {
+    String[] algLines = {
       "log.step=100000",
       "ResetSystemErase",
       "CreateIndex",
@@ -132,7 +132,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   // disabled until we fix BG thread prio -- this test
   // causes build to hang
   public void testBGSearchTaskThreads() throws Exception {
-    String algLines[] = {
+    String[] algLines = {
       "log.time.step.msec = 100",
       "log.step=100000",
       "ResetSystemErase",
@@ -162,7 +162,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test Exhasting Doc Maker logic */
   public void testExhaustContentSource() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.SingleDocSource",
       "content.source.log.step=1",
@@ -210,7 +210,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   // LUCENE-1994: test thread safety of SortableSingleDocMaker
   public void testDocMakerThreadSafety() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.SortableSingleDocSource",
       "doc.term.vector=false",
@@ -246,7 +246,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test Parallel Doc Maker logic (for LUCENE-940) */
   public void testParallelDocMaker() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -280,7 +280,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     final int NUM_TRY_DOCS = 50;
 
     // Creates a line file with first 50 docs from SingleDocSource
-    String algLines1[] = {
+    String[] algLines1 = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.SingleDocSource",
       "content.source.forever=true",
@@ -308,7 +308,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
         numLines);
 
     // Index the line docs
-    String algLines2[] = {
+    String[] algLines2 = {
       "# ----- properties ",
       "analyzer=org.apache.lucene.analysis.core.WhitespaceAnalyzer",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
@@ -349,7 +349,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
     // Read tokens from first NUM_DOCS docs from Reuters and
     // then build index from the same docs
-    String algLines1[] = {
+    String[] algLines1 = {
       "# ----- properties ",
       "analyzer=org.apache.lucene.analysis.core.WhitespaceAnalyzer",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
@@ -411,7 +411,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test that " {[AddDoc(4000)]: 4} : * " works corrcetly (for LUCENE-941) */
   public void testParallelExhausted() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -443,7 +443,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test that exhaust in loop works as expected (LUCENE-1115). */
   public void testExhaustedLooped() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -476,7 +476,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test that we can close IndexWriter with argument "false". */
   public void testCloseIndexFalse() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -520,7 +520,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test that we can set merge scheduler". */
   public void testMergeScheduler() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -566,7 +566,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test that we can set merge policy". */
   public void testMergePolicy() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -606,7 +606,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test that IndexWriter settings stick. */
   public void testIndexWriterSettings() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -650,7 +650,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test indexing with facets tasks. */
   public void testIndexingWithFacets() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -686,7 +686,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   /** Test that we can call forceMerge(maxNumSegments). */
   public void testForceMerge() throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -732,7 +732,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
   private void doTestDisableCounting(boolean disable) throws Exception {
     // 1. alg definition (required in every "logic" test)
-    String algLines[] = disableCountingLines(disable);
+    String[] algLines = disableCountingLines(disable);
 
     // 2. execute the algorithm  (required in every "logic" test)
     Benchmark benchmark = execBenchmark(algLines);
@@ -804,7 +804,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   }
 
   private String[] getLocaleConfig(String localeParam) {
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -865,7 +865,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   }
 
   private String[] getCollatorConfig(String localeParam, String collationParam) {
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
@@ -953,7 +953,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
   private String[] getAnalyzerFactoryConfig(String name, String params) {
     final String singleQuoteEscapedName = name.replaceAll("'", "\\\\'");
-    String algLines[] = {
+    String[] algLines = {
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
       "work.dir="

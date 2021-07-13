@@ -1058,7 +1058,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
               + "",
           failure.failOnCommit && (failure.failOnDeleteFile || failure.failOnSyncMetadata));
       w.rollback();
-      String files[] = dir.listAll();
+      String[] files = dir.listAll();
       assertTrue(
           files.length == fileCount
               || (files.length == fileCount + 1
@@ -1668,7 +1668,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         NullPointerException.class,
         () -> {
           // set to null value
-          byte v[] = null;
+          byte[] v = null;
           Field theField = new StoredField("foo", v);
           doc.add(theField);
           iw.addDocument(doc);
@@ -1697,7 +1697,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         NullPointerException.class,
         () -> {
           // set to null value
-          byte v[] = null;
+          byte[] v = null;
           theField.setBytesValue(v);
           iw.addDocument(doc);
         });

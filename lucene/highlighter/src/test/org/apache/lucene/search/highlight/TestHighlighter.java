@@ -1187,7 +1187,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            SpanQuery clauses[] = {
+            SpanQuery[] clauses = {
               new SpanTermQuery(new Term("contents", "john")),
               new SpanTermQuery(new Term("contents", "kennedy")),
             };
@@ -1230,7 +1230,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            SpanQuery clauses[] = {
+            SpanQuery[] clauses = {
               new SpanTermQuery(new Term("contents", "john")),
               new SpanTermQuery(new Term("contents", "kennedy")),
             };
@@ -1534,10 +1534,10 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
                       query, FIELD_NAME, TestHighlighter.this); // new Highlighter(this, new
               // QueryTermScorer(query));
               highlighter.setTextFragmenter(new SimpleFragmenter(20));
-              String stringResults[] = highlighter.getBestFragments(tokenStream, text, 10);
+              String[] stringResults = highlighter.getBestFragments(tokenStream, text, 10);
 
               tokenStream = analyzer.tokenStream(FIELD_NAME, text);
-              TextFragment fragmentResults[] =
+              TextFragment[] fragmentResults =
                   highlighter.getBestTextFragments(tokenStream, text, true, 10);
 
               assertTrue(

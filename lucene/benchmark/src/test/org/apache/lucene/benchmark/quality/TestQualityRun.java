@@ -62,7 +62,7 @@ public class TestQualityRun extends BenchmarkTestCase {
     // prepare topics
     InputStream topics = getClass().getResourceAsStream("trecTopics.txt");
     TrecTopicsReader qReader = new TrecTopicsReader();
-    QualityQuery qqs[] =
+    QualityQuery[] qqs =
         qReader.readQueries(
             new BufferedReader(new InputStreamReader(topics, StandardCharsets.UTF_8)));
 
@@ -83,7 +83,7 @@ public class TestQualityRun extends BenchmarkTestCase {
 
     SubmissionReport submitLog = VERBOSE ? new SubmissionReport(logger, "TestRun") : null;
     qrun.setMaxResults(maxResults);
-    QualityStats stats[] = qrun.execute(judge, submitLog, logger);
+    QualityStats[] stats = qrun.execute(judge, submitLog, logger);
 
     // --------- verify by the way judgments were altered for this test:
     // for some queries, depending on m = qnum % 8
@@ -160,7 +160,7 @@ public class TestQualityRun extends BenchmarkTestCase {
     // prepare topics
     InputStream topicsFile = getClass().getResourceAsStream("trecTopics.txt");
     TrecTopicsReader qReader = new TrecTopicsReader();
-    QualityQuery qqs[] =
+    QualityQuery[] qqs =
         qReader.readQueries(
             new BufferedReader(new InputStreamReader(topicsFile, StandardCharsets.UTF_8)));
 
@@ -188,7 +188,7 @@ public class TestQualityRun extends BenchmarkTestCase {
   // use benchmark logic to create the mini Reuters index
   private void createReutersIndex() throws Exception {
     // 1. alg definition
-    String algLines[] = {
+    String[] algLines = {
       "# ----- properties ",
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "analyzer=org.apache.lucene.analysis.classic.ClassicAnalyzer",

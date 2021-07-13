@@ -505,7 +505,7 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
   /** MPQ Combined AND OR Mode - Manually creating a multiple phrase query */
   public void testZeroPosIncrSloppyMpqAndOrMatch() throws IOException {
     final MultiPhraseQuery.Builder mpqb = new MultiPhraseQuery.Builder();
-    for (Token tap[] : INCR_0_QUERY_TOKENS_AND_OR_MATCH) {
+    for (Token[] tap : INCR_0_QUERY_TOKENS_AND_OR_MATCH) {
       Term[] terms = tapTerms(tap);
       final int pos = tap[0].getPositionIncrement() - 1;
       mpqb.add(terms, pos); // AND logic in pos, OR across lines
@@ -520,7 +520,7 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
   /** MPQ Combined AND OR Mode - Manually creating a multiple phrase query - with no match */
   public void testZeroPosIncrSloppyMpqAndOrNoMatch() throws IOException {
     final MultiPhraseQuery.Builder mpqb = new MultiPhraseQuery.Builder();
-    for (Token tap[] : INCR_0_QUERY_TOKENS_AND_OR_NO_MATCHN) {
+    for (Token[] tap : INCR_0_QUERY_TOKENS_AND_OR_NO_MATCHN) {
       Term[] terms = tapTerms(tap);
       final int pos = tap[0].getPositionIncrement() - 1;
       mpqb.add(terms, pos); // AND logic in pos, OR across lines

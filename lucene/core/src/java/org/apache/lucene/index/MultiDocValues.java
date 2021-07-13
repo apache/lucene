@@ -680,9 +680,9 @@ public class MultiDocValues {
    */
   public static class MultiSortedDocValues extends SortedDocValues {
     /** docbase for each leaf: parallel with {@link #values} */
-    public final int docStarts[];
+    public final int[] docStarts;
     /** leaf values */
-    public final SortedDocValues values[];
+    public final SortedDocValues[] values;
     /** ordinal map mapping ords from <code>values</code> to global ord space */
     public final OrdinalMap mapping;
 
@@ -695,7 +695,7 @@ public class MultiDocValues {
 
     /** Creates a new MultiSortedDocValues over <code>values</code> */
     public MultiSortedDocValues(
-        SortedDocValues values[], int docStarts[], OrdinalMap mapping, long totalCost)
+        SortedDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost)
         throws IOException {
       assert docStarts.length == values.length + 1;
       this.values = values;
@@ -819,9 +819,9 @@ public class MultiDocValues {
    */
   public static class MultiSortedSetDocValues extends SortedSetDocValues {
     /** docbase for each leaf: parallel with {@link #values} */
-    public final int docStarts[];
+    public final int[] docStarts;
     /** leaf values */
-    public final SortedSetDocValues values[];
+    public final SortedSetDocValues[] values;
     /** ordinal map mapping ords from <code>values</code> to global ord space */
     public final OrdinalMap mapping;
 
@@ -834,7 +834,7 @@ public class MultiDocValues {
 
     /** Creates a new MultiSortedSetDocValues over <code>values</code> */
     public MultiSortedSetDocValues(
-        SortedSetDocValues values[], int docStarts[], OrdinalMap mapping, long totalCost)
+        SortedSetDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost)
         throws IOException {
       assert docStarts.length == values.length + 1;
       this.values = values;

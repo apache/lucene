@@ -47,7 +47,7 @@ public final class RemoveDuplicatesTokenFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     while (input.incrementToken()) {
-      final char term[] = termAttribute.buffer();
+      final char[] term = termAttribute.buffer();
       final int length = termAttribute.length();
       final int posIncrement = posIncAttribute.getPositionIncrement();
 
@@ -58,7 +58,7 @@ public final class RemoveDuplicatesTokenFilter extends TokenFilter {
       boolean duplicate = (posIncrement == 0 && previous.contains(term, 0, length));
 
       // clone the term, and add to the set of seen terms.
-      char saved[] = new char[length];
+      char[] saved = new char[length];
       System.arraycopy(term, 0, saved, 0, length);
       previous.add(saved);
 

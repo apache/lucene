@@ -56,7 +56,7 @@ public interface Dictionary {
    * @param wordId word ID of token
    * @return Reading of the token
    */
-  public String getReading(int wordId, char surface[], int off, int len);
+  public String getReading(int wordId, char[] surface, int off, int len);
 
   /**
    * Get base form of word
@@ -64,7 +64,7 @@ public interface Dictionary {
    * @param wordId word ID of token
    * @return Base form (only different for inflected words, otherwise null)
    */
-  public String getBaseForm(int wordId, char surface[], int off, int len);
+  public String getBaseForm(int wordId, char[] surface, int off, int len);
 
   /**
    * Get pronunciation of tokens
@@ -72,7 +72,7 @@ public interface Dictionary {
    * @param wordId word ID of token
    * @return Pronunciation of the token
    */
-  public String getPronunciation(int wordId, char surface[], int off, int len);
+  public String getPronunciation(int wordId, char[] surface, int off, int len);
 
   /**
    * Get inflection type of tokens

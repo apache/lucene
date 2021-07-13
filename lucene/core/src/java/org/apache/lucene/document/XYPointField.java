@@ -107,7 +107,7 @@ public class XYPointField extends Field {
     result.append(name);
     result.append(':');
 
-    byte bytes[] = ((BytesRef) fieldsData).bytes;
+    byte[] bytes = ((BytesRef) fieldsData).bytes;
     result.append(XYEncodingUtils.decode(bytes, 0));
     result.append(',');
     result.append(XYEncodingUtils.decode(bytes, Integer.BYTES));

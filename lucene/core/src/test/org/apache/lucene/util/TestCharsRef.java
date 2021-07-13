@@ -23,8 +23,8 @@ public class TestCharsRef extends LuceneTestCase {
   @SuppressWarnings("deprecation")
   public void testUTF16InUTF8Order() {
     final int numStrings = atLeast(1000);
-    BytesRef utf8[] = new BytesRef[numStrings];
-    CharsRef utf16[] = new CharsRef[numStrings];
+    BytesRef[] utf8 = new BytesRef[numStrings];
+    CharsRef[] utf16 = new CharsRef[numStrings];
 
     for (int i = 0; i < numStrings; i++) {
       String s = TestUtil.randomUnicodeString(random());
@@ -90,7 +90,7 @@ public class TestCharsRef extends LuceneTestCase {
   // LUCENE-3590: fix off-by-one in subsequence, and fully obey interface
   // LUCENE-4671: fix subSequence
   public void testCharSequenceSubSequence() {
-    CharSequence sequences[] = {
+    CharSequence[] sequences = {
       new CharsRef("abc"),
       new CharsRef("0abc".toCharArray(), 1, 3),
       new CharsRef("abc0".toCharArray(), 0, 3),

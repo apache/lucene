@@ -100,7 +100,7 @@ public class TestExpressionSorts extends LuceneTestCase {
   void assertQuery(Query query) throws Exception {
     for (int i = 0; i < 10; i++) {
       boolean reversed = random().nextBoolean();
-      SortField fields[] =
+      SortField[] fields =
           new SortField[] {
             new SortField("int", SortField.Type.INT, reversed),
             new SortField("long", SortField.Type.LONG, reversed),
@@ -121,8 +121,8 @@ public class TestExpressionSorts extends LuceneTestCase {
     // make our actual sort, mutating original by replacing some of the
     // sortfields with equivalent expressions
 
-    SortField original[] = sort.getSort();
-    SortField mutated[] = new SortField[original.length];
+    SortField[] original = sort.getSort();
+    SortField[] mutated = new SortField[original.length];
     for (int i = 0; i < mutated.length; i++) {
       if (random().nextInt(3) > 0) {
         SortField s = original[i];

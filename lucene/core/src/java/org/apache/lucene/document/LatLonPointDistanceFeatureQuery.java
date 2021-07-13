@@ -387,10 +387,10 @@ final class LatLonPointDistanceFeatureQuery extends Query {
       // Ideally we would be doing a distance query but that is too expensive so we approximate
       // with a box query which performs better.
       Rectangle box = Rectangle.fromPointDistance(originLat, originLon, maxDistance);
-      final byte minLat[] = new byte[LatLonPoint.BYTES];
-      final byte maxLat[] = new byte[LatLonPoint.BYTES];
-      final byte minLon[] = new byte[LatLonPoint.BYTES];
-      final byte maxLon[] = new byte[LatLonPoint.BYTES];
+      final byte[] minLat = new byte[LatLonPoint.BYTES];
+      final byte[] maxLat = new byte[LatLonPoint.BYTES];
+      final byte[] minLon = new byte[LatLonPoint.BYTES];
+      final byte[] maxLon = new byte[LatLonPoint.BYTES];
       final boolean crossDateLine = box.crossesDateline();
 
       NumericUtils.intToSortableBytes(GeoEncodingUtils.encodeLatitude(box.minLat), minLat, 0);

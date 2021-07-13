@@ -47,7 +47,7 @@ public class CorePlusQueriesParser extends CoreParser {
 
   protected CorePlusQueriesParser(String defaultField, Analyzer analyzer, QueryParser parser) {
     super(defaultField, analyzer, parser);
-    String fields[] = {"contents"};
+    String[] fields = {"contents"};
     queryFactory.addBuilder("LikeThisQuery", new LikeThisQueryBuilder(analyzer, fields));
   }
 }

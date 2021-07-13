@@ -67,7 +67,7 @@ public class TrecContentSource extends ContentSource {
   /** separator between lines in the byffer */
   public static final String NEW_LINE = System.getProperty("line.separator");
 
-  private static final String DATE_FORMATS[] = {
+  private static final String[] DATE_FORMATS = {
     "EEE, dd MMM yyyy kk:mm:ss z", // Tue, 09 Dec 2003 22:39:08 GMT
     "EEE MMM dd kk:mm:ss yyyy z", // Tue Dec 09 16:45:08 2003 EST
     "EEE, dd-MMM-':'y kk:mm:ss z", // Tue, 09 Dec 2003 22:39:08 GMT

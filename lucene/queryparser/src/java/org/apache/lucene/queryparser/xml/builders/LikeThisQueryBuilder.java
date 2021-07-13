@@ -39,7 +39,7 @@ public class LikeThisQueryBuilder implements QueryBuilder {
       30; // default is a 3rd of selected terms must match
 
   private final Analyzer analyzer;
-  private final String defaultFieldNames[];
+  private final String[] defaultFieldNames;
 
   public LikeThisQueryBuilder(Analyzer analyzer, String[] defaultFieldNames) {
     this.analyzer = analyzer;
@@ -52,7 +52,7 @@ public class LikeThisQueryBuilder implements QueryBuilder {
   @Override
   public Query getQuery(Element e) throws ParserException {
     String fieldsList = e.getAttribute("fieldNames"); // a comma-delimited list of fields
-    String fields[] = defaultFieldNames;
+    String[] fields = defaultFieldNames;
     if ((fieldsList != null) && (fieldsList.trim().length() > 0)) {
       fields = fieldsList.trim().split(",");
       // trim the fieldnames

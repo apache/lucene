@@ -141,7 +141,7 @@ public class WordlistLoader {
       while ((line = br.readLine()) != null) {
         int comment = line.indexOf('|');
         if (comment >= 0) line = line.substring(0, comment);
-        String words[] = line.split("\\s+");
+        String[] words = line.split("\\s+");
         for (int i = 0; i < words.length; i++) {
           if (words[i].length() > 0) result.add(words[i]);
         }

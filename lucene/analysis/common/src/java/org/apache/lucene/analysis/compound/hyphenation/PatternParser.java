@@ -317,7 +317,7 @@ public class PatternParser extends DefaultHandler {
   /** @see org.xml.sax.ContentHandler#characters(char[], int, int) */
   @SuppressWarnings({"unchecked", "rawtypes"})
   @Override
-  public void characters(char ch[], int start, int length) {
+  public void characters(char[] ch, int start, int length) {
     StringBuilder chars = new StringBuilder(length);
     chars.append(ch, start, length);
     String word = readToken(chars);

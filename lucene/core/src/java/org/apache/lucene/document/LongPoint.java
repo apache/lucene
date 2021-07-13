@@ -151,12 +151,12 @@ public final class LongPoint extends Field {
   // public helper methods (e.g. for queries)
 
   /** Encode single long dimension */
-  public static void encodeDimension(long value, byte dest[], int offset) {
+  public static void encodeDimension(long value, byte[] dest, int offset) {
     NumericUtils.longToSortableBytes(value, dest, offset);
   }
 
   /** Decode single long dimension */
-  public static long decodeDimension(byte value[], int offset) {
+  public static long decodeDimension(byte[] value, int offset) {
     return NumericUtils.sortableBytesToLong(value, offset);
   }
 

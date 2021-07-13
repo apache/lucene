@@ -70,7 +70,7 @@ public class QueryDriver {
 
     // use trec utilities to read trec topics into quality queries
     TrecTopicsReader qReader = new TrecTopicsReader();
-    QualityQuery qqs[] =
+    QualityQuery[] qqs =
         qReader.readQueries(Files.newBufferedReader(topicsFile, StandardCharsets.UTF_8));
 
     // prepare judge, with trec utilities that read from a QRels file
@@ -90,7 +90,7 @@ public class QueryDriver {
     // run the benchmark
     QualityBenchmark qrun = new QualityBenchmark(qqs, qqParser, searcher, docNameField);
     qrun.setMaxResults(maxResults);
-    QualityStats stats[] = qrun.execute(judge, submitLog, logger);
+    QualityStats[] stats = qrun.execute(judge, submitLog, logger);
 
     // print an avarage sum of the results
     QualityStats avg = QualityStats.average(stats);

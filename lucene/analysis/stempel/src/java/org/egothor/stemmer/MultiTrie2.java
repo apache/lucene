@@ -98,7 +98,7 @@ public class MultiTrie2 extends MultiTrie {
     StringBuilder result = new StringBuilder(tries.size() * 2);
     try {
       CharSequence lastkey = key;
-      CharSequence p[] = new CharSequence[tries.size()];
+      CharSequence[] p = new CharSequence[tries.size()];
       char lastch = ' ';
       for (int i = 0; i < tries.size(); i++) {
         CharSequence r = tries.get(i).getFully(lastkey);
@@ -142,7 +142,7 @@ public class MultiTrie2 extends MultiTrie {
     StringBuilder result = new StringBuilder(tries.size() * 2);
     try {
       CharSequence lastkey = key;
-      CharSequence p[] = new CharSequence[tries.size()];
+      CharSequence[] p = new CharSequence[tries.size()];
       char lastch = ' ';
       for (int i = 0; i < tries.size(); i++) {
         CharSequence r = tries.get(i).getLastOnPath(lastkey);
@@ -201,7 +201,7 @@ public class MultiTrie2 extends MultiTrie {
       return;
     }
     // System.err.println( cmd );
-    CharSequence p[] = decompose(cmd);
+    CharSequence[] p = decompose(cmd);
     int levels = p.length;
     // System.err.println("levels "+key+" cmd "+cmd+"|"+levels);
     while (levels >= tries.size()) {
@@ -255,7 +255,7 @@ public class MultiTrie2 extends MultiTrie {
       }
     }
 
-    CharSequence part[] = new CharSequence[parts];
+    CharSequence[] part = new CharSequence[parts];
     int x = 0;
 
     for (int i = 0; 0 <= i && i < cmd.length(); ) {

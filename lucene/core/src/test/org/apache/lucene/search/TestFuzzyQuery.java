@@ -318,7 +318,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     searcher.setSimilarity(
         new ClassicSimilarity()); // avoid randomisation of similarity algo by test framework
     writer.close();
-    String searchTerms[] = {"smith", "smythe", "smdssasd"};
+    String[] searchTerms = {"smith", "smythe", "smdssasd"};
     for (String searchTerm : searchTerms) {
       FuzzyQuery query = new FuzzyQuery(new Term("field", searchTerm), 2, 1);
       ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
@@ -757,7 +757,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IntsRef targetPoints;
     IntsRef otherPoints;
     int n;
-    int d[][]; // cost array
+    int[][] d; // cost array
 
     // NOTE: if we cared, we could 3*m space instead of m*n space, similar to
     // what LevenshteinDistance does, except cycling thru a ring of three

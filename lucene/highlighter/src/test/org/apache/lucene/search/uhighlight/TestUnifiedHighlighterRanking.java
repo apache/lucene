@@ -176,7 +176,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     HashSet<Pair> seen = new HashSet<>();
 
     @Override
-    public String format(Passage passages[], String content) {
+    public String format(Passage[] passages, String content) {
       for (Passage p : passages) {
         // verify some basics about the passage
         assertTrue(p.getScore() >= 0);
@@ -300,7 +300,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     Query query = new TermQuery(new Term("body", "test"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
-    String snippets[] = highlighter.highlight("body", query, topDocs, 1);
+    String[] snippets = highlighter.highlight("body", query, topDocs, 1);
     assertEquals(1, snippets.length);
     assertTrue(snippets[0].startsWith("This <b>test</b> is a better <b>test</b>"));
 
@@ -356,7 +356,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
             .build();
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
-    String snippets[] = highlighter.highlight("body", query, topDocs, 1);
+    String[] snippets = highlighter.highlight("body", query, topDocs, 1);
     assertEquals(1, snippets.length);
     assertTrue(snippets[0].startsWith("On the other hand"));
 

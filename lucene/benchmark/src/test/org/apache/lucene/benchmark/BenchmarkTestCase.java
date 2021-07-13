@@ -75,7 +75,7 @@ public abstract class BenchmarkTestCase extends LuceneTestCase {
   }
 
   // properties in effect in all tests here
-  final String propLines[] = {
+  final String[] propLines = {
     "work.dir=" + getWorkDirPath(), "directory=ByteBuffersDirectory", "print.props=false",
   };
 

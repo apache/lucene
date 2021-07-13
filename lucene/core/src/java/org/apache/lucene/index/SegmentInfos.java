@@ -325,7 +325,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
             input, magic, CodecUtil.CODEC_MAGIC, CodecUtil.CODEC_MAGIC);
       }
       format = CodecUtil.checkHeaderNoMagic(input, "segments", VERSION_70, VERSION_CURRENT);
-      byte id[] = new byte[StringHelper.ID_LENGTH];
+      byte[] id = new byte[StringHelper.ID_LENGTH];
       input.readBytes(id, 0, id.length);
       CodecUtil.checkIndexHeaderSuffix(input, Long.toString(generation, Character.MAX_RADIX));
 
@@ -620,7 +620,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
                 + si);
       }
       out.writeString(si.name);
-      byte segmentID[] = si.getId();
+      byte[] segmentID = si.getId();
       if (segmentID.length != StringHelper.ID_LENGTH) {
         throw new IllegalStateException(
             "cannot write segment: invalid id segment="
@@ -784,8 +784,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
       for (; ; ) {
         lastGen = gen;
-        String files[] = directory.listAll();
-        String files2[] = directory.listAll();
+        String[] files = directory.listAll();
+        String[] files2 = directory.listAll();
         Arrays.sort(files);
         Arrays.sort(files2);
         if (!Arrays.equals(files, files2)) {

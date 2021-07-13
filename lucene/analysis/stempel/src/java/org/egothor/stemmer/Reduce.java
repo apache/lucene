@@ -75,7 +75,7 @@ public class Reduce {
     List<CharSequence> cmds = orig.cmds;
     List<Row> rows = new ArrayList<>();
     List<Row> orows = orig.rows;
-    int remap[] = new int[orows.size()];
+    int[] remap = new int[orows.size()];
 
     Arrays.fill(remap, -1);
     rows = removeGaps(orig.root, rows, new ArrayList<Row>(), remap);
@@ -83,7 +83,7 @@ public class Reduce {
     return new Trie(orig.forward, remap[orig.root], cmds, rows);
   }
 
-  List<Row> removeGaps(int ind, List<Row> old, List<Row> to, int remap[]) {
+  List<Row> removeGaps(int ind, List<Row> old, List<Row> to, int[] remap) {
     remap[ind] = to.size();
 
     Row now = old.get(ind);
@@ -107,7 +107,7 @@ public class Reduce {
      * @param old Description of the Parameter
      * @param remap Description of the Parameter
      */
-    public Remap(Row old, int remap[]) {
+    public Remap(Row old, int[] remap) {
       super();
       Iterator<Character> i = old.cells.keySet().iterator();
       for (; i.hasNext(); ) {

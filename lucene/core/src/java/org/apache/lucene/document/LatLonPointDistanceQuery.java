@@ -83,12 +83,12 @@ final class LatLonPointDistanceQuery extends Query {
     Rectangle box = Rectangle.fromPointDistance(latitude, longitude, radiusMeters);
     // create bounding box(es) for the distance range
     // these are pre-encoded with LatLonPoint's encoding
-    final byte minLat[] = new byte[Integer.BYTES];
-    final byte maxLat[] = new byte[Integer.BYTES];
-    final byte minLon[] = new byte[Integer.BYTES];
-    final byte maxLon[] = new byte[Integer.BYTES];
+    final byte[] minLat = new byte[Integer.BYTES];
+    final byte[] maxLat = new byte[Integer.BYTES];
+    final byte[] minLon = new byte[Integer.BYTES];
+    final byte[] maxLon = new byte[Integer.BYTES];
     // second set of longitude ranges to check (for cross-dateline case)
-    final byte minLon2[] = new byte[Integer.BYTES];
+    final byte[] minLon2 = new byte[Integer.BYTES];
 
     NumericUtils.intToSortableBytes(encodeLatitude(box.minLat), minLat, 0);
     NumericUtils.intToSortableBytes(encodeLatitude(box.maxLat), maxLat, 0);

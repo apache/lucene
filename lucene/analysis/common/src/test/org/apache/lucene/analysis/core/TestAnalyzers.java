@@ -200,7 +200,7 @@ public class TestAnalyzers extends BaseTokenStreamTestCase {
 
   /** blast some random strings through the analyzer */
   public void testRandomStrings() throws Exception {
-    Analyzer analyzers[] =
+    Analyzer[] analyzers =
         new Analyzer[] {
           new WhitespaceAnalyzer(),
           new SimpleAnalyzer(),
@@ -215,7 +215,7 @@ public class TestAnalyzers extends BaseTokenStreamTestCase {
 
   /** blast some random large strings through the analyzer */
   public void testRandomHugeStrings() throws Exception {
-    Analyzer analyzers[] =
+    Analyzer[] analyzers =
         new Analyzer[] {
           new WhitespaceAnalyzer(),
           new SimpleAnalyzer(),

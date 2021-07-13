@@ -304,7 +304,7 @@ public class TestField extends LuceneTestCase {
   }
 
   public void testStringField() throws Exception {
-    Field fields[] =
+    Field[] fields =
         new Field[] {
           new StringField("foo", "bar", Field.Store.NO),
           new StringField("foo", "bar", Field.Store.YES)
@@ -328,7 +328,7 @@ public class TestField extends LuceneTestCase {
   }
 
   public void testTextFieldString() throws Exception {
-    Field fields[] =
+    Field[] fields =
         new Field[] {
           new TextField("foo", "bar", Field.Store.NO), new TextField("foo", "bar", Field.Store.YES)
         };
@@ -375,7 +375,7 @@ public class TestField extends LuceneTestCase {
   */
 
   public void testStoredFieldBytes() throws Exception {
-    Field fields[] =
+    Field[] fields =
         new Field[] {
           new StoredField("foo", "bar".getBytes(StandardCharsets.UTF_8)),
           new StoredField("foo", "bar".getBytes(StandardCharsets.UTF_8), 0, 3),

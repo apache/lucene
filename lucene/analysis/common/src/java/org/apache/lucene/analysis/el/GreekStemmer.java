@@ -39,7 +39,7 @@ public class GreekStemmer {
    * @param len The length of the char[] array.
    * @return The new length of the stemmed word.
    */
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     if (len < 4) // too short
     return len;
 
@@ -72,7 +72,7 @@ public class GreekStemmer {
     return rule22(s, len);
   }
 
-  private int rule0(char s[], int len) {
+  private int rule0(char[] s, int len) {
     if (len > 9 && (endsWith(s, len, "καθεστωτοσ") || endsWith(s, len, "καθεστωτων")))
       return len - 4;
 
@@ -131,7 +131,7 @@ public class GreekStemmer {
     return len;
   }
 
-  private int rule1(char s[], int len) {
+  private int rule1(char[] s, int len) {
     if (len > 4 && (endsWith(s, len, "αδεσ") || endsWith(s, len, "αδων"))) {
       len -= 4;
       if (!(endsWith(s, len, "οκ")
@@ -148,7 +148,7 @@ public class GreekStemmer {
     return len;
   }
 
-  private int rule2(char s[], int len) {
+  private int rule2(char[] s, int len) {
     if (len > 4 && (endsWith(s, len, "εδεσ") || endsWith(s, len, "εδων"))) {
       len -= 4;
       if (endsWith(s, len, "οπ")
@@ -163,7 +163,7 @@ public class GreekStemmer {
     return len;
   }
 
-  private int rule3(char s[], int len) {
+  private int rule3(char[] s, int len) {
     if (len > 5 && (endsWith(s, len, "ουδεσ") || endsWith(s, len, "ουδων"))) {
       len -= 5;
       if (endsWith(s, len, "αρκ")
@@ -188,7 +188,7 @@ public class GreekStemmer {
   private static final CharArraySet exc4 =
       new CharArraySet(Arrays.asList("θ", "δ", "ελ", "γαλ", "ν", "π", "ιδ", "παρ"), false);
 
-  private int rule4(char s[], int len) {
+  private int rule4(char[] s, int len) {
     if (len > 3 && (endsWith(s, len, "εωσ") || endsWith(s, len, "εων"))) {
       len -= 3;
       if (exc4.contains(s, 0, len)) len++; // add back -ε
@@ -196,7 +196,7 @@ public class GreekStemmer {
     return len;
   }
 
-  private int rule5(char s[], int len) {
+  private int rule5(char[] s, int len) {
     if (len > 2 && endsWith(s, len, "ια")) {
       len -= 2;
       if (endsWithVowel(s, len)) len++; // add back -ι
@@ -216,7 +216,7 @@ public class GreekStemmer {
               "συναδ", "τσαμ", "υποδ", "φιλον", "φυλοδ", "χασ"),
           false);
 
-  private int rule6(char s[], int len) {
+  private int rule6(char[] s, int len) {
     boolean removed = false;
     if (len > 3 && (endsWith(s, len, "ικα") || endsWith(s, len, "ικο"))) {
       len -= 3;
@@ -239,7 +239,7 @@ public class GreekStemmer {
               "χ"),
           false);
 
-  private int rule7(char s[], int len) {
+  private int rule7(char[] s, int len) {
     if (len == 5 && endsWith(s, len, "αγαμε")) return len - 1;
 
     if (len > 7 && endsWith(s, len, "ηθηκαμε")) len -= 7;
@@ -359,7 +359,7 @@ public class GreekStemmer {
               "ψηλοταβ"),
           false);
 
-  private int rule8(char s[], int len) {
+  private int rule8(char[] s, int len) {
     boolean removed = false;
 
     if (len > 8 && endsWith(s, len, "ιουντανε")) {
@@ -410,7 +410,7 @@ public class GreekStemmer {
               "θαρρ", "θ"),
           false);
 
-  private int rule9(char s[], int len) {
+  private int rule9(char[] s, int len) {
     if (len > 5 && endsWith(s, len, "ησετε")) len -= 5;
 
     if (len > 3 && endsWith(s, len, "ετε")) {
@@ -455,7 +455,7 @@ public class GreekStemmer {
     return len;
   }
 
-  private int rule10(char s[], int len) {
+  private int rule10(char[] s, int len) {
     if (len > 5 && (endsWith(s, len, "οντασ") || endsWith(s, len, "ωντασ"))) {
       len -= 5;
       if (len == 3 && endsWith(s, len, "αρχ")) {
@@ -471,7 +471,7 @@ public class GreekStemmer {
     return len;
   }
 
-  private int rule11(char s[], int len) {
+  private int rule11(char[] s, int len) {
     if (len > 6 && endsWith(s, len, "ομαστε")) {
       len -= 6;
       if (len == 2 && endsWith(s, len, "ον")) {
@@ -498,7 +498,7 @@ public class GreekStemmer {
       new CharArraySet(
           Arrays.asList("αλ", "αρ", "εκτελ", "ζ", "μ", "ξ", "παρακαλ", "αρ", "προ", "νισ"), false);
 
-  private int rule12(char s[], int len) {
+  private int rule12(char[] s, int len) {
     if (len > 5 && endsWith(s, len, "ιεστε")) {
       len -= 5;
       if (exc12a.contains(s, 0, len)) len += 4; // add back -ιεστ
@@ -515,7 +515,7 @@ public class GreekStemmer {
   private static final CharArraySet exc13 =
       new CharArraySet(Arrays.asList("διαθ", "θ", "παρακαταθ", "προσθ", "συνθ"), false);
 
-  private int rule13(char s[], int len) {
+  private int rule13(char[] s, int len) {
     if (len > 6 && endsWith(s, len, "ηθηκεσ")) {
       len -= 6;
     } else if (len > 5 && (endsWith(s, len, "ηθηκα") || endsWith(s, len, "ηθηκε"))) {
@@ -576,7 +576,7 @@ public class GreekStemmer {
               "τσα"),
           false);
 
-  private int rule14(char s[], int len) {
+  private int rule14(char[] s, int len) {
     boolean removed = false;
 
     if (len > 5 && endsWith(s, len, "ουσεσ")) {
@@ -660,7 +660,7 @@ public class GreekStemmer {
   private static final CharArraySet exc15b =
       new CharArraySet(Arrays.asList("ψοφ", "ναυλοχ"), false);
 
-  private int rule15(char s[], int len) {
+  private int rule15(char[] s, int len) {
     boolean removed = false;
     if (len > 4 && endsWith(s, len, "αγεσ")) {
       len -= 4;
@@ -696,7 +696,7 @@ public class GreekStemmer {
       new CharArraySet(
           Arrays.asList("ν", "χερσον", "δωδεκαν", "ερημον", "μεγαλον", "επταν"), false);
 
-  private int rule16(char s[], int len) {
+  private int rule16(char[] s, int len) {
     boolean removed = false;
     if (len > 4 && endsWith(s, len, "ησου")) {
       len -= 4;
@@ -717,7 +717,7 @@ public class GreekStemmer {
               "ασβ", "σβ", "αχρ", "χρ", "απλ", "αειμν", "δυσχρ", "ευχρ", "κοινοχρ", "παλιμψ"),
           false);
 
-  private int rule17(char s[], int len) {
+  private int rule17(char[] s, int len) {
     if (len > 4 && endsWith(s, len, "ηστε")) {
       len -= 4;
       if (exc17.contains(s, 0, len)) len += 3; // add back the -ηστ
@@ -729,7 +729,7 @@ public class GreekStemmer {
   private static final CharArraySet exc18 =
       new CharArraySet(Arrays.asList("ν", "ρ", "σπι", "στραβομουτσ", "κακομουτσ", "εξων"), false);
 
-  private int rule18(char s[], int len) {
+  private int rule18(char[] s, int len) {
     boolean removed = false;
 
     if (len > 6 && (endsWith(s, len, "ησουνε") || endsWith(s, len, "ηθουνε"))) {
@@ -753,7 +753,7 @@ public class GreekStemmer {
       new CharArraySet(
           Arrays.asList("παρασουσ", "φ", "χ", "ωριοπλ", "αζ", "αλλοσουσ", "ασουσ"), false);
 
-  private int rule19(char s[], int len) {
+  private int rule19(char[] s, int len) {
     boolean removed = false;
 
     if (len > 6 && (endsWith(s, len, "ησουμε") || endsWith(s, len, "ηθουμε"))) {
@@ -773,13 +773,13 @@ public class GreekStemmer {
     return len;
   }
 
-  private int rule20(char s[], int len) {
+  private int rule20(char[] s, int len) {
     if (len > 5 && (endsWith(s, len, "ματων") || endsWith(s, len, "ματοσ"))) len -= 3;
     else if (len > 4 && endsWith(s, len, "ματα")) len -= 2;
     return len;
   }
 
-  private int rule21(char s[], int len) {
+  private int rule21(char[] s, int len) {
     if (len > 9 && endsWith(s, len, "ιοντουσαν")) return len - 9;
 
     if (len > 8
@@ -877,7 +877,7 @@ public class GreekStemmer {
     return len;
   }
 
-  private int rule22(char s[], int len) {
+  private int rule22(char[] s, int len) {
     if (endsWith(s, len, "εστερ") || endsWith(s, len, "εστατ")) return len - 5;
 
     if (endsWith(s, len, "οτερ")
@@ -899,7 +899,7 @@ public class GreekStemmer {
    * @param suffix A {@link String} object to check if the word given ends with these characters.
    * @return True if the word ends with the suffix given , false otherwise.
    */
-  private boolean endsWith(char s[], int len, String suffix) {
+  private boolean endsWith(char[] s, int len, String suffix) {
     final int suffixLen = suffix.length();
     if (suffixLen > len) return false;
     for (int i = suffixLen - 1; i >= 0; i--)
@@ -916,7 +916,7 @@ public class GreekStemmer {
    * @return True if the word contained in the leading portion of char[] array , ends with a vowel ,
    *     false otherwise.
    */
-  private boolean endsWithVowel(char s[], int len) {
+  private boolean endsWithVowel(char[] s, int len) {
     if (len == 0) return false;
     switch (s[len - 1]) {
       case 'α':
@@ -940,7 +940,7 @@ public class GreekStemmer {
    * @return True if the word contained in the leading portion of char[] array , ends with a vowel ,
    *     false otherwise.
    */
-  private boolean endsWithVowelNoY(char s[], int len) {
+  private boolean endsWithVowelNoY(char[] s, int len) {
     if (len == 0) return false;
     switch (s[len - 1]) {
       case 'α':

@@ -40,7 +40,7 @@ public final class WordDelimiterIterator {
 
   public static final byte[] DEFAULT_WORD_DELIM_TABLE;
 
-  char text[];
+  char[] text;
   int length;
 
   /** start position of text, excluding leading delimiters */
@@ -207,7 +207,7 @@ public final class WordDelimiterIterator {
    * @param text New text
    * @param length length of the text
    */
-  void setText(char text[], int length) {
+  void setText(char[] text, int length) {
     this.text = text;
     this.length = this.endBounds = length;
     current = startBounds = end = 0;

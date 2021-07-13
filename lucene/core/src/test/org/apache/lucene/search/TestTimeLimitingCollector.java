@@ -68,7 +68,7 @@ public class TestTimeLimitingCollector extends LuceneTestCase {
     counter = Counter.newCounter(true);
     counterThread = new TimerThread(counter);
     counterThread.start();
-    final String docText[] = {
+    final String[] docText = {
       "docThatNeverMatchesSoWeCanRequireLastDocCollectedToBeGreaterThanZero",
       "one blah three",
       "one foo three multiOne",

@@ -293,7 +293,7 @@ public class TestPayloads extends LuceneTestCase {
   private void generateRandomData(byte[] data) {
     // this test needs the random data to be valid unicode
     String s = TestUtil.randomFixedByteLengthUnicodeString(random(), data.length);
-    byte b[] = s.getBytes(utf8);
+    byte[] b = s.getBytes(utf8);
     assert b.length == data.length;
     System.arraycopy(b, 0, data, 0, b.length);
   }

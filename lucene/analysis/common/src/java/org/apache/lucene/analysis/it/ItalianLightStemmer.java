@@ -59,7 +59,7 @@ package org.apache.lucene.analysis.it;
  */
 public class ItalianLightStemmer {
 
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     if (len < 6) return len;
 
     for (int i = 0; i < len; i++)

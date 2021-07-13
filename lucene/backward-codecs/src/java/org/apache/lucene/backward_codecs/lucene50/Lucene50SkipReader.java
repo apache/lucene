@@ -52,11 +52,11 @@ import org.apache.lucene.store.IndexInput;
  */
 class Lucene50SkipReader extends MultiLevelSkipListReader {
   private final int version;
-  private long docPointer[];
-  private long posPointer[];
-  private long payPointer[];
-  private int posBufferUpto[];
-  private int payloadByteUpto[];
+  private long[] docPointer;
+  private long[] posPointer;
+  private long[] payPointer;
+  private int[] posBufferUpto;
+  private int[] payloadByteUpto;
 
   private long lastPosPointer;
   private long lastPayPointer;

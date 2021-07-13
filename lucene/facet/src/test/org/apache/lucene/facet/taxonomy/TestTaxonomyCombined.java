@@ -790,7 +790,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
 
     final AtomicBoolean stop = new AtomicBoolean(false);
     final Throwable[] error = new Throwable[] {null};
-    final int retrieval[] = {0};
+    final int[] retrieval = {0};
 
     Thread thread =
         new Thread("Child Arrays Verifier") {

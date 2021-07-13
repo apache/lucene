@@ -104,7 +104,7 @@ public class TrecTopicsReader {
       reader.close();
     }
     // sort result array (by ID)
-    QualityQuery qq[] = res.toArray(new QualityQuery[0]);
+    QualityQuery[] qq = res.toArray(new QualityQuery[0]);
     Arrays.sort(qq);
     return qq;
   }

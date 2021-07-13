@@ -861,7 +861,7 @@ public class TestSuggestField extends LuceneTestCase {
 
     DirectoryReader reader = iw.getReader();
     int numThreads = TestUtil.nextInt(random(), 2, 7);
-    Thread threads[] = new Thread[numThreads];
+    Thread[] threads = new Thread[numThreads];
     final CyclicBarrier startingGun = new CyclicBarrier(numThreads + 1);
     final CopyOnWriteArrayList<Throwable> errors = new CopyOnWriteArrayList<>();
     final SuggestIndexSearcher indexSearcher = new SuggestIndexSearcher(reader);

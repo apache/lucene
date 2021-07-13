@@ -40,7 +40,7 @@ public interface Judge {
    * @param logger if not null, validation issues are logged.
    * @return true if perfectly valid, false if not.
    */
-  public boolean validateData(QualityQuery qq[], PrintWriter logger);
+  public boolean validateData(QualityQuery[] qq, PrintWriter logger);
 
   /**
    * Return the maximal recall for the input quality query. It is the number of relevant docs this

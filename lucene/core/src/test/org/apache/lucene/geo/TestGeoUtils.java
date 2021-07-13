@@ -51,7 +51,7 @@ public class TestGeoUtils extends LuceneTestCase {
       int numPointsToTry = 1000;
       for (int i = 0; i < numPointsToTry; i++) {
 
-        double point[] = GeoTestUtil.nextPointNear(bbox);
+        double[] point = GeoTestUtil.nextPointNear(bbox);
         double lat = point[0];
         double lon = point[1];
 
@@ -123,7 +123,7 @@ public class TestGeoUtils extends LuceneTestCase {
       }
 
       for (int j = 0; j < 1000; j++) {
-        double point[] = GeoTestUtil.nextPointNear(box);
+        double[] point = GeoTestUtil.nextPointNear(box);
         double lat2 = point[0];
         double lon2 = point[1];
         // if the point is within radius, then it should be in our bounding box
@@ -153,7 +153,7 @@ public class TestGeoUtils extends LuceneTestCase {
                 SloppyMath.haversinSortKey(lat, lon, box.maxLat, lon));
 
         for (int j = 0; j < 10000; j++) {
-          double point[] = GeoTestUtil.nextPointNear(box);
+          double[] point = GeoTestUtil.nextPointNear(box);
           double lat2 = point[0];
           double lon2 = point[1];
           // if the point is within radius, then it should be <= our sort key

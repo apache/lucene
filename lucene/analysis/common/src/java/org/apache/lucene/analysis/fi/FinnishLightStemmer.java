@@ -61,7 +61,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 public class FinnishLightStemmer {
 
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     if (len < 4) return len;
 
     for (int i = 0; i < len; i++)
@@ -83,7 +83,7 @@ public class FinnishLightStemmer {
     return len;
   }
 
-  private int step1(char s[], int len) {
+  private int step1(char[] s, int len) {
     if (len > 8) {
       if (endsWith(s, len, "kin")) return step1(s, len - 3);
       if (endsWith(s, len, "ko")) return step1(s, len - 2);
@@ -96,7 +96,7 @@ public class FinnishLightStemmer {
     return len;
   }
 
-  private int step2(char s[], int len) {
+  private int step2(char[] s, int len) {
     if (len > 5) {
       if (endsWith(s, len, "lla") || endsWith(s, len, "tse") || endsWith(s, len, "sti"))
         return len - 3;
@@ -109,7 +109,7 @@ public class FinnishLightStemmer {
     return len;
   }
 
-  private int step3(char s[], int len) {
+  private int step3(char[] s, int len) {
     if (len > 8) {
       if (endsWith(s, len, "nnen")) {
         s[len - 4] = 's';
@@ -173,7 +173,7 @@ public class FinnishLightStemmer {
     return len;
   }
 
-  private int norm1(char s[], int len) {
+  private int norm1(char[] s, int len) {
     if (len > 5 && endsWith(s, len, "hde")) {
       s[len - 3] = 'k';
       s[len - 2] = 's';
@@ -198,7 +198,7 @@ public class FinnishLightStemmer {
     return len;
   }
 
-  private int norm2(char s[], int len) {
+  private int norm2(char[] s, int len) {
     if (len > 8) {
       if (s[len - 1] == 'e' || s[len - 1] == 'o' || s[len - 1] == 'u') len--;
     }

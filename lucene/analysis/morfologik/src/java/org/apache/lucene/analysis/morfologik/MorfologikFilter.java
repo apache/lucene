@@ -142,7 +142,7 @@ public class MorfologikFilter extends TokenFilter {
     scratch.setLength(length);
     scratch.grow(length);
 
-    char buffer[] = scratch.chars();
+    char[] buffer = scratch.chars();
     for (int i = 0; i < length; ) {
       i += Character.toChars(Character.toLowerCase(Character.codePointAt(chs, i)), buffer, i);
     }

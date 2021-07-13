@@ -121,7 +121,7 @@ public final class HyphenatedWordsFilter extends TokenFilter {
     restoreState(savedState);
     savedState = null;
 
-    char term[] = termAttribute.buffer();
+    char[] term = termAttribute.buffer();
     int length = hyphenated.length();
     if (length > termAttribute.length()) {
       term = termAttribute.resizeBuffer(length);

@@ -65,7 +65,7 @@ public class SnowballProgram implements Serializable {
    * @param text character array containing input
    * @param length valid length of text.
    */
-  public void setCurrent(char text[], int length) {
+  public void setCurrent(char[] text, int length) {
     current = text;
     cursor = 0;
     limit = length;
@@ -101,7 +101,7 @@ public class SnowballProgram implements Serializable {
   }
 
   // current string
-  private char current[];
+  private char[] current;
 
   protected int cursor;
   protected int limit;
@@ -197,7 +197,7 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
-  protected int find_among(Among v[]) {
+  protected int find_among(Among[] v) {
     int i = 0;
     int j = v.length;
 
@@ -265,7 +265,7 @@ public class SnowballProgram implements Serializable {
   }
 
   // find_among_b is for backwards processing. Same comments apply
-  protected int find_among_b(Among v[]) {
+  protected int find_among_b(Among[] v) {
     int i = 0;
     int j = v.length;
 
@@ -346,7 +346,7 @@ public class SnowballProgram implements Serializable {
     final int newLength = limit + adjustment;
     // resize if necessary
     if (newLength > current.length) {
-      char newBuffer[] = new char[oversize(newLength)];
+      char[] newBuffer = new char[oversize(newLength)];
       System.arraycopy(current, 0, newBuffer, 0, limit);
       current = newBuffer;
     }

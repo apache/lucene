@@ -16,7 +16,7 @@ public class ArmenianStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among a_0[] = {
+  private static final Among[] a_0 = {
     new Among("\u0580\u0578\u0580\u0564", -1, 1),
     new Among("\u0565\u0580\u0578\u0580\u0564", 0, 1),
     new Among("\u0561\u056C\u056B", -1, 1),
@@ -42,7 +42,7 @@ public class ArmenianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0562\u0561\u0580", -1, 1)
   };
 
-  private static final Among a_1[] = {
+  private static final Among[] a_1 = {
     new Among("\u0561", -1, 1),
     new Among("\u0561\u0581\u0561", 0, 1),
     new Among("\u0565\u0581\u0561", 0, 1),
@@ -116,7 +116,7 @@ public class ArmenianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u057E\u0565\u0581\u056B\u0576\u0584", 69, 1)
   };
 
-  private static final Among a_2[] = {
+  private static final Among[] a_2 = {
     new Among("\u0578\u0580\u0564", -1, 1),
     new Among("\u0578\u0582\u0575\u0569", -1, 1),
     new Among("\u0578\u0582\u0570\u056B", -1, 1),
@@ -159,7 +159,7 @@ public class ArmenianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0561\u0580\u0584", 27, 1)
   };
 
-  private static final Among a_3[] = {
+  private static final Among[] a_3 = {
     new Among("\u057D\u0561", -1, 1),
     new Among("\u057E\u0561", -1, 1),
     new Among("\u0561\u0574\u0562", -1, 1),
@@ -219,7 +219,7 @@ public class ArmenianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0578\u0582\u0581", 47, 1)
   };
 
-  private static final char g_v[] = {209, 4, 128, 0, 18};
+  private static final char[] g_v = {209, 4, 128, 0, 18};
 
   private int I_p2;
   private int I_pV;

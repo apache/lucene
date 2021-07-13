@@ -63,7 +63,7 @@ public class SubmissionReport {
     if (logger == null) {
       return;
     }
-    ScoreDoc sd[] = td.scoreDocs;
+    ScoreDoc[] sd = td.scoreDocs;
     String sep = " \t ";
     DocNameExtractor xt = new DocNameExtractor(docNameField);
     for (int i = 0; i < sd.length; i++) {

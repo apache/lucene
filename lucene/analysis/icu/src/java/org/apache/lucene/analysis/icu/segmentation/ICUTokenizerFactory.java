@@ -111,7 +111,7 @@ public class ICUTokenizerFactory extends TokenizerFactory implements ResourceLoa
     if (tailored.isEmpty()) {
       config = new DefaultICUTokenizerConfig(cjkAsWords, myanmarAsWords);
     } else {
-      final BreakIterator breakers[] =
+      final BreakIterator[] breakers =
           new BreakIterator[1 + UCharacter.getIntPropertyMaxValue(UProperty.SCRIPT)];
       for (Map.Entry<Integer, String> entry : tailored.entrySet()) {
         int code = entry.getKey();

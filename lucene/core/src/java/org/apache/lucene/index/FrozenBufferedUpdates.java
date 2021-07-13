@@ -85,7 +85,7 @@ final class FrozenBufferedUpdates {
     this.privateSegment = privateSegment;
     assert privateSegment == null || updates.deleteTerms.isEmpty()
         : "segment private packet should only have del queries";
-    Term termsArray[] = updates.deleteTerms.keySet().toArray(new Term[updates.deleteTerms.size()]);
+    Term[] termsArray = updates.deleteTerms.keySet().toArray(new Term[updates.deleteTerms.size()]);
     ArrayUtil.timSort(termsArray);
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
     for (Term term : termsArray) {

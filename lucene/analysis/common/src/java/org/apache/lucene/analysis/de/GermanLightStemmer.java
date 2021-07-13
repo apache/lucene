@@ -59,7 +59,7 @@ package org.apache.lucene.analysis.de;
  */
 public class GermanLightStemmer {
 
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     for (int i = 0; i < len; i++)
       switch (s[i]) {
         case 'ä':
@@ -110,7 +110,7 @@ public class GermanLightStemmer {
     }
   }
 
-  private int step1(char s[], int len) {
+  private int step1(char[] s, int len) {
     if (len > 5 && s[len - 3] == 'e' && s[len - 2] == 'r' && s[len - 1] == 'n') return len - 3;
 
     if (len > 4 && s[len - 2] == 'e')
@@ -129,7 +129,7 @@ public class GermanLightStemmer {
     return len;
   }
 
-  private int step2(char s[], int len) {
+  private int step2(char[] s, int len) {
     if (len > 5 && s[len - 3] == 'e' && s[len - 2] == 's' && s[len - 1] == 't') return len - 3;
 
     if (len > 4 && s[len - 2] == 'e' && (s[len - 1] == 'r' || s[len - 1] == 'n')) return len - 2;

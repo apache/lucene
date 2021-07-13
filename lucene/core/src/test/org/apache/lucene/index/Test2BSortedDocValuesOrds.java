@@ -57,7 +57,7 @@ public class Test2BSortedDocValuesOrds extends LuceneTestCase {
                 .setCodec(TestUtil.getDefaultCodec()));
 
     Document doc = new Document();
-    byte bytes[] = new byte[4];
+    byte[] bytes = new byte[4];
     BytesRef data = new BytesRef(bytes);
     SortedDocValuesField dvField = new SortedDocValuesField("dv", data);
     doc.add(dvField);

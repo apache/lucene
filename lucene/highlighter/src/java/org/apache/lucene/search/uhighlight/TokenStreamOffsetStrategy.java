@@ -70,7 +70,7 @@ public class TokenStreamOffsetStrategy extends AnalysisOffsetStrategy {
 
     int currentMatch = -1;
 
-    final BytesRef matchDescriptions[];
+    final BytesRef[] matchDescriptions;
 
     TokenStreamOffsetsEnum(TokenStream ts, CharArrayMatcher[] matchers) throws IOException {
       this.stream = ts;

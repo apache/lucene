@@ -33,7 +33,7 @@ public class TestCharArrayIterator extends LuceneTestCase {
     BreakIterator bi = BreakIterator.getWordInstance(Locale.getDefault());
     CharArrayIterator ci = CharArrayIterator.newWordInstance();
     for (int i = 0; i < 10000; i++) {
-      char text[] = TestUtil.randomUnicodeString(random()).toCharArray();
+      char[] text = TestUtil.randomUnicodeString(random()).toCharArray();
       ci.setText(text, 0, text.length);
       consume(bi, ci);
     }
@@ -45,7 +45,7 @@ public class TestCharArrayIterator extends LuceneTestCase {
     BreakIterator bi = BreakIterator.getWordInstance(Locale.getDefault());
     Segment ci = new Segment();
     for (int i = 0; i < 10000; i++) {
-      char text[] = _TestUtil.randomUnicodeString(random).toCharArray();
+      char[] text = _TestUtil.randomUnicodeString(random).toCharArray();
       ci.array = text;
       ci.offset = 0;
       ci.count = text.length;
@@ -63,7 +63,7 @@ public class TestCharArrayIterator extends LuceneTestCase {
     BreakIterator bi = BreakIterator.getSentenceInstance(Locale.getDefault());
     CharArrayIterator ci = CharArrayIterator.newSentenceInstance();
     for (int i = 0; i < 10000; i++) {
-      char text[] = TestUtil.randomUnicodeString(random()).toCharArray();
+      char[] text = TestUtil.randomUnicodeString(random()).toCharArray();
       ci.setText(text, 0, text.length);
       consume(bi, ci);
     }
@@ -75,7 +75,7 @@ public class TestCharArrayIterator extends LuceneTestCase {
     BreakIterator bi = BreakIterator.getSentenceInstance(Locale.getDefault());
     Segment ci = new Segment();
     for (int i = 0; i < 10000; i++) {
-      char text[] = _TestUtil.randomUnicodeString(random).toCharArray();
+      char[] text = _TestUtil.randomUnicodeString(random).toCharArray();
       ci.array = text;
       ci.offset = 0;
       ci.count = text.length;
@@ -145,7 +145,7 @@ public class TestCharArrayIterator extends LuceneTestCase {
         });
 
     // clone()
-    char text[] = "testing".toCharArray();
+    char[] text = "testing".toCharArray();
     ci.setText(text, 0, text.length);
     ci.next();
     CharArrayIterator ci2 = ci.clone();

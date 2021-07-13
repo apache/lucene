@@ -42,7 +42,7 @@ public final class CJKWidthFilter extends TokenFilter {
    * as a fallback when they cannot properly combine with a preceding
    * character into a composed form.
    */
-  private static final char KANA_NORM[] =
+  private static final char[] KANA_NORM =
       new char[] {
         0x30fb, 0x30f2, 0x30a1, 0x30a3, 0x30a5, 0x30a7, 0x30a9, 0x30e3, 0x30e5,
         0x30e7, 0x30c3, 0x30fc, 0x30a2, 0x30a4, 0x30a6, 0x30a8, 0x30aa, 0x30ab,
@@ -60,7 +60,7 @@ public final class CJKWidthFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
-      char text[] = termAtt.buffer();
+      char[] text = termAtt.buffer();
       int length = termAtt.length();
       for (int i = 0; i < length; i++) {
         final char ch = text[i];
@@ -84,14 +84,14 @@ public final class CJKWidthFilter extends TokenFilter {
   }
 
   /* kana combining diffs: 0x30A6-0x30FD */
-  private static final byte KANA_COMBINE_VOICED[] =
+  private static final byte[] KANA_COMBINE_VOICED =
       new byte[] {
         78, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0,
         1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
       };
 
-  private static final byte KANA_COMBINE_HALF_VOICED[] =
+  private static final byte[] KANA_COMBINE_HALF_VOICED =
       new byte[] {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 0, 2,
@@ -100,7 +100,7 @@ public final class CJKWidthFilter extends TokenFilter {
       };
 
   /** returns true if we successfully combined the voice mark */
-  private static boolean combine(char text[], int pos, char ch) {
+  private static boolean combine(char[] text, int pos, char ch) {
     final char prev = text[pos - 1];
     if (prev >= 0x30A6 && prev <= 0x30FD) {
       text[pos - 1] +=

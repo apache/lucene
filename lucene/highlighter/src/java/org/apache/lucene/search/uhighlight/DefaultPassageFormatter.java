@@ -56,7 +56,7 @@ public class DefaultPassageFormatter extends PassageFormatter {
   }
 
   @Override
-  public String format(Passage passages[], String content) {
+  public String format(Passage[] passages, String content) {
     StringBuilder sb = new StringBuilder();
     int pos = 0;
     for (Passage passage : passages) {

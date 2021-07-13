@@ -25,7 +25,7 @@ public class TestBytesRef extends LuceneTestCase {
   }
 
   public void testFromBytes() {
-    byte bytes[] = new byte[] {(byte) 'a', (byte) 'b', (byte) 'c', (byte) 'd'};
+    byte[] bytes = new byte[] {(byte) 'a', (byte) 'b', (byte) 'c', (byte) 'd'};
     BytesRef b = new BytesRef(bytes);
     assertEquals(bytes, b.bytes);
     assertEquals(0, b.offset);

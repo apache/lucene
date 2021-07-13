@@ -122,7 +122,7 @@ public class TernaryTree implements Cloneable {
     if (freenode + len > eq.length) {
       redimNodeArrays(eq.length + BLOCK_SIZE);
     }
-    char strkey[] = new char[len--];
+    char[] strkey = new char[len--];
     key.getChars(0, len, strkey, 0);
     strkey[len] = 0;
     root = insert(root, strkey, 0, val);
@@ -255,7 +255,7 @@ public class TernaryTree implements Cloneable {
 
   public int find(String key) {
     int len = key.length();
-    char strkey[] = new char[len + 1];
+    char[] strkey = new char[len + 1];
     key.getChars(0, len, strkey, 0);
     strkey[len] = 0;
 

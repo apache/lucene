@@ -334,7 +334,7 @@ final class EdgeTree {
    * @return root node of the tree.
    */
   static EdgeTree createTree(double[] x, double[] y) {
-    EdgeTree edges[] = new EdgeTree[x.length - 1];
+    EdgeTree[] edges = new EdgeTree[x.length - 1];
     for (int i = 1; i < x.length; i++) {
       double x1 = x[i - 1];
       double y1 = y[i - 1];
@@ -356,7 +356,7 @@ final class EdgeTree {
   }
 
   /** Creates tree from sorted edges (with range low and high inclusive) */
-  private static EdgeTree createTree(EdgeTree edges[], int low, int high) {
+  private static EdgeTree createTree(EdgeTree[] edges, int low, int high) {
     if (low > high) {
       return null;
     }

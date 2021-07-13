@@ -152,8 +152,8 @@ public class SimpleQueryParser extends QueryBuilder {
       return new MatchAllDocsQuery();
     }
 
-    char data[] = queryText.toCharArray();
-    char buffer[] = new char[data.length];
+    char[] data = queryText.toCharArray();
+    char[] buffer = new char[data.length];
 
     State state = new State(data, buffer, 0, data.length);
     parseSubQuery(state);
@@ -485,7 +485,7 @@ public class SimpleQueryParser extends QueryBuilder {
    * @return slop/edit distance, 0 in the case of non-parsing slop/edit string
    */
   private int parseFuzziness(State state) {
-    char slopText[] = new char[state.length];
+    char[] slopText = new char[state.length];
     int slopLength = 0;
 
     if (state.data[state.index] == '~') {

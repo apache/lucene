@@ -286,7 +286,7 @@ public class Highlighter {
       }
 
       // return the most relevant fragments
-      TextFragment frag[] = new TextFragment[fragQueue.size()];
+      TextFragment[] frag = new TextFragment[fragQueue.size()];
       for (int i = frag.length - 1; i >= 0; i--) {
         frag[i] = fragQueue.pop();
       }
@@ -396,7 +396,7 @@ public class Highlighter {
   public final String getBestFragments(
       TokenStream tokenStream, String text, int maxNumFragments, String separator)
       throws IOException, InvalidTokenOffsetsException {
-    String sections[] = getBestFragments(tokenStream, text, maxNumFragments);
+    String[] sections = getBestFragments(tokenStream, text, maxNumFragments);
     StringBuilder result = new StringBuilder();
     for (int i = 0; i < sections.length; i++) {
       if (i > 0) {

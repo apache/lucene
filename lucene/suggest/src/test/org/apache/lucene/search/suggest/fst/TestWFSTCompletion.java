@@ -28,7 +28,7 @@ import org.apache.lucene.util.TestUtil;
 public class TestWFSTCompletion extends LuceneTestCase {
 
   public void testBasic() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("foo", 50),
           new Input("bar", 10),

@@ -862,9 +862,9 @@ public final class CheckIndex implements Closeable {
         infoStream.print("    test: index sort..........");
       }
 
-      SortField fields[] = sort.getSort();
-      final int reverseMul[] = new int[fields.length];
-      final LeafFieldComparator comparators[] = new LeafFieldComparator[fields.length];
+      SortField[] fields = sort.getSort();
+      final int[] reverseMul = new int[fields.length];
+      final LeafFieldComparator[] comparators = new LeafFieldComparator[fields.length];
 
       LeafReaderContext readerContext = new LeafReaderContext(reader);
 
@@ -3648,7 +3648,7 @@ public final class CheckIndex implements Closeable {
 
   // actual main: returns exit code instead of terminating JVM (for easy testing)
   @SuppressForbidden(reason = "System.out required: command line tool")
-  private static int doMain(String args[]) throws IOException, InterruptedException {
+  private static int doMain(String[] args) throws IOException, InterruptedException {
     Options opts;
     try {
       opts = parseOptions(args);

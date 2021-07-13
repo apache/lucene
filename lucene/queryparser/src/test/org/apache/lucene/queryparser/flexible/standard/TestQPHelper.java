@@ -1229,12 +1229,12 @@ public class TestQPHelper extends LuceneTestCase {
 
     String qtxt = "\"the words in poisitions pos02578 are stopped in this phrasequery\"";
     // 0 2 5 7 8
-    int expectedPositions[] = {1, 3, 4, 6, 9};
+    int[] expectedPositions = {1, 3, 4, 6, 9};
     PhraseQuery pq = (PhraseQuery) qp.parse(qtxt, "a");
     // System.out.println("Query text: "+qtxt);
     // System.out.println("Result: "+pq);
-    Term t[] = pq.getTerms();
-    int pos[] = pq.getPositions();
+    Term[] t = pq.getTerms();
+    int[] pos = pq.getPositions();
     for (int i = 0; i < t.length; i++) {
       // System.out.println(i+". "+t[i]+"  pos: "+pos[i]);
       assertEquals(

@@ -502,7 +502,7 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
         }
       }
     }
-    long norms[] = new long[numDocsWithField];
+    long[] norms = new long[numDocsWithField];
     for (int i = 0; i < numDocsWithField; i++) {
       norms[i] = longs.getAsLong();
     }
@@ -583,10 +583,10 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
   }
 
   static class CannedNormSimilarity extends Similarity {
-    final long norms[];
+    final long[] norms;
     int index = 0;
 
-    CannedNormSimilarity(long norms[]) {
+    CannedNormSimilarity(long[] norms) {
       this.norms = norms;
     }
 
@@ -707,7 +707,7 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
       }
     }
 
-    long norms[] = new long[numDocsWithField];
+    long[] norms = new long[numDocsWithField];
     for (int i = 0; i < numDocsWithField; i++) {
       norms[i] = random().nextLong();
     }

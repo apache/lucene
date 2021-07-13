@@ -280,8 +280,8 @@ public class ShapeTestUtil {
     if (polygon.getHoles().length > 0) {
       throw new UnsupportedOperationException("this testing method does not support holes");
     }
-    double polyXs[] = XYEncodingUtils.floatArrayToDoubleArray(polygon.getPolyX());
-    double polyYs[] = XYEncodingUtils.floatArrayToDoubleArray(polygon.getPolyY());
+    double[] polyXs = XYEncodingUtils.floatArrayToDoubleArray(polygon.getPolyX());
+    double[] polyYs = XYEncodingUtils.floatArrayToDoubleArray(polygon.getPolyY());
     // bounding box check required due to rounding errors (we don't solve that problem)
     if (x < polygon.minX || x > polygon.maxX || y < polygon.minY || y > polygon.maxY) {
       return false;
@@ -290,8 +290,8 @@ public class ShapeTestUtil {
     boolean c = false;
     int i, j;
     int nvert = polyYs.length;
-    double verty[] = polyYs;
-    double vertx[] = polyXs;
+    double[] verty = polyYs;
+    double[] vertx = polyXs;
     double testy = y;
     double testx = x;
     for (i = 0, j = 1; j < nvert; ++i, ++j) {

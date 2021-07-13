@@ -98,7 +98,7 @@ public class TestPolygon2D extends LuceneTestCase {
       Component2D impl = Polygon2D.create(polygon);
 
       for (int j = 0; j < 100; j++) {
-        double point[] = GeoTestUtil.nextPointNear(polygon);
+        double[] point = GeoTestUtil.nextPointNear(polygon);
         double latitude = point[0];
         double longitude = point[1];
         // if the point is within poly, then it should be in our bounding box
@@ -127,7 +127,7 @@ public class TestPolygon2D extends LuceneTestCase {
           for (int k = 0; k < 500; k++) {
             // this tests in our range but sometimes outside! so we have to double-check its really
             // in other box
-            double point[] = GeoTestUtil.nextPointNear(rectangle);
+            double[] point = GeoTestUtil.nextPointNear(rectangle);
             double latitude = point[0];
             double longitude = point[1];
             // check for sure its in our box
@@ -141,7 +141,7 @@ public class TestPolygon2D extends LuceneTestCase {
           for (int k = 0; k < 100; k++) {
             // this tests in our range but sometimes outside! so we have to double-check its really
             // in other box
-            double point[] = GeoTestUtil.nextPointNear(polygon);
+            double[] point = GeoTestUtil.nextPointNear(polygon);
             double latitude = point[0];
             double longitude = point[1];
             // check for sure its in our box
@@ -176,7 +176,7 @@ public class TestPolygon2D extends LuceneTestCase {
           for (int k = 0; k < 100; k++) {
             // this tests in our range but sometimes outside! so we have to double-check its really
             // in other box
-            double point[] = GeoTestUtil.nextPointNear(rectangle);
+            double[] point = GeoTestUtil.nextPointNear(rectangle);
             double latitude = point[0];
             double longitude = point[1];
             // check for sure its in our box
@@ -190,7 +190,7 @@ public class TestPolygon2D extends LuceneTestCase {
           for (int k = 0; k < 20; k++) {
             // this tests in our range but sometimes outside! so we have to double-check its really
             // in other box
-            double point[] = GeoTestUtil.nextPointNear(polygon);
+            double[] point = GeoTestUtil.nextPointNear(polygon);
             double latitude = point[0];
             double longitude = point[1];
             // check for sure its in our box
@@ -223,7 +223,7 @@ public class TestPolygon2D extends LuceneTestCase {
         if (impl.relate(rectangle.minLon, rectangle.maxLon, rectangle.minLat, rectangle.maxLat)
             == Relation.CELL_OUTSIDE_QUERY) {
           for (int k = 0; k < 1000; k++) {
-            double point[] = GeoTestUtil.nextPointNear(rectangle);
+            double[] point = GeoTestUtil.nextPointNear(rectangle);
             // this tests in our range but sometimes outside! so we have to double-check its really
             // in other box
             double latitude = point[0];
@@ -237,7 +237,7 @@ public class TestPolygon2D extends LuceneTestCase {
             }
           }
           for (int k = 0; k < 100; k++) {
-            double point[] = GeoTestUtil.nextPointNear(polygon);
+            double[] point = GeoTestUtil.nextPointNear(polygon);
             // this tests in our range but sometimes outside! so we have to double-check its really
             // in other box
             double latitude = point[0];
@@ -275,7 +275,7 @@ public class TestPolygon2D extends LuceneTestCase {
           for (int k = 0; k < 100; k++) {
             // this tests in our range but sometimes outside! so we have to double-check its really
             // in other box
-            double point[] = GeoTestUtil.nextPointNear(rectangle);
+            double[] point = GeoTestUtil.nextPointNear(rectangle);
             double latitude = point[0];
             double longitude = point[1];
             // check for sure its in our box
@@ -289,7 +289,7 @@ public class TestPolygon2D extends LuceneTestCase {
           for (int k = 0; k < 50; k++) {
             // this tests in our range but sometimes outside! so we have to double-check its really
             // in other box
-            double point[] = GeoTestUtil.nextPointNear(polygon);
+            double[] point = GeoTestUtil.nextPointNear(polygon);
             double latitude = point[0];
             double longitude = point[1];
             // check for sure its in our box
@@ -368,7 +368,7 @@ public class TestPolygon2D extends LuceneTestCase {
 
       // random lat/lons against polygon
       for (int j = 0; j < 1000; j++) {
-        double point[] = GeoTestUtil.nextPointNear(polygon);
+        double[] point = GeoTestUtil.nextPointNear(polygon);
         double latitude = point[0];
         double longitude = point[1];
         boolean expected = GeoTestUtil.containsSlowly(polygon, longitude, latitude);

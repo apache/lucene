@@ -361,7 +361,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
     iwriter.addDocument(doc);
 
     Document hugeDoc = new Document();
-    byte bytes[] = new byte[100000];
+    byte[] bytes = new byte[100000];
     BytesRef b = new BytesRef(bytes);
     random().nextBytes(bytes);
     hugeDoc.add(new SortedDocValuesField("dv", b));
@@ -391,7 +391,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
     iwriter.addDocument(doc);
 
     Document hugeDoc = new Document();
-    byte bytes[] = new byte[100000];
+    byte[] bytes = new byte[100000];
     BytesRef b = new BytesRef(bytes);
     random().nextBytes(bytes);
     hugeDoc.add(new SortedSetDocValuesField("dv", b));

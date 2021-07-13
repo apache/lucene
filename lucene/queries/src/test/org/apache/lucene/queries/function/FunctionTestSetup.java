@@ -90,7 +90,7 @@ public abstract class FunctionTestSetup extends LuceneTestCase {
   protected ValueSource FLOAT_MV_MAX_VALUESOURCE =
       new MultiValuedFloatFieldSource(FLOAT_FIELD_MV_MAX, SortedNumericSelector.Type.MAX);
 
-  private static final String DOC_TEXT_LINES[] = {
+  private static final String[] DOC_TEXT_LINES = {
     "Well, this is just some plain text we use for creating the ",
     "test documents. It used to be a text from an online collection ",
     "devoted to first aid, but if there was there an (online) lawyers ",
@@ -132,7 +132,7 @@ public abstract class FunctionTestSetup extends LuceneTestCase {
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
     // add docs not exactly in natural ID order, to verify we do check the order of docs by scores
     int remaining = N_DOCS;
-    boolean done[] = new boolean[N_DOCS];
+    boolean[] done = new boolean[N_DOCS];
     int i = 0;
     while (remaining > 0) {
       if (done[i]) {

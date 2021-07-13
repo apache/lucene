@@ -183,7 +183,7 @@ public final class WordDelimiterFilter extends TokenFilter {
   // used for accumulating position increment gaps
   private int accumPosInc = 0;
 
-  private char savedBuffer[] = new char[1024];
+  private char[] savedBuffer = new char[1024];
   private int savedStartOffset;
   private int savedEndOffset;
   private String savedType;
@@ -377,9 +377,9 @@ public final class WordDelimiterFilter extends TokenFilter {
     first = true;
   }
 
-  private AttributeSource.State buffered[] = new AttributeSource.State[8];
-  private int startOff[] = new int[8];
-  private int posInc[] = new int[8];
+  private AttributeSource.State[] buffered = new AttributeSource.State[8];
+  private int[] startOff = new int[8];
+  private int[] posInc = new int[8];
   private int bufferedLen = 0;
   private int bufferedPos = 0;
   private boolean first;
@@ -616,7 +616,7 @@ public final class WordDelimiterFilter extends TokenFilter {
      * @param offset Offset in the concetenation to add the text
      * @param length Length of the text to append
      */
-    void append(char text[], int offset, int length) {
+    void append(char[] text, int offset, int length) {
       buffer.append(text, offset, length);
       subwordCount++;
     }
@@ -627,7 +627,7 @@ public final class WordDelimiterFilter extends TokenFilter {
       if (termAttribute.length() < buffer.length()) {
         termAttribute.resizeBuffer(buffer.length());
       }
-      char termbuffer[] = termAttribute.buffer();
+      char[] termbuffer = termAttribute.buffer();
 
       buffer.getChars(0, buffer.length(), termbuffer, 0);
       termAttribute.setLength(buffer.length());

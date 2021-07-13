@@ -55,7 +55,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
   public void testFiles() throws Exception {
     Directory dir = newDirectory();
     Codec codec = getCodec();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     SegmentInfo info =
         new SegmentInfo(
             dir,
@@ -80,7 +80,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
   public void testAddsSelfToFiles() throws Exception {
     Directory dir = newDirectory();
     Codec codec = getCodec();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     SegmentInfo info =
         new SegmentInfo(
             dir,
@@ -120,7 +120,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
   public void testDiagnostics() throws Exception {
     Directory dir = newDirectory();
     Codec codec = getCodec();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     Map<String, String> diagnostics = new HashMap<>();
     diagnostics.put("key1", "value1");
     diagnostics.put("key2", "value2");
@@ -156,7 +156,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
   public void testAttributes() throws Exception {
     Directory dir = newDirectory();
     Codec codec = getCodec();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     Map<String, String> attributes = new HashMap<>();
     attributes.put("key1", "value1");
     attributes.put("key2", "value2");
@@ -192,7 +192,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
   public void testUniqueID() throws Exception {
     Codec codec = getCodec();
     Directory dir = newDirectory();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     SegmentInfo info =
         new SegmentInfo(
             dir,
@@ -219,7 +219,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     for (Version v : getVersions()) {
       for (Version minV : new Version[] {v, null}) {
         Directory dir = newDirectory();
-        byte id[] = StringHelper.randomId();
+        byte[] id = StringHelper.randomId();
         SegmentInfo info =
             new SegmentInfo(
                 dir,
@@ -356,7 +356,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
 
       Directory dir = newDirectory();
       Codec codec = getCodec();
-      byte id[] = StringHelper.randomId();
+      byte[] id = StringHelper.randomId();
       SegmentInfo info =
           new SegmentInfo(
               dir,
@@ -396,7 +396,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     MockDirectoryWrapper dir = newMockDirectory();
     dir.failOn(fail);
     Codec codec = getCodec();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     SegmentInfo info =
         new SegmentInfo(
             dir,
@@ -441,7 +441,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     MockDirectoryWrapper dir = newMockDirectory();
     dir.failOn(fail);
     Codec codec = getCodec();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     SegmentInfo info =
         new SegmentInfo(
             dir,
@@ -486,7 +486,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     MockDirectoryWrapper dir = newMockDirectory();
     dir.failOn(fail);
     Codec codec = getCodec();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     SegmentInfo info =
         new SegmentInfo(
             dir,
@@ -532,7 +532,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     MockDirectoryWrapper dir = newMockDirectory();
     dir.failOn(fail);
     Codec codec = getCodec();
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     SegmentInfo info =
         new SegmentInfo(
             dir,
@@ -593,7 +593,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
         diagnostics.put(
             TestUtil.randomUnicodeString(random()), TestUtil.randomUnicodeString(random()));
       }
-      byte id[] = new byte[StringHelper.ID_LENGTH];
+      byte[] id = new byte[StringHelper.ID_LENGTH];
       random().nextBytes(id);
 
       Map<String, String> attributes = new HashMap<>();
@@ -648,7 +648,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
    * @deprecated only exists to be overridden by old codecs that didnt support this
    */
   @Deprecated
-  protected void assertIDEquals(byte expected[], byte actual[]) {
+  protected void assertIDEquals(byte[] expected, byte[] actual) {
     assertArrayEquals(expected, actual);
   }
 

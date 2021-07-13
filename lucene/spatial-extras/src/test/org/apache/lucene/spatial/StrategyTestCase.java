@@ -215,7 +215,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
   }
 
   /** scores[] are in docId order */
-  protected void checkValueSource(DoubleValuesSource vs, float scores[], float delta)
+  protected void checkValueSource(DoubleValuesSource vs, float[] scores, float delta)
       throws IOException {
 
     for (LeafReaderContext ctx : indexSearcher.getTopReaderContext().leaves()) {

@@ -135,7 +135,7 @@ public class LatLonPoint extends Field {
     result.append(name);
     result.append(':');
 
-    byte bytes[] = ((BytesRef) fieldsData).bytes;
+    byte[] bytes = ((BytesRef) fieldsData).bytes;
     result.append(decodeLatitude(bytes, 0));
     result.append(',');
     result.append(decodeLongitude(bytes, Integer.BYTES));

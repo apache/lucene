@@ -255,7 +255,7 @@ public class MMapDirectory extends FSDirectory {
     // we always allocate one more buffer, the last one may be a 0 byte one
     final int nrBuffers = (int) (length >>> chunkSizePower) + 1;
 
-    ByteBuffer buffers[] = new ByteBuffer[nrBuffers];
+    ByteBuffer[] buffers = new ByteBuffer[nrBuffers];
 
     long bufferStart = 0L;
     for (int bufNr = 0; bufNr < nrBuffers; bufNr++) {

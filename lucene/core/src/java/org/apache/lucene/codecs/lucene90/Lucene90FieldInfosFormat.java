@@ -122,7 +122,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         IndexFileNames.segmentFileName(segmentInfo.name, segmentSuffix, EXTENSION);
     try (ChecksumIndexInput input = directory.openChecksumInput(fileName, context)) {
       Throwable priorE = null;
-      FieldInfo infos[] = null;
+      FieldInfo[] infos = null;
       try {
         CodecUtil.checkIndexHeader(
             input,

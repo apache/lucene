@@ -344,7 +344,7 @@ public class CheckHits {
 
     if (!deep) return;
 
-    Explanation detail[] = expl.getDetails();
+    Explanation[] detail = expl.getDetails();
     // TODO: can we improve this entire method? it's really geared to work only with TF/IDF
     if (expl.getDescription().endsWith("computed from:")) {
       return; // something more complicated.

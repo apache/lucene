@@ -50,7 +50,7 @@ public final class MultiFields extends Fields {
   @SuppressWarnings({"unchecked", "rawtypes"})
   @Override
   public Iterator<String> iterator() {
-    Iterator<String> subIterators[] = new Iterator[subs.length];
+    Iterator<String>[] subIterators = new Iterator[subs.length];
     for (int i = 0; i < subs.length; i++) {
       subIterators[i] = subs[i].iterator();
     }

@@ -178,7 +178,7 @@ public abstract class CollationTestBase extends LuceneTestCase {
       }
     }
 
-    Thread threads[] = new Thread[numThreads];
+    Thread[] threads = new Thread[numThreads];
     for (int i = 0; i < numThreads; i++) {
       threads[i] =
           new Thread() {

@@ -34,7 +34,7 @@ public class CzechStemmer {
    * @return length of input buffer after normalization
    *     <p><b>NOTE</b>: Input is expected to be in lowercase, but with diacritical marks
    */
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     len = removeCase(s, len);
     len = removePossessives(s, len);
     if (len > 0) {
@@ -43,7 +43,7 @@ public class CzechStemmer {
     return len;
   }
 
-  private int removeCase(char s[], int len) {
+  private int removeCase(char[] s, int len) {
     if (len > 7 && endsWith(s, len, "atech")) return len - 5;
 
     if (len > 6
@@ -112,14 +112,14 @@ public class CzechStemmer {
     return len;
   }
 
-  private int removePossessives(char s[], int len) {
+  private int removePossessives(char[] s, int len) {
     if (len > 5 && (endsWith(s, len, "ov") || endsWith(s, len, "in") || endsWith(s, len, "ův")))
       return len - 2;
 
     return len;
   }
 
-  private int normalize(char s[], int len) {
+  private int normalize(char[] s, int len) {
     if (endsWith(s, len, "čt")) { // čt -> ck
       s[len - 2] = 'c';
       s[len - 1] = 'k';

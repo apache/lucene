@@ -40,7 +40,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
   /** Test the weight transformation depending on the position of the matching term. */
   public void testBlendedSort() throws IOException {
     BytesRef payload = new BytesRef("star");
-    Input keys[] =
+    Input[] keys =
         new Input[] {new Input("star wars: episode v - the empire strikes back", 8, payload)};
     BlendedInfixSuggester suggester = getBlendedInfixSuggester(keys);
 
@@ -54,7 +54,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
   public void testBlendedSort_fieldWeightUnitary_shouldRankSuggestionsByPositionMatch()
       throws IOException {
     BytesRef payload = new BytesRef("star");
-    Input keys[] =
+    Input[] keys =
         new Input[] {new Input("star wars: episode v - the empire strikes back", 1, payload)};
     BlendedInfixSuggester suggester = getBlendedInfixSuggester(keys);
 
@@ -68,7 +68,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
   public void testBlendedSort_fieldWeightZero_shouldRankSuggestionsByPositionMatch()
       throws IOException {
     BytesRef payload = new BytesRef("star");
-    Input keys[] =
+    Input[] keys =
         new Input[] {new Input("star wars: episode v - the empire strikes back", 0, payload)};
     BlendedInfixSuggester suggester = getBlendedInfixSuggester(keys);
 
@@ -83,7 +83,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
       testBlendedSort_fieldWeightLongMax_shouldRankSuggestionsByPositionMatchWithNoOverflow()
           throws IOException {
     BytesRef payload = new BytesRef("star");
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("star wars: episode v - the empire strikes back", Long.MAX_VALUE, payload)
         };
@@ -135,7 +135,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
     BytesRef pl = new BytesRef("lake");
     long w = 20;
 
-    Input keys[] = new Input[] {new Input("top of the lake", w, pl)};
+    Input[] keys = new Input[] {new Input("top of the lake", w, pl)};
 
     Path tempDir = createTempDir("BlendedInfixSuggesterTest");
     Analyzer a = new StandardAnalyzer(CharArraySet.EMPTY_SET);
@@ -201,7 +201,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
     BytesRef star = new BytesRef("star");
     BytesRef ret = new BytesRef("ret");
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("top of the lake", 18, lake),
           new Input("star wars: episode v - the empire strikes back", 12, star),
@@ -264,7 +264,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
 
     BytesRef payload = new BytesRef("lake");
 
-    Input keys[] = new Input[] {new Input("top of the lake", 8, payload)};
+    Input[] keys = new Input[] {new Input("top of the lake", 8, payload)};
 
     BlendedInfixSuggester suggester = getBlendedInfixSuggester(keys);
 
@@ -339,7 +339,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
 
   public void testSuggesterCountForAllLookups() throws IOException {
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("lend me your ears", 1), new Input("as you sow so shall you reap", 1),
         };
@@ -398,7 +398,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
     BytesRef star = new BytesRef("star");
     BytesRef ret = new BytesRef("ret");
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("top of the lake", 15, lake),
           new Input("star wars: episode v - the empire strikes back", 12, star),

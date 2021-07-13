@@ -75,7 +75,7 @@ public abstract class SimilarityBase extends Similarity {
   @Override
   public final SimScorer scorer(
       float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
-    SimScorer weights[] = new SimScorer[termStats.length];
+    SimScorer[] weights = new SimScorer[termStats.length];
     for (int i = 0; i < termStats.length; i++) {
       BasicStats stats = newStats(collectionStats.field(), boost);
       fillBasicStats(stats, collectionStats, termStats[i]);

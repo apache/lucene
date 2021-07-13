@@ -94,7 +94,7 @@ public class HunspellStemFilterFactory extends TokenFilterFactory implements Res
 
   @Override
   public void inform(ResourceLoader loader) throws IOException {
-    String dicts[] = dictionaryFiles.split(",");
+    String[] dicts = dictionaryFiles.split(",");
 
     InputStream affix = null;
     List<InputStream> dictionaries = new ArrayList<>();

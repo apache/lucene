@@ -141,7 +141,7 @@ public class Config {
    * @return a string property.
    */
   public String get(String name, String dflt) {
-    String vals[] = (String[]) valByRound.get(name);
+    String[] vals = (String[]) valByRound.get(name);
     if (vals != null) {
       return vals[roundNumber % vals.length];
     }
@@ -191,7 +191,7 @@ public class Config {
    */
   public int get(String name, int dflt) {
     // use value by round if already parsed
-    int vals[] = (int[]) valByRound.get(name);
+    int[] vals = (int[]) valByRound.get(name);
     if (vals != null) {
       return vals[roundNumber % vals.length];
     }
@@ -221,7 +221,7 @@ public class Config {
    */
   public double get(String name, double dflt) {
     // use value by round if already parsed
-    double vals[] = (double[]) valByRound.get(name);
+    double[] vals = (double[]) valByRound.get(name);
     if (vals != null) {
       return vals[roundNumber % vals.length];
     }
@@ -251,7 +251,7 @@ public class Config {
    */
   public boolean get(String name, boolean dflt) {
     // use value by round if already parsed
-    boolean vals[] = (boolean[]) valByRound.get(name);
+    boolean[] vals = (boolean[]) valByRound.get(name);
     if (vals != null) {
       return vals[roundNumber % vals.length];
     }
@@ -288,22 +288,22 @@ public class Config {
         final String name = entry.getKey();
         Object a = entry.getValue();
         if (a instanceof int[]) {
-          int ai[] = (int[]) a;
+          int[] ai = (int[]) a;
           int n1 = (roundNumber - 1) % ai.length;
           int n2 = roundNumber % ai.length;
           sb.append("  ").append(name).append(":").append(ai[n1]).append("-->").append(ai[n2]);
         } else if (a instanceof double[]) {
-          double ad[] = (double[]) a;
+          double[] ad = (double[]) a;
           int n1 = (roundNumber - 1) % ad.length;
           int n2 = roundNumber % ad.length;
           sb.append("  ").append(name).append(":").append(ad[n1]).append("-->").append(ad[n2]);
         } else if (a instanceof String[]) {
-          String ad[] = (String[]) a;
+          String[] ad = (String[]) a;
           int n1 = (roundNumber - 1) % ad.length;
           int n2 = roundNumber % ad.length;
           sb.append("  ").append(name).append(":").append(ad[n1]).append("-->").append(ad[n2]);
         } else {
-          boolean ab[] = (boolean[]) a;
+          boolean[] ab = (boolean[]) a;
           int n1 = (roundNumber - 1) % ab.length;
           int n2 = roundNumber % ab.length;
           sb.append("  ").append(name).append(":").append(ab[n1]).append("-->").append(ab[n2]);
@@ -344,7 +344,7 @@ public class Config {
       String t = st.nextToken();
       a.add(Integer.valueOf(t));
     }
-    int res[] = new int[a.size()];
+    int[] res = new int[a.size()];
     for (int i = 0; i < a.size(); i++) {
       res[i] = a.get(i).intValue();
     }
@@ -363,7 +363,7 @@ public class Config {
       String t = st.nextToken();
       a.add(Double.valueOf(t));
     }
-    double res[] = new double[a.size()];
+    double[] res = new double[a.size()];
     for (int i = 0; i < a.size(); i++) {
       res[i] = a.get(i).doubleValue();
     }
@@ -382,7 +382,7 @@ public class Config {
       String t = st.nextToken();
       a.add(Boolean.valueOf(t));
     }
-    boolean res[] = new boolean[a.size()];
+    boolean[] res = new boolean[a.size()];
     for (int i = 0; i < a.size(); i++) {
       res[i] = a.get(i).booleanValue();
     }
@@ -419,19 +419,19 @@ public class Config {
         // append actual values, for that round
         Object a = valByRound.get(valByRoundName);
         if (a instanceof int[]) {
-          int ai[] = (int[]) a;
+          int[] ai = (int[]) a;
           int n = roundNum % ai.length;
           sb.append(Format.format(ai[n], template));
         } else if (a instanceof double[]) {
-          double ad[] = (double[]) a;
+          double[] ad = (double[]) a;
           int n = roundNum % ad.length;
           sb.append(Format.format(2, ad[n], template));
         } else if (a instanceof String[]) {
-          String ad[] = (String[]) a;
+          String[] ad = (String[]) a;
           int n = roundNum % ad.length;
           sb.append(ad[n]);
         } else {
-          boolean ab[] = (boolean[]) a;
+          boolean[] ab = (boolean[]) a;
           int n = roundNum % ab.length;
           sb.append(Format.formatPaddLeft("" + ab[n], template));
         }

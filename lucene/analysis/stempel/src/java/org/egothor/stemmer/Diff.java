@@ -65,8 +65,8 @@ package org.egothor.stemmer;
 public class Diff {
   int sizex = 0;
   int sizey = 0;
-  int net[][];
-  int way[][];
+  int[][] net;
+  int[][] way;
 
   int INSERT;
   int DELETE;
@@ -167,7 +167,7 @@ public class Diff {
     int y;
     int maxx;
     int maxy;
-    int go[] = new int[4];
+    int[] go = new int[4];
     final int X = 1;
     final int Y = 2;
     final int R = 3;

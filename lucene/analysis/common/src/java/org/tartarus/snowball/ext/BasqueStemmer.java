@@ -16,7 +16,7 @@ public class BasqueStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among a_0[] = {
+  private static final Among[] a_0 = {
     new Among("idea", -1, 1),
     new Among("bidea", 0, 1),
     new Among("kidea", 0, 1),
@@ -128,7 +128,7 @@ public class BasqueStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("kaitz", -1, 1)
   };
 
-  private static final Among a_1[] = {
+  private static final Among[] a_1 = {
     new Among("ada", -1, 1),
     new Among("kada", 0, 1),
     new Among("anda", -1, 1),
@@ -426,7 +426,7 @@ public class BasqueStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("koitz", 293, 1)
   };
 
-  private static final Among a_2[] = {
+  private static final Among[] a_2 = {
     new Among("zlea", -1, 2),
     new Among("keria", -1, 1),
     new Among("la", -1, 1),
@@ -448,7 +448,7 @@ public class BasqueStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("to", -1, 1)
   };
 
-  private static final char g_v[] = {17, 65, 16};
+  private static final char[] g_v = {17, 65, 16};
 
   private int I_p2;
   private int I_p1;

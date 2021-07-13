@@ -64,7 +64,7 @@ public class AddIndexesTask extends PerfTask {
       writer.addIndexes(inputDir);
     } else {
       try (IndexReader r = DirectoryReader.open(inputDir)) {
-        CodecReader leaves[] = new CodecReader[r.leaves().size()];
+        CodecReader[] leaves = new CodecReader[r.leaves().size()];
         int i = 0;
         for (LeafReaderContext leaf : r.leaves()) {
           leaves[i++] = SlowCodecReaderWrapper.wrap(leaf.reader());

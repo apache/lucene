@@ -71,7 +71,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
    * 1, 10, 100 bytes.
    */
   public void testSingleFile() throws IOException {
-    int data[] = new int[] {0, 1, 10, 100};
+    int[] data = new int[] {0, 1, 10, 100};
     for (int i = 0; i < data.length; i++) {
       String testfile = "_" + i + ".test";
       Directory dir = newDirectory();
@@ -95,7 +95,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
 
   /** This test creates compound file based on two files. */
   public void testTwoFiles() throws IOException {
-    String files[] = {"_123.d1", "_123.d2"};
+    String[] files = {"_123.d1", "_123.d2"};
     Directory dir = newDirectory();
     SegmentInfo si = newSegmentInfo(dir, "_123");
     createSequenceFile(dir, files[0], (byte) 0, 15, si.getId(), "suffix");
@@ -634,7 +634,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     Directory cr = createLargeCFS(dir);
     IndexInput is = cr.openInput("_123.f2", newIOContext(random()));
     is.seek(is.length() - 10);
-    byte b[] = new byte[100];
+    byte[] b = new byte[100];
     is.readBytes(b, 0, 10);
 
     // Single byte read past end of file
@@ -714,8 +714,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     assertEquals(msg + " length", expected.length(), test.length());
     assertEquals(msg + " position", expected.getFilePointer(), test.getFilePointer());
 
-    byte expectedBuffer[] = new byte[512];
-    byte testBuffer[] = new byte[expectedBuffer.length];
+    byte[] expectedBuffer = new byte[512];
+    byte[] testBuffer = new byte[expectedBuffer.length];
 
     long remainder = expected.length() - expected.getFilePointer();
     while (remainder > 0) {

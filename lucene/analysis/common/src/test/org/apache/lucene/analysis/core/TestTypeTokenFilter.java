@@ -51,7 +51,7 @@ public class TestTypeTokenFilter extends BaseTokenStreamTestCase {
       }
     }
     log(sb.toString());
-    String stopTypes[] = new String[] {"<NUM>"};
+    String[] stopTypes = new String[] {"<NUM>"};
     Set<String> stopSet = asSet(stopTypes);
 
     // with increments

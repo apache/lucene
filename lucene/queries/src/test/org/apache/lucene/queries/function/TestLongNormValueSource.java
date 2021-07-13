@@ -92,9 +92,9 @@ public class TestLongNormValueSource extends LuceneTestCase {
     }
   }
 
-  void assertHits(Query q, float scores[]) throws Exception {
-    ScoreDoc expected[] = new ScoreDoc[scores.length];
-    int expectedDocs[] = new int[scores.length];
+  void assertHits(Query q, float[] scores) throws Exception {
+    ScoreDoc[] expected = new ScoreDoc[scores.length];
+    int[] expectedDocs = new int[scores.length];
     for (int i = 0; i < expected.length; i++) {
       expectedDocs[i] = i;
       expected[i] = new ScoreDoc(i, scores[i]);

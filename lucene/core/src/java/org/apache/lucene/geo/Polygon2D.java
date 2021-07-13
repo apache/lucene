@@ -359,7 +359,7 @@ final class Polygon2D implements Component2D {
 
   /** Builds a Polygon2D from LatLon polygon */
   static Component2D create(Polygon polygon) {
-    Polygon gonHoles[] = polygon.getHoles();
+    Polygon[] gonHoles = polygon.getHoles();
     Component2D holes = null;
     if (gonHoles.length > 0) {
       holes = LatLonGeometry.create(gonHoles);
@@ -369,7 +369,7 @@ final class Polygon2D implements Component2D {
 
   /** Builds a Polygon2D from XY polygon */
   static Component2D create(XYPolygon polygon) {
-    XYPolygon gonHoles[] = polygon.getHoles();
+    XYPolygon[] gonHoles = polygon.getHoles();
     Component2D holes = null;
     if (gonHoles.length > 0) {
       holes = XYGeometry.create(gonHoles);

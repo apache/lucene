@@ -113,7 +113,7 @@ public final class ICUTransformFilter extends TokenFilter {
 
   /** Wrap a {@link CharTermAttribute} with the Replaceable API. */
   static final class ReplaceableTermAttribute implements Replaceable {
-    private char buffer[];
+    private char[] buffer;
     private int length;
     private CharTermAttribute token;
 
@@ -135,7 +135,7 @@ public final class ICUTransformFilter extends TokenFilter {
 
     @Override
     public void copy(int start, int limit, int dest) {
-      char text[] = new char[limit - start];
+      char[] text = new char[limit - start];
       getChars(start, limit, text, 0);
       replace(dest, dest, text, 0, limit - start);
     }

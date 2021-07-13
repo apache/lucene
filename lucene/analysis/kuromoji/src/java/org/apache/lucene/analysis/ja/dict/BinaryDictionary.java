@@ -234,13 +234,13 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   @Override
-  public String getBaseForm(int wordId, char surfaceForm[], int off, int len) {
+  public String getBaseForm(int wordId, char[] surfaceForm, int off, int len) {
     if (hasBaseFormData(wordId)) {
       int offset = baseFormOffset(wordId);
       int data = buffer.get(offset++) & 0xff;
       int prefix = data >>> 4;
       int suffix = data & 0xF;
-      char text[] = new char[prefix + suffix];
+      char[] text = new char[prefix + suffix];
       System.arraycopy(surfaceForm, off, text, 0, prefix);
       for (int i = 0; i < suffix; i++) {
         text[prefix + i] = buffer.getChar(offset + (i << 1));
@@ -252,14 +252,14 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   @Override
-  public String getReading(int wordId, char surface[], int off, int len) {
+  public String getReading(int wordId, char[] surface, int off, int len) {
     if (hasReadingData(wordId)) {
       int offset = readingOffset(wordId);
       int readingData = buffer.get(offset++) & 0xff;
       return readString(offset, readingData >>> 1, (readingData & 1) == 1);
     } else {
       // the reading is the surface form, with hiragana shifted to katakana
-      char text[] = new char[len];
+      char[] text = new char[len];
       for (int i = 0; i < len; i++) {
         char ch = surface[off + i];
         if (ch > 0x3040 && ch < 0x3097) {
@@ -278,7 +278,7 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   @Override
-  public String getPronunciation(int wordId, char surface[], int off, int len) {
+  public String getPronunciation(int wordId, char[] surface, int off, int len) {
     if (hasPronunciationData(wordId)) {
       int offset = pronunciationOffset(wordId);
       int pronunciationData = buffer.get(offset++) & 0xff;
@@ -341,7 +341,7 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   private String readString(int offset, int length, boolean kana) {
-    char text[] = new char[length];
+    char[] text = new char[length];
     if (kana) {
       for (int i = 0; i < length; i++) {
         text[i] = (char) (0x30A0 + (buffer.get(offset + i) & 0xff));

@@ -117,7 +117,7 @@ public class TestCodecUtil extends LuceneTestCase {
               CodecUtil.checkFooter(input, mine);
             });
     assertEquals("fake exception", expected.getMessage());
-    Throwable suppressed[] = expected.getSuppressed();
+    Throwable[] suppressed = expected.getSuppressed();
     assertEquals(1, suppressed.length);
     assertTrue(suppressed[0].getMessage().contains("checksum passed"));
     input.close();
@@ -143,7 +143,7 @@ public class TestCodecUtil extends LuceneTestCase {
               CodecUtil.checkFooter(input, mine);
             });
     assertEquals("fake exception", expected.getMessage());
-    Throwable suppressed[] = expected.getSuppressed();
+    Throwable[] suppressed = expected.getSuppressed();
     assertEquals(1, suppressed.length);
     assertTrue(suppressed[0].getMessage().contains("checksum passed"));
     input.close();
@@ -171,7 +171,7 @@ public class TestCodecUtil extends LuceneTestCase {
               CodecUtil.checkFooter(input, mine);
             });
     assertTrue(expected.getMessage().contains("checksum status indeterminate"));
-    Throwable suppressed[] = expected.getSuppressed();
+    Throwable[] suppressed = expected.getSuppressed();
     assertEquals(1, suppressed.length);
     assertEquals("fake exception", suppressed[0].getMessage());
     input.close();
@@ -199,7 +199,7 @@ public class TestCodecUtil extends LuceneTestCase {
               CodecUtil.checkFooter(input, mine);
             });
     assertTrue(expected.getMessage().contains("checksum failed"));
-    Throwable suppressed[] = expected.getSuppressed();
+    Throwable[] suppressed = expected.getSuppressed();
     assertEquals(1, suppressed.length);
     assertEquals("fake exception", suppressed[0].getMessage());
     input.close();

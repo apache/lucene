@@ -223,12 +223,12 @@ public final class Geo3DPoint extends Field {
 
   /** Encode single dimension */
   public static void encodeDimension(
-      double value, byte bytes[], int offset, PlanetModel planetModel) {
+      double value, byte[] bytes, int offset, PlanetModel planetModel) {
     NumericUtils.intToSortableBytes(planetModel.encodeValue(value), bytes, offset);
   }
 
   /** Decode single dimension */
-  public static double decodeDimension(byte value[], int offset, PlanetModel planetModel) {
+  public static double decodeDimension(byte[] value, int offset, PlanetModel planetModel) {
     return planetModel.decodeValue(NumericUtils.sortableBytesToInt(value, offset));
   }
 

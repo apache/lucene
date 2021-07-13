@@ -49,10 +49,10 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
   static LeafReader reader;
   static IndexSearcher searcher;
 
-  static final String alwaysTerms[] = {"a"};
-  static final String commonTerms[] = {"b", "c", "d"};
-  static final String mediumTerms[] = {"e", "f", "g"};
-  static final String rareTerms[] = {
+  static final String[] alwaysTerms = {"a"};
+  static final String[] commonTerms = {"b", "c", "d"};
+  static final String[] mediumTerms = {"e", "f", "g"};
+  static final String[] rareTerms = {
     "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"
   };
 
@@ -101,7 +101,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     dir = null;
   }
 
-  private static void addSome(Document doc, String values[]) {
+  private static void addSome(Document doc, String[] values) {
     List<String> list = Arrays.asList(values);
     Collections.shuffle(list, random());
     int howMany = TestUtil.nextInt(random(), 1, list.size());
@@ -111,7 +111,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     }
   }
 
-  private Scorer scorer(String values[], int minShouldMatch, Mode mode) throws Exception {
+  private Scorer scorer(String[] values, int minShouldMatch, Mode mode) throws Exception {
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
     for (String value : values) {
       bq.add(new TermQuery(new Term("field", value)), BooleanClause.Occur.SHOULD);
@@ -250,7 +250,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     termsList.addAll(Arrays.asList(commonTerms));
     termsList.addAll(Arrays.asList(mediumTerms));
     termsList.addAll(Arrays.asList(rareTerms));
-    String terms[] = termsList.toArray(new String[0]);
+    String[] terms = termsList.toArray(new String[0]);
 
     for (int minNrShouldMatch = 1; minNrShouldMatch <= terms.length; minNrShouldMatch++) {
       Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
@@ -269,7 +269,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     termsList.addAll(Arrays.asList(commonTerms));
     termsList.addAll(Arrays.asList(mediumTerms));
     termsList.addAll(Arrays.asList(rareTerms));
-    String terms[] = termsList.toArray(new String[0]);
+    String[] terms = termsList.toArray(new String[0]);
 
     for (int amount = 25; amount < 200; amount += 25) {
       for (int minNrShouldMatch = 1; minNrShouldMatch <= terms.length; minNrShouldMatch++) {
@@ -292,7 +292,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     termsList.addAll(Arrays.asList(rareTerms));
     Collections.shuffle(termsList, random());
     for (int numTerms = 2; numTerms <= termsList.size(); numTerms++) {
-      String terms[] = termsList.subList(0, numTerms).toArray(new String[0]);
+      String[] terms = termsList.subList(0, numTerms).toArray(new String[0]);
       for (int minNrShouldMatch = 1; minNrShouldMatch <= terms.length; minNrShouldMatch++) {
         Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
         Scorer actual = scorer(terms, minNrShouldMatch, Mode.SCORER);
@@ -316,7 +316,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
 
     for (int amount = 25; amount < 200; amount += 25) {
       for (int numTerms = 2; numTerms <= termsList.size(); numTerms++) {
-        String terms[] = termsList.subList(0, numTerms).toArray(new String[0]);
+        String[] terms = termsList.subList(0, numTerms).toArray(new String[0]);
         for (int minNrShouldMatch = 1; minNrShouldMatch <= terms.length; minNrShouldMatch++) {
           Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
           Scorer actual = scorer(terms, minNrShouldMatch, Mode.SCORER);

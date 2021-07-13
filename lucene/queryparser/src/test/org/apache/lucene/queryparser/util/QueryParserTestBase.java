@@ -1116,12 +1116,12 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     qp.setEnablePositionIncrements(true);
     String qtxt = "\"the words in poisitions pos02578 are stopped in this phrasequery\"";
     //               0         2                      5           7  8
-    int expectedPositions[] = {1, 3, 4, 6, 9};
+    int[] expectedPositions = {1, 3, 4, 6, 9};
     PhraseQuery pq = (PhraseQuery) getQuery(qtxt, qp);
     // System.out.println("Query text: "+qtxt);
     // System.out.println("Result: "+pq);
-    Term t[] = pq.getTerms();
-    int pos[] = pq.getPositions();
+    Term[] t = pq.getTerms();
+    int[] pos = pq.getPositions();
     for (int i = 0; i < t.length; i++) {
       // System.out.println(i+". "+t[i]+"  pos: "+pos[i]);
       assertEquals(
@@ -1270,7 +1270,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     CommonQueryParserConfiguration qp = getParserConfig(new MockAnalyzer(random()));
     qp.setAllowLeadingWildcard(true);
 
-    String prefixQueries[][] = {
+    String[][] prefixQueries = {
       {
         "a*", "ab*", "abc*",
       },
@@ -1278,7 +1278,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
       {"o*", "op*", "opq*", "\\\\\\\\*"},
     };
 
-    String wildcardQueries[][] = {
+    String[][] wildcardQueries = {
       {"*a*", "*ab*", "*abc**", "ab*e*", "*g?", "*f?1", "abc**"},
       {"*h*", "*hi*", "*hij**", "hi*k*", "*n?", "*m?1", "hij**"},
       {"*o*", "*op*", "*opq**", "op*q*", "*u?", "*t?1", "opq**"},

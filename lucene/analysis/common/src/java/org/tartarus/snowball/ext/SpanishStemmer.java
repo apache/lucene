@@ -16,7 +16,7 @@ public class SpanishStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among a_0[] = {
+  private static final Among[] a_0 = {
     new Among("", -1, 6),
     new Among("\u00E1", 0, 1),
     new Among("\u00E9", 0, 2),
@@ -25,7 +25,7 @@ public class SpanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u00FA", 0, 5)
   };
 
-  private static final Among a_1[] = {
+  private static final Among[] a_1 = {
     new Among("la", -1, -1),
     new Among("sela", 0, -1),
     new Among("le", -1, -1),
@@ -41,7 +41,7 @@ public class SpanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("nos", -1, -1)
   };
 
-  private static final Among a_2[] = {
+  private static final Among[] a_2 = {
     new Among("ando", -1, 6),
     new Among("iendo", -1, 6),
     new Among("yendo", -1, 7),
@@ -55,22 +55,22 @@ public class SpanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u00EDr", -1, 5)
   };
 
-  private static final Among a_3[] = {
+  private static final Among[] a_3 = {
     new Among("ic", -1, -1),
     new Among("ad", -1, -1),
     new Among("os", -1, -1),
     new Among("iv", -1, 1)
   };
 
-  private static final Among a_4[] = {
+  private static final Among[] a_4 = {
     new Among("able", -1, 1), new Among("ible", -1, 1), new Among("ante", -1, 1)
   };
 
-  private static final Among a_5[] = {
+  private static final Among[] a_5 = {
     new Among("ic", -1, 1), new Among("abil", -1, 1), new Among("iv", -1, 1)
   };
 
-  private static final Among a_6[] = {
+  private static final Among[] a_6 = {
     new Among("ica", -1, 1),
     new Among("ancia", -1, 2),
     new Among("encia", -1, 5),
@@ -119,7 +119,7 @@ public class SpanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ivos", -1, 9)
   };
 
-  private static final Among a_7[] = {
+  private static final Among[] a_7 = {
     new Among("ya", -1, 1),
     new Among("ye", -1, 1),
     new Among("yan", -1, 1),
@@ -134,7 +134,7 @@ public class SpanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("y\u00F3", -1, 1)
   };
 
-  private static final Among a_8[] = {
+  private static final Among[] a_8 = {
     new Among("aba", -1, 2),
     new Among("ada", -1, 2),
     new Among("ida", -1, 2),
@@ -233,7 +233,7 @@ public class SpanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("i\u00F3", -1, 2)
   };
 
-  private static final Among a_9[] = {
+  private static final Among[] a_9 = {
     new Among("a", -1, 1),
     new Among("e", -1, 2),
     new Among("o", -1, 1),
@@ -244,7 +244,7 @@ public class SpanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u00F3", -1, 1)
   };
 
-  private static final char g_v[] = {
+  private static final char[] g_v = {
     17, 65, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 17, 4, 10
   };
 

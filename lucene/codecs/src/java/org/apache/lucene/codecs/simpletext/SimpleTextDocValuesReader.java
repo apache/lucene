@@ -419,7 +419,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
             throw new CorruptIndexException("failed to parse int length", in, pe);
           }
           // skip past bytes
-          byte bytes[] = new byte[len];
+          byte[] bytes = new byte[len];
           in.readBytes(bytes, 0, len);
           SimpleTextUtil.readLine(in, scratch); // newline
           SimpleTextUtil.readLine(in, scratch); // 'T' or 'F'
@@ -453,7 +453,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
           throw new CorruptIndexException("failed to parse int length", in, pe);
         }
         // skip past bytes
-        byte bytes[] = new byte[len];
+        byte[] bytes = new byte[len];
         in.readBytes(bytes, 0, len);
         SimpleTextUtil.readLine(in, scratch); // newline
         SimpleTextUtil.readLine(in, scratch); // 'T' or 'F'
@@ -616,7 +616,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         return false;
       }
 
-      long values[];
+      long[] values;
       int index;
 
       private void setCurrentDoc() throws IOException {
@@ -627,7 +627,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         if (csv.length() == 0) {
           values = new long[0];
         } else {
-          String s[] = csv.split(",");
+          String[] s = csv.split(",");
           values = new long[s.length];
           for (int i = 0; i < values.length; i++) {
             values[i] = Long.parseLong(s[i]);

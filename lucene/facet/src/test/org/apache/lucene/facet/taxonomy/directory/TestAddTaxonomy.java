@@ -36,7 +36,7 @@ public class TestAddTaxonomy extends FacetTestCase {
 
   private void dotest(int ncats, final int range) throws Exception {
     final AtomicInteger numCats = new AtomicInteger(ncats);
-    Directory dirs[] = new Directory[2];
+    Directory[] dirs = new Directory[2];
     for (int i = 0; i < dirs.length; i++) {
       dirs[i] = newDirectory();
       final DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(dirs[i]);

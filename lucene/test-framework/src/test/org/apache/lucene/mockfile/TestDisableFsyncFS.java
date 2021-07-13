@@ -42,7 +42,7 @@ public class TestDisableFsyncFS extends MockFileSystemTestCase {
             StandardOpenOption.CREATE_NEW,
             StandardOpenOption.READ,
             StandardOpenOption.WRITE);
-    byte bytes[] = new byte[128];
+    byte[] bytes = new byte[128];
     random().nextBytes(bytes);
     file.write(ByteBuffer.wrap(bytes));
     file.force(true);

@@ -182,7 +182,7 @@ public class InetAddressPoint extends Field {
   }
 
   /** Decodes InetAddress value from binary encoding */
-  public static InetAddress decode(byte value[]) {
+  public static InetAddress decode(byte[] value) {
     try {
       return InetAddress.getByAddress(value);
     } catch (UnknownHostException e) {
@@ -227,8 +227,8 @@ public class InetAddressPoint extends Field {
     }
     // create the lower value by zeroing out the host portion, upper value by filling it with all
     // ones.
-    byte lower[] = value.getAddress();
-    byte upper[] = value.getAddress();
+    byte[] lower = value.getAddress();
+    byte[] upper = value.getAddress();
     for (int i = prefixLength; i < 8 * lower.length; i++) {
       int m = 1 << (7 - (i & 7));
       lower[i >> 3] &= ~m;

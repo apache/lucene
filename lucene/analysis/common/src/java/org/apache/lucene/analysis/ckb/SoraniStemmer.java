@@ -28,7 +28,7 @@ public class SoraniStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     // postposition
     if (len > 5 && endsWith(s, len, "دا")) {
       len -= 2;

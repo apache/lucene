@@ -16,7 +16,7 @@ public class SerbianStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among a_0[] = {
+  private static final Among[] a_0 = {
     new Among("\u0430", -1, 1),
     new Among("\u0431", -1, 2),
     new Among("\u0432", -1, 3),
@@ -49,7 +49,7 @@ public class SerbianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u045F", -1, 29)
   };
 
-  private static final Among a_1[] = {
+  private static final Among[] a_1 = {
     new Among("daba", -1, 73),
     new Among("ajaca", -1, 12),
     new Among("ejaca", -1, 14),
@@ -182,7 +182,7 @@ public class SerbianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("o\u0161\u0107u", -1, 71)
   };
 
-  private static final Among a_2[] = {
+  private static final Among[] a_2 = {
     new Among("aca", -1, 124),
     new Among("eca", -1, 125),
     new Among("uca", -1, 126),
@@ -2220,7 +2220,7 @@ public class SerbianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ro\u0161i\u0161", 2029, 90)
   };
 
-  private static final Among a_3[] = {
+  private static final Among[] a_3 = {
     new Among("a", -1, 1),
     new Among("oga", 0, 1),
     new Among("ama", 0, 1),
@@ -2249,16 +2249,16 @@ public class SerbianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("enu", 24, 1)
   };
 
-  private static final char g_v[] = {17, 65, 16};
+  private static final char[] g_v = {17, 65, 16};
 
-  private static final char g_sa[] = {65, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 128};
+  private static final char[] g_sa = {65, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 128};
 
-  private static final char g_ca[] = {
+  private static final char[] g_ca = {
     119, 95, 23, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 136, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 128, 0, 0, 0, 16
   };
 
-  private static final char g_rg[] = {1};
+  private static final char[] g_rg = {1};
 
   private int I_p1;
   private boolean B_no_diacritics;

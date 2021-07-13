@@ -75,8 +75,8 @@ public class TestXYShape extends LuceneTestCase {
     // add a line document
     document = new Document();
     // add a line string
-    float x[] = new float[p.numPoints() - 1];
-    float y[] = new float[p.numPoints() - 1];
+    float[] x = new float[p.numPoints() - 1];
+    float[] y = new float[p.numPoints() - 1];
     for (int i = 0; i < x.length; ++i) {
       x[i] = p.getPolyX(i);
       y[i] = p.getPolyY(i);

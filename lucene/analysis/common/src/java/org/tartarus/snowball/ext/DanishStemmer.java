@@ -16,7 +16,7 @@ public class DanishStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among a_0[] = {
+  private static final Among[] a_0 = {
     new Among("hed", -1, 1),
     new Among("ethed", 0, 1),
     new Among("ered", -1, 1),
@@ -51,14 +51,14 @@ public class DanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("eret", 30, 1)
   };
 
-  private static final Among a_1[] = {
+  private static final Among[] a_1 = {
     new Among("gd", -1, -1),
     new Among("dt", -1, -1),
     new Among("gt", -1, -1),
     new Among("kt", -1, -1)
   };
 
-  private static final Among a_2[] = {
+  private static final Among[] a_2 = {
     new Among("ig", -1, 1),
     new Among("lig", 0, 1),
     new Among("elig", 1, 1),
@@ -66,11 +66,11 @@ public class DanishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("l\u00F8st", -1, 2)
   };
 
-  private static final char g_c[] = {119, 223, 119, 1};
+  private static final char[] g_c = {119, 223, 119, 1};
 
-  private static final char g_v[] = {17, 65, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 128};
+  private static final char[] g_v = {17, 65, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 128};
 
-  private static final char g_s_ending[] = {
+  private static final char[] g_s_ending = {
     239, 254, 42, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16
   };
 

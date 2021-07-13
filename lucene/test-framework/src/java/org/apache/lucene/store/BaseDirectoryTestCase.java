@@ -75,7 +75,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   private void runCopyFrom(Directory source, Directory dest) throws IOException {
     IndexOutput output = source.createOutput("foobar", newIOContext(random()));
 
-    byte bytes[] = RandomBytes.randomBytesOfLength(random(), 20000);
+    byte[] bytes = RandomBytes.randomBytesOfLength(random(), 20000);
     output.writeBytes(bytes, bytes.length);
     output.close();
 
@@ -83,7 +83,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     assertTrue(slowFileExists(dest, "foobaz"));
 
     IndexInput input = dest.openInput("foobaz", newIOContext(random()));
-    byte bytes2[] = new byte[bytes.length];
+    byte[] bytes2 = new byte[bytes.length];
     input.readBytes(bytes2, 0, bytes2.length);
     input.close();
 
@@ -94,7 +94,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     try (Directory dir = getDirectory(createTempDir("testRename"))) {
       IndexOutput output = dir.createOutput("foobar", newIOContext(random()));
       int numBytes = random().nextInt(20000);
-      byte bytes[] = new byte[numBytes];
+      byte[] bytes = new byte[numBytes];
       random().nextBytes(bytes);
       output.writeBytes(bytes, bytes.length);
       output.close();
@@ -102,7 +102,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       dir.rename("foobar", "foobaz");
 
       IndexInput input = dir.openInput("foobaz", newIOContext(random()));
-      byte bytes2[] = new byte[numBytes];
+      byte[] bytes2 = new byte[numBytes];
       input.readBytes(bytes2, 0, bytes2.length);
       assertEquals(input.length(), numBytes);
       input.close();
@@ -491,7 +491,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testChecksum() throws Exception {
     CRC32 expected = new CRC32();
     int numBytes = random().nextInt(20000);
-    byte bytes[] = new byte[numBytes];
+    byte[] bytes = new byte[numBytes];
     random().nextBytes(bytes);
     expected.update(bytes);
 
@@ -784,7 +784,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testCopyBytesWithThreads() throws Exception {
     try (Directory d = getDirectory(createTempDir("testCopyBytesWithThreads"))) {
       int headerLen = 100;
-      byte data[] = RandomBytes.randomBytesOfLengthBetween(random(), headerLen + 1, 10000);
+      byte[] data = RandomBytes.randomBytesOfLengthBetween(random(), headerLen + 1, 10000);
 
       IndexOutput output = d.createOutput("data", IOContext.DEFAULT);
       output.writeBytes(data, 0, data.length);
@@ -799,7 +799,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // now make N copies of the remaining bytes
       int threads = 10;
       CyclicBarrier start = new CyclicBarrier(threads);
-      Thread copies[] =
+      Thread[] copies =
           IntStream.range(0, threads)
               .mapToObj(
                   (i) -> {
@@ -878,7 +878,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     try (Directory dir = getDirectory(createTempDir("testLongs"))) {
       IndexOutput output = dir.createOutput("longs", newIOContext(random()));
       int num = TestUtil.nextInt(random(), 50, 3000);
-      long longs[] = new long[num];
+      long[] longs = new long[num];
       for (int i = 0; i < longs.length; i++) {
         longs[i] = TestUtil.nextLong(random(), Long.MIN_VALUE, Long.MAX_VALUE);
         output.writeLong(longs[i]);
@@ -905,7 +905,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       for (int i = 0; i < 7; i++) {
         String name = "longs-" + i;
         IndexOutput o = dir.createOutput(name, newIOContext(random()));
-        byte junk[] = new byte[i];
+        byte[] junk = new byte[i];
         random().nextBytes(junk);
         o.writeBytes(junk, junk.length);
         input.seek(0);
@@ -927,7 +927,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     try (Directory dir = getDirectory(createTempDir("testInts"))) {
       IndexOutput output = dir.createOutput("ints", newIOContext(random()));
       int num = TestUtil.nextInt(random(), 50, 3000);
-      int ints[] = new int[num];
+      int[] ints = new int[num];
       for (int i = 0; i < ints.length; i++) {
         ints[i] = random().nextInt();
         output.writeInt(ints[i]);
@@ -954,7 +954,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       for (int i = 0; i < 7; i++) {
         String name = "ints-" + i;
         IndexOutput o = dir.createOutput(name, newIOContext(random()));
-        byte junk[] = new byte[i];
+        byte[] junk = new byte[i];
         random().nextBytes(junk);
         o.writeBytes(junk, junk.length);
         input.seek(0);
@@ -975,7 +975,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     try (Directory dir = getDirectory(createTempDir("testShorts"))) {
       IndexOutput output = dir.createOutput("shorts", newIOContext(random()));
       int num = TestUtil.nextInt(random(), 50, 3000);
-      short shorts[] = new short[num];
+      short[] shorts = new short[num];
       for (int i = 0; i < shorts.length; i++) {
         shorts[i] = (short) random().nextInt();
         output.writeShort(shorts[i]);
@@ -1002,7 +1002,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       for (int i = 0; i < 7; i++) {
         String name = "shorts-" + i;
         IndexOutput o = dir.createOutput(name, newIOContext(random()));
-        byte junk[] = new byte[i];
+        byte[] junk = new byte[i];
         random().nextBytes(junk);
         o.writeBytes(junk, junk.length);
         input.seek(0);
@@ -1023,7 +1023,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     try (Directory dir = getDirectory(createTempDir("testBytes"))) {
       IndexOutput output = dir.createOutput("bytes", newIOContext(random()));
       int num = TestUtil.nextInt(random(), 50, 3000);
-      byte bytes[] = new byte[num];
+      byte[] bytes = new byte[num];
       random().nextBytes(bytes);
       for (int i = 0; i < bytes.length; i++) {
         output.writeByte(bytes[i]);
@@ -1050,7 +1050,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       for (int i = 0; i < 7; i++) {
         String name = "bytes-" + i;
         IndexOutput o = dir.createOutput(name, newIOContext(random()));
-        byte junk[] = new byte[i];
+        byte[] junk = new byte[i];
         random().nextBytes(junk);
         o.writeBytes(junk, junk.length);
         input.seek(0);
@@ -1077,7 +1077,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       } else {
         num = TestUtil.nextInt(random(), 50, 250);
       }
-      byte bytes[] = new byte[num];
+      byte[] bytes = new byte[num];
       random().nextBytes(bytes);
       for (int i = 0; i < bytes.length; i++) {
         output.writeByte(bytes[i]);
@@ -1098,7 +1098,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           IndexInput slice2 = slice1.slice("slice2", j, num - i - j);
           assertEquals(0, slice2.getFilePointer());
           assertEquals(num - i - j, slice2.length());
-          byte data[] = new byte[num];
+          byte[] data = new byte[num];
           System.arraycopy(bytes, 0, data, 0, i + j);
           if (random().nextBoolean()) {
             // read the bytes for this slice-of-slice

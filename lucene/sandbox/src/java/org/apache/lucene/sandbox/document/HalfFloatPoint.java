@@ -297,12 +297,12 @@ public final class HalfFloatPoint extends Field {
   // public helper methods (e.g. for queries)
 
   /** Encode single float dimension */
-  public static void encodeDimension(float value, byte dest[], int offset) {
+  public static void encodeDimension(float value, byte[] dest, int offset) {
     shortToSortableBytes(halfFloatToSortableShort(value), dest, offset);
   }
 
   /** Decode single float dimension */
-  public static float decodeDimension(byte value[], int offset) {
+  public static float decodeDimension(byte[] value, int offset) {
     return sortableShortToHalfFloat(sortableBytesToShort(value, offset));
   }
 

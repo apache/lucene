@@ -16,21 +16,21 @@ public class IndonesianStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among a_0[] = {
+  private static final Among[] a_0 = {
     new Among("kah", -1, 1), new Among("lah", -1, 1), new Among("pun", -1, 1)
   };
 
-  private static final Among a_1[] = {
+  private static final Among[] a_1 = {
     new Among("nya", -1, 1), new Among("ku", -1, 1), new Among("mu", -1, 1)
   };
 
-  private static final Among a_2[] = {
+  private static final Among[] a_2 = {
     new Among("i", -1, 1, "r_SUFFIX_I_OK", methodObject),
     new Among("an", -1, 1, "r_SUFFIX_AN_OK", methodObject),
     new Among("kan", 1, 1, "r_SUFFIX_KAN_OK", methodObject)
   };
 
-  private static final Among a_3[] = {
+  private static final Among[] a_3 = {
     new Among("di", -1, 1),
     new Among("ke", -1, 2),
     new Among("me", -1, 1),
@@ -45,7 +45,7 @@ public class IndonesianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ter", -1, 1)
   };
 
-  private static final Among a_4[] = {
+  private static final Among[] a_4 = {
     new Among("be", -1, 3, "r_KER", methodObject),
     new Among("belajar", 0, 4),
     new Among("ber", 0, 3),
@@ -54,7 +54,7 @@ public class IndonesianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("per", 3, 1)
   };
 
-  private static final char g_vowel[] = {17, 65, 16};
+  private static final char[] g_vowel = {17, 65, 16};
 
   private int I_prefix;
   private int I_measure;

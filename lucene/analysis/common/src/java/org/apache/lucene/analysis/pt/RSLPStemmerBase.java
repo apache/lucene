@@ -94,8 +94,8 @@ public abstract class RSLPStemmerBase {
 
   /** A basic rule, with no exceptions. */
   protected static class Rule {
-    protected final char suffix[];
-    protected final char replacement[];
+    protected final char[] suffix;
+    protected final char[] replacement;
     protected final int min;
 
     /**
@@ -112,12 +112,12 @@ public abstract class RSLPStemmerBase {
     }
 
     /** @return true if the word matches this rule. */
-    public boolean matches(char s[], int len) {
+    public boolean matches(char[] s, int len) {
       return (len - suffix.length >= min && endsWith(s, len, suffix));
     }
 
     /** @return new valid length of the string after firing this rule. */
-    public int replace(char s[], int len) {
+    public int replace(char[] s, int len) {
       if (replacement.length > 0) {
         System.arraycopy(replacement, 0, s, len - suffix.length, replacement.length);
       }
@@ -140,7 +140,7 @@ public abstract class RSLPStemmerBase {
     }
 
     @Override
-    public boolean matches(char s[], int len) {
+    public boolean matches(char[] s, int len) {
       return super.matches(s, len) && !exceptions.contains(s, 0, len);
     }
   }
@@ -167,7 +167,7 @@ public abstract class RSLPStemmerBase {
     }
 
     @Override
-    public boolean matches(char s[], int len) {
+    public boolean matches(char[] s, int len) {
       if (!super.matches(s, len)) return false;
 
       for (int i = 0; i < exceptions.length; i++) if (endsWith(s, len, exceptions[i])) return false;
@@ -179,7 +179,7 @@ public abstract class RSLPStemmerBase {
   /** A step containing a list of rules. */
   protected static class Step {
     protected final String name;
-    protected final Rule rules[];
+    protected final Rule[] rules;
     protected final int min;
     protected final char[][] suffixes;
 
@@ -191,7 +191,7 @@ public abstract class RSLPStemmerBase {
      * @param min minimum word size. if this is 0 it is automatically calculated.
      * @param suffixes optional list of conditional suffixes. may be null.
      */
-    public Step(String name, Rule rules[], int min, String suffixes[]) {
+    public Step(String name, Rule[] rules, int min, String[] suffixes) {
       this.name = name;
       this.rules = rules;
       if (min == 0) {
@@ -209,7 +209,7 @@ public abstract class RSLPStemmerBase {
     }
 
     /** @return new valid length of the string after applying the entire step. */
-    public int apply(char s[], int len) {
+    public int apply(char[] s, int len) {
       if (len < min) return len;
 
       if (suffixes != null) {
@@ -275,8 +275,8 @@ public abstract class RSLPStemmerBase {
     String name = matcher.group(1);
     int min = Integer.parseInt(matcher.group(2));
     int type = Integer.parseInt(matcher.group(3));
-    String suffixes[] = parseList(matcher.group(4));
-    Rule rules[] = parseRules(r, type);
+    String[] suffixes = parseList(matcher.group(4));
+    Rule[] rules = parseRules(r, type);
     return new Step(name, rules, min, suffixes);
   }
 
@@ -322,7 +322,7 @@ public abstract class RSLPStemmerBase {
 
   private static String[] parseList(String s) {
     if (s.length() == 0) return null;
-    String list[] = s.split(",");
+    String[] list = s.split(",");
     for (int i = 0; i < list.length; i++) list[i] = parseString(list[i].trim());
     return list;
   }

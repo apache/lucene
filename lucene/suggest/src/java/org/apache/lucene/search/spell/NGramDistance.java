@@ -69,9 +69,9 @@ public class NGramDistance implements StringDistance {
     }
 
     char[] sa = new char[sl + n - 1];
-    float p[]; // 'previous' cost array, horizontally
-    float d[]; // cost array, horizontally
-    float _d[]; // placeholder to assist in swapping p and d
+    float[] p; // 'previous' cost array, horizontally
+    float[] d; // cost array, horizontally
+    float[] _d; // placeholder to assist in swapping p and d
 
     // construct sa with prefix
     for (int i = 0; i < sa.length; i++) {
