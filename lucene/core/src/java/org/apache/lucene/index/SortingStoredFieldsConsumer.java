@@ -70,11 +70,6 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
               bytes.offset = 0;
               bytes.length = length;
             }
-
-            @Override
-            public Decompressor clone() {
-              return this;
-            }
           };
         }
       };

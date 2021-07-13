@@ -151,11 +151,6 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
         decompressor.end();
       }
     }
-
-    @Override
-    public Decompressor clone() {
-      return new DeflateWithPresetDictDecompressor();
-    }
   }
 
   private static class DeflateWithPresetDictCompressor extends Compressor {

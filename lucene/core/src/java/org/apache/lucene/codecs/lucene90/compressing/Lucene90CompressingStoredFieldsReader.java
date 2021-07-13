@@ -78,7 +78,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final IndexInput fieldsStream;
   private final int chunkSize;
   private final CompressionMode compressionMode;
-  private final Decompressor decompressor;
   private final int numDocs;
   private final boolean merging;
   private final BlockState state;
@@ -97,13 +96,12 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     this.maxPointer = reader.maxPointer;
     this.chunkSize = reader.chunkSize;
     this.compressionMode = reader.compressionMode;
-    this.decompressor = reader.decompressor.clone();
     this.numDocs = reader.numDocs;
     this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
     this.numDirtyDocs = reader.numDirtyDocs;
     this.merging = merging;
-    this.state = new BlockState();
+    this.state = merging ? new BlockState() : null;
     this.closed = false;
   }
 
@@ -148,9 +146,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       chunkSize = metaIn.readVInt();
 
-      decompressor = compressionMode.newDecompressor();
       this.merging = false;
-      this.state = new BlockState();
+      this.state = null;
 
       // NOTE: data file is too costly to verify checksum against all the bytes on open,
       // but for now we at least verify proper structure of the checksum footer: which looks
@@ -401,17 +398,10 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     // the start pointer at which you can read the compressed documents
     private long startPointer;
 
-    private final BytesRef spare;
-    private final BytesRef bytes;
+    private final BytesRef spare = new BytesRef();
+    private final BytesRef bytes = new BytesRef();
 
-    BlockState() {
-      if (merging) {
-        spare = new BytesRef();
-        bytes = new BytesRef();
-      } else {
-        spare = bytes = null;
-      }
-    }
+    private final Decompressor decompressor = compressionMode.newDecompressor();
 
     boolean contains(int docID) {
       return docID >= docBase && docID < docBase + chunkDocs;
@@ -522,13 +512,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       final int totalLength = Math.toIntExact(offsets[chunkDocs]);
       final int numStoredFields = Math.toIntExact(this.numStoredFields[index]);
 
-      final BytesRef bytes;
-      if (merging) {
-        bytes = this.bytes;
-      } else {
-        bytes = new BytesRef();
-      }
-
       final DataInput documentInput;
       if (length == 0) {
         // empty
@@ -602,6 +585,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   SerializedDocument document(int docID) throws IOException {
+    assert merging == (state != null);
+    BlockState state = this.state;
+    if (state == null) {
+      state = new BlockState();
+    }
     if (state.contains(docID) == false) {
       fieldsStream.seek(indexReader.getStartPointer(docID));
       state.reset(docID);

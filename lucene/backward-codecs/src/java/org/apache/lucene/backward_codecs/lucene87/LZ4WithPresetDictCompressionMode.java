@@ -139,11 +139,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       bytes.length = length;
       assert bytes.isValid();
     }
-
-    @Override
-    public Decompressor clone() {
-      return new LZ4WithPresetDictDecompressor();
-    }
   }
 
   private static class LZ4WithPresetDictCompressor extends Compressor {

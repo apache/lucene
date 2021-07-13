@@ -65,11 +65,6 @@ public class DummyCompressingCodec extends CompressingCodec {
           bytes.offset = offset;
           bytes.length = length;
         }
-
-        @Override
-        public Decompressor clone() {
-          return this;
-        }
       };
 
   private static final Compressor DUMMY_COMPRESSOR =
