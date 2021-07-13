@@ -112,10 +112,29 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    final int i = readerIndex(docID); // find subreader num
-    return subReaders[i].getTermVectors(docID - starts[i]); // dispatch to subreader
+  public final TermVectors getTermVectorsReader() {
+    TermVectors[] termVectors = new TermVectors[subReaders.length];
+
+    return new TermVectors() {
+      @Override
+      public Fields get(int doc) throws IOException {
+        ensureOpen();
+        final int i = readerIndex(doc); // find subreader num
+
+        if (termVectors[i] != null) {
+          return termVectors[i].get(doc - starts[i]); // dispatch to subreader
+        } else {
+          TermVectors reader = subReaders[i].getTermVectorsReader();
+          if (reader != null) {
+            // the getTermVectorsReader would clone a new instance, hence saving it into an array
+            // to avoid re-cloning from direct subReaders[i].getTermVectorsReader() call
+            termVectors[i] = reader;
+            return reader.get(doc - starts[i]);
+          }
+          return null;
+        }
+      }
+    };
   }
 
   @Override

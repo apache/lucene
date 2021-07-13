@@ -124,6 +124,9 @@ API Changes
 * LUCENE-9998: Remove unused parameter fis in StoredFieldsWriter.finish() and TermVectorsWriter.finish(),
   including those subclasses. (kkewwei)
 
+* LUCENE-9959: Add non thread local based API for term vector reader usage. (Zach Chen, Adrien Grand,
+  David Smiley, Robert Muir, Mike Drob)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)

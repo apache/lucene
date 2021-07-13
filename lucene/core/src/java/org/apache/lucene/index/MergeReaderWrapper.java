@@ -184,13 +184,18 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    checkBounds(docID);
-    if (vectors == null) {
-      return null;
-    }
-    return vectors.get(docID);
+  public TermVectors getTermVectorsReader() {
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) throws IOException {
+        ensureOpen();
+        checkBounds(docID);
+        if (vectors == null) {
+          return null;
+        }
+        return vectors.get(docID);
+      }
+    };
   }
 
   @Override

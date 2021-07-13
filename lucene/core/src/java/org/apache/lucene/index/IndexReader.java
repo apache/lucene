@@ -307,8 +307,21 @@ public abstract class IndexReader implements Closeable {
   /**
    * Retrieve term vectors for this document, or null if term vectors were not indexed. The returned
    * Fields instance acts like a single-document inverted index (the docID will be 0).
+   *
+   * @deprecated Use {@link IndexReader#getTermVectorsReader} instead.
    */
-  public abstract Fields getTermVectors(int docID) throws IOException;
+  @Deprecated
+  public final Fields getTermVectors(int docID) throws IOException {
+    TermVectors termVectors = getTermVectorsReader();
+    if (termVectors != null) {
+      return termVectors.get(docID);
+    }
+    return null;
+  }
+  ;
+
+  /** Get TermVectors from this index, or null if term vectors were not indexed. */
+  public abstract TermVectors getTermVectorsReader();
 
   /**
    * Retrieve term vector for this document and field, or null if term vectors were not indexed. The
