@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
-import com.carrotsearch.hppc.IntIntScatterMap;
+import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.Map;
@@ -34,7 +34,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
   /** Per-ordinal value. */
   private final int[] values;
 
-  private final IntIntScatterMap sparseValues;
+  private final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
   protected IntTaxonomyFacets(
@@ -43,7 +43,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     super(indexFieldName, taxoReader, config);
 
     if (useHashTable(fc, taxoReader)) {
-      sparseValues = new IntIntScatterMap();
+      sparseValues = new IntIntHashMap();
       values = null;
     } else {
       sparseValues = null;
