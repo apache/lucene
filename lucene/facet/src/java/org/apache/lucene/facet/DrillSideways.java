@@ -210,7 +210,8 @@ public class DrillSideways {
       } else {
         searcher.search(query, hitCollector);
       }
-      return new DrillSidewaysResult(buildFacetsResult(drillDownCollector, null, null), null);
+      return new DrillSidewaysResult(
+          buildFacetsResult(drillDownCollector, null, null), null, drillDownCollector, null, null);
     }
 
     Query baseQuery = query.getBaseQuery();
@@ -277,7 +278,10 @@ public class DrillSideways {
             drillDownCollector,
             drillSidewaysCollectors,
             drillDownDims.keySet().toArray(new String[0])),
-        null);
+        null,
+        drillDownCollector,
+        drillSidewaysCollectors,
+        drillDownDims.keySet().toArray(new String[0]));
   }
 
   /** Search, sorting by {@link Sort}, and computing drill down and sideways counts. */
@@ -318,7 +322,8 @@ public class DrillSideways {
         if (doDocScores) {
           TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
         }
-        return new DrillSidewaysResult(r.facets, topDocs);
+        return new DrillSidewaysResult(
+            r.facets, topDocs, r.drillDowns, r.drillSideways, r.drillSidewaysDims);
 
       } else {
 
@@ -329,7 +334,8 @@ public class DrillSideways {
         if (doDocScores) {
           TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
         }
-        return new DrillSidewaysResult(r.facets, topDocs);
+        return new DrillSidewaysResult(
+            r.facets, topDocs, r.drillDowns, r.drillSideways, r.drillSidewaysDims);
       }
     } else {
       return search(after, query, topN);
@@ -370,14 +376,16 @@ public class DrillSideways {
             }
           };
       ConcurrentDrillSidewaysResult<TopDocs> r = searchConcurrently(query, collectorManager);
-      return new DrillSidewaysResult(r.facets, r.collectorResult);
+      return new DrillSidewaysResult(
+          r.facets, r.collectorResult, r.drillDowns, r.drillSideways, r.drillSidewaysDims);
 
     } else {
 
       TopScoreDocCollector hitCollector =
           TopScoreDocCollector.create(topN, after, Integer.MAX_VALUE);
       DrillSidewaysResult r = search(query, hitCollector);
-      return new DrillSidewaysResult(r.facets, hitCollector.topDocs());
+      return new DrillSidewaysResult(
+          r.facets, hitCollector.topDocs(), r.drillDowns, r.drillSideways, r.drillSidewaysDims);
     }
   }
 
@@ -390,7 +398,12 @@ public class DrillSideways {
     return false;
   }
 
-  /** Result of a drill sideways search, including the {@link Facets} and {@link TopDocs}. */
+  /**
+   * Result of a drill sideways search, including the {@link Facets} and {@link TopDocs} {@link
+   * FacetsCollector} for drill down and drill sideways passed to {@link #buildFacetsResult} to
+   * compute {@link Facets} are also exposed here as an alternative to subclassing DrillSideways to
+   * obtain them
+   */
   public static class DrillSidewaysResult {
     /** Combined drill down and sideways results. */
     public final Facets facets;
@@ -398,10 +411,31 @@ public class DrillSideways {
     /** Hits. */
     public final TopDocs hits;
 
+    /** FacetsCollector for drill down. */
+    public final FacetsCollector drillDowns;
+
+    /**
+     * Facets Collector for drill sideways Array of FacetsCollector maps directly to Array of
+     * String[] drillSidewaysDims i.e. ith drillSidewaysDims String maps to ith drillSideways
+     * FacetsCollector
+     */
+    public final FacetsCollector[] drillSideways;
+
+    /** drill sideways dimensions */
+    public final String[] drillSidewaysDims;
+
     /** Sole constructor. */
-    public DrillSidewaysResult(Facets facets, TopDocs hits) {
+    public DrillSidewaysResult(
+        Facets facets,
+        TopDocs hits,
+        FacetsCollector drillDowns,
+        FacetsCollector[] drillSideways,
+        String[] drillSidewaysDims) {
       this.facets = facets;
       this.hits = hits;
+      this.drillDowns = drillDowns;
+      this.drillSideways = drillSideways;
+      this.drillSidewaysDims = drillSidewaysDims;
     }
   }
 
@@ -487,7 +521,12 @@ public class DrillSideways {
       }
 
       return new ConcurrentDrillSidewaysResult<>(
-          buildFacetsResult(mainFacetsCollector, null, null), null, collectorResult);
+          buildFacetsResult(mainFacetsCollector, null, null),
+          null,
+          collectorResult,
+          mainFacetsCollector,
+          null,
+          null);
     }
 
     Query baseQuery = query.getBaseQuery();
@@ -545,7 +584,10 @@ public class DrillSideways {
             drillSidewaysCollectors,
             drillDownDims.keySet().toArray(new String[0])),
         null,
-        collectorResult);
+        collectorResult,
+        drillDownCollector,
+        drillSidewaysCollectors,
+        drillDownDims.keySet().toArray(new String[0]));
   }
 
   @SuppressWarnings("unchecked")
@@ -612,7 +654,10 @@ public class DrillSideways {
         buildFacetsResult(
             mainFacetsCollector, facetsCollectors, drillDownDims.keySet().toArray(new String[0])),
         null,
-        collectorResult);
+        collectorResult,
+        mainFacetsCollector,
+        facetsCollectors,
+        drillDownDims.keySet().toArray(new String[0]));
   }
 
   /**
@@ -624,8 +669,14 @@ public class DrillSideways {
     public final R collectorResult;
 
     /** Sole constructor. */
-    ConcurrentDrillSidewaysResult(Facets facets, TopDocs hits, R collectorResult) {
-      super(facets, hits);
+    ConcurrentDrillSidewaysResult(
+        Facets facets,
+        TopDocs hits,
+        R collectorResult,
+        FacetsCollector drillDowns,
+        FacetsCollector[] drillSideways,
+        String[] drillSidewaysDims) {
+      super(facets, hits, drillDowns, drillSideways, drillSidewaysDims);
       this.collectorResult = collectorResult;
     }
   }
