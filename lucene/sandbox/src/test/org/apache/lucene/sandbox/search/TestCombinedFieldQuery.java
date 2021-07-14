@@ -107,7 +107,6 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
     searcher.setSimilarity(similarity);
-
     CombinedFieldQuery query =
         new CombinedFieldQuery.Builder()
             .addField("f", 1f)
