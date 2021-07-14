@@ -321,9 +321,47 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         16);
   }
 
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-5595")
-  public void testRandomStrings() throws IOException {
-    // nfkc_cf
+  public void testRandomStringsNFC() throws IOException {
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+          }
+
+          @Override
+          protected Reader initReader(String fieldName, Reader reader) {
+            return new ICUNormalizer2CharFilter(
+                reader, Normalizer2.getInstance(null, "nfc", Normalizer2.Mode.COMPOSE));
+          }
+        };
+    checkRandomData(random(), a, 200 * RANDOM_MULTIPLIER);
+    // huge strings
+    checkRandomData(random(), a, 25 * RANDOM_MULTIPLIER, 8192);
+    a.close();
+  }
+
+  public void testRandomStringsNFKC() throws IOException {
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+          }
+
+          @Override
+          protected Reader initReader(String fieldName, Reader reader) {
+            return new ICUNormalizer2CharFilter(
+                reader, Normalizer2.getInstance(null, "nfkc", Normalizer2.Mode.COMPOSE));
+          }
+        };
+    checkRandomData(random(), a, 200 * RANDOM_MULTIPLIER);
+    // huge strings
+    checkRandomData(random(), a, 25 * RANDOM_MULTIPLIER, 8192);
+    a.close();
+  }
+
+  public void testRandomStringsNFKC_CF() throws IOException {
     Analyzer a =
         new Analyzer() {
           @Override
@@ -341,9 +379,30 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
     // huge strings
     checkRandomData(random(), a, 25 * RANDOM_MULTIPLIER, 8192);
     a.close();
+  }
 
-    // nfkd
-    a =
+  public void testRandomStringsNFD() throws IOException {
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+          }
+
+          @Override
+          protected Reader initReader(String fieldName, Reader reader) {
+            return new ICUNormalizer2CharFilter(
+                reader, Normalizer2.getInstance(null, "nfc", Normalizer2.Mode.DECOMPOSE));
+          }
+        };
+    checkRandomData(random(), a, 200 * RANDOM_MULTIPLIER);
+    // huge strings
+    checkRandomData(random(), a, 25 * RANDOM_MULTIPLIER, 8192);
+    a.close();
+  }
+
+  public void testRandomStringsNFKD() throws IOException {
+    Analyzer a =
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
