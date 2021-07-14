@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.BytesTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
@@ -237,9 +238,11 @@ public class Field implements IndexableField {
     if (type == null) {
       throw new IllegalArgumentException("type must not be null");
     }
-    if (!type.stored() && type.indexOptions() == IndexOptions.NONE) {
+    if (!type.stored()
+        && type.indexOptions() == IndexOptions.NONE
+        && type.tokenDocValuesType() == DocValuesType.NONE) {
       throw new IllegalArgumentException(
-          "it doesn't make sense to have a field that " + "is neither indexed nor stored");
+          "it doesn't make sense to have a field that is neither indexed nor stored");
     }
     this.name = name;
     this.fieldsData = value;
@@ -451,7 +454,8 @@ public class Field implements IndexableField {
 
   @Override
   public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-    if (fieldType().indexOptions() == IndexOptions.NONE) {
+    if (fieldType().indexOptions() == IndexOptions.NONE
+        && fieldType().tokenDocValuesType() == DocValuesType.NONE) {
       // Not indexed
       return null;
     }

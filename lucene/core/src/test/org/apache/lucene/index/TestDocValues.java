@@ -17,14 +17,19 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.MockTokenizer;
+import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -222,6 +227,66 @@ public class TestDocValues extends LuceneTestCase {
 
     // ok
     assertNotNull(DocValues.getSortedSet(r, "foo"));
+
+    // errors
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          DocValues.getBinary(r, "foo");
+        });
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          DocValues.getNumeric(r, "foo");
+        });
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          DocValues.getSorted(r, "foo");
+        });
+    expectThrows(
+        IllegalStateException.class,
+        () -> {
+          DocValues.getSortedNumeric(r, "foo");
+        });
+
+    dr.close();
+    iw.close();
+    dir.close();
+  }
+
+  /** field with sortedset docvalues based on tokenized values */
+  public void testTokenizedSortedSetField() throws Exception {
+    Directory dir = newDirectory();
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true);
+            return new TokenStreamComponents(tokenizer, tokenizer);
+          }
+        };
+    IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(a));
+
+    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+    ft.setIndexOptions(IndexOptions.NONE);
+    ft.setTokenDocValuesType(DocValuesType.SORTED_SET);
+
+    Document doc = new Document();
+    doc.add(new Field("foo", "a b c d e f g", ft));
+    iw.addDocument(doc);
+    DirectoryReader dr = DirectoryReader.open(iw);
+    LeafReader r = getOnlyLeafReader(dr);
+
+    // ok
+    SortedSetDocValues dv = DocValues.getSortedSet(r, "foo");
+    assertNotNull(dv);
+    assertNotEquals(SortedSetDocValues.NO_MORE_DOCS, dv.nextDoc());
+    for (char c = 'a'; c <= 'g'; c++) {
+      assertEquals(new BytesRef(Character.toString(c)), dv.lookupOrd(dv.nextOrd()));
+    }
+    assertEquals(SortedSetDocValues.NO_MORE_ORDS, dv.nextOrd());
+    assertEquals(SortedSetDocValues.NO_MORE_DOCS, dv.nextDoc());
 
     // errors
     expectThrows(

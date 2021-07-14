@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.NormsConsumer;
@@ -38,6 +40,7 @@ import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.VectorWriter;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.VectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
@@ -732,6 +735,22 @@ final class IndexingChain implements Accountable {
       } else {
         pf.invert(docID, field, false);
       }
+    } else {
+      DocValuesType tokenDVType = fieldType.tokenDocValuesType();
+      switch (tokenDVType) {
+        case NONE:
+          break;
+        case SORTED_SET:
+          pf.tokenizedDocValuesOnly(docID, field);
+          break;
+          // $CASES-OMITTED$
+        default:
+          throw new UnsupportedOperationException(
+              "unsupported tokenDocValuesType: \""
+                  + tokenDVType
+                  + "\"; supported types: "
+                  + SUPPORTED_TOKEN_DV_TYPES);
+      }
     }
 
     // Add stored fields
@@ -815,8 +834,10 @@ final class IndexingChain implements Accountable {
       // TODO: should this be checked when a fieldType is created?
       verifyUnIndexedFieldType(fieldName, fieldType);
     }
-    if (fieldType.docValuesType() != DocValuesType.NONE) {
-      schema.setDocValues(fieldType.docValuesType(), -1);
+    DocValuesType dvType = fieldType.docValuesType();
+    if (dvType != DocValuesType.NONE
+        || (dvType = fieldType.tokenDocValuesType()) != DocValuesType.NONE) {
+      schema.setDocValues(dvType, -1);
     }
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
@@ -1002,6 +1023,9 @@ final class IndexingChain implements Accountable {
     return fp;
   }
 
+  private static final EnumSet<DocValuesType> SUPPORTED_TOKEN_DV_TYPES =
+      EnumSet.of(DocValuesType.NONE, DocValuesType.SORTED_SET);
+
   @Override
   public long ramBytesUsed() {
     return bytesUsed.get()
@@ -1031,6 +1055,9 @@ final class IndexingChain implements Accountable {
 
     // Non-null if this field ever had points in this segment:
     PointValuesWriter pointValuesWriter;
+
+    // Mutable field to be reused for passing token terms to dvWriter
+    SortedSetDocValuesField tokenizedDVField;
 
     // Non-null if this field ever had vector values in this segment:
     VectorValuesWriter vectorValuesWriter;
@@ -1117,6 +1144,48 @@ final class IndexingChain implements Accountable {
     }
 
     /**
+     * NOTE: this code is derived from (and is largely identical to) the code in {@link #invert(int,
+     * IndexableField, boolean)}. TODO: Consider refactoring to remove redundancy?
+     */
+    private void tokenizedDocValuesOnly(int docID, IndexableField field) throws IOException {
+      final String fieldName = field.name();
+
+      if (tokenizedDVField == null) {
+        // NOTE: there is only one supported tokenizedDVType: SORTED_SET
+        tokenizedDVField =
+            new SortedSetDocValuesField(fieldName, new BytesRef(BytesRef.EMPTY_BYTES));
+      }
+
+      /*
+       * To assist people in tracking down problems in analysis components, we wish to write the field name to the infostream
+       * when we fail. We expect some caller to eventually deal with the real exception, so we don't want any 'catch' clauses,
+       * but rather a finally that takes note of the problem.
+       */
+      boolean succeededInProcessingField = false;
+      try (TokenStream stream = tokenStream = field.tokenStream(analyzer, tokenStream)) {
+        // reset the TokenStream to the first token
+        stream.reset();
+        final TermToBytesRefAttribute termAtt = stream.getAttribute(TermToBytesRefAttribute.class);
+
+        while (stream.incrementToken()) {
+          tokenizedDVField.setBytesValue(termAtt.getBytesRef());
+          indexDocValue(docID, this, DocValuesType.SORTED_SET, tokenizedDVField);
+        }
+
+        // trigger streams to perform end-of-stream operations
+        stream.end();
+
+        /* if there is an exception coming through, we won't set this to true here:*/
+        succeededInProcessingField = true;
+      } finally {
+        if (!succeededInProcessingField && infoStream.isEnabled("DW")) {
+          infoStream.message(
+              "DW", "An exception was thrown while processing field " + fieldInfo.name);
+        }
+      }
+    }
+
+    /**
      * Inverts one field for one document; first is true if this is the first time we are seeing
      * this field name in this document.
      */
@@ -1126,7 +1195,28 @@ final class IndexingChain implements Accountable {
         invertState.reset();
       }
 
-      final boolean analyzed = field.fieldType().tokenized() && analyzer != null;
+      IndexableFieldType fieldType = field.fieldType();
+
+      final boolean analyzed = fieldType.tokenized() && analyzer != null;
+      final DocValuesType tokenDVType = fieldType.tokenDocValuesType();
+      switch (tokenDVType) {
+        case NONE:
+          break;
+        case SORTED_SET:
+          if (tokenizedDVField == null) {
+            tokenizedDVField =
+                new SortedSetDocValuesField(field.name(), new BytesRef(BytesRef.EMPTY_BYTES));
+          }
+          break;
+          // $CASES-OMITTED$
+        default:
+          throw new UnsupportedOperationException(
+              "unsupported tokenDocValuesType: \""
+                  + tokenDVType
+                  + "\"; supported types: "
+                  + SUPPORTED_TOKEN_DV_TYPES);
+      }
+
       /*
        * To assist people in tracking down problems in analysis components, we wish to write the field name to the infostream
        * when we fail. We expect some caller to eventually deal with the real exception, so we don't want any 'catch' clauses,
@@ -1221,7 +1311,13 @@ final class IndexingChain implements Accountable {
           // corrupt and should not be flushed to a
           // new segment:
           try {
-            termsHashPerField.add(invertState.termAttribute.getBytesRef(), docID);
+            final BytesRef term = invertState.termAttribute.getBytesRef();
+            termsHashPerField.add(term, docID);
+            if (tokenDVType != DocValuesType.NONE) {
+              // NOTE: currently only supports SORTED_SET
+              tokenizedDVField.setBytesValue(term);
+              indexDocValue(docID, this, tokenDVType, tokenizedDVField);
+            }
           } catch (MaxBytesLengthExceededException e) {
             byte[] prefix = new byte[30];
             BytesRef bigTerm = invertState.termAttribute.getBytesRef();
