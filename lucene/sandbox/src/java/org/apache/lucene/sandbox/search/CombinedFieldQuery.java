@@ -80,6 +80,9 @@ import org.apache.lucene.util.SmallFloat;
  * compute norms the same way as {@link SimilarityBase#computeNorm}, which includes {@link
  * BM25Similarity} and {@link DFRSimilarity}. Per-field similarities are not supported.
  *
+ * <p>The query also requires that either all fields or no fields have norms enabled. Having only
+ * some fields with norms enabled can result in errors or undefined behavior.
+ *
  * <p>The scoring is based on BM25F's simple formula described in:
  * http://www.staff.city.ac.uk/~sb317/papers/foundations_bm25_review.pdf. This query implements the
  * same approach but allows other similarities besides {@link

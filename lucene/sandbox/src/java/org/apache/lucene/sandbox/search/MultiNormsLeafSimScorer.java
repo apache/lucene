@@ -33,8 +33,9 @@ import org.apache.lucene.util.SmallFloat;
 /**
  * Copy of {@link LeafSimScorer} that sums document's norms from multiple fields.
  *
- * <p>This scorer requires that either all fields or no fields have norms enabled. It will throw an
- * error if some fields have norms enabled, while others have norms disabled.
+ * <p>For all fields, norms must be encoded using {@link SmallFloat#intToByte4}. This scorer also
+ * requires that either all fields or no fields have norms enabled. Having only some fields with
+ * norms enabled can result in errors or undefined behavior.
  */
 final class MultiNormsLeafSimScorer {
   /** Cache of decoded norms. */
@@ -66,13 +67,6 @@ final class MultiNormsLeafSimScorer {
           normsList.add(norms);
           weightList.add(field.weight);
         }
-      }
-
-      if (normsList.isEmpty() == false && normsList.size() != normFields.size()) {
-        throw new IllegalArgumentException(
-            getClass().getSimpleName()
-                + " requires norms to be consistent across fields: some fields cannot"
-                + " have norms enabled, while others have norms disabled");
       }
 
       if (normsList.isEmpty()) {

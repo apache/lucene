@@ -161,17 +161,6 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     TopDocs topDocs = collector.topDocs();
     assertEquals(new TotalHits(1, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
 
-    CombinedFieldQuery invalidQuery =
-        new CombinedFieldQuery.Builder()
-            .addField("b", 1.0f)
-            .addField("c", 1.0f)
-            .addTerm(new BytesRef("value"))
-            .build();
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class, () -> searcher.search(invalidQuery, collector));
-    assertTrue(e.getMessage().contains("requires norms to be consistent across fields"));
-
     reader.close();
     w.close();
     dir.close();
