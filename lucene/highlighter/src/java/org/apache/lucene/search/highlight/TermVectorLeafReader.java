@@ -33,6 +33,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
@@ -168,11 +169,16 @@ public class TermVectorLeafReader extends LeafReader {
   public void checkIntegrity() throws IOException {}
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    if (docID != 0) {
-      return null;
-    }
-    return fields;
+  public TermVectors getTermVectorsReader() {
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) {
+        if (docID != 0) {
+          return null;
+        }
+        return fields;
+      }
+    };
   }
 
   @Override

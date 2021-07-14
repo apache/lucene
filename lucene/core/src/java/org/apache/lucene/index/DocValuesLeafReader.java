@@ -69,7 +69,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
+  public TermVectors getTermVectorsReader() {
     throw new UnsupportedOperationException();
   }
 

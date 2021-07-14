@@ -14,33 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.memory;
+package org.apache.lucene.index;
 
-import org.apache.lucene.index.SortedNumericDocValues;
+import java.io.IOException;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-/**
- * A list of per-document numeric values, sorted according to {@link Long#compare(long, long)}.
- *
- * @deprecated Use {@link SortedNumericDocValues} instead.
- */
-@Deprecated
-abstract class LegacySortedNumericDocValues {
-
+/** Index API to access TermVectors */
+public abstract class TermVectors {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  protected LegacySortedNumericDocValues() {}
-
-  /** Positions to the specified document */
-  public abstract void setDocument(int doc);
+  protected TermVectors() {}
 
   /**
-   * Retrieve the value for the current document at the specified index. An index ranges from {@code
-   * 0} to {@code count()-1}.
+   * Returns term vectors for this document, or null if term vectors were not indexed. If offsets
+   * are available they are in an {@link OffsetAttribute} available from the {@link
+   * org.apache.lucene.index.PostingsEnum}.
    */
-  public abstract long valueAt(int index);
-
-  /**
-   * Retrieves the count of values for the current document. This may be zero if a document has no
-   * values.
-   */
-  public abstract int count();
+  public abstract Fields get(int doc) throws IOException;
 }

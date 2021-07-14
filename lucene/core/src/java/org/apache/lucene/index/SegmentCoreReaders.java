@@ -57,7 +57,7 @@ final class SegmentCoreReaders {
   final NormsProducer normsProducer;
 
   final StoredFieldsReader fieldsReaderOrig;
-  final TermVectorsReader termVectorsReaderOrig;
+  final TermVectorsReader termVectorsReader;
   final PointsReader pointsReader;
   final VectorReader vectorReader;
   final CompoundDirectory cfsReader;
@@ -77,14 +77,6 @@ final class SegmentCoreReaders {
         @Override
         protected StoredFieldsReader initialValue() {
           return fieldsReaderOrig.clone();
-        }
-      };
-
-  final CloseableThreadLocal<TermVectorsReader> termVectorsLocal =
-      new CloseableThreadLocal<TermVectorsReader>() {
-        @Override
-        protected TermVectorsReader initialValue() {
-          return (termVectorsReaderOrig == null) ? null : termVectorsReaderOrig.clone();
         }
       };
 
@@ -134,13 +126,13 @@ final class SegmentCoreReaders {
               .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
 
       if (coreFieldInfos.hasVectors()) { // open term vector files only as needed
-        termVectorsReaderOrig =
+        termVectorsReader =
             si.info
                 .getCodec()
                 .termVectorsFormat()
                 .vectorsReader(cfsDir, si.info, coreFieldInfos, context);
       } else {
-        termVectorsReaderOrig = null;
+        termVectorsReader = null;
       }
 
       if (coreFieldInfos.hasPointValues()) {
@@ -186,10 +178,9 @@ final class SegmentCoreReaders {
     if (ref.decrementAndGet() == 0) {
       try (Closeable finalizer = this::notifyCoreClosedListeners) {
         IOUtils.close(
-            termVectorsLocal,
             fieldsReaderLocal,
             fields,
-            termVectorsReaderOrig,
+            termVectorsReader,
             fieldsReaderOrig,
             cfsReader,
             normsProducer,

@@ -67,11 +67,13 @@ final class Lucene90CompoundReader extends CompoundDirectory {
     this.entries = readEntries(si.getId(), directory, entriesFileName);
     boolean success = false;
 
-    long expectedLength = CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, "");
-    for (Map.Entry<String, FileEntry> ent : entries.entrySet()) {
-      expectedLength += ent.getValue().length;
-    }
-    expectedLength += CodecUtil.footerLength();
+    // find the last FileEntry in the map (largest offset+length) and add length of codec footer:
+    final long expectedLength =
+        entries.values().stream()
+                .mapToLong(e -> e.offset + e.length)
+                .max()
+                .orElseGet(() -> CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, ""))
+            + CodecUtil.footerLength();
 
     handle = directory.openInput(dataFileName, context);
     try {

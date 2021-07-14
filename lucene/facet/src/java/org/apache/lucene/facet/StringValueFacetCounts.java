@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.facet;
 
-import com.carrotsearch.hppc.IntIntScatterMap;
+import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.Arrays;
@@ -67,7 +67,7 @@ public class StringValueFacetCounts extends Facets {
   private final SortedSetDocValues docValues;
 
   private final int[] denseCounts;
-  private final IntIntScatterMap sparseCounts;
+  private final IntIntHashMap sparseCounts;
 
   private final int cardinality;
   private int totalDocCount;
@@ -110,7 +110,7 @@ public class StringValueFacetCounts extends Facets {
         // If our result set is < 10% of the index, we collect sparsely (use hash map). This
         // heuristic is borrowed from IntTaxonomyFacetCounts:
         if (totalHits < totalDocs / 10) {
-          sparseCounts = new IntIntScatterMap();
+          sparseCounts = new IntIntHashMap();
           denseCounts = null;
         } else {
           sparseCounts = null;
