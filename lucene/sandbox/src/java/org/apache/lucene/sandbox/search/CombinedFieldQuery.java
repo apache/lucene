@@ -228,14 +228,15 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (sameClassAs(o) == false) return false;
     CombinedFieldQuery that = (CombinedFieldQuery) o;
     return Objects.equals(fieldAndWeights, that.fieldAndWeights) && Arrays.equals(terms, that.terms);
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(fieldAndWeights);
+    int result = classHash();
+    result += Objects.hash(fieldAndWeights);
     result = 31 * result + Arrays.hashCode(terms);
     return result;
   }
