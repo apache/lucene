@@ -29,8 +29,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.CheckHits;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.IndexSearcher;
@@ -75,33 +73,37 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
   }
 
   public void testEqualsAndHashCode() {
-    CombinedFieldQuery query1 = new CombinedFieldQuery.Builder()
-        .addField("field1")
-        .addField("field2")
-        .addTerm(new BytesRef("value"))
-        .build();
+    CombinedFieldQuery query1 =
+        new CombinedFieldQuery.Builder()
+            .addField("field1")
+            .addField("field2")
+            .addTerm(new BytesRef("value"))
+            .build();
 
-    CombinedFieldQuery query2 = new CombinedFieldQuery.Builder()
-        .addField("field1")
-        .addField("field2", 1.3f)
-        .addTerm(new BytesRef("value"))
-        .build();
+    CombinedFieldQuery query2 =
+        new CombinedFieldQuery.Builder()
+            .addField("field1")
+            .addField("field2", 1.3f)
+            .addTerm(new BytesRef("value"))
+            .build();
     assertNotEquals(query1, query2);
     assertNotEquals(query1.hashCode(), query2.hashCode());
 
-    CombinedFieldQuery query3 =new CombinedFieldQuery.Builder()
-        .addField("field3")
-        .addField("field4")
-        .addTerm(new BytesRef("value"))
-        .build();
+    CombinedFieldQuery query3 =
+        new CombinedFieldQuery.Builder()
+            .addField("field3")
+            .addField("field4")
+            .addTerm(new BytesRef("value"))
+            .build();
     assertNotEquals(query1, query3);
     assertNotEquals(query1.hashCode(), query2.hashCode());
 
-    CombinedFieldQuery duplicateQuery1 = new CombinedFieldQuery.Builder()
-        .addField("field1")
-        .addField("field2")
-        .addTerm(new BytesRef("value"))
-        .build();
+    CombinedFieldQuery duplicateQuery1 =
+        new CombinedFieldQuery.Builder()
+            .addField("field1")
+            .addField("field2")
+            .addTerm(new BytesRef("value"))
+            .build();
     assertEquals(query1, duplicateQuery1);
     assertEquals(query1.hashCode(), duplicateQuery1.hashCode());
   }

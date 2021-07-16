@@ -230,7 +230,8 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     if (this == o) return true;
     if (sameClassAs(o) == false) return false;
     CombinedFieldQuery that = (CombinedFieldQuery) o;
-    return Objects.equals(fieldAndWeights, that.fieldAndWeights) && Arrays.equals(terms, that.terms);
+    return Objects.equals(fieldAndWeights, that.fieldAndWeights)
+        && Arrays.equals(terms, that.terms);
   }
 
   @Override
