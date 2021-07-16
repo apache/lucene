@@ -111,8 +111,7 @@ class VectorValuesWriter {
         new BufferedVectorValues(
             docsWithField,
             vectors,
-            fieldInfo.getVectorDimension(),
-            fieldInfo.getVectorSimilarityFunction());
+            fieldInfo.getVectorDimension());
     if (sortMap != null) {
       vectorWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
     } else {
@@ -190,11 +189,6 @@ class VectorValuesWriter {
     }
 
     @Override
-    public SimilarityFunction similarityFunction() {
-      return delegate.similarityFunction();
-    }
-
-    @Override
     public int advance(int target) throws IOException {
       throw new UnsupportedOperationException();
     }
@@ -224,11 +218,6 @@ class VectorValuesWriter {
         }
 
         @Override
-        public SimilarityFunction similarityFunction() {
-          return delegateRA.similarityFunction();
-        }
-
-        @Override
         public float[] vectorValue(int targetOrd) throws IOException {
           return delegateRA.vectorValue(ordMap[targetOrd]);
         }
@@ -248,7 +237,6 @@ class VectorValuesWriter {
 
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<float[]> vectors;
-    final SimilarityFunction similarityFunction;
     final int dimension;
 
     final ByteBuffer buffer;
@@ -262,12 +250,10 @@ class VectorValuesWriter {
     BufferedVectorValues(
         DocsWithFieldSet docsWithField,
         List<float[]> vectors,
-        int dimension,
-        SimilarityFunction similarityFunction) {
+        int dimension) {
       this.docsWithField = docsWithField;
       this.vectors = vectors;
       this.dimension = dimension;
-      this.similarityFunction = similarityFunction;
       buffer = ByteBuffer.allocate(dimension * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
       binaryValue = new BytesRef(buffer.array());
       raBuffer = ByteBuffer.allocate(dimension * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -277,7 +263,7 @@ class VectorValuesWriter {
 
     @Override
     public RandomAccessVectorValues randomAccess() {
-      return new BufferedVectorValues(docsWithField, vectors, dimension, similarityFunction);
+      return new BufferedVectorValues(docsWithField, vectors, dimension);
     }
 
     @Override
@@ -288,11 +274,6 @@ class VectorValuesWriter {
     @Override
     public int size() {
       return vectors.size();
-    }
-
-    @Override
-    public SimilarityFunction similarityFunction() {
-      return similarityFunction;
     }
 
     @Override

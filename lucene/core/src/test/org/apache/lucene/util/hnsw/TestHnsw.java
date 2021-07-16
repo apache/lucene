@@ -41,6 +41,7 @@ import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
@@ -61,7 +62,8 @@ public class TestHnsw extends LuceneTestCase {
     int maxConn = random().nextInt(10) + 5;
     int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();
-    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, maxConn, beamWidth, seed);
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
+    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors);
 
     // Recreate the graph while indexing with the same random seed and write it out
@@ -87,7 +89,7 @@ public class TestHnsw extends LuceneTestCase {
             indexedDoc++;
           }
           Document doc = new Document();
-          doc.add(new VectorField("field", v2.vectorValue(), v2.similarityFunction));
+          doc.add(new VectorField("field", v2.vectorValue()));
           doc.add(new StoredField("id", v2.docID()));
           iw.addDocument(doc);
           nVec++;
@@ -97,7 +99,6 @@ public class TestHnsw extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
           VectorValues values = ctx.reader().getVectorValues("field");
-          assertEquals(vectors.similarityFunction, values.similarityFunction());
           assertEquals(dim, values.dimension());
           assertEquals(nVec, values.size());
           assertEquals(indexedDoc, ctx.reader().maxDoc());
@@ -121,11 +122,11 @@ public class TestHnsw extends LuceneTestCase {
   public void testAknnDiverse() throws IOException {
     int nDoc = 100;
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
-    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, 16, 100, random().nextInt());
+    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, VectorSimilarityFunction.DOT_PRODUCT, 16, 100, random().nextInt());
     HnswGraph hnsw = builder.build(vectors);
     // run some searches
     NeighborQueue nn =
-        HnswGraph.search(new float[] {1, 0}, 10, 5, vectors.randomAccess(), hnsw, random());
+        HnswGraph.search(new float[] {1, 0}, 10, 5, vectors.randomAccess(), VectorSimilarityFunction.DOT_PRODUCT, hnsw, random());
     int sum = 0;
     for (int node : nn.nodes()) {
       sum += node;
@@ -168,20 +169,19 @@ public class TestHnsw extends LuceneTestCase {
   }
 
   public void testHnswGraphBuilderInvalid() {
-    expectThrows(NullPointerException.class, () -> new HnswGraphBuilder(null, 0, 0, 0));
+    expectThrows(NullPointerException.class, () -> new HnswGraphBuilder(null, null, 0, 0, 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new HnswGraphBuilder(new RandomVectorValues(1, 1, random()), 0, 10, 0));
+        () -> new HnswGraphBuilder(new RandomVectorValues(1, 1, random()), VectorSimilarityFunction.EUCLIDEAN, 0, 10, 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new HnswGraphBuilder(new RandomVectorValues(1, 1, random()), 10, 0, 0));
+        () -> new HnswGraphBuilder(new RandomVectorValues(1, 1, random()), VectorSimilarityFunction.EUCLIDEAN, 10, 0, 0));
   }
 
   public void testDiversity() throws IOException {
     // Some carefully checked test cases with simple 2d vectors on the unit circle:
     MockVectorValues vectors =
         new MockVectorValues(
-            VectorValues.SimilarityFunction.DOT_PRODUCT,
             new float[][] {
               unitVector2d(0.5),
               unitVector2d(0.75),
@@ -191,7 +191,7 @@ public class TestHnsw extends LuceneTestCase {
               unitVector2d(0.77),
             });
     // First add nodes until everybody gets a full neighbor list
-    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, 2, 10, random().nextInt());
+    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, VectorSimilarityFunction.DOT_PRODUCT, 2, 10, random().nextInt());
     // node 0 is added by the builder constructor
     // builder.addGraphNode(vectors.vectorValue(0));
     builder.addGraphNode(vectors.vectorValue(1));
@@ -247,18 +247,19 @@ public class TestHnsw extends LuceneTestCase {
     int dim = atLeast(10);
     int topK = 5;
     RandomVectorValues vectors = new RandomVectorValues(size, dim, random());
-    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, 10, 30, random().nextLong());
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
+    HnswGraphBuilder builder = new HnswGraphBuilder(vectors, similarityFunction, 10, 30, random().nextLong());
     HnswGraph hnsw = builder.build(vectors);
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
-      NeighborQueue actual = HnswGraph.search(query, topK, 100, vectors, hnsw, random());
-      NeighborQueue expected = new NeighborQueue(topK, vectors.similarityFunction.reversed);
+      NeighborQueue actual = HnswGraph.search(query, topK, 100, vectors, similarityFunction, hnsw, random());
+      NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
       for (int j = 0; j < size; j++) {
         float[] v = vectors.vectorValue(j);
         if (v != null) {
           expected.insertWithOverflow(
-              j, vectors.similarityFunction.compare(query, vectors.vectorValue(j)));
+              j, similarityFunction.compare(query, vectors.vectorValue(j)));
         }
       }
       assertEquals(topK, actual.size());
@@ -302,11 +303,6 @@ public class TestHnsw extends LuceneTestCase {
 
     public CircularVectorValues copy() {
       return new CircularVectorValues(size);
-    }
-
-    @Override
-    public SimilarityFunction similarityFunction() {
-      return SimilarityFunction.DOT_PRODUCT;
     }
 
     @Override
@@ -409,13 +405,11 @@ public class TestHnsw extends LuceneTestCase {
   static class RandomVectorValues extends MockVectorValues {
 
     RandomVectorValues(int size, int dimension, Random random) {
-      super(
-          SimilarityFunction.values()[random.nextInt(SimilarityFunction.values().length - 1) + 1],
-          createRandomVectors(size, dimension, random));
+      super(createRandomVectors(size, dimension, random));
     }
 
     RandomVectorValues(RandomVectorValues other) {
-      super(other.similarityFunction, other.values);
+      super(other.values);
     }
 
     @Override

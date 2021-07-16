@@ -27,6 +27,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
@@ -126,11 +127,12 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
     long[] offsets = new long[count];
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
+    if (fieldInfo.getVectorSimilarityFunction() != VectorSimilarityFunction.NONE) {
       if (vectors instanceof RandomAccessVectorValuesProducer) {
         writeGraph(
             vectorIndex,
             (RandomAccessVectorValuesProducer) vectors,
+            fieldInfo.getVectorSimilarityFunction(),
             vectorIndexOffset,
             offsets,
             count,
@@ -150,7 +152,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
         vectorIndexLength,
         count,
         docIds);
-    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
+    if (fieldInfo.getVectorSimilarityFunction() != VectorSimilarityFunction.NONE) {
       writeGraphOffsets(meta, offsets);
     }
   }
@@ -196,6 +198,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
   private void writeGraph(
       IndexOutput graphData,
       RandomAccessVectorValuesProducer vectorValues,
+      VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,
       int count,
@@ -203,7 +206,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
       int beamWidth)
       throws IOException {
     HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(vectorValues, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+        new HnswGraphBuilder(vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 

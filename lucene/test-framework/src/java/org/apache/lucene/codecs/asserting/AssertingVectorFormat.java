@@ -93,7 +93,6 @@ public class AssertingVectorFormat extends VectorFormat {
         assert values.docID() == -1;
         assert values.size() >= 0;
         assert values.dimension() > 0;
-        assert values.similarityFunction() != null;
       }
       return values;
     }
