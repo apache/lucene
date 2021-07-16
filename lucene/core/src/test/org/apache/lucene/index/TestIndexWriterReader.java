@@ -1249,14 +1249,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     // Test1: test that leafReaders are sorted according to leafSorter provided in IndexWriterConfig
     {
       try (DirectoryReader reader = writer.getReader()) {
-        List<LeafReader> lrs =
-            reader.leaves().stream().map(LeafReaderContext::reader).collect(toList());
-        List<LeafReader> expectedSortedlrs =
-            reader.leaves().stream()
-                .map(LeafReaderContext::reader)
-                .sorted(leafSorter)
-                .collect(toList());
-        assertEquals(expectedSortedlrs, lrs);
+        assertLeavesSorted(reader, leafSorter);
 
         // add more documents that should be sorted first
         final long FIRST_VALUE = ASC_SORT ? 0 : 100;
@@ -1269,28 +1262,16 @@ public class TestIndexWriterReader extends LuceneTestCase {
 
         // and open again
         try (DirectoryReader reader2 = DirectoryReader.openIfChanged(reader)) {
-          lrs = reader2.leaves().stream().map(LeafReaderContext::reader).collect(toList());
-          expectedSortedlrs =
-              reader2.leaves().stream()
-                  .map(LeafReaderContext::reader)
-                  .sorted(leafSorter)
-                  .collect(toList());
-          assertEquals(expectedSortedlrs, lrs);
+          assertLeavesSorted(reader2, leafSorter);
         }
       }
     }
 
-    // Test2: test that leafReaders are sorted according to leafSorter provided in DirectoryReader
+    // Test2: test that leafReaders are sorted according to the provided leafSorter when opened from
+    // directory
     {
       try (DirectoryReader reader = DirectoryReader.open(dir, leafSorter)) {
-        List<LeafReader> lrs =
-            reader.leaves().stream().map(LeafReaderContext::reader).collect(toList());
-        List<LeafReader> expectedSortedlrs =
-            reader.leaves().stream()
-                .map(LeafReaderContext::reader)
-                .sorted(leafSorter)
-                .collect(toList());
-        assertEquals(expectedSortedlrs, lrs);
+        assertLeavesSorted(reader, leafSorter);
 
         // add more documents that should be sorted first
         final long FIRST_VALUE = ASC_SORT ? 0 : 100;
@@ -1303,13 +1284,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
 
         // and open again
         try (DirectoryReader reader2 = DirectoryReader.openIfChanged(reader)) {
-          lrs = reader2.leaves().stream().map(LeafReaderContext::reader).collect(toList());
-          expectedSortedlrs =
-              reader2.leaves().stream()
-                  .map(LeafReaderContext::reader)
-                  .sorted(leafSorter)
-                  .collect(toList());
-          assertEquals(expectedSortedlrs, lrs);
+          assertLeavesSorted(reader2, leafSorter);
         }
       }
     }
@@ -1319,14 +1294,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     {
       try (DirectoryReader reader =
           new AssertingDirectoryReader(DirectoryReader.open(dir, leafSorter))) {
-        List<LeafReader> lrs =
-            reader.leaves().stream().map(LeafReaderContext::reader).collect(toList());
-        List<LeafReader> expectedSortedlrs =
-            reader.leaves().stream()
-                .map(LeafReaderContext::reader)
-                .sorted(leafSorter)
-                .collect(toList());
-        assertEquals(expectedSortedlrs, lrs);
+        assertLeavesSorted(reader, leafSorter);
 
         // add more documents that should be sorted first
         final long FIRST_VALUE = ASC_SORT ? 0 : 100;
@@ -1339,18 +1307,50 @@ public class TestIndexWriterReader extends LuceneTestCase {
 
         // and open again
         try (DirectoryReader reader2 = DirectoryReader.openIfChanged(reader)) {
-          lrs = reader2.leaves().stream().map(LeafReaderContext::reader).collect(toList());
-          expectedSortedlrs =
-              reader2.leaves().stream()
-                  .map(LeafReaderContext::reader)
-                  .sorted(leafSorter)
-                  .collect(toList());
-          assertEquals(expectedSortedlrs, lrs);
+          assertLeavesSorted(reader2, leafSorter);
+        }
+      }
+    }
+
+    // Test4: test that leafReaders are sorted according to the provided leafSorter when opened from
+    // commit
+    {
+      List<IndexCommit> commits = DirectoryReader.listCommits(dir);
+      IndexCommit latestCommit = commits.get(commits.size() - 1);
+      try (DirectoryReader reader = DirectoryReader.open(latestCommit, leafSorter)) {
+        assertLeavesSorted(reader, leafSorter);
+
+        // add more documents that should be sorted first
+        final long FIRST_VALUE = ASC_SORT ? 0 : 100;
+        for (int i = 0; i < 10; ++i) {
+          final Document doc = new Document();
+          doc.add(new LongPoint(FIELD_NAME, FIRST_VALUE));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+
+        // and open again
+        try (DirectoryReader reader2 = DirectoryReader.openIfChanged(reader)) {
+          assertLeavesSorted(reader2, leafSorter);
         }
       }
     }
 
     writer.close();
     dir.close();
+  }
+
+  // assert that the leaf readers of the provided directory reader are sorted according to the
+  // provided leafSorter
+  private static void assertLeavesSorted(
+      DirectoryReader reader, Comparator<LeafReader> leafSorter) {
+    List<LeafReader> lrs =
+        reader.leaves().stream().map(LeafReaderContext::reader).collect(toList());
+    List<LeafReader> expectedSortedlrs =
+        reader.leaves().stream()
+            .map(LeafReaderContext::reader)
+            .sorted(leafSorter)
+            .collect(toList());
+    assertEquals(expectedSortedlrs, lrs);
   }
 }
