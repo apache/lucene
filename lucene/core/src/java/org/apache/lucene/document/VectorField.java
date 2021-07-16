@@ -34,8 +34,7 @@ import org.apache.lucene.index.VectorValues;
  */
 public class VectorField extends Field {
 
-  private static FieldType createType(
-      float[] v, VectorSimilarityFunction similarityFunction) {
+  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -83,8 +82,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+  public VectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }

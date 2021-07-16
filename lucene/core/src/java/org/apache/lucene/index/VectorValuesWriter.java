@@ -108,10 +108,7 @@ class VectorValuesWriter {
    */
   public void flush(Sorter.DocMap sortMap, VectorWriter vectorWriter) throws IOException {
     VectorValues vectorValues =
-        new BufferedVectorValues(
-            docsWithField,
-            vectors,
-            fieldInfo.getVectorDimension());
+        new BufferedVectorValues(docsWithField, vectors, fieldInfo.getVectorDimension());
     if (sortMap != null) {
       vectorWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
     } else {
@@ -247,10 +244,7 @@ class VectorValuesWriter {
     DocIdSetIterator docsWithFieldIter;
     int ord = -1;
 
-    BufferedVectorValues(
-        DocsWithFieldSet docsWithField,
-        List<float[]> vectors,
-        int dimension) {
+    BufferedVectorValues(DocsWithFieldSet docsWithField, List<float[]> vectors, int dimension) {
       this.docsWithField = docsWithField;
       this.vectors = vectors;
       this.dimension = dimension;

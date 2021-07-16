@@ -56,8 +56,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     float[] v = new float[1];
     VectorField field = new VectorField("f", v);
     assertEquals(1, field.fieldType().vectorDimension());
-    assertEquals(
-        VectorSimilarityFunction.EUCLIDEAN, field.fieldType().vectorSimilarityFunction());
+    assertEquals(VectorSimilarityFunction.EUCLIDEAN, field.fieldType().vectorSimilarityFunction());
     assertSame(v, field.vectorValue());
   }
 
@@ -231,8 +230,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         w.addDocument(doc);
       }
-      doc.add(
-          new VectorField(fieldName, new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField(fieldName, new float[4], VectorSimilarityFunction.DOT_PRODUCT));
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         w2.addDocument(doc);
         w2.addIndexes(dir);
@@ -463,9 +461,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       Exception e =
           expectThrows(
               IllegalArgumentException.class,
-              () ->
-                  doc.add(
-                      new VectorField("f", new float[0], VectorSimilarityFunction.NONE)));
+              () -> doc.add(new VectorField("f", new float[0], VectorSimilarityFunction.NONE)));
       assertEquals("cannot index an empty vector", e.getMessage());
 
       Document doc2 = new Document();
@@ -513,8 +509,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   public void testInvalidVectorFieldUsage() {
-    VectorField field =
-        new VectorField("field", new float[2], VectorSimilarityFunction.NONE);
+    VectorField field = new VectorField("field", new float[2], VectorSimilarityFunction.NONE);
 
     expectThrows(IllegalArgumentException.class, () -> field.setIntValue(14));
 
@@ -528,8 +523,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
-      doc.add(
-          new VectorField("v", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("v", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.addDocument(new Document());
       w.commit();
@@ -554,16 +548,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
-      doc.add(
-          new VectorField(
-              "v0", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("v0", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       doc = new Document();
-      doc.add(
-          new VectorField(
-              "v1", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("v1", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.forceMerge(1);
     }
@@ -575,8 +565,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     int[] fieldDocCounts = new int[numFields];
     float[] fieldTotals = new float[numFields];
     int[] fieldDims = new int[numFields];
-    VectorSimilarityFunction[] fieldSearchStrategies =
-        new VectorSimilarityFunction[numFields];
+    VectorSimilarityFunction[] fieldSearchStrategies = new VectorSimilarityFunction[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
       fieldSearchStrategies[i] =
@@ -692,15 +681,13 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       Document doc = new Document();
       float[] v = new float[] {1};
       doc.add(new VectorField("field1", v, VectorSimilarityFunction.EUCLIDEAN));
-      doc.add(
-          new VectorField("field2", new float[] {1, 2, 3}, VectorSimilarityFunction.NONE));
+      doc.add(new VectorField("field2", new float[] {1, 2, 3}, VectorSimilarityFunction.NONE));
       iw.addDocument(doc);
       v[0] = 2;
       iw.addDocument(doc);
       doc = new Document();
       doc.add(
-          new VectorField(
-              "field3", new float[] {1, 2, 3}, VectorSimilarityFunction.DOT_PRODUCT));
+          new VectorField("field3", new float[] {1, 2, 3}, VectorSimilarityFunction.DOT_PRODUCT));
       iw.addDocument(doc);
       iw.forceMerge(1);
       try (IndexReader reader = iw.getReader()) {

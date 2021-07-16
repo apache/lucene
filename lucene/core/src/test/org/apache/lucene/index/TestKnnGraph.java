@@ -453,7 +453,8 @@ public class TestKnnGraph extends LuceneTestCase {
     add(iw, id, vector, similarityFunction);
   }
 
-  private void add(IndexWriter iw, int id, float[] vector, VectorSimilarityFunction similarityFunction)
+  private void add(
+      IndexWriter iw, int id, float[] vector, VectorSimilarityFunction similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {

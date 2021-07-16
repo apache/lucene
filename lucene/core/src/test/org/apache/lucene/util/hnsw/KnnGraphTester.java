@@ -251,7 +251,8 @@ public class KnnGraphTester {
   private void dumpGraph(Path docsPath) throws IOException {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
-      HnswGraphBuilder builder = new HnswGraphBuilder(vectors, SIMILARITY_FUNCTION, maxConn, beamWidth, 0);
+      HnswGraphBuilder builder =
+          new HnswGraphBuilder(vectors, SIMILARITY_FUNCTION, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
         builder.addGraphNode(values.vectorValue(i));
@@ -580,8 +581,7 @@ public class KnnGraphTester {
     iwc.setRAMBufferSizeMB(1994d);
     // iwc.setMaxBufferedDocs(10000);
 
-    FieldType fieldType =
-        VectorField.createFieldType(dim, VectorSimilarityFunction.DOT_PRODUCT);
+    FieldType fieldType = VectorField.createFieldType(dim, VectorSimilarityFunction.DOT_PRODUCT);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);

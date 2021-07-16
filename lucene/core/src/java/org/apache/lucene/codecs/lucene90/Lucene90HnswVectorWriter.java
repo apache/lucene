@@ -206,7 +206,8 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
       int beamWidth)
       throws IOException {
     HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+        new HnswGraphBuilder(
+            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 

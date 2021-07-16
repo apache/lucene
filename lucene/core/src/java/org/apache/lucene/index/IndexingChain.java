@@ -1327,8 +1327,7 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
-    private VectorSimilarityFunction vectorSimilarityFunction =
-        VectorSimilarityFunction.NONE;
+    private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.NONE;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";

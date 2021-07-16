@@ -67,7 +67,11 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors, VectorSimilarityFunction similarityFunction, int maxConn, int beamWidth, long seed) {
+      RandomAccessVectorValuesProducer vectors,
+      VectorSimilarityFunction similarityFunction,
+      int maxConn,
+      int beamWidth,
+      long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     this.similarityFunction = similarityFunction;
@@ -133,7 +137,8 @@ public final class HnswGraphBuilder {
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(float[] value) throws IOException {
     NeighborQueue candidates =
-        HnswGraph.search(value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, random);
+        HnswGraph.search(
+            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, random);
 
     int node = hnsw.addNode();
 

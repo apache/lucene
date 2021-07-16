@@ -43,8 +43,7 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
-  private VectorSimilarityFunction vectorSimilarityFunction =
-      VectorSimilarityFunction.NONE;
+  private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.NONE;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */

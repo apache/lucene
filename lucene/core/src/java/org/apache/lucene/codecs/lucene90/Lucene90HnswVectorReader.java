@@ -188,8 +188,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     }
   }
 
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input)
-      throws IOException {
+  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
     int similarityFunctionId = input.readInt();
     if (similarityFunctionId < 0
         || similarityFunctionId >= VectorSimilarityFunction.values().length) {
@@ -253,7 +252,14 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final Random random = new Random(checksumSeed);
     NeighborQueue results =
-        HnswGraph.search(target, k, k + fanout, vectorValues,fieldEntry.similarityFunction, getGraphValues(fieldEntry), random);
+        HnswGraph.search(
+            target,
+            k,
+            k + fanout,
+            vectorValues,
+            fieldEntry.similarityFunction,
+            getGraphValues(fieldEntry),
+            random);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     boolean reversed = fieldEntry.similarityFunction.reversed;
@@ -319,8 +325,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     final long indexDataLength;
     final int[] ordToDoc;
 
-    FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction)
-        throws IOException {
+    FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
