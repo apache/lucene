@@ -237,7 +237,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   @Override
   public int hashCode() {
     int result = classHash();
-    result += Objects.hash(fieldAndWeights);
+    result = 31 * result + Objects.hash(fieldAndWeights);
     result = 31 * result + Arrays.hashCode(terms);
     return result;
   }
