@@ -20,23 +20,24 @@ import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NnVectorsReader;
+import org.apache.lucene.document.NnVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
- * org.apache.lucene.document.VectorField}.
+ * NnVectorField}.
  *
  * @lucene.experimental
  */
-public abstract class VectorValues extends DocIdSetIterator {
+public abstract class NnVectors extends DocIdSetIterator {
 
   /** The maximum length of a vector */
   public static int MAX_DIMENSIONS = 1024;
 
   /** Sole constructor */
-  protected VectorValues() {}
+  protected NnVectors() {}
 
   /** Return the dimension of the vectors */
   public abstract int dimension();
@@ -82,7 +83,7 @@ public abstract class VectorValues extends DocIdSetIterator {
   public enum SimilarityFunction {
 
     /**
-     * No similarity function is provided. Note: {@link VectorReader#search(String, float[], int,
+     * No similarity function is provided. Note: {@link NnVectorsReader#search(String, float[], int,
      * int)} is not supported for fields specifying this.
      */
     NONE,
@@ -129,11 +130,11 @@ public abstract class VectorValues extends DocIdSetIterator {
   }
 
   /**
-   * Represents the lack of vector values. It is returned by providers that do not support
-   * VectorValues.
+   * Represents the lack of vector values. It is returned by providers that do not support {@link
+   * NnVectors}.
    */
-  public static final VectorValues EMPTY =
-      new VectorValues() {
+  public static final NnVectors EMPTY =
+      new NnVectors() {
 
         @Override
         public int size() {
@@ -158,7 +159,7 @@ public abstract class VectorValues extends DocIdSetIterator {
 
         @Override
         public int docID() {
-          throw new IllegalStateException("VectorValues is EMPTY, and not positioned on a doc");
+          throw new IllegalStateException("NnVectors is EMPTY, and not positioned on a doc");
         }
 
         @Override

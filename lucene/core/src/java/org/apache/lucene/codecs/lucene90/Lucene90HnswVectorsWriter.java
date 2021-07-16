@@ -22,12 +22,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.NnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -40,7 +40,7 @@ import org.apache.lucene.util.hnsw.NeighborArray;
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorWriter extends VectorWriter {
+public final class Lucene90HnswVectorsWriter extends NnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
@@ -49,28 +49,29 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
   private final int beamWidth;
   private boolean finished;
 
-  Lucene90HnswVectorWriter(SegmentWriteState state, int maxConn, int beamWidth) throws IOException {
+  Lucene90HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth)
+      throws IOException {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
-    assert state.fieldInfos.hasVectorValues();
+    assert state.fieldInfos.hasNnVectors();
     segmentWriteState = state;
 
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorFormat.VECTOR_DATA_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_DATA_EXTENSION);
 
     String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorFormat.VECTOR_INDEX_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
 
     boolean success = false;
     try {
@@ -80,20 +81,20 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene90HnswVectorFormat.META_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.META_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene90HnswVectorFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
-          Lucene90HnswVectorFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;
@@ -105,7 +106,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
+  public void writeField(FieldInfo fieldInfo, NnVectors vectors) throws IOException {
     long pos = vectorData.getFilePointer();
     // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
     // CFS is not used, eg for larger indexes
@@ -119,18 +120,18 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
     int count = 0;
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
       // write vector
-      writeVectorValue(vectors);
+      writeNnVectors(vectors);
       docIds[count] = docV;
     }
     // count may be < vectors.size() e,g, if some documents were deleted
     long[] offsets = new long[count];
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
-      if (vectors instanceof RandomAccessVectorValuesProducer) {
+    if (vectors.similarityFunction() != NnVectors.SimilarityFunction.NONE) {
+      if (vectors instanceof RandomAccessNnVectorsProducer) {
         writeGraph(
             vectorIndex,
-            (RandomAccessVectorValuesProducer) vectors,
+            (RandomAccessNnVectorsProducer) vectors,
             vectorIndexOffset,
             offsets,
             count,
@@ -150,7 +151,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
         vectorIndexLength,
         count,
         docIds);
-    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
+    if (vectors.similarityFunction() != NnVectors.SimilarityFunction.NONE) {
       writeGraphOffsets(meta, offsets);
     }
   }
@@ -170,7 +171,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
     meta.writeVLong(vectorDataLength);
     meta.writeVLong(indexDataOffset);
     meta.writeVLong(indexDataLength);
-    meta.writeInt(field.getVectorDimension());
+    meta.writeInt(field.getNnVectorDimension());
     meta.writeInt(size);
     for (int i = 0; i < size; i++) {
       // TODO: delta-encode, or write as bitset
@@ -178,7 +179,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
     }
   }
 
-  private void writeVectorValue(VectorValues vectors) throws IOException {
+  private void writeNnVectors(NnVectors vectors) throws IOException {
     // write vector value
     BytesRef binaryValue = vectors.binaryValue();
     assert binaryValue.length == vectors.dimension() * Float.BYTES;
@@ -195,7 +196,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValuesProducer vectorValues,
+      RandomAccessNnVectorsProducer nnVectors,
       long graphDataOffset,
       long[] offsets,
       int count,
@@ -203,9 +204,9 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
       int beamWidth)
       throws IOException {
     HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(vectorValues, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+        new HnswGraphBuilder(nnVectors, maxConn, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
+    HnswGraph graph = hnswGraphBuilder.build(nnVectors.randomAccess());
 
     for (int ord = 0; ord < count; ord++) {
       // write graph

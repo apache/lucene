@@ -25,7 +25,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public interface RandomAccessVectorValues {
+public interface RandomAccessNnVectors {
 
   /** Return the number of vector values */
   int size();
@@ -34,7 +34,7 @@ public interface RandomAccessVectorValues {
   int dimension();
 
   /** Return the similarity function used to compare these vectors */
-  VectorValues.SimilarityFunction similarityFunction();
+  NnVectors.SimilarityFunction similarityFunction();
 
   /**
    * Return the vector value indexed at the given ordinal. The provided floating point array may be

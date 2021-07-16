@@ -26,11 +26,11 @@ import java.util.Iterator;
 import java.util.Map;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -301,17 +301,17 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   @Override
-  public VectorReader getVectorReader() {
-    VectorReader delegate = in.getVectorReader();
-    return new VectorReader() {
+  public NnVectorsReader getVectorReader() {
+    NnVectorsReader delegate = in.getVectorReader();
+    return new NnVectorsReader() {
       @Override
       public void checkIntegrity() throws IOException {
         delegate.checkIntegrity();
       }
 
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
-        return new VectorValuesWriter.SortingVectorValues(delegate.getVectorValues(field), docMap);
+      public NnVectors getNnVectors(String field) throws IOException {
+        return new NnVectorsConsumer.SortingNnVectors(delegate.getNnVectors(field), docMap);
       }
 
       @Override

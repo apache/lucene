@@ -20,11 +20,11 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.TopDocs;
 
 /** LeafReader implemented by codec APIs. */
@@ -81,7 +81,7 @@ public abstract class CodecReader extends LeafReader {
    *
    * @lucene.internal
    */
-  public abstract VectorReader getVectorReader();
+  public abstract NnVectorsReader getVectorReader();
 
   @Override
   public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
@@ -199,15 +199,15 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final NnVectors getNnVectors(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null || fi.getNnVectorDimension() == 0) {
       // Field does not exist or does not index vectors
       return null;
     }
 
-    return getVectorReader().getVectorValues(field);
+    return getVectorReader().getNnVectors(field);
   }
 
   @Override
@@ -215,7 +215,7 @@ public abstract class CodecReader extends LeafReader {
       throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null || fi.getNnVectorDimension() == 0) {
       // Field does not exist or does not index vectors
       return null;
     }

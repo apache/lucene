@@ -19,15 +19,15 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Accountable;
 
 /** Reads vectors from an index. */
-public abstract class VectorReader implements Closeable, Accountable {
+public abstract class NnVectorsReader implements Closeable, Accountable {
 
   /** Sole constructor */
-  protected VectorReader() {}
+  protected NnVectorsReader() {}
 
   /**
    * Checks consistency of this reader.
@@ -39,8 +39,8 @@ public abstract class VectorReader implements Closeable, Accountable {
    */
   public abstract void checkIntegrity() throws IOException;
 
-  /** Returns the {@link VectorValues} for the given {@code field} */
-  public abstract VectorValues getVectorValues(String field) throws IOException;
+  /** Returns the {@link NnVectors} for the given {@code field} */
+  public abstract NnVectors getNnVectors(String field) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -64,7 +64,7 @@ public abstract class VectorReader implements Closeable, Accountable {
    *
    * <p>The default implementation returns {@code this}
    */
-  public VectorReader getMergeInstance() {
+  public NnVectorsReader getMergeInstance() {
     return this;
   }
 }

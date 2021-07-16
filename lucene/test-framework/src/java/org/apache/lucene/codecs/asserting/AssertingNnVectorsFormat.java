@@ -18,45 +18,45 @@
 package org.apache.lucene.codecs.asserting;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsFormat;
+import org.apache.lucene.codecs.NnVectorsReader;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.TestUtil;
 
-/** Wraps the default VectorFormat and provides additional assertions. */
-public class AssertingVectorFormat extends VectorFormat {
+/** Wraps the default {@link NnVectorsFormat} and provides additional assertions. */
+public class AssertingNnVectorsFormat extends NnVectorsFormat {
 
-  private final VectorFormat delegate = TestUtil.getDefaultVectorFormat();
+  private final NnVectorsFormat delegate = TestUtil.getDefaultNnVectorsFormat();
 
-  public AssertingVectorFormat() {
+  public AssertingNnVectorsFormat() {
     super("Asserting");
   }
 
   @Override
-  public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new AssertingVectorWriter(delegate.fieldsWriter(state));
+  public NnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new AssertingNnVectorsWriter(delegate.fieldsWriter(state));
   }
 
   @Override
-  public VectorReader fieldsReader(SegmentReadState state) throws IOException {
-    return new AssertingVectorReader(delegate.fieldsReader(state));
+  public NnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new AssertingNnVectorsReader(delegate.fieldsReader(state));
   }
 
-  static class AssertingVectorWriter extends VectorWriter {
-    final VectorWriter delegate;
+  static class AssertingNnVectorsWriter extends NnVectorsWriter {
+    final NnVectorsWriter delegate;
 
-    AssertingVectorWriter(VectorWriter delegate) {
+    AssertingNnVectorsWriter(NnVectorsWriter delegate) {
       assert delegate != null;
       this.delegate = delegate;
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+    public void writeField(FieldInfo fieldInfo, NnVectors values) throws IOException {
       assert fieldInfo != null;
       assert values != null;
       delegate.writeField(fieldInfo, values);
@@ -73,10 +73,10 @@ public class AssertingVectorFormat extends VectorFormat {
     }
   }
 
-  static class AssertingVectorReader extends VectorReader {
-    final VectorReader delegate;
+  static class AssertingNnVectorsReader extends NnVectorsReader {
+    final NnVectorsReader delegate;
 
-    AssertingVectorReader(VectorReader delegate) {
+    AssertingNnVectorsReader(NnVectorsReader delegate) {
       assert delegate != null;
       this.delegate = delegate;
     }
@@ -87,8 +87,8 @@ public class AssertingVectorFormat extends VectorFormat {
     }
 
     @Override
-    public VectorValues getVectorValues(String field) throws IOException {
-      VectorValues values = delegate.getVectorValues(field);
+    public NnVectors getNnVectors(String field) throws IOException {
+      NnVectors values = delegate.getNnVectors(field);
       if (values != null) {
         assert values.docID() == -1;
         assert values.size() >= 0;

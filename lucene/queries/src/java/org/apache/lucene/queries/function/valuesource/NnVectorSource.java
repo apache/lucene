@@ -30,10 +30,10 @@ import org.apache.lucene.search.IndexSearcher;
  * org.apache.lucene.queries.function.FunctionValues#doubleVal(int, double[])}
  */
 // Not crazy about the name, but...
-public class VectorValueSource extends MultiValueSource {
+public class NnVectorSource extends MultiValueSource {
   protected final List<ValueSource> sources;
 
-  public VectorValueSource(List<ValueSource> sources) {
+  public NnVectorSource(List<ValueSource> sources) {
     this.sources = sources;
   }
 
@@ -210,9 +210,9 @@ public class VectorValueSource extends MultiValueSource {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof VectorValueSource)) return false;
+    if (!(o instanceof NnVectorSource)) return false;
 
-    VectorValueSource that = (VectorValueSource) o;
+    NnVectorSource that = (NnVectorSource) o;
 
     return sources.equals(that.sources);
   }

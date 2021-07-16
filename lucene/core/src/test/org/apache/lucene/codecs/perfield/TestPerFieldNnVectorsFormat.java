@@ -25,31 +25,31 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.NnVectorsFormat;
+import org.apache.lucene.codecs.NnVectorsReader;
+import org.apache.lucene.codecs.NnVectorsWriter;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.VectorField;
-import org.apache.lucene.index.BaseVectorFormatTestCase;
+import org.apache.lucene.document.NnVectorField;
+import org.apache.lucene.index.BaseNnVectorsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.NnVectors;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.RandomCodec;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
-public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
+public class TestPerFieldNnVectorsFormat extends BaseNnVectorsFormatTestCase {
   private Codec codec;
 
   @Override
@@ -67,14 +67,14 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     try (Directory directory = newDirectory()) {
       // we don't use RandomIndexWriter because it might add more values than we expect !!!!1
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingVectorFormat format1 =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
-      WriteRecordingVectorFormat format2 =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
+      WriteRecordingNnVectorsFormat format1 =
+          new WriteRecordingNnVectorsFormat(TestUtil.getDefaultNnVectorsFormat());
+      WriteRecordingNnVectorsFormat format2 =
+          new WriteRecordingNnVectorsFormat(TestUtil.getDefaultNnVectorsFormat());
       iwc.setCodec(
           new AssertingCodec() {
             @Override
-            public VectorFormat getVectorFormatForField(String field) {
+            public NnVectorsFormat getNnVectorsFormatForField(String field) {
               if ("field1".equals(field)) {
                 return format1;
               } else {
@@ -86,12 +86,12 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
         Document doc = new Document();
         doc.add(newTextField("id", "1", Field.Store.YES));
-        doc.add(new VectorField("field1", new float[] {1, 2, 3}));
+        doc.add(new NnVectorField("field1", new float[] {1, 2, 3}));
         iwriter.addDocument(doc);
 
         doc.clear();
         doc.add(newTextField("id", "2", Field.Store.YES));
-        doc.add(new VectorField("field2", new float[] {4, 5, 6}));
+        doc.add(new NnVectorField("field2", new float[] {4, 5, 6}));
         iwriter.addDocument(doc);
       }
 
@@ -128,19 +128,19 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
         for (int i = 0; i < 3; i++) {
           Document doc = new Document();
           doc.add(newTextField("id", "1", Field.Store.YES));
-          doc.add(new VectorField("field", new float[] {1, 2, 3}));
+          doc.add(new NnVectorField("field", new float[] {1, 2, 3}));
           iw.addDocument(doc);
           iw.commit();
         }
       }
 
       IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingVectorFormat newFormat =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
+      WriteRecordingNnVectorsFormat newFormat =
+          new WriteRecordingNnVectorsFormat(TestUtil.getDefaultNnVectorsFormat());
       newConfig.setCodec(
           new AssertingCodec() {
             @Override
-            public VectorFormat getVectorFormatForField(String field) {
+            public NnVectorsFormat getNnVectorsFormatForField(String field) {
               return newFormat;
             }
           });
@@ -154,22 +154,22 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     }
   }
 
-  private static class WriteRecordingVectorFormat extends VectorFormat {
-    private final VectorFormat delegate;
+  private static class WriteRecordingNnVectorsFormat extends NnVectorsFormat {
+    private final NnVectorsFormat delegate;
     private final Set<String> fieldsWritten;
 
-    public WriteRecordingVectorFormat(VectorFormat delegate) {
+    public WriteRecordingNnVectorsFormat(NnVectorsFormat delegate) {
       super(delegate.getName());
       this.delegate = delegate;
       this.fieldsWritten = new HashSet<>();
     }
 
     @Override
-    public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-      VectorWriter writer = delegate.fieldsWriter(state);
-      return new VectorWriter() {
+    public NnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+      NnVectorsWriter writer = delegate.fieldsWriter(state);
+      return new NnVectorsWriter() {
         @Override
-        public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+        public void writeField(FieldInfo fieldInfo, NnVectors values) throws IOException {
           fieldsWritten.add(fieldInfo.name);
           writer.writeField(fieldInfo, values);
         }
@@ -187,7 +187,7 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     }
 
     @Override
-    public VectorReader fieldsReader(SegmentReadState state) throws IOException {
+    public NnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
       return delegate.fieldsReader(state);
     }
   }

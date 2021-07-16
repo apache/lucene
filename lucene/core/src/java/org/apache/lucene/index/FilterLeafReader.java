@@ -340,8 +340,8 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
-    return in.getVectorValues(field);
+  public NnVectors getNnVectors(String field) throws IOException {
+    return in.getNnVectors(field);
   }
 
   @Override

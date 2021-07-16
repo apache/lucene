@@ -17,21 +17,21 @@
 
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextVectorWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextNnVectorsWriter.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.NnVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.NnVectors;
+import org.apache.lucene.index.RandomAccessNnVectors;
+import org.apache.lucene.index.RandomAccessNnVectorsProducer;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -49,10 +49,10 @@ import org.apache.lucene.util.StringHelper;
  *
  * @lucene.experimental
  */
-public class SimpleTextVectorReader extends VectorReader {
+public class SimpleTextNnVectorsReader extends NnVectorsReader {
   // shallowSizeOfInstance for fieldEntries map is included in ramBytesUsed() calculation
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextVectorReader.class)
+      RamUsageEstimator.shallowSizeOfInstance(SimpleTextNnVectorsReader.class)
           + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class);
 
   private static final BytesRef EMPTY = new BytesRef("");
@@ -62,18 +62,18 @@ public class SimpleTextVectorReader extends VectorReader {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
   private final Map<String, FieldEntry> fieldEntries = new HashMap<>();
 
-  SimpleTextVectorReader(SegmentReadState readState) throws IOException {
+  SimpleTextNnVectorsReader(SegmentReadState readState) throws IOException {
     this.readState = readState;
     String metaFileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
             readState.segmentSuffix,
-            SimpleTextVectorFormat.META_EXTENSION);
+            SimpleTextNnVectorsFormat.META_EXTENSION);
     String vectorFileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
             readState.segmentSuffix,
-            SimpleTextVectorFormat.VECTOR_EXTENSION);
+            SimpleTextNnVectorsFormat.VECTOR_EXTENSION);
 
     boolean success = false;
     try (ChecksumIndexInput in =
@@ -82,8 +82,8 @@ public class SimpleTextVectorReader extends VectorReader {
       while (fieldNumber != -1) {
         String fieldName = readString(in, FIELD_NAME);
         String scoreFunctionName = readString(in, SCORE_FUNCTION);
-        VectorValues.SimilarityFunction similarityFunction =
-            VectorValues.SimilarityFunction.valueOf(scoreFunctionName);
+        NnVectors.SimilarityFunction similarityFunction =
+            NnVectors.SimilarityFunction.valueOf(scoreFunctionName);
         long vectorDataOffset = readLong(in, VECTOR_DATA_OFFSET);
         long vectorDataLength = readLong(in, VECTOR_DATA_LENGTH);
         int dimension = readInt(in, VECTOR_DIMENSION);
@@ -111,21 +111,21 @@ public class SimpleTextVectorReader extends VectorReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public NnVectors getNnVectors(String field) throws IOException {
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     if (info == null) {
-      // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextVectorFormat#testDeleteAllVectorDocs
+      // mirror the handling in Lucene90HnswVectorsReader#geNnVectors
+      // needed to pass TestSimpleTextNnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
-    int dimension = info.getVectorDimension();
+    int dimension = info.getNnVectorDimension();
     if (dimension == 0) {
-      return VectorValues.EMPTY;
+      return NnVectors.EMPTY;
     }
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {
-      // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextVectorFormat#testDeleteAllVectorDocs
+      // mirror the handling in Lucene90HnswVectorsReader#getNnVectors
+      // needed to pass TestSimpleTextNnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
     if (dimension != fieldEntry.dimension) {
@@ -139,7 +139,7 @@ public class SimpleTextVectorReader extends VectorReader {
     }
     IndexInput bytesSlice =
         dataIn.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new SimpleTextVectorValues(fieldEntry, bytesSlice);
+    return new SimpleTextNnVectors(fieldEntry, bytesSlice);
   }
 
   @Override
@@ -158,7 +158,7 @@ public class SimpleTextVectorReader extends VectorReader {
     ChecksumIndexInput input = new BufferedChecksumIndexInput(clone);
 
     // when there's no actual vector data written (e.g. tested in
-    // TestSimpleTextVectorFormat#testDeleteAllVectorDocs)
+    // TestSimpleTextNnVectorsFormat#testDeleteAllVectorDocs)
     // the first line in dataInput will be, checksum 00000000000000000000
     if (footerStartPos == 0) {
       SimpleTextUtil.checkFooter(input);
@@ -185,7 +185,7 @@ public class SimpleTextVectorReader extends VectorReader {
 
   @Override
   public long ramBytesUsed() {
-    // mirror implementation of Lucene90VectorReader#ramBytesUsed
+    // mirror implementation of Lucene90HnswVectorsReader#ramBytesUsed
     long totalBytes = BASE_RAM_BYTES_USED;
     totalBytes += RamUsageEstimator.sizeOf(scratch.bytes());
     totalBytes +=
@@ -205,7 +205,7 @@ public class SimpleTextVectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SimilarityFunction similarityFunction;
+    final NnVectors.SimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -213,7 +213,7 @@ public class SimpleTextVectorReader extends VectorReader {
 
     FieldEntry(
         int dimension,
-        VectorValues.SimilarityFunction similarityFunction,
+        NnVectors.SimilarityFunction similarityFunction,
         long vectorDataOffset,
         long vectorDataLength,
         int[] ordToDoc) {
@@ -229,8 +229,8 @@ public class SimpleTextVectorReader extends VectorReader {
     }
   }
 
-  private static class SimpleTextVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  private static class SimpleTextNnVectors extends NnVectors
+      implements RandomAccessNnVectors, RandomAccessNnVectorsProducer {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -240,7 +240,7 @@ public class SimpleTextVectorReader extends VectorReader {
 
     int curOrd;
 
-    SimpleTextVectorValues(FieldEntry entry, IndexInput in) throws IOException {
+    SimpleTextNnVectors(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new float[entry.size()][entry.dimension];
@@ -277,7 +277,7 @@ public class SimpleTextVectorReader extends VectorReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessNnVectors randomAccess() {
       return this;
     }
 
@@ -288,7 +288,7 @@ public class SimpleTextVectorReader extends VectorReader {
       } else if (curOrd >= entry.size()) {
         // when call to advance / nextDoc below already returns NO_MORE_DOCS, calling docID
         // immediately afterward should also return NO_MORE_DOCS
-        // this is needed for TestSimpleTextVectorFormat.testAdvance test case
+        // this is needed for TestSimpleTextNnVectorsFormat.testAdvance test case
         return NO_MORE_DOCS;
       }
 

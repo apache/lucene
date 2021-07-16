@@ -82,7 +82,7 @@ public class MismatchedLeafReader extends FilterLeafReader {
               oldInfo.getPointDimensionCount(), // data dimension count
               oldInfo.getPointIndexDimensionCount(), // index dimension count
               oldInfo.getPointNumBytes(), // dimension numBytes
-              oldInfo.getVectorDimension(), // number of dimensions of the field's vector
+              oldInfo.getNnVectorDimension(), // number of dimensions of the field's vector
               // distance function for calculating similarity of the field's vector
               oldInfo.getVectorSimilarityFunction(),
               oldInfo.isSoftDeletesField()); // used as soft-deletes field
