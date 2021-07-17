@@ -337,6 +337,8 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
+* LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
+  (Michael Wechner, Tomoko Uchida)
 
 ======================= Lucene 8.10.0 =======================
 
