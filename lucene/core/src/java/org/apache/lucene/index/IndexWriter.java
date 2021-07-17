@@ -21,6 +21,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -247,6 +249,7 @@ public class IndexWriter
   // when unrecoverable disaster strikes, we populate this with the reason that we had to close
   // IndexWriter
   private final AtomicReference<Throwable> tragedy = new AtomicReference<>(null);
+  private final AtomicLong tragedyTime = new AtomicLong();
 
   private final Directory directoryOrig; // original user directory
   private final Directory directory; // wrapped with additional checks
@@ -904,7 +907,14 @@ public class IndexWriter
    */
   protected final void ensureOpen(boolean failIfClosing) throws AlreadyClosedException {
     if (closed || (failIfClosing && closing)) {
-      throw new AlreadyClosedException("this IndexWriter is closed", tragedy.get());
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS", Locale.ROOT);
+      sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+      String tragedyTimeString =
+          tragedyTime.get() != 0 ? sdf.format(new Date(tragedyTime.get())) : "unknown";
+      throw new AlreadyClosedException(
+          "this IndexWriter is closed. Tragic exception caused the closure at time "
+              + tragedyTimeString,
+          tragedy.get());
     }
   }
 
@@ -5426,7 +5436,9 @@ public class IndexWriter
       infoStream.message(
           "IW", "hit tragic " + tragedy.getClass().getSimpleName() + " inside " + location);
     }
-    this.tragedy.compareAndSet(null, tragedy); // only set it once
+    if (this.tragedy.compareAndSet(null, tragedy)) { // only set it once
+      tragedyTime.set(System.currentTimeMillis());
+    }
   }
 
   /**
@@ -5458,6 +5470,15 @@ public class IndexWriter
    */
   public Throwable getTragicException() {
     return tragedy.get();
+  }
+
+  /**
+   * If this {@code IndexWriter} was closed as a side-effect of a tragic exception, e.g. disk full
+   * while flushing a new segment, this returns the time of the tragic exception. Otherwise (no
+   * tragic exception has occurred) it returns 0.
+   */
+  public long getTragicTime() {
+    return tragedyTime.get();
   }
 
   /** Returns {@code true} if this {@code IndexWriter} is still open. */
