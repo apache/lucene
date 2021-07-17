@@ -381,7 +381,6 @@ public class TestDocumentWriter extends LuceneTestCase {
   public void testRAMUsageVector() throws IOException {
     doTestRAMUsage(
         field ->
-            new VectorField(
-                field, new float[] {1, 2, 3, 4}, VectorValues.SimilarityFunction.EUCLIDEAN));
+            new VectorField(field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
   }
 }

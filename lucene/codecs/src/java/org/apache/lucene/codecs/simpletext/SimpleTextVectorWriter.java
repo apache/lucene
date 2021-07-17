@@ -38,7 +38,6 @@ public class SimpleTextVectorWriter extends VectorWriter {
 
   static final BytesRef FIELD_NUMBER = new BytesRef("field-number ");
   static final BytesRef FIELD_NAME = new BytesRef("field-name ");
-  static final BytesRef SCORE_FUNCTION = new BytesRef("score-function ");
   static final BytesRef VECTOR_DATA_OFFSET = new BytesRef("vector-data-offset ");
   static final BytesRef VECTOR_DATA_LENGTH = new BytesRef("vector-data-length ");
   static final BytesRef VECTOR_DIMENSION = new BytesRef("vector-dimension ");
@@ -96,7 +95,6 @@ public class SimpleTextVectorWriter extends VectorWriter {
       throws IOException {
     writeField(meta, FIELD_NUMBER, field.number);
     writeField(meta, FIELD_NAME, field.name);
-    writeField(meta, SCORE_FUNCTION, field.getVectorSimilarityFunction().name());
     writeField(meta, VECTOR_DATA_OFFSET, vectorDataOffset);
     writeField(meta, VECTOR_DATA_LENGTH, vectorDataLength);
     writeField(meta, VECTOR_DIMENSION, field.getVectorDimension());

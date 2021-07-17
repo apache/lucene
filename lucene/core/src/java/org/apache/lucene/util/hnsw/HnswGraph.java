@@ -26,7 +26,7 @@ import java.util.Random;
 import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
@@ -96,10 +96,10 @@ public final class HnswGraph extends KnnGraphValues {
       int topK,
       int numSeed,
       RandomAccessVectorValues vectors,
+      VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
       Random random)
       throws IOException {
-    VectorValues.SimilarityFunction similarityFunction = vectors.similarityFunction();
     int size = graphValues.size();
 
     // MIN heap, holding the top results

@@ -17,6 +17,7 @@
 
 package org.apache.lucene.document;
 
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 
 /**
@@ -33,8 +34,7 @@ import org.apache.lucene.index.VectorValues;
  */
 public class VectorField extends Field {
 
-  private static FieldType createType(
-      float[] v, VectorValues.SimilarityFunction similarityFunction) {
+  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -63,7 +63,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, VectorValues.SimilarityFunction similarityFunction) {
+      int dimension, VectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
     type.freeze();
@@ -82,8 +82,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(
-      String name, float[] vector, VectorValues.SimilarityFunction similarityFunction) {
+  public VectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }
@@ -99,7 +98,7 @@ public class VectorField extends Field {
    *     dimension &gt; 1024.
    */
   public VectorField(String name, float[] vector) {
-    this(name, vector, VectorValues.SimilarityFunction.EUCLIDEAN);
+    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   /**
