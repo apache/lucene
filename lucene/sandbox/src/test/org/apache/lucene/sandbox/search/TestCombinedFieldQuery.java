@@ -147,6 +147,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     doc = new Document();
     doc.add(new StringField("a", "value", Store.NO));
     doc.add(new TextField("c", "value", Store.NO));
+    w.addDocument(doc);
 
     IndexReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
