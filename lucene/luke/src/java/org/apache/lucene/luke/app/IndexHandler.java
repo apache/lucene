@@ -18,6 +18,7 @@
 package org.apache.lucene.luke.app;
 
 import java.lang.invoke.MethodHandles;
+import java.nio.file.NoSuchFileException;
 import java.util.Objects;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.IndexReader;
@@ -71,6 +72,12 @@ public final class IndexHandler extends AbstractHandler<IndexObserver> {
     IndexReader reader;
     try {
       reader = IndexUtils.openIndex(indexPath, dirImpl);
+    } catch (NoSuchFileException e) {
+      log.error("Error opening index", e);
+      throw new LukeException(
+          MessageUtils.getLocalizedMessage(
+              "openindex.message.index_path_does_not_exist", indexPath),
+          e);
     } catch (Exception e) {
       log.error("Error opening index", e);
       throw new LukeException(
