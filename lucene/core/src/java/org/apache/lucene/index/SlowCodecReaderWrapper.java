@@ -167,8 +167,8 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
-        return reader.searchNearestVectors(field, target, k, fanout);
+      public TopDocs search(String field, float[] target, int k) throws IOException {
+        return reader.searchNearestVectors(field, target, k);
       }
 
       @Override

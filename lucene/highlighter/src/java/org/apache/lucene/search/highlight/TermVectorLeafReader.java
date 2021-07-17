@@ -161,7 +161,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout) {
+  public TopDocs searchNearestVectors(String field, float[] target, int k) {
     return null;
   }
 

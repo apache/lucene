@@ -82,8 +82,8 @@ public abstract class VectorValues extends DocIdSetIterator {
   public enum SimilarityFunction {
 
     /**
-     * No similarity function is provided. Note: {@link VectorReader#search(String, float[], int,
-     * int)} is not supported for fields specifying this.
+     * No similarity function is provided. Note: {@link VectorReader#search(String, float[], int)}
+     * is not supported for fields specifying this.
      */
     NONE,
 

@@ -241,7 +241,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+  public TopDocs search(String field, float[] target, int k) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
@@ -252,7 +252,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final Random random = new Random(checksumSeed);
     NeighborQueue results =
-        HnswGraph.search(target, k, k + fanout, vectorValues, getGraphValues(fieldEntry), random);
+        HnswGraph.search(target, k, k, vectorValues, getGraphValues(fieldEntry), random);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     boolean reversed = fieldEntry.similarityFunction.reversed;

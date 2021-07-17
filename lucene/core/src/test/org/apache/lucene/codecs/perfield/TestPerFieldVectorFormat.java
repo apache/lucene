@@ -106,14 +106,14 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
                 .leaves()
                 .get(0)
                 .reader()
-                .searchNearestVectors("field1", new float[] {1, 2, 3}, 10, 1);
+                .searchNearestVectors("field1", new float[] {1, 2, 3}, 10);
         assertEquals(1, hits1.scoreDocs.length);
         TopDocs hits2 =
             ireader
                 .leaves()
                 .get(0)
                 .reader()
-                .searchNearestVectors("field2", new float[] {1, 2, 3}, 10, 1);
+                .searchNearestVectors("field2", new float[] {1, 2, 3}, 10);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }
