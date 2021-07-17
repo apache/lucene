@@ -47,5 +47,19 @@ configure(rootProject) {
   // Each validation task should be attached to check but make sure
   // precommit() as a whole is a dependency on rootProject.check
   check.dependsOn precommit
+
+  // install git hook.
+  // TODO: there can be an existing hook; extra checks will be needed.
+  task precommitHook(type: Copy) {
+    group = 'Precommit'
+    description = "Install Git pre-commit hook"
+
+    from "${project.file('dev-tools/git/hooks/pre-commit')}"
+    into "${project.file('.git/hooks')}"
+
+    doFirst {
+      println('Copy git pre-commit hooks to local .git/hooks; See https://git-scm.com/docs/githooks for details.')
+    }
+  }
 }
 

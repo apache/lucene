@@ -1,0 +1,7 @@
+#!/usr/bin/sh
+#
+# Run precommit check
+#
+
+## TODO: Windows support
+./gradlew precommit -Pvalidation.git.failOnModified=false
