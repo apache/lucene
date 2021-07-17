@@ -48,15 +48,17 @@ configure(rootProject) {
   // precommit() as a whole is a dependency on rootProject.check
   check.dependsOn precommit
 
+  // install git hook.
+  // TODO: there can be an existing hook; extra checks will be needed.
   task precommitHook(type: Copy) {
     group = 'Precommit'
-    description = "Initialize Git pre-commit hook"
+    description = "Install Git pre-commit hook"
 
-    from "${project.file('dev-tools/git/hooks')}"
+    from "${project.file('dev-tools/git/hooks/pre-commit')}"
     into "${project.file('.git/hooks')}"
 
     doFirst {
-      println('Copy git hooks to local .git/hooks; See https://git-scm.com/docs/githooks for details.')
+      println('Copy git pre-commit hooks to local .git/hooks; See https://git-scm.com/docs/githooks for details.')
     }
   }
 }
