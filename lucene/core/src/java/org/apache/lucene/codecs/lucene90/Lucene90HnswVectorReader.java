@@ -241,7 +241,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+  public TopDocs search(String field, float[] target, int k) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
@@ -255,7 +255,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
         HnswGraph.search(
             target,
             k,
-            k + fanout,
+            k,
             vectorValues,
             fieldEntry.similarityFunction,
             getGraphValues(fieldEntry),

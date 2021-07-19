@@ -337,6 +337,8 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
+* LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
+  (Michael Wechner, Tomoko Uchida)
 
 ======================= Lucene 8.10.0 =======================
 
@@ -398,8 +400,14 @@ Bug Fixes
 * LUCENE-9964: Duplicate long values in a document field should only be counted once when using SortedNumericDocValuesFields
   (Gautam Worah)
 
+* LUCENE-9999: CombinedFieldQuery can fail with an exception when document
+  is missing some fields. (Jim Ferenczi, Julie Tibshirani)
+
 * LUCENE-10020: DocComparator should not skip docs with the same docID on
   multiple sorts with search after (Mayya Sharipova, Julie Tibshirani)
+
+* LUCENE-10026: Fix CombinedFieldQuery equals and hashCode, which ensures
+  query rewrites don't drop CombinedFieldQuery clauses. (Julie Tibshirani)
 
 Other
 ---------------------
