@@ -22,7 +22,8 @@ import java.util.Collections;
 import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.index.AssertingLeafReader;
+import org.apache.lucene.index.AssertingLeafReader.AssertingDocTermVectors;
+import org.apache.lucene.index.DocTermVectors;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -67,9 +68,9 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
     }
 
     @Override
-    public Fields get(int doc) throws IOException {
-      Fields fields = in.get(doc);
-      return fields == null ? null : new AssertingLeafReader.AssertingFields(fields);
+    public DocTermVectors get(int doc) throws IOException {
+      DocTermVectors fields = in.get(doc);
+      return fields == null ? null : new AssertingDocTermVectors(fields);
     }
 
     @Override

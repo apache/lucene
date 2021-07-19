@@ -449,7 +449,7 @@ public final class SortingCodecReader extends FilterCodecReader {
   private TermVectorsReader newTermVectorsReader(TermVectorsReader delegate) {
     return new TermVectorsReader() {
       @Override
-      public Fields get(int doc) throws IOException {
+      public DocTermVectors get(int doc) throws IOException {
         return delegate.get(docMap.newToOld(doc));
       }
 

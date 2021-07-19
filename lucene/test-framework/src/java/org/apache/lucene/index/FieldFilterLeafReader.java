@@ -59,12 +59,12 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
   public TermVectors getTermVectorsReader() {
     return new TermVectors() {
       @Override
-      public Fields get(int docID) throws IOException {
-        Fields f = in.getTermVectorsReader().get(docID);
+      public DocTermVectors get(int docID) throws IOException {
+        DocTermVectors f = in.getTermVectorsReader().get(docID);
         if (f == null) {
           return null;
         }
-        f = new FieldFilterFields(f);
+        f = new FieldFilterDocTermVectors(f);
         // we need to check for emptyness, so we can return
         // null:
         return f.iterator().hasNext() ? f : null;
@@ -153,10 +153,12 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
     return sb.append(fields).append(')').toString();
   }
 
-  private class FieldFilterFields extends FilterFields {
+  private class FieldFilterDocTermVectors extends DocTermVectors {
 
-    public FieldFilterFields(Fields in) {
-      super(in);
+    protected final DocTermVectors in;
+
+    public FieldFilterDocTermVectors(DocTermVectors in) {
+      this.in = Objects.requireNonNull(in);
     }
 
     @Override
@@ -167,7 +169,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
 
     @Override
     public Iterator<String> iterator() {
-      return new FilterIterator<String, String>(super.iterator()) {
+      return new FilterIterator<>(in.iterator()) {
         @Override
         protected boolean predicateFunction(String field) {
           return hasField(field);
@@ -177,7 +179,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
 
     @Override
     public Terms terms(String field) throws IOException {
-      return hasField(field) ? super.terms(field) : null;
+      return hasField(field) ? in.terms(field) : null;
     }
   }
 

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocTermVectors;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -47,12 +48,12 @@ import org.apache.lucene.util.Version;
  */
 public class TermVectorLeafReader extends LeafReader {
 
-  private final Fields fields;
+  private final DocTermVectors fields;
   private final FieldInfos fieldInfos;
 
   public TermVectorLeafReader(String field, Terms terms) {
     fields =
-        new Fields() {
+        new DocTermVectors() {
           @Override
           public Iterator<String> iterator() {
             return Collections.singletonList(field).iterator();
@@ -172,7 +173,7 @@ public class TermVectorLeafReader extends LeafReader {
   public TermVectors getTermVectorsReader() {
     return new TermVectors() {
       @Override
-      public Fields get(int docID) {
+      public DocTermVectors get(int docID) {
         if (docID != 0) {
           return null;
         }

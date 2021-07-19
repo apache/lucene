@@ -26,6 +26,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.DocTermVectors;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
@@ -107,7 +108,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
   }
 
   @Override
-  public Fields get(int doc) throws IOException {
+  public DocTermVectors get(int doc) throws IOException {
     SortedMap<String, SimpleTVTerms> fields = new TreeMap<>();
     in.seek(offsets[doc]);
     readLine();
@@ -241,7 +242,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
     return scratchUTF16.toString();
   }
 
-  private static class SimpleTVFields extends Fields {
+  private static class SimpleTVFields extends DocTermVectors {
     private final SortedMap<String, SimpleTVTerms> fields;
 
     SimpleTVFields(SortedMap<String, SimpleTVTerms> fields) {

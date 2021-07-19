@@ -267,7 +267,7 @@ public final class SlowCodecReaderWrapper {
   private static TermVectorsReader readerToTermVectorsReader(final LeafReader reader) {
     return new TermVectorsReader() {
       @Override
-      public Fields get(int docID) throws IOException {
+      public DocTermVectors get(int docID) throws IOException {
         return reader.getTermVectors(docID);
       }
 

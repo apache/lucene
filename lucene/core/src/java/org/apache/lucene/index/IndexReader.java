@@ -311,7 +311,7 @@ public abstract class IndexReader implements Closeable {
    * @deprecated Use {@link IndexReader#getTermVectorsReader} instead.
    */
   @Deprecated
-  public final Fields getTermVectors(int docID) throws IOException {
+  public final DocTermVectors getTermVectors(int docID) throws IOException {
     TermVectors termVectors = getTermVectorsReader();
     if (termVectors != null) {
       return termVectors.get(docID);

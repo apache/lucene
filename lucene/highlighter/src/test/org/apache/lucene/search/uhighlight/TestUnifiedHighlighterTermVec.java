@@ -32,6 +32,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocTermVectors;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
@@ -139,7 +140,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
                 BitSet seenDocIDs = new BitSet();
                 return new TermVectors() {
                   @Override
-                  public Fields get(int docID) throws IOException {
+                  public DocTermVectors get(int docID) throws IOException {
                     // if we're invoked by ParallelLeafReader then we can't do our assertion. TODO
                     // see LUCENE-6868
                     if (callStackContains(ParallelLeafReader.class) == false

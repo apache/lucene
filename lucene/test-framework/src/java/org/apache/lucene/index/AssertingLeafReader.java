@@ -86,23 +86,31 @@ public class AssertingLeafReader extends FilterLeafReader {
     return terms == null ? null : new AssertingTerms(terms);
   }
 
-  /** Wraps a Fields but with additional asserts */
-  public static class AssertingFields extends FilterFields {
-    public AssertingFields(Fields in) {
-      super(in);
+  /** Wraps a DocTermVectors but with additional asserts */
+  public static class AssertingDocTermVectors extends DocTermVectors {
+
+    protected final DocTermVectors in;
+
+    public AssertingDocTermVectors(DocTermVectors in) {
+      this.in = Objects.requireNonNull(in);
     }
 
     @Override
     public Iterator<String> iterator() {
-      Iterator<String> iterator = super.iterator();
+      Iterator<String> iterator = in.iterator();
       assert iterator != null;
       return iterator;
     }
 
     @Override
     public Terms terms(String field) throws IOException {
-      Terms terms = super.terms(field);
+      Terms terms = in.terms(field);
       return terms == null ? null : new AssertingTerms(terms);
+    }
+
+    @Override
+    public int size() {
+      return in.size();
     }
   }
 

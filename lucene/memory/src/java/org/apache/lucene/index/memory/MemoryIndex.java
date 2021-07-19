@@ -1239,9 +1239,24 @@ public class MemoryIndex {
     public TermVectors getTermVectorsReader() {
       return new TermVectors() {
         @Override
-        public Fields get(int docID) {
+        public DocTermVectors get(int docID) {
           if (docID == 0) {
-            return memoryFields;
+            return new DocTermVectors() {
+              @Override
+              public Iterator<String> iterator() {
+                return memoryFields.iterator();
+              }
+
+              @Override
+              public Terms terms(String field) throws IOException {
+                return memoryFields.terms(field);
+              }
+
+              @Override
+              public int size() {
+                return memoryFields.size();
+              }
+            };
           } else {
             return null;
           }

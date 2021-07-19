@@ -203,7 +203,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   // Single instance of this, per ParallelReader instance
-  private static final class ParallelFields extends Fields {
+  private static final class ParallelFields extends DocTermVectors {
     final Map<String, Terms> fields = new TreeMap<>();
 
     ParallelFields() {}
@@ -303,7 +303,7 @@ public class ParallelLeafReader extends LeafReader {
   public TermVectors getTermVectorsReader() {
     return new TermVectors() {
       @Override
-      public Fields get(int doc) throws IOException {
+      public DocTermVectors get(int doc) throws IOException {
         ensureOpen();
         ParallelFields fields = null;
         for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {

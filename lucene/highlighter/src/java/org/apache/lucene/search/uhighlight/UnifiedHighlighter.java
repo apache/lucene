@@ -36,6 +36,7 @@ import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.BaseCompositeReader;
+import org.apache.lucene.index.DocTermVectors;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -1129,7 +1130,7 @@ public class UnifiedHighlighter {
     }
 
     private int lastDocId = -1;
-    private Fields tvFields;
+    private DocTermVectors tvFields;
 
     TermVectorReusingLeafReader(LeafReader in) {
       super(in);
@@ -1143,7 +1144,7 @@ public class UnifiedHighlighter {
 
       return new TermVectors() {
         @Override
-        public Fields get(int docID) throws IOException {
+        public DocTermVectors get(int docID) throws IOException {
           if (docID != lastDocId) {
             lastDocId = docID;
             tvFields = in.getTermVectorsReader().get(docID);

@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocTermVectors;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -275,7 +276,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
   }
 
   @Override
-  public Fields get(int doc) throws IOException {
+  public DocTermVectors get(int doc) throws IOException {
     ensureOpen();
 
     // seek to the right place
@@ -758,7 +759,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     return positions;
   }
 
-  private class TVFields extends Fields {
+  private class TVFields extends DocTermVectors {
 
     private final int[] fieldNums, fieldFlags, fieldNumOffs, numTerms, fieldLengths;
     private final int[][] prefixLengths,
