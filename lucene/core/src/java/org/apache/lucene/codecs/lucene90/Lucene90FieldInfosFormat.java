@@ -29,7 +29,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.VectorValues.SimilarityFunction;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -102,8 +102,8 @@ import org.apache.lucene.store.IndexOutput;
  *   <li>VectorDistFunction: a byte containing distance function used for similarity calculation.
  *       <ul>
  *         <li>0: no distance function is defined for this field.
- *         <li>1: EUCLIDEAN_HNSW distance. ({@link SimilarityFunction#EUCLIDEAN})
- *         <li>2: DOT_PRODUCT_HNSW score. ({@link SimilarityFunction#DOT_PRODUCT})
+ *         <li>1: EUCLIDEAN_HNSW distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
+ *         <li>2: DOT_PRODUCT_HNSW score. ({@link VectorSimilarityFunction#DOT_PRODUCT})
  *       </ul>
  * </ul>
  *
@@ -172,7 +172,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
             pointNumBytes = 0;
           }
           final int vectorDimension = input.readVInt();
-          final SimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
+          final VectorSimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
 
           try {
             infos[i] =
@@ -253,11 +253,11 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  private static SimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    if (b < 0 || b >= SimilarityFunction.values().length) {
+  private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
+    if (b < 0 || b >= VectorSimilarityFunction.values().length) {
       throw new CorruptIndexException("invalid distance function: " + b, input);
     }
-    return SimilarityFunction.values()[b];
+    return VectorSimilarityFunction.values()[b];
   }
 
   static {

@@ -49,15 +49,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
 
   @Override
   protected void addRandomFields(Document doc) {
-    doc.add(new VectorField("v2", randomVector(30), VectorValues.SimilarityFunction.NONE));
+    doc.add(new VectorField("v2", randomVector(30), VectorSimilarityFunction.NONE));
   }
 
   public void testFieldConstructor() {
     float[] v = new float[1];
     VectorField field = new VectorField("f", v);
     assertEquals(1, field.fieldType().vectorDimension());
-    assertEquals(
-        VectorValues.SimilarityFunction.EUCLIDEAN, field.fieldType().vectorSimilarityFunction());
+    assertEquals(VectorSimilarityFunction.EUCLIDEAN, field.fieldType().vectorSimilarityFunction());
     assertSame(v, field.vectorValue());
   }
 
@@ -66,7 +65,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     expectThrows(IllegalArgumentException.class, () -> new VectorField("f", null));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new VectorField("f", new float[1], (VectorValues.SimilarityFunction) null));
+        () -> new VectorField("f", new float[1], (VectorSimilarityFunction) null));
     expectThrows(IllegalArgumentException.class, () -> new VectorField("f", new float[0]));
     expectThrows(
         IllegalArgumentException.class,
@@ -91,11 +90,11 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[3], VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc2.add(new VectorField("f", new float[3], VectorSimilarityFunction.DOT_PRODUCT));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -107,12 +106,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[3], VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc2.add(new VectorField("f", new float[3], VectorSimilarityFunction.DOT_PRODUCT));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -127,11 +126,11 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.EUCLIDEAN));
+      doc2.add(new VectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -143,12 +142,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.EUCLIDEAN));
+      doc2.add(new VectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -162,13 +161,13 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new VectorField("f", new float[1], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc2.add(new VectorField("f", new float[1], VectorSimilarityFunction.DOT_PRODUCT));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -183,13 +182,13 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.EUCLIDEAN));
+        doc2.add(new VectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -203,7 +202,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   public void testAddIndexesDirectory0() throws Exception {
     String fieldName = "field";
     Document doc = new Document();
-    doc.add(new VectorField(fieldName, new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+    doc.add(new VectorField(fieldName, new float[4], VectorSimilarityFunction.DOT_PRODUCT));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -231,8 +230,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         w.addDocument(doc);
       }
-      doc.add(
-          new VectorField(fieldName, new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField(fieldName, new float[4], VectorSimilarityFunction.DOT_PRODUCT));
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         w2.addDocument(doc);
         w2.addIndexes(dir);
@@ -252,7 +250,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     String fieldName = "field";
     float[] vector = new float[1];
     Document doc = new Document();
-    doc.add(new VectorField(fieldName, vector, VectorValues.SimilarityFunction.DOT_PRODUCT));
+    doc.add(new VectorField(fieldName, vector, VectorSimilarityFunction.DOT_PRODUCT));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -283,12 +281,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[5], VectorSimilarityFunction.DOT_PRODUCT));
         w2.addDocument(doc);
         IllegalArgumentException expected =
             expectThrows(
@@ -306,12 +304,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.EUCLIDEAN));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
         w2.addDocument(doc);
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addIndexes(dir));
@@ -328,12 +326,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[5], VectorSimilarityFunction.DOT_PRODUCT));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -354,12 +352,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.EUCLIDEAN));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -380,12 +378,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[5], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[5], VectorSimilarityFunction.DOT_PRODUCT));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -404,12 +402,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.EUCLIDEAN));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -427,8 +425,8 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
-      doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
       assertEquals(
@@ -448,10 +446,10 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
                   new VectorField(
                       "f",
                       new float[VectorValues.MAX_DIMENSIONS + 1],
-                      VectorValues.SimilarityFunction.DOT_PRODUCT)));
+                      VectorSimilarityFunction.DOT_PRODUCT)));
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[1], VectorValues.SimilarityFunction.EUCLIDEAN));
+      doc2.add(new VectorField("f", new float[1], VectorSimilarityFunction.EUCLIDEAN));
       w.addDocument(doc2);
     }
   }
@@ -463,13 +461,11 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       Exception e =
           expectThrows(
               IllegalArgumentException.class,
-              () ->
-                  doc.add(
-                      new VectorField("f", new float[0], VectorValues.SimilarityFunction.NONE)));
+              () -> doc.add(new VectorField("f", new float[0], VectorSimilarityFunction.NONE)));
       assertEquals("cannot index an empty vector", e.getMessage());
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[1], VectorValues.SimilarityFunction.NONE));
+      doc2.add(new VectorField("f", new float[1], VectorSimilarityFunction.NONE));
       w.addDocument(doc2);
     }
   }
@@ -479,14 +475,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       IndexWriterConfig iwc = newIndexWriterConfig();
       iwc.setCodec(Codec.forName("SimpleText"));
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
         w.forceMerge(1);
       }
@@ -500,12 +496,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("f", new float[4], VectorValues.SimilarityFunction.DOT_PRODUCT));
+        doc.add(new VectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
         w.addDocument(doc);
         w.forceMerge(1);
       }
@@ -513,8 +509,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   public void testInvalidVectorFieldUsage() {
-    VectorField field =
-        new VectorField("field", new float[2], VectorValues.SimilarityFunction.NONE);
+    VectorField field = new VectorField("field", new float[2], VectorSimilarityFunction.NONE);
 
     expectThrows(IllegalArgumentException.class, () -> field.setIntValue(14));
 
@@ -528,8 +523,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
-      doc.add(
-          new VectorField("v", new float[] {2, 3, 5}, VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("v", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.addDocument(new Document());
       w.commit();
@@ -554,16 +548,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
-      doc.add(
-          new VectorField(
-              "v0", new float[] {2, 3, 5}, VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("v0", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       doc = new Document();
-      doc.add(
-          new VectorField(
-              "v1", new float[] {2, 3, 5}, VectorValues.SimilarityFunction.DOT_PRODUCT));
+      doc.add(new VectorField("v1", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.forceMerge(1);
     }
@@ -575,13 +565,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     int[] fieldDocCounts = new int[numFields];
     float[] fieldTotals = new float[numFields];
     int[] fieldDims = new int[numFields];
-    VectorValues.SimilarityFunction[] fieldSearchStrategies =
-        new VectorValues.SimilarityFunction[numFields];
+    VectorSimilarityFunction[] fieldSearchStrategies = new VectorSimilarityFunction[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
       fieldSearchStrategies[i] =
-          VectorValues.SimilarityFunction.values()[
-              random().nextInt(VectorValues.SimilarityFunction.values().length)];
+          VectorSimilarityFunction.values()[
+              random().nextInt(VectorSimilarityFunction.values().length)];
     }
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
@@ -628,15 +617,15 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc1 = new Document();
-      doc1.add(new VectorField(fieldName, v, VectorValues.SimilarityFunction.EUCLIDEAN));
+      doc1.add(new VectorField(fieldName, v, VectorSimilarityFunction.EUCLIDEAN));
       v[0] = 1;
       Document doc2 = new Document();
-      doc2.add(new VectorField(fieldName, v, VectorValues.SimilarityFunction.EUCLIDEAN));
+      doc2.add(new VectorField(fieldName, v, VectorSimilarityFunction.EUCLIDEAN));
       iw.addDocument(doc1);
       iw.addDocument(doc2);
       v[0] = 2;
       Document doc3 = new Document();
-      doc3.add(new VectorField(fieldName, v, VectorValues.SimilarityFunction.EUCLIDEAN));
+      doc3.add(new VectorField(fieldName, v, VectorSimilarityFunction.EUCLIDEAN));
       iw.addDocument(doc3);
       iw.forceMerge(1);
       try (IndexReader reader = iw.getReader()) {
@@ -691,16 +680,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       float[] v = new float[] {1};
-      doc.add(new VectorField("field1", v, VectorValues.SimilarityFunction.EUCLIDEAN));
-      doc.add(
-          new VectorField("field2", new float[] {1, 2, 3}, VectorValues.SimilarityFunction.NONE));
+      doc.add(new VectorField("field1", v, VectorSimilarityFunction.EUCLIDEAN));
+      doc.add(new VectorField("field2", new float[] {1, 2, 3}, VectorSimilarityFunction.NONE));
       iw.addDocument(doc);
       v[0] = 2;
       iw.addDocument(doc);
       doc = new Document();
       doc.add(
-          new VectorField(
-              "field3", new float[] {1, 2, 3}, VectorValues.SimilarityFunction.DOT_PRODUCT));
+          new VectorField("field3", new float[] {1, 2, 3}, VectorSimilarityFunction.DOT_PRODUCT));
       iw.addDocument(doc);
       iw.forceMerge(1);
       try (IndexReader reader = iw.getReader()) {
@@ -761,9 +748,9 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         if (random().nextBoolean() && values[i] != null) {
           // sometimes use a shared scratch array
           System.arraycopy(values[i], 0, scratch, 0, scratch.length);
-          add(iw, fieldName, i, scratch, VectorValues.SimilarityFunction.NONE);
+          add(iw, fieldName, i, scratch, VectorSimilarityFunction.NONE);
         } else {
-          add(iw, fieldName, i, values[i], VectorValues.SimilarityFunction.NONE);
+          add(iw, fieldName, i, values[i], VectorSimilarityFunction.NONE);
         }
         if (random().nextInt(10) == 2) {
           // sometimes delete a random document
@@ -834,7 +821,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         }
         id2value[id] = value;
         id2ord[id] = i;
-        add(iw, fieldName, id, value, VectorValues.SimilarityFunction.EUCLIDEAN);
+        add(iw, fieldName, id, value, VectorSimilarityFunction.EUCLIDEAN);
       }
       try (IndexReader reader = iw.getReader()) {
         for (LeafReaderContext ctx : reader.leaves()) {
@@ -871,14 +858,14 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       String field,
       int id,
       float[] vector,
-      VectorValues.SimilarityFunction similarityFunction)
+      VectorSimilarityFunction similarityFunction)
       throws IOException {
     add(iw, field, id, random().nextInt(100), vector, similarityFunction);
   }
 
   private void add(IndexWriter iw, String field, int id, int sortkey, float[] vector)
       throws IOException {
-    add(iw, field, id, sortkey, vector, VectorValues.SimilarityFunction.NONE);
+    add(iw, field, id, sortkey, vector, VectorSimilarityFunction.NONE);
   }
 
   private void add(
@@ -887,7 +874,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       int id,
       int sortkey,
       float[] vector,
-      VectorValues.SimilarityFunction similarityFunction)
+      VectorSimilarityFunction similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
@@ -913,10 +900,10 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("v1", randomVector(3), VectorValues.SimilarityFunction.NONE));
+        doc.add(new VectorField("v1", randomVector(3), VectorSimilarityFunction.NONE));
         w.addDocument(doc);
 
-        doc.add(new VectorField("v2", randomVector(3), VectorValues.SimilarityFunction.NONE));
+        doc.add(new VectorField("v2", randomVector(3), VectorSimilarityFunction.NONE));
         w.addDocument(doc);
       }
 
@@ -937,10 +924,10 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   public void testSimilarityFunctionIdentifiers() {
     // make sure we don't accidentally mess up similarity function identifiers by re-ordering their
     // enumerators
-    assertEquals(0, VectorValues.SimilarityFunction.NONE.ordinal());
-    assertEquals(1, VectorValues.SimilarityFunction.EUCLIDEAN.ordinal());
-    assertEquals(2, VectorValues.SimilarityFunction.DOT_PRODUCT.ordinal());
-    assertEquals(3, VectorValues.SimilarityFunction.values().length);
+    assertEquals(0, VectorSimilarityFunction.NONE.ordinal());
+    assertEquals(1, VectorSimilarityFunction.EUCLIDEAN.ordinal());
+    assertEquals(2, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
+    assertEquals(3, VectorSimilarityFunction.values().length);
   }
 
   public void testAdvance() throws Exception {
@@ -952,7 +939,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
           Document doc = new Document();
           // randomly add a vector field
           if (random().nextInt(4) == 3) {
-            doc.add(new VectorField(fieldName, new float[4], VectorValues.SimilarityFunction.NONE));
+            doc.add(new VectorField(fieldName, new float[4], VectorSimilarityFunction.NONE));
           }
           w.addDocument(doc);
         }
