@@ -38,7 +38,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.VectorField;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -761,7 +761,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      pf.vectorValuesWriter.addValue(docID, ((VectorField) field).vectorValue());
+      pf.vectorValuesWriter.addValue(docID, ((KnnVectorField) field).vectorValue());
     }
     return indexedField;
   }

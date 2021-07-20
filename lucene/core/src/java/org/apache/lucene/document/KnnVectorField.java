@@ -26,13 +26,13 @@ import org.apache.lucene.index.VectorValues;
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
  * {@link VectorValues}, which is a forward-only docID-based iterator and also offers random-access
  * by dense ordinal (not docId). VectorValues.SearchSimlarity may be used to compare vectors at
- * query time (for example as part of result ranking). A VectorField may be associated with a search
+ * query time (for example as part of result ranking). A KnnVectorField may be associated with a search
  * similarity function defining the metric used for nearest-neighbor search among vectors of that
  * field.
  *
  * @lucene.experimental
  */
-public class VectorField extends Field {
+public class KnnVectorField extends Field {
 
   private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
@@ -82,7 +82,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+  public KnnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }
@@ -97,7 +97,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector) {
+  public KnnVectorField(String name, float[] vector) {
     this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
@@ -111,7 +111,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector, FieldType fieldType) {
+  public KnnVectorField(String name, float[] vector, FieldType fieldType) {
     super(name, fieldType);
     fieldsData = vector;
   }

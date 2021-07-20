@@ -31,7 +31,7 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.VectorField;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
@@ -86,12 +86,12 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
         Document doc = new Document();
         doc.add(newTextField("id", "1", Field.Store.YES));
-        doc.add(new VectorField("field1", new float[] {1, 2, 3}));
+        doc.add(new KnnVectorField("field1", new float[] {1, 2, 3}));
         iwriter.addDocument(doc);
 
         doc.clear();
         doc.add(newTextField("id", "2", Field.Store.YES));
-        doc.add(new VectorField("field2", new float[] {4, 5, 6}));
+        doc.add(new KnnVectorField("field2", new float[] {4, 5, 6}));
         iwriter.addDocument(doc);
       }
 
@@ -128,7 +128,7 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         for (int i = 0; i < 3; i++) {
           Document doc = new Document();
           doc.add(newTextField("id", "1", Field.Store.YES));
-          doc.add(new VectorField("field", new float[] {1, 2, 3}));
+          doc.add(new KnnVectorField("field", new float[] {1, 2, 3}));
           iw.addDocument(doc);
           iw.commit();
         }
