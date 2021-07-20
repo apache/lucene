@@ -240,12 +240,12 @@ public abstract class PerFieldVectorFormat extends VectorFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+    public TopDocs search(String field, float[] target, int k) throws IOException {
       VectorReader vectorReader = fields.get(field);
       if (vectorReader == null) {
         return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
       } else {
-        return vectorReader.search(field, target, k, fanout);
+        return vectorReader.search(field, target, k);
       }
     }
 

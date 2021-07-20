@@ -1235,6 +1235,20 @@ public class MemoryIndex {
       fieldInfos = new FieldInfos(fieldInfosArr);
     }
 
+    @Override
+    public TermVectors getTermVectorsReader() {
+      return new TermVectors() {
+        @Override
+        public Fields get(int docID) {
+          if (docID == 0) {
+            return memoryFields;
+          } else {
+            return null;
+          }
+        }
+      };
+    }
+
     private Info getInfoForExpectedDocValuesType(String fieldName, DocValuesType expectedType) {
       if (expectedType == DocValuesType.NONE) {
         return null;
@@ -1359,7 +1373,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout) {
+    public TopDocs searchNearestVectors(String field, float[] target, int k) {
       return null;
     }
 
@@ -1719,15 +1733,6 @@ public class MemoryIndex {
       @Override
       public int getDocCount() {
         return 1;
-      }
-    }
-
-    @Override
-    public Fields getTermVectors(int docID) {
-      if (docID == 0) {
-        return memoryFields;
-      } else {
-        return null;
       }
     }
 

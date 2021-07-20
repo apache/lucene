@@ -315,7 +315,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public TopDocs search(String field, float[] target, int k, int fanout) {
+      public TopDocs search(String field, float[] target, int k) {
         throw new UnsupportedOperationException();
       }
 

@@ -40,6 +40,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.ParallelLeafReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -133,20 +134,23 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
           @Override
           public LeafReader wrap(LeafReader reader) {
             return new FilterLeafReader(reader) {
-              BitSet seenDocIDs = new BitSet();
-
               @Override
-              public Fields getTermVectors(int docID) throws IOException {
-                // if we're invoked by ParallelLeafReader then we can't do our assertion. TODO see
-                // LUCENE-6868
-                if (callStackContains(ParallelLeafReader.class) == false
-                    && callStackContains(CheckIndex.class) == false) {
-                  assertFalse(
-                      "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
-                  seenDocIDs.set(docID);
-                }
-
-                return super.getTermVectors(docID);
+              public TermVectors getTermVectorsReader() {
+                BitSet seenDocIDs = new BitSet();
+                return new TermVectors() {
+                  @Override
+                  public Fields get(int docID) throws IOException {
+                    // if we're invoked by ParallelLeafReader then we can't do our assertion. TODO
+                    // see LUCENE-6868
+                    if (callStackContains(ParallelLeafReader.class) == false
+                        && callStackContains(CheckIndex.class) == false) {
+                      assertFalse(
+                          "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
+                      seenDocIDs.set(docID);
+                    }
+                    return reader.getTermVectorsReader().get(docID);
+                  }
+                };
               }
 
               @Override

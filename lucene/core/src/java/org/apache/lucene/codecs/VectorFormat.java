@@ -99,7 +99,7 @@ public abstract class VectorFormat implements NamedSPILoader.NamedSPI {
             }
 
             @Override
-            public TopDocs search(String field, float[] target, int k, int fanout) {
+            public TopDocs search(String field, float[] target, int k) {
               return TopDocsCollector.EMPTY_TOPDOCS;
             }
 

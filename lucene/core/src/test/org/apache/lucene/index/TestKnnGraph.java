@@ -38,7 +38,6 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.VectorField;
-import org.apache.lucene.index.VectorValues.SimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -58,7 +57,7 @@ public class TestKnnGraph extends LuceneTestCase {
   private static int maxConn = Lucene90HnswVectorFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
-  private SimilarityFunction similarityFunction;
+  private VectorSimilarityFunction similarityFunction;
 
   @Before
   public void setup() {
@@ -76,8 +75,8 @@ public class TestKnnGraph extends LuceneTestCase {
           }
         };
 
-    int similarity = random().nextInt(SimilarityFunction.values().length - 1) + 1;
-    similarityFunction = SimilarityFunction.values()[similarity];
+    int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
+    similarityFunction = VectorSimilarityFunction.values()[similarity];
   }
 
   @After
@@ -227,7 +226,7 @@ public class TestKnnGraph extends LuceneTestCase {
   /** Verify that searching does something reasonable */
   public void testSearch() throws Exception {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
-    similarityFunction = SimilarityFunction.EUCLIDEAN;
+    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
     config.setCodec(codec); // test is not compatible with simpletext
     try (Directory dir = newDirectory();
@@ -292,7 +291,7 @@ public class TestKnnGraph extends LuceneTestCase {
   private static TopDocs doKnnSearch(IndexReader reader, float[] vector, int k) throws IOException {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      results[ctx.ord] = ctx.reader().searchNearestVectors(KNN_GRAPH_FIELD, vector, k, 10);
+      results[ctx.ord] = ctx.reader().searchNearestVectors(KNN_GRAPH_FIELD, vector, k);
       if (ctx.docBase > 0) {
         for (ScoreDoc doc : results[ctx.ord].scoreDocs) {
           doc.doc += ctx.docBase;
@@ -454,7 +453,8 @@ public class TestKnnGraph extends LuceneTestCase {
     add(iw, id, vector, similarityFunction);
   }
 
-  private void add(IndexWriter iw, int id, float[] vector, SimilarityFunction similarityFunction)
+  private void add(
+      IndexWriter iw, int id, float[] vector, VectorSimilarityFunction similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {

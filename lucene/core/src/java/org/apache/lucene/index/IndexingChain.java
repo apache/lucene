@@ -1327,8 +1327,7 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
-    private VectorValues.SimilarityFunction vectorSimilarityFunction =
-        VectorValues.SimilarityFunction.NONE;
+    private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.NONE;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1383,8 +1382,8 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setVectors(VectorValues.SimilarityFunction similarityFunction, int dimension) {
-      if (vectorSimilarityFunction == VectorValues.SimilarityFunction.NONE) {
+    void setVectors(VectorSimilarityFunction similarityFunction, int dimension) {
+      if (vectorSimilarityFunction == VectorSimilarityFunction.NONE) {
         this.vectorDimension = dimension;
         this.vectorSimilarityFunction = similarityFunction;
       } else {
@@ -1403,7 +1402,7 @@ final class IndexingChain implements Accountable {
       pointIndexDimensionCount = 0;
       pointNumBytes = 0;
       vectorDimension = 0;
-      vectorSimilarityFunction = VectorValues.SimilarityFunction.NONE;
+      vectorSimilarityFunction = VectorSimilarityFunction.NONE;
     }
 
     void assertSameSchema(FieldInfo fi) {

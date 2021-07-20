@@ -184,13 +184,18 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    checkBounds(docID);
-    if (vectors == null) {
-      return null;
-    }
-    return vectors.get(docID);
+  public TermVectors getTermVectorsReader() {
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) throws IOException {
+        ensureOpen();
+        checkBounds(docID);
+        if (vectors == null) {
+          return null;
+        }
+        return vectors.get(docID);
+      }
+    };
   }
 
   @Override
@@ -204,9 +209,8 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout)
-      throws IOException {
-    return in.searchNearestVectors(field, target, k, fanout);
+  public TopDocs searchNearestVectors(String field, float[] target, int k) throws IOException {
+    return in.searchNearestVectors(field, target, k);
   }
 
   @Override

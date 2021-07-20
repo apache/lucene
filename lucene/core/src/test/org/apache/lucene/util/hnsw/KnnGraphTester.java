@@ -53,7 +53,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -73,8 +73,8 @@ public class KnnGraphTester {
 
   private static final String KNN_FIELD = "knn";
   private static final String ID_FIELD = "id";
-  private static final VectorValues.SimilarityFunction SIMILARITY_FUNCTION =
-      VectorValues.SimilarityFunction.DOT_PRODUCT;
+  private static final VectorSimilarityFunction SIMILARITY_FUNCTION =
+      VectorSimilarityFunction.DOT_PRODUCT;
 
   private int numDocs;
   private int dim;
@@ -251,7 +251,8 @@ public class KnnGraphTester {
   private void dumpGraph(Path docsPath) throws IOException {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
-      HnswGraphBuilder builder = new HnswGraphBuilder(vectors, maxConn, beamWidth, 0);
+      HnswGraphBuilder builder =
+          new HnswGraphBuilder(vectors, SIMILARITY_FUNCTION, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
         builder.addGraphNode(values.vectorValue(i));
@@ -423,7 +424,7 @@ public class KnnGraphTester {
       IndexReader reader, String field, float[] vector, int k, int fanout) throws IOException {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      results[ctx.ord] = ctx.reader().searchNearestVectors(field, vector, k, fanout);
+      results[ctx.ord] = ctx.reader().searchNearestVectors(field, vector, k + fanout);
       int docBase = ctx.docBase;
       for (ScoreDoc scoreDoc : results[ctx.ord].scoreDocs) {
         scoreDoc.doc += docBase;
@@ -580,8 +581,7 @@ public class KnnGraphTester {
     iwc.setRAMBufferSizeMB(1994d);
     // iwc.setMaxBufferedDocs(10000);
 
-    FieldType fieldType =
-        VectorField.createFieldType(dim, VectorValues.SimilarityFunction.DOT_PRODUCT);
+    FieldType fieldType = VectorField.createFieldType(dim, VectorSimilarityFunction.DOT_PRODUCT);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
@@ -673,11 +673,6 @@ public class KnnGraphTester {
       @Override
       public int dimension() {
         return dim;
-      }
-
-      @Override
-      public VectorValues.SimilarityFunction similarityFunction() {
-        return SIMILARITY_FUNCTION;
       }
 
       @Override

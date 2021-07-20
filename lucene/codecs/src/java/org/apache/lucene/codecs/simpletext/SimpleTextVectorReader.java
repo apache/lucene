@@ -81,9 +81,6 @@ public class SimpleTextVectorReader extends VectorReader {
       int fieldNumber = readInt(in, FIELD_NUMBER);
       while (fieldNumber != -1) {
         String fieldName = readString(in, FIELD_NAME);
-        String scoreFunctionName = readString(in, SCORE_FUNCTION);
-        VectorValues.SimilarityFunction similarityFunction =
-            VectorValues.SimilarityFunction.valueOf(scoreFunctionName);
         long vectorDataOffset = readLong(in, VECTOR_DATA_OFFSET);
         long vectorDataLength = readLong(in, VECTOR_DATA_LENGTH);
         int dimension = readInt(in, VECTOR_DIMENSION);
@@ -94,9 +91,7 @@ public class SimpleTextVectorReader extends VectorReader {
         }
         assert fieldEntries.containsKey(fieldName) == false;
         fieldEntries.put(
-            fieldName,
-            new FieldEntry(
-                dimension, similarityFunction, vectorDataOffset, vectorDataLength, docIds));
+            fieldName, new FieldEntry(dimension, vectorDataOffset, vectorDataLength, docIds));
         fieldNumber = readInt(in, FIELD_NUMBER);
       }
       SimpleTextUtil.checkFooter(in);
@@ -143,7 +138,7 @@ public class SimpleTextVectorReader extends VectorReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+  public TopDocs search(String field, float[] target, int k) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -205,20 +200,13 @@ public class SimpleTextVectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
     final int[] ordToDoc;
 
-    FieldEntry(
-        int dimension,
-        VectorValues.SimilarityFunction similarityFunction,
-        long vectorDataOffset,
-        long vectorDataLength,
-        int[] ordToDoc) {
+    FieldEntry(int dimension, long vectorDataOffset, long vectorDataLength, int[] ordToDoc) {
       this.dimension = dimension;
-      this.similarityFunction = similarityFunction;
       this.vectorDataOffset = vectorDataOffset;
       this.vectorDataLength = vectorDataLength;
       this.ordToDoc = ordToDoc;
@@ -258,11 +246,6 @@ public class SimpleTextVectorReader extends VectorReader {
     @Override
     public int size() {
       return entry.size();
-    }
-
-    @Override
-    public SimilarityFunction similarityFunction() {
-      return entry.similarityFunction;
     }
 
     @Override

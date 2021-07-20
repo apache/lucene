@@ -35,6 +35,7 @@ import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -187,19 +188,18 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     }
   }
 
-  private VectorValues.SimilarityFunction readSimilarityFunction(DataInput input)
-      throws IOException {
+  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
     int similarityFunctionId = input.readInt();
     if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorValues.SimilarityFunction.values().length) {
+        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
       throw new CorruptIndexException(
           "Invalid similarity function id: " + similarityFunctionId, input);
     }
-    return VectorValues.SimilarityFunction.values()[similarityFunctionId];
+    return VectorSimilarityFunction.values()[similarityFunctionId];
   }
 
   private FieldEntry readField(DataInput input) throws IOException {
-    VectorValues.SimilarityFunction similarityFunction = readSimilarityFunction(input);
+    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
     switch (similarityFunction) {
       case NONE:
         return new FieldEntry(input, similarityFunction);
@@ -241,7 +241,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+  public TopDocs search(String field, float[] target, int k) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
@@ -252,7 +252,14 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final Random random = new Random(checksumSeed);
     NeighborQueue results =
-        HnswGraph.search(target, k, k + fanout, vectorValues, getGraphValues(fieldEntry), random);
+        HnswGraph.search(
+            target,
+            k,
+            k,
+            vectorValues,
+            fieldEntry.similarityFunction,
+            getGraphValues(fieldEntry),
+            random);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     boolean reversed = fieldEntry.similarityFunction.reversed;
@@ -292,7 +299,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
   }
 
   private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
-    if (entry.similarityFunction != VectorValues.SimilarityFunction.NONE) {
+    if (entry.similarityFunction != VectorSimilarityFunction.NONE) {
       HnswGraphFieldEntry graphEntry = (HnswGraphFieldEntry) entry;
       IndexInput bytesSlice =
           vectorIndex.slice("graph-data", entry.indexDataOffset, entry.indexDataLength);
@@ -310,7 +317,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SimilarityFunction similarityFunction;
+    final VectorSimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
@@ -318,8 +325,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     final long indexDataLength;
     final int[] ordToDoc;
 
-    FieldEntry(DataInput input, VectorValues.SimilarityFunction similarityFunction)
-        throws IOException {
+    FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
@@ -343,7 +349,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
 
     final long[] ordOffsets;
 
-    HnswGraphFieldEntry(DataInput input, VectorValues.SimilarityFunction similarityFunction)
+    HnswGraphFieldEntry(DataInput input, VectorSimilarityFunction similarityFunction)
         throws IOException {
       super(input, similarityFunction);
       ordOffsets = new long[size()];
@@ -387,11 +393,6 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     @Override
     public int size() {
       return fieldEntry.size();
-    }
-
-    @Override
-    public SimilarityFunction similarityFunction() {
-      return fieldEntry.similarityFunction;
     }
 
     @Override
