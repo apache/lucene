@@ -24,10 +24,10 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Accountable;
 
 /** Reads vectors from an index. */
-public abstract class VectorReader implements Closeable, Accountable {
+public abstract class KnnVectorsReader implements Closeable, Accountable {
 
   /** Sole constructor */
-  protected VectorReader() {}
+  protected KnnVectorsReader() {}
 
   /**
    * Checks consistency of this reader.
@@ -61,7 +61,7 @@ public abstract class VectorReader implements Closeable, Accountable {
    *
    * <p>The default implementation returns {@code this}
    */
-  public VectorReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance() {
     return this;
   }
 }

@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
@@ -34,7 +34,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 
 /** Writes vector-valued fields in a plain text format */
-public class SimpleTextVectorWriter extends VectorWriter {
+public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
 
   static final BytesRef FIELD_NUMBER = new BytesRef("field-number ");
   static final BytesRef FIELD_NAME = new BytesRef("field-name ");
@@ -46,20 +46,24 @@ public class SimpleTextVectorWriter extends VectorWriter {
   private final IndexOutput meta, vectorData;
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
-  SimpleTextVectorWriter(SegmentWriteState state) throws IOException {
+  SimpleTextKnnVectorsWriter(SegmentWriteState state) throws IOException {
     assert state.fieldInfos.hasVectorValues();
 
     boolean success = false;
-    // exception handling to pass TestSimpleTextVectorFormat#testRandomExceptions
+    // exception handling to pass TestSimpleTextKnnVectorsFormat#testRandomExceptions
     try {
       String metaFileName =
           IndexFileNames.segmentFileName(
-              state.segmentInfo.name, state.segmentSuffix, SimpleTextVectorFormat.META_EXTENSION);
+              state.segmentInfo.name,
+              state.segmentSuffix,
+              SimpleTextKnnVectorsFormat.META_EXTENSION);
       meta = state.directory.createOutput(metaFileName, state.context);
 
       String vectorDataFileName =
           IndexFileNames.segmentFileName(
-              state.segmentInfo.name, state.segmentSuffix, SimpleTextVectorFormat.VECTOR_EXTENSION);
+              state.segmentInfo.name,
+              state.segmentSuffix,
+              SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
       success = true;
     } finally {

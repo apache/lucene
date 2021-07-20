@@ -25,14 +25,14 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.VectorField;
-import org.apache.lucene.index.BaseVectorFormatTestCase;
+import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -49,7 +49,7 @@ import org.apache.lucene.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
-public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
+public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   private Codec codec;
 
   @Override
@@ -67,14 +67,14 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     try (Directory directory = newDirectory()) {
       // we don't use RandomIndexWriter because it might add more values than we expect !!!!1
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingVectorFormat format1 =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
-      WriteRecordingVectorFormat format2 =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
+      WriteRecordingKnnVectorsFormat format1 =
+          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+      WriteRecordingKnnVectorsFormat format2 =
+          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       iwc.setCodec(
           new AssertingCodec() {
             @Override
-            public VectorFormat getVectorFormatForField(String field) {
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
               if ("field1".equals(field)) {
                 return format1;
               } else {
@@ -135,12 +135,12 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
       }
 
       IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingVectorFormat newFormat =
-          new WriteRecordingVectorFormat(TestUtil.getDefaultVectorFormat());
+      WriteRecordingKnnVectorsFormat newFormat =
+          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       newConfig.setCodec(
           new AssertingCodec() {
             @Override
-            public VectorFormat getVectorFormatForField(String field) {
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
               return newFormat;
             }
           });
@@ -154,20 +154,20 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     }
   }
 
-  private static class WriteRecordingVectorFormat extends VectorFormat {
-    private final VectorFormat delegate;
+  private static class WriteRecordingKnnVectorsFormat extends KnnVectorsFormat {
+    private final KnnVectorsFormat delegate;
     private final Set<String> fieldsWritten;
 
-    public WriteRecordingVectorFormat(VectorFormat delegate) {
+    public WriteRecordingKnnVectorsFormat(KnnVectorsFormat delegate) {
       super(delegate.getName());
       this.delegate = delegate;
       this.fieldsWritten = new HashSet<>();
     }
 
     @Override
-    public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-      VectorWriter writer = delegate.fieldsWriter(state);
-      return new VectorWriter() {
+    public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+      KnnVectorsWriter writer = delegate.fieldsWriter(state);
+      return new KnnVectorsWriter() {
         @Override
         public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
           fieldsWritten.add(fieldInfo.name);
@@ -187,7 +187,7 @@ public class TestPerFieldVectorFormat extends BaseVectorFormatTestCase {
     }
 
     @Override
-    public VectorReader fieldsReader(SegmentReadState state) throws IOException {
+    public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
       return delegate.fieldsReader(state);
     }
   }

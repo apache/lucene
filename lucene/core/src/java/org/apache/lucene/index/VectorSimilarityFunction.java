@@ -19,7 +19,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.KnnVectorsReader;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
@@ -29,8 +29,8 @@ import org.apache.lucene.codecs.VectorReader;
 public enum VectorSimilarityFunction {
 
   /**
-   * No similarity function is provided. Note: {@link VectorReader#search(String, float[], int)} is
-   * not supported for fields specifying this.
+   * No similarity function is provided. Note: {@link KnnVectorsReader#search(String, float[], int)}
+   * is not supported for fields specifying this.
    */
   NONE,
 

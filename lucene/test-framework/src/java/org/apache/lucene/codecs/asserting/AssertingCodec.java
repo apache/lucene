@@ -18,16 +18,16 @@ package org.apache.lucene.codecs.asserting;
 
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
-import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
 import org.apache.lucene.util.TestUtil;
 
 /** Acts like the default codec but with additional asserts. */
@@ -62,11 +62,11 @@ public class AssertingCodec extends FilterCodec {
         }
       };
 
-  private final VectorFormat vectorFormat =
-      new PerFieldVectorFormat() {
+  private final KnnVectorsFormat knnVectorsFormat =
+      new PerFieldKnnVectorsFormat() {
         @Override
-        public VectorFormat getVectorFormatForField(String field) {
-          return AssertingCodec.this.getVectorFormatForField(field);
+        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+          return AssertingCodec.this.getKnnVectorsFormatForField(field);
         }
       };
 
@@ -77,7 +77,7 @@ public class AssertingCodec extends FilterCodec {
   private final PostingsFormat defaultFormat = new AssertingPostingsFormat();
   private final DocValuesFormat defaultDVFormat = new AssertingDocValuesFormat();
   private final PointsFormat pointsFormat = new AssertingPointsFormat();
-  private final VectorFormat defaultVectorFormat = new AssertingVectorFormat();
+  private final KnnVectorsFormat defaultKnnVectorsFormat = new AssertingKnnVectorsFormat();
 
   public AssertingCodec() {
     super("Asserting", TestUtil.getDefaultCodec());
@@ -119,8 +119,8 @@ public class AssertingCodec extends FilterCodec {
   }
 
   @Override
-  public VectorFormat vectorFormat() {
-    return vectorFormat;
+  public KnnVectorsFormat knnVectorsFormat() {
+    return knnVectorsFormat;
   }
 
   @Override
@@ -152,7 +152,7 @@ public class AssertingCodec extends FilterCodec {
    *
    * <p>The default implementation always returns "Asserting"
    */
-  public VectorFormat getVectorFormatForField(String field) {
-    return defaultVectorFormat;
+  public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+    return defaultKnnVectorsFormat;
   }
 }
