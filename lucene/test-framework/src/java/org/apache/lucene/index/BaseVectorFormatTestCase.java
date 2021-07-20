@@ -49,7 +49,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
 
   @Override
   protected void addRandomFields(Document doc) {
-    doc.add(new VectorField("v2", randomVector(30), VectorSimilarityFunction.NONE));
+    doc.add(new VectorField("v2", randomVector(30), VectorSimilarityFunction.EUCLIDEAN));
   }
 
   public void testFieldConstructor() {
@@ -461,11 +461,12 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       Exception e =
           expectThrows(
               IllegalArgumentException.class,
-              () -> doc.add(new VectorField("f", new float[0], VectorSimilarityFunction.NONE)));
+              () ->
+                  doc.add(new VectorField("f", new float[0], VectorSimilarityFunction.EUCLIDEAN)));
       assertEquals("cannot index an empty vector", e.getMessage());
 
       Document doc2 = new Document();
-      doc2.add(new VectorField("f", new float[1], VectorSimilarityFunction.NONE));
+      doc2.add(new VectorField("f", new float[1], VectorSimilarityFunction.EUCLIDEAN));
       w.addDocument(doc2);
     }
   }
@@ -509,7 +510,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   public void testInvalidVectorFieldUsage() {
-    VectorField field = new VectorField("field", new float[2], VectorSimilarityFunction.NONE);
+    VectorField field = new VectorField("field", new float[2], VectorSimilarityFunction.EUCLIDEAN);
 
     expectThrows(IllegalArgumentException.class, () -> field.setIntValue(14));
 
@@ -681,7 +682,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
       Document doc = new Document();
       float[] v = new float[] {1};
       doc.add(new VectorField("field1", v, VectorSimilarityFunction.EUCLIDEAN));
-      doc.add(new VectorField("field2", new float[] {1, 2, 3}, VectorSimilarityFunction.NONE));
+      doc.add(new VectorField("field2", new float[] {1, 2, 3}, VectorSimilarityFunction.EUCLIDEAN));
       iw.addDocument(doc);
       v[0] = 2;
       iw.addDocument(doc);
@@ -748,9 +749,9 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
         if (random().nextBoolean() && values[i] != null) {
           // sometimes use a shared scratch array
           System.arraycopy(values[i], 0, scratch, 0, scratch.length);
-          add(iw, fieldName, i, scratch, VectorSimilarityFunction.NONE);
+          add(iw, fieldName, i, scratch, VectorSimilarityFunction.EUCLIDEAN);
         } else {
-          add(iw, fieldName, i, values[i], VectorSimilarityFunction.NONE);
+          add(iw, fieldName, i, values[i], VectorSimilarityFunction.EUCLIDEAN);
         }
         if (random().nextInt(10) == 2) {
           // sometimes delete a random document
@@ -865,7 +866,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
 
   private void add(IndexWriter iw, String field, int id, int sortkey, float[] vector)
       throws IOException {
-    add(iw, field, id, sortkey, vector, VectorSimilarityFunction.NONE);
+    add(iw, field, id, sortkey, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   private void add(
@@ -900,10 +901,10 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new VectorField("v1", randomVector(3), VectorSimilarityFunction.NONE));
+        doc.add(new VectorField("v1", randomVector(3), VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
 
-        doc.add(new VectorField("v2", randomVector(3), VectorSimilarityFunction.NONE));
+        doc.add(new VectorField("v2", randomVector(3), VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
       }
 
@@ -924,10 +925,9 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
   public void testSimilarityFunctionIdentifiers() {
     // make sure we don't accidentally mess up similarity function identifiers by re-ordering their
     // enumerators
-    assertEquals(0, VectorSimilarityFunction.NONE.ordinal());
-    assertEquals(1, VectorSimilarityFunction.EUCLIDEAN.ordinal());
-    assertEquals(2, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
-    assertEquals(3, VectorSimilarityFunction.values().length);
+    assertEquals(0, VectorSimilarityFunction.EUCLIDEAN.ordinal());
+    assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
+    assertEquals(2, VectorSimilarityFunction.values().length);
   }
 
   public void testAdvance() throws Exception {
@@ -939,7 +939,7 @@ public abstract class BaseVectorFormatTestCase extends BaseIndexFileFormatTestCa
           Document doc = new Document();
           // randomly add a vector field
           if (random().nextInt(4) == 3) {
-            doc.add(new VectorField(fieldName, new float[4], VectorSimilarityFunction.NONE));
+            doc.add(new VectorField(fieldName, new float[4], VectorSimilarityFunction.EUCLIDEAN));
           }
           w.addDocument(doc);
         }

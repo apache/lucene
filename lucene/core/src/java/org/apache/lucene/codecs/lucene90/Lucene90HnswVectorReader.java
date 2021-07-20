@@ -200,16 +200,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
 
   private FieldEntry readField(DataInput input) throws IOException {
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    switch (similarityFunction) {
-      case NONE:
-        return new FieldEntry(input, similarityFunction);
-      case DOT_PRODUCT:
-      case EUCLIDEAN:
-        return new HnswGraphFieldEntry(input, similarityFunction);
-      default:
-        throw new CorruptIndexException(
-            "Unknown vector similarity function: " + similarityFunction, input);
-    }
+    return new FieldEntry(input, similarityFunction);
   }
 
   @Override
@@ -299,14 +290,9 @@ public final class Lucene90HnswVectorReader extends VectorReader {
   }
 
   private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
-    if (entry.similarityFunction != VectorSimilarityFunction.NONE) {
-      HnswGraphFieldEntry graphEntry = (HnswGraphFieldEntry) entry;
-      IndexInput bytesSlice =
-          vectorIndex.slice("graph-data", entry.indexDataOffset, entry.indexDataLength);
-      return new IndexedKnnGraphReader(graphEntry, bytesSlice);
-    } else {
-      return KnnGraphValues.EMPTY;
-    }
+    IndexInput bytesSlice =
+        vectorIndex.slice("graph-data", entry.indexDataOffset, entry.indexDataLength);
+    return new IndexedKnnGraphReader(entry, bytesSlice);
   }
 
   @Override
@@ -324,6 +310,7 @@ public final class Lucene90HnswVectorReader extends VectorReader {
     final long indexDataOffset;
     final long indexDataLength;
     final int[] ordToDoc;
+    final long[] ordOffsets;
 
     FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
@@ -338,26 +325,16 @@ public final class Lucene90HnswVectorReader extends VectorReader {
         int doc = input.readVInt();
         ordToDoc[i] = doc;
       }
-    }
-
-    int size() {
-      return ordToDoc.length;
-    }
-  }
-
-  private static class HnswGraphFieldEntry extends FieldEntry {
-
-    final long[] ordOffsets;
-
-    HnswGraphFieldEntry(DataInput input, VectorSimilarityFunction similarityFunction)
-        throws IOException {
-      super(input, similarityFunction);
       ordOffsets = new long[size()];
       long offset = 0;
       for (int i = 0; i < ordOffsets.length; i++) {
         offset += input.readVLong();
         ordOffsets[i] = offset;
       }
+    }
+
+    int size() {
+      return ordToDoc.length;
     }
   }
 
@@ -472,14 +449,14 @@ public final class Lucene90HnswVectorReader extends VectorReader {
   /** Read the nearest-neighbors graph from the index input */
   private static final class IndexedKnnGraphReader extends KnnGraphValues {
 
-    final HnswGraphFieldEntry entry;
+    final FieldEntry entry;
     final IndexInput dataIn;
 
     int arcCount;
     int arcUpTo;
     int arc;
 
-    IndexedKnnGraphReader(HnswGraphFieldEntry entry, IndexInput dataIn) {
+    IndexedKnnGraphReader(FieldEntry entry, IndexInput dataIn) {
       this.entry = entry;
       this.dataIn = dataIn;
     }
