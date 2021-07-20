@@ -237,7 +237,7 @@ Improvements
   (Adrien Grand)
 
 * LUCENE-10000: MultiCollectorManager now has parity with MultiCollector with respect to how it
-  handles CollectionTerminationException and minCompetitiveScore calls. (Greg Miller)
+  handles CollectionTerminationException and setMinCompetitiveScore calls. (Greg Miller)
 
 * LUCENE-10019: Align file starts in CFS files to have proper alignment (8 bytes)
   (Uwe Schinder)
