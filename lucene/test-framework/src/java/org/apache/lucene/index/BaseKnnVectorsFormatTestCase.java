@@ -26,9 +26,9 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
@@ -72,7 +72,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         () -> new KnnVectorField("f", new float[VectorValues.MAX_DIMENSIONS + 1]));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new KnnVectorField("f", new float[VectorValues.MAX_DIMENSIONS + 1], (FieldType) null));
+        () ->
+            new KnnVectorField("f", new float[VectorValues.MAX_DIMENSIONS + 1], (FieldType) null));
   }
 
   public void testFieldSetValue() {
@@ -548,12 +549,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
-      doc.add(new KnnVectorField("v0", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(
+          new KnnVectorField("v0", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.commit();
 
       doc = new Document();
-      doc.add(new KnnVectorField("v1", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(
+          new KnnVectorField("v1", new float[] {2, 3, 5}, VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc);
       w.forceMerge(1);
     }
@@ -687,7 +690,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       iw.addDocument(doc);
       doc = new Document();
       doc.add(
-          new KnnVectorField("field3", new float[] {1, 2, 3}, VectorSimilarityFunction.DOT_PRODUCT));
+          new KnnVectorField(
+              "field3", new float[] {1, 2, 3}, VectorSimilarityFunction.DOT_PRODUCT));
       iw.addDocument(doc);
       iw.forceMerge(1);
       try (IndexReader reader = iw.getReader()) {
