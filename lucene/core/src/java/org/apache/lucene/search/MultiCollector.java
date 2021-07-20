@@ -83,7 +83,7 @@ public class MultiCollector implements Collector {
   }
 
   private final boolean cacheScores;
-  final Collector[] collectors;
+  private final Collector[] collectors;
 
   private MultiCollector(Collector... collectors) {
     this.collectors = collectors;
@@ -133,6 +133,11 @@ public class MultiCollector implements Collector {
         return new MultiLeafCollector(
             leafCollectors, cacheScores, scoreMode() == ScoreMode.TOP_SCORES);
     }
+  }
+
+  /** Provides access to the wrapped {@code Collector}s for advanced use-cases */
+  Collector[] getCollectors() {
+    return collectors;
   }
 
   private static class MultiLeafCollector implements LeafCollector {
