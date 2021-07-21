@@ -476,7 +476,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
     d.add(fullPathField);
-    d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
+    d.add(new BinaryDocValuesField(Consts.FULL_BINARY, new BytesRef(fieldPath)));
 
     // Note that we do no pass an Analyzer here because the fields that are
     // added to the Document are untokenized or contains their own TokenStream.
