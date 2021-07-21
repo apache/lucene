@@ -63,7 +63,7 @@ public class TestFieldsReader extends LuceneTestCase {
               0,
               0,
               0,
-              VectorSimilarityFunction.NONE,
+              VectorSimilarityFunction.EUCLIDEAN,
               field.name().equals(softDeletesFieldName)));
     }
     dir = newDirectory();

@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Random;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
@@ -74,10 +75,7 @@ public final class HnswGraphBuilder {
       long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
-    this.similarityFunction = similarityFunction;
-    if (similarityFunction == VectorSimilarityFunction.NONE) {
-      throw new IllegalStateException("No distance function");
-    }
+    this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }

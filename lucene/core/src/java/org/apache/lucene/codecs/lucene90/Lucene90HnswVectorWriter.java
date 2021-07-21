@@ -127,21 +127,19 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
     long[] offsets = new long[count];
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    if (fieldInfo.getVectorSimilarityFunction() != VectorSimilarityFunction.NONE) {
-      if (vectors instanceof RandomAccessVectorValuesProducer) {
-        writeGraph(
-            vectorIndex,
-            (RandomAccessVectorValuesProducer) vectors,
-            fieldInfo.getVectorSimilarityFunction(),
-            vectorIndexOffset,
-            offsets,
-            count,
-            maxConn,
-            beamWidth);
-      } else {
-        throw new IllegalArgumentException(
-            "Indexing an HNSW graph requires a random access vector values, got " + vectors);
-      }
+    if (vectors instanceof RandomAccessVectorValuesProducer) {
+      writeGraph(
+          vectorIndex,
+          (RandomAccessVectorValuesProducer) vectors,
+          fieldInfo.getVectorSimilarityFunction(),
+          vectorIndexOffset,
+          offsets,
+          count,
+          maxConn,
+          beamWidth);
+    } else {
+      throw new IllegalArgumentException(
+          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
     }
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
     writeMeta(
@@ -152,9 +150,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
         vectorIndexLength,
         count,
         docIds);
-    if (fieldInfo.getVectorSimilarityFunction() != VectorSimilarityFunction.NONE) {
-      writeGraphOffsets(meta, offsets);
-    }
+    writeGraphOffsets(meta, offsets);
   }
 
   private void writeMeta(

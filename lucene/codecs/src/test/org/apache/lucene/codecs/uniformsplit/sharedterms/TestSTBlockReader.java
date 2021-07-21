@@ -203,7 +203,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         0,
         0,
         0,
-        VectorSimilarityFunction.NONE,
+        VectorSimilarityFunction.EUCLIDEAN,
         false);
   }
 

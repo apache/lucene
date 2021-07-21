@@ -90,9 +90,6 @@ public class TestPerFieldConsistency extends LuceneTestCase {
   private static Field randomVectorField(Random random, String fieldName) {
     VectorSimilarityFunction similarityFunction =
         RandomPicks.randomFrom(random, VectorSimilarityFunction.values());
-    while (similarityFunction == VectorSimilarityFunction.NONE) {
-      similarityFunction = RandomPicks.randomFrom(random, VectorSimilarityFunction.values());
-    }
     float[] values = new float[randomIntBetween(1, 10)];
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();

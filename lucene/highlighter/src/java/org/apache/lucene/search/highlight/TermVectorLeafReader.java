@@ -98,7 +98,7 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             0,
             0,
-            VectorSimilarityFunction.NONE,
+            VectorSimilarityFunction.EUCLIDEAN,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
