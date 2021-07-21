@@ -55,7 +55,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   // Old taxonomy index had $full_path$ field indexed only with postings,
   // It is not allowed to add the same field $full_path$ indexed with BinaryDocValues
   // for a new segment, that this test is trying to do.
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9334")
   public void testCreateNewTaxonomy() throws IOException {
     createNewTaxonomyIndex(oldTaxonomyIndexName);
   }
