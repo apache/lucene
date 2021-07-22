@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import static org.apache.lucene.index.IndexWriter.isCongruentSort;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -88,14 +87,11 @@ public class MergeState {
   public boolean needsIndexSort;
 
   /** Sole constructor. */
-  MergeState(List<CodecReader> originalReaders, SegmentInfo segmentInfo, InfoStream infoStream)
+  MergeState(List<CodecReader> readers, SegmentInfo segmentInfo, InfoStream infoStream)
       throws IOException {
-
+    verifyIndexSort(readers, segmentInfo);
     this.infoStream = infoStream;
-
-    final Sort indexSort = segmentInfo.getIndexSort();
-    int numReaders = originalReaders.size();
-    List<CodecReader> readers = maybeSortReaders(originalReaders, segmentInfo);
+    int numReaders = readers.size();
 
     maxDocs = new int[numReaders];
     fieldsProducers = new FieldsProducer[numReaders];
@@ -153,7 +149,7 @@ public class MergeState {
     segmentInfo.setMaxDoc(numDocs);
 
     this.segmentInfo = segmentInfo;
-    this.docMaps = buildDocMaps(readers, indexSort);
+    this.docMaps = buildDocMaps(readers, segmentInfo.getIndexSort());
   }
 
   // Remap docIDs around deletions
@@ -221,16 +217,12 @@ public class MergeState {
     }
   }
 
-  private List<CodecReader> maybeSortReaders(
-      List<CodecReader> originalReaders, SegmentInfo segmentInfo) {
+  private static void verifyIndexSort(List<CodecReader> readers, SegmentInfo segmentInfo) {
     Sort indexSort = segmentInfo.getIndexSort();
     if (indexSort == null) {
-      return originalReaders;
+      return;
     }
-
-    List<CodecReader> readers = new ArrayList<>(originalReaders.size());
-
-    for (CodecReader leaf : originalReaders) {
+    for (CodecReader leaf : readers) {
       Sort segmentSort = leaf.getMetaData().getSort();
       if (segmentSort == null || isCongruentSort(indexSort, segmentSort) == false) {
         throw new IllegalArgumentException(
@@ -239,10 +231,7 @@ public class MergeState {
                 + " but to-be-merged segment has sort="
                 + (segmentSort == null ? "null" : segmentSort));
       }
-      readers.add(leaf);
     }
-
-    return readers;
   }
 
   /** A map of doc IDs. */
