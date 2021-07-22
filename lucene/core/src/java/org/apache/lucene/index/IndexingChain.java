@@ -1327,7 +1327,7 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
-    private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.NONE;
+    private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1383,7 +1383,7 @@ final class IndexingChain implements Accountable {
     }
 
     void setVectors(VectorSimilarityFunction similarityFunction, int dimension) {
-      if (vectorSimilarityFunction == VectorSimilarityFunction.NONE) {
+      if (vectorDimension == 0) {
         this.vectorDimension = dimension;
         this.vectorSimilarityFunction = similarityFunction;
       } else {
@@ -1402,7 +1402,7 @@ final class IndexingChain implements Accountable {
       pointIndexDimensionCount = 0;
       pointNumBytes = 0;
       vectorDimension = 0;
-      vectorSimilarityFunction = VectorSimilarityFunction.NONE;
+      vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     }
 
     void assertSameSchema(FieldInfo fi) {

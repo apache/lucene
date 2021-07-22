@@ -202,14 +202,6 @@ public final class FieldInfo {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
-    if (vectorDimension == 0 && vectorSimilarityFunction != VectorSimilarityFunction.NONE) {
-      throw new IllegalArgumentException(
-          "vector similarity function must be NONE when dimension = 0; got "
-              + vectorSimilarityFunction
-              + " (field: '"
-              + name
-              + "')");
-    }
   }
 
   /**

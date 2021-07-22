@@ -19,8 +19,6 @@ package org.apache.lucene.index;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
-import org.apache.lucene.codecs.KnnVectorsReader;
-
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
  * vector. This is a label describing the method used during indexing and searching of the vectors
@@ -28,17 +26,21 @@ import org.apache.lucene.codecs.KnnVectorsReader;
  */
 public enum VectorSimilarityFunction {
 
-  /**
-   * No similarity function is provided. Note: {@link KnnVectorsReader#search(String, float[], int)}
-   * is not supported for fields specifying this.
-   */
-  NONE,
+  /** Euclidean distance */
+  EUCLIDEAN(true) {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      return squareDistance(v1, v2);
+    }
+  },
 
-  /** HNSW graph built using Euclidean distance */
-  EUCLIDEAN(true),
-
-  /** HNSW graph buit using dot product */
-  DOT_PRODUCT;
+  /** Dot product */
+  DOT_PRODUCT {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      return dotProduct(v1, v2);
+    }
+  };
 
   /**
    * If true, the scores associated with vector comparisons are in reverse order; that is, lower
@@ -62,15 +64,5 @@ public enum VectorSimilarityFunction {
    * @param v2 another vector, of the same dimension
    * @return the value of the similarity function applied to the two vectors
    */
-  public float compare(float[] v1, float[] v2) {
-    switch (this) {
-      case EUCLIDEAN:
-        return squareDistance(v1, v2);
-      case DOT_PRODUCT:
-        return dotProduct(v1, v2);
-      case NONE:
-      default:
-        throw new IllegalStateException("Incomparable similarity function: " + this);
-    }
-  }
+  public abstract float compare(float[] v1, float[] v2);
 }
