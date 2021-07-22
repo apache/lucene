@@ -27,7 +27,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
@@ -35,6 +34,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
+import org.apache.lucene.util.hnsw.VectorSimilarityFunction;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -46,11 +46,18 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
 
+  private final VectorSimilarityFunction similarityFunction;
   private final int maxConn;
   private final int beamWidth;
   private boolean finished;
 
-  Lucene90HnswVectorWriter(SegmentWriteState state, int maxConn, int beamWidth) throws IOException {
+  Lucene90HnswVectorWriter(
+      SegmentWriteState state,
+      VectorSimilarityFunction similarityFunction,
+      int maxConn,
+      int beamWidth)
+      throws IOException {
+    this.similarityFunction = similarityFunction;
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
@@ -131,7 +138,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
       writeGraph(
           vectorIndex,
           (RandomAccessVectorValuesProducer) vectors,
-          fieldInfo.getVectorSimilarityFunction(),
+          similarityFunction,
           vectorIndexOffset,
           offsets,
           count,
@@ -163,7 +170,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
       int[] docIds)
       throws IOException {
     meta.writeInt(field.number);
-    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeInt(similarityFunction.ordinal());
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
     meta.writeVLong(indexDataOffset);

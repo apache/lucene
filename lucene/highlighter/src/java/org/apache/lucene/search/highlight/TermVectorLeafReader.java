@@ -35,7 +35,6 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
@@ -98,7 +97,6 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             0,
             0,
-            VectorSimilarityFunction.EUCLIDEAN,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }

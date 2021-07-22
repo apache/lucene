@@ -299,11 +299,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   static final class FieldVectorProperties {
     final int numDimensions;
-    final VectorSimilarityFunction similarityFunction;
 
-    FieldVectorProperties(int numDimensions, VectorSimilarityFunction similarityFunction) {
+    FieldVectorProperties(int numDimensions) {
       this.numDimensions = numDimensions;
-      this.similarityFunction = similarityFunction;
     }
   }
 
@@ -382,9 +380,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 fi.getPointDimensionCount(),
                 fi.getPointIndexDimensionCount(),
                 fi.getPointNumBytes()));
-        vectorProps.put(
-            fieldName,
-            new FieldVectorProperties(fi.getVectorDimension(), fi.getVectorSimilarityFunction()));
+        vectorProps.put(fieldName, new FieldVectorProperties(fi.getVectorDimension()));
       }
       return fieldNumber.intValue();
     }
@@ -439,12 +435,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fi.getPointNumBytes());
 
       FieldVectorProperties props = vectorProps.get(fieldName);
-      verifySameVectorOptions(
-          fieldName,
-          props.numDimensions,
-          props.similarityFunction,
-          fi.getVectorDimension(),
-          fi.getVectorSimilarityFunction());
+      verifySameVectorOptions(fieldName, props.numDimensions, fi.getVectorDimension());
     }
 
     /**
@@ -486,7 +477,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   0,
                   0,
-                  VectorSimilarityFunction.EUCLIDEAN,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
           addOrGet(fi);
         }
@@ -567,7 +557,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           0,
           0,
-          VectorSimilarityFunction.EUCLIDEAN,
           isSoftDeletesField);
     }
 
@@ -681,7 +670,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getPointIndexDimensionCount(),
               fi.getPointNumBytes(),
               fi.getVectorDimension(),
-              fi.getVectorSimilarityFunction(),
               fi.isSoftDeletesField());
       byName.put(fiNew.getName(), fiNew);
       return fiNew;

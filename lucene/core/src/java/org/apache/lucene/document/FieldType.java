@@ -18,13 +18,11 @@ package org.apache.lucene.document;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 
 /** Describes the properties of a field. */
@@ -44,7 +42,6 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
-  private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -62,7 +59,6 @@ public class FieldType implements IndexableFieldType {
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
     this.vectorDimension = ref.vectorDimension();
-    this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
     }
@@ -371,8 +367,7 @@ public class FieldType implements IndexableFieldType {
   }
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
-  public void setVectorDimensionsAndSimilarityFunction(
-      int numDimensions, VectorSimilarityFunction distFunc) {
+  public void setVectorDimensions(int numDimensions) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
@@ -385,17 +380,11 @@ public class FieldType implements IndexableFieldType {
               + numDimensions);
     }
     this.vectorDimension = numDimensions;
-    this.vectorSimilarityFunction = Objects.requireNonNull(distFunc);
   }
 
   @Override
   public int vectorDimension() {
     return vectorDimension;
-  }
-
-  @Override
-  public VectorSimilarityFunction vectorSimilarityFunction() {
-    return vectorSimilarityFunction;
   }
 
   /**

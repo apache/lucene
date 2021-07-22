@@ -56,7 +56,6 @@ public final class FieldInfo {
 
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
-  private final VectorSimilarityFunction vectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -80,7 +79,6 @@ public final class FieldInfo {
       int pointIndexDimensionCount,
       int pointNumBytes,
       int vectorDimension,
-      VectorSimilarityFunction vectorSimilarityFunction,
       boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
@@ -105,7 +103,6 @@ public final class FieldInfo {
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
-    this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.checkConsistency();
   }
@@ -194,10 +191,6 @@ public final class FieldInfo {
               + "')");
     }
 
-    if (vectorSimilarityFunction == null) {
-      throw new IllegalArgumentException(
-          "Vector similarity function must not be null (field: '" + name + "')");
-    }
     if (vectorDimension < 0) {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
@@ -226,12 +219,7 @@ public final class FieldInfo {
         o.pointDimensionCount,
         o.pointIndexDimensionCount,
         o.pointNumBytes);
-    verifySameVectorOptions(
-        fieldName,
-        this.vectorDimension,
-        this.vectorSimilarityFunction,
-        o.vectorDimension,
-        o.vectorSimilarityFunction);
+    verifySameVectorOptions(fieldName, this.vectorDimension, o.vectorDimension);
   }
 
   /**
@@ -344,24 +332,15 @@ public final class FieldInfo {
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  static void verifySameVectorOptions(
-      String fieldName,
-      int vd1,
-      VectorSimilarityFunction vsf1,
-      int vd2,
-      VectorSimilarityFunction vsf2) {
-    if (vd1 != vd2 || vsf1 != vsf2) {
+  static void verifySameVectorOptions(String fieldName, int vd1, int vd2) {
+    if (vd1 != vd2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
               + "\" from vector dimension="
               + vd1
-              + ", vector similarity function="
-              + vsf1
               + " to inconsistent vector dimension="
-              + vd2
-              + ", vector similarity function="
-              + vsf2);
+              + vd2);
     }
   }
 
@@ -468,11 +447,6 @@ public final class FieldInfo {
   /** Returns the number of dimensions of the vector value */
   public int getVectorDimension() {
     return vectorDimension;
-  }
-
-  /** Returns {@link VectorSimilarityFunction} for the field */
-  public VectorSimilarityFunction getVectorSimilarityFunction() {
-    return vectorSimilarityFunction;
   }
 
   /** Record that this field is indexed with docvalues, with the specified type */

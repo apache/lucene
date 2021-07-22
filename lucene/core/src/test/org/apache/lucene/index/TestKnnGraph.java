@@ -46,6 +46,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
+import org.apache.lucene.util.hnsw.VectorSimilarityFunction;
 import org.junit.After;
 import org.junit.Before;
 
@@ -54,14 +55,20 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
+  private static VectorSimilarityFunction similarityFunction =
+      Lucene90HnswVectorFormat.DEFAULT_SIMILARITY_FUNCTION;
   private static int maxConn = Lucene90HnswVectorFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
-  private VectorSimilarityFunction similarityFunction;
 
   @Before
   public void setup() {
     randSeed = random().nextLong();
+
+    if (random().nextBoolean()) {
+      similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    }
+
     if (random().nextBoolean()) {
       maxConn = random().nextInt(256) + 3;
     }
@@ -71,7 +78,7 @@ public class TestKnnGraph extends LuceneTestCase {
           @Override
           public VectorFormat getVectorFormatForField(String field) {
             return new Lucene90HnswVectorFormat(
-                maxConn, Lucene90HnswVectorFormat.DEFAULT_BEAM_WIDTH);
+                similarityFunction, maxConn, Lucene90HnswVectorFormat.DEFAULT_BEAM_WIDTH);
           }
         };
 
@@ -81,6 +88,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   @After
   public void cleanup() {
+    similarityFunction = Lucene90HnswVectorFormat.DEFAULT_SIMILARITY_FUNCTION;
     maxConn = Lucene90HnswVectorFormat.DEFAULT_MAX_CONN;
   }
 

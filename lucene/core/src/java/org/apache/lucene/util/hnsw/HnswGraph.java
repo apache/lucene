@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**

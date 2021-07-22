@@ -29,7 +29,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BytesRef;
 
@@ -69,18 +68,14 @@ public abstract class VectorWriter implements Closeable {
     }
     List<VectorValuesSub> subs = new ArrayList<>();
     int dimension = -1;
-    VectorSimilarityFunction similarityFunction = null;
     int nonEmptySegmentIndex = 0;
     for (int i = 0; i < mergeState.vectorReaders.length; i++) {
       VectorReader vectorReader = mergeState.vectorReaders[i];
       if (vectorReader != null) {
         if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
           int segmentDimension = mergeFieldInfo.getVectorDimension();
-          VectorSimilarityFunction segmentSimilarityFunction =
-              mergeFieldInfo.getVectorSimilarityFunction();
           if (dimension == -1) {
             dimension = segmentDimension;
-            similarityFunction = mergeFieldInfo.getVectorSimilarityFunction();
           } else if (dimension != segmentDimension) {
             throw new IllegalStateException(
                 "Varying dimensions for vector-valued field "
@@ -89,14 +84,6 @@ public abstract class VectorWriter implements Closeable {
                     + dimension
                     + "!="
                     + segmentDimension);
-          } else if (similarityFunction != segmentSimilarityFunction) {
-            throw new IllegalStateException(
-                "Varying similarity functions for vector-valued field "
-                    + mergeFieldInfo.name
-                    + ": "
-                    + similarityFunction
-                    + "!="
-                    + segmentSimilarityFunction);
           }
           VectorValues values = vectorReader.getVectorValues(mergeFieldInfo.name);
           if (values != null) {

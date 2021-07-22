@@ -19,10 +19,19 @@ package org.apache.lucene.codecs.lucene90;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseVectorFormatTestCase;
 import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.hnsw.VectorSimilarityFunction;
 
 public class TestLucene90HnswVectorFormat extends BaseVectorFormatTestCase {
   @Override
   protected Codec getCodec() {
     return TestUtil.getDefaultCodec();
+  }
+
+  public void testSimilarityFunctionIdentifiers() {
+    // make sure we don't accidentally mess up similarity function identifiers by re-ordering their
+    // enumerators
+    assertEquals(0, VectorSimilarityFunction.EUCLIDEAN.ordinal());
+    assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
+    assertEquals(2, VectorSimilarityFunction.values().length);
   }
 }

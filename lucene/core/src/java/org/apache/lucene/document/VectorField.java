@@ -17,8 +17,8 @@
 
 package org.apache.lucene.document;
 
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.util.hnsw.VectorSimilarityFunction;
 
 /**
  * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
@@ -34,7 +34,7 @@ import org.apache.lucene.index.VectorValues;
  */
 public class VectorField extends Field {
 
-  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
+  private static FieldType createType(float[] v) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -46,11 +46,8 @@ public class VectorField extends Field {
       throw new IllegalArgumentException(
           "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
     }
-    if (similarityFunction == null) {
-      throw new IllegalArgumentException("similarity function must not be null");
-    }
     FieldType type = new FieldType();
-    type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
+    type.setVectorDimensions(dimension);
     type.freeze();
     return type;
   }
@@ -65,32 +62,14 @@ public class VectorField extends Field {
   public static FieldType createFieldType(
       int dimension, VectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
-    type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
+    type.setVectorDimensions(dimension);
     type.freeze();
     return type;
   }
 
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
-   * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some strategies (notably dot-product) require values to be unit-length, which can be enforced
-   * using VectorUtil.l2Normalize(float[]).
-   *
-   * @param name field name
-   * @param vector value
-   * @param similarityFunction a function defining vector proximity.
-   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
-   *     dimension &gt; 1024.
-   */
-  public VectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    super(name, createType(vector, similarityFunction));
-    fieldsData = vector;
-  }
-
-  /**
-   * Creates a numeric vector field with the default EUCLIDEAN_HNSW (L2) similarity. Fields are
-   * single-valued: each document has either one value or no value. Vectors of a single field share
-   * the same dimension and similarity function.
+   * no value. Vectors of a single field share the same dimension.
    *
    * @param name field name
    * @param vector value
@@ -98,7 +77,8 @@ public class VectorField extends Field {
    *     dimension &gt; 1024.
    */
   public VectorField(String name, float[] vector) {
-    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
+    super(name, createType(vector));
+    fieldsData = vector;
   }
 
   /**

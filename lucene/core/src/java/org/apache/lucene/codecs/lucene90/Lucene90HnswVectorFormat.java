@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.VectorWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.VectorSimilarityFunction;
 
 /**
  * Lucene 9.0 vector format, which encodes numeric vector values and an optional associated graph
@@ -77,8 +78,16 @@ public final class Lucene90HnswVectorFormat extends VectorFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
+  public static final VectorSimilarityFunction DEFAULT_SIMILARITY_FUNCTION =
+      VectorSimilarityFunction.EUCLIDEAN;
   public static final int DEFAULT_MAX_CONN = 16;
   public static final int DEFAULT_BEAM_WIDTH = 16;
+
+  /**
+   * Controls what defines whether two vectors are "close" to each other or not. Defaults to {@link
+   * VectorSimilarityFunction#EUCLIDEAN}. See {@link HnswGraph} for more details.
+   */
+  private final VectorSimilarityFunction similarityFunction;
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
@@ -95,19 +104,22 @@ public final class Lucene90HnswVectorFormat extends VectorFormat {
 
   public Lucene90HnswVectorFormat() {
     super("Lucene90HnswVectorFormat");
+    this.similarityFunction = DEFAULT_SIMILARITY_FUNCTION;
     this.maxConn = DEFAULT_MAX_CONN;
     this.beamWidth = DEFAULT_BEAM_WIDTH;
   }
 
-  public Lucene90HnswVectorFormat(int maxConn, int beamWidth) {
+  public Lucene90HnswVectorFormat(
+      VectorSimilarityFunction similarityFunction, int maxConn, int beamWidth) {
     super("Lucene90HnswVectorFormat");
+    this.similarityFunction = similarityFunction;
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
   }
 
   @Override
   public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90HnswVectorWriter(state, maxConn, beamWidth);
+    return new Lucene90HnswVectorWriter(state, similarityFunction, maxConn, beamWidth);
   }
 
   @Override

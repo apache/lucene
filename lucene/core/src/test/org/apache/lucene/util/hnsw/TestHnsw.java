@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -41,7 +42,6 @@ import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
@@ -63,8 +63,7 @@ public class TestHnsw extends LuceneTestCase {
     int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();
     VectorSimilarityFunction similarityFunction =
-        VectorSimilarityFunction.values()[
-            random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
+        RandomPicks.randomFrom(random(), VectorSimilarityFunction.values());
     HnswGraphBuilder builder =
         new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors);
@@ -81,7 +80,7 @@ public class TestHnsw extends LuceneTestCase {
                   new Lucene90Codec() {
                     @Override
                     public VectorFormat getVectorFormatForField(String field) {
-                      return new Lucene90HnswVectorFormat(maxConn, beamWidth);
+                      return new Lucene90HnswVectorFormat(similarityFunction, maxConn, beamWidth);
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {

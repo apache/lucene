@@ -682,7 +682,6 @@ final class IndexingChain implements Accountable {
                 s.pointIndexDimensionCount,
                 s.pointNumBytes,
                 s.vectorDimension,
-                s.vectorSimilarityFunction,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
     pf.setFieldInfo(fi);
     if (fi.getIndexOptions() != IndexOptions.NONE) {
@@ -825,7 +824,7 @@ final class IndexingChain implements Accountable {
           fieldType.pointNumBytes());
     }
     if (fieldType.vectorDimension() != 0) {
-      schema.setVectors(fieldType.vectorSimilarityFunction(), fieldType.vectorDimension());
+      schema.setVectors(fieldType.vectorDimension());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1327,7 +1326,6 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
-    private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1382,12 +1380,11 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setVectors(VectorSimilarityFunction similarityFunction, int dimension) {
+    void setVectors(int dimension) {
       if (vectorDimension == 0) {
         this.vectorDimension = dimension;
-        this.vectorSimilarityFunction = similarityFunction;
       } else {
-        assertSame(vectorSimilarityFunction == similarityFunction && vectorDimension == dimension);
+        assertSame(vectorDimension == dimension);
       }
     }
 
@@ -1402,7 +1399,6 @@ final class IndexingChain implements Accountable {
       pointIndexDimensionCount = 0;
       pointNumBytes = 0;
       vectorDimension = 0;
-      vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     }
 
     void assertSameSchema(FieldInfo fi) {
@@ -1415,8 +1411,7 @@ final class IndexingChain implements Accountable {
               && pointDimensionCount == fi.getPointDimensionCount()
               && pointIndexDimensionCount == fi.getPointIndexDimensionCount()
               && pointNumBytes == fi.getPointNumBytes()
-              && vectorDimension == fi.getVectorDimension()
-              && vectorSimilarityFunction == fi.getVectorSimilarityFunction());
+              && vectorDimension == fi.getVectorDimension());
     }
   }
 }

@@ -53,7 +53,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -87,6 +86,7 @@ public class KnnGraphTester {
   private boolean reindex;
   private boolean forceMerge;
   private int reindexTimeMsec;
+  private VectorSimilarityFunction similarityFunction;
   private int beamWidth;
   private int maxConn;
 
@@ -133,6 +133,12 @@ public class KnnGraphTester {
             throw new IllegalArgumentException("-fanout requires a following number");
           }
           fanout = Integer.parseInt(args[++iarg]);
+          break;
+        case "-similarityFunction":
+          if (iarg == args.length - 1) {
+            throw new IllegalArgumentException("-similarityFunction requires a following string");
+          }
+          similarityFunction = VectorSimilarityFunction.valueOf(args[++iarg]);
           break;
         case "-beamWidthIndex":
           if (iarg == args.length - 1) {
@@ -574,7 +580,7 @@ public class KnnGraphTester {
         new Lucene90Codec() {
           @Override
           public VectorFormat getVectorFormatForField(String field) {
-            return new Lucene90HnswVectorFormat(maxConn, beamWidth);
+            return new Lucene90HnswVectorFormat(similarityFunction, maxConn, beamWidth);
           }
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
