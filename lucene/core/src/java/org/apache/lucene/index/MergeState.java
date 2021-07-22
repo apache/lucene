@@ -45,10 +45,6 @@ public class MergeState {
   /** Maps document IDs from old segments to document IDs in the new segment */
   public final DocMap[] docMaps;
 
-  // Only used by IW when it must remap deletes that arrived against the merging segments while a
-  // merge was running:
-  final DocMap[] leafDocMaps;
-
   /** {@link SegmentInfo} of the newly merged segment. */
   public final SegmentInfo segmentInfo;
 
@@ -99,7 +95,6 @@ public class MergeState {
 
     final Sort indexSort = segmentInfo.getIndexSort();
     int numReaders = originalReaders.size();
-    leafDocMaps = new DocMap[numReaders];
     List<CodecReader> readers = maybeSortReaders(originalReaders, segmentInfo);
 
     maxDocs = new int[numReaders];
@@ -226,20 +221,7 @@ public class MergeState {
     }
   }
 
-  private List<CodecReader> maybeSortReaders(
-      List<CodecReader> originalReaders, SegmentInfo segmentInfo) throws IOException {
-
-    // Default to identity:
-    for (int i = 0; i < originalReaders.size(); i++) {
-      leafDocMaps[i] =
-          new DocMap() {
-            @Override
-            public int get(int docID) {
-              return docID;
-            }
-          };
-    }
-
+  private List<CodecReader> maybeSortReaders(List<CodecReader> originalReaders, SegmentInfo segmentInfo) {
     Sort indexSort = segmentInfo.getIndexSort();
     if (indexSort == null) {
       return originalReaders;
