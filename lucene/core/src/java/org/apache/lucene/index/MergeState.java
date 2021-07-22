@@ -221,7 +221,8 @@ public class MergeState {
     }
   }
 
-  private List<CodecReader> maybeSortReaders(List<CodecReader> originalReaders, SegmentInfo segmentInfo) {
+  private List<CodecReader> maybeSortReaders(
+      List<CodecReader> originalReaders, SegmentInfo segmentInfo) {
     Sort indexSort = segmentInfo.getIndexSort();
     if (indexSort == null) {
       return originalReaders;
