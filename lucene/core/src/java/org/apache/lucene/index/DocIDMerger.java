@@ -136,8 +136,6 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
     private final List<T> subs;
     private T current;
     private final PriorityQueue<T> queue;
-    // We cache the next doc ID of the queue, which seems to help with performance.
-    private int queueNextMappedDoc;
 
     private SortedDocIDMerger(List<T> subs, int maxCount) throws IOException {
       if (maxCount <= 1) {
@@ -172,29 +170,22 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
           queue.add(sub);
         } // else all docs in this sub were deleted; do not add it to the queue!
       }
-      queueNextMappedDoc = queue.size() == 0 ? NO_MORE_DOCS : queue.top().mappedDocID;
     }
 
     @Override
     public T next() throws IOException {
       int nextDoc = current.nextMappedDoc();
-      // the below condition is unlikely when the index sort is on a low-cardinality field
-      if (nextDoc >= queueNextMappedDoc) {
-        if (nextDoc == NO_MORE_DOCS) {
-          if (queue.size() == 0) {
-            current = null;
-            return null;
-          } else {
-            current = queue.pop();
-            queueNextMappedDoc = queue.size() == 0 ? NO_MORE_DOCS : queue.top().mappedDocID;
-          }
+      if (nextDoc == NO_MORE_DOCS) {
+        if (queue.size() == 0) {
+          current = null;
+          return null;
         } else {
-          assert queue.size() > 0; // otherwise otherNextDoc would be NO_MORE_DOCS
-          T newCurrent = queue.top();
-          queue.updateTop(current);
-          current = newCurrent;
-          queueNextMappedDoc = queue.size() == 0 ? NO_MORE_DOCS : queue.top().mappedDocID;
+          current = queue.pop();
         }
+      } else if (queue.size() > 0 && nextDoc > queue.top().mappedDocID) {
+        T newCurrent = queue.top();
+        queue.updateTop(current);
+        current = newCurrent;
       }
 
       return current;
