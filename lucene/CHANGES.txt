@@ -236,6 +236,9 @@ Improvements
 * LUCENE-9535: Improve DocumentsWriterPerThreadPool to prefer larger instances.
   (Adrien Grand)
 
+* LUCENE-10000: MultiCollectorManager now has parity with MultiCollector with respect to how it
+  handles CollectionTerminationException and setMinCompetitiveScore calls. (Greg Miller)
+
 * LUCENE-10019: Align file starts in CFS files to have proper alignment (8 bytes)
   (Uwe Schinder)
 

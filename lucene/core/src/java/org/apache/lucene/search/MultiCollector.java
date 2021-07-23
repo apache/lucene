@@ -135,6 +135,11 @@ public class MultiCollector implements Collector {
     }
   }
 
+  /** Provides access to the wrapped {@code Collector}s for advanced use-cases */
+  Collector[] getCollectors() {
+    return collectors;
+  }
+
   private static class MultiLeafCollector implements LeafCollector {
 
     private final boolean cacheScores;
