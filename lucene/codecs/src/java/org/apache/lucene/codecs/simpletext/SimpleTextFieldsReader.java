@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
@@ -245,6 +246,9 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public ImpactsEnum impacts(int flags) throws IOException {
+      if (docFreq > SimpleTextSkipWriter.BLOCK_SIZE) {
+        return new SimpleTextImpactsDocsEnum(docsStart, postings(null, flags), docFreq);
+      }
       return new SlowImpactsEnum(postings(null, flags));
     }
   }
@@ -341,7 +345,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
         } else if (StringHelper.startsWith(scratch.get(), PAYLOAD)) {
           // skip
         } else {
-          assert StringHelper.startsWith(scratch.get(), TERM)
+          assert StringHelper.startsWith(scratch.get(), SimpleTextSkipWriter.SKIP_LIST)
+                  || StringHelper.startsWith(scratch.get(), TERM)
                   || StringHelper.startsWith(scratch.get(), FIELD)
                   || StringHelper.startsWith(scratch.get(), END)
               : "scratch=" + scratch.get().utf8ToString();
@@ -747,4 +752,76 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
   @Override
   public void checkIntegrity() throws IOException {}
+
+  private class SimpleTextImpactsDocsEnum extends ImpactsEnum {
+
+    private PostingsEnum delegate;
+    private SimpleTextSkipReader skipReader;
+    private int nextSkipDoc = -1;
+
+    SimpleTextImpactsDocsEnum(long docStartFP, PostingsEnum postingsEnum, int docFreq)
+        throws IOException {
+      skipReader =
+          new SimpleTextSkipReader(SimpleTextFieldsReader.this.in.clone(), docStartFP, docFreq);
+      this.delegate = postingsEnum;
+    }
+
+    @Override
+    public void advanceShallow(int target) throws IOException {
+      if (target > nextSkipDoc) {
+        int numSkipped = skipReader.skipTo(target) + 1;
+        nextSkipDoc = skipReader.getNextSkipDoc();
+      }
+    }
+
+    @Override
+    public Impacts getImpacts() throws IOException {
+      return skipReader.getImpacts();
+    }
+
+    @Override
+    public int freq() throws IOException {
+      return delegate.freq();
+    }
+
+    @Override
+    public int nextPosition() throws IOException {
+      return delegate.nextPosition();
+    }
+
+    @Override
+    public int startOffset() throws IOException {
+      return delegate.startOffset();
+    }
+
+    @Override
+    public int endOffset() throws IOException {
+      return delegate.endOffset();
+    }
+
+    @Override
+    public BytesRef getPayload() throws IOException {
+      return delegate.getPayload();
+    }
+
+    @Override
+    public int docID() {
+      return delegate.docID();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return delegate.nextDoc();
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      return delegate.advance(target);
+    }
+
+    @Override
+    public long cost() {
+      return delegate.cost();
+    }
+  }
 }

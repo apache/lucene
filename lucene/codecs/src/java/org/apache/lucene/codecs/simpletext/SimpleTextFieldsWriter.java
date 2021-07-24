@@ -17,11 +17,13 @@
 package org.apache.lucene.codecs.simpletext;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
@@ -36,6 +38,12 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
   private final SegmentWriteState writeState;
   final String segment;
+
+  /** for write skip data. */
+  private int docCount = 0;
+
+  private final SimpleTextSkipWriter skipWriter;
+  private final CompetitiveImpactAccumulator competitiveImpactAccumulator = new CompetitiveImpactAccumulator();
 
   static final BytesRef END = new BytesRef("END");
   static final BytesRef FIELD = new BytesRef("field ");
@@ -54,14 +62,15 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
     segment = writeState.segmentInfo.name;
     out = writeState.directory.createOutput(fileName, writeState.context);
     this.writeState = writeState;
+    this.skipWriter = new SimpleTextSkipWriter(writeState);
   }
 
   @Override
   public void write(Fields fields, NormsProducer norms) throws IOException {
-    write(writeState.fieldInfos, fields);
+    write(writeState.fieldInfos, fields, norms);
   }
 
-  public void write(FieldInfos fieldInfos, Fields fields) throws IOException {
+  public void write(FieldInfos fieldInfos, Fields fields, NormsProducer normsProducer) throws IOException {
 
     // for each field
     for (String field : fields) {
@@ -78,6 +87,9 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
       boolean hasFreqs = terms.hasFreqs();
       boolean hasPayloads = fieldInfo.hasPayloads();
       boolean hasOffsets = terms.hasOffsets();
+      boolean fieldHasNorms = fieldInfo.hasNorms();
+
+      NumericDocValues norms = normsProducer.getNorms(fieldInfo);
 
       int flags = 0;
       if (hasPositions) {
@@ -103,6 +115,9 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
         if (term == null) {
           break;
         }
+        docCount = 0;
+        skipWriter.resetSkip();
+        competitiveImpactAccumulator.clear();
 
         postingsEnum = termsEnum.postings(postingsEnum, flags);
 
@@ -135,6 +150,13 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
             write(term);
             newline();
             wroteTerm = true;
+          }
+
+          docCount++;
+          if (docCount != 0 && docCount % SimpleTextSkipWriter.BLOCK_SIZE == 0) {
+            skipWriter.bufferSkip(
+                doc, out.getFilePointer(), docCount, competitiveImpactAccumulator);
+            competitiveImpactAccumulator.clear();
           }
 
           write(DOC);
@@ -183,7 +205,13 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
                 }
               }
             }
+            competitiveImpactAccumulator.add(freq, getNorm(fieldHasNorms, doc, norms));
+          } else {
+            competitiveImpactAccumulator.add(1, getNorm(fieldHasNorms, doc, norms));
           }
+        }
+        if (docCount >= SimpleTextSkipWriter.BLOCK_SIZE) {
+          skipWriter.writeSkip(out);
         }
       }
     }
@@ -213,5 +241,16 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
         out = null;
       }
     }
+  }
+
+  private long getNorm(boolean fieldHasNorms, int doc, NumericDocValues norms) throws IOException {
+    if (!fieldHasNorms) {
+      return 1L;
+    }
+    boolean found = norms.advanceExact(doc);
+    if (found == false) {
+      return 1L;
+    }
+    return norms.longValue();
   }
 }
