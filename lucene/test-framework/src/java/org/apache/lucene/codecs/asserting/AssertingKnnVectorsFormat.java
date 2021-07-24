@@ -18,9 +18,9 @@
 package org.apache.lucene.codecs.asserting;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -28,29 +28,29 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.TestUtil;
 
-/** Wraps the default VectorFormat and provides additional assertions. */
-public class AssertingVectorFormat extends VectorFormat {
+/** Wraps the default KnnVectorsFormat and provides additional assertions. */
+public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
-  private final VectorFormat delegate = TestUtil.getDefaultVectorFormat();
+  private final KnnVectorsFormat delegate = TestUtil.getDefaultKnnVectorsFormat();
 
-  public AssertingVectorFormat() {
+  public AssertingKnnVectorsFormat() {
     super("Asserting");
   }
 
   @Override
-  public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new AssertingVectorWriter(delegate.fieldsWriter(state));
+  public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new AssertingKnnVectorsWriter(delegate.fieldsWriter(state));
   }
 
   @Override
-  public VectorReader fieldsReader(SegmentReadState state) throws IOException {
-    return new AssertingVectorReader(delegate.fieldsReader(state));
+  public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new AssertingKnnVectorsReader(delegate.fieldsReader(state));
   }
 
-  static class AssertingVectorWriter extends VectorWriter {
-    final VectorWriter delegate;
+  static class AssertingKnnVectorsWriter extends KnnVectorsWriter {
+    final KnnVectorsWriter delegate;
 
-    AssertingVectorWriter(VectorWriter delegate) {
+    AssertingKnnVectorsWriter(KnnVectorsWriter delegate) {
       assert delegate != null;
       this.delegate = delegate;
     }
@@ -73,10 +73,10 @@ public class AssertingVectorFormat extends VectorFormat {
     }
   }
 
-  static class AssertingVectorReader extends VectorReader {
-    final VectorReader delegate;
+  static class AssertingKnnVectorsReader extends KnnVectorsReader {
+    final KnnVectorsReader delegate;
 
-    AssertingVectorReader(VectorReader delegate) {
+    AssertingKnnVectorsReader(KnnVectorsReader delegate) {
       assert delegate != null;
       this.delegate = delegate;
     }

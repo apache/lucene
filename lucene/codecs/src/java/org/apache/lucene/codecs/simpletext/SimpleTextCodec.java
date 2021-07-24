@@ -20,6 +20,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.PointsFormat;
@@ -27,7 +28,6 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.VectorFormat;
 
 /**
  * plain text index format.
@@ -47,7 +47,7 @@ public final class SimpleTextCodec extends Codec {
   private final DocValuesFormat dvFormat = new SimpleTextDocValuesFormat();
   private final CompoundFormat compoundFormat = new SimpleTextCompoundFormat();
   private final PointsFormat pointsFormat = new SimpleTextPointsFormat();
-  private final VectorFormat vectorFormat = new SimpleTextVectorFormat();
+  private final KnnVectorsFormat knnVectorsFormat = new SimpleTextKnnVectorsFormat();
 
   public SimpleTextCodec() {
     super("SimpleText");
@@ -104,7 +104,7 @@ public final class SimpleTextCodec extends Codec {
   }
 
   @Override
-  public VectorFormat vectorFormat() {
-    return vectorFormat;
+  public KnnVectorsFormat knnVectorsFormat() {
+    return knnVectorsFormat;
   }
 }

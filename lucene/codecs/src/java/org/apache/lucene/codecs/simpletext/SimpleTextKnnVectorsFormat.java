@@ -17,9 +17,9 @@
 package org.apache.lucene.codecs.simpletext;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.VectorFormat;
-import org.apache.lucene.codecs.VectorReader;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
@@ -31,20 +31,20 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-public final class SimpleTextVectorFormat extends VectorFormat {
+public final class SimpleTextKnnVectorsFormat extends KnnVectorsFormat {
 
-  public SimpleTextVectorFormat() {
-    super("SimpleTextVectorFormat");
+  public SimpleTextKnnVectorsFormat() {
+    super("SimpleTextKnnVectorsFormat");
   }
 
   @Override
-  public VectorWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new SimpleTextVectorWriter(state);
+  public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new SimpleTextKnnVectorsWriter(state);
   }
 
   @Override
-  public VectorReader fieldsReader(SegmentReadState state) throws IOException {
-    return new SimpleTextVectorReader(state);
+  public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new SimpleTextKnnVectorsReader(state);
   }
 
   /** Extension of vectors data file */

@@ -35,14 +35,14 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
-import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.VectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -240,7 +240,7 @@ public class KnnGraphTester {
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leafReader = context.reader();
         KnnGraphValues knnValues =
-            ((Lucene90HnswVectorReader) ((CodecReader) leafReader).getVectorReader())
+            ((Lucene90HnswVectorsReader) ((CodecReader) leafReader).getVectorReader())
                 .getGraphValues(KNN_FIELD);
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());
@@ -573,15 +573,15 @@ public class KnnGraphTester {
     iwc.setCodec(
         new Lucene90Codec() {
           @Override
-          public VectorFormat getVectorFormatForField(String field) {
-            return new Lucene90HnswVectorFormat(maxConn, beamWidth);
+          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+            return new Lucene90HnswVectorsFormat(maxConn, beamWidth);
           }
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setRAMBufferSizeMB(1994d);
     // iwc.setMaxBufferedDocs(10000);
 
-    FieldType fieldType = VectorField.createFieldType(dim, VectorSimilarityFunction.DOT_PRODUCT);
+    FieldType fieldType = KnnVectorField.createFieldType(dim, VectorSimilarityFunction.DOT_PRODUCT);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
@@ -606,7 +606,7 @@ public class KnnGraphTester {
             vectors.get(vector);
             Document doc = new Document();
             // System.out.println("vector=" + vector[0] + "," + vector[1] + "...");
-            doc.add(new VectorField(KNN_FIELD, vector, fieldType));
+            doc.add(new KnnVectorField(KNN_FIELD, vector, fieldType));
             doc.add(new StoredField(ID_FIELD, i));
             iw.addDocument(doc);
           }

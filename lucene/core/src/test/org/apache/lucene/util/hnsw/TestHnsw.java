@@ -24,14 +24,14 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.codecs.VectorFormat;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
-import org.apache.lucene.codecs.perfield.PerFieldVectorFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.VectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -80,8 +80,8 @@ public class TestHnsw extends LuceneTestCase {
               .setCodec(
                   new Lucene90Codec() {
                     @Override
-                    public VectorFormat getVectorFormatForField(String field) {
-                      return new Lucene90HnswVectorFormat(maxConn, beamWidth);
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      return new Lucene90HnswVectorsFormat(maxConn, beamWidth);
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
@@ -92,7 +92,7 @@ public class TestHnsw extends LuceneTestCase {
             indexedDoc++;
           }
           Document doc = new Document();
-          doc.add(new VectorField("field", v2.vectorValue()));
+          doc.add(new KnnVectorField("field", v2.vectorValue()));
           doc.add(new StoredField("id", v2.docID()));
           iw.addDocument(doc);
           nVec++;
@@ -108,8 +108,8 @@ public class TestHnsw extends LuceneTestCase {
           assertEquals(indexedDoc, ctx.reader().numDocs());
           assertVectorsEqual(v3, values);
           KnnGraphValues graphValues =
-              ((Lucene90HnswVectorReader)
-                      ((PerFieldVectorFormat.FieldsReader)
+              ((Lucene90HnswVectorsReader)
+                      ((PerFieldKnnVectorsFormat.FieldsReader)
                               ((CodecReader) ctx.reader()).getVectorReader())
                           .getFieldReader("field"))
                   .getGraphValues("field");

@@ -17,12 +17,13 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
- * org.apache.lucene.document.VectorField}.
+ * KnnVectorField}.
  *
  * @lucene.experimental
  */
