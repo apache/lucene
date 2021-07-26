@@ -551,6 +551,10 @@ public class RegExp {
     return new RegExp(flags, kind, null, null, s, c, min, max, digits, from, to);
   }
 
+  public Automaton toNFA() {
+    return toAutomaton(null, null, 0);
+  }
+
   /**
    * Constructs new <code>Automaton</code> from this <code>RegExp</code>. Same as <code>
    * toAutomaton(null)</code> (empty automaton map).
@@ -691,7 +695,7 @@ public class RegExp {
       case REGEXP_REPEAT_MIN:
         a = exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit);
         int minNumStates = (a.getNumStates() - 1) * min;
-        if (minNumStates > determinizeWorkLimit) {
+        if (determinizeWorkLimit > 0 && minNumStates > determinizeWorkLimit) {
           throw new TooComplexToDeterminizeException(a, minNumStates);
         }
         a = Operations.repeat(a, min);
@@ -700,7 +704,7 @@ public class RegExp {
       case REGEXP_REPEAT_MINMAX:
         a = exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit);
         int minMaxNumStates = (a.getNumStates() - 1) * max;
-        if (minMaxNumStates > determinizeWorkLimit) {
+        if (determinizeWorkLimit > 0 && minMaxNumStates > determinizeWorkLimit) {
           throw new TooComplexToDeterminizeException(a, minMaxNumStates);
         }
         a = Operations.repeat(a, min, max);
