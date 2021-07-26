@@ -551,6 +551,12 @@ public class RegExp {
     return new RegExp(flags, kind, null, null, s, c, min, max, digits, from, to);
   }
 
+  /**
+   * Return an <code>Automaton</code> from this <code>RegExp</code> that will skip the determinize
+   * and minimize step
+   *
+   * @return {@link Automaton} most likely non-deterministic
+   */
   public Automaton toNFA() {
     return toAutomaton(null, null, 0);
   }

@@ -26,11 +26,15 @@ import org.apache.lucene.util.hppc.BitMixer;
 /**
  * A RunAutomaton that does not require DFA, it will determinize and memorize the generated DFA
  * state along with the run
+ *
+ * <p>implemented based on: https://swtch.com/~rsc/regexp/regexp1.html
  */
 public class NFARunAutomaton {
 
+  /** state ordinal of "no such state" */
+  public static final int MISSING = -1;
+
   private static final int NOT_COMPUTED = -2;
-  private static final int MISSING = -1;
 
   private final Automaton automaton;
   private final int[] points;
@@ -38,10 +42,23 @@ public class NFARunAutomaton {
   private DState[] dStates;
   private final int alphabetSize;
 
+  /**
+   * Constructor, assuming alphabet size is the whole codepoint space
+   *
+   * @param automaton incoming automaton, should be NFA, for DFA please use {@link RunAutomaton} for
+   *     better efficiency
+   */
   public NFARunAutomaton(Automaton automaton) {
     this(automaton, Character.MAX_CODE_POINT);
   }
 
+  /**
+   * Constructor
+   *
+   * @param automaton incoming automaton, should be NFA, for DFA please use {@link RunAutomaton} *
+   *     for better efficiency
+   * @param alphabetSize alphabet size
+   */
   public NFARunAutomaton(Automaton automaton, int alphabetSize) {
     this.automaton = automaton;
     points = automaton.getStartPoints();
@@ -50,12 +67,26 @@ public class NFARunAutomaton {
     findDState(new DState(new int[] {0}));
   }
 
+  /**
+   * For a given state and an incoming character (codepoint), return the next state
+   *
+   * @param state incoming state, should either be 0 or some state that is returned previously by
+   *     this function
+   * @param c codepoint
+   * @return the next state or {@link #MISSING} if the transition doesn't exist
+   */
   public int step(int state, int c) {
     assert dStates[state] != null;
     return step(dStates[state], c);
   }
 
-  public boolean run(int[] s) {
+  /**
+   * Run through a given codepoint array, return accepted or not, should only be used in test
+   *
+   * @param s String represented by an int array
+   * @return accept or not
+   */
+  boolean run(int[] s) {
     int p = 0;
     for (int c : s) {
       p = step(p, c);
@@ -64,6 +95,11 @@ public class NFARunAutomaton {
     return dStates[p].isAccept;
   }
 
+  /**
+   * From an existing DFA state, step to next DFA state given character c if the transition is
+   * previously tried then this operation will just use the cached result, otherwise it will call
+   * {@link #step(int[], int)} to get the next state and cache the result
+   */
   private int step(DState dState, int c) {
     int charClass = getCharClass(c);
     if (dState.nextState(charClass) == NOT_COMPUTED) {
@@ -73,6 +109,10 @@ public class NFARunAutomaton {
     return dState.nextState(charClass);
   }
 
+  /**
+   * given a list of NFA states and a character c, compute the output list of NFA state which is
+   * wrapped as a DFA state
+   */
   private DState step(int[] nfaStates, int c) {
     Transition transition = new Transition();
     StateSet stateSet = new StateSet(5); // fork IntHashSet from hppc instead?
