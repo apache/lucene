@@ -62,7 +62,6 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Version;
 
 /**
  * {@link TaxonomyWriter} which uses a {@link Directory} to store the taxonomy information on disk,
@@ -167,8 +166,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
       /* a previous commit exists, so check the version of the last commit */
-      useOlderStoredFieldIndex =
-          !infos.getMinSegmentLuceneVersion().onOrAfter(Version.LUCENE_9_0_0);
+      useOlderStoredFieldIndex = infos.getIndexCreatedVersionMajor() <= 8;
 
       Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
