@@ -22,7 +22,6 @@ import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
-import org.junit.Assert;
 
 public class TestScoreCachingWrappingScorer extends LuceneTestCase {
 
@@ -174,11 +173,11 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
 
     // Wrapping the first time should produce a different instance:
     Scorable wrapped = ScoreCachingWrappingScorer.wrap(base);
-    Assert.assertNotEquals(base, wrapped);
+    assertNotEquals(base, wrapped);
 
     // But if we try to wrap an instance of ScoreCachingWrappingScorer, it shouldn't unnecessarily
     // wrap again:
     Scorable doubleWrapped = ScoreCachingWrappingScorer.wrap(wrapped);
-    Assert.assertEquals(wrapped, doubleWrapped);
+    assertEquals(wrapped, doubleWrapped);
   }
 }

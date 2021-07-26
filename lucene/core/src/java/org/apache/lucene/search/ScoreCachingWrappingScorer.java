@@ -36,8 +36,9 @@ public final class ScoreCachingWrappingScorer extends Scorable {
   private final Scorable in;
 
   /**
-   * Wraps the provided {@link Scorable} unless it's already an instance of
-   * {@code ScoreCachingWrappingScorer}, in which case it will just return the provided instance.
+   * Wraps the provided {@link Scorable} unless it's already an instance of {@code
+   * ScoreCachingWrappingScorer}, in which case it will just return the provided instance.
+   *
    * @param scorer Underlying {@code Scorable} to wrap
    * @return Instance of {@code ScoreCachingWrappingScorer} wrapping the underlying {@code scorer}
    */
