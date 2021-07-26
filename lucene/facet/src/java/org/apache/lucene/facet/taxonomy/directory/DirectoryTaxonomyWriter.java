@@ -92,6 +92,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   private final Directory dir;
   private final IndexWriter indexWriter;
+  private final boolean useOlderStoredFieldIndex;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
 
@@ -124,12 +125,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   private volatile boolean isClosed = false;
   private volatile TaxonomyIndexArrays taxoArrays;
   private volatile int nextID;
-
-  /** Reads the commit data from a Directory. */
-  private static Map<String, String> readCommitData(Directory dir) throws IOException {
-    SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
-    return infos.getUserData();
-  }
 
   /**
    * Construct a Taxonomy writer.
@@ -165,9 +160,17 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     openMode = config.getOpenMode();
     if (!DirectoryReader.indexExists(directory)) {
       indexEpoch = 1;
+      // no commit exists so we can safely use the new BinaryDocValues field
+      useOlderStoredFieldIndex = false;
     } else {
       String epochStr = null;
-      Map<String, String> commitData = readCommitData(directory);
+
+      SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+      /* a previous commit exists, so check the version of the last commit */
+      useOlderStoredFieldIndex =
+          !infos.getMinSegmentLuceneVersion().onOrAfter(Version.LUCENE_9_0_0);
+
+      Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
         epochStr = commitData.get(INDEX_EPOCH);
       }
@@ -477,16 +480,11 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
 
-    boolean commitExists = indexWriter.getLiveCommitData().iterator().hasNext();
-    /* no commits so this is a fresh index, or the old index was built using a Lucene 9 or greater version */
-    if ((commitExists == false)
-        || (SegmentInfos.readLatestCommit(dir)
-            .getMinSegmentLuceneVersion()
-            .onOrAfter(Version.LUCENE_9_0_0))) {
-      /* Lucene 9 introduces BinaryDocValuesField for storing taxonomy categories */
-      d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
-    } else {
+    if (useOlderStoredFieldIndex) {
       fullPathField = new StringField(Consts.FULL, fieldPath, Field.Store.YES);
+    } else {
+      /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
+      d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
     }
 
     d.add(fullPathField);
