@@ -62,6 +62,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Version;
 
 /**
  * {@link TaxonomyWriter} which uses a {@link Directory} to store the taxonomy information on disk,
@@ -475,8 +476,20 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
+
+    boolean commitExists = indexWriter.getLiveCommitData().iterator().hasNext();
+    /* no commits so this is a fresh index, or the old index was built using a Lucene 9 or greater version */
+    if ((commitExists == false)
+        || (SegmentInfos.readLatestCommit(dir)
+            .getMinSegmentLuceneVersion()
+            .onOrAfter(Version.LUCENE_9_0_0))) {
+      /* Lucene 9 introduces BinaryDocValuesField for storing taxonomy categories */
+      d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
+    } else {
+      fullPathField = new StringField(Consts.FULL, fieldPath, Field.Store.YES);
+    }
+
     d.add(fullPathField);
-    d.add(new BinaryDocValuesField(Consts.FULL_BINARY, new BytesRef(fieldPath)));
 
     // Note that we do no pass an Analyzer here because the fields that are
     // added to the Document are untokenized or contains their own TokenStream.

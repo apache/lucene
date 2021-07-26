@@ -21,7 +21,6 @@ import org.apache.lucene.util.BytesRef;
 /** @lucene.experimental */
 abstract class Consts {
   static final String FULL = "$full_path$";
-  static final String FULL_BINARY = "$full_path_binary$";
   static final String FIELD_PAYLOADS = "$payloads$";
   static final String PAYLOAD_PARENT = "p";
   static final BytesRef PAYLOAD_PARENT_BYTES_REF = new BytesRef(PAYLOAD_PARENT);
