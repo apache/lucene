@@ -152,7 +152,7 @@ class DrillSidewaysScorer extends BulkScorer {
     // if (DEBUG) {
     //  System.out.println("  doQueryFirstScoring");
     // }
-    setScorer(collector, new ScoreCachingWrappingScorer(baseScorer));
+    setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
 
     int docID = baseScorer.docID();
 

@@ -35,7 +35,15 @@ public final class ScoreCachingWrappingScorer extends Scorable {
   private float curScore;
   private final Scorable in;
 
+  public static Scorable wrap(Scorable scorer) {
+    if (scorer instanceof ScoreCachingWrappingScorer) {
+      return scorer;
+    }
+    return new ScoreCachingWrappingScorer(scorer);
+  }
+
   /** Creates a new instance by wrapping the given scorer. */
+  @Deprecated
   public ScoreCachingWrappingScorer(Scorable scorer) {
     this.in = scorer;
   }
