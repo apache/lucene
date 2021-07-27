@@ -157,7 +157,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     // after we opened the writer, and the index is locked, it's safe to check
     // the commit data and read the index epoch
     openMode = config.getOpenMode();
-    if (!DirectoryReader.indexExists(directory)) {
+    if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
       // no commit exists so we can safely use the new BinaryDocValues field
       useOlderStoredFieldIndex = false;
@@ -476,11 +476,11 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     d.add(parentStreamField);
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
-    fullPathField.setStringValue(fieldPath);
 
     if (useOlderStoredFieldIndex) {
       fullPathField = new StringField(Consts.FULL, fieldPath, Field.Store.YES);
     } else {
+      fullPathField.setStringValue(fieldPath);
       /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
       d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
     }
