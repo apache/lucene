@@ -92,7 +92,7 @@ public class TestHnsw extends LuceneTestCase {
             indexedDoc++;
           }
           Document doc = new Document();
-          doc.add(new KnnVectorField("field", v2.vectorValue()));
+          doc.add(new KnnVectorField("field", v2.vectorValue(), similarityFunction));
           doc.add(new StoredField("id", v2.docID()));
           iw.addDocument(doc);
           nVec++;
