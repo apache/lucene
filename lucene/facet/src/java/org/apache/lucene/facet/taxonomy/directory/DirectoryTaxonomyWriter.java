@@ -184,7 +184,11 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
     ft.setOmitNorms(true);
     parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
-    fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
+    if (useOlderStoredFieldIndex) {
+      fullPathField = new StringField(Consts.FULL, "", Field.Store.YES);
+    } else {
+      fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
+    }
 
     nextID = indexWriter.getDocStats().maxDoc;
 
@@ -476,11 +480,9 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     d.add(parentStreamField);
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
+    fullPathField.setStringValue(fieldPath);
 
-    if (useOlderStoredFieldIndex) {
-      fullPathField = new StringField(Consts.FULL, fieldPath, Field.Store.YES);
-    } else {
-      fullPathField.setStringValue(fieldPath);
+    if (useOlderStoredFieldIndex == false) {
       /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
       d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
     }
