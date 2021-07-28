@@ -49,6 +49,7 @@ import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
+import org.apache.lucene.util.Version;
 import org.junit.Test;
 
 @SuppressCodecs("SimpleText") // too slow here
@@ -1317,7 +1318,8 @@ public class TestIndexWriterReader extends LuceneTestCase {
     {
       List<IndexCommit> commits = DirectoryReader.listCommits(dir);
       IndexCommit latestCommit = commits.get(commits.size() - 1);
-      try (DirectoryReader reader = DirectoryReader.open(latestCommit, leafSorter)) {
+      try (DirectoryReader reader =
+          DirectoryReader.open(latestCommit, Version.MIN_SUPPORTED_MAJOR, leafSorter)) {
         assertLeavesSorted(reader, leafSorter);
 
         // add more documents that should be sorted first

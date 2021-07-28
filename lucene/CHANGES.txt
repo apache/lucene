@@ -349,6 +349,10 @@ API Changes
   Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
   Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
 
+* LUCENE-9507: Directory reader open API from indexCommit and minSupportedMajorVersion has
+  been modified to add an extra parameter: a custom comparator for sorting leaf readers
+  (Mayya Sharipova)
+
 New Features
 ---------------------
 (No changes)
