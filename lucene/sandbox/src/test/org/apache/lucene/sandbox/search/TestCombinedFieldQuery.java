@@ -319,6 +319,47 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     dir.close();
   }
 
+  public void testCopyFieldWithSingleField() throws IOException {
+    Directory dir = new MMapDirectory(createTempDir());
+    Similarity similarity = randomCompatibleSimilarity();
+
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setSimilarity(similarity);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int boost = Math.max(1, random().nextInt(5));
+    int numMatch = atLeast(10);
+    for (int i = 0; i < numMatch; i++) {
+      Document doc = new Document();
+      int freqA = random().nextInt(5) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "foo", Store.NO));
+      }
+
+      int freqB = freqA * boost;
+      for (int j = 0; j < freqB; j++) {
+        doc.add(new TextField("b", "foo", Store.NO));
+      }
+
+      w.addDocument(doc);
+    }
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(similarity);
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("a", (float) boost)
+            .addTerm(new BytesRef("foo"))
+            .build();
+
+    checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("b", "foo")));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
   public void testCopyFieldWithMissingFields() throws IOException {
     Directory dir = new MMapDirectory(createTempDir());
     Similarity similarity = randomCompatibleSimilarity();
