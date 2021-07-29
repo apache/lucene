@@ -178,7 +178,6 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
       if (nextDoc == NO_MORE_DOCS) {
         if (queue.size() == 0) {
           current = null;
-          return null;
         } else {
           current = queue.pop();
         }
