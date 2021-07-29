@@ -393,6 +393,9 @@ Optimizations
 * LUCENE-10022: Rewrite empty DisjunctionMaxQuery to MatchNoDocsQuery.
   (David Harsha via Julie Tibshirani)
 
+* LUCENE-10031: Slightly faster segment merging for sorted indices.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * LUCENE-9988: Fix DrillSideways correctness bug introduced in LUCENE-9944 (Greg Miller)
