@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
-
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 

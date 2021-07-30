@@ -81,8 +81,9 @@ final class DocValuesEncoder {
     if (max - min < 0) {
       // overflow
       min = 0;
-    } else if (min > 0 && min < (max >>> 2) ) {
-      // removing the offset is unlikely going to help save bits per value, yet it makes decoding slower
+    } else if (min > 0 && min < (max >>> 2)) {
+      // removing the offset is unlikely going to help save bits per value, yet it makes decoding
+      // slower
       min = 0;
     }
 
@@ -187,7 +188,6 @@ final class DocValuesEncoder {
         out[0] += first;
         deltaDecode(out);
       }
-
     }
   }
 
