@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
-import java.util.Arrays;
+
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
@@ -25,48 +25,51 @@ final class DocValuesForUtil {
 
   static final int BLOCK_SIZE = Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE;
 
-  private final long[] tmp = new long[BLOCK_SIZE];
+  private final ForUtil forUtil = new ForUtil();
+
+  DocValuesForUtil() {
+    if (BLOCK_SIZE != ForUtil.BLOCK_SIZE) {
+      throw new Error();
+    }
+  }
 
   void encode(long[] in, int bitsPerValue, DataOutput out) throws IOException {
-    final int numValuesPerLong = Long.SIZE / bitsPerValue;
-    final int numLongs = 1 + (BLOCK_SIZE - 1) / numValuesPerLong;
-    Arrays.fill(tmp, 0, numLongs, 0L);
-    int inOffset = 0;
-    for (int shift = 0; shift + bitsPerValue <= Long.SIZE; shift += bitsPerValue) {
-      for (int i = 0; i < numLongs && inOffset + i < BLOCK_SIZE; ++i) {
-        assert bitsPerValue == Long.SIZE || in[inOffset + i] <= ((1L << bitsPerValue) - 1L);
-        tmp[i] |= in[inOffset + i] << shift;
+    if (bitsPerValue <= 24) { // these bpvs are handled efficiently by ForUtil
+      forUtil.encode(in, bitsPerValue, out);
+    } else if (bitsPerValue <= 32) {
+      collapse32(in);
+      for (int i = 0; i < BLOCK_SIZE / 2; ++i) {
+        out.writeLong(in[i]);
       }
-      inOffset += numLongs;
-    }
-    for (int i = 0; i < numLongs; ++i) {
-      out.writeLong(tmp[i]);
+    } else {
+      for (long l : in) {
+        out.writeLong(l);
+      }
     }
   }
 
   void decode(int bitsPerValue, DataInput in, long[] out) throws IOException {
-    if (bitsPerValue > 32) {
+    if (bitsPerValue <= 24) {
+      forUtil.decode(bitsPerValue, in, out);
+    } else if (bitsPerValue <= 32) {
+      in.readLongs(out, 0, BLOCK_SIZE / 2);
+      expand32(out);
+    } else {
       in.readLongs(out, 0, BLOCK_SIZE);
-      return;
-    }
-    final int numValuesPerLong = Long.SIZE / bitsPerValue;
-    final int numLongs = 1 + (BLOCK_SIZE - 1) / numValuesPerLong;
-    in.readLongs(tmp, 0, numLongs);
-    final long mask = (1L << bitsPerValue) - 1L;
-    int outOffset = 0;
-    for (int shift = 0; shift + bitsPerValue <= Long.SIZE; shift += bitsPerValue) {
-      shiftLongs(tmp, Math.min(numLongs, BLOCK_SIZE - outOffset), out, outOffset, shift, mask);
-      outOffset += numLongs;
     }
   }
 
-  /**
-   * The pattern that this shiftLongs method applies is recognized by the C2 compiler, which
-   * generates SIMD instructions for it in order to shift multiple longs at once.
-   */
-  private static void shiftLongs(long[] a, int count, long[] b, int bi, int shift, long mask) {
-    for (int i = 0; i < count; ++i) {
-      b[bi + i] = (a[i] >>> shift) & mask;
+  private static void collapse32(long[] arr) {
+    for (int i = 0; i < 64; ++i) {
+      arr[i] = (arr[i] << 32) | arr[64 + i];
+    }
+  }
+
+  private static void expand32(long[] arr) {
+    for (int i = 0; i < 64; ++i) {
+      long l = arr[i];
+      arr[i] = l >>> 32;
+      arr[64 + i] = l & 0xFFFFFFFFL;
     }
   }
 }

@@ -59,8 +59,10 @@ final class DocValuesEncoder {
       // bits per value.
       first = in[0] - in[1];
       in[0] = in[1];
+      token = (token << 1) | 0x01;
+    } else {
+      token <<= 1;
     }
-    token = (token << 1) | (doDeltaCompression ? 0x01 : 0x00);
     removeOffset(token, tokenBits + 1, in, out);
     if (doDeltaCompression) {
       out.writeZLong(first);
@@ -79,14 +81,24 @@ final class DocValuesEncoder {
     if (max - min < 0) {
       // overflow
       min = 0;
+    } else if (min > 0 && min < (max >>> 2) ) {
+      // removing the offset is unlikely going to help save bits per value, yet it makes decoding slower
+      min = 0;
     }
 
-    for (int i = 0; i < BLOCK_SIZE; ++i) {
-      in[i] -= min;
+    if (min != 0) {
+      for (int i = 0; i < BLOCK_SIZE; ++i) {
+        in[i] -= min;
+      }
+      token = (token << 1) | 0x01;
+    } else {
+      token <<= 1;
     }
 
-    gcdEncode(token, tokenBits, in, out);
-    out.writeZLong(min);
+    gcdEncode(token, tokenBits + 1, in, out);
+    if (min != 0) {
+      out.writeZLong(min);
+    }
   }
 
   /**
@@ -101,17 +113,19 @@ final class DocValuesEncoder {
         break;
       }
     }
-    final boolean doGcdCompression = gcd > 1;
+    final boolean doGcdCompression = Long.compareUnsigned(gcd, 1) > 0;
     if (doGcdCompression) {
       for (int i = 0; i < BLOCK_SIZE; ++i) {
         in[i] /= gcd;
       }
+      token = (token << 1) | 0x01;
+    } else {
+      token <<= 1;
     }
 
-    token = (token << 1) | (doGcdCompression ? 0x01 : 0x00);
     forEncode(token, tokenBits + 1, in, out);
     if (doGcdCompression) {
-      out.writeVLong(gcd);
+      out.writeVLong(gcd - 2);
     }
   }
 
@@ -143,7 +157,7 @@ final class DocValuesEncoder {
     assert out.length == BLOCK_SIZE : out.length;
 
     final int token = in.readVInt();
-    final int bitsPerValue = token >>> 2;
+    final int bitsPerValue = token >>> 3;
 
     if (bitsPerValue != 0) {
       forUtil.decode(bitsPerValue, in, out);
@@ -151,30 +165,49 @@ final class DocValuesEncoder {
       Arrays.fill(out, 0L);
     }
 
-    final boolean doGcdCompression = (token & 0x01) != 0;
-    if (doGcdCompression) {
-      final long gcd = in.readVLong();
-      // this loop should auto-vectorize
-      for (int i = 0; i < out.length; ++i) {
-        out[i] *= gcd;
-      }
-    }
+    // simple blocks that only perform bit packing exit early here
+    // this is typical for SORTED(_SET) ordinals
+    if ((token & 0x07) != 0) {
 
-    final long min = in.readZLong();
-    if (min != 0) {
-      // this loop should auto-vectorize
-      for (int i = 0; i < out.length; ++i) {
-        out[i] += min;
+      final boolean doGcdCompression = (token & 0x01) != 0;
+      if (doGcdCompression) {
+        final long gcd = 2 + in.readVLong();
+        mul(out, gcd);
       }
-    }
 
-    final boolean doDeltaCompression = (token & 0x02) != 0;
-    if (doDeltaCompression) {
-      final long first = in.readZLong();
-      out[0] += first;
-      for (int i = 1; i < BLOCK_SIZE; ++i) {
-        out[i] += out[i - 1];
+      final boolean hasOffset = (token & 0x02) != 0;
+      if (hasOffset) {
+        final long min = in.readZLong();
+        add(out, min);
       }
+
+      final boolean doDeltaCompression = (token & 0x04) != 0;
+      if (doDeltaCompression) {
+        final long first = in.readZLong();
+        out[0] += first;
+        deltaDecode(out);
+      }
+
+    }
+  }
+
+  // this loop should auto-vectorize
+  private void mul(long[] arr, long m) {
+    for (int i = 0; i < BLOCK_SIZE; ++i) {
+      arr[i] *= m;
+    }
+  }
+
+  // this loop should auto-vectorize
+  private void add(long[] arr, long min) {
+    for (int i = 0; i < BLOCK_SIZE; ++i) {
+      arr[i] += min;
+    }
+  }
+
+  private void deltaDecode(long[] arr) {
+    for (int i = 1; i < BLOCK_SIZE; ++i) {
+      arr[i] += arr[i - 1];
     }
   }
 }

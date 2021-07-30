@@ -35,7 +35,7 @@ public class TestDocValuesEncoder extends LuceneTestCase {
     arr[4] = Long.MAX_VALUE / 2;
     arr[100] = Long.MIN_VALUE / 2 - 1;
     final long expectedNumBytes =
-        3 // token + min value (0 -> 1 byte)
+        2 // token
             + (DocValuesEncoder.BLOCK_SIZE * 64) / Byte.SIZE; // data
     doTest(arr, expectedNumBytes);
   }
@@ -53,7 +53,7 @@ public class TestDocValuesEncoder extends LuceneTestCase {
       arr[i] = (i + 2) & 0x03; // 2 bits per value
     }
     final long expectedNumBytes =
-        2 // token + min value (0 -> 1 byte)
+        1 // token
             + (DocValuesEncoder.BLOCK_SIZE * 2) / Byte.SIZE; // data
     doTest(arr, expectedNumBytes);
   }
@@ -89,8 +89,8 @@ public class TestDocValuesEncoder extends LuceneTestCase {
       arr[i] = NumericUtils.doubleToSortableLong((i + 2) & 0x03); // 0, 1 or 2
     }
     final long expectedNumBytes =
-        10 // token + min value (0 -> 1 byte) + GCD (8 bytes)
-            + Long.BYTES * 26; // 12 bits per value -> 26 longs
+        9 // token + GCD (8 bytes)
+            + DocValuesEncoder.BLOCK_SIZE * 12 / Byte.SIZE; // 12 bits per value -> 26 longs
     doTest(arr, expectedNumBytes);
   }
 
@@ -138,7 +138,7 @@ public class TestDocValuesEncoder extends LuceneTestCase {
       arr[i] = i % 3 == 1 ? Long.MIN_VALUE : 0;
     }
     final long expectedNumBytes =
-        3 // token + min value (1 byte) + GCD (1 byte)
+        10 // token + GCD (9 byte)
             + (DocValuesEncoder.BLOCK_SIZE * 1) / Byte.SIZE; // data
     doTest(arr, expectedNumBytes);
   }
@@ -149,7 +149,7 @@ public class TestDocValuesEncoder extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       try (IndexOutput out = dir.createOutput("tests.bin", IOContext.DEFAULT)) {
         encoder.encode(arr, out);
-        // assertEquals(expectedNumBytes, out.getFilePointer());
+        assertEquals(expectedNumBytes, out.getFilePointer());
       }
       try (IndexInput in = dir.openInput("tests.bin", IOContext.DEFAULT)) {
         long[] decoded = new long[DocValuesForUtil.BLOCK_SIZE];
