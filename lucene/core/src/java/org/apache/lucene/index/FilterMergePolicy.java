@@ -82,6 +82,11 @@ public class FilterMergePolicy extends MergePolicy {
   }
 
   @Override
+  protected long size(SegmentCommitInfo info, int delCount) throws IOException {
+    return in.size(info, delCount);
+  }
+
+  @Override
   public double getNoCFSRatio() {
     return in.getNoCFSRatio();
   }
