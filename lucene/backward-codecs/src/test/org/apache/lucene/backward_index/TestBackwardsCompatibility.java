@@ -1071,7 +1071,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     // QueryParser parser = new QueryParser("contents", new MockAnalyzer(random));
     // Query query = parser.parse("handle:1");
     IndexCommit indexCommit = DirectoryReader.listCommits(dir).get(0);
-    IndexReader reader = DirectoryReader.open(indexCommit, minIndexMajorVersion);
+    IndexReader reader = DirectoryReader.open(indexCommit, minIndexMajorVersion, null);
     IndexSearcher searcher = newSearcher(reader);
 
     TestUtil.checkIndex(dir);
@@ -2076,13 +2076,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       IndexFormatTooOldException ex =
           expectThrows(
               IndexFormatTooOldException.class,
-              () -> StandardDirectoryReader.open(commit, Version.LATEST.major));
+              () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
       assertTrue(
           ex.getMessage()
               .contains(
                   "only supports reading from version " + Version.LATEST.major + " upwards."));
       // now open with allowed min version
-      StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR).close();
+      StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null).close();
     }
   }
 
@@ -2092,7 +2092,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
       try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
         IndexCommit commit = DirectoryReader.listCommits(dir).get(0);
-        StandardDirectoryReader.open(commit, MIN_BINARY_SUPPORTED_MAJOR).close();
+        StandardDirectoryReader.open(commit, MIN_BINARY_SUPPORTED_MAJOR, null).close();
       }
     }
   }

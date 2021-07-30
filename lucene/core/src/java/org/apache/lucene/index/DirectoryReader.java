@@ -132,12 +132,19 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    *
    * @param commit the commit point to open
    * @param minSupportedMajorVersion the minimum supported major index version
+   * @param leafSorter a comparator for sorting leaf readers. Providing leafSorter is useful for
+   *     indices on which it is expected to run many queries with particular sort criteria (e.g. for
+   *     time-based indices, this is usually a descending sort on timestamp). In this case {@code
+   *     leafSorter} should sort leaves according to this sort criteria. Providing leafSorter allows
+   *     to speed up this particular type of sort queries by early terminating while iterating
+   *     through segments and segments' documents
    * @throws IOException if there is a low-level IO error
    */
-  public static DirectoryReader open(final IndexCommit commit, int minSupportedMajorVersion)
+  public static DirectoryReader open(
+      final IndexCommit commit, int minSupportedMajorVersion, Comparator<LeafReader> leafSorter)
       throws IOException {
     return StandardDirectoryReader.open(
-        commit.getDirectory(), minSupportedMajorVersion, commit, null);
+        commit.getDirectory(), minSupportedMajorVersion, commit, leafSorter);
   }
 
   /**
