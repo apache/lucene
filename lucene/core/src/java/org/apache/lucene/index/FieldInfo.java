@@ -56,7 +56,7 @@ public final class FieldInfo {
 
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
-  private final VectorValues.SimilarityFunction vectorSimilarityFunction;
+  private final VectorSimilarityFunction vectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -80,7 +80,7 @@ public final class FieldInfo {
       int pointIndexDimensionCount,
       int pointNumBytes,
       int vectorDimension,
-      VectorValues.SimilarityFunction vectorSimilarityFunction,
+      VectorSimilarityFunction vectorSimilarityFunction,
       boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
@@ -201,14 +201,6 @@ public final class FieldInfo {
     if (vectorDimension < 0) {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
-    }
-    if (vectorDimension == 0 && vectorSimilarityFunction != VectorValues.SimilarityFunction.NONE) {
-      throw new IllegalArgumentException(
-          "vector similarity function must be NONE when dimension = 0; got "
-              + vectorSimilarityFunction
-              + " (field: '"
-              + name
-              + "')");
     }
   }
 
@@ -355,9 +347,9 @@ public final class FieldInfo {
   static void verifySameVectorOptions(
       String fieldName,
       int vd1,
-      VectorValues.SimilarityFunction vsf1,
+      VectorSimilarityFunction vsf1,
       int vd2,
-      VectorValues.SimilarityFunction vsf2) {
+      VectorSimilarityFunction vsf2) {
     if (vd1 != vd2 || vsf1 != vsf2) {
       throw new IllegalArgumentException(
           "cannot change field \""
@@ -478,8 +470,8 @@ public final class FieldInfo {
     return vectorDimension;
   }
 
-  /** Returns {@link VectorValues.SimilarityFunction} for the field */
-  public VectorValues.SimilarityFunction getVectorSimilarityFunction() {
+  /** Returns {@link VectorSimilarityFunction} for the field */
+  public VectorSimilarityFunction getVectorSimilarityFunction() {
     return vectorSimilarityFunction;
   }
 

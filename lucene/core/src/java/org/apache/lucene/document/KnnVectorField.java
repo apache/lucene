@@ -17,6 +17,7 @@
 
 package org.apache.lucene.document;
 
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 
 /**
@@ -24,17 +25,16 @@ import org.apache.lucene.index.VectorValues;
  * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
  * {@link VectorValues}, which is a forward-only docID-based iterator and also offers random-access
- * by dense ordinal (not docId). VectorValues.SearchSimlarity may be used to compare vectors at
- * query time (for example as part of result ranking). A VectorField may be associated with a search
- * similarity function defining the metric used for nearest-neighbor search among vectors of that
- * field.
+ * by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to compare vectors at
+ * query time (for example as part of result ranking). A KnnVectorField may be associated with a
+ * search similarity function defining the metric used for nearest-neighbor search among vectors of
+ * that field.
  *
  * @lucene.experimental
  */
-public class VectorField extends Field {
+public class KnnVectorField extends Field {
 
-  private static FieldType createType(
-      float[] v, VectorValues.SimilarityFunction similarityFunction) {
+  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -63,7 +63,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, VectorValues.SimilarityFunction similarityFunction) {
+      int dimension, VectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
     type.freeze();
@@ -82,8 +82,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(
-      String name, float[] vector, VectorValues.SimilarityFunction similarityFunction) {
+  public KnnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }
@@ -98,8 +97,8 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector) {
-    this(name, vector, VectorValues.SimilarityFunction.EUCLIDEAN);
+  public KnnVectorField(String name, float[] vector) {
+    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   /**
@@ -112,7 +111,7 @@ public class VectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public VectorField(String name, float[] vector, FieldType fieldType) {
+  public KnnVectorField(String name, float[] vector, FieldType fieldType) {
     super(name, fieldType);
     fieldsData = vector;
   }

@@ -14,14 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.simpletext;
+package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseVectorFormatTestCase;
+import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.util.TestUtil;
 
-public class TestSimpleTextVectorFormat extends BaseVectorFormatTestCase {
+public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new SimpleTextCodec();
+    return TestUtil.getDefaultCodec();
   }
 }

@@ -26,11 +26,11 @@ import java.util.Iterator;
 import java.util.Map;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -301,9 +301,9 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   @Override
-  public VectorReader getVectorReader() {
-    VectorReader delegate = in.getVectorReader();
-    return new VectorReader() {
+  public KnnVectorsReader getVectorReader() {
+    KnnVectorsReader delegate = in.getVectorReader();
+    return new KnnVectorsReader() {
       @Override
       public void checkIntegrity() throws IOException {
         delegate.checkIntegrity();
@@ -315,7 +315,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public TopDocs search(String field, float[] target, int k, int fanout) {
+      public TopDocs search(String field, float[] target, int k) {
         throw new UnsupportedOperationException();
       }
 

@@ -22,11 +22,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.VectorWriter;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
@@ -40,7 +41,7 @@ import org.apache.lucene.util.hnsw.NeighborArray;
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorWriter extends VectorWriter {
+public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
@@ -49,7 +50,8 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
   private final int beamWidth;
   private boolean finished;
 
-  Lucene90HnswVectorWriter(SegmentWriteState state, int maxConn, int beamWidth) throws IOException {
+  Lucene90HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth)
+      throws IOException {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
@@ -58,19 +60,19 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
 
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorFormat.VECTOR_DATA_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_DATA_EXTENSION);
 
     String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorFormat.VECTOR_INDEX_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
 
     boolean success = false;
     try {
@@ -80,20 +82,20 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene90HnswVectorFormat.META_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.META_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene90HnswVectorFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
-          Lucene90HnswVectorFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene90HnswVectorFormat.VERSION_CURRENT,
+          Lucene90HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+          Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;
@@ -126,20 +128,19 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
     long[] offsets = new long[count];
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
-      if (vectors instanceof RandomAccessVectorValuesProducer) {
-        writeGraph(
-            vectorIndex,
-            (RandomAccessVectorValuesProducer) vectors,
-            vectorIndexOffset,
-            offsets,
-            count,
-            maxConn,
-            beamWidth);
-      } else {
-        throw new IllegalArgumentException(
-            "Indexing an HNSW graph requires a random access vector values, got " + vectors);
-      }
+    if (vectors instanceof RandomAccessVectorValuesProducer) {
+      writeGraph(
+          vectorIndex,
+          (RandomAccessVectorValuesProducer) vectors,
+          fieldInfo.getVectorSimilarityFunction(),
+          vectorIndexOffset,
+          offsets,
+          count,
+          maxConn,
+          beamWidth);
+    } else {
+      throw new IllegalArgumentException(
+          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
     }
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
     writeMeta(
@@ -150,9 +151,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
         vectorIndexLength,
         count,
         docIds);
-    if (vectors.similarityFunction() != VectorValues.SimilarityFunction.NONE) {
-      writeGraphOffsets(meta, offsets);
-    }
+    writeGraphOffsets(meta, offsets);
   }
 
   private void writeMeta(
@@ -196,6 +195,7 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
   private void writeGraph(
       IndexOutput graphData,
       RandomAccessVectorValuesProducer vectorValues,
+      VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,
       int count,
@@ -203,7 +203,8 @@ public final class Lucene90HnswVectorWriter extends VectorWriter {
       int beamWidth)
       throws IOException {
     HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(vectorValues, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+        new HnswGraphBuilder(
+            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 

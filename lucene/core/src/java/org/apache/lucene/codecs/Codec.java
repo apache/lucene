@@ -111,7 +111,7 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
   public abstract PointsFormat pointsFormat();
 
   /** Encodes/decodes numeric vector fields */
-  public abstract VectorFormat vectorFormat();
+  public abstract KnnVectorsFormat knnVectorsFormat();
 
   /** looks up a codec by name */
   public static Codec forName(String name) {

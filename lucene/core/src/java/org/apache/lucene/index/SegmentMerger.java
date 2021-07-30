@@ -21,12 +21,12 @@ import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.codecs.VectorWriter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.InfoStream;
@@ -236,7 +236,7 @@ final class SegmentMerger {
   }
 
   private void mergeVectorValues(SegmentWriteState segmentWriteState) throws IOException {
-    try (VectorWriter writer = codec.vectorFormat().fieldsWriter(segmentWriteState)) {
+    try (KnnVectorsWriter writer = codec.knnVectorsFormat().fieldsWriter(segmentWriteState)) {
       writer.merge(mergeState);
     }
   }

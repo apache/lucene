@@ -22,11 +22,11 @@ import java.util.Collections;
 import java.util.Iterator;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -78,7 +78,7 @@ public final class SlowCodecReaderWrapper {
         }
 
         @Override
-        public VectorReader getVectorReader() {
+        public KnnVectorsReader getVectorReader() {
           reader.ensureOpen();
           return readerToVectorReader(reader);
         }
@@ -159,16 +159,16 @@ public final class SlowCodecReaderWrapper {
     };
   }
 
-  private static VectorReader readerToVectorReader(LeafReader reader) {
-    return new VectorReader() {
+  private static KnnVectorsReader readerToVectorReader(LeafReader reader) {
+    return new KnnVectorsReader() {
       @Override
       public VectorValues getVectorValues(String field) throws IOException {
         return reader.getVectorValues(field);
       }
 
       @Override
-      public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
-        return reader.searchNearestVectors(field, target, k, fanout);
+      public TopDocs search(String field, float[] target, int k) throws IOException {
+        return reader.searchNearestVectors(field, target, k);
       }
 
       @Override

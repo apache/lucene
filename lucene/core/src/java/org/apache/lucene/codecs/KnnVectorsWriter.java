@@ -29,14 +29,15 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
-public abstract class VectorWriter implements Closeable {
+public abstract class KnnVectorsWriter implements Closeable {
 
   /** Sole constructor */
-  protected VectorWriter() {}
+  protected KnnVectorsWriter() {}
 
   /** Write all values contained in the provided reader */
   public abstract void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException;
@@ -47,7 +48,7 @@ public abstract class VectorWriter implements Closeable {
   /** Merge the vector values from multiple segments, for all fields */
   public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
-      VectorReader reader = mergeState.vectorReaders[i];
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
       if (reader != null) {
         reader.checkIntegrity();
@@ -68,14 +69,14 @@ public abstract class VectorWriter implements Closeable {
     }
     List<VectorValuesSub> subs = new ArrayList<>();
     int dimension = -1;
-    VectorValues.SimilarityFunction similarityFunction = null;
+    VectorSimilarityFunction similarityFunction = null;
     int nonEmptySegmentIndex = 0;
-    for (int i = 0; i < mergeState.vectorReaders.length; i++) {
-      VectorReader vectorReader = mergeState.vectorReaders[i];
-      if (vectorReader != null) {
+    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
+      if (knnVectorsReader != null) {
         if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
           int segmentDimension = mergeFieldInfo.getVectorDimension();
-          VectorValues.SimilarityFunction segmentSimilarityFunction =
+          VectorSimilarityFunction segmentSimilarityFunction =
               mergeFieldInfo.getVectorSimilarityFunction();
           if (dimension == -1) {
             dimension = segmentDimension;
@@ -97,7 +98,7 @@ public abstract class VectorWriter implements Closeable {
                     + "!="
                     + segmentSimilarityFunction);
           }
-          VectorValues values = vectorReader.getVectorValues(mergeFieldInfo.name);
+          VectorValues values = knnVectorsReader.getVectorValues(mergeFieldInfo.name);
           if (values != null) {
             subs.add(new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
           }
@@ -238,11 +239,6 @@ public abstract class VectorWriter implements Closeable {
       return subs.get(0).values.dimension();
     }
 
-    @Override
-    public SimilarityFunction similarityFunction() {
-      return subs.get(0).values.similarityFunction();
-    }
-
     class MergerRandomAccess implements RandomAccessVectorValues {
 
       private final List<RandomAccessVectorValues> raSubs;
@@ -267,11 +263,6 @@ public abstract class VectorWriter implements Closeable {
       @Override
       public int dimension() {
         return VectorValuesMerger.this.dimension();
-      }
-
-      @Override
-      public SimilarityFunction similarityFunction() {
-        return VectorValuesMerger.this.similarityFunction();
       }
 
       @Override

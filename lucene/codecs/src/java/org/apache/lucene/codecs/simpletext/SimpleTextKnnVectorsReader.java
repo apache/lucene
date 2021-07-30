@@ -17,14 +17,14 @@
 
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextVectorWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.codecs.VectorReader;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -49,10 +49,10 @@ import org.apache.lucene.util.StringHelper;
  *
  * @lucene.experimental
  */
-public class SimpleTextVectorReader extends VectorReader {
+public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   // shallowSizeOfInstance for fieldEntries map is included in ramBytesUsed() calculation
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextVectorReader.class)
+      RamUsageEstimator.shallowSizeOfInstance(SimpleTextKnnVectorsReader.class)
           + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class);
 
   private static final BytesRef EMPTY = new BytesRef("");
@@ -62,18 +62,18 @@ public class SimpleTextVectorReader extends VectorReader {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
   private final Map<String, FieldEntry> fieldEntries = new HashMap<>();
 
-  SimpleTextVectorReader(SegmentReadState readState) throws IOException {
+  SimpleTextKnnVectorsReader(SegmentReadState readState) throws IOException {
     this.readState = readState;
     String metaFileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
             readState.segmentSuffix,
-            SimpleTextVectorFormat.META_EXTENSION);
+            SimpleTextKnnVectorsFormat.META_EXTENSION);
     String vectorFileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
             readState.segmentSuffix,
-            SimpleTextVectorFormat.VECTOR_EXTENSION);
+            SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
 
     boolean success = false;
     try (ChecksumIndexInput in =
@@ -81,9 +81,6 @@ public class SimpleTextVectorReader extends VectorReader {
       int fieldNumber = readInt(in, FIELD_NUMBER);
       while (fieldNumber != -1) {
         String fieldName = readString(in, FIELD_NAME);
-        String scoreFunctionName = readString(in, SCORE_FUNCTION);
-        VectorValues.SimilarityFunction similarityFunction =
-            VectorValues.SimilarityFunction.valueOf(scoreFunctionName);
         long vectorDataOffset = readLong(in, VECTOR_DATA_OFFSET);
         long vectorDataLength = readLong(in, VECTOR_DATA_LENGTH);
         int dimension = readInt(in, VECTOR_DIMENSION);
@@ -94,9 +91,7 @@ public class SimpleTextVectorReader extends VectorReader {
         }
         assert fieldEntries.containsKey(fieldName) == false;
         fieldEntries.put(
-            fieldName,
-            new FieldEntry(
-                dimension, similarityFunction, vectorDataOffset, vectorDataLength, docIds));
+            fieldName, new FieldEntry(dimension, vectorDataOffset, vectorDataLength, docIds));
         fieldNumber = readInt(in, FIELD_NUMBER);
       }
       SimpleTextUtil.checkFooter(in);
@@ -115,7 +110,7 @@ public class SimpleTextVectorReader extends VectorReader {
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     if (info == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextVectorFormat#testDeleteAllVectorDocs
+      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
     int dimension = info.getVectorDimension();
@@ -125,7 +120,7 @@ public class SimpleTextVectorReader extends VectorReader {
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextVectorFormat#testDeleteAllVectorDocs
+      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
     if (dimension != fieldEntry.dimension) {
@@ -143,7 +138,7 @@ public class SimpleTextVectorReader extends VectorReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, int fanout) throws IOException {
+  public TopDocs search(String field, float[] target, int k) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -158,7 +153,7 @@ public class SimpleTextVectorReader extends VectorReader {
     ChecksumIndexInput input = new BufferedChecksumIndexInput(clone);
 
     // when there's no actual vector data written (e.g. tested in
-    // TestSimpleTextVectorFormat#testDeleteAllVectorDocs)
+    // TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs)
     // the first line in dataInput will be, checksum 00000000000000000000
     if (footerStartPos == 0) {
       SimpleTextUtil.checkFooter(input);
@@ -205,20 +200,13 @@ public class SimpleTextVectorReader extends VectorReader {
   private static class FieldEntry {
 
     final int dimension;
-    final VectorValues.SimilarityFunction similarityFunction;
 
     final long vectorDataOffset;
     final long vectorDataLength;
     final int[] ordToDoc;
 
-    FieldEntry(
-        int dimension,
-        VectorValues.SimilarityFunction similarityFunction,
-        long vectorDataOffset,
-        long vectorDataLength,
-        int[] ordToDoc) {
+    FieldEntry(int dimension, long vectorDataOffset, long vectorDataLength, int[] ordToDoc) {
       this.dimension = dimension;
-      this.similarityFunction = similarityFunction;
       this.vectorDataOffset = vectorDataOffset;
       this.vectorDataLength = vectorDataLength;
       this.ordToDoc = ordToDoc;
@@ -261,11 +249,6 @@ public class SimpleTextVectorReader extends VectorReader {
     }
 
     @Override
-    public SimilarityFunction similarityFunction() {
-      return entry.similarityFunction;
-    }
-
-    @Override
     public float[] vectorValue() {
       return values[curOrd];
     }
@@ -288,7 +271,7 @@ public class SimpleTextVectorReader extends VectorReader {
       } else if (curOrd >= entry.size()) {
         // when call to advance / nextDoc below already returns NO_MORE_DOCS, calling docID
         // immediately afterward should also return NO_MORE_DOCS
-        // this is needed for TestSimpleTextVectorFormat.testAdvance test case
+        // this is needed for TestSimpleTextKnnVectorsFormat.testAdvance test case
         return NO_MORE_DOCS;
       }
 
