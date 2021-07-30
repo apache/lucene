@@ -127,6 +127,9 @@ API Changes
 * LUCENE-9959: Add non thread local based API for term vector reader usage. (Zach Chen, Adrien Grand,
   David Smiley, Robert Muir, Mike Drob)
 
+* LUCENE-10027: Directory reader open API from indexCommit and leafSorter has been modified
+  to add an extra parameter - minSupportedMajorVersion. (Mayya Sharipova)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
@@ -360,9 +363,8 @@ API Changes
 * LUCENE-10036: Replaced the ScoreCachingWrappingScorer ctor with a static factory method that
   ensures unnecessary wrapping doesn't occur. (Greg Miller)
 
-* LUCENE-10027: Directory reader open API from indexCommit and minSupportedMajorVersion has
-  been modified to add an extra parameter: a custom comparator for sorting leaf readers
-  (Mayya Sharipova)
+* LUCENE-10027: Add a new Directory reader open API from indexCommit and
+  a custom comparator for sorting leaf readers. (Mayya Sharipova)
 
 New Features
 ---------------------
