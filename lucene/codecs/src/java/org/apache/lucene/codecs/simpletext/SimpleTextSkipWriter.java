@@ -70,8 +70,7 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
     Boolean wroteHeader = wroteHeaderPerLevelMap.get(level);
     if (wroteHeader == null || !wroteHeader) {
       // because the parent MultiLevelSkipListWriter will write "length"(a VLong) before this new
-      // line
-      // or write "childPointer"(a VLong) before this
+      // line or write "childPointer"(a VLong) before this
       SimpleTextUtil.writeNewline(skipBuffer);
       SimpleTextUtil.write(skipBuffer, LEVEL);
       SimpleTextUtil.write(skipBuffer, level + "", scratch);
@@ -86,11 +85,11 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
     SimpleTextUtil.write(skipBuffer, SKIP_DOC_FP);
     SimpleTextUtil.write(skipBuffer, curDocFilePointer + "", scratch);
 
-    CompetitiveImpactAccumulator competitiveImpactAccumulator = curCompetitiveFreqNorms[level];
-    Collection<Impact> impacts = competitiveImpactAccumulator.getCompetitiveFreqNormPairs();
+    CompetitiveImpactAccumulator competitiveFreqNorms = curCompetitiveFreqNorms[level];
+    Collection<Impact> impacts = competitiveFreqNorms.getCompetitiveFreqNormPairs();
     assert impacts.size() > 0;
     if (level + 1 < numberOfSkipLevels) {
-      curCompetitiveFreqNorms[level + 1].addAll(competitiveImpactAccumulator);
+      curCompetitiveFreqNorms[level + 1].addAll(competitiveFreqNorms);
     }
     SimpleTextUtil.writeNewline(skipBuffer);
     SimpleTextUtil.write(skipBuffer, IMPACTS);
@@ -107,6 +106,7 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
     }
     SimpleTextUtil.write(skipBuffer, IMPACTS_END);
     SimpleTextUtil.writeNewline(skipBuffer);
+    competitiveFreqNorms.clear();
   }
 
   @Override

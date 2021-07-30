@@ -41,9 +41,9 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
 
   /** for write skip data. */
   private int docCount = 0;
-
   private final SimpleTextSkipWriter skipWriter;
   private final CompetitiveImpactAccumulator competitiveImpactAccumulator = new CompetitiveImpactAccumulator();
+  private long lastDocFilePointer = -1;
 
   static final BytesRef END = new BytesRef("END");
   static final BytesRef FIELD = new BytesRef("field ");
@@ -89,7 +89,10 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
       boolean hasOffsets = terms.hasOffsets();
       boolean fieldHasNorms = fieldInfo.hasNorms();
 
-      NumericDocValues norms = normsProducer.getNorms(fieldInfo);
+      NumericDocValues norms = null;
+      if(fieldHasNorms){
+        norms = normsProducer.getNorms(fieldInfo);
+      }
 
       int flags = 0;
       if (hasPositions) {
@@ -118,6 +121,7 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
         docCount = 0;
         skipWriter.resetSkip();
         competitiveImpactAccumulator.clear();
+        lastDocFilePointer = -1;
 
         postingsEnum = termsEnum.postings(postingsEnum, flags);
 
@@ -151,14 +155,9 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
             newline();
             wroteTerm = true;
           }
-
-          docCount++;
-          if (docCount != 0 && docCount % SimpleTextSkipWriter.BLOCK_SIZE == 0) {
-            skipWriter.bufferSkip(
-                doc, out.getFilePointer(), docCount, competitiveImpactAccumulator);
-            competitiveImpactAccumulator.clear();
+          if(lastDocFilePointer == -1){
+            lastDocFilePointer = out.getFilePointer();
           }
-
           write(DOC);
           write(Integer.toString(doc));
           newline();
@@ -205,9 +204,15 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
                 }
               }
             }
-            competitiveImpactAccumulator.add(freq, getNorm(fieldHasNorms, doc, norms));
+            competitiveImpactAccumulator.add(freq, getNorm(doc, norms));
           } else {
-            competitiveImpactAccumulator.add(1, getNorm(fieldHasNorms, doc, norms));
+            competitiveImpactAccumulator.add(1, getNorm(doc, norms));
+          }
+          docCount++;
+          if (docCount != 0 && docCount % SimpleTextSkipWriter.BLOCK_SIZE == 0) {
+            skipWriter.bufferSkip(doc, lastDocFilePointer, docCount, competitiveImpactAccumulator);
+            competitiveImpactAccumulator.clear();
+            lastDocFilePointer = -1;
           }
         }
         if (docCount >= SimpleTextSkipWriter.BLOCK_SIZE) {
@@ -243,8 +248,8 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
     }
   }
 
-  private long getNorm(boolean fieldHasNorms, int doc, NumericDocValues norms) throws IOException {
-    if (!fieldHasNorms) {
+  private long getNorm(int doc, NumericDocValues norms) throws IOException {
+    if (norms == null) {
       return 1L;
     }
     boolean found = norms.advanceExact(doc);

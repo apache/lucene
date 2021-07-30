@@ -46,6 +46,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
@@ -246,14 +247,15 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public ImpactsEnum impacts(int flags) throws IOException {
-      if (docFreq > SimpleTextSkipWriter.BLOCK_SIZE) {
-        return new SimpleTextImpactsDocsEnum(docsStart, postings(null, flags), docFreq);
+      if (docFreq <= SimpleTextSkipWriter.BLOCK_SIZE) {
+        // no skip data
+        return new SlowImpactsEnum(postings(null, flags));
       }
-      return new SlowImpactsEnum(postings(null, flags));
+      return (ImpactsEnum) postings(null,flags);
     }
   }
 
-  private class SimpleTextDocsEnum extends PostingsEnum {
+  private class SimpleTextDocsEnum extends ImpactsEnum {
     private final IndexInput inStart;
     private final IndexInput in;
     private boolean omitTF;
@@ -263,9 +265,16 @@ class SimpleTextFieldsReader extends FieldsProducer {
     private final CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
     private int cost;
 
+    // for skip list data
+    private SimpleTextSkipReader skipReader;
+    private int nextSkipDoc = 0;
+    private int lastNumSkipped = 0;
+    private long seekTo = -1;
+
     public SimpleTextDocsEnum() {
       this.inStart = SimpleTextFieldsReader.this.in;
       this.in = this.inStart.clone();
+      this.skipReader = new SimpleTextSkipReader(this.inStart.clone());
     }
 
     public boolean canReuse(IndexInput in) {
@@ -278,6 +287,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       docID = -1;
       tf = 1;
       cost = docFreq;
+      skipReader.init(this.inStart.clone(),fp,docFreq);
       return this;
     }
 
@@ -313,6 +323,10 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public int nextDoc() throws IOException {
+      return advance(docID+1);
+    }
+
+    private int readDoc() throws IOException {
       if (docID == NO_MORE_DOCS) {
         return docID;
       }
@@ -349,7 +363,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
                   || StringHelper.startsWith(scratch.get(), TERM)
                   || StringHelper.startsWith(scratch.get(), FIELD)
                   || StringHelper.startsWith(scratch.get(), END)
-              : "scratch=" + scratch.get().utf8ToString();
+                  : "scratch=" + scratch.get().utf8ToString();
           if (!first) {
             in.seek(lineStart);
             if (!omitTF) {
@@ -362,19 +376,53 @@ class SimpleTextFieldsReader extends FieldsProducer {
       }
     }
 
+    private int advanceTarget(int target) throws IOException {
+      if(seekTo > 0){
+        in.seek(seekTo);
+        seekTo = -1;
+      }
+      assert docID() < target;
+      int doc;
+      do {
+        doc = readDoc();
+      } while (doc < target);
+      return doc;
+    }
+
     @Override
     public int advance(int target) throws IOException {
-      // Naive -- better to index skip data
-      return slowAdvance(target);
+      advanceShallow(target);
+      return advanceTarget(target);
     }
 
     @Override
     public long cost() {
       return cost;
     }
+
+    @Override
+    public void advanceShallow(int target) throws IOException {
+      if (target > nextSkipDoc) {
+        int numSkipped = skipReader.skipTo(target) + 1;
+        if(numSkipped > lastNumSkipped){
+          if(skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS){
+            seekTo = skipReader.getNextSkipDocFP();
+          }
+          lastNumSkipped = numSkipped;
+        }
+        nextSkipDoc = skipReader.getNextSkipDoc();
+      }
+      assert nextSkipDoc >= target;
+    }
+
+    @Override
+    public Impacts getImpacts() throws IOException {
+      advanceShallow(docID);
+      return skipReader.getImpacts();
+    }
   }
 
-  private class SimpleTextPostingsEnum extends PostingsEnum {
+  private class SimpleTextPostingsEnum extends ImpactsEnum {
     private final IndexInput inStart;
     private final IndexInput in;
     private int docID = -1;
@@ -392,16 +440,23 @@ class SimpleTextFieldsReader extends FieldsProducer {
     private int endOffset;
     private int cost;
 
+    // for skip list data
+    private SimpleTextSkipReader skipReader;
+    private int nextSkipDoc = 0;
+    private int lastNumSkipped = 0;
+    private long seekTo = -1;
+
     public SimpleTextPostingsEnum() {
       this.inStart = SimpleTextFieldsReader.this.in;
       this.in = inStart.clone();
+      this.skipReader = new SimpleTextSkipReader(this.inStart.clone());
     }
 
     public boolean canReuse(IndexInput in) {
       return in == inStart;
     }
 
-    public SimpleTextPostingsEnum reset(long fp, IndexOptions indexOptions, int docFreq) {
+    public SimpleTextPostingsEnum reset(long fp, IndexOptions indexOptions, int docFreq) throws IOException {
       nextDocStart = fp;
       docID = -1;
       readPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
@@ -412,6 +467,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
         endOffset = -1;
       }
       cost = docFreq;
+      skipReader.init(this.inStart.clone(),fp,docFreq);
       return this;
     }
 
@@ -427,6 +483,10 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public int nextDoc() throws IOException {
+      return advance(docID+1);
+    }
+
+    private int readDoc() throws IOException {
       boolean first = true;
       in.seek(nextDocStart);
       long posStart = 0;
@@ -457,9 +517,10 @@ class SimpleTextFieldsReader extends FieldsProducer {
         } else if (StringHelper.startsWith(scratch.get(), PAYLOAD)) {
           // skip
         } else {
-          assert StringHelper.startsWith(scratch.get(), TERM)
-              || StringHelper.startsWith(scratch.get(), FIELD)
-              || StringHelper.startsWith(scratch.get(), END);
+          assert StringHelper.startsWith(scratch.get(), SimpleTextSkipWriter.SKIP_LIST)
+                  || StringHelper.startsWith(scratch.get(), TERM)
+                  || StringHelper.startsWith(scratch.get(), FIELD)
+                  || StringHelper.startsWith(scratch.get(), END);
           if (!first) {
             nextDocStart = lineStart;
             in.seek(posStart);
@@ -470,10 +531,24 @@ class SimpleTextFieldsReader extends FieldsProducer {
       }
     }
 
+    private int advanceTarget(int target) throws IOException {
+      if(seekTo > 0){
+        nextDocStart = seekTo;
+        seekTo = -1;
+      }
+      // Naive -- better to index skip data
+      assert docID() < target;
+      int doc;
+      do {
+        doc = readDoc();
+      } while (doc < target);
+      return doc;
+    }
+
     @Override
     public int advance(int target) throws IOException {
-      // Naive -- better to index skip data
-      return slowAdvance(target);
+      advanceShallow(target);
+      return advanceTarget(target);
     }
 
     @Override
@@ -537,6 +612,27 @@ class SimpleTextFieldsReader extends FieldsProducer {
     @Override
     public long cost() {
       return cost;
+    }
+
+    @Override
+    public void advanceShallow(int target) throws IOException {
+      if (target > nextSkipDoc) {
+        int numSkipped = skipReader.skipTo(target) + 1;
+        if(numSkipped > lastNumSkipped){
+          if(skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS){
+            seekTo = skipReader.getNextSkipDocFP();
+          }
+          lastNumSkipped = numSkipped;
+        }
+        nextSkipDoc = skipReader.getNextSkipDoc();
+      }
+      assert nextSkipDoc >= target;
+    }
+
+    @Override
+    public Impacts getImpacts() throws IOException {
+      advanceShallow(docID);
+      return skipReader.getImpacts();
     }
   }
 
@@ -752,76 +848,4 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
   @Override
   public void checkIntegrity() throws IOException {}
-
-  private class SimpleTextImpactsDocsEnum extends ImpactsEnum {
-
-    private PostingsEnum delegate;
-    private SimpleTextSkipReader skipReader;
-    private int nextSkipDoc = -1;
-
-    SimpleTextImpactsDocsEnum(long docStartFP, PostingsEnum postingsEnum, int docFreq)
-        throws IOException {
-      skipReader =
-          new SimpleTextSkipReader(SimpleTextFieldsReader.this.in.clone(), docStartFP, docFreq);
-      this.delegate = postingsEnum;
-    }
-
-    @Override
-    public void advanceShallow(int target) throws IOException {
-      if (target > nextSkipDoc) {
-        int numSkipped = skipReader.skipTo(target) + 1;
-        nextSkipDoc = skipReader.getNextSkipDoc();
-      }
-    }
-
-    @Override
-    public Impacts getImpacts() throws IOException {
-      return skipReader.getImpacts();
-    }
-
-    @Override
-    public int freq() throws IOException {
-      return delegate.freq();
-    }
-
-    @Override
-    public int nextPosition() throws IOException {
-      return delegate.nextPosition();
-    }
-
-    @Override
-    public int startOffset() throws IOException {
-      return delegate.startOffset();
-    }
-
-    @Override
-    public int endOffset() throws IOException {
-      return delegate.endOffset();
-    }
-
-    @Override
-    public BytesRef getPayload() throws IOException {
-      return delegate.getPayload();
-    }
-
-    @Override
-    public int docID() {
-      return delegate.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return delegate.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return delegate.advance(target);
-    }
-
-    @Override
-    public long cost() {
-      return delegate.cost();
-    }
-  }
 }

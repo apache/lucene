@@ -28,6 +28,7 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.codecs.MultiLevelSkipListReader;
 import org.apache.lucene.index.Impact;
@@ -49,56 +50,54 @@ import org.apache.lucene.util.StringHelper;
  *
  * @lucene.experimental
  */
-public class SimpleTextSkipReader extends MultiLevelSkipListReader {
+class SimpleTextSkipReader extends MultiLevelSkipListReader {
 
   private final CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
-  private final Impacts impacts;
-  private final List<List<Impact>> perLevelImpacts;
+  private Impacts impacts;
+  private List<List<Impact>> perLevelImpacts;
   private long nextSkipDocFP = -1;
-  private final int nextSkipDoc[];
+  private int numLevels = 1;
+  private boolean hasSkipList = false;
 
-  public SimpleTextSkipReader(IndexInput skipStream, long docStartFP, int docCount)
-      throws IOException {
+  public SimpleTextSkipReader(IndexInput skipStream) {
     super(
         skipStream,
         SimpleTextSkipWriter.maxSkipLevels,
         SimpleTextSkipWriter.BLOCK_SIZE,
         SimpleTextSkipWriter.skipMultiplier);
-    init(skipStream, docStartFP, docCount);
-    nextSkipDoc = new int[SimpleTextSkipWriter.maxSkipLevels];
-    Arrays.fill(nextSkipDoc, 0);
-    perLevelImpacts = new ArrayList<>(maxNumberOfSkipLevels);
-    for (int level = 0; level < maxNumberOfSkipLevels; level++) {
-      perLevelImpacts.add(level, new ArrayList<>());
-    }
-    impacts =
-        new Impacts() {
-          @Override
-          public int numLevels() {
-            return maxNumberOfSkipLevels;
-          }
+    impacts = new Impacts() {
+      @Override
+      public int numLevels() {
+        return numLevels;
+      }
 
-          @Override
-          public int getDocIdUpTo(int level) {
-            return skipDoc[level];
-          }
+      @Override
+      public int getDocIdUpTo(int level) {
+        return skipDoc[level];
+      }
 
-          @Override
-          public List<Impact> getImpacts(int level) {
-            return perLevelImpacts.get(level);
-          }
-        };
+      @Override
+      public List<Impact> getImpacts(int level) {
+        assert level < numLevels;
+        return perLevelImpacts.get(level);
+      }
+    };
+    init();
   }
 
   @Override
   public int skipTo(int target) throws IOException {
+    if(!hasSkipList){
+        return -1;
+    }
     int result = super.skipTo(target);
-    for (int level = 0; level < SimpleTextSkipWriter.maxSkipLevels; level++) {
-      if (super.skipDoc[level] != DocIdSetIterator.NO_MORE_DOCS) {
-        // because the MultiLevelSkipListReader stores doc id delta,but simple text codec stores doc
-        // id,so we override the super.skipDoc
-        super.skipDoc[level] = this.nextSkipDoc[level];
-      }
+    if (numberOfSkipLevels > 0) {
+      numLevels = numberOfSkipLevels;
+    } else {
+      // End of postings don't have skip data anymore, so we fill with dummy data
+      // like SlowImpactsEnum.
+      numLevels = 1;
+      perLevelImpacts.add(0, Collections.singletonList(new Impact(Integer.MAX_VALUE,1L)));
     }
     return result;
   }
@@ -119,11 +118,14 @@ public class SimpleTextSkipReader extends MultiLevelSkipListReader {
           || scratch.get().equals(SimpleTextFieldsWriter.TERM)
           || scratch.get().equals(SimpleTextFieldsWriter.FIELD)) {
         break;
+      }else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)){
+        // continue
       } else if (StringHelper.startsWith(scratch.get(), SKIP_DOC)) {
         scratchUTF16.copyUTF8Bytes(
             scratch.bytes(), SKIP_DOC.length, scratch.length() - SKIP_DOC.length);
         skipDoc = ArrayUtil.parseInt(scratchUTF16.chars(), 0, scratchUTF16.length());
-        nextSkipDoc[level] = skipDoc;
+        // Because the MultiLevelSkipListReader stores doc id delta,but simple text codec stores doc id
+        skipDoc = skipDoc - super.skipDoc[level];
       } else if (StringHelper.startsWith(scratch.get(), SKIP_DOC_FP)) {
         scratchUTF16.copyUTF8Bytes(
             scratch.bytes(), SKIP_DOC_FP.length, scratch.length() - SKIP_DOC_FP.length);
@@ -136,7 +138,7 @@ public class SimpleTextSkipReader extends MultiLevelSkipListReader {
         freq = ArrayUtil.parseInt(scratchUTF16.chars(), 0, scratchUTF16.length());
       } else if (StringHelper.startsWith(scratch.get(), NORM)) {
         scratchUTF16.copyUTF8Bytes(scratch.bytes(), NORM.length, scratch.length() - NORM.length);
-        int norm = ArrayUtil.parseInt(scratchUTF16.chars(), 0, scratchUTF16.length());
+        long norm = Long.parseLong(scratchUTF16.toString());
         Impact impact = new Impact(freq, norm);
         perLevelImpacts.get(level).add(impact);
       }
@@ -144,7 +146,8 @@ public class SimpleTextSkipReader extends MultiLevelSkipListReader {
     return skipDoc;
   }
 
-  public void init(IndexInput skipStream, long docStartFP, int docCount) throws IOException {
+  public void init(IndexInput skipStream,long docStartFP, int docCount) throws IOException {
+    init();
     long skipPointer = -1;
     skipStream.seek(docStartFP);
     ChecksumIndexInput input = new BufferedChecksumIndexInput(skipStream);
@@ -152,17 +155,29 @@ public class SimpleTextSkipReader extends MultiLevelSkipListReader {
     while (true) {
       SimpleTextUtil.readLine(input, scratch);
       if (scratch.get().equals(SimpleTextFieldsWriter.END)) {
-        SimpleTextUtil.checkFooter(input);
         break;
       } else if (StringHelper.startsWith(scratch.get(), SimpleTextFieldsWriter.TERM)
           || StringHelper.startsWith(scratch.get(), SimpleTextFieldsWriter.FIELD)) {
         break;
       } else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)) {
         skipPointer = input.getFilePointer();
+        hasSkipList = true;
         break;
       }
     }
-    super.init(skipPointer, docCount);
+    if(hasSkipList){
+        super.init(skipPointer, docCount);
+    }
+  }
+
+  private void init(){
+    perLevelImpacts = new ArrayList<>(maxNumberOfSkipLevels);
+    for (int level = 0; level < maxNumberOfSkipLevels; level++) {
+        List<Impact> impacts = new ArrayList<>();
+        impacts.add(new Impact(Integer.MAX_VALUE,1L));
+        perLevelImpacts.add(level, impacts);
+    }
+    hasSkipList = false;
   }
 
   Impacts getImpacts() {
@@ -174,6 +189,9 @@ public class SimpleTextSkipReader extends MultiLevelSkipListReader {
   }
 
   int getNextSkipDoc() {
+    if (!hasSkipList){
+        return DocIdSetIterator.NO_MORE_DOCS;
+    }
     return skipDoc[0];
   }
 }
