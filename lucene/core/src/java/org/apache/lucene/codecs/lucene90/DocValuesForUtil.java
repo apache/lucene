@@ -27,12 +27,6 @@ final class DocValuesForUtil {
 
   private final ForUtil forUtil = new ForUtil();
 
-  DocValuesForUtil() {
-    if (BLOCK_SIZE != ForUtil.BLOCK_SIZE) {
-      throw new Error();
-    }
-  }
-
   void encode(long[] in, int bitsPerValue, DataOutput out) throws IOException {
     if (bitsPerValue <= 24) { // these bpvs are handled efficiently by ForUtil
       forUtil.encode(in, bitsPerValue, out);
