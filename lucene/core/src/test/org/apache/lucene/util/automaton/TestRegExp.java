@@ -26,7 +26,7 @@ public class TestRegExp extends LuceneTestCase {
   /** Simple smoke test for regular expression. */
   public void testSmoke() {
     RegExp r = new RegExp("a(b+|c+)d");
-    Automaton a = r.toAutomaton();
+    Automaton a = r.toDFA();
     assertTrue(a.isDeterministic());
     CharacterRunAutomaton run = new CharacterRunAutomaton(a);
     assertTrue(run.run("abbbbbd"));
@@ -45,7 +45,7 @@ public class TestRegExp extends LuceneTestCase {
         expectThrows(
             TooComplexToDeterminizeException.class,
             () -> {
-              new RegExp(source).toAutomaton();
+              new RegExp(source).toDFA();
             });
     assertTrue(expected.getMessage().contains(source));
   }
@@ -69,7 +69,7 @@ public class TestRegExp extends LuceneTestCase {
         expectThrows(
             TooComplexToDeterminizeException.class,
             () -> {
-              new RegExp(source).toAutomaton();
+              new RegExp(source).toDFA();
             });
     assertTrue(expected.getMessage().contains(source));
   }
@@ -258,7 +258,7 @@ public class TestRegExp extends LuceneTestCase {
 
     int matchFlags = caseSensitiveQuery ? 0 : RegExp.ASCII_CASE_INSENSITIVE;
     RegExp regex = new RegExp(regexPattern, RegExp.ALL, matchFlags);
-    Automaton automaton = regex.toAutomaton();
+    Automaton automaton = regex.toDFA();
     ByteRunAutomaton bytesMatcher = new ByteRunAutomaton(automaton);
     BytesRef br = newBytesRef(docValue);
     assertTrue(
@@ -275,7 +275,7 @@ public class TestRegExp extends LuceneTestCase {
         bytesMatcher.run(br.bytes, br.offset, br.length));
     if (caseSensitiveQuery == false) {
       RegExp caseSensitiveRegex = new RegExp(regexPattern);
-      Automaton csAutomaton = caseSensitiveRegex.toAutomaton();
+      Automaton csAutomaton = caseSensitiveRegex.toDFA();
       ByteRunAutomaton csBytesMatcher = new ByteRunAutomaton(csAutomaton);
       assertFalse(
           "[" + regexPattern + "] with case sensitive setting should not match [" + docValue + "]",

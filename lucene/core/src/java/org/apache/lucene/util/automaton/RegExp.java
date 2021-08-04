@@ -565,7 +565,7 @@ public class RegExp {
    * Constructs new <code>Automaton</code> from this <code>RegExp</code>. Same as <code>
    * toAutomaton(null)</code> (empty automaton map).
    */
-  public Automaton toAutomaton() {
+  public Automaton toDFA() {
     return toAutomaton(null, null, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 

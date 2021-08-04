@@ -260,7 +260,7 @@ public class AutomatonTestUtil {
     while (true) {
       try {
         Automaton a1 =
-            new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE).toAutomaton();
+            new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE).toDFA();
         if (random.nextBoolean()) {
           a1 = Operations.complement(a1, DEFAULT_MAX_DETERMINIZED_STATES);
         }

@@ -366,7 +366,7 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
         new MockTokenizer(
             new CharacterRunAutomaton(
                 new RegExp("[^ \t\r\n]+([ \t\r\n]+[^ \t\r\n]+){" + (shingleSize - 1) + "}")
-                    .toAutomaton()),
+                    .toDFA()),
             true);
     tokenizer.setEnableChecks(true);
     if (shingles != null) {

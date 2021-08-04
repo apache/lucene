@@ -33,7 +33,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
           ignoreException(e);
         }
       }
-      Automaton dfa = regExp.toAutomaton();
+      Automaton dfa = regExp.toDFA();
       NFARunAutomaton candidate = new NFARunAutomaton(regExp.toNFA());
       AutomatonTestUtil.RandomAcceptedStrings randomStringGen =
           new AutomatonTestUtil.RandomAcceptedStrings(dfa);

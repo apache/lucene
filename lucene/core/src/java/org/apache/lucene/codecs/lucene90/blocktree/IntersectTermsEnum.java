@@ -29,7 +29,9 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.RunAutomaton;
+import org.apache.lucene.util.automaton.Stepable;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.automaton.TransitionIterator;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Outputs;
@@ -53,8 +55,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   @SuppressWarnings({"rawtypes", "unchecked"})
   private FST.Arc<BytesRef>[] arcs = new FST.Arc[5];
 
-  final RunAutomaton runAutomaton;
-  final Automaton automaton;
+  final Stepable runAutomaton;
+  final TransitionIterator automaton;
   final BytesRef commonSuffix;
 
   private IntersectTermsEnumFrame currentFrame;

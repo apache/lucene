@@ -1649,7 +1649,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             CharacterRunAutomaton stopWords =
-                new CharacterRunAutomaton(new RegExp("i[nt]").toAutomaton());
+                new CharacterRunAutomaton(new RegExp("i[nt]").toDFA());
             TermQuery query = new TermQuery(new Term("text", "searchterm"));
 
             String text = "this is a text with searchterm in it";

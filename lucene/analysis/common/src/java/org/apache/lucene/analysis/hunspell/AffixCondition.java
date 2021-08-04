@@ -153,7 +153,7 @@ interface AffixCondition {
   private static AffixCondition regexpCondition(AffixKind kind, String condition, int charCount) {
     boolean forSuffix = kind == AffixKind.SUFFIX;
     CharacterRunAutomaton automaton =
-        new CharacterRunAutomaton(new RegExp(escapeDash(condition), RegExp.NONE).toAutomaton());
+        new CharacterRunAutomaton(new RegExp(escapeDash(condition), RegExp.NONE).toDFA());
     return (word, offset, length) ->
         length >= charCount
             && automaton.run(word, forSuffix ? offset + length - charCount : offset, charCount);

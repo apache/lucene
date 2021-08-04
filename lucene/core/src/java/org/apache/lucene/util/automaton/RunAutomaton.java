@@ -39,7 +39,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * @lucene.experimental
  */
-public abstract class RunAutomaton implements Accountable {
+public abstract class RunAutomaton implements Accountable, Stepable {
   private static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(RunAutomaton.class);
 
@@ -137,7 +137,7 @@ public abstract class RunAutomaton implements Accountable {
     return size;
   }
 
-  /** Returns acceptance status for given state. */
+  @Override
   public final boolean isAccept(int state) {
     return accept.get(state);
   }
@@ -171,6 +171,7 @@ public abstract class RunAutomaton implements Accountable {
    * returned here if and only if a dead state is entered in an equivalent automaton with a total
    * transition function.)
    */
+  @Override
   public final int step(int state, int c) {
     assert c < alphabetSize;
     if (c >= classmap.length) {

@@ -43,7 +43,7 @@ public class NFARunAutomaton {
   private final int alphabetSize;
 
   /**
-   * Constructor, assuming alphabet size is the whole codepoint space
+   * Constructor, assuming alphabet size is the whole Unicode code point space
    *
    * @param automaton incoming automaton, should be NFA, for DFA please use {@link RunAutomaton} for
    *     better efficiency
@@ -98,38 +98,11 @@ public class NFARunAutomaton {
   /**
    * From an existing DFA state, step to next DFA state given character c if the transition is
    * previously tried then this operation will just use the cached result, otherwise it will call
-   * {@link #step(int[], int)} to get the next state and cache the result
+   * {@link DState#step(int)} to get the next state and cache the result
    */
   private int step(DState dState, int c) {
     int charClass = getCharClass(c);
-    if (dState.nextState(charClass) == NOT_COMPUTED) {
-      // the next dfa state has not been computed yet
-      dState.setNextState(charClass, findDState(step(dState.nfaStates, c)));
-    }
     return dState.nextState(charClass);
-  }
-
-  /**
-   * given a list of NFA states and a character c, compute the output list of NFA state which is
-   * wrapped as a DFA state
-   */
-  private DState step(int[] nfaStates, int c) {
-    Transition transition = new Transition();
-    StateSet stateSet = new StateSet(5); // fork IntHashSet from hppc instead?
-    int numTransitions;
-    for (int nfaState : nfaStates) {
-      numTransitions = automaton.initTransition(nfaState, transition);
-      for (int i = 0; i < numTransitions; i++) {
-        automaton.getNextTransition(transition);
-        if (transition.min <= c && transition.max >= c) {
-          stateSet.incr(transition.dest);
-        }
-      }
-    }
-    if (stateSet.size() == 0) {
-      return null;
-    }
-    return new DState(stateSet.getArray());
   }
 
   /**
@@ -171,9 +144,11 @@ public class NFARunAutomaton {
 
   private class DState {
     private final int[] nfaStates;
+    // this field is lazily init'd when first time caller wants to add a new transition
     private int[] transitions;
     private final int hashCode;
     private final boolean isAccept;
+    private final Transition stepTransition = new Transition();
 
     private DState(int[] nfaStates) {
       assert nfaStates != null && nfaStates.length > 0;
@@ -193,13 +168,36 @@ public class NFARunAutomaton {
     private int nextState(int charClass) {
       initTransitions();
       assert charClass < transitions.length;
+      if (transitions[charClass] == NOT_COMPUTED) {
+        transitions[charClass] = findDState(step(points[charClass]));
+        // TODO: we could potentially update more than one char classes, but
+        //       this isn't super easy, there're cases where the larger transition
+        //       is accepted but smaller transition isn't, like [0,10] is accepted
+        //       but [5,5] isn't, then we can only update [0,4] and [6,10]
+      }
       return transitions[charClass];
     }
 
-    private void setNextState(int charClass, int nextState) {
-      initTransitions();
-      assert charClass < transitions.length;
-      transitions[charClass] = nextState;
+    /**
+     * given a list of NFA states and a character c, compute the output list of NFA state which is
+     * wrapped as a DFA state
+     */
+    private DState step(int c) {
+      StateSet stateSet = new StateSet(5); // fork IntHashSet from hppc instead?
+      int numTransitions;
+      for (int nfaState : nfaStates) {
+        numTransitions = automaton.initTransition(nfaState, stepTransition);
+        for (int i = 0; i < numTransitions; i++) {
+          automaton.getNextTransition(stepTransition);
+          if (stepTransition.min <= c && stepTransition.max >= c) {
+            stateSet.incr(stepTransition.dest);
+          }
+        }
+      }
+      if (stateSet.size() == 0) {
+        return null;
+      }
+      return new DState(stateSet.getArray());
     }
 
     private void initTransitions() {

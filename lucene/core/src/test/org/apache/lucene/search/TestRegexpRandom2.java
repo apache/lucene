@@ -110,7 +110,7 @@ public class TestRegexpRandom2 extends LuceneTestCase {
     DumbRegexpQuery(Term term, int flags) {
       super(term.field());
       RegExp re = new RegExp(term.text(), flags);
-      automaton = re.toAutomaton();
+      automaton = re.toDFA();
     }
 
     @Override

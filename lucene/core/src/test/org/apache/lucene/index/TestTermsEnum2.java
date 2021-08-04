@@ -91,7 +91,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
       String reg = AutomatonTestUtil.randomRegexp(random());
       Automaton automaton =
           Operations.determinize(
-              new RegExp(reg, RegExp.NONE).toAutomaton(), DEFAULT_DETERMINIZE_WORK_LIMIT);
+              new RegExp(reg, RegExp.NONE).toDFA(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       final List<BytesRef> matchedTerms = new ArrayList<>();
       for (BytesRef t : terms) {
         if (Operations.run(automaton, t.utf8ToString())) {
@@ -119,7 +119,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
       String reg = AutomatonTestUtil.randomRegexp(random());
       Automaton automaton =
           Operations.determinize(
-              new RegExp(reg, RegExp.NONE).toAutomaton(), DEFAULT_DETERMINIZE_WORK_LIMIT);
+              new RegExp(reg, RegExp.NONE).toDFA(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       TermsEnum te = MultiTerms.getTerms(reader, "field").iterator();
       ArrayList<BytesRef> unsortedTerms = new ArrayList<>(terms);
       Collections.shuffle(unsortedTerms, random());
@@ -163,7 +163,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
   public void testIntersect() throws Exception {
     for (int i = 0; i < numIterations; i++) {
       String reg = AutomatonTestUtil.randomRegexp(random());
-      Automaton automaton = new RegExp(reg, RegExp.NONE).toAutomaton();
+      Automaton automaton = new RegExp(reg, RegExp.NONE).toDFA();
       CompiledAutomaton ca =
           new CompiledAutomaton(automaton, Operations.isFinite(automaton), false);
       TermsEnum te = MultiTerms.getTerms(reader, "field").intersect(ca, null);

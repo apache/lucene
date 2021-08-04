@@ -615,7 +615,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               Automaton.class,
               random -> {
                 return Operations.determinize(
-                    new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE).toAutomaton(),
+                    new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE).toDFA(),
                     Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
               });
           put(

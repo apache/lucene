@@ -1083,7 +1083,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   }
 
   public void testStopwords() throws Exception {
-    CharacterRunAutomaton stopSet = new CharacterRunAutomaton(new RegExp("the|foo").toAutomaton());
+    CharacterRunAutomaton stopSet = new CharacterRunAutomaton(new RegExp("the|foo").toDFA());
     CommonQueryParserConfiguration qp =
         getParserConfig(new MockAnalyzer(random(), MockTokenizer.SIMPLE, true, stopSet));
     Query result = getQuery("field:the OR field:foo", qp);
@@ -1306,7 +1306,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
 
   public void testPhraseQueryPositionIncrements() throws Exception {
     CharacterRunAutomaton stopStopList =
-        new CharacterRunAutomaton(new RegExp("[sS][tT][oO][pP]").toAutomaton());
+        new CharacterRunAutomaton(new RegExp("[sS][tT][oO][pP]").toDFA());
 
     CommonQueryParserConfiguration qp =
         getParserConfig(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false, stopStopList));

@@ -1659,14 +1659,14 @@ public class TestAutomaton extends LuceneTestCase {
     expectThrows(
         TooComplexToDeterminizeException.class,
         () -> {
-          Automaton a = new RegExp("(.*a){2000}").toAutomaton();
+          Automaton a = new RegExp("(.*a){2000}").toDFA();
           Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
         });
     // ... and for its reversed form too:
     expectThrows(
         TooComplexToDeterminizeException.class,
         () -> {
-          Automaton a = new RegExp("(.*a){2000}").toAutomaton();
+          Automaton a = new RegExp("(.*a){2000}").toDFA();
           a = Operations.reverse(a);
           Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
         });

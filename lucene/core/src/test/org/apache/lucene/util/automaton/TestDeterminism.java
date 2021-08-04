@@ -28,7 +28,7 @@ public class TestDeterminism extends LuceneTestCase {
     int num = atLeast(500);
     for (int i = 0; i < num; i++) {
       assertAutomaton(
-          new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton());
+          new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toDFA());
     }
   }
 
