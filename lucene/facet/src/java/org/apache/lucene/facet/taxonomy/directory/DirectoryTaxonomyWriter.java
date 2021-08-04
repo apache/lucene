@@ -91,6 +91,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   private final Directory dir;
   private final IndexWriter indexWriter;
+  private final boolean useOlderStoredFieldIndex;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
 
@@ -124,12 +125,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   private volatile TaxonomyIndexArrays taxoArrays;
   private volatile int nextID;
 
-  /** Reads the commit data from a Directory. */
-  private static Map<String, String> readCommitData(Directory dir) throws IOException {
-    SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
-    return infos.getUserData();
-  }
-
   /**
    * Construct a Taxonomy writer.
    *
@@ -162,11 +157,18 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     // after we opened the writer, and the index is locked, it's safe to check
     // the commit data and read the index epoch
     openMode = config.getOpenMode();
-    if (!DirectoryReader.indexExists(directory)) {
+    if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
+      // no commit exists so we can safely use the new BinaryDocValues field
+      useOlderStoredFieldIndex = false;
     } else {
       String epochStr = null;
-      Map<String, String> commitData = readCommitData(directory);
+
+      SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+      /* a previous commit exists, so check the version of the last commit */
+      useOlderStoredFieldIndex = infos.getIndexCreatedVersionMajor() <= 8;
+
+      Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
         epochStr = commitData.get(INDEX_EPOCH);
       }
@@ -182,7 +184,11 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
     ft.setOmitNorms(true);
     parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
-    fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
+    if (useOlderStoredFieldIndex) {
+      fullPathField = new StringField(Consts.FULL, "", Field.Store.YES);
+    } else {
+      fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
+    }
 
     nextID = indexWriter.getDocStats().maxDoc;
 
@@ -475,8 +481,13 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
+
+    if (useOlderStoredFieldIndex == false) {
+      /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
+      d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
+    }
+
     d.add(fullPathField);
-    d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
 
     // Note that we do no pass an Analyzer here because the fields that are
     // added to the Document are untokenized or contains their own TokenStream.

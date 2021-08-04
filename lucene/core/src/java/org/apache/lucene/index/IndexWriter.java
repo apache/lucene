@@ -4138,7 +4138,6 @@ public class IndexWriter
       assert rld != null : "seg=" + info.info.name;
 
       MergeState.DocMap segDocMap = mergeState.docMaps[i];
-      MergeState.DocMap segLeafDocMap = mergeState.leafDocMaps[i];
 
       carryOverHardDeletes(
           mergedDeletesAndUpdates,
@@ -4146,8 +4145,7 @@ public class IndexWriter
           mergeState.liveDocs[i],
           merge.getMergeReader().get(i).hardLiveDocs,
           rld.getHardLiveDocs(),
-          segDocMap,
-          segLeafDocMap);
+          segDocMap);
 
       // Now carry over all doc values updates that were resolved while we were merging, remapping
       // the docIDs to the newly merged docIDs.
@@ -4200,7 +4198,7 @@ public class IndexWriter
           DocValuesFieldUpdates.Iterator it = updates.iterator();
           int doc;
           while ((doc = it.nextDoc()) != NO_MORE_DOCS) {
-            int mappedDoc = segDocMap.get(segLeafDocMap.get(doc));
+            int mappedDoc = segDocMap.get(doc);
             if (mappedDoc != -1) {
               if (it.hasValue()) {
                 // not deleted
@@ -4250,8 +4248,7 @@ public class IndexWriter
       Bits mergeLiveDocs, // the liveDocs used to build the segDocMaps
       Bits prevHardLiveDocs, // the hard deletes when the merge reader was pulled
       Bits currentHardLiveDocs, // the current hard deletes
-      MergeState.DocMap segDocMap,
-      MergeState.DocMap segLeafDocMap)
+      MergeState.DocMap segDocMap)
       throws IOException {
 
     assert mergeLiveDocs == null || mergeLiveDocs.length() == maxDoc;
@@ -4293,7 +4290,7 @@ public class IndexWriter
             assert currentHardLiveDocs.get(j) == false;
           } else if (carryOverDelete.test(j)) {
             // the document was deleted while we were merging:
-            mergedReadersAndUpdates.delete(segDocMap.get(segLeafDocMap.get(j)));
+            mergedReadersAndUpdates.delete(segDocMap.get(j));
           }
         }
       }
@@ -4303,7 +4300,7 @@ public class IndexWriter
       // does:
       for (int j = 0; j < maxDoc; j++) {
         if (carryOverDelete.test(j)) {
-          mergedReadersAndUpdates.delete(segDocMap.get(segLeafDocMap.get(j)));
+          mergedReadersAndUpdates.delete(segDocMap.get(j));
         }
       }
     }

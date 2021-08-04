@@ -19,6 +19,12 @@ repositories {
   mavenCentral()
 }
 
+ext {
+  // Minimum Java version required to compile buildSrc.
+  minJavaVersion = JavaVersion.VERSION_11
+}
+
+
 // Make sure the build environment is consistent.
 apply from: file('../gradle/validation/check-environment.gradle')
 
