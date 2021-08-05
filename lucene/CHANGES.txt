@@ -127,6 +127,9 @@ API Changes
 * LUCENE-9959: Add non thread local based API for term vector reader usage. (Zach Chen, Adrien Grand,
   David Smiley, Robert Muir, Mike Drob)
 
+* LUCENE-10027: Directory reader open API from indexCommit and leafSorter has been modified
+  to add an extra parameter - minSupportedMajorVersion. (Mayya Sharipova)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
@@ -241,9 +244,6 @@ Improvements
 
 * LUCENE-10019: Align file starts in CFS files to have proper alignment (8 bytes)
   (Uwe Schinder)
-
-* LUCENE-10030: Lazily evaluate score in DrillSidewaysScorer.doQueryFirstScoring
-  (Grigoriy Troitskiy)
 
 Bug fixes
 
@@ -360,6 +360,9 @@ API Changes
 * LUCENE-10036: Replaced the ScoreCachingWrappingScorer ctor with a static factory method that
   ensures unnecessary wrapping doesn't occur. (Greg Miller)
 
+* LUCENE-10027: Add a new Directory reader open API from indexCommit and
+  a custom comparator for sorting leaf readers. (Mayya Sharipova)
+
 New Features
 ---------------------
 (No changes)
@@ -393,6 +396,12 @@ Improvements
   characters as boundaries for incremental processing, vastly improving worst-case
   performance. (Michael Gibney)
 
+* LUCENE-9945: Extend DrillSideways to support exposing FacetCollectors directly.
+  (Greg Miller, Sejal Pawar)
+
+* LUCENE-10030: Lazily evaluate score in DrillSidewaysScorer.doQueryFirstScoring
+  (Grigoriy Troitskiy)
+
 * LUCENE-10043: Decrease default for LRUQueryCache's skipCacheFactor to 10.
   This prevents caching a query clause when it is much more expensive than
   running the top-level query. (Julie Tibshirani)
@@ -405,6 +414,9 @@ Optimizations
 
 * LUCENE-10022: Rewrite empty DisjunctionMaxQuery to MatchNoDocsQuery.
   (David Harsha via Julie Tibshirani)
+
+* LUCENE-10031: Slightly faster segment merging for sorted indices.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
