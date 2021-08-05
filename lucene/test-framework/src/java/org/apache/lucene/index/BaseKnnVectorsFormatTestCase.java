@@ -895,7 +895,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     iw.updateDocument(idTerm, doc);
   }
 
-  private float[] randomVector(int dim) {
+  protected final float[] randomVector(int dim) {
     float[] v = new float[dim];
     for (int i = 0; i < dim; i++) {
       v[i] = random().nextFloat();

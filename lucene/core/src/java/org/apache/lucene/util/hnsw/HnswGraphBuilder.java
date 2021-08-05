@@ -136,7 +136,7 @@ public final class HnswGraphBuilder {
   void addGraphNode(float[] value) throws IOException {
     NeighborQueue candidates =
         HnswGraph.search(
-            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, random);
+            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, null, random);
 
     int node = hnsw.addNode();
 

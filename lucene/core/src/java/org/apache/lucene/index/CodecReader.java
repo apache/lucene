@@ -220,7 +220,7 @@ public abstract class CodecReader extends LeafReader {
       return null;
     }
 
-    return getVectorReader().search(field, target, k);
+    return getVectorReader().search(field, target, k, getLiveDocs());
   }
 
   @Override
