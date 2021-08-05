@@ -90,7 +90,7 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
       boolean fieldHasNorms = fieldInfo.hasNorms();
 
       NumericDocValues norms = null;
-      if(fieldHasNorms){
+      if(fieldHasNorms && normsProducer != null){
         norms = normsProducer.getNorms(fieldInfo);
       }
 
