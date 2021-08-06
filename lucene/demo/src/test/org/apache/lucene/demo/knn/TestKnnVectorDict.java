@@ -14,19 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.demo.knn;
 
-apply plugin: 'java-library'
+import java.io.IOException;
+import java.nio.file.Path;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.LuceneTestCase;
 
-description = 'Simple example code for Apache Lucene'
+public class TestKnnVectorDict extends LuceneTestCase {
 
-dependencies {
-  implementation project(':lucene:core')
-  implementation project(':lucene:facet')
-  implementation project(':lucene:queries')
-  implementation project(':lucene:analysis:common')
-  implementation project(':lucene:queryparser')
-  implementation project(':lucene:expressions')
-  implementation project(':lucene:highlighter')
-
-  testImplementation project(':lucene:test-framework')
+  public void testBuild() throws IOException {
+    Path testVectors = getDataPath("../test-files/knn-dict").resolve("knn-token-vectors");
+    Path dictPath = createTempDir("knn-demo").resolve("dict");
+    KnnVectorDict.build(testVectors, dictPath);
+    try (KnnVectorDict dict = new KnnVectorDict(dictPath)) {
+      assertEquals(50, dict.getDimension());
+      assertNull(dict.get(new BytesRef("never saw this token")));
+      byte[] theVector = dict.get(new BytesRef("the"));
+      assertNotNull(theVector);
+      assertEquals(200, theVector.length);
+    }
+  }
 }

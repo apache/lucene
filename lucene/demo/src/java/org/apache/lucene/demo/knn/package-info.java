@@ -15,18 +15,12 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
-
-description = 'Simple example code for Apache Lucene'
-
-dependencies {
-  implementation project(':lucene:core')
-  implementation project(':lucene:facet')
-  implementation project(':lucene:queries')
-  implementation project(':lucene:analysis:common')
-  implementation project(':lucene:queryparser')
-  implementation project(':lucene:expressions')
-  implementation project(':lucene:highlighter')
-
-  testImplementation project(':lucene:test-framework')
-}
+/**
+ * KnnVector example code.
+ *
+ * <p>The vector dictionary used in the demo is taken from the GloVe project hosted at
+ * https://nlp.stanford.edu/projects/glove, whose data is in the public domain, as described by
+ * http://opendatacommons.org/licenses/pddl/1.0, available in the Lucene distribution as
+ * lucene/licenses/pddl-10.txt.
+ */
+package org.apache.lucene.demo.knn;

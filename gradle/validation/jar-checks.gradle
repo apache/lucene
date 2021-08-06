@@ -343,6 +343,7 @@ configure(project(":lucene")) {
         "elegant-icon-font-*",
         "ant-*",
         "ivy-*",
+        "pddl-10.txt",
     ]
   }
 }

@@ -25,14 +25,15 @@ import java.nio.file.Paths;
 import java.util.Date;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.demo.knn.DemoKnnAnalyzer;
+import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.*;
+import org.apache.lucene.search.highlight.QueryTermExtractor;
+import org.apache.lucene.search.highlight.WeightedTerm;
 import org.apache.lucene.store.FSDirectory;
 
 /** Simple command-line based search demo. */
@@ -54,42 +55,54 @@ public class SearchFiles {
     String queries = null;
     int repeat = 0;
     boolean raw = false;
+    boolean semantic = false;
     String queryString = null;
     int hitsPerPage = 10;
 
     for (int i = 0; i < args.length; i++) {
-      if ("-index".equals(args[i])) {
-        index = args[i + 1];
-        i++;
-      } else if ("-field".equals(args[i])) {
-        field = args[i + 1];
-        i++;
-      } else if ("-queries".equals(args[i])) {
-        queries = args[i + 1];
-        i++;
-      } else if ("-query".equals(args[i])) {
-        queryString = args[i + 1];
-        i++;
-      } else if ("-repeat".equals(args[i])) {
-        repeat = Integer.parseInt(args[i + 1]);
-        i++;
-      } else if ("-raw".equals(args[i])) {
-        raw = true;
-      } else if ("-paging".equals(args[i])) {
-        hitsPerPage = Integer.parseInt(args[i + 1]);
-        if (hitsPerPage <= 0) {
-          System.err.println("There must be at least 1 hit per page.");
+      switch (args[i]) {
+        case "-index":
+          index = args[++i];
+          break;
+        case "-field":
+          field = args[++i];
+          break;
+        case "-queries":
+          queries = args[++i];
+          break;
+        case "-query":
+          queryString = args[++i];
+          break;
+        case "-repeat":
+          repeat = Integer.parseInt(args[++i]);
+          break;
+        case "-raw":
+          raw = true;
+          break;
+        case "-paging":
+          hitsPerPage = Integer.parseInt(args[++i]);
+          if (hitsPerPage <= 0) {
+            System.err.println("There must be at least 1 hit per page.");
+            System.exit(1);
+          }
+          break;
+        case "-semantic":
+          semantic = true;
+          break;
+        default:
+          System.err.println("Unknown argument: " + args[i]);
           System.exit(1);
-        }
-        i++;
       }
     }
 
     IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(index)));
     IndexSearcher searcher = new IndexSearcher(reader);
     Analyzer analyzer = new StandardAnalyzer();
-
-    BufferedReader in = null;
+    KnnVectorDict vectorDict = null;
+    if (semantic) {
+      vectorDict = new KnnVectorDict(Paths.get(index).resolve("knn-dict"));
+    }
+    BufferedReader in;
     if (queries != null) {
       in = Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
     } else {
@@ -113,6 +126,9 @@ public class SearchFiles {
       }
 
       Query query = parser.parse(line);
+      if (semantic) {
+        query = addSemanticQuery(query, vectorDict);
+      }
       System.out.println("Searching for: " + query.toString(field));
 
       if (repeat > 0) { // repeat & time as benchmark
@@ -241,5 +257,24 @@ public class SearchFiles {
         end = Math.min(numTotalHits, start + hitsPerPage);
       }
     }
+  }
+
+  private static Query addSemanticQuery(Query query, KnnVectorDict vectorDict) throws IOException {
+    StringBuilder semanticQueryText = new StringBuilder();
+    for (WeightedTerm term : QueryTermExtractor.getTerms(query, false, "contents")) {
+      semanticQueryText.append(term.getTerm()).append(' ');
+    }
+    if (semanticQueryText.length() > 0) {
+      KnnVectorQuery knnQuery =
+          new KnnVectorQuery(
+              "contents-vector",
+              new DemoKnnAnalyzer(vectorDict).analyze("text", semanticQueryText.toString()),
+              1);
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      builder.add(query, BooleanClause.Occur.SHOULD);
+      builder.add(knnQuery, BooleanClause.Occur.SHOULD);
+      return builder.build();
+    }
+    return query;
   }
 }
