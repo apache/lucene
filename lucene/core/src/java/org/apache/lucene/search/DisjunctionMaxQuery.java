@@ -207,6 +207,10 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    */
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
+    if (disjuncts.isEmpty()) {
+      return new MatchNoDocsQuery("empty DisjunctionMaxQuery");
+    }
+
     if (disjuncts.size() == 1) {
       return disjuncts.iterator().next();
     }

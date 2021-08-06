@@ -300,21 +300,26 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    ParallelFields fields = null;
-    for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-      String fieldName = ent.getKey();
-      Terms vector = ent.getValue().getTermVector(docID, fieldName);
-      if (vector != null) {
-        if (fields == null) {
-          fields = new ParallelFields();
+  public TermVectors getTermVectorsReader() {
+    return new TermVectors() {
+      @Override
+      public Fields get(int doc) throws IOException {
+        ensureOpen();
+        ParallelFields fields = null;
+        for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
+          String fieldName = ent.getKey();
+          Terms vector = ent.getValue().getTermVector(doc, fieldName);
+          if (vector != null) {
+            if (fields == null) {
+              fields = new ParallelFields();
+            }
+            fields.addField(fieldName, vector);
+          }
         }
-        fields.addField(fieldName, vector);
-      }
-    }
 
-    return fields;
+        return fields;
+      }
+    };
   }
 
   @Override
@@ -393,11 +398,10 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(String fieldName, float[] target, int k, int fanout)
-      throws IOException {
+  public TopDocs searchNearestVectors(String fieldName, float[] target, int k) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null ? null : reader.searchNearestVectors(fieldName, target, k, fanout);
+    return reader == null ? null : reader.searchNearestVectors(fieldName, target, k);
   }
 
   @Override

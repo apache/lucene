@@ -7,12 +7,9 @@ http://s.apache.org/luceneversions
 
 New Features
 
-* LUCENE-9680: IndexWriter#getFieldNames() method added to get fields present in index.
-  This method was removed in LUCENE-8909. (Oren Ovadia)
+* LUCENE-9322 LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
-* LUCENE-9322: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
-
-* LUCENE-9004: Approximate nearest vector search via NSW graphs
+* LUCENE-9004: Approximate nearest vector search via NSW graphs (Mike Sokolov, Tomoko Uchida et al.)
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
@@ -122,17 +119,20 @@ API Changes
 
 * LUCENE-9956: Expose the getBaseQuery, getDrillDownQueries APIs from DrillDownQuery (Gautam Worah)
 
-* LUCENE-9962: DrillSideways allows sub-classes to provide "drill down" FacetsCollectors. They
-  may provide a null collector if they choose to bypass "drill down" facet collection. (Greg Miller)
-
 * LUCENE-8143: SpanBoostQuery has been removed. (Alan Woodward)
+
+* LUCENE-9998: Remove unused parameter fis in StoredFieldsWriter.finish() and TermVectorsWriter.finish(),
+  including those subclasses. (kkewwei)
+
+* LUCENE-9959: Add non thread local based API for term vector reader usage. (Zach Chen, Adrien Grand,
+  David Smiley, Robert Muir, Mike Drob)
+
+* LUCENE-10027: Directory reader open API from indexCommit and leafSorter has been modified
+  to add an extra parameter - minSupportedMajorVersion. (Mayya Sharipova)
 
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
-
-* LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
-  fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
 
 * LUCENE-9633: Improve match highlighter behavior for degenerate intervals (on non-existing positions).
   (Dawid Weiss)
@@ -233,26 +233,17 @@ Improvements
 
 * LUCENE-9850: Switch to PFOR encoding for doc IDs (instead of FOR). (Greg Miller)
 
-* LUCENE-9946: Support for multi-value fields in LongRangeFacetCounts and
-  DoubleRangeFacetCounts. (Greg Miller)
-
 * LUCENE-9929: Add NorwegianNormalizationFilter, which does the same as ScandinavianNormalizationFilter except
   it does not fold oo->ø and ao->å. (janhoy, Robert Muir, Adrien Grand)
 
-* LUCENE-9981: Operations.getCommonSuffix/Prefix(Automaton) is now much more
-  efficient, from a worst case exponential down to quadratic cost in the
-  number of states + transitions in the Automaton.  These methods no longer
-  use the costly determinize method, removing the risk of
-  TooComplexToDeterminizeException (Robert Muir, Mike McCandless)
+* LUCENE-9535: Improve DocumentsWriterPerThreadPool to prefer larger instances.
+  (Adrien Grand)
 
-* LUCENE-9981: Operations.determinize now throws TooComplexToDeterminizeException
-  based on too much "effort" spent determinizing rather than a precise state
-  count on the resulting returned automaton, to better handle adversarial
-  cases like det(rev(regexp("(.*a){2000}"))) that spend lots of effort but
-  result in smallish eventual returned automata.  (Robert Muir, Mike McCandless)
+* LUCENE-10000: MultiCollectorManager now has parity with MultiCollector with respect to how it
+  handles CollectionTerminationException and setMinCompetitiveScore calls. (Greg Miller)
 
-* LUCENE-9944: Allow DrillSideways users to provide their own CollectorManager without also requiring
-  them to provide an ExecutorService. (Greg Miller)
+* LUCENE-10019: Align file starts in CFS files to have proper alignment (8 bytes)
+  (Uwe Schinder)
 
 Bug fixes
 
@@ -290,8 +281,6 @@ Bug fixes
 * LUCENE-9823: Prevent unsafe rewrites for SynonymQuery and CombinedFieldQuery. Before, rewriting
   could slightly change the scoring when weights were specified. (Naoto Minami via Julie Tibshirani)
 
-* LUCENE-9988: Fix DrillSideways correctness bug introduced in LUCENE-9944 (Greg Miller)
-
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
@@ -313,6 +302,8 @@ Other
 * LUCENE-9631: Properly override slice() on subclasses of OffsetRange. (Dawid Weiss)
 
 * LUCENE-9391: Upgrade HPPC to 0.8.2. (Haoyu Zhai)
+
+* LUCENE-10021: Upgrade HPPC to 0.9.0. Replace usage of ...ScatterMap to ...HashMap. (Patrick Zhai)
 
 * LUCENE-8768: Fix Javadocs build in Java 11. (Namgyu Kim)
 
@@ -352,13 +343,25 @@ Other
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
-* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
+* LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
+  (Michael Wechner, Tomoko Uchida)
 
 ======================= Lucene 8.10.0 =======================
 
 API Changes
 ---------------------
-(No changes)
+* LUCENE-9962: DrillSideways allows sub-classes to provide "drill down" FacetsCollectors. They
+  may provide a null collector if they choose to bypass "drill down" facet collection. (Greg Miller)
+
+* LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
+  Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
+  Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
+
+* LUCENE-10036: Replaced the ScoreCachingWrappingScorer ctor with a static factory method that
+  ensures unnecessary wrapping doesn't occur. (Greg Miller)
+
+* LUCENE-10027: Add a new Directory reader open API from indexCommit and
+  a custom comparator for sorting leaf readers. (Mayya Sharipova)
 
 New Features
 ---------------------
@@ -366,16 +369,69 @@ New Features
 
 Improvements
 ---------------------
+* LUCENE-9944: Allow DrillSideways users to provide their own CollectorManager without also requiring
+  them to provide an ExecutorService. (Greg Miller)
+
+* LUCENE-9946: Support for multi-value fields in LongRangeFacetCounts and
+  DoubleRangeFacetCounts. (Greg Miller)
+
 * LUCENE-9965: Added QueryProfilerIndexSearcher and ProfilerCollector to support debugging
   query execution strategy and timing. (Jack Conradson, Julie Tibshirani)
 
+* LUCENE-9981: Operations.getCommonSuffix/Prefix(Automaton) is now much more
+  efficient, from a worst case exponential down to quadratic cost in the
+  number of states + transitions in the Automaton.  These methods no longer
+  use the costly determinize method, removing the risk of
+  TooComplexToDeterminizeException (Robert Muir, Mike McCandless)
+
+* LUCENE-9981: Operations.determinize now throws TooComplexToDeterminizeException
+  based on too much "effort" spent determinizing rather than a precise state
+  count on the resulting returned automaton, to better handle adversarial
+  cases like det(rev(regexp("(.*a){2000}"))) that spend lots of effort but
+  result in smallish eventual returned automata.  (Robert Muir, Mike McCandless)
+
+* LUCENE-9983: Stop sorting determinize powersets unnecessarily. (Patrick Zhai)
+
+* LUCENE-9177: ICUNormalizer2CharFilter no longer requires normalization-inert
+  characters as boundaries for incremental processing, vastly improving worst-case
+  performance. (Michael Gibney)
+
+* LUCENE-10030: Lazily evaluate score in DrillSidewaysScorer.doQueryFirstScoring
+  (Grigoriy Troitskiy)
+
+* LUCENE-9945: Extend DrillSideways to support exposing FacetCollectors directly.
+  (Greg Miller, Sejal Pawar)
+
 Optimizations
 ---------------------
-(No changes)
+* LUCENE-9996: Improved memory efficiency of IndexWriter's RAM buffer, in
+  particular in the case of many fields and many indexing threads.
+  (Adrien Grand)
+
+* LUCENE-10022: Rewrite empty DisjunctionMaxQuery to MatchNoDocsQuery.
+  (David Harsha via Julie Tibshirani)
+
+* LUCENE-10031: Slightly faster segment merging for sorted indices.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
-(No changes)
+* LUCENE-9988: Fix DrillSideways correctness bug introduced in LUCENE-9944 (Greg Miller)
+
+* LUCENE-9964: Duplicate long values in a document field should only be counted once when using SortedNumericDocValuesFields
+  (Gautam Worah)
+
+* LUCENE-9999: CombinedFieldQuery can fail with an exception when document
+  is missing some fields. (Jim Ferenczi, Julie Tibshirani)
+
+* LUCENE-10020: DocComparator should not skip docs with the same docID on
+  multiple sorts with search after (Mayya Sharipova, Julie Tibshirani)
+
+* LUCENE-10026: Fix CombinedFieldQuery equals and hashCode, which ensures
+  query rewrites don't drop CombinedFieldQuery clauses. (Julie Tibshirani)
+
+* LUCENE-10039: Correct CombinedFieldQuery scoring when there is a single
+  field. (Julie Tibshirani)
 
 Other
 ---------------------
@@ -386,9 +442,8 @@ Other
 API Changes
 ---------------------
 
-* LUCENE-9902: Change the getValue method from IntTaxonomyFacets to be protected instead of private.
-  Users can now access the count of an ordinal directly without constructing an extra FacetLabel.
-  Also use variable length arguments for the getOrdinal call in TaxonomyReader. (Gautam Worah)
+* LUCENE-9680: IndexWriter#getFieldNames() method added to get fields present in index.
+  This method was removed in LUCENE-8909. (Oren Ovadia)
 
 New Features
 ---------------------
@@ -431,6 +486,9 @@ Improvements
 
 * LUCENE-9663: Adding compression to terms dict from SortedSet/Sorted DocValues.
   (Jaison Bi via Bruno Roustant)
+
+* LUCENE-9687: Hunspell support improvements: add API for spell-checking and suggestions, support compound words,
+  fix various behavior differences between Java and C++ implementations, improve performance (Peter Gromov, Dawid Weiss)
 
 * LUCENE-9877: Reduce index size by increasing allowable exceptions in PForUtil from 3 to 7. (Greg Miller)
 
@@ -481,6 +539,7 @@ Other
 
 * LUCENE-9985: Upgrade jetty to 9.4.41 (janhoy)
 
+* LUCENE-9976: Fix WANDScorer assertion error. (Zach Chen, Adrien Grand, Dawid Weiss)
 ======================= Lucene 8.8.2 =======================
 
 Bug Fixes

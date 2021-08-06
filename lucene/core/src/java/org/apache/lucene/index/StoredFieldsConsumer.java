@@ -79,7 +79,7 @@ class StoredFieldsConsumer {
 
   void flush(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     try {
-      writer.finish(state.fieldInfos, state.segmentInfo.maxDoc());
+      writer.finish(state.segmentInfo.maxDoc());
     } finally {
       IOUtils.close(writer);
     }

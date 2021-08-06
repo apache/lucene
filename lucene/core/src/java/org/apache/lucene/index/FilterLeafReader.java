@@ -345,15 +345,13 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout)
-      throws IOException {
-    return in.searchNearestVectors(field, target, k, fanout);
+  public TopDocs searchNearestVectors(String field, float[] target, int k) throws IOException {
+    return in.searchNearestVectors(field, target, k);
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    return in.getTermVectors(docID);
+  public TermVectors getTermVectorsReader() {
+    return in.getTermVectorsReader();
   }
 
   @Override

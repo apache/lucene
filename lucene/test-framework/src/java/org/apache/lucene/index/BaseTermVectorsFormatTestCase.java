@@ -25,12 +25,14 @@ import static org.apache.lucene.index.PostingsEnum.POSITIONS;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,16 +51,20 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.TestUtil;
 
 /**
@@ -667,43 +673,94 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     dir.close();
   }
 
-  public void testMerge() throws IOException {
+  private void doTestMerge(Sort indexSort, boolean allowDeletes) throws IOException {
     final RandomDocumentFactory docFactory = new RandomDocumentFactory(5, 20);
     final int numDocs = atLeast(100);
-    final int numDeletes = random().nextInt(numDocs);
-    final Set<Integer> deletes = new HashSet<>();
-    while (deletes.size() < numDeletes) {
-      deletes.add(random().nextInt(numDocs));
-    }
     for (Options options : validOptions()) {
-      final RandomDocument[] docs = new RandomDocument[numDocs];
+      Map<String, RandomDocument> docs = new HashMap<>();
       for (int i = 0; i < numDocs; ++i) {
-        docs[i] = docFactory.newDocument(TestUtil.nextInt(random(), 1, 3), atLeast(10), options);
+        docs.put(
+            Integer.toString(i),
+            docFactory.newDocument(TestUtil.nextInt(random(), 1, 3), atLeast(10), options));
       }
       final Directory dir = newDirectory();
-      final RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
-      for (int i = 0; i < numDocs; ++i) {
-        writer.addDocument(addId(docs[i].toDocument(), "" + i));
+      final IndexWriterConfig iwc = newIndexWriterConfig();
+      if (indexSort != null) {
+        iwc.setIndexSort(indexSort);
+      }
+      final RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+      List<String> liveDocIDs = new ArrayList<>();
+      List<String> ids = new ArrayList<>(docs.keySet());
+      Collections.shuffle(ids, random());
+      Runnable verifyTermVectors =
+          () -> {
+            try (DirectoryReader reader = maybeWrapWithMergingReader(writer.getReader())) {
+              for (String id : liveDocIDs) {
+                final int docID = docID(reader, id);
+                assertEquals(docs.get(id), reader.getTermVectors(docID));
+              }
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          };
+      for (String id : ids) {
+        final Document doc = addId(docs.get(id).toDocument(), id);
+        if (indexSort != null) {
+          for (SortField sortField : indexSort.getSort()) {
+            doc.add(
+                new NumericDocValuesField(
+                    sortField.getField(), TestUtil.nextInt(random(), 0, 1024)));
+          }
+        }
+        if (random().nextInt(100) < 5) {
+          // add via foreign writer
+          IndexWriterConfig otherIwc = newIndexWriterConfig();
+          if (indexSort != null) {
+            otherIwc.setIndexSort(indexSort);
+          }
+          try (Directory otherDir = newDirectory();
+              RandomIndexWriter otherIw = new RandomIndexWriter(random(), otherDir, otherIwc)) {
+            otherIw.addDocument(doc);
+            try (DirectoryReader otherReader = otherIw.getReader()) {
+              TestUtil.addIndexesSlowly(writer.w, otherReader);
+            }
+          }
+        } else {
+          writer.addDocument(doc);
+        }
+        liveDocIDs.add(id);
+        if (allowDeletes && random().nextInt(100) < 20) {
+          final String deleteId = liveDocIDs.remove(random().nextInt(liveDocIDs.size()));
+          writer.deleteDocuments(new Term("id", deleteId));
+        }
         if (rarely()) {
           writer.commit();
+          verifyTermVectors.run();
+        }
+        if (rarely()) {
+          writer.forceMerge(1);
+          verifyTermVectors.run();
         }
       }
-      for (int delete : deletes) {
-        writer.deleteDocuments(new Term("id", "" + delete));
-      }
-      // merge with deletes
+      verifyTermVectors.run();
       writer.forceMerge(1);
-      final IndexReader reader = writer.getReader();
-      for (int i = 0; i < numDocs; ++i) {
-        if (!deletes.contains(i)) {
-          final int docID = docID(reader, "" + i);
-          assertEquals(docs[i], reader.getTermVectors(docID));
-        }
-      }
-      reader.close();
-      writer.close();
-      dir.close();
+      verifyTermVectors.run();
+      IOUtils.close(writer, dir);
     }
+  }
+
+  public void testMergeWithIndexSort() throws IOException {
+    SortField[] sortFields = new SortField[TestUtil.nextInt(random(), 1, 2)];
+    for (int i = 0; i < sortFields.length; i++) {
+      sortFields[i] = new SortField("sort_field_" + i, SortField.Type.LONG);
+    }
+    doTestMerge(new Sort(sortFields), false);
+    doTestMerge(new Sort(sortFields), true);
+  }
+
+  public void testMergeWithoutIndexSort() throws IOException {
+    doTestMerge(null, false);
+    doTestMerge(null, true);
   }
 
   // run random tests from different threads to make sure the per-thread clones

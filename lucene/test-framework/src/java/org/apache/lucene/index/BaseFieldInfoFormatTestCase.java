@@ -341,8 +341,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     if (r.nextBoolean()) {
       int dimension = 1 + r.nextInt(VectorValues.MAX_DIMENSIONS);
-      VectorValues.SimilarityFunction similarityFunction =
-          RandomPicks.randomFrom(r, VectorValues.SimilarityFunction.values());
+      VectorSimilarityFunction similarityFunction =
+          RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
       type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
     }
 
@@ -412,7 +412,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         0,
         0,
-        VectorValues.SimilarityFunction.NONE,
+        VectorSimilarityFunction.EUCLIDEAN,
         false);
   }
 }

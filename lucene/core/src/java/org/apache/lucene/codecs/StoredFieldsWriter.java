@@ -44,7 +44,7 @@ import org.apache.lucene.util.BytesRef;
  *   <li>For every document, {@link #startDocument()} is called, informing the Codec that a new
  *       document has started.
  *   <li>{@link #writeField(FieldInfo, IndexableField)} is called for each field in the document.
- *   <li>After all documents have been written, {@link #finish(FieldInfos, int)} is called for
+ *   <li>After all documents have been written, {@link #finish(int)} is called for
  *       verification/sanity-checks.
  *   <li>Finally the writer is closed ({@link #close()})
  * </ol>
@@ -74,7 +74,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
    * this is intentionally redundant (equivalent to the number of calls to {@link #startDocument()},
    * but a Codec should check that this is the case to detect the JRE bug described in LUCENE-1282.
    */
-  public abstract void finish(FieldInfos fis, int numDocs) throws IOException;
+  public abstract void finish(int numDocs) throws IOException;
 
   private static class StoredFieldsMergeSub extends DocIDMerger.Sub {
     private final StoredFieldsReader reader;
@@ -104,9 +104,9 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
   /**
    * Merges in the stored fields from the readers in <code>mergeState</code>. The default
    * implementation skips over deleted documents, and uses {@link #startDocument()}, {@link
-   * #writeField(FieldInfo, IndexableField)}, and {@link #finish(FieldInfos, int)}, returning the
-   * number of documents that were written. Implementations can override this method for more
-   * sophisticated merging (bulk-byte copying, etc).
+   * #writeField(FieldInfo, IndexableField)}, and {@link #finish(int)}, returning the number of
+   * documents that were written. Implementations can override this method for more sophisticated
+   * merging (bulk-byte copying, etc).
    */
   public int merge(MergeState mergeState) throws IOException {
     List<StoredFieldsMergeSub> subs = new ArrayList<>();
@@ -136,7 +136,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
       finishDocument();
       docCount++;
     }
-    finish(mergeState.mergeFieldInfos, docCount);
+    finish(docCount);
     return docCount;
   }
 

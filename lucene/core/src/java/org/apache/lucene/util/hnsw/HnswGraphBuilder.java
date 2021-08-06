@@ -19,10 +19,11 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Random;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -42,7 +43,7 @@ public final class HnswGraphBuilder {
   private final int beamWidth;
   private final NeighborArray scratch;
 
-  private final VectorValues.SimilarityFunction similarityFunction;
+  private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
   private final Random random;
   private final BoundsChecker bound;
@@ -67,13 +68,14 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors, int maxConn, int beamWidth, long seed) {
+      RandomAccessVectorValuesProducer vectors,
+      VectorSimilarityFunction similarityFunction,
+      int maxConn,
+      int beamWidth,
+      long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
-    similarityFunction = vectorValues.similarityFunction();
-    if (similarityFunction == VectorValues.SimilarityFunction.NONE) {
-      throw new IllegalStateException("No distance function");
-    }
+    this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
@@ -133,7 +135,8 @@ public final class HnswGraphBuilder {
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(float[] value) throws IOException {
     NeighborQueue candidates =
-        HnswGraph.search(value, beamWidth, beamWidth, vectorValues, hnsw, random);
+        HnswGraph.search(
+            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, random);
 
     int node = hnsw.addNode();
 
