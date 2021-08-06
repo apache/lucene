@@ -97,4 +97,11 @@ public final class ConjunctionUtils {
       List<TwoPhaseIterator> twoPhaseIterators) {
     ConjunctionDISI.addIterator(disi, allIterators, twoPhaseIterators);
   }
+
+  /**
+   * Create a conjunction for a given lead {@link DocIdSetIterator} and an array of {@link Values}.
+   */
+  public static DocIdSetIterator createValuesConjunction(DocIdSetIterator lead, Values[] values) {
+    return new ValuesDISI(lead, values);
+  }
 }
