@@ -122,6 +122,7 @@ public final class VectorUtil {
 
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm.
+   *
    * @param v the vector to normalize
    * @param throwOnZero whether to throw an exception when <code>v</code> has all zeros
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
@@ -147,6 +148,7 @@ public final class VectorUtil {
 
   /**
    * Adds the second argument to the first
+   *
    * @param u the destination
    * @param v the vector to add to the destination
    */
