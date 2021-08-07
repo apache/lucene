@@ -193,10 +193,10 @@ abstract class RangeFacetCounts extends Facets {
               totCount++;
             } else {
               counter.startMultiValuedDoc();
-              long previous = -1;
+              long previous = 0;
               for (int j = 0; j < limit; j++) {
                 long val = mapDocValue(multiValues.nextValue());
-                if (val != previous) {
+                if (j == 0 || val != previous) {
                   counter.addMultiValued(val);
                   previous = val;
                 }

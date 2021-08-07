@@ -435,6 +435,9 @@ Bug Fixes
 
 * LUCENE-10046: Counting bug fixed in StringValueFacetCounts. (Greg Miller)
 
+* LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
+  (Greg Miller)
+
 Other
 ---------------------
 (No changes)
