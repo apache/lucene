@@ -17,22 +17,41 @@
 package org.apache.lucene.demo.knn;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Path;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 
-public class TestKnnVectorDict extends LuceneTestCase {
+public class TestKnnAnalyzer extends LuceneTestCase {
 
-  public void testBuild() throws IOException {
+  public void testAnalyze() throws IOException {
     Path testVectors = getDataPath("../test-files/knn-dict").resolve("knn-token-vectors");
     Path dictPath = createTempDir("knn-demo").resolve("dict");
     KnnVectorDict.build(testVectors, dictPath);
     try (KnnVectorDict dict = new KnnVectorDict(dictPath)) {
-      assertEquals(50, dict.getDimension());
-      assertNull(dict.get(new BytesRef("never saw this token")));
-      byte[] theVector = dict.get(new BytesRef("the"));
-      assertNotNull(theVector);
-      assertEquals(200, theVector.length);
+      DemoKnnAnalyzer analyzer = new DemoKnnAnalyzer(dict);
+      float[] garbageVector = analyzer.analyze("", "garbagethathasneverbeen seeneverinlife");
+      assertEquals(50, garbageVector.length);
+      assertArrayEquals(new float[50], garbageVector, 0);
+
+      float[] realVector = analyzer.analyze("", "the real fact");
+      assertEquals(50, realVector.length);
+
+      float[] the = getTermVector(dict, "the");
+      assertNull(dict.get(new BytesRef("real")));
+      float[] fact = getTermVector(dict, "fact");
+      VectorUtil.add(the, fact);
+      VectorUtil.l2normalize(the);
+      assertArrayEquals(the, realVector, 0);
     }
+  }
+
+  private float[] getTermVector(KnnVectorDict dict, String term) throws IOException {
+    byte[] vector = dict.get(new BytesRef(term));
+    float[] scratch = new float[50];
+    ByteBuffer.wrap(vector).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(scratch);
+    return scratch;
   }
 }

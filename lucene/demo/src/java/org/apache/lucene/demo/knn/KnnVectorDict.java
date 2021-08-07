@@ -79,9 +79,18 @@ public class KnnVectorDict implements AutoCloseable {
     if (ord == null) {
       return null;
     }
-    vectors.position(ord * dimension * Float.BYTES);
+    vbuffer.position((int) (ord * dimension * Float.BYTES));
     vbuffer.get(output);
     return output;
+  }
+
+  /**
+   * Get the dimension of the vectors returned by this.
+   *
+   * @return the vector dimension
+   */
+  public int getDimension() {
+    return dimension;
   }
 
   @Override
