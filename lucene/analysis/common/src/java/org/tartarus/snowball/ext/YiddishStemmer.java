@@ -16,7 +16,7 @@ public class YiddishStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("\u05D0\u05D3\u05D5\u05E8\u05DB", -1, 1),
     new Among("\u05D0\u05D4\u05D9\u05E0", -1, 1),
     new Among("\u05D0\u05D4\u05E2\u05E8", -1, 1),
@@ -59,14 +59,14 @@ public class YiddishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u05E6\u05E2", -1, 1)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("\u05D3\u05D6\u05E9", -1, -1),
     new Among("\u05E9\u05D8\u05E8", -1, -1),
     new Among("\u05E9\u05D8\u05E9", -1, -1),
     new Among("\u05E9\u05E4\u05E8", -1, -1)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("\u05D5\u05E0\u05D2", -1, 1),
     new Among("\u05E1\u05D8\u05D5", -1, 1),
     new Among("\u05D8", -1, 1),
@@ -145,7 +145,7 @@ public class YiddishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u05D5\u05EA", -1, 32)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("\u05D5\u05E0\u05D2", -1, 1),
     new Among("\u05E9\u05D0\u05E4\u05D8", -1, 1),
     new Among("\u05D4\u05F2\u05D8", -1, 1),
@@ -154,7 +154,7 @@ public class YiddishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u05DC", -1, 2)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("\u05D9\u05D2", -1, 1),
     new Among("\u05D9\u05E7", -1, 1),
     new Among("\u05D3\u05D9\u05E7", 1, 1),
@@ -166,11 +166,11 @@ public class YiddishStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u05D9\u05E9", -1, 1)
   };
 
-  private static final char[] g_niked = {255, 155, 6};
+  private static final char g_niked[] = {255, 155, 6};
 
-  private static final char[] g_vowel = {33, 2, 4, 0, 6};
+  private static final char g_vowel[] = {33, 2, 4, 0, 6};
 
-  private static final char[] g_consonant = {239, 254, 253, 131};
+  private static final char g_consonant[] = {239, 254, 253, 131};
 
   private int I_x;
   private int I_p1;

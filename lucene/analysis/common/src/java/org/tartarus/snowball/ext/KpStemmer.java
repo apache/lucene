@@ -16,7 +16,7 @@ public class KpStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("nde", -1, 7),
     new Among("en", -1, 6),
     new Among("s", -1, 2),
@@ -26,7 +26,7 @@ public class KpStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("aus", 2, 5)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("de", -1, 5),
     new Among("ge", -1, 2),
     new Among("ische", -1, 4),
@@ -40,7 +40,7 @@ public class KpStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ieve", -1, 11)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("heid", -1, 3),
     new Among("fie", -1, 6),
     new Among("gie", -1, 7),
@@ -57,7 +57,7 @@ public class KpStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("tst", -1, 8)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("end", -1, 9),
     new Among("atief", -1, 2),
     new Among("erig", -1, 9),
@@ -76,15 +76,15 @@ public class KpStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("lijkst", -1, 8)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("ig", -1, 1), new Among("iger", -1, 1), new Among("igst", -1, 1)
   };
 
-  private static final Among[] a_5 = {
+  private static final Among a_5[] = {
     new Among("ft", -1, 2), new Among("kt", -1, 1), new Among("pt", -1, 3)
   };
 
-  private static final Among[] a_6 = {
+  private static final Among a_6[] = {
     new Among("bb", -1, 1),
     new Among("cc", -1, 2),
     new Among("dd", -1, 3),
@@ -109,15 +109,15 @@ public class KpStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("zz", 20, 20)
   };
 
-  private static final Among[] a_7 = {new Among("d", -1, 1), new Among("t", -1, 2)};
+  private static final Among a_7[] = {new Among("d", -1, 1), new Among("t", -1, 2)};
 
-  private static final char[] g_v = {17, 65, 16, 1};
+  private static final char g_v[] = {17, 65, 16, 1};
 
-  private static final char[] g_v_WX = {17, 65, 208, 1};
+  private static final char g_v_WX[] = {17, 65, 208, 1};
 
-  private static final char[] g_AOU = {1, 64, 16};
+  private static final char g_AOU[] = {1, 64, 16};
 
-  private static final char[] g_AIOU = {1, 65, 16};
+  private static final char g_AIOU[] = {1, 65, 16};
 
   private boolean B_GE_removed;
   private boolean B_stemmed;

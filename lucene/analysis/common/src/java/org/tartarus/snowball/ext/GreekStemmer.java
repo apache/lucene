@@ -16,7 +16,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("", -1, 25),
     new Among("\u0386", 0, 1),
     new Among("\u0388", 0, 5),
@@ -65,7 +65,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03CE", 0, 24)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("\u03C3\u03BA\u03B1\u03B3\u03B9\u03B1", -1, 2),
     new Among("\u03C6\u03B1\u03B3\u03B9\u03B1", -1, 1),
     new Among("\u03BF\u03BB\u03BF\u03B3\u03B9\u03B1", -1, 3),
@@ -108,7 +108,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C4\u03B1\u03C4\u03BF\u03B3\u03B9\u03BF\u03C5", -1, 5)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("\u03C0\u03B1", -1, 1),
     new Among("\u03BE\u03B1\u03BD\u03B1\u03C0\u03B1", 0, 1),
     new Among("\u03B5\u03C0\u03B1", 0, 1),
@@ -120,7 +120,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03C5\u03BD\u03B1\u03B8\u03C1\u03BF", 7, 1)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("\u03B2", -1, 1),
     new Among("\u03B2\u03B1\u03B8\u03C5\u03C1\u03B9", -1, 1),
     new Among("\u03B2\u03B1\u03C1\u03BA", -1, 1),
@@ -145,7 +145,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BB\u03BF\u03C5", -1, 1)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("\u03B9\u03B6\u03B1", -1, 1),
     new Among("\u03B9\u03B6\u03B5", -1, 1),
     new Among("\u03B9\u03B6\u03B1\u03BC\u03B5", -1, 1),
@@ -162,7 +162,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B9\u03B6\u03C9", -1, 1)
   };
 
-  private static final Among[] a_5 = {
+  private static final Among a_5[] = {
     new Among("\u03B2\u03B9", -1, 1),
     new Among("\u03BB\u03B9", -1, 1),
     new Among("\u03B1\u03BB", -1, 1),
@@ -173,7 +173,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B6\u03C9", -1, 1)
   };
 
-  private static final Among[] a_6 = {
+  private static final Among a_6[] = {
     new Among("\u03C9\u03B8\u03B7\u03BA\u03B1", -1, 1),
     new Among("\u03C9\u03B8\u03B7\u03BA\u03B5", -1, 1),
     new Among("\u03C9\u03B8\u03B7\u03BA\u03B1\u03BC\u03B5", -1, 1),
@@ -183,7 +183,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C9\u03B8\u03B7\u03BA\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_7 = {
+  private static final Among a_7[] = {
     new Among("\u03BE\u03B1\u03BD\u03B1\u03C0\u03B1", -1, 1),
     new Among("\u03B5\u03C0\u03B1", -1, 1),
     new Among("\u03C0\u03B5\u03C1\u03B9\u03C0\u03B1", -1, 1),
@@ -205,7 +205,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03C5\u03BD\u03B1\u03B8\u03C1\u03BF", 17, 1)
   };
 
-  private static final Among[] a_8 = {
+  private static final Among a_8[] = {
     new Among("\u03B3\u03B5", -1, 1),
     new Among("\u03B3\u03BA\u03B5", -1, 1),
     new Among("\u03B3\u03BA", -1, 1),
@@ -221,7 +221,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B3\u03B9\u03B3\u03B1\u03BD\u03C4\u03BF\u03B1\u03C6", 11, 1)
   };
 
-  private static final Among[] a_9 = {
+  private static final Among a_9[] = {
     new Among("\u03B9\u03C3\u03B1", -1, 1),
     new Among("\u03B9\u03C3\u03B1\u03BC\u03B5", -1, 1),
     new Among("\u03B9\u03C3\u03B1\u03BD\u03B5", -1, 1),
@@ -231,7 +231,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B9\u03C3\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_10 = {
+  private static final Among a_10[] = {
     new Among("\u03BE\u03B1\u03BD\u03B1\u03C0\u03B1", -1, 1),
     new Among("\u03B5\u03C0\u03B1", -1, 1),
     new Among("\u03C0\u03B5\u03C1\u03B9\u03C0\u03B1", -1, 1),
@@ -253,7 +253,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03C5\u03BD\u03B1\u03B8\u03C1\u03BF", 17, 1)
   };
 
-  private static final Among[] a_11 = {
+  private static final Among a_11[] = {
     new Among("\u03B9\u03C3\u03BF\u03C5\u03BC\u03B5", -1, 1),
     new Among("\u03B9\u03C3\u03BF\u03C5\u03BD\u03B5", -1, 1),
     new Among("\u03B9\u03C3\u03B5\u03C4\u03B5", -1, 1),
@@ -263,7 +263,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B9\u03C3\u03C9", -1, 1)
   };
 
-  private static final Among[] a_12 = {
+  private static final Among a_12[] = {
     new Among("\u03BA\u03BB\u03B5", -1, 1),
     new Among("\u03B5\u03C3\u03C9\u03BA\u03BB\u03B5", 0, 1),
     new Among("\u03C0\u03BB\u03B5", -1, 1),
@@ -273,7 +273,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03C5\u03BD\u03B1\u03B8\u03C1\u03BF", -1, 1)
   };
 
-  private static final Among[] a_13 = {
+  private static final Among a_13[] = {
     new Among("\u03B1\u03C4\u03B1", -1, 1),
     new Among("\u03C6\u03B1", -1, 1),
     new Among("\u03B7\u03C6\u03B1", 1, 1),
@@ -309,7 +309,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C5\u03C8", -1, 1)
   };
 
-  private static final Among[] a_14 = {
+  private static final Among a_14[] = {
     new Among("\u03B9\u03C3\u03C4\u03B1", -1, 1),
     new Among("\u03B9\u03C3\u03C4\u03B5", -1, 1),
     new Among("\u03B9\u03C3\u03C4\u03B7", -1, 1),
@@ -323,7 +323,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B9\u03C3\u03C4\u03BF\u03C5", -1, 1)
   };
 
-  private static final Among[] a_15 = {
+  private static final Among a_15[] = {
     new Among("\u03B5\u03B3\u03BA\u03BB\u03B5", -1, 1),
     new Among("\u03B1\u03C0\u03BF\u03BA\u03BB\u03B5", -1, 1),
     new Among("\u03C3\u03B5", -1, 1),
@@ -331,12 +331,12 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BC\u03B9\u03BA\u03C1\u03BF\u03C3\u03B5", 2, 1)
   };
 
-  private static final Among[] a_16 = {
+  private static final Among a_16[] = {
     new Among("\u03B4\u03B1\u03BD\u03B5", -1, 1),
     new Among("\u03B1\u03BD\u03C4\u03B9\u03B4\u03B1\u03BD\u03B5", 0, 1)
   };
 
-  private static final Among[] a_17 = {
+  private static final Among a_17[] = {
     new Among("\u03B1\u03C4\u03BF\u03BC\u03B9\u03BA", -1, 2),
     new Among("\u03B5\u03B8\u03BD\u03B9\u03BA", -1, 4),
     new Among("\u03C4\u03BF\u03C0\u03B9\u03BA", -1, 7),
@@ -349,7 +349,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B2\u03C5\u03B6\u03B1\u03BD\u03C4\u03B9\u03BD", -1, 9)
   };
 
-  private static final Among[] a_18 = {
+  private static final Among a_18[] = {
     new Among("\u03B9\u03C3\u03BC\u03BF\u03B9", -1, 1),
     new Among("\u03B9\u03C3\u03BC\u03C9\u03BD", -1, 1),
     new Among("\u03B9\u03C3\u03BC\u03BF", -1, 1),
@@ -358,16 +358,16 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B9\u03C3\u03BC\u03BF\u03C5", -1, 1)
   };
 
-  private static final Among[] a_19 = {new Among("\u03C3", -1, 1), new Among("\u03C7", -1, 1)};
+  private static final Among a_19[] = {new Among("\u03C3", -1, 1), new Among("\u03C7", -1, 1)};
 
-  private static final Among[] a_20 = {
+  private static final Among a_20[] = {
     new Among("\u03BF\u03C5\u03B4\u03B1\u03BA\u03B9\u03B1", -1, 1),
     new Among("\u03B1\u03C1\u03B1\u03BA\u03B9\u03B1", -1, 1),
     new Among("\u03BF\u03C5\u03B4\u03B1\u03BA\u03B9", -1, 1),
     new Among("\u03B1\u03C1\u03B1\u03BA\u03B9", -1, 1)
   };
 
-  private static final Among[] a_21 = {
+  private static final Among a_21[] = {
     new Among("\u03B2\u03B1\u03BC\u03B2", -1, 1),
     new Among("\u03C3\u03BB\u03BF\u03B2", -1, 1),
     new Among("\u03C4\u03C3\u03B5\u03C7\u03BF\u03C3\u03BB\u03BF\u03B2", 1, 1),
@@ -403,7 +403,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C7", -1, 1)
   };
 
-  private static final Among[] a_22 = {
+  private static final Among a_22[] = {
     new Among("\u03B2", -1, 1),
     new Among("\u03BA\u03B1\u03C1\u03B4", -1, 1),
     new Among("\u03B6", -1, 1),
@@ -421,7 +421,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BD\u03C5\u03C6", -1, 1)
   };
 
-  private static final Among[] a_23 = {
+  private static final Among a_23[] = {
     new Among("\u03B1\u03BA\u03B9\u03B1", -1, 1),
     new Among("\u03B1\u03C1\u03B1\u03BA\u03B9\u03B1", 0, 1),
     new Among("\u03B9\u03C4\u03C3\u03B1", -1, 1),
@@ -432,24 +432,24 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B9\u03C4\u03C3\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_24 = {
+  private static final Among a_24[] = {
     new Among("\u03C8\u03B1\u03BB", -1, 1),
     new Among("\u03B1\u03B9\u03C6\u03BD", -1, 1),
     new Among("\u03BF\u03BB\u03BF", -1, 1),
     new Among("\u03B9\u03C1", -1, 1)
   };
 
-  private static final Among[] a_25 = {
+  private static final Among a_25[] = {
     new Among("\u03B5", -1, 1), new Among("\u03C0\u03B1\u03B9\u03C7\u03BD", -1, 1)
   };
 
-  private static final Among[] a_26 = {
+  private static final Among a_26[] = {
     new Among("\u03B9\u03B4\u03B9\u03B1", -1, 1),
     new Among("\u03B9\u03B4\u03B9\u03C9\u03BD", -1, 1),
     new Among("\u03B9\u03B4\u03B9\u03BF", -1, 1)
   };
 
-  private static final Among[] a_27 = {
+  private static final Among a_27[] = {
     new Among("\u03B9\u03B2", -1, 1),
     new Among("\u03B4", -1, 1),
     new Among("\u03C6\u03C1\u03B1\u03B3\u03BA", -1, 1),
@@ -459,18 +459,18 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C1", -1, 1)
   };
 
-  private static final Among[] a_28 = {
+  private static final Among a_28[] = {
     new Among("\u03B9\u03C3\u03BA\u03B5", -1, 1),
     new Among("\u03B9\u03C3\u03BA\u03BF", -1, 1),
     new Among("\u03B9\u03C3\u03BA\u03BF\u03C3", -1, 1),
     new Among("\u03B9\u03C3\u03BA\u03BF\u03C5", -1, 1)
   };
 
-  private static final Among[] a_29 = {
+  private static final Among a_29[] = {
     new Among("\u03B1\u03B4\u03C9\u03BD", -1, 1), new Among("\u03B1\u03B4\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_30 = {
+  private static final Among a_30[] = {
     new Among("\u03B3\u03B9\u03B1\u03B3\u03B9", -1, -1),
     new Among("\u03B8\u03B5\u03B9", -1, -1),
     new Among("\u03BF\u03BA", -1, -1),
@@ -483,11 +483,11 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BD\u03C4\u03B1\u03BD\u03C4", -1, -1)
   };
 
-  private static final Among[] a_31 = {
+  private static final Among a_31[] = {
     new Among("\u03B5\u03B4\u03C9\u03BD", -1, 1), new Among("\u03B5\u03B4\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_32 = {
+  private static final Among a_32[] = {
     new Among("\u03BC\u03B9\u03BB", -1, 1),
     new Among("\u03B4\u03B1\u03C0", -1, 1),
     new Among("\u03B3\u03B7\u03C0", -1, 1),
@@ -498,12 +498,12 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C5\u03C0", -1, 1)
   };
 
-  private static final Among[] a_33 = {
+  private static final Among a_33[] = {
     new Among("\u03BF\u03C5\u03B4\u03C9\u03BD", -1, 1),
     new Among("\u03BF\u03C5\u03B4\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_34 = {
+  private static final Among a_34[] = {
     new Among("\u03C4\u03C1\u03B1\u03B3", -1, 1),
     new Among("\u03C6\u03B5", -1, 1),
     new Among("\u03BA\u03B1\u03BB\u03B9\u03B1\u03BA", -1, 1),
@@ -521,11 +521,11 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BB\u03B9\u03C7", -1, 1)
   };
 
-  private static final Among[] a_35 = {
+  private static final Among a_35[] = {
     new Among("\u03B5\u03C9\u03BD", -1, 1), new Among("\u03B5\u03C9\u03C3", -1, 1)
   };
 
-  private static final Among[] a_36 = {
+  private static final Among a_36[] = {
     new Among("\u03B4", -1, 1),
     new Among("\u03B9\u03B4", 0, 1),
     new Among("\u03B8", -1, 1),
@@ -536,20 +536,20 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C0\u03B1\u03C1", -1, 1)
   };
 
-  private static final Among[] a_37 = {
+  private static final Among a_37[] = {
     new Among("\u03B9\u03B1", -1, 1),
     new Among("\u03B9\u03C9\u03BD", -1, 1),
     new Among("\u03B9\u03BF\u03C5", -1, 1)
   };
 
-  private static final Among[] a_38 = {
+  private static final Among a_38[] = {
     new Among("\u03B9\u03BA\u03B1", -1, 1),
     new Among("\u03B9\u03BA\u03C9\u03BD", -1, 1),
     new Among("\u03B9\u03BA\u03BF", -1, 1),
     new Among("\u03B9\u03BA\u03BF\u03C5", -1, 1)
   };
 
-  private static final Among[] a_39 = {
+  private static final Among a_39[] = {
     new Among("\u03B1\u03B4", -1, 1),
     new Among("\u03C3\u03C5\u03BD\u03B1\u03B4", 0, 1),
     new Among("\u03BA\u03B1\u03C4\u03B1\u03B4", 0, 1),
@@ -588,7 +588,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03B5\u03C1\u03C4", -1, 1)
   };
 
-  private static final Among[] a_40 = {
+  private static final Among a_40[] = {
     new Among("\u03B1\u03B3\u03B1\u03BC\u03B5", -1, 1),
     new Among("\u03B7\u03BA\u03B1\u03BC\u03B5", -1, 1),
     new Among("\u03B7\u03B8\u03B7\u03BA\u03B1\u03BC\u03B5", 1, 1),
@@ -596,7 +596,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BF\u03C5\u03C3\u03B1\u03BC\u03B5", -1, 1)
   };
 
-  private static final Among[] a_41 = {
+  private static final Among a_41[] = {
     new Among("\u03B2\u03BF\u03C5\u03B2", -1, 1),
     new Among("\u03BE\u03B5\u03B8", -1, 1),
     new Among("\u03C0\u03B5\u03B8", -1, 1),
@@ -611,11 +611,11 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03B9\u03C7", 10, 1)
   };
 
-  private static final Among[] a_42 = {
+  private static final Among a_42[] = {
     new Among("\u03C4\u03C1", -1, 1), new Among("\u03C4\u03C3", -1, 1)
   };
 
-  private static final Among[] a_43 = {
+  private static final Among a_43[] = {
     new Among("\u03B1\u03B3\u03B1\u03BD\u03B5", -1, 1),
     new Among("\u03B7\u03BA\u03B1\u03BD\u03B5", -1, 1),
     new Among("\u03B7\u03B8\u03B7\u03BA\u03B1\u03BD\u03B5", 1, 1),
@@ -629,7 +629,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B9\u03BF\u03C4\u03B1\u03BD\u03B5", 9, 1)
   };
 
-  private static final Among[] a_44 = {
+  private static final Among a_44[] = {
     new Among("\u03C4\u03B1\u03B2", -1, 1),
     new Among("\u03BD\u03C4\u03B1\u03B2", 0, 1),
     new Among("\u03C8\u03B7\u03BB\u03BF\u03C4\u03B1\u03B2", 0, 1),
@@ -727,9 +727,9 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BB\u03B9\u03C7", 87, 1)
   };
 
-  private static final Among[] a_45 = {new Among("\u03B7\u03C3\u03B5\u03C4\u03B5", -1, 1)};
+  private static final Among a_45[] = {new Among("\u03B7\u03C3\u03B5\u03C4\u03B5", -1, 1)};
 
-  private static final Among[] a_46 = {
+  private static final Among a_46[] = {
     new Among("\u03B5\u03BD\u03B4", -1, 1),
     new Among("\u03C3\u03C5\u03BD\u03B4", -1, 1),
     new Among("\u03BF\u03B4", -1, 1),
@@ -763,7 +763,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03C7", -1, 1)
   };
 
-  private static final Among[] a_47 = {
+  private static final Among a_47[] = {
     new Among("\u03C0\u03B1\u03B3", -1, 1),
     new Among("\u03B4", -1, 1),
     new Among("\u03B1\u03B4", 1, 1),
@@ -791,17 +791,17 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03C5\u03C1\u03C6", -1, 1)
   };
 
-  private static final Among[] a_48 = {
+  private static final Among a_48[] = {
     new Among("\u03BF\u03BD\u03C4\u03B1\u03C3", -1, 1),
     new Among("\u03C9\u03BD\u03C4\u03B1\u03C3", -1, 1)
   };
 
-  private static final Among[] a_49 = {
+  private static final Among a_49[] = {
     new Among("\u03BF\u03BC\u03B1\u03C3\u03C4\u03B5", -1, 1),
     new Among("\u03B9\u03BF\u03BC\u03B1\u03C3\u03C4\u03B5", 0, 1)
   };
 
-  private static final Among[] a_50 = {
+  private static final Among a_50[] = {
     new Among("\u03C0", -1, 1),
     new Among("\u03B1\u03C0", 0, 1),
     new Among("\u03B1\u03BA\u03B1\u03C4\u03B1\u03C0", 1, 1),
@@ -810,7 +810,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B1\u03BC\u03B5\u03C4\u03B1\u03BC\u03C6", -1, 1)
   };
 
-  private static final Among[] a_51 = {
+  private static final Among a_51[] = {
     new Among("\u03B6", -1, 1),
     new Among("\u03B1\u03BB", -1, 1),
     new Among("\u03C0\u03B1\u03C1\u03B1\u03BA\u03B1\u03BB", 1, 1),
@@ -822,13 +822,13 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BD\u03B9\u03C3", -1, 1)
   };
 
-  private static final Among[] a_52 = {
+  private static final Among a_52[] = {
     new Among("\u03B7\u03B8\u03B7\u03BA\u03B1", -1, 1),
     new Among("\u03B7\u03B8\u03B7\u03BA\u03B5", -1, 1),
     new Among("\u03B7\u03B8\u03B7\u03BA\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_53 = {
+  private static final Among a_53[] = {
     new Among("\u03C0\u03B9\u03B8", -1, 1),
     new Among("\u03BF\u03B8", -1, 1),
     new Among("\u03BD\u03B1\u03C1\u03B8", -1, 1),
@@ -837,7 +837,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C3\u03C6", -1, 1)
   };
 
-  private static final Among[] a_54 = {
+  private static final Among a_54[] = {
     new Among("\u03B8", -1, 1),
     new Among("\u03B4\u03B9\u03B1\u03B8", 0, 1),
     new Among("\u03C0\u03B1\u03C1\u03B1\u03BA\u03B1\u03C4\u03B1\u03B8", 0, 1),
@@ -845,13 +845,13 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C0\u03C1\u03BF\u03C3\u03B8", 0, 1)
   };
 
-  private static final Among[] a_55 = {
+  private static final Among a_55[] = {
     new Among("\u03B7\u03BA\u03B1", -1, 1),
     new Among("\u03B7\u03BA\u03B5", -1, 1),
     new Among("\u03B7\u03BA\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_56 = {
+  private static final Among a_56[] = {
     new Among("\u03C6\u03B1\u03B3", -1, 1),
     new Among("\u03BB\u03B7\u03B3", -1, 1),
     new Among("\u03C6\u03C1\u03C5\u03B4", -1, 1),
@@ -866,7 +866,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C0\u03B1\u03BD\u03C4\u03B1\u03C7", -1, 1)
   };
 
-  private static final Among[] a_57 = {
+  private static final Among a_57[] = {
     new Among("\u03C4\u03C3\u03B1", -1, 1),
     new Among("\u03C7\u03B1\u03B4", -1, 1),
     new Among("\u03BC\u03B5\u03B4", -1, 1),
@@ -894,18 +894,18 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BB\u03B5\u03C7", -1, 1)
   };
 
-  private static final Among[] a_58 = {
+  private static final Among a_58[] = {
     new Among("\u03BF\u03C5\u03C3\u03B1", -1, 1),
     new Among("\u03BF\u03C5\u03C3\u03B5", -1, 1),
     new Among("\u03BF\u03C5\u03C3\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_59 = {
+  private static final Among a_59[] = {
     new Among("\u03C8\u03BF\u03C6", -1, -1),
     new Among("\u03BD\u03B1\u03C5\u03BB\u03BF\u03C7", -1, -1)
   };
 
-  private static final Among[] a_60 = {
+  private static final Among a_60[] = {
     new Among("\u03C0\u03B5\u03BB", -1, 1),
     new Among("\u03BB\u03BB", -1, 1),
     new Among("\u03C3\u03BC\u03B7\u03BD", -1, 1),
@@ -918,7 +918,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BB\u03BF\u03C7", -1, 1)
   };
 
-  private static final Among[] a_61 = {
+  private static final Among a_61[] = {
     new Among("\u03B1\u03BC\u03B1\u03BB\u03BB\u03B9", -1, 1),
     new Among("\u03BB", -1, 1),
     new Among("\u03B1\u03BC\u03B1\u03BB", 1, 1),
@@ -965,19 +965,19 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C0\u03BF\u03BB\u03C5\u03C6", -1, 1)
   };
 
-  private static final Among[] a_62 = {
+  private static final Among a_62[] = {
     new Among("\u03B1\u03B3\u03B1", -1, 1),
     new Among("\u03B1\u03B3\u03B5", -1, 1),
     new Among("\u03B1\u03B3\u03B5\u03C3", -1, 1)
   };
 
-  private static final Among[] a_63 = {
+  private static final Among a_63[] = {
     new Among("\u03B7\u03C3\u03B1", -1, 1),
     new Among("\u03B7\u03C3\u03B5", -1, 1),
     new Among("\u03B7\u03C3\u03BF\u03C5", -1, 1)
   };
 
-  private static final Among[] a_64 = {
+  private static final Among a_64[] = {
     new Among("\u03BD", -1, 1),
     new Among("\u03B4\u03C9\u03B4\u03B5\u03BA\u03B1\u03BD", 0, 1),
     new Among("\u03B5\u03C0\u03C4\u03B1\u03BD", 0, 1),
@@ -986,9 +986,9 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C7\u03B5\u03C1\u03C3\u03BF\u03BD", 0, 1)
   };
 
-  private static final Among[] a_65 = {new Among("\u03B7\u03C3\u03C4\u03B5", -1, 1)};
+  private static final Among a_65[] = {new Among("\u03B7\u03C3\u03C4\u03B5", -1, 1)};
 
-  private static final Among[] a_66 = {
+  private static final Among a_66[] = {
     new Among("\u03C3\u03B2", -1, 1),
     new Among("\u03B1\u03C3\u03B2", 0, 1),
     new Among("\u03B1\u03C0\u03BB", -1, 1),
@@ -1001,13 +1001,13 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C0\u03B1\u03BB\u03B9\u03BC\u03C8", -1, 1)
   };
 
-  private static final Among[] a_67 = {
+  private static final Among a_67[] = {
     new Among("\u03BF\u03C5\u03BD\u03B5", -1, 1),
     new Among("\u03B7\u03B8\u03BF\u03C5\u03BD\u03B5", 0, 1),
     new Among("\u03B7\u03C3\u03BF\u03C5\u03BD\u03B5", 0, 1)
   };
 
-  private static final Among[] a_68 = {
+  private static final Among a_68[] = {
     new Among("\u03C3\u03C0\u03B9", -1, 1),
     new Among("\u03BD", -1, 1),
     new Among("\u03B5\u03BE\u03C9\u03BD", 1, 1),
@@ -1016,13 +1016,13 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03BA\u03B1\u03BA\u03BF\u03BC\u03BF\u03C5\u03C4\u03C3", -1, 1)
   };
 
-  private static final Among[] a_69 = {
+  private static final Among a_69[] = {
     new Among("\u03BF\u03C5\u03BC\u03B5", -1, 1),
     new Among("\u03B7\u03B8\u03BF\u03C5\u03BC\u03B5", 0, 1),
     new Among("\u03B7\u03C3\u03BF\u03C5\u03BC\u03B5", 0, 1)
   };
 
-  private static final Among[] a_70 = {
+  private static final Among a_70[] = {
     new Among("\u03B1\u03B6", -1, 1),
     new Among("\u03C9\u03C1\u03B9\u03BF\u03C0\u03BB", -1, 1),
     new Among("\u03B1\u03C3\u03BF\u03C5\u03C3", -1, 1),
@@ -1032,13 +1032,13 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C7", -1, 1)
   };
 
-  private static final Among[] a_71 = {
+  private static final Among a_71[] = {
     new Among("\u03BC\u03B1\u03C4\u03B1", -1, 1),
     new Among("\u03BC\u03B1\u03C4\u03C9\u03BD", -1, 1),
     new Among("\u03BC\u03B1\u03C4\u03BF\u03C3", -1, 1)
   };
 
-  private static final Among[] a_72 = {
+  private static final Among a_72[] = {
     new Among("\u03B1", -1, 1),
     new Among("\u03B9\u03BF\u03C5\u03BC\u03B1", 0, 1),
     new Among("\u03BF\u03BC\u03BF\u03C5\u03BD\u03B1", 0, 1),
@@ -1125,7 +1125,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03B7\u03C3\u03C9", 80, 1)
   };
 
-  private static final Among[] a_73 = {
+  private static final Among a_73[] = {
     new Among("\u03BF\u03C4\u03B5\u03C1", -1, 1),
     new Among("\u03B5\u03C3\u03C4\u03B5\u03C1", -1, 1),
     new Among("\u03C5\u03C4\u03B5\u03C1", -1, 1),
@@ -1136,9 +1136,9 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u03C9\u03C4\u03B1\u03C4", -1, 1)
   };
 
-  private static final char[] g_v = {81, 65, 16, 1};
+  private static final char g_v[] = {81, 65, 16, 1};
 
-  private static final char[] g_v2 = {81, 65, 0, 1};
+  private static final char g_v2[] = {81, 65, 0, 1};
 
   private boolean B_test1;
 

@@ -16,30 +16,30 @@ public class PortugueseStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("", -1, 3), new Among("\u00E3", 0, 1), new Among("\u00F5", 0, 2)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("", -1, 3), new Among("a~", 0, 1), new Among("o~", 0, 2)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("ic", -1, -1),
     new Among("ad", -1, -1),
     new Among("os", -1, -1),
     new Among("iv", -1, 1)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("ante", -1, 1), new Among("avel", -1, 1), new Among("\u00EDvel", -1, 1)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("ic", -1, 1), new Among("abil", -1, 1), new Among("iv", -1, 1)
   };
 
-  private static final Among[] a_5 = {
+  private static final Among a_5[] = {
     new Among("ica", -1, 1),
     new Among("\u00E2ncia", -1, 1),
     new Among("\u00EAncia", -1, 4),
@@ -87,7 +87,7 @@ public class PortugueseStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ivos", -1, 8)
   };
 
-  private static final Among[] a_6 = {
+  private static final Among a_6[] = {
     new Among("ada", -1, 1),
     new Among("ida", -1, 1),
     new Among("ia", -1, 1),
@@ -210,7 +210,7 @@ public class PortugueseStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ir\u00E1", -1, 1)
   };
 
-  private static final Among[] a_7 = {
+  private static final Among a_7[] = {
     new Among("a", -1, 1),
     new Among("i", -1, 1),
     new Among("o", -1, 1),
@@ -220,14 +220,14 @@ public class PortugueseStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u00F3", -1, 1)
   };
 
-  private static final Among[] a_8 = {
+  private static final Among a_8[] = {
     new Among("e", -1, 1),
     new Among("\u00E7", -1, 2),
     new Among("\u00E9", -1, 1),
     new Among("\u00EA", -1, 1)
   };
 
-  private static final char[] g_v = {
+  private static final char g_v[] = {
     17, 65, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 19, 12, 2
   };
 

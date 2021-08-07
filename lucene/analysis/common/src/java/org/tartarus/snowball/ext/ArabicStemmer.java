@@ -16,7 +16,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("\u0640", -1, 1),
     new Among("\u064B", -1, 1),
     new Among("\u064C", -1, 1),
@@ -163,7 +163,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\uFEFC", -1, 48)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("\u0622", -1, 1),
     new Among("\u0623", -1, 1),
     new Among("\u0624", -1, 1),
@@ -171,7 +171,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0626", -1, 1)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("\u0622", -1, 1),
     new Among("\u0623", -1, 1),
     new Among("\u0624", -1, 2),
@@ -179,14 +179,14 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0626", -1, 3)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("\u0627\u0644", -1, 2),
     new Among("\u0628\u0627\u0644", -1, 1),
     new Among("\u0643\u0627\u0644", -1, 1),
     new Among("\u0644\u0644", -1, 2)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("\u0623\u0622", -1, 2),
     new Among("\u0623\u0623", -1, 1),
     new Among("\u0623\u0624", -1, 1),
@@ -194,33 +194,33 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0623\u0627", -1, 3)
   };
 
-  private static final Among[] a_5 = {new Among("\u0641", -1, 1), new Among("\u0648", -1, 1)};
+  private static final Among a_5[] = {new Among("\u0641", -1, 1), new Among("\u0648", -1, 1)};
 
-  private static final Among[] a_6 = {
+  private static final Among a_6[] = {
     new Among("\u0627\u0644", -1, 2),
     new Among("\u0628\u0627\u0644", -1, 1),
     new Among("\u0643\u0627\u0644", -1, 1),
     new Among("\u0644\u0644", -1, 2)
   };
 
-  private static final Among[] a_7 = {
+  private static final Among a_7[] = {
     new Among("\u0628", -1, 1), new Among("\u0628\u0628", 0, 2), new Among("\u0643\u0643", -1, 3)
   };
 
-  private static final Among[] a_8 = {
+  private static final Among a_8[] = {
     new Among("\u0633\u0623", -1, 4),
     new Among("\u0633\u062A", -1, 2),
     new Among("\u0633\u0646", -1, 3),
     new Among("\u0633\u064A", -1, 1)
   };
 
-  private static final Among[] a_9 = {
+  private static final Among a_9[] = {
     new Among("\u062A\u0633\u062A", -1, 1),
     new Among("\u0646\u0633\u062A", -1, 1),
     new Among("\u064A\u0633\u062A", -1, 1)
   };
 
-  private static final Among[] a_10 = {
+  private static final Among a_10[] = {
     new Among("\u0643\u0645\u0627", -1, 3),
     new Among("\u0647\u0645\u0627", -1, 3),
     new Among("\u0646\u0627", -1, 2),
@@ -233,21 +233,21 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u064A", -1, 1)
   };
 
-  private static final Among[] a_11 = {new Among("\u0646", -1, 1)};
+  private static final Among a_11[] = {new Among("\u0646", -1, 1)};
 
-  private static final Among[] a_12 = {
+  private static final Among a_12[] = {
     new Among("\u0627", -1, 1), new Among("\u0648", -1, 1), new Among("\u064A", -1, 1)
   };
 
-  private static final Among[] a_13 = {new Among("\u0627\u062A", -1, 1)};
+  private static final Among a_13[] = {new Among("\u0627\u062A", -1, 1)};
 
-  private static final Among[] a_14 = {new Among("\u062A", -1, 1)};
+  private static final Among a_14[] = {new Among("\u062A", -1, 1)};
 
-  private static final Among[] a_15 = {new Among("\u0629", -1, 1)};
+  private static final Among a_15[] = {new Among("\u0629", -1, 1)};
 
-  private static final Among[] a_16 = {new Among("\u064A", -1, 1)};
+  private static final Among a_16[] = {new Among("\u064A", -1, 1)};
 
-  private static final Among[] a_17 = {
+  private static final Among a_17[] = {
     new Among("\u0643\u0645\u0627", -1, 3),
     new Among("\u0647\u0645\u0627", -1, 3),
     new Among("\u0646\u0627", -1, 2),
@@ -262,7 +262,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0646\u064A", -1, 2)
   };
 
-  private static final Among[] a_18 = {
+  private static final Among a_18[] = {
     new Among("\u0627", -1, 1),
     new Among("\u062A\u0627", 0, 2),
     new Among("\u062A\u0645\u0627", 0, 4),
@@ -276,15 +276,15 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u064A", -1, 1)
   };
 
-  private static final Among[] a_19 = {
+  private static final Among a_19[] = {
     new Among("\u0648\u0627", -1, 1), new Among("\u062A\u0645", -1, 1)
   };
 
-  private static final Among[] a_20 = {
+  private static final Among a_20[] = {
     new Among("\u0648", -1, 1), new Among("\u062A\u0645\u0648", 0, 2)
   };
 
-  private static final Among[] a_21 = {new Among("\u0649", -1, 1)};
+  private static final Among a_21[] = {new Among("\u0649", -1, 1)};
 
   private boolean B_is_defined;
   private boolean B_is_verb;

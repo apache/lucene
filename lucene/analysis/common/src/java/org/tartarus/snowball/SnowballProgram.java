@@ -197,7 +197,7 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
-  protected int find_among(Among[] v) {
+  protected int find_among(Among v[]) {
     int i = 0;
     int j = v.length;
 
@@ -265,7 +265,7 @@ public class SnowballProgram implements Serializable {
   }
 
   // find_among_b is for backwards processing. Same comments apply
-  protected int find_among_b(Among[] v) {
+  protected int find_among_b(Among v[]) {
     int i = 0;
     int j = v.length;
 

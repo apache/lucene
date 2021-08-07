@@ -16,11 +16,11 @@ public class PorterStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("s", -1, 3), new Among("ies", 0, 2), new Among("sses", 0, 1), new Among("ss", 0, -1)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("", -1, 3),
     new Among("bb", 0, 2),
     new Among("dd", 0, 2),
@@ -36,11 +36,11 @@ public class PorterStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("iz", 0, 1)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("ed", -1, 2), new Among("eed", 0, 1), new Among("ing", -1, 2)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("anci", -1, 3),
     new Among("enci", -1, 2),
     new Among("abli", -1, 4),
@@ -63,7 +63,7 @@ public class PorterStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ousness", -1, 11)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("icate", -1, 2),
     new Among("ative", -1, 3),
     new Among("alize", -1, 1),
@@ -73,7 +73,7 @@ public class PorterStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ness", -1, 3)
   };
 
-  private static final Among[] a_5 = {
+  private static final Among a_5[] = {
     new Among("ic", -1, 1),
     new Among("ance", -1, 1),
     new Among("ence", -1, 1),
@@ -95,9 +95,9 @@ public class PorterStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ou", -1, 1)
   };
 
-  private static final char[] g_v = {17, 65, 16, 1};
+  private static final char g_v[] = {17, 65, 16, 1};
 
-  private static final char[] g_v_WXY = {1, 17, 65, 208, 1};
+  private static final char g_v_WXY[] = {1, 17, 65, 208, 1};
 
   private boolean B_Y_found;
   private int I_p2;

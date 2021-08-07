@@ -16,7 +16,7 @@ public class RussianStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("\u0432", -1, 1),
     new Among("\u0438\u0432", 0, 2),
     new Among("\u044B\u0432", 0, 2),
@@ -28,7 +28,7 @@ public class RussianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u044B\u0432\u0448\u0438\u0441\u044C", 6, 2)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("\u0435\u0435", -1, 1),
     new Among("\u0438\u0435", -1, 1),
     new Among("\u043E\u0435", -1, 1),
@@ -57,7 +57,7 @@ public class RussianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u044F\u044F", -1, 1)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("\u0435\u043C", -1, 1),
     new Among("\u043D\u043D", -1, 1),
     new Among("\u0432\u0448", -1, 1),
@@ -68,11 +68,11 @@ public class RussianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0443\u044E\u0449", 6, 2)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("\u0441\u044C", -1, 1), new Among("\u0441\u044F", -1, 1)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("\u043B\u0430", -1, 1),
     new Among("\u0438\u043B\u0430", 0, 2),
     new Among("\u044B\u043B\u0430", 0, 2),
@@ -121,7 +121,7 @@ public class RussianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0443\u044E", 44, 2)
   };
 
-  private static final Among[] a_5 = {
+  private static final Among a_5[] = {
     new Among("\u0430", -1, 1),
     new Among("\u0435\u0432", -1, 1),
     new Among("\u043E\u0432", -1, 1),
@@ -160,18 +160,18 @@ public class RussianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u044C\u044F", 33, 1)
   };
 
-  private static final Among[] a_6 = {
+  private static final Among a_6[] = {
     new Among("\u043E\u0441\u0442", -1, 1), new Among("\u043E\u0441\u0442\u044C", -1, 1)
   };
 
-  private static final Among[] a_7 = {
+  private static final Among a_7[] = {
     new Among("\u0435\u0439\u0448\u0435", -1, 1),
     new Among("\u043D", -1, 2),
     new Among("\u0435\u0439\u0448", -1, 1),
     new Among("\u044C", -1, 3)
   };
 
-  private static final char[] g_v = {33, 65, 8, 232};
+  private static final char g_v[] = {33, 65, 8, 232};
 
   private int I_p2;
   private int I_pV;

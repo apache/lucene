@@ -16,11 +16,11 @@ public class RomanianStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("", -1, 3), new Among("I", 0, 1), new Among("U", 0, 2)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("ea", -1, 3),
     new Among("a\u0163ia", -1, 7),
     new Among("aua", -1, 2),
@@ -39,7 +39,7 @@ public class RomanianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("iilor", 14, 4)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("icala", -1, 4),
     new Among("iciva", -1, 4),
     new Among("ativa", -1, 5),
@@ -88,7 +88,7 @@ public class RomanianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("itiv\u0103", -1, 6)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("ica", -1, 1),
     new Among("abila", -1, 1),
     new Among("ibila", -1, 1),
@@ -153,7 +153,7 @@ public class RomanianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("iv\u0103", -1, 1)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("ea", -1, 1),
     new Among("ia", -1, 1),
     new Among("esc", -1, 1),
@@ -250,7 +250,7 @@ public class RomanianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("eaz\u0103", -1, 1)
   };
 
-  private static final Among[] a_5 = {
+  private static final Among a_5[] = {
     new Among("a", -1, 1),
     new Among("e", -1, 1),
     new Among("ie", 1, 1),
@@ -258,7 +258,7 @@ public class RomanianStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0103", -1, 1)
   };
 
-  private static final char[] g_v = {
+  private static final char g_v[] = {
     17, 65, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 32, 0, 0, 4
   };
 

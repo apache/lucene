@@ -16,7 +16,7 @@ public class NepaliStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("\u0932\u093E\u0907", -1, 1),
     new Among("\u0932\u093E\u0908", -1, 1),
     new Among("\u0938\u0901\u0917", -1, 1),
@@ -36,15 +36,15 @@ public class NepaliStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u0915\u094B", -1, 2)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("\u0901", -1, -1), new Among("\u0902", -1, -1), new Among("\u0948", -1, -1)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("\u0901", -1, 1), new Among("\u0902", -1, 1), new Among("\u0948", -1, 2)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("\u0925\u093F\u090F", -1, 1),
     new Among("\u091B", -1, 1),
     new Among("\u0907\u091B", 1, 1),

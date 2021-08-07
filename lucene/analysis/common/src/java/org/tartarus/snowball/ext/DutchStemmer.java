@@ -16,7 +16,7 @@ public class DutchStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("", -1, 6),
     new Among("\u00E1", 0, 1),
     new Among("\u00E4", 0, 1),
@@ -30,15 +30,15 @@ public class DutchStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("\u00FC", 0, 5)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("", -1, 3), new Among("I", 0, 2), new Among("Y", 0, 1)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("dd", -1, -1), new Among("kk", -1, -1), new Among("tt", -1, -1)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("ene", -1, 2),
     new Among("se", -1, 3),
     new Among("en", -1, 2),
@@ -46,7 +46,7 @@ public class DutchStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("s", -1, 3)
   };
 
-  private static final Among[] a_4 = {
+  private static final Among a_4[] = {
     new Among("end", -1, 1),
     new Among("ig", -1, 2),
     new Among("ing", -1, 1),
@@ -55,20 +55,20 @@ public class DutchStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("bar", -1, 5)
   };
 
-  private static final Among[] a_5 = {
+  private static final Among a_5[] = {
     new Among("aa", -1, -1),
     new Among("ee", -1, -1),
     new Among("oo", -1, -1),
     new Among("uu", -1, -1)
   };
 
-  private static final char[] g_v = {17, 65, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128};
+  private static final char g_v[] = {17, 65, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128};
 
-  private static final char[] g_v_I = {
+  private static final char g_v_I[] = {
     1, 0, 0, 17, 65, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128
   };
 
-  private static final char[] g_v_j = {17, 67, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128};
+  private static final char g_v_j[] = {17, 67, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128};
 
   private int I_p2;
   private int I_p1;

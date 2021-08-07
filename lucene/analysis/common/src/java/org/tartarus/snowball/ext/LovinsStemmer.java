@@ -16,7 +16,7 @@ public class LovinsStemmer extends org.tartarus.snowball.SnowballStemmer {
   private static final java.lang.invoke.MethodHandles.Lookup methodObject =
       java.lang.invoke.MethodHandles.lookup();
 
-  private static final Among[] a_0 = {
+  private static final Among a_0[] = {
     new Among("d", -1, -1),
     new Among("f", -1, -1),
     new Among("ph", -1, -1),
@@ -28,7 +28,7 @@ public class LovinsStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("t", -1, -1)
   };
 
-  private static final Among[] a_1 = {
+  private static final Among a_1[] = {
     new Among("s'", -1, 1, "r_A", methodObject),
     new Among("a", -1, 1, "r_A", methodObject),
     new Among("ia", 1, 1, "r_A", methodObject),
@@ -325,7 +325,7 @@ public class LovinsStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("ivity", 276, 1, "r_A", methodObject)
   };
 
-  private static final Among[] a_2 = {
+  private static final Among a_2[] = {
     new Among("bb", -1, -1),
     new Among("dd", -1, -1),
     new Among("gg", -1, -1),
@@ -338,7 +338,7 @@ public class LovinsStemmer extends org.tartarus.snowball.SnowballStemmer {
     new Among("tt", -1, -1)
   };
 
-  private static final Among[] a_3 = {
+  private static final Among a_3[] = {
     new Among("uad", -1, 18),
     new Among("vad", -1, 19),
     new Among("cid", -1, 20),

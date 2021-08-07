@@ -62,7 +62,7 @@ public final class UAX29URLEmailTokenizerImpl {
    *                  at the beginning of a line
    * l is of the form l = 2*k, k a non negative integer
    */
-  private static final int[] ZZ_LEXSTATE = {
+  private static final int ZZ_LEXSTATE[] = { 
      0,  0,  1, 1
   };
 
