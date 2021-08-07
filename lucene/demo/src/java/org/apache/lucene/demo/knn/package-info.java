@@ -19,7 +19,8 @@
  * KnnVector example code.
  *
  * <p>The vector dictionary used in the demo is taken from the GloVe project hosted at
- * https://nlp.stanford.edu/projects/glove, which are in the public domain, as described by
- * http://opendatacommons.org/licenses/pddl/1.0
+ * https://nlp.stanford.edu/projects/glove, whose data is in the public domain, as described by
+ * http://opendatacommons.org/licenses/pddl/1.0, available in the Lucene distribution as
+ * lucene/licenses/pddl-10.txt.
  */
 package org.apache.lucene.demo.knn;
