@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.util.LuceneTestCase;
 
 public class TestDemo extends LuceneTestCase {
@@ -30,7 +31,8 @@ public class TestDemo extends LuceneTestCase {
       ByteArrayOutputStream bytes = new ByteArrayOutputStream();
       PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset().name());
       System.setOut(fakeSystemOut);
-      SearchFiles.main(new String[] {"-query", query, "-index", indexPath.toString()});
+      SearchFiles.main(
+          new String[] {"-query", query, "-index", indexPath.toString(), "-paging", "20"});
       fakeSystemOut.flush();
       String output =
           bytes.toString(Charset.defaultCharset().name()); // intentionally use default encoding
@@ -52,5 +54,60 @@ public class TestDemo extends LuceneTestCase {
     testOneSearch(indexDir, "gnu", 6);
     testOneSearch(indexDir, "derivative", 8);
     testOneSearch(indexDir, "license", 13);
+  }
+
+  private void testVectorSearch(Path indexPath, String query, int expectedHitCount)
+      throws Exception {
+    PrintStream outSave = System.out;
+    try {
+      ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset().name());
+      System.setOut(fakeSystemOut);
+      SearchFiles.main(
+          new String[] {
+            "-query", query, "-index", indexPath.toString(), "-semantic", "-paging", "20"
+          });
+      fakeSystemOut.flush();
+      String output =
+          bytes.toString(Charset.defaultCharset().name()); // intentionally use default encoding
+      assertTrue(
+          "output=" + output, output.contains(expectedHitCount + " total matching documents"));
+    } finally {
+      System.setOut(outSave);
+    }
+  }
+
+  public void testKnnVectorSearch() throws Exception {
+    Path dir = getDataPath("test-files/docs");
+    Path indexDir = createTempDir("ContribDemoTest");
+    Path dictPath = indexDir.resolve("knn-dict");
+    Path vectorDictSource = getDataPath("test-files/knn-dict").resolve("knn-token-vectors");
+    KnnVectorDict.build(vectorDictSource, dictPath);
+
+    IndexFiles.main(
+        new String[] {
+          "-create",
+          "-docs",
+          dir.toString(),
+          "-index",
+          indexDir.toString(),
+          "-knn-dict",
+          dictPath.toString()
+        });
+    // These term-based matches should also be the best semantic matches, so we shouldn't add
+    // anything by also including -semantic.
+    testVectorSearch(indexDir, "apache", 3);
+    testVectorSearch(indexDir, "gnu", 6);
+    testVectorSearch(indexDir, "derivative", 8);
+
+    // this matched 0 by token; semantic matching adds lpgl2.0
+    testVectorSearch(indexDir, "lucene", 1);
+
+    // However, our vectors say that mit.txt is more patent-y than anything with the actual word
+    // patent in it:
+    testVectorSearch(indexDir, "patent", 9);
+
+    // and it likes mit.txt for this one too:
+    testVectorSearch(indexDir, "license", 14);
   }
 }

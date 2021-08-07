@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.util.regex.Pattern;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRefBuilder;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
@@ -46,8 +47,12 @@ public class KnnVectorDict implements AutoCloseable {
   private final int dimension;
   private final byte[] output;
 
-  /** @param knnDictPath the path where the KnnVectorDict is stored */
-  KnnVectorDict(Path knnDictPath) throws IOException {
+  /**
+   * sole constructor
+   *
+   * @param knnDictPath the path where the KnnVectorDict is stored
+   */
+  public KnnVectorDict(Path knnDictPath) throws IOException {
     String dictName = knnDictPath.getFileName().toString();
     Path fstPath = knnDictPath.resolveSibling(dictName + ".fst");
     Path binPath = knnDictPath.resolveSibling(dictName + ".bin");
@@ -118,6 +123,7 @@ public class KnnVectorDict implements AutoCloseable {
     private final IntsRefBuilder intsRefBuilder = new IntsRefBuilder();
     private final FSTCompiler<Long> fstCompiler =
         new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton());
+    private float[] scratch;
     private ByteBuffer byteBuffer;
     private long ordinal = 1;
     private int numFields;
@@ -148,6 +154,7 @@ public class KnnVectorDict implements AutoCloseable {
       numFields = fields.length;
       byteBuffer =
           ByteBuffer.allocate((numFields - 1) * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+      scratch = new float[numFields - 1];
       writeVector(fields, out);
     }
 
@@ -182,8 +189,10 @@ public class KnnVectorDict implements AutoCloseable {
       byteBuffer.position(0);
       FloatBuffer floatBuffer = byteBuffer.asFloatBuffer();
       for (int i = 1; i < fields.length; i++) {
-        floatBuffer.put(Float.parseFloat(fields[i]));
+        scratch[i - 1] = Float.parseFloat(fields[i]);
       }
+      VectorUtil.l2normalize(scratch);
+      floatBuffer.put(scratch);
       out.write(byteBuffer.array());
     }
   }

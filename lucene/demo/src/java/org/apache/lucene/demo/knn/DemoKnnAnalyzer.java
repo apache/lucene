@@ -17,6 +17,8 @@
 package org.apache.lucene.demo.knn;
 
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -56,6 +58,18 @@ public class DemoKnnAnalyzer extends Analyzer {
    * @return the KnnVector for the input
    */
   public float[] analyze(String fieldName, String input) throws IOException {
+    return analyze(fieldName, new StringReader(input));
+  }
+
+  /**
+   * Tokenize and lower-case the input, look up the tokens in the dictionary, and sum the token
+   * vectors. Unrecognized tokens are ignored. The resulting vector is normalized to unit length.
+   *
+   * @param fieldName the field name; ignored
+   * @param input the input to analyze
+   * @return the KnnVector for the input
+   */
+  public float[] analyze(String fieldName, Reader input) throws IOException {
     TokenStream tokens = tokenStream(fieldName, input);
     tokens.reset();
     while (tokens.incrementToken()) {}

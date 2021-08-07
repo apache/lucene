@@ -146,7 +146,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return "<vector:" + field + ":" + "[" + target[0] + ",...][" + k + "]>";
+    return "<vector:" + this.field + ":" + "[" + target[0] + ",...][" + k + "]>";
   }
 
   @Override
@@ -247,7 +247,7 @@ public class KnnVectorQuery extends Query {
             public float getMaxScore(int docid) throws IOException {
               docid += context.docBase;
               float maxScore = 0;
-              for (int idx = upTo; idx < upper && docs[idx] <= docid; idx++) {
+              for (int idx = Math.max(0, upTo); idx < upper && docs[idx] <= docid; idx++) {
                 maxScore = Math.max(maxScore, scores[idx]);
               }
               return maxScore;
