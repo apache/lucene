@@ -32,6 +32,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -43,7 +44,7 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     return TestUtil.getDefaultCodec();
   }
 
-  public void testSearchWithDeletions() throws IOException {
+  public void testSearchWithDeletes() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       final int numDocs = atLeast(100);
@@ -84,6 +85,32 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
           }
         }
         assertEquals("search missed some documents", docIndex - toDelete.size(), allIds.size());
+      }
+    }
+  }
+
+  public void testSearchWithAllDeletes() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      final int numDocs = atLeast(100);
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new KnnVectorField("vector", randomVector(dim)));
+        w.addDocument(d);
+      }
+      w.commit();
+
+      w.deleteDocuments(new MatchAllDocsQuery());
+      w.commit();
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext context : reader.leaves()) {
+          TopDocs topDocs =
+              context.reader().searchNearestVectors("vector", randomVector(30), numDocs);
+          assertEquals(0, topDocs.scoreDocs.length);
+          assertTrue(topDocs.totalHits.value > 0L);
+        }
       }
     }
   }
