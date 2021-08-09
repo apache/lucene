@@ -30,7 +30,6 @@ import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ScoreDoc;
@@ -45,50 +44,47 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   }
 
   public void testSearchWithDeletions() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriterConfig cfg = new IndexWriterConfig();
-    IndexWriter w = new IndexWriter(dir, cfg);
-
-    final int numDocs = atLeast(100);
-    final int dim = 30;
-    int docIndex = 0;
-    for (int i = 0; i < numDocs; ++i) {
-      Document d = new Document();
-      if (frequently()) {
-        d.add(new StringField("id", String.valueOf(docIndex), Field.Store.YES));
-        d.add(new KnnVectorField("vector", randomVector(dim)));
-        docIndex++;
-      } else {
-        d.add(new StringField("other", "value", Field.Store.NO));
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      final int numDocs = atLeast(100);
+      final int dim = 30;
+      int docIndex = 0;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        if (frequently()) {
+          d.add(new StringField("id", String.valueOf(docIndex), Field.Store.YES));
+          d.add(new KnnVectorField("vector", randomVector(dim)));
+          docIndex++;
+        } else {
+          d.add(new StringField("other", "value", Field.Store.NO));
+        }
+        w.addDocument(d);
       }
-      w.addDocument(d);
-    }
-    w.commit();
+      w.commit();
 
-    Set<Term> toDelete = new HashSet<>();
-    for (int i = 0; i < 20; i++) {
-      int index = random().nextInt(docIndex);
-      toDelete.add(new Term("id", String.valueOf(index)));
-    }
-    w.deleteDocuments(toDelete.toArray(new Term[0]));
-    w.commit();
-    w.close();
+      Set<Term> toDelete = new HashSet<>();
+      for (int i = 0; i < 20; i++) {
+        int index = random().nextInt(docIndex);
+        toDelete.add(new Term("id", String.valueOf(index)));
+      }
+      w.deleteDocuments(toDelete.toArray(new Term[0]));
+      w.commit();
 
-    IndexReader reader = DirectoryReader.open(dir);
-    Set<String> allIds = new HashSet<>();
-    for (LeafReaderContext context : reader.leaves()) {
-      TopDocs topDocs = context.reader().searchNearestVectors("vector", randomVector(30), numDocs);
-      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-        Document doc = reader.document(scoreDoc.doc, Set.of("id"));
-        String id = doc.get("id");
-        assertFalse(
-            "search returned a deleted document: " + id, toDelete.contains(new Term("id", id)));
-        allIds.add(id);
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        Set<String> allIds = new HashSet<>();
+        for (LeafReaderContext context : reader.leaves()) {
+          TopDocs topDocs =
+              context.reader().searchNearestVectors("vector", randomVector(30), numDocs);
+          for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+            Document doc = reader.document(scoreDoc.doc, Set.of("id"));
+            String id = doc.get("id");
+            assertFalse(
+                "search returned a deleted document: " + id, toDelete.contains(new Term("id", id)));
+            allIds.add(id);
+          }
+        }
+        assertEquals("search missed some documents", docIndex - toDelete.size(), allIds.size());
       }
     }
-    assertEquals("search missed some documents", docIndex - toDelete.size(), allIds.size());
-
-    reader.close();
-    dir.close();
   }
 }
