@@ -438,6 +438,9 @@ Bug Fixes
 
 * LUCENE-10046: Counting bug fixed in StringValueFacetCounts. (Greg Miller)
 
+* LUCENE-9963: FlattenGraphFilter is now more robust when handling
+  incoming holes in the input token graph (Geoff Lawson)
+
 Other
 ---------------------
 (No changes)
