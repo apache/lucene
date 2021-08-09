@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.TestVectorUtil.randomVector;
 
 import java.io.IOException;
@@ -35,7 +36,6 @@ import org.apache.lucene.util.LuceneTestCase;
 /** TestKnnVectorQuery tests KnnVectorQuery. */
 public class TestKnnVectorQuery extends LuceneTestCase {
 
-  /** testEquals */
   public void testEquals() {
     KnnVectorQuery q1 = new KnnVectorQuery("f1", new float[] {0, 1}, 10);
 
@@ -49,6 +49,11 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     assertNotEquals(q1, new KnnVectorQuery("f1", new float[] {1, 1}, 10));
     assertNotEquals(q1, new KnnVectorQuery("f1", new float[] {0, 1}, 2));
     assertNotEquals(q1, new KnnVectorQuery("f1", new float[] {0}, 10));
+  }
+
+  public void testToString() {
+    KnnVectorQuery q1 = new KnnVectorQuery("f1", new float[] {0, 1}, 10);
+    assertEquals("<vector:f1[0.0,...][10]>", q1.toString("ignored"));
   }
 
   /**
@@ -113,12 +118,79 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         IllegalArgumentException.class, () -> new KnnVectorQuery("xx", new float[] {1}, 0));
   }
 
+  public void testScore() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 0; j < 5; j++) {
+          Document doc = new Document();
+          doc.add(new KnnVectorField("field", new float[] {j, j}));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(1, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
+        Query rewritten = query.rewrite(reader);
+        Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+        Scorer scorer = weight.scorer(reader.leaves().get(0));
+
+        // prior to advancing, score is 0
+        assertEquals(-1, scorer.docID());
+        assertEquals(0, scorer.score(), 0);
+
+        // test getMaxScore
+        assertEquals(0, scorer.getMaxScore(-1), 0);
+        assertEquals(0, scorer.getMaxScore(0), 0);
+        // This is (l2((2, 3), (1, 1)) = 5) - (l2distance((2,3), (2, 2)) = 1)
+        assertEquals(4, scorer.getMaxScore(2), 0);
+        assertEquals(4, scorer.getMaxScore(Integer.MAX_VALUE), 0);
+
+        DocIdSetIterator it = scorer.iterator();
+        assertEquals(3, it.cost());
+        assertEquals(1, it.nextDoc());
+        assertEquals(0, scorer.score(), 0);
+        assertEquals(3, it.advance(3));
+        assertEquals(4, scorer.score(), 0);
+        assertEquals(NO_MORE_DOCS, it.advance(4));
+        assertEquals(0, scorer.score(), 0);
+      }
+    }
+  }
+
+  public void testExplain() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 0; j < 5; j++) {
+          Document doc = new Document();
+          doc.add(new KnnVectorField("field", new float[] {j, j}));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
+        Explanation matched = searcher.explain(query, 2);
+        assertTrue(matched.isMatch());
+        assertEquals(4f, matched.getValue());
+        assertEquals(0, matched.getDetails().length);
+        assertEquals("within top 3", matched.getDescription());
+
+        Explanation nomatch = searcher.explain(query, 4);
+        assertFalse(nomatch.isMatch());
+        assertEquals(0f, nomatch.getValue());
+        assertEquals(0, matched.getDetails().length);
+        assertEquals("not in top 3", nomatch.getDescription());
+      }
+    }
+  }
+
   /** Test that when vectors are abnormally distributed among segments, we still find the top K */
   public void testSkewedIndex() throws IOException {
-    // We have to choose the numbers carefully here so that some segment has more than the expected
-    // number of top K
-    // documents, but no more than K documents in total (otherwise we might occasionally randomly
-    // fail to find one).
+    /* We have to choose the numbers carefully here so that some segment has more than the expected
+     * number of top K documents, but no more than K documents in total (otherwise we might occasionally
+     * randomly fail to find one).
+     */
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         int r = 0;

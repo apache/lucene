@@ -146,7 +146,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return "<vector:" + field + ":" + "[" + target[0] + ",...][" + k + "]>";
+    return "<vector:" + this.field + "[" + target[0] + ",...][" + k + "]>";
   }
 
   @Override
@@ -197,7 +197,7 @@ public class KnnVectorQuery extends Query {
         throws IOException {
       return new Weight(this) {
         @Override
-        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+        public Explanation explain(LeafReaderContext context, int doc) {
           int found = Arrays.binarySearch(docs, doc);
           if (found < 0) {
             return Explanation.noMatch("not in top " + k);
@@ -206,7 +206,7 @@ public class KnnVectorQuery extends Query {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
 
           return new Scorer(this) {
             final int lower = segmentStarts[context.ord];
@@ -244,17 +244,17 @@ public class KnnVectorQuery extends Query {
             }
 
             @Override
-            public float getMaxScore(int docid) throws IOException {
+            public float getMaxScore(int docid) {
               docid += context.docBase;
               float maxScore = 0;
-              for (int idx = upTo; idx < upper && docs[idx] <= docid; idx++) {
+              for (int idx = Math.max(0, upTo); idx < upper && docs[idx] <= docid; idx++) {
                 maxScore = Math.max(maxScore, scores[idx]);
               }
               return maxScore;
             }
 
             @Override
-            public float score() throws IOException {
+            public float score() {
               if (upTo >= lower && upTo < upper) {
                 return scores[upTo];
               }
