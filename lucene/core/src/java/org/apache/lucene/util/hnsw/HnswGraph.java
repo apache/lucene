@@ -147,7 +147,7 @@ public final class HnswGraph extends KnnGraphValues {
         visited.set(friendOrd);
 
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.size() < topK || bound.check(score) == false) {
+        if (results.size() < numSeed || bound.check(score) == false) {
           candidates.add(friendOrd, score);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             results.insertWithOverflow(friendOrd, score);
