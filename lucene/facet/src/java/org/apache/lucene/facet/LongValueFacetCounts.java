@@ -168,8 +168,8 @@ public class LongValueFacetCounts extends Facets {
             // do not increment the count for duplicate values
             if (i == 0 || value != previousValue) {
               increment(value);
+              previousValue = value;
             }
-            previousValue = value;
           }
         }
       }
@@ -220,8 +220,8 @@ public class LongValueFacetCounts extends Facets {
             // do not increment the count for duplicate values
             if (i == 0 || value != previousValue) {
               increment(value);
+              previousValue = value;
             }
-            previousValue = value;
           }
         }
       }

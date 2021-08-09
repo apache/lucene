@@ -281,6 +281,9 @@ Bug fixes
 * LUCENE-9823: Prevent unsafe rewrites for SynonymQuery and CombinedFieldQuery. Before, rewriting
   could slightly change the scoring when weights were specified. (Naoto Minami via Julie Tibshirani)
 
+* LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
+  (Greg Miller)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
@@ -432,6 +435,8 @@ Bug Fixes
 
 * LUCENE-10039: Correct CombinedFieldQuery scoring when there is a single
   field. (Julie Tibshirani)
+
+* LUCENE-10046: Counting bug fixed in StringValueFacetCounts. (Greg Miller)
 
 Other
 ---------------------
