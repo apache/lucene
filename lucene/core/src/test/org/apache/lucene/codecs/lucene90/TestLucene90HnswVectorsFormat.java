@@ -53,22 +53,24 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
       for (int i = 0; i < numDocs; ++i) {
         Document d = new Document();
         if (frequently()) {
-          d.add(new StringField("id", String.valueOf(docIndex), Field.Store.YES));
+          d.add(new StringField("index", String.valueOf(docIndex), Field.Store.YES));
           d.add(new KnnVectorField("vector", randomVector(dim)));
           docIndex++;
         } else {
-          d.add(new StringField("other", "value", Field.Store.NO));
+          d.add(new StringField("other", "value" + (i % 5), Field.Store.NO));
         }
         w.addDocument(d);
       }
       w.commit();
 
+      // Delete some documents at random, both those with and without vectors
       Set<Term> toDelete = new HashSet<>();
       for (int i = 0; i < 20; i++) {
         int index = random().nextInt(docIndex);
-        toDelete.add(new Term("id", String.valueOf(index)));
+        toDelete.add(new Term("index", String.valueOf(index)));
       }
       w.deleteDocuments(toDelete.toArray(new Term[0]));
+      w.deleteDocuments(new Term("other", "value" + random().nextInt(5)));
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
@@ -77,11 +79,13 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
           TopDocs topDocs =
               context.reader().searchNearestVectors("vector", randomVector(30), numDocs);
           for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-            Document doc = reader.document(scoreDoc.doc, Set.of("id"));
-            String id = doc.get("id");
+            int docId = context.docBase + scoreDoc.doc;
+            Document doc = reader.document(docId, Set.of("index"));
+            String index = doc.get("index");
             assertFalse(
-                "search returned a deleted document: " + id, toDelete.contains(new Term("id", id)));
-            allIds.add(id);
+                "search returned a deleted document: " + index,
+                toDelete.contains(new Term("index", index)));
+            allIds.add(index);
           }
         }
         assertEquals("search missed some documents", docIndex - toDelete.size(), allIds.size());
