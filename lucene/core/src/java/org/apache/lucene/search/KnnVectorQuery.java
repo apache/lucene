@@ -114,16 +114,15 @@ public class KnnVectorQuery extends Query {
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
     int len = topK.scoreDocs.length;
-    float minScore = topK.scoreDocs[len - 1].score;
     Arrays.sort(topK.scoreDocs, Comparator.comparingInt(a -> a.doc));
     int[] docs = new int[len];
     float[] scores = new float[len];
     for (int i = 0; i < len; i++) {
       docs[i] = topK.scoreDocs[i].doc;
-      scores[i] = topK.scoreDocs[i].score - minScore; // flip negative scores
+      scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader, docs);
-    return new DocAndScoreQuery(docs, scores, segmentStarts);
+    return new DocAndScoreQuery(k, docs, scores, segmentStarts, reader.hashCode());
   }
 
   private int[] findSegmentStarts(IndexReader reader, int[] docs) {
@@ -170,31 +169,40 @@ public class KnnVectorQuery extends Query {
   }
 
   /** Caches the results of a KnnVector search: a list of docs and their scores */
-  class DocAndScoreQuery extends Query {
+  static class DocAndScoreQuery extends Query {
 
+    private final int k;
     private final int[] docs;
     private final float[] scores;
     private final int[] segmentStarts;
+    private final int readerHash;
 
     /**
      * Constructor
      *
+     * @param k the number of documents requested
      * @param docs the global docids of documents that match, in ascending order
      * @param scores the scores of the matching documents
      * @param segmentStarts the indexes in docs and scores corresponding to the first matching
      *     document in each segment. If a segment has no matching documents, it should be assigned
      *     the index of the next segment that does. There should be a final entry that is always
      *     docs.length-1.
+     * @param readerHash a hash code identifying the IndexReader used to create this query
      */
-    DocAndScoreQuery(int[] docs, float[] scores, int[] segmentStarts) {
+    DocAndScoreQuery(int k, int[] docs, float[] scores, int[] segmentStarts, int readerHash) {
+      this.k = k;
       this.docs = docs;
       this.scores = scores;
       this.segmentStarts = segmentStarts;
+      this.readerHash = readerHash;
     }
 
     @Override
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
+      if (searcher.getIndexReader().hashCode() != readerHash) {
+        throw new IllegalStateException("This DocAndScore query was created by a different reader");
+      }
       return new Weight(this) {
         @Override
         public Explanation explain(LeafReaderContext context, int doc) {
@@ -255,14 +263,24 @@ public class KnnVectorQuery extends Query {
 
             @Override
             public float score() {
-              if (upTo >= lower && upTo < upper) {
-                return scores[upTo];
+              return scores[upTo];
+            }
+
+            @Override
+            public int advanceShallow(int docid) {
+              int start = Math.max(upTo, lower);
+              int docidIndex = Arrays.binarySearch(docs, start, upper, docid + context.docBase);
+              if (docidIndex < 0) {
+                docidIndex = -1 - docidIndex;
               }
-              return 0;
+              if (docidIndex >= upper) {
+                return NO_MORE_DOCS;
+              }
+              return docs[docidIndex];
             }
 
             /**
-             * move the implementation of docIO() into a differently-named method so we can call it
+             * move the implementation of docID() into a differently-named method so we can call it
              * from DocIDSetIterator.docID() even though this class is anonymous
              *
              * @return the current docid
@@ -286,19 +304,19 @@ public class KnnVectorQuery extends Query {
 
         @Override
         public boolean isCacheable(LeafReaderContext ctx) {
-          return true;
+          return false;
         }
       };
     }
 
     @Override
     public String toString(String field) {
-      return KnnVectorQuery.this.toString();
+      return "DocAndScore[" + k + "]";
     }
 
     @Override
     public void visit(QueryVisitor visitor) {
-      KnnVectorQuery.this.visit(visitor);
+      visitor.visitLeaf(this);
     }
 
     @Override
@@ -312,7 +330,7 @@ public class KnnVectorQuery extends Query {
 
     @Override
     public int hashCode() {
-      return Objects.hash(Arrays.hashCode(docs), Arrays.hashCode(scores));
+      return Objects.hash(DocAndScoreQuery.class.hashCode(), Arrays.hashCode(docs), Arrays.hashCode(scores));
     }
   }
 }
