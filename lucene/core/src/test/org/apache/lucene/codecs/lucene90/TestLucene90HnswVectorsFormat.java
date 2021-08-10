@@ -36,6 +36,7 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestUtil;
 
 public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
@@ -76,8 +77,9 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
       try (IndexReader reader = DirectoryReader.open(dir)) {
         Set<String> allIds = new HashSet<>();
         for (LeafReaderContext context : reader.leaves()) {
+          Bits liveDocs = context.reader().getLiveDocs();
           TopDocs topDocs =
-              context.reader().searchNearestVectors("vector", randomVector(30), numDocs);
+              context.reader().searchNearestVectors("vector", randomVector(30), numDocs, liveDocs);
           for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
             int docId = context.docBase + scoreDoc.doc;
             Document doc = reader.document(docId, Set.of("index"));
@@ -110,8 +112,9 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext context : reader.leaves()) {
+          Bits liveDocs = context.reader().getLiveDocs();
           TopDocs topDocs =
-              context.reader().searchNearestVectors("vector", randomVector(30), numDocs);
+              context.reader().searchNearestVectors("vector", randomVector(30), numDocs, liveDocs);
           assertEquals(0, topDocs.scoreDocs.length);
           assertTrue(topDocs.totalHits.value > 0L);
         }
