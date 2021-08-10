@@ -120,12 +120,14 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   public void testDifferentReader() throws IOException {
     try (Directory indexStore =
-                 getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
-         IndexReader reader = DirectoryReader.open(indexStore)) {
-      KnnVectorQuery query = new KnnVectorQuery("field", new float[]{2, 3}, 3);
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
       Query dasq = query.rewrite(reader);
       IndexSearcher leafSearcher = newSearcher(reader.leaves().get(0).reader());
-      expectThrows(IllegalStateException.class, () -> dasq.createWeight(leafSearcher, ScoreMode.COMPLETE, 1));
+      expectThrows(
+          IllegalStateException.class,
+          () -> dasq.createWeight(leafSearcher, ScoreMode.COMPLETE, 1));
     }
   }
 
@@ -134,15 +136,16 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 0; j < 5; j++) {
           Document doc = new Document();
-          doc.add(new KnnVectorField("field", new float[]{j, j}));
+          doc.add(new KnnVectorField("field", new float[] {j, j}));
           w.addDocument(doc);
         }
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query = new KnnVectorQuery("field", new float[]{2, 3}, 3);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
         Query dasq = query.rewrite(reader);
-        Scorer scorer = dasq.createWeight(searcher, ScoreMode.COMPLETE, 1).scorer(reader.leaves().get(0));
+        Scorer scorer =
+            dasq.createWeight(searcher, ScoreMode.COMPLETE, 1).scorer(reader.leaves().get(0));
         // before advancing the iterator
         assertEquals(1, scorer.advanceShallow(0));
         assertEquals(1, scorer.advanceShallow(1));
@@ -183,17 +186,17 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         assertEquals(0, scorer.getMaxScore(-1), 0);
         assertEquals(0, scorer.getMaxScore(0), 0);
         // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
-        assertEquals(1/2f, scorer.getMaxScore(2), 0);
-        assertEquals(1/2f, scorer.getMaxScore(Integer.MAX_VALUE), 0);
+        assertEquals(1 / 2f, scorer.getMaxScore(2), 0);
+        assertEquals(1 / 2f, scorer.getMaxScore(Integer.MAX_VALUE), 0);
 
         DocIdSetIterator it = scorer.iterator();
         assertEquals(3, it.cost());
         assertEquals(1, it.nextDoc());
-        assertEquals(1/6f, scorer.score(), 0);
+        assertEquals(1 / 6f, scorer.score(), 0);
         assertEquals(3, it.advance(3));
-        assertEquals(1/2f, scorer.score(), 0);
+        assertEquals(1 / 2f, scorer.score(), 0);
         assertEquals(NO_MORE_DOCS, it.advance(4));
-        expectThrows(ArrayIndexOutOfBoundsException.class, () ->scorer.score());
+        expectThrows(ArrayIndexOutOfBoundsException.class, () -> scorer.score());
       }
     }
   }
@@ -212,7 +215,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
         Explanation matched = searcher.explain(query, 2);
         assertTrue(matched.isMatch());
-        assertEquals(1/2f, matched.getValue());
+        assertEquals(1 / 2f, matched.getValue());
         assertEquals(0, matched.getDetails().length);
         assertEquals("within top 3", matched.getDescription());
 

@@ -57,20 +57,12 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
-    int boundedK = Math.min(k, reader.numDocs());
     TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      // Calculate kPerLeaf as an overestimate of the expected number of the closest k documents in
-      // this leaf
-      int expectedKPerLeaf = Math.max(1, boundedK * ctx.reader().numDocs() / reader.numDocs());
-      // Increase to include 3 std. deviations of a Binomial distribution.
-      int kPerLeaf = (int) (expectedKPerLeaf + 3 * Math.sqrt(expectedKPerLeaf));
-      perLeafResults[ctx.ord] = searchLeaf(ctx, kPerLeaf);
+      perLeafResults[ctx.ord] = searchLeaf(ctx, Math.min(k, reader.numDocs()));
     }
     // Merge sort the results
-    TopDocs topK = TopDocs.merge(boundedK, perLeafResults);
-    // re-query any outlier segments (normally there should be none).
-    topK = checkForOutlierSegments(reader, topK, perLeafResults);
+    TopDocs topK = TopDocs.merge(k, perLeafResults);
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery();
     }
@@ -88,28 +80,6 @@ public class KnnVectorQuery extends Query {
       }
     }
     return results;
-  }
-
-  private TopDocs checkForOutlierSegments(IndexReader reader, TopDocs topK, TopDocs[] perLeaf)
-      throws IOException {
-    int k = topK.scoreDocs.length;
-    if (k == 0) {
-      return topK;
-    }
-    float minScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
-    boolean rescored = false;
-    for (int i = 0; i < perLeaf.length; i++) {
-      if (perLeaf[i].scoreDocs[perLeaf[i].scoreDocs.length - 1].score >= minScore) {
-        // This segment's worst score was competitive; search it again, gathering full K this time
-        perLeaf[i] = searchLeaf(reader.leaves().get(i), topK.scoreDocs.length);
-        rescored = true;
-      }
-    }
-    if (rescored) {
-      return TopDocs.merge(k, perLeaf);
-    } else {
-      return topK;
-    }
   }
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
@@ -304,7 +274,7 @@ public class KnnVectorQuery extends Query {
 
         @Override
         public boolean isCacheable(LeafReaderContext ctx) {
-          return false;
+          return true;
         }
       };
     }
@@ -330,7 +300,8 @@ public class KnnVectorQuery extends Query {
 
     @Override
     public int hashCode() {
-      return Objects.hash(DocAndScoreQuery.class.hashCode(), Arrays.hashCode(docs), Arrays.hashCode(scores));
+      return Objects.hash(
+          DocAndScoreQuery.class.hashCode(), Arrays.hashCode(docs), Arrays.hashCode(scores));
     }
   }
 }
