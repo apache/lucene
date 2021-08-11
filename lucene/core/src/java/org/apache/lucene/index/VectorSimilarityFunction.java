@@ -43,9 +43,9 @@ public enum VectorSimilarityFunction {
   };
 
   /**
-   * If true, the scores associated with vector comparisons are nonnegative and in reverse order;
-   * that is, lower scores represent more similar vectors. Otherwise, if false, higher scores
-   * represent more similar vectors, and scores may be negative or positive.
+   * If true, the scores associated with vector comparisons are in reverse order; that is, lower
+   * scores represent more similar vectors. Otherwise, if false, higher scores represent more
+   * similar vectors.
    */
   public final boolean reversed;
 
