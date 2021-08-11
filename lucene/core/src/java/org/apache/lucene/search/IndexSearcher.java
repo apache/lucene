@@ -66,9 +66,9 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  * match lots of documents, counting the number of hits may take much longer than computing the top
  * hits so this trade-off allows to get some minimal information about the hit count without slowing
  * down search too much. The {@link TopDocs#scoreDocs} array is always accurate however. If this
- * behavior doesn't suit your needs, you should create collectors manually with either {@link
- * TopScoreDocCollector#create} or {@link TopFieldCollector#create} and call {@link #search(Query,
- * Collector)}.
+ * behavior doesn't suit your needs, you should create collectorManagers manually with either {@link
+ * TopScoreDocCollectorManager#create} or {@link TopFieldCollectorManager#create} and call {@link
+ * #search(Query, CollectorManager)}.
  *
  * <p><a id="thread-safety"></a>
  *
@@ -478,34 +478,8 @@ public class IndexSearcher {
     }
 
     final int cappedNumHits = Math.min(numHits, limit);
-
-    final CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        new CollectorManager<TopScoreDocCollector, TopDocs>() {
-
-          private final HitsThresholdChecker hitsThresholdChecker =
-              (executor == null || leafSlices.length <= 1)
-                  ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
-                  : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
-
-          private final MaxScoreAccumulator minScoreAcc =
-              (executor == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
-
-          @Override
-          public TopScoreDocCollector newCollector() throws IOException {
-            return TopScoreDocCollector.create(
-                cappedNumHits, after, hitsThresholdChecker, minScoreAcc);
-          }
-
-          @Override
-          public TopDocs reduce(Collection<TopScoreDocCollector> collectors) throws IOException {
-            final TopDocs[] topDocs = new TopDocs[collectors.size()];
-            int i = 0;
-            for (TopScoreDocCollector collector : collectors) {
-              topDocs[i++] = collector.topDocs();
-            }
-            return TopDocs.merge(0, cappedNumHits, topDocs);
-          }
-        };
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        new TopScoreDocCollectorManager(cappedNumHits, after, TOTAL_HITS_THRESHOLD);
 
     return search(query, manager);
   }
@@ -527,7 +501,10 @@ public class IndexSearcher {
    *
    * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
    *     clauses.
+   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
+   *     CollectorManager)} due to its support for concurrency in IndexSearcher
    */
+  @Deprecated
   public void search(Query query, Collector results) throws IOException {
     query = rewrite(query);
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
@@ -614,33 +591,7 @@ public class IndexSearcher {
     final Sort rewrittenSort = sort.rewrite(this);
 
     final CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-        new CollectorManager<>() {
-
-          private final HitsThresholdChecker hitsThresholdChecker =
-              (executor == null || leafSlices.length <= 1)
-                  ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
-                  : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
-
-          private final MaxScoreAccumulator minScoreAcc =
-              (executor == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
-
-          @Override
-          public TopFieldCollector newCollector() throws IOException {
-            // TODO: don't pay the price for accurate hit counts by default
-            return TopFieldCollector.create(
-                rewrittenSort, cappedNumHits, after, hitsThresholdChecker, minScoreAcc);
-          }
-
-          @Override
-          public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) throws IOException {
-            final TopFieldDocs[] topDocs = new TopFieldDocs[collectors.size()];
-            int i = 0;
-            for (TopFieldCollector collector : collectors) {
-              topDocs[i++] = collector.topDocs();
-            }
-            return TopDocs.merge(rewrittenSort, 0, cappedNumHits, topDocs);
-          }
-        };
+        new TopFieldCollectorManager(rewrittenSort, cappedNumHits, after, TOTAL_HITS_THRESHOLD);
 
     TopFieldDocs topDocs = search(query, manager);
     if (doDocScores) {
@@ -659,9 +610,12 @@ public class IndexSearcher {
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
-    if (executor == null || leafSlices.length <= 1) {
+    if (executor == null || leafSlices.length == 0) {
       final C collector = collectorManager.newCollector();
-      search(query, collector);
+      final Query rewrittenQuery = rewrite(query);
+
+      search(leafContexts, createWeight(rewrittenQuery, collector.scoreMode(), 1), collector);
+
       return collectorManager.reduce(Collections.singletonList(collector));
     } else {
       final List<C> collectors = new ArrayList<>(leafSlices.length);

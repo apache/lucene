@@ -52,7 +52,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
@@ -62,6 +61,8 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.FixedBitSetCollector;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
@@ -572,28 +573,7 @@ public class TestPointQueries extends LuceneTestCase {
                   System.out.println(Thread.currentThread().getName() + ":  using query: " + query);
                 }
 
-                final BitSet hits = new BitSet();
-                s.search(
-                    query,
-                    new SimpleCollector() {
-
-                      private int docBase;
-
-                      @Override
-                      public ScoreMode scoreMode() {
-                        return ScoreMode.COMPLETE_NO_SCORES;
-                      }
-
-                      @Override
-                      protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                        docBase = context.docBase;
-                      }
-
-                      @Override
-                      public void collect(int doc) {
-                        hits.set(docBase + doc);
-                      }
-                    });
+                final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(r.maxDoc()));
 
                 if (VERBOSE) {
                   System.out.println(
@@ -870,28 +850,7 @@ public class TestPointQueries extends LuceneTestCase {
                   System.out.println(Thread.currentThread().getName() + ":  using query: " + query);
                 }
 
-                final BitSet hits = new BitSet();
-                s.search(
-                    query,
-                    new SimpleCollector() {
-
-                      private int docBase;
-
-                      @Override
-                      public ScoreMode scoreMode() {
-                        return ScoreMode.COMPLETE_NO_SCORES;
-                      }
-
-                      @Override
-                      protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                        docBase = context.docBase;
-                      }
-
-                      @Override
-                      public void collect(int doc) {
-                        hits.set(docBase + doc);
-                      }
-                    });
+                final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(r.maxDoc()));
 
                 if (VERBOSE) {
                   System.out.println(

@@ -133,9 +133,10 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         } else {
           after = null;
         }
-        final TopFieldCollector collector1 =
-            TopFieldCollector.create(sort, numHits, after, Integer.MAX_VALUE);
-        final TopFieldCollector collector2 = TopFieldCollector.create(sort, numHits, after, 1);
+        final TopFieldCollectorManager collectorManager1 =
+            new TopFieldCollectorManager(sort, numHits, after, Integer.MAX_VALUE);
+        final TopFieldCollectorManager collectorManager2 =
+            new TopFieldCollectorManager(sort, numHits, after, 1);
 
         final Query query;
         if (random().nextBoolean()) {
@@ -143,17 +144,21 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         } else {
           query = new MatchAllDocsQuery();
         }
-        searcher.search(query, collector1);
-        searcher.search(query, collector2);
-        TopDocs td1 = collector1.topDocs();
-        TopDocs td2 = collector2.topDocs();
 
-        assertFalse(collector1.isEarlyTerminated());
+        TopDocs td1 = searcher.search(query, collectorManager1);
+        TopDocs td2 = searcher.search(query, collectorManager2);
+
+        assertFalse(
+            collectorManager1.getCollectors().stream()
+                .anyMatch(TopFieldCollector::isEarlyTerminated));
         if (paging == false && maxSegmentSize > numHits && query instanceof MatchAllDocsQuery) {
           // Make sure that we sometimes early terminate
-          assertTrue(collector2.isEarlyTerminated());
+          assertTrue(
+              collectorManager2.getCollectors().stream()
+                  .anyMatch(TopFieldCollector::isEarlyTerminated));
         }
-        if (collector2.isEarlyTerminated()) {
+        if (collectorManager2.getCollectors().stream()
+            .anyMatch(TopFieldCollector::isEarlyTerminated)) {
           assertTrue(td2.totalHits.value >= td1.scoreDocs.length);
           assertTrue(td2.totalHits.value <= reader.maxDoc());
         } else {

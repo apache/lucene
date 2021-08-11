@@ -234,32 +234,29 @@ public class TestBoolean2 extends LuceneTestCase {
     // The asserting searcher will sometimes return the bulk scorer and
     // sometimes return a default impl around the scorer so that we can
     // compare BS1 and BS2
-    TopScoreDocCollector collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    ScoreDoc[] hits1 = collector.topDocs().scoreDocs;
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    ScoreDoc[] hits2 = collector.topDocs().scoreDocs;
+    TopScoreDocCollectorManager collectorManager =
+        TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    ScoreDoc[] hits1 = searcher.search(query, collectorManager).scoreDocs;
+    collectorManager = TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    ScoreDoc[] hits2 = searcher.search(query, collectorManager).scoreDocs;
 
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // Since we have no deleted docs, we should also be able to verify identical matches &
     // scores against an single segment copy of our index
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    singleSegmentSearcher.search(query, collector);
-    hits2 = collector.topDocs().scoreDocs;
+    collectorManager = TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    TopDocs topDocs2 = singleSegmentSearcher.search(query, collectorManager);
+    hits2 = topDocs2.scoreDocs;
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // sanity check expected num matches in bigSearcher
-    assertEquals(mulFactor * collector.totalHits, bigSearcher.count(query));
+    assertEquals(mulFactor * topDocs2.totalHits.value, bigSearcher.count(query));
 
     // now check 2 diff scorers from the bigSearcher as well
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    bigSearcher.search(query, collector);
-    hits1 = collector.topDocs().scoreDocs;
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    bigSearcher.search(query, collector);
-    hits2 = collector.topDocs().scoreDocs;
+    collectorManager = TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    hits1 = bigSearcher.search(query, collectorManager).scoreDocs;
+    collectorManager = TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    hits2 = bigSearcher.search(query, collectorManager).scoreDocs;
 
     // NOTE: just comparing results, not vetting against expDocNrs
     // since we have dups in bigSearcher
@@ -387,27 +384,25 @@ public class TestBoolean2 extends LuceneTestCase {
         }
 
         // check diff (randomized) scorers (from AssertingSearcher) produce the same results
-        TopFieldCollector collector = TopFieldCollector.create(sort, 1000, 1);
-        searcher.search(q1, collector);
-        ScoreDoc[] hits1 = collector.topDocs().scoreDocs;
-        collector = TopFieldCollector.create(sort, 1000, 1);
-        searcher.search(q1, collector);
-        ScoreDoc[] hits2 = collector.topDocs().scoreDocs;
+        TopFieldCollectorManager collectorManager = TopFieldCollectorManager.create(sort, 1000, 1);
+        ScoreDoc[] hits1 = searcher.search(q1, collectorManager).scoreDocs;
+        collectorManager = TopFieldCollectorManager.create(sort, 1000, 1);
+        TopDocs topDocs = searcher.search(q1, collectorManager);
+        ScoreDoc[] hits2 = topDocs.scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
 
         BooleanQuery.Builder q3 = new BooleanQuery.Builder();
         q3.add(q1, BooleanClause.Occur.SHOULD);
         q3.add(new PrefixQuery(new Term("field2", "b")), BooleanClause.Occur.SHOULD);
         assertEquals(
-            mulFactor * collector.totalHits + NUM_EXTRA_DOCS / 2, bigSearcher.count(q3.build()));
+            mulFactor * topDocs.totalHits.value + NUM_EXTRA_DOCS / 2,
+            bigSearcher.count(q3.build()));
 
         // test diff (randomized) scorers produce the same results on bigSearcher as well
-        collector = TopFieldCollector.create(sort, 1000 * mulFactor, 1);
-        bigSearcher.search(q1, collector);
-        hits1 = collector.topDocs().scoreDocs;
-        collector = TopFieldCollector.create(sort, 1000 * mulFactor, 1);
-        bigSearcher.search(q1, collector);
-        hits2 = collector.topDocs().scoreDocs;
+        collectorManager = TopFieldCollectorManager.create(sort, 1000 * mulFactor, 1);
+        hits1 = bigSearcher.search(q1, collectorManager).scoreDocs;
+        collectorManager = TopFieldCollectorManager.create(sort, 1000 * mulFactor, 1);
+        hits2 = bigSearcher.search(q1, collectorManager).scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
       }
 

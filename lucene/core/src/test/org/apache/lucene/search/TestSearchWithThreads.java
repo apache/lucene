@@ -54,6 +54,7 @@ public class TestSearchWithThreads extends LuceneTestCase {
     w.close();
 
     final IndexSearcher s = newSearcher(r);
+    final TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager();
 
     final AtomicBoolean failed = new AtomicBoolean();
     final AtomicLong netSearch = new AtomicLong();
@@ -62,18 +63,14 @@ public class TestSearchWithThreads extends LuceneTestCase {
     for (int threadID = 0; threadID < numThreads; threadID++) {
       threads[threadID] =
           new Thread() {
-            TotalHitCountCollector col = new TotalHitCountCollector();
-
             @Override
             public void run() {
               try {
                 long totHits = 0;
                 long totSearch = 0;
                 for (; totSearch < numSearches & !failed.get(); totSearch++) {
-                  s.search(new TermQuery(new Term("body", "aaa")), col);
-                  totHits += col.getTotalHits();
-                  s.search(new TermQuery(new Term("body", "bbb")), col);
-                  totHits += col.getTotalHits();
+                  totHits += s.search(new TermQuery(new Term("body", "aaa")), collectorManager);
+                  totHits += s.search(new TermQuery(new Term("body", "bbb")), collectorManager);
                 }
                 assertTrue(totSearch > 0 && totHits > 0);
                 netSearch.addAndGet(totSearch);

@@ -57,36 +57,25 @@ public class TestConstantScoreQuery extends LuceneTestCase {
       final float expectedScore,
       final Class<? extends Scorable> innerScorerClass)
       throws IOException {
-    final int[] count = new int[1];
-    searcher.search(
-        q,
-        new SimpleCollector() {
-          private Scorable scorer;
+    int count =
+        searcher.search(
+            q,
+            new CollectorManager<CountingSimpleCollector, Integer>() {
+              @Override
+              public CountingSimpleCollector newCollector() {
+                return new CountingSimpleCollector(innerScorerClass, expectedScore);
+              }
 
-          @Override
-          public void setScorer(Scorable scorer) {
-            this.scorer = scorer;
-            if (innerScorerClass != null) {
-              Scorable innerScorer = rootScorer(scorer);
-              assertEquals(
-                  "inner Scorer is implemented by wrong class",
-                  innerScorerClass,
-                  innerScorer.getClass());
-            }
-          }
+              @Override
+              public Integer reduce(Collection<CountingSimpleCollector> collectors) {
+                return collectors.stream()
+                    .map(CountingSimpleCollector::getCount)
+                    .mapToInt(Integer::intValue)
+                    .sum();
+              }
+            });
 
-          @Override
-          public void collect(int doc) throws IOException {
-            assertEquals("Score differs from expected", expectedScore, this.scorer.score(), 0);
-            count[0]++;
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
-          }
-        });
-    assertEquals("invalid number of results", 1, count[0]);
+    assertEquals("invalid number of results", 1, count);
   }
 
   private Scorable rootScorer(Scorable s) {
@@ -241,5 +230,44 @@ public class TestConstantScoreQuery extends LuceneTestCase {
     reader.close();
     w.close();
     dir.close();
+  }
+
+  private class CountingSimpleCollector extends SimpleCollector {
+    private final Class<? extends Scorable> innerScorerClass;
+    private final float expectedScore;
+    private int count;
+    private Scorable scorer;
+
+    public CountingSimpleCollector(
+        Class<? extends Scorable> innerScorerClass, float expectedScore) {
+      this.innerScorerClass = innerScorerClass;
+      this.expectedScore = expectedScore;
+      count = 0;
+    }
+
+    @Override
+    public void setScorer(Scorable scorer) {
+      this.scorer = scorer;
+      if (innerScorerClass != null) {
+        Scorable innerScorer = rootScorer(scorer);
+        assertEquals(
+            "inner Scorer is implemented by wrong class", innerScorerClass, innerScorer.getClass());
+      }
+    }
+
+    @Override
+    public void collect(int doc) throws IOException {
+      assertEquals("Score differs from expected", expectedScore, this.scorer.score(), 0);
+      count++;
+    }
+
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE;
+    }
+
+    public int getCount() {
+      return count;
+    }
   }
 }

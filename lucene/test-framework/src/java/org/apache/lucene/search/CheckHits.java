@@ -617,12 +617,13 @@ public class CheckHits {
 
   private static void doCheckTopScores(Query query, IndexSearcher searcher, int numHits)
       throws IOException {
-    TopScoreDocCollector collector1 =
-        TopScoreDocCollector.create(numHits, null, Integer.MAX_VALUE); // COMPLETE
-    TopScoreDocCollector collector2 = TopScoreDocCollector.create(numHits, null, 1); // TOP_SCORES
-    searcher.search(query, collector1);
-    searcher.search(query, collector2);
-    checkEqual(query, collector1.topDocs().scoreDocs, collector2.topDocs().scoreDocs);
+    TopScoreDocCollectorManager collectorManager1 =
+        new TopScoreDocCollectorManager(numHits, null, Integer.MAX_VALUE); // COMPLETE
+    TopScoreDocCollectorManager collectorManager2 =
+        new TopScoreDocCollectorManager(numHits, null, 1); // TOP_SCORES
+    TopDocs topDocs1 = searcher.search(query, collectorManager1);
+    TopDocs topDocs2 = searcher.search(query, collectorManager2);
+    checkEqual(query, topDocs1.scoreDocs, topDocs2.scoreDocs);
   }
 
   private static void doCheckMaxScores(Random random, Query query, IndexSearcher searcher)

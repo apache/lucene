@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,7 +26,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
@@ -36,6 +34,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.FixedBitSetCollector;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -293,27 +292,7 @@ public abstract class BaseRangeFieldQueryTestCase extends LuceneTestCase {
         System.out.println("  query=" + query);
       }
 
-      final FixedBitSet hits = new FixedBitSet(maxDoc);
-      s.search(
-          query,
-          new SimpleCollector() {
-            private int docBase;
-
-            @Override
-            public void collect(int doc) {
-              hits.set(docBase + doc);
-            }
-
-            @Override
-            protected void doSetNextReader(LeafReaderContext context) throws IOException {
-              docBase = context.docBase;
-            }
-
-            @Override
-            public ScoreMode scoreMode() {
-              return ScoreMode.COMPLETE_NO_SCORES;
-            }
-          });
+      FixedBitSet hits = s.search(query, FixedBitSetCollector.create(maxDoc));
 
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(r, "id");
       for (int docID = 0; docID < maxDoc; ++docID) {

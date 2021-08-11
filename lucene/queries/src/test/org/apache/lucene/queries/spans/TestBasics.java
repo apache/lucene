@@ -39,7 +39,8 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.English;
 import org.apache.lucene.util.LuceneTestCase;
@@ -508,10 +509,11 @@ public class TestBasics extends LuceneTestCase {
     SpanQuery sq2 = new SpanTermQuery(new Term(FIELD, "clckwork"));
     query.add(sq1, BooleanClause.Occur.SHOULD);
     query.add(sq2, BooleanClause.Occur.SHOULD);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(1000, Integer.MAX_VALUE);
-    searcher.search(query.build(), collector);
-    hits = collector.topDocs().scoreDocs.length;
-    for (ScoreDoc scoreDoc : collector.topDocs().scoreDocs) {
+    TopScoreDocCollectorManager collectorManager =
+        TopScoreDocCollectorManager.create(1000, Integer.MAX_VALUE);
+    TopDocs topDocs = searcher.search(query.build(), collectorManager);
+    hits = topDocs.scoreDocs.length;
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
       System.out.println(scoreDoc.doc);
     }
     indexReader.close();
@@ -543,10 +545,11 @@ public class TestBasics extends LuceneTestCase {
                 new SpanTermQuery(new Term(FIELD, "clockwork")),
                 new SpanTermQuery(new Term(FIELD, "clckwork"))),
             1.0f);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(1000, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    hits = collector.topDocs().scoreDocs.length;
-    for (ScoreDoc scoreDoc : collector.topDocs().scoreDocs) {
+    TopScoreDocCollectorManager collectorManager =
+        TopScoreDocCollectorManager.create(1000, Integer.MAX_VALUE);
+    TopDocs topDocs = searcher.search(query, collectorManager);
+    hits = topDocs.scoreDocs.length;
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
       System.out.println(scoreDoc.doc);
     }
     indexReader.close();
