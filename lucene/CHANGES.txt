@@ -405,6 +405,10 @@ Improvements
 * LUCENE-9945: Extend DrillSideways to support exposing FacetCollectors directly.
   (Greg Miller, Sejal Pawar)
 
+* LUCENE-10043: Decrease default for LRUQueryCache's skipCacheFactor to 10.
+  This prevents caching a query clause when it is much more expensive than
+  running the top-level query. (Julie Tibshirani)
+
 Optimizations
 ---------------------
 * LUCENE-9996: Improved memory efficiency of IndexWriter's RAM buffer, in
@@ -437,6 +441,9 @@ Bug Fixes
   field. (Julie Tibshirani)
 
 * LUCENE-10046: Counting bug fixed in StringValueFacetCounts. (Greg Miller)
+
+* LUCENE-9963: FlattenGraphFilter is now more robust when handling
+  incoming holes in the input token graph (Geoff Lawson)
 
 Other
 ---------------------
