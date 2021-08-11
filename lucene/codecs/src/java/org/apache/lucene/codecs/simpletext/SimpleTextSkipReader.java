@@ -16,20 +16,11 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.FREQ;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACT;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS_END;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.NORM;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC_FP;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
-
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.apache.lucene.codecs.MultiLevelSkipListReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
@@ -41,6 +32,15 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.apache.lucene.util.StringHelper;
+
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.FREQ;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS_END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.NORM;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC_FP;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
 
 /**
  * This class reads skip lists with multiple levels.
@@ -59,7 +59,7 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
   private int numLevels = 1;
   private boolean hasSkipList = false;
 
-  public SimpleTextSkipReader(IndexInput skipStream) {
+  SimpleTextSkipReader(IndexInput skipStream) {
     super(
         skipStream,
         SimpleTextSkipWriter.maxSkipLevels,
@@ -110,7 +110,7 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
     BytesRefBuilder scratch = new BytesRefBuilder();
     int freq = 1;
     while (true) {
-      SimpleTextUtil.readLine(skipStream, scratch);
+      SimpleTextUtil.readLine(input, scratch);
       if (scratch.get().equals(SimpleTextFieldsWriter.END)) {
         SimpleTextUtil.checkFooter(input);
         break;
@@ -146,8 +146,7 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
     return skipDoc;
   }
 
-  public void init(IndexInput skipStream,long docStartFP, int docCount) throws IOException {
-    init();
+  long seekSkipPointer(IndexInput skipStream,long docStartFP) throws IOException {
     long skipPointer = -1;
     skipStream.seek(docStartFP);
     ChecksumIndexInput input = new BufferedChecksumIndexInput(skipStream);
@@ -161,16 +160,23 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
         break;
       } else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)) {
         skipPointer = input.getFilePointer();
-        hasSkipList = true;
         break;
       }
     }
-    if(hasSkipList){
-        super.init(skipPointer, docCount);
+    return skipPointer;
+  }
+
+  void reset(long skipPointer, int docFreq) throws IOException {
+    init();
+    if(skipPointer > 0){
+      super.init(skipPointer,docFreq);
+      hasSkipList = true;
     }
   }
 
   private void init(){
+    nextSkipDocFP = -1;
+    numLevels = 1;
     perLevelImpacts = new ArrayList<>(maxNumberOfSkipLevels);
     for (int level = 0; level < maxNumberOfSkipLevels; level++) {
         List<Impact> impacts = new ArrayList<>();
@@ -193,5 +199,9 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
         return DocIdSetIterator.NO_MORE_DOCS;
     }
     return skipDoc[0];
+  }
+
+  boolean hasSkipList(){
+    return hasSkipList;
   }
 }

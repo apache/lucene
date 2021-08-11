@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.MultiLevelSkipListWriter;
 import org.apache.lucene.index.Impact;
@@ -54,9 +55,9 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
   static final BytesRef IMPACT = new BytesRef("          impact ");
   static final BytesRef FREQ = new BytesRef("            freq ");
   static final BytesRef NORM = new BytesRef("            norm ");
-  static final BytesRef IMPACTS_END = new BytesRef("        impacts_end ");
+  static final BytesRef IMPACTS_END = new BytesRef("        impactsEnd ");
 
-  protected SimpleTextSkipWriter(SegmentWriteState writeState) throws IOException {
+  SimpleTextSkipWriter(SegmentWriteState writeState) throws IOException {
     super(BLOCK_SIZE, skipMultiplier, maxSkipLevels, writeState.segmentInfo.maxDoc());
     curCompetitiveFreqNorms = new CompetitiveImpactAccumulator[maxSkipLevels];
     for (int i = 0; i < maxSkipLevels; ++i) {
