@@ -18,7 +18,6 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,8 +44,9 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopFieldDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -296,54 +296,20 @@ public class DrillSideways {
         limit = 1; // the collector does not alow numHits = 0
       }
       final int fTopN = Math.min(topN, limit);
+      final TopFieldCollectorManager collectorManager =
+          new TopFieldCollectorManager(sort, fTopN, after, Integer.MAX_VALUE);
 
-      if (executor != null) { // We have an executor, let use the multi-threaded version
-
-        final CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
-            new CollectorManager<>() {
-
-              @Override
-              public TopFieldCollector newCollector() {
-                return TopFieldCollector.create(sort, fTopN, after, Integer.MAX_VALUE);
-              }
-
-              @Override
-              public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) {
-                final TopFieldDocs[] topFieldDocs = new TopFieldDocs[collectors.size()];
-                int pos = 0;
-                for (TopFieldCollector collector : collectors)
-                  topFieldDocs[pos++] = collector.topDocs();
-                return TopDocs.merge(sort, topN, topFieldDocs);
-              }
-            };
-        ConcurrentDrillSidewaysResult<TopFieldDocs> r = searchConcurrently(query, collectorManager);
-        TopFieldDocs topDocs = r.collectorResult;
-        if (doDocScores) {
-          TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
-        }
-        return new DrillSidewaysResult(
-            r.facets,
-            topDocs,
-            r.drillDownFacetsCollector,
-            r.drillSidewaysFacetsCollector,
-            r.drillSidewaysDims);
-
-      } else {
-
-        final TopFieldCollector hitCollector =
-            TopFieldCollector.create(sort, fTopN, after, Integer.MAX_VALUE);
-        DrillSidewaysResult r = search(query, hitCollector);
-        TopFieldDocs topDocs = hitCollector.topDocs();
-        if (doDocScores) {
-          TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
-        }
-        return new DrillSidewaysResult(
-            r.facets,
-            topDocs,
-            r.drillDownFacetsCollector,
-            r.drillSidewaysFacetsCollector,
-            r.drillSidewaysDims);
+      ConcurrentDrillSidewaysResult<TopFieldDocs> r = search(query, collectorManager);
+      TopDocs topDocs = r.collectorResult;
+      if (doDocScores) {
+        TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
       }
+      return new DrillSidewaysResult(
+          r.facets,
+          r.collectorResult,
+          r.drillDownFacetsCollector,
+          r.drillSidewaysFacetsCollector,
+          r.drillSidewaysDims);
     } else {
       return search(after, query, topN);
     }
@@ -362,46 +328,15 @@ public class DrillSideways {
       limit = 1; // the collector does not alow numHits = 0
     }
     final int fTopN = Math.min(topN, limit);
-
-    if (executor != null) { // We have an executor, let use the multi-threaded version
-
-      final CollectorManager<TopScoreDocCollector, TopDocs> collectorManager =
-          new CollectorManager<>() {
-
-            @Override
-            public TopScoreDocCollector newCollector() {
-              return TopScoreDocCollector.create(fTopN, after, Integer.MAX_VALUE);
-            }
-
-            @Override
-            public TopDocs reduce(Collection<TopScoreDocCollector> collectors) {
-              final TopDocs[] topDocs = new TopDocs[collectors.size()];
-              int pos = 0;
-              for (TopScoreDocCollector collector : collectors)
-                topDocs[pos++] = collector.topDocs();
-              return TopDocs.merge(topN, topDocs);
-            }
-          };
-      ConcurrentDrillSidewaysResult<TopDocs> r = searchConcurrently(query, collectorManager);
-      return new DrillSidewaysResult(
-          r.facets,
-          r.collectorResult,
-          r.drillDownFacetsCollector,
-          r.drillSidewaysFacetsCollector,
-          r.drillSidewaysDims);
-
-    } else {
-
-      TopScoreDocCollector hitCollector =
-          TopScoreDocCollector.create(topN, after, Integer.MAX_VALUE);
-      DrillSidewaysResult r = search(query, hitCollector);
-      return new DrillSidewaysResult(
-          r.facets,
-          hitCollector.topDocs(),
-          r.drillDownFacetsCollector,
-          r.drillSidewaysFacetsCollector,
-          r.drillSidewaysDims);
-    }
+    final TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(fTopN, after, Integer.MAX_VALUE);
+    ConcurrentDrillSidewaysResult<TopDocs> r = search(query, collectorManager);
+    return new DrillSidewaysResult(
+        r.facets,
+        r.collectorResult,
+        r.drillDownFacetsCollector,
+        r.drillSidewaysFacetsCollector,
+        r.drillSidewaysDims);
   }
 
   /**
