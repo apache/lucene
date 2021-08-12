@@ -82,6 +82,11 @@ public class StopFilterFactory extends AbstractWordsFileFilterFactory {
   }
 
   @Override
+  protected CharArraySet createDefaultWords() {
+    return new CharArraySet(EnglishAnalyzer.ENGLISH_STOP_WORDS_SET, isIgnoreCase());
+  }
+
+  @Override
   public TokenStream create(TokenStream input) {
     StopFilter stopFilter = new StopFilter(input, getWords());
     return stopFilter;

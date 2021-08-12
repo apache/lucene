@@ -34,7 +34,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *   <li><code>ignoreCase</code> defaults to <code>false</code>
  *   <li><code>words</code> should be the name of a stopwords file to parse, if not specified the
  *       factory will use the value provided by {@link #createDefaultWords()} implementation in
- *       concrete subclass. Defaults to {@link EnglishAnalyzer#ENGLISH_STOP_WORDS_SET}
+ *       concrete subclass.
  *   <li><code>format</code> defines how the <code>words</code> file will be parsed, and defaults to
  *       <code>wordset</code>. If <code>words</code> is not specified, then <code>format</code> must
  *       not be specified.
@@ -102,9 +102,7 @@ public abstract class AbstractWordsFileFilterFactory extends TokenFilterFactory
   }
 
   /** Default word set implementation. */
-  protected CharArraySet createDefaultWords() {
-    return new CharArraySet(EnglishAnalyzer.ENGLISH_STOP_WORDS_SET, ignoreCase);
-  }
+  protected abstract CharArraySet createDefaultWords();
 
   public CharArraySet getWords() {
     return words;

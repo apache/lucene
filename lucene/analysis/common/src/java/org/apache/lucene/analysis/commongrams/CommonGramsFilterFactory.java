@@ -21,6 +21,7 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.en.AbstractWordsFileFilterFactory;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
 
 /**
  * Constructs a {@link CommonGramsFilter}.
@@ -53,6 +54,11 @@ public class CommonGramsFilterFactory extends AbstractWordsFileFilterFactory {
 
   public CharArraySet getCommonWords() {
     return getWords();
+  }
+
+  @Override
+  protected CharArraySet createDefaultWords() {
+    return new CharArraySet(EnglishAnalyzer.ENGLISH_STOP_WORDS_SET, isIgnoreCase());
   }
 
   @Override
