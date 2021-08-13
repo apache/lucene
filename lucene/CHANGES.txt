@@ -445,6 +445,8 @@ Bug Fixes
 * LUCENE-9963: FlattenGraphFilter is now more robust when handling
   incoming holes in the input token graph (Geoff Lawson)
 
+* LUCENE-10008: Respect ignoreCase in CommonGramsFilterFactory (Vigya Sharma)
+
 Other
 ---------------------
 (No changes)
