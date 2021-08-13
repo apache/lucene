@@ -259,7 +259,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       float score = results.topScore();
       results.pop();
       if (reversed) {
-        score = (float) Math.exp(-score / target.length);
+        score = 1 / (1 + score);
       }
       scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
     }
