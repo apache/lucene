@@ -260,7 +260,7 @@ public class TestScorerPerf extends LuceneTestCase {
       }
 
       CountingHitCollector hc = new CountingHitCollector();
-      s.search(bq.build(), hc);
+
       nMatches += hc.getCount();
       ret += hc.getSum();
     }

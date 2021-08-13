@@ -163,9 +163,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
                         RandomPicks.randomFrom(
                             random(), new String[] {"blue", "red", "yellow", "green"});
                     final Query q = new TermQuery(new Term("color", value));
-                    TotalHitCountCollector collector = new TotalHitCountCollector();
-                    searcher.search(q, collector); // will use the cache
-                    final int totalHits1 = collector.getTotalHits();
+                    final int totalHits1 =
+                        searcher.search(
+                            q, new TotalHitCountCollectorManager()); // will use the cache
                     TotalHitCountCollector collector2 = new TotalHitCountCollector();
                     searcher.search(
                         q,
@@ -902,7 +902,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(policy);
-    searcher.search(query.build(), new TotalHitCountCollector());
+    searcher.search(query.build(), new TotalHitCountCollectorManager());
 
     reader.close();
     dir.close();
@@ -1120,7 +1120,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     try {
       // trigger an eviction
-      searcher.search(new MatchAllDocsQuery(), new TotalHitCountCollector());
+      searcher.search(new MatchAllDocsQuery(), new TotalHitCountCollectorManager());
       fail();
     } catch (
         @SuppressWarnings("unused")

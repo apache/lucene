@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Collection;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
@@ -26,6 +27,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
@@ -34,6 +36,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
@@ -218,120 +221,155 @@ public class TestOmitTf extends LuceneTestCase {
 
     searcher.search(
         q1,
-        new CountingHitCollector() {
-          private Scorable scorer;
-
+        new CollectorManager<CountingHitCollector, Object>() {
           @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public CountingHitCollector newCollector() throws IOException {
+            return new CountingHitCollector() {
+              private Scorable scorer;
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+
+              @Override
+              public final void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public final void collect(int doc) throws IOException {
+                // System.out.println("Q1: Doc=" + doc + " score=" + score);
+                float score = scorer.score();
+                assertTrue("got score=" + score, score == 1.0f);
+                super.collect(doc);
+              }
+            };
           }
 
           @Override
-          public final void setScorer(Scorable scorer) {
-            this.scorer = scorer;
-          }
-
-          @Override
-          public final void collect(int doc) throws IOException {
-            // System.out.println("Q1: Doc=" + doc + " score=" + score);
-            float score = scorer.score();
-            assertTrue("got score=" + score, score == 1.0f);
-            super.collect(doc);
+          public Object reduce(Collection<CountingHitCollector> collectors) throws IOException {
+            return null;
           }
         });
     // System.out.println(CountingHitCollector.getCount());
 
     searcher.search(
         q2,
-        new CountingHitCollector() {
-          private Scorable scorer;
-
+        new CollectorManager<CountingHitCollector, Object>() {
           @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public CountingHitCollector newCollector() throws IOException {
+            return new CountingHitCollector() {
+              private Scorable scorer;
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+
+              @Override
+              public final void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public final void collect(int doc) throws IOException {
+                // System.out.println("Q2: Doc=" + doc + " score=" + score);
+                float score = scorer.score();
+                assertEquals(1.0f + doc, score, 0.00001f);
+                super.collect(doc);
+              }
+            };
           }
 
           @Override
-          public final void setScorer(Scorable scorer) {
-            this.scorer = scorer;
-          }
-
-          @Override
-          public final void collect(int doc) throws IOException {
-            // System.out.println("Q2: Doc=" + doc + " score=" + score);
-            float score = scorer.score();
-            assertEquals(1.0f + doc, score, 0.00001f);
-            super.collect(doc);
+          public Object reduce(Collection<CountingHitCollector> collectors) throws IOException {
+            return null;
           }
         });
+
     // System.out.println(CountingHitCollector.getCount());
 
     searcher.search(
         q3,
-        new CountingHitCollector() {
-          private Scorable scorer;
-
+        new CollectorManager<CountingHitCollector, Object>() {
           @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public CountingHitCollector newCollector() throws IOException {
+            return new CountingHitCollector() {
+              private Scorable scorer;
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+
+              @Override
+              public final void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public final void collect(int doc) throws IOException {
+                // System.out.println("Q1: Doc=" + doc + " score=" + score);
+                float score = scorer.score();
+                assertTrue(score == 1.0f);
+                assertFalse(doc % 2 == 0);
+                super.collect(doc);
+              }
+            };
           }
 
           @Override
-          public final void setScorer(Scorable scorer) {
-            this.scorer = scorer;
-          }
-
-          @Override
-          public final void collect(int doc) throws IOException {
-            // System.out.println("Q1: Doc=" + doc + " score=" + score);
-            float score = scorer.score();
-            assertTrue(score == 1.0f);
-            assertFalse(doc % 2 == 0);
-            super.collect(doc);
+          public Object reduce(Collection<CountingHitCollector> collectors) throws IOException {
+            return null;
           }
         });
+
     // System.out.println(CountingHitCollector.getCount());
 
     searcher.search(
         q4,
-        new CountingHitCollector() {
-          private Scorable scorer;
-
+        new CollectorManager<CountingHitCollector, Object>() {
           @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public CountingHitCollector newCollector() throws IOException {
+            return new CountingHitCollector() {
+              private Scorable scorer;
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+
+              @Override
+              public final void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public final void collect(int doc) throws IOException {
+                float score = scorer.score();
+                // System.out.println("Q1: Doc=" + doc + " score=" + score);
+                assertTrue(score == 1.0f);
+                assertTrue(doc % 2 == 0);
+                super.collect(doc);
+              }
+            };
           }
 
           @Override
-          public final void setScorer(Scorable scorer) {
-            this.scorer = scorer;
-          }
-
-          @Override
-          public final void collect(int doc) throws IOException {
-            float score = scorer.score();
-            // System.out.println("Q1: Doc=" + doc + " score=" + score);
-            assertTrue(score == 1.0f);
-            assertTrue(doc % 2 == 0);
-            super.collect(doc);
+          public Object reduce(Collection<CountingHitCollector> collectors) throws IOException {
+            return null;
           }
         });
+
     // System.out.println(CountingHitCollector.getCount());
 
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
     bq.add(q1, Occur.MUST);
     bq.add(q4, Occur.MUST);
 
-    searcher.search(
-        bq.build(),
-        new CountingHitCollector() {
-          @Override
-          public final void collect(int doc) throws IOException {
-            // System.out.println("BQ: Doc=" + doc + " score=" + score);
-            super.collect(doc);
-          }
-        });
-    assertEquals(15, CountingHitCollector.getCount());
+    int count = searcher.search(bq.build(), new TotalHitCountCollectorManager());
+    assertEquals(15, count);
 
     reader.close();
     dir.close();

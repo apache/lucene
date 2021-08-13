@@ -20,7 +20,7 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +41,8 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.FixedBitSetCollector;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.TestUtil;
@@ -409,30 +411,8 @@ public class TestBooleanQuery extends LuceneTestCase {
     dir.close();
   }
 
-  private static BitSet getMatches(IndexSearcher searcher, Query query) throws IOException {
-    BitSet set = new BitSet();
-    searcher.search(
-        query,
-        new SimpleCollector() {
-          int docBase = 0;
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            super.doSetNextReader(context);
-            docBase = context.docBase;
-          }
-
-          @Override
-          public void collect(int doc) throws IOException {
-            set.set(docBase + doc);
-          }
-        });
-    return set;
+  private static FixedBitSet getMatches(IndexSearcher searcher, Query query) throws IOException {
+    return searcher.search(query, FixedBitSetCollector.create(searcher.reader.maxDoc()));
   }
 
   public void testFILTERClauseBehavesLikeMUST() throws IOException {
@@ -466,8 +446,8 @@ public class TestBooleanQuery extends LuceneTestCase {
         bq2.add(q, Occur.FILTER);
       }
 
-      final BitSet matches1 = getMatches(searcher, bq1.build());
-      final BitSet matches2 = getMatches(searcher, bq2.build());
+      final FixedBitSet matches1 = getMatches(searcher, bq1.build());
+      final FixedBitSet matches2 = getMatches(searcher, bq2.build());
       assertEquals(matches1, matches2);
     }
 
@@ -490,35 +470,46 @@ public class TestBooleanQuery extends LuceneTestCase {
     final AtomicBoolean matched = new AtomicBoolean();
     searcher.search(
         bq,
-        new SimpleCollector() {
-          int docBase;
-          Scorable scorer;
-
+        new CollectorManager<SimpleCollector, Object>() {
           @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            super.doSetNextReader(context);
-            docBase = context.docBase;
+          public SimpleCollector newCollector() throws IOException {
+            return new SimpleCollector() {
+              int docBase;
+              Scorable scorer;
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) throws IOException {
+                super.doSetNextReader(context);
+                docBase = context.docBase;
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                final float actualScore = scorer.score();
+                final float expectedScore =
+                    searcher.explain(bq2, docBase + doc).getValue().floatValue();
+                assertEquals(expectedScore, actualScore, 10e-5);
+                matched.set(true);
+              }
+            };
           }
 
           @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
-          }
-
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {
-            this.scorer = scorer;
-          }
-
-          @Override
-          public void collect(int doc) throws IOException {
-            final float actualScore = scorer.score();
-            final float expectedScore =
-                searcher.explain(bq2, docBase + doc).getValue().floatValue();
-            assertEquals(expectedScore, actualScore, 10e-5);
-            matched.set(true);
+          public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+            return null;
           }
         });
+
     assertTrue(matched.get());
   }
 

@@ -33,6 +33,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.IndexReader;
@@ -220,9 +221,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
     IndexSearcher searcher = newSearcher(writer.getReader());
 
-    FacetsCollector c = new FacetsCollector();
-
-    searcher.search(new MatchAllDocsQuery(), c);
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     expectThrows(
         IllegalStateException.class,
@@ -487,8 +486,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       IndexSearcher searcher, SortedSetDocValuesReaderState state, ExecutorService exec)
       throws IOException, InterruptedException {
     if (random().nextBoolean()) {
-      FacetsCollector c = new FacetsCollector();
-      searcher.search(new MatchAllDocsQuery(), c);
+      FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
       if (exec != null) {
         return new ConcurrentSortedSetDocValuesFacetCounts(state, c, exec);
       } else {

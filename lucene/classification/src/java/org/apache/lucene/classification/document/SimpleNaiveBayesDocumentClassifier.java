@@ -40,7 +40,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TotalHitCountCollector;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -263,9 +263,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     if (query != null) {
       booleanQuery.add(query, BooleanClause.Occur.MUST);
     }
-    TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
-    indexSearcher.search(booleanQuery.build(), totalHitCountCollector);
-    return totalHitCountCollector.getTotalHits();
+    return indexSearcher.search(booleanQuery.build(), new TotalHitCountCollectorManager());
   }
 
   private double calculateLogPrior(Term term, int docsWithClassSize) throws IOException {

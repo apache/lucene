@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Collection;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -81,22 +82,32 @@ public class TestSimilarity extends LuceneTestCase {
 
     searcher.search(
         new TermQuery(b),
-        new SimpleCollector() {
-          private Scorable scorer;
-
+        new CollectorManager<SimpleCollector, Object>() {
           @Override
-          public void setScorer(Scorable scorer) {
-            this.scorer = scorer;
+          public SimpleCollector newCollector() throws IOException {
+            return new SimpleCollector() {
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public final void collect(int doc) throws IOException {
+                assertEquals(1.0f, scorer.score(), 0);
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
           }
 
           @Override
-          public final void collect(int doc) throws IOException {
-            assertEquals(1.0f, scorer.score(), 0);
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+            return null;
           }
         });
 
@@ -106,29 +117,39 @@ public class TestSimilarity extends LuceneTestCase {
     // System.out.println(bq.toString("field"));
     searcher.search(
         bq.build(),
-        new SimpleCollector() {
-          private int base = 0;
-          private Scorable scorer;
-
+        new CollectorManager<SimpleCollector, Object>() {
           @Override
-          public void setScorer(Scorable scorer) {
-            this.scorer = scorer;
+          public SimpleCollector newCollector() throws IOException {
+            return new SimpleCollector() {
+              private int base = 0;
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public final void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + score);
+                assertEquals((float) doc + base + 1, scorer.score(), 0);
+              }
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) throws IOException {
+                base = context.docBase;
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
           }
 
           @Override
-          public final void collect(int doc) throws IOException {
-            // System.out.println("Doc=" + doc + " score=" + score);
-            assertEquals((float) doc + base + 1, scorer.score(), 0);
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            base = context.docBase;
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+            return null;
           }
         });
 
@@ -136,23 +157,33 @@ public class TestSimilarity extends LuceneTestCase {
     // System.out.println(pq.toString("field"));
     searcher.search(
         pq,
-        new SimpleCollector() {
-          private Scorable scorer;
-
+        new CollectorManager<SimpleCollector, Object>() {
           @Override
-          public void setScorer(Scorable scorer) {
-            this.scorer = scorer;
+          public SimpleCollector newCollector() throws IOException {
+            return new SimpleCollector() {
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public final void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + score);
+                assertEquals(1.0f, scorer.score(), 0);
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
           }
 
           @Override
-          public final void collect(int doc) throws IOException {
-            // System.out.println("Doc=" + doc + " score=" + score);
-            assertEquals(1.0f, scorer.score(), 0);
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+            return null;
           }
         });
 
@@ -160,23 +191,33 @@ public class TestSimilarity extends LuceneTestCase {
     // System.out.println(pq.toString("field"));
     searcher.search(
         pq,
-        new SimpleCollector() {
-          private Scorable scorer;
-
+        new CollectorManager<SimpleCollector, Object>() {
           @Override
-          public void setScorer(Scorable scorer) {
-            this.scorer = scorer;
+          public SimpleCollector newCollector() throws IOException {
+            return new SimpleCollector() {
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public final void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + score);
+                assertEquals(0.5f, scorer.score(), 0);
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
           }
 
           @Override
-          public final void collect(int doc) throws IOException {
-            // System.out.println("Doc=" + doc + " score=" + score);
-            assertEquals(0.5f, scorer.score(), 0);
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+            return null;
           }
         });
 

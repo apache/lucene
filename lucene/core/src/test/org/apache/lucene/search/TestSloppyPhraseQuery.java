@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Collection;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
@@ -218,24 +219,35 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
   private void assertSaneScoring(PhraseQuery pq, IndexSearcher searcher) throws Exception {
     searcher.search(
         pq,
-        new SimpleCollector() {
-          Scorer scorer;
-
+        new CollectorManager<SimpleCollector, Object>() {
           @Override
-          public void setScorer(Scorable scorer) {
-            this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
+          public SimpleCollector newCollector() throws IOException {
+            return new SimpleCollector() {
+              Scorer scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) {
+                this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                assertFalse(Float.isInfinite(scorer.score()));
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
           }
 
           @Override
-          public void collect(int doc) throws IOException {
-            assertFalse(Float.isInfinite(scorer.score()));
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+            return null;
           }
         });
+
     QueryUtils.check(random(), pq, searcher);
   }
 

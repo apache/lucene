@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -467,7 +468,20 @@ public class CheckHits {
     }
 
     protected void checkExplanations(Query q) throws IOException {
-      super.search(q, new ExplanationAsserter(q, null, this));
+      super.search(
+          q,
+          new CollectorManager<ExplanationAsserter, Object>() {
+            @Override
+            public ExplanationAsserter newCollector() throws IOException {
+              return new ExplanationAsserter(q, null, ExplanationAssertingSearcher.this);
+            }
+
+            @Override
+            public Object reduce(Collection<ExplanationAsserter> collectors) throws IOException {
+              // no need to reduce, as the collection is mostly for explanation verification
+              return null;
+            }
+          });
     }
 
     @Override
@@ -488,6 +502,13 @@ public class CheckHits {
 
       checkExplanations(query);
       return super.search(query, n);
+    }
+
+    @Override
+    public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
+        throws IOException {
+      checkExplanations(query);
+      return super.search(query, collectorManager);
     }
   }
 
