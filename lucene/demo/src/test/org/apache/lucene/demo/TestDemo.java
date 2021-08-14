@@ -29,13 +29,13 @@ public class TestDemo extends LuceneTestCase {
     PrintStream outSave = System.out;
     try {
       ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-      PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset().name());
+      PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset());
       System.setOut(fakeSystemOut);
       SearchFiles.main(
           new String[] {"-query", query, "-index", indexPath.toString(), "-paging", "20"});
       fakeSystemOut.flush();
       String output =
-          bytes.toString(Charset.defaultCharset().name()); // intentionally use default encoding
+          bytes.toString(Charset.defaultCharset()); // intentionally use default encoding
       assertTrue(
           "output=" + output, output.contains(expectedHitCount + " total matching documents"));
     } finally {
@@ -58,10 +58,16 @@ public class TestDemo extends LuceneTestCase {
 
   private void testVectorSearch(Path indexPath, String query, int expectedHitCount)
       throws Exception {
+    testVectorSearch(indexPath, query, expectedHitCount, expectedHitCount);
+  }
+
+  private void testVectorSearch(
+      Path indexPath, String query, int expectedMinHitCount, int expectedMaxHitCount)
+      throws Exception {
     PrintStream outSave = System.out;
     try {
       ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-      PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset().name());
+      PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset());
       System.setOut(fakeSystemOut);
       SearchFiles.main(
           new String[] {
@@ -69,9 +75,13 @@ public class TestDemo extends LuceneTestCase {
           });
       fakeSystemOut.flush();
       String output =
-          bytes.toString(Charset.defaultCharset().name()); // intentionally use default encoding
+          bytes.toString(Charset.defaultCharset()); // intentionally use default encoding
+      int offset = output.indexOf(" total matching documents");
+      int hitCount =
+          Integer.parseInt(output.substring(output.lastIndexOf('\n', offset) + 1, offset));
       assertTrue(
-          "output=" + output, output.contains(expectedHitCount + " total matching documents"));
+          "unexpected hit count " + hitCount + " for query: " + query,
+          hitCount >= expectedMinHitCount && hitCount <= expectedMaxHitCount);
     } finally {
       System.setOut(outSave);
     }
@@ -94,20 +104,15 @@ public class TestDemo extends LuceneTestCase {
           "-knn-dict",
           dictPath.toString()
         });
-    // These term-based matches should also be the best semantic matches, so we shouldn't add
-    // anything by also including -semantic.
-    testVectorSearch(indexDir, "apache", 3);
-    testVectorSearch(indexDir, "gnu", 6);
-    testVectorSearch(indexDir, "derivative", 8);
+    // These term-based matches are usually also the best semantic matches, but sometimes
+    // the vector search picks a different top hit
+    testVectorSearch(indexDir, "apache", 3, 4);
+    testVectorSearch(indexDir, "gnu", 6, 7);
+    testVectorSearch(indexDir, "derivative", 8, 9);
+    testVectorSearch(indexDir, "patent", 9, 10);
+    testVectorSearch(indexDir, "license", 13, 14);
 
-    // this matched 0 by token; semantic matching adds lpgl2.0
+    // this matched 0 by token; semantic matching always adds one
     testVectorSearch(indexDir, "lucene", 1);
-
-    // However, our vectors say that mit.txt is more patent-y than anything with the actual word
-    // patent in it:
-    testVectorSearch(indexDir, "patent", 9);
-
-    // and it likes mit.txt for this one too:
-    testVectorSearch(indexDir, "license", 14);
   }
 }

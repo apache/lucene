@@ -22,7 +22,9 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.demo.knn.DemoKnnAnalyzer;
@@ -30,10 +32,16 @@ import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.*;
-import org.apache.lucene.search.highlight.QueryTermExtractor;
-import org.apache.lucene.search.highlight.WeightedTerm;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.FSDirectory;
 
 /** Simple command-line based search demo. */
@@ -261,8 +269,10 @@ public class SearchFiles {
 
   private static Query addSemanticQuery(Query query, KnnVectorDict vectorDict) throws IOException {
     StringBuilder semanticQueryText = new StringBuilder();
-    for (WeightedTerm term : QueryTermExtractor.getTerms(query, false, "contents")) {
-      semanticQueryText.append(term.getTerm()).append(' ');
+    QueryFieldTermExtractor termExtractor = new QueryFieldTermExtractor("contents");
+    query.visit(termExtractor);
+    for (String term : termExtractor.terms) {
+      semanticQueryText.append(term).append(' ');
     }
     if (semanticQueryText.length() > 0) {
       KnnVectorQuery knnQuery =
@@ -276,5 +286,34 @@ public class SearchFiles {
       return builder.build();
     }
     return query;
+  }
+
+  private static class QueryFieldTermExtractor extends QueryVisitor {
+    private final String field;
+    private final List<String> terms = new ArrayList<>();
+
+    QueryFieldTermExtractor(String field) {
+      this.field = field;
+    }
+
+    @Override
+    public boolean acceptField(String field) {
+      return field.equals(this.field);
+    }
+
+    @Override
+    public void consumeTerms(Query query, Term... terms) {
+      for (Term term : terms) {
+        this.terms.add(term.text());
+      }
+    }
+
+    @Override
+    public QueryVisitor getSubVisitor(BooleanClause.Occur occur, Query parent) {
+      if (occur == BooleanClause.Occur.MUST_NOT) {
+        return QueryVisitor.EMPTY_VISITOR;
+      }
+      return this;
+    }
   }
 }
