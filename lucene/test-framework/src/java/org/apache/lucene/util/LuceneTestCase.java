@@ -2511,9 +2511,12 @@ public abstract class LuceneTestCase extends Assert {
   public void assertTermVectorsEquals(String info, IndexReader leftReader, IndexReader rightReader)
       throws IOException {
     assert leftReader.maxDoc() == rightReader.maxDoc();
+    TermVectors leftTermVectors = leftReader.getTermVectorsReader();
+    TermVectors rightTermVectors = rightReader.getTermVectorsReader();
+    assertEquals(info, leftTermVectors == null, rightTermVectors == null);
     for (int i = 0; i < leftReader.maxDoc(); i++) {
-      Fields leftFields = leftReader.getTermVectors(i);
-      Fields rightFields = rightReader.getTermVectors(i);
+      Fields leftFields = leftTermVectors.get(i);
+      Fields rightFields = rightTermVectors.get(i);
 
       // Fields could be null if there are no postings,
       // but then it must be null for both
