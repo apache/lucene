@@ -101,7 +101,8 @@ public final class ConjunctionUtils {
   /**
    * Create a conjunction for a given lead {@link DocIdSetIterator} and an array of {@link Values}.
    */
-  public static DocIdSetIterator createValuesConjunction(DocIdSetIterator lead, Values[] values) {
+  public static DocIdSetIterator createValuesConjunction(
+      DocIdSetIterator lead, List<? extends Values> values) {
     return new ValuesDISI(lead, values);
   }
 }

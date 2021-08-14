@@ -34,7 +34,6 @@ import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
-import org.apache.lucene.search.Values;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.PriorityQueue;
 
@@ -125,7 +124,7 @@ public class LongValueFacetCounts extends Facets {
       // LongValuesSource can compute interesting values at query time
 
       DocIdSetIterator it =
-          ConjunctionUtils.createValuesConjunction(hits.bits.iterator(), new Values[] {fv});
+          ConjunctionUtils.createValuesConjunction(hits.bits.iterator(), List.of(fv));
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         increment(fv.longValue());
         totCount++;

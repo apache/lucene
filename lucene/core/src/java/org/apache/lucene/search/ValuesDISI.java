@@ -18,14 +18,14 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.List;
 
 class ValuesDISI extends DocIdSetIterator {
   private final DocIdSetIterator lead;
-  private final Values[] values;
+  private final List<? extends Values> values;
 
-  ValuesDISI(DocIdSetIterator lead, Values[] values) {
-    assert lead != null;
-    assert values != null && values.length > 0;
+  ValuesDISI(DocIdSetIterator lead, List<? extends Values> values) {
+    assert lead != null && values != null;
     this.lead = lead;
     this.values = values;
   }
