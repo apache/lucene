@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.*;
 import org.apache.lucene.util.LuceneTestCase;
 
-public class TestValuesDISI extends LuceneTestCase {
+public class TestLeadFollowDISI extends LuceneTestCase {
 
   public void testBasic() throws Exception {
     int[] leadDocs = {1, 2, 3, 4, 5};
@@ -41,17 +41,16 @@ public class TestValuesDISI extends LuceneTestCase {
     LongValues values2 = createLongValues(expectedValues2);
     List<LongValues> values = List.of(values1, values2);
 
-    DocIdSetIterator conjunction = ConjunctionUtils.createValuesConjunction(lead, values);
-    checkValuesConjunction(leadDocs, expectedValues, conjunction, values);
+    DocIdSetIterator conjunction = ConjunctionUtils.createConjunction(lead, values);
+    checkLeadFollowConjunction(leadDocs, expectedValues, conjunction, values);
   }
 
-  public void testEmptyValues() throws Exception {
+  public void testNoFollowers() throws Exception {
     int[] leadDocs = {1, 2, 3, 4, 5};
-
     DocIdSetIterator lead = createLead(leadDocs);
 
-    DocIdSetIterator conjunction = ConjunctionUtils.createValuesConjunction(lead, List.of());
-    checkValuesConjunction(leadDocs, new ArrayList<>(), conjunction, List.of());
+    DocIdSetIterator conjunction = ConjunctionUtils.createConjunction(lead, List.of());
+    checkLeadFollowConjunction(leadDocs, new ArrayList<>(), conjunction, List.of());
   }
 
   public void testRandom() throws Exception {
@@ -74,12 +73,12 @@ public class TestValuesDISI extends LuceneTestCase {
         values.add(createLongValues(expected));
       }
 
-      DocIdSetIterator conjunction = ConjunctionUtils.createValuesConjunction(lead, values);
-      checkValuesConjunction(leadDocs, expectedValues, conjunction, values);
+      DocIdSetIterator conjunction = ConjunctionUtils.createConjunction(lead, values);
+      checkLeadFollowConjunction(leadDocs, expectedValues, conjunction, values);
     }
   }
 
-  private void checkValuesConjunction(
+  private void checkLeadFollowConjunction(
       int[] leadDocs,
       List<Map<Integer, Long>> expectedValues,
       DocIdSetIterator conjunction,

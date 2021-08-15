@@ -124,7 +124,7 @@ public class LongValueFacetCounts extends Facets {
       // LongValuesSource can compute interesting values at query time
 
       DocIdSetIterator it =
-          ConjunctionUtils.createValuesConjunction(hits.bits.iterator(), List.of(fv));
+          ConjunctionUtils.createConjunction(hits.bits.iterator(), List.of(fv));
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         increment(fv.longValue());
         totCount++;

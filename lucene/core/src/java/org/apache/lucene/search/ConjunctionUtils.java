@@ -77,6 +77,14 @@ public final class ConjunctionUtils {
   }
 
   /**
+   * Create a conjunction for a given lead {@link DocIdSetIterator} and a list of {@link DocIdPositionable} followers.
+   */
+  public static DocIdSetIterator createConjunction(
+      DocIdSetIterator lead, List<? extends DocIdPositionable> followers) {
+    return new LeadFollowDISI(lead, followers);
+  }
+
+  /**
    * Given a two-phase iterator, find any sub-iterators and add them to the provided
    * DocIdSetIterator and TwoPhaseIterator lists
    */
@@ -96,13 +104,5 @@ public final class ConjunctionUtils {
       List<DocIdSetIterator> allIterators,
       List<TwoPhaseIterator> twoPhaseIterators) {
     ConjunctionDISI.addIterator(disi, allIterators, twoPhaseIterators);
-  }
-
-  /**
-   * Create a conjunction for a given lead {@link DocIdSetIterator} and an array of {@link Values}.
-   */
-  public static DocIdSetIterator createValuesConjunction(
-      DocIdSetIterator lead, List<? extends Values> values) {
-    return new ValuesDISI(lead, values);
   }
 }

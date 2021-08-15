@@ -21,15 +21,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
-class ValuesDISI extends DocIdSetIterator {
+class LeadFollowDISI extends DocIdSetIterator {
   private final DocIdSetIterator lead;
-  private final List<? extends Values> values;
+  private final List<? extends DocIdPositionable> followers;
 
-  ValuesDISI(DocIdSetIterator lead, List<? extends Values> values) {
-    Objects.requireNonNull(lead);
-    Objects.requireNonNull(values);
+  LeadFollowDISI(DocIdSetIterator lead, List<? extends DocIdPositionable> followers) {
+    assert lead != null && followers != null;
     this.lead = lead;
-    this.values = values;
+    this.followers = followers;
   }
 
   @Override
@@ -57,8 +56,8 @@ class ValuesDISI extends DocIdSetIterator {
     while (target != NO_MORE_DOCS) {
       assert target == lead.docID();
 
-      for (Values v : values) {
-        if (v.advanceExact(target) == false) {
+      for (DocIdPositionable follower : followers) {
+        if (follower.advanceExact(target) == false) {
           target = lead.nextDoc();
           continue advanceHead;
         }

@@ -20,7 +20,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 
 /** Per-segment, per-document double values, which can be calculated at search-time */
-public abstract class DoubleValues extends Values {
+public abstract class DoubleValues extends DocIdPositionable {
 
   /** Get the double value for the current document */
   public abstract double doubleValue() throws IOException;

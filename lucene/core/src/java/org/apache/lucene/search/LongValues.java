@@ -20,7 +20,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 
 /** Per-segment, per-document long values, which can be calculated at search-time */
-public abstract class LongValues extends Values {
+public abstract class LongValues extends DocIdPositionable {
 
   /** Get the long value for the current document */
   public abstract long longValue() throws IOException;
