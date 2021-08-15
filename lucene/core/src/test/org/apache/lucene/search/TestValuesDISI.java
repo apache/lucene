@@ -23,6 +23,62 @@ import org.apache.lucene.util.LuceneTestCase;
 
 public class TestValuesDISI extends LuceneTestCase {
 
+  public void testBasic() throws Exception {
+    int[] leadDocs = {1, 2, 3, 4, 5};
+    Map<Integer, Long> expectedValues1 =
+        Map.of(
+            2, 100L,
+            3, 11L,
+            5, 27L);
+    Map<Integer, Long> expectedValues2 =
+        Map.of(
+            2, 210L,
+            5, 20L);
+    List<Map<Integer, Long>> expectedValues = List.of(expectedValues1, expectedValues2);
+
+    DocIdSetIterator lead = createLead(leadDocs);
+    LongValues values1 = createLongValues(expectedValues1);
+    LongValues values2 = createLongValues(expectedValues2);
+    List<LongValues> values = List.of(values1, values2);
+
+    DocIdSetIterator conjunction = ConjunctionUtils.createValuesConjunction(lead, values);
+    checkValuesConjunction(leadDocs, expectedValues, conjunction, values);
+  }
+
+  public void testEmptyValues() throws Exception {
+    int[] leadDocs = {1, 2, 3, 4, 5};
+
+    DocIdSetIterator lead = createLead(leadDocs);
+
+    DocIdSetIterator conjunction = ConjunctionUtils.createValuesConjunction(lead, List.of());
+    checkValuesConjunction(leadDocs, new ArrayList<>(), conjunction, List.of());
+  }
+
+  public void testRandom() throws Exception {
+    int iterations = random().nextInt(100);
+    for (int iter = 0; iter < iterations; iter++) {
+      int[] leadDocs = randomDocs(random().nextInt(10000));
+      DocIdSetIterator lead = createLead(leadDocs);
+
+      int numValues = random().nextInt(10);
+      List<Map<Integer, Long>> expectedValues = new ArrayList<>();
+      List<LongValues> values = new ArrayList<>();
+      for (int i = 0; i < numValues; i++) {
+        Map<Integer, Long> expected = new HashMap<>();
+        expectedValues.add(expected);
+        for (int doc = 0; doc < leadDocs.length; doc++) {
+          if (random().nextInt(10) < 8) {
+            expected.put(doc, random().nextLong());
+          }
+        }
+        values.add(createLongValues(expected));
+      }
+
+      DocIdSetIterator conjunction = ConjunctionUtils.createValuesConjunction(lead, values);
+      checkValuesConjunction(leadDocs, expectedValues, conjunction, values);
+    }
+  }
+
   private void checkValuesConjunction(
       int[] leadDocs,
       List<Map<Integer, Long>> expectedValues,
@@ -52,31 +108,6 @@ public class TestValuesDISI extends LuceneTestCase {
           assertEquals((long) expectedValues.get(i).get(currDoc), values.get(i).longValue());
         }
       }
-    }
-  }
-
-  public void testRandom() throws Exception {
-    int iterations = random().nextInt(100);
-    for (int iter = 0; iter < iterations; iter++) {
-      int[] leadDocs = randomDocs(random().nextInt(10000));
-      DocIdSetIterator lead = createLead(leadDocs);
-
-      int numValues = random().nextInt(10);
-      List<Map<Integer, Long>> expectedValues = new ArrayList<>();
-      List<LongValues> values = new ArrayList<>();
-      for (int i = 0; i < numValues; i++) {
-        Map<Integer, Long> expected = new HashMap<>();
-        expectedValues.add(expected);
-        for (int doc = 0; doc < leadDocs.length; doc++) {
-          if (random().nextInt(10) < 8) {
-            expected.put(doc, random().nextLong());
-          }
-        }
-        values.add(createLongValues(expected));
-      }
-
-      DocIdSetIterator conjunction = ConjunctionUtils.createValuesConjunction(lead, values);
-      checkValuesConjunction(leadDocs, expectedValues, conjunction, values);
     }
   }
 
@@ -134,12 +165,12 @@ public class TestValuesDISI extends LuceneTestCase {
       long currentVal;
 
       @Override
-      public long longValue() throws IOException {
+      public long longValue() {
         return currentVal;
       }
 
       @Override
-      public boolean advanceExact(int doc) throws IOException {
+      public boolean advanceExact(int doc) {
         if (expectedValues.containsKey(doc)) {
           currentVal = expectedValues.get(doc);
           return true;
