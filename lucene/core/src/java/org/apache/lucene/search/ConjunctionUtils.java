@@ -77,7 +77,8 @@ public final class ConjunctionUtils {
   }
 
   /**
-   * Create a conjunction for a given lead {@link DocIdSetIterator} and a list of {@link DocIdPositionable} followers.
+   * Create a conjunction for a given lead {@link DocIdSetIterator} and a list of {@link
+   * DocIdPositionable} followers.
    */
   public static DocIdSetIterator createConjunction(
       DocIdSetIterator lead, List<? extends DocIdPositionable> followers) {

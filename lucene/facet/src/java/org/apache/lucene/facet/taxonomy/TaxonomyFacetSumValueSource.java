@@ -97,7 +97,8 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       OrdinalsReader.OrdinalsSegmentReader ords = ordinalsReader.getReader(hits.context);
       DoubleValues scores = keepScores ? scores(hits) : null;
       DoubleValues functionValues = valueSource.getValues(hits.context, scores);
-      DocIdSetIterator it = ConjunctionUtils.createConjunction(hits.bits.iterator(), List.of(functionValues));
+      DocIdSetIterator it =
+          ConjunctionUtils.createConjunction(hits.bits.iterator(), List.of(functionValues));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         ords.get(doc, scratch);

@@ -20,16 +20,14 @@ package org.apache.lucene.search;
 import java.io.IOException;
 
 /**
- * Defines an entity that can be positioned on a specified document. It may not be able to determine a valid set of
- * documents it can be positioned on on its own, and may not be able to determine a "next" document, but can determine
- * whether-or-not it can be positioned on a specified document.
+ * Defines an entity that can be positioned on a specified document. It may not be able to determine
+ * a valid set of documents it can be positioned on on its own, and may not be able to determine a
+ * "next" document, but can determine whether-or-not it can be positioned on a specified document.
  */
 public abstract class DocIdPositionable {
 
   /**
    * Advance this instance to the given document id
-   * TODO: This would probably be better named something like "positionOn". That will touch a lot of sub-classes but
-   * is probably worth doing?
    *
    * @return true if there is a value for this document
    */

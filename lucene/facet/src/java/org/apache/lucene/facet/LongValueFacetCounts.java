@@ -123,8 +123,7 @@ public class LongValueFacetCounts extends Facets {
       // because we are doing a linear scan across all hits, but this API is more flexible since a
       // LongValuesSource can compute interesting values at query time
 
-      DocIdSetIterator it =
-          ConjunctionUtils.createConjunction(hits.bits.iterator(), List.of(fv));
+      DocIdSetIterator it = ConjunctionUtils.createConjunction(hits.bits.iterator(), List.of(fv));
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         increment(fv.longValue());
         totCount++;
@@ -177,7 +176,9 @@ public class LongValueFacetCounts extends Facets {
 
     for (LeafReaderContext context : reader.leaves()) {
       LongValues fv = valueSource.getValues(context, null);
-      DocIdSetIterator it = ConjunctionUtils.createConjunction(DocIdSetIterator.all(context.reader().maxDoc()), List.of(fv));
+      DocIdSetIterator it =
+          ConjunctionUtils.createConjunction(
+              DocIdSetIterator.all(context.reader().maxDoc()), List.of(fv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         increment(fv.longValue());

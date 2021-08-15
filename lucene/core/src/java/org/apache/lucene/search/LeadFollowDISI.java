@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 
 class LeadFollowDISI extends DocIdSetIterator {
   private final DocIdSetIterator lead;
