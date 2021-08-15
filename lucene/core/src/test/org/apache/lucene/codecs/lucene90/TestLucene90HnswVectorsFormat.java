@@ -16,109 +16,13 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
-
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestUtil;
 
 public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
     return TestUtil.getDefaultCodec();
-  }
-
-  public void testSearchWithDeletes() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
-      final int numDocs = atLeast(100);
-      final int dim = 30;
-      int docIndex = 0;
-      for (int i = 0; i < numDocs; ++i) {
-        Document d = new Document();
-        if (frequently()) {
-          d.add(new StringField("index", String.valueOf(docIndex), Field.Store.YES));
-          d.add(new KnnVectorField("vector", randomVector(dim)));
-          docIndex++;
-        } else {
-          d.add(new StringField("other", "value" + (i % 5), Field.Store.NO));
-        }
-        w.addDocument(d);
-      }
-      w.commit();
-
-      // Delete some documents at random, both those with and without vectors
-      Set<Term> toDelete = new HashSet<>();
-      for (int i = 0; i < 20; i++) {
-        int index = random().nextInt(docIndex);
-        toDelete.add(new Term("index", String.valueOf(index)));
-      }
-      w.deleteDocuments(toDelete.toArray(new Term[0]));
-      w.deleteDocuments(new Term("other", "value" + random().nextInt(5)));
-      w.commit();
-
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        Set<String> allIds = new HashSet<>();
-        for (LeafReaderContext context : reader.leaves()) {
-          Bits liveDocs = context.reader().getLiveDocs();
-          TopDocs topDocs =
-              context.reader().searchNearestVectors("vector", randomVector(30), numDocs, liveDocs);
-          for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-            int docId = context.docBase + scoreDoc.doc;
-            Document doc = reader.document(docId, Set.of("index"));
-            String index = doc.get("index");
-            assertFalse(
-                "search returned a deleted document: " + index,
-                toDelete.contains(new Term("index", index)));
-            allIds.add(index);
-          }
-        }
-        assertEquals("search missed some documents", docIndex - toDelete.size(), allIds.size());
-      }
-    }
-  }
-
-  public void testSearchWithAllDeletes() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
-      final int numDocs = atLeast(100);
-      final int dim = 30;
-      for (int i = 0; i < numDocs; ++i) {
-        Document d = new Document();
-        d.add(new KnnVectorField("vector", randomVector(dim)));
-        w.addDocument(d);
-      }
-      w.commit();
-
-      w.deleteDocuments(new MatchAllDocsQuery());
-      w.commit();
-
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        for (LeafReaderContext context : reader.leaves()) {
-          Bits liveDocs = context.reader().getLiveDocs();
-          TopDocs topDocs =
-              context.reader().searchNearestVectors("vector", randomVector(30), numDocs, liveDocs);
-          assertEquals(0, topDocs.scoreDocs.length);
-          assertTrue(topDocs.totalHits.value > 0L);
-        }
-      }
-    }
   }
 }
