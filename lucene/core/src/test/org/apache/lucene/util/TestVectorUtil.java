@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Random;
+
 public class TestVectorUtil extends LuceneTestCase {
 
   public static final double DELTA = 1e-4;
@@ -81,7 +83,7 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
   }
 
-  private float l2(float[] v) {
+  private static float l2(float[] v) {
     float l2 = 0;
     for (float x : v) {
       l2 += x * x;
@@ -89,7 +91,7 @@ public class TestVectorUtil extends LuceneTestCase {
     return l2;
   }
 
-  private float[] negative(float[] v) {
+  private static float[] negative(float[] v) {
     float[] u = new float[v.length];
     for (int i = 0; i < v.length; i++) {
       u[i] = -v[i];
@@ -97,10 +99,15 @@ public class TestVectorUtil extends LuceneTestCase {
     return u;
   }
 
-  private float[] randomVector() {
-    float[] v = new float[random().nextInt(100) + 1];
-    for (int i = 0; i < v.length; i++) {
-      v[i] = random().nextFloat();
+  private static float[] randomVector() {
+    return randomVector(random().nextInt(100) + 1);
+  }
+
+  public static float[] randomVector(int dim) {
+    float[] v = new float[dim];
+    Random random = random();
+    for (int i = 0; i < dim; i++) {
+      v[i] = random.nextFloat();
     }
     return v;
   }
