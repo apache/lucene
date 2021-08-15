@@ -177,14 +177,11 @@ public class LongValueFacetCounts extends Facets {
 
     for (LeafReaderContext context : reader.leaves()) {
       LongValues fv = valueSource.getValues(context, null);
-      int maxDoc = context.reader().maxDoc();
+      DocIdSetIterator it = ConjunctionUtils.createConjunction(DocIdSetIterator.all(context.reader().maxDoc()), List.of(fv));
 
-      for (int doc = 0; doc < maxDoc; doc++) {
-        // Skip missing docs:
-        if (fv.advanceExact(doc)) {
-          increment(fv.longValue());
-          totCount++;
-        }
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+        increment(fv.longValue());
+        totCount++;
       }
     }
   }

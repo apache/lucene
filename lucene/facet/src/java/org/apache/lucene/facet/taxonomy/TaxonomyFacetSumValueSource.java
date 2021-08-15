@@ -21,6 +21,7 @@ import java.util.List;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
@@ -96,16 +97,13 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       OrdinalsReader.OrdinalsSegmentReader ords = ordinalsReader.getReader(hits.context);
       DoubleValues scores = keepScores ? scores(hits) : null;
       DoubleValues functionValues = valueSource.getValues(hits.context, scores);
-      DocIdSetIterator docs = hits.bits.iterator();
+      DocIdSetIterator it = ConjunctionUtils.createConjunction(hits.bits.iterator(), List.of(functionValues));
 
-      int doc;
-      while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         ords.get(doc, scratch);
-        if (functionValues.advanceExact(doc)) {
-          float value = (float) functionValues.doubleValue();
-          for (int i = 0; i < scratch.length; i++) {
-            values[scratch.ints[i]] += value;
-          }
+        float value = (float) functionValues.doubleValue();
+        for (int i = 0; i < scratch.length; i++) {
+          values[scratch.ints[i]] += value;
         }
       }
     }
