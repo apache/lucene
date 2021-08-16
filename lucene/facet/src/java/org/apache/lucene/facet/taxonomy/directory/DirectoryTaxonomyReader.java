@@ -416,7 +416,6 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         originalPosition[i] = originalPosition[j];
         originalPosition[j] = x;
       }
-      ;
 
       @Override
       public int compare(int i, int j) {
