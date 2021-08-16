@@ -35,8 +35,10 @@ import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 
 /** TestKnnVectorQuery tests KnnVectorQuery. */
+@SuppressCodecs("SimpleText") // The codec must support kNN searches
 public class TestKnnVectorQuery extends LuceneTestCase {
 
   public void testEquals() {
