@@ -16,10 +16,13 @@
  */
 package org.apache.lucene.search;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.TestVectorUtil.randomVector;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnVectorField;
@@ -299,6 +302,77 @@ public class TestKnnVectorQuery extends LuceneTestCase {
             last = scoreDoc.score;
           }
         }
+      }
+    }
+  }
+
+  public void testDeletes() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      final int numDocs = atLeast(100);
+      final int dim = 30;
+      int docIndex = 0;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        if (frequently()) {
+          d.add(new StringField("index", String.valueOf(docIndex), Field.Store.YES));
+          d.add(new KnnVectorField("vector", randomVector(dim)));
+          docIndex++;
+        } else {
+          d.add(new StringField("other", "value" + (i % 5), Field.Store.NO));
+        }
+        w.addDocument(d);
+      }
+      w.commit();
+
+      // Delete some documents at random, both those with and without vectors
+      Set<Term> toDelete = new HashSet<>();
+      for (int i = 0; i < 20; i++) {
+        int index = random().nextInt(docIndex);
+        toDelete.add(new Term("index", String.valueOf(index)));
+      }
+      w.deleteDocuments(toDelete.toArray(new Term[0]));
+      w.deleteDocuments(new Term("other", "value" + random().nextInt(5)));
+      w.commit();
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        Set<String> allIds = new HashSet<>();
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs);
+        TopDocs topDocs = searcher.search(query, numDocs);
+        for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+          Document doc = reader.document(scoreDoc.doc, Set.of("index"));
+          String index = doc.get("index");
+          assertFalse(
+              "search returned a deleted document: " + index,
+              toDelete.contains(new Term("index", index)));
+          allIds.add(index);
+        }
+        assertEquals("search missed some documents", docIndex - toDelete.size(), allIds.size());
+      }
+    }
+  }
+
+  public void testAllDeletes() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      final int numDocs = atLeast(100);
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new KnnVectorField("vector", randomVector(dim)));
+        w.addDocument(d);
+      }
+      w.commit();
+
+      w.deleteDocuments(new MatchAllDocsQuery());
+      w.commit();
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs);
+        TopDocs topDocs = searcher.search(query, numDocs);
+        assertEquals(0, topDocs.scoreDocs.length);
       }
     }
   }

@@ -53,7 +53,8 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(String field, float[] target, int k) throws IOException {
+  public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 

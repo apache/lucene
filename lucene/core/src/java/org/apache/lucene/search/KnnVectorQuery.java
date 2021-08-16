@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.util.Bits;
 
 /** Uses {@link KnnVectorsReader#search} to perform nearest Neighbour search. */
 public class KnnVectorQuery extends Query {
@@ -70,7 +71,8 @@ public class KnnVectorQuery extends Query {
   }
 
   private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf) throws IOException {
-    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf);
+    Bits liveDocs = ctx.reader().getLiveDocs();
+    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, liveDocs);
     if (results == null) {
       return NO_RESULTS;
     }
