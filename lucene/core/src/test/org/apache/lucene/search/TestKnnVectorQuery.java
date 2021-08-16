@@ -58,7 +58,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   public void testToString() {
     KnnVectorQuery q1 = new KnnVectorQuery("f1", new float[] {0, 1}, 10);
-    assertEquals("<vector:f1[0.0,...][10]>", q1.toString("ignored"));
+    assertEquals("KnnVectorQuery:f1[0.0,...][10]", q1.toString("ignored"));
   }
 
   /**

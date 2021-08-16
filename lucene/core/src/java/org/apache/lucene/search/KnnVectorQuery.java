@@ -117,7 +117,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return "<vector:" + this.field + "[" + target[0] + ",...][" + k + "]>";
+    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
   }
 
   @Override
@@ -129,7 +129,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof KnnVectorQuery
+    return sameClassAs(obj)
         && ((KnnVectorQuery) obj).k == k
         && ((KnnVectorQuery) obj).field.equals(field)
         && Arrays.equals(((KnnVectorQuery) obj).target, target);
@@ -137,7 +137,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, k, Arrays.hashCode(target));
+    return Objects.hash(classHash(), field, k, Arrays.hashCode(target));
   }
 
   /** Caches the results of a KnnVector search: a list of docs and their scores */
@@ -293,7 +293,7 @@ public class KnnVectorQuery extends Query {
 
     @Override
     public boolean equals(Object obj) {
-      if (obj instanceof DocAndScoreQuery == false) {
+      if (sameClassAs(obj) == false) {
         return false;
       }
       return Arrays.equals(docs, ((DocAndScoreQuery) obj).docs)
@@ -302,8 +302,7 @@ public class KnnVectorQuery extends Query {
 
     @Override
     public int hashCode() {
-      return Objects.hash(
-          DocAndScoreQuery.class.hashCode(), Arrays.hashCode(docs), Arrays.hashCode(scores));
+      return Objects.hash(classHash(), Arrays.hashCode(docs), Arrays.hashCode(scores));
     }
   }
 }
