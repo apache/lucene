@@ -175,6 +175,27 @@ public abstract class Weight implements SegmentCacheable {
   }
 
   /**
+   * Counts the number of documents that match a given {@link Weight#parentQuery} in a leaf. The
+   * default implementation creates a {@link TotalHitCountCollector} and scores it using a
+   * BulkScorer {@link Weight#bulkScorer(LeafReaderContext)}}. Specific query classes should
+   * override it to provide faster implementations. Look at {@link
+   * MatchAllDocsQuery#createWeight(IndexSearcher, ScoreMode, float)} for an example
+   *
+   * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
+   *     count.
+   * @return integer count of the number of matches
+   * @throws IOException if there is a low-level I/O error
+   */
+  public int count(LeafReaderContext context) throws IOException {
+    TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
+    LeafCollector leafCollector = totalHitCountCollector.getLeafCollector(context);
+    // TODO: can we cache this bulkScorer call?
+    BulkScorer scorer = this.bulkScorer(context);
+    scorer.score(leafCollector, context.reader().getLiveDocs());
+    return totalHitCountCollector.getTotalHits();
+  }
+
+  /**
    * Just wraps a Scorer and performs top scoring using it.
    *
    * @lucene.internal

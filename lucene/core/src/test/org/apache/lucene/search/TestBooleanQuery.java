@@ -41,6 +41,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.TestUtil;
@@ -734,6 +735,39 @@ public class TestBooleanQuery extends LuceneTestCase {
     reader.close();
     w.close();
     dir.close();
+  }
+
+  // LUCENE-9620 Add Weight#count(LeafReaderContext)
+  public void testQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int randomNumDocs = random().nextInt(500);
+    for (int i = 0; i < randomNumDocs; i++) {
+      Document doc = new Document();
+      Field f = newTextField("field", "a b c " + random().nextInt(), Field.Store.NO);
+      doc.add(f);
+      w.addDocument(doc);
+      if (random().nextBoolean()) {
+        w.commit();
+      }
+    }
+    w.commit();
+    w.forceMerge(1);
+
+    DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+
+    PhraseQuery pq = new PhraseQuery("field", "a", "b");
+
+    BooleanQuery.Builder q = new BooleanQuery.Builder();
+    q.add(pq, Occur.SHOULD);
+    q.add(new TermQuery(new Term("field", "c")), Occur.SHOULD);
+
+    final Weight weight = searcher.createWeight(q.build(), ScoreMode.COMPLETE, 1);
+    assert weight.count(reader.leaves().get(0)) == randomNumDocs;
+
+    IOUtils.close(reader, w, dir);
   }
 
   public void testToString() {

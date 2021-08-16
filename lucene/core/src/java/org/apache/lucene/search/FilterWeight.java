@@ -67,4 +67,9 @@ public abstract class FilterWeight extends Weight {
   public Matches matches(LeafReaderContext context, int doc) throws IOException {
     return in.matches(context, doc);
   }
+
+  @Override
+  public int count(LeafReaderContext context) throws IOException {
+    return in.count(context);
+  }
 }

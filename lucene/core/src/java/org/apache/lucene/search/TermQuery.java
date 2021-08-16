@@ -179,6 +179,15 @@ public class TermQuery extends Query {
       }
       return Explanation.noMatch("no matching term");
     }
+
+    @Override
+    public int count(LeafReaderContext context) throws IOException {
+      if (context.reader().hasDeletions() == false) {
+        return context.reader().docFreq(term);
+      } else {
+        return super.count(context);
+      }
+    }
   }
 
   /** Constructs a query for the term <code>t</code>. */
