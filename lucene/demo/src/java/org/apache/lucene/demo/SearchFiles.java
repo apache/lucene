@@ -27,7 +27,7 @@ import java.util.Date;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.demo.knn.DemoKnnAnalyzer;
+import org.apache.lucene.demo.knn.DemoEmbedding;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -52,7 +52,7 @@ public class SearchFiles {
   /** Simple command-line based search demo. */
   public static void main(String[] args) throws Exception {
     String usage =
-        "Usage:\tjava org.apache.lucene.demo.SearchFiles [-index dir] [-field f] [-repeat n] [-queries file] [-query string] [-raw] [-paging hitsPerPage]\n\nSee http://lucene.apache.org/core/4_1_0/demo/ for details.";
+        "Usage:\tjava org.apache.lucene.demo.SearchFiles [-index dir] [-field f] [-repeat n] [-queries file] [-query string] [-raw] [-paging hitsPerPage] [-knn_vector]\n\nSee http://lucene.apache.org/core/9_0_0/demo/ for details.";
     if (args.length > 0 && ("-h".equals(args[0]) || "-help".equals(args[0]))) {
       System.out.println(usage);
       System.exit(0);
@@ -63,7 +63,7 @@ public class SearchFiles {
     String queries = null;
     int repeat = 0;
     boolean raw = false;
-    boolean semantic = false;
+    boolean knnVectors = false;
     String queryString = null;
     int hitsPerPage = 10;
 
@@ -94,8 +94,8 @@ public class SearchFiles {
             System.exit(1);
           }
           break;
-        case "-semantic":
-          semantic = true;
+        case "-knn_vector":
+          knnVectors = true;
           break;
         default:
           System.err.println("Unknown argument: " + args[i]);
@@ -107,7 +107,7 @@ public class SearchFiles {
     IndexSearcher searcher = new IndexSearcher(reader);
     Analyzer analyzer = new StandardAnalyzer();
     KnnVectorDict vectorDict = null;
-    if (semantic) {
+    if (knnVectors) {
       vectorDict = new KnnVectorDict(Paths.get(index).resolve("knn-dict"));
     }
     BufferedReader in;
@@ -134,7 +134,7 @@ public class SearchFiles {
       }
 
       Query query = parser.parse(line);
-      if (semantic) {
+      if (knnVectors) {
         query = addSemanticQuery(query, vectorDict);
       }
       System.out.println("Searching for: " + query.toString(field));
@@ -278,7 +278,7 @@ public class SearchFiles {
       KnnVectorQuery knnQuery =
           new KnnVectorQuery(
               "contents-vector",
-              new DemoKnnAnalyzer(vectorDict).analyze("text", semanticQueryText.toString()),
+              new DemoEmbedding(vectorDict).computeEmbedding(semanticQueryText.toString()),
               1);
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
       builder.add(query, BooleanClause.Occur.SHOULD);

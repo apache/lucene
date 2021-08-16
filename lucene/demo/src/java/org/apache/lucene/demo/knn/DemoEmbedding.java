@@ -26,56 +26,55 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 
 /**
- * This analyzer provides {@link #analyze(String, String)} for calculating "semantic" vectors for
- * input strings.
+ * This class provides {@link #computeEmbedding(String)} and {@link #computeEmbedding(Reader)} for
+ * calculating "semantic" embedding vectors for textual input.
  */
-public class DemoKnnAnalyzer extends Analyzer {
+public class DemoEmbedding {
 
-  private final KnnVectorDict dict;
+  private final Analyzer analyzer;
 
   /**
    * Sole constructor
    *
-   * @param dict a token to vector dictionary
+   * @param vectorDict a token to vector dictionary
    */
-  public DemoKnnAnalyzer(KnnVectorDict dict) {
-    this.dict = dict;
-  }
-
-  @Override
-  protected TokenStreamComponents createComponents(String fieldName) {
-    Tokenizer tokenizer = new StandardTokenizer();
-    TokenStream output = new KnnVectorDictFilter(new LowerCaseFilter(tokenizer), dict);
-    return new TokenStreamComponents(tokenizer, output);
-  }
-
-  /**
-   * Tokenize and lower-case the input, look up the tokens in the dictionary, and sum the token
-   * vectors. Unrecognized tokens are ignored. The resulting vector is normalized to unit length.
-   *
-   * @param fieldName the field name; ignored
-   * @param input the input to analyze
-   * @return the KnnVector for the input
-   */
-  public float[] analyze(String fieldName, String input) throws IOException {
-    return analyze(fieldName, new StringReader(input));
+  public DemoEmbedding(KnnVectorDict vectorDict) {
+    analyzer =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new StandardTokenizer();
+            TokenStream output =
+                new KnnVectorDictFilter(new LowerCaseFilter(tokenizer), vectorDict);
+            return new TokenStreamComponents(tokenizer, output);
+          }
+        };
   }
 
   /**
    * Tokenize and lower-case the input, look up the tokens in the dictionary, and sum the token
    * vectors. Unrecognized tokens are ignored. The resulting vector is normalized to unit length.
    *
-   * @param fieldName the field name; ignored
    * @param input the input to analyze
    * @return the KnnVector for the input
    */
-  public float[] analyze(String fieldName, Reader input) throws IOException {
-    TokenStream tokens = tokenStream(fieldName, input);
-    tokens.reset();
-    while (tokens.incrementToken()) {}
-    tokens.end();
-    float[] result = ((KnnVectorDictFilter) tokens).getResult();
-    tokens.close();
-    return result;
+  public float[] computeEmbedding(String input) throws IOException {
+    return computeEmbedding(new StringReader(input));
+  }
+
+  /**
+   * Tokenize and lower-case the input, look up the tokens in the dictionary, and sum the token
+   * vectors. Unrecognized tokens are ignored. The resulting vector is normalized to unit length.
+   *
+   * @param input the input to analyze
+   * @return the KnnVector for the input
+   */
+  public float[] computeEmbedding(Reader input) throws IOException {
+    try (TokenStream tokens = analyzer.tokenStream("dummyField", input)) {
+      tokens.reset();
+      while (tokens.incrementToken()) {}
+      tokens.end();
+      return ((KnnVectorDictFilter) tokens).getResult();
+    }
   }
 }

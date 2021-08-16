@@ -24,19 +24,20 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
-public class TestKnnAnalyzer extends LuceneTestCase {
+public class TestDemoEmbedding extends LuceneTestCase {
 
-  public void testAnalyze() throws IOException {
+  public void testComputeEmbedding() throws IOException {
     Path testVectors = getDataPath("../test-files/knn-dict").resolve("knn-token-vectors");
     Path dictPath = createTempDir("knn-demo").resolve("dict");
     KnnVectorDict.build(testVectors, dictPath);
     try (KnnVectorDict dict = new KnnVectorDict(dictPath)) {
-      DemoKnnAnalyzer analyzer = new DemoKnnAnalyzer(dict);
-      float[] garbageVector = analyzer.analyze("", "garbagethathasneverbeen seeneverinlife");
+      DemoEmbedding demoEmbedding = new DemoEmbedding(dict);
+      float[] garbageVector =
+          demoEmbedding.computeEmbedding("garbagethathasneverbeen seeneverinlife");
       assertEquals(50, garbageVector.length);
       assertArrayEquals(new float[50], garbageVector, 0);
 
-      float[] realVector = analyzer.analyze("", "the real fact");
+      float[] realVector = demoEmbedding.computeEmbedding("the real fact");
       assertEquals(50, realVector.length);
 
       float[] the = getTermVector(dict, "the");

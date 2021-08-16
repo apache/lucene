@@ -30,7 +30,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.demo.knn.DemoKnnAnalyzer;
+import org.apache.lucene.demo.knn.DemoEmbedding;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -56,13 +56,14 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class IndexFiles {
 
-  private final KnnVectorDict dict;
+  // Calculates embedding vectors for KnnVector search
+  private final DemoEmbedding demoEmbedding;
 
-  private IndexFiles(Path dictPath) throws IOException {
-    if (dictPath != null) {
-      dict = new KnnVectorDict(dictPath);
+  private IndexFiles(Path vectorDictPath) throws IOException {
+    if (vectorDictPath != null) {
+      demoEmbedding = new DemoEmbedding(new KnnVectorDict(vectorDictPath));
     } else {
-      dict = null;
+      demoEmbedding = null;
     }
   }
 
@@ -76,7 +77,7 @@ public class IndexFiles {
             + "IF DICT_PATH contains a KnnVector dictionary, the index will also support KnnVector search";
     String indexPath = "index";
     String docsPath = null;
-    Path knnDictPath = null;
+    Path vectorDictPath = null;
     boolean create = true;
     for (int i = 0; i < args.length; i++) {
       switch (args[i]) {
@@ -87,7 +88,7 @@ public class IndexFiles {
           docsPath = args[++i];
           break;
         case "-knn-dict":
-          knnDictPath = Paths.get(args[++i]);
+          vectorDictPath = Paths.get(args[++i]);
           break;
         case "-update":
           create = false;
@@ -139,7 +140,7 @@ public class IndexFiles {
       // iwc.setRAMBufferSizeMB(256.0);
 
       IndexWriter writer = new IndexWriter(dir, iwc);
-      IndexFiles indexFiles = new IndexFiles(knnDictPath);
+      IndexFiles indexFiles = new IndexFiles(vectorDictPath);
       indexFiles.indexDocs(writer, docDir);
 
       // NOTE: if you want to maximize search performance,
@@ -235,13 +236,11 @@ public class IndexFiles {
               "contents",
               new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
 
-      if (dict != null) {
+      if (demoEmbedding != null) {
         try (InputStream in = Files.newInputStream(file)) {
           float[] vector =
-              new DemoKnnAnalyzer(dict)
-                  .analyze(
-                      "contents-vector",
-                      new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
+              demoEmbedding.computeEmbedding(
+                  new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
           doc.add(
               new KnnVectorField("contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
         }

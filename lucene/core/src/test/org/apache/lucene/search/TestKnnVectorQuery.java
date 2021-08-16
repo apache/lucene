@@ -36,7 +36,6 @@ import org.apache.lucene.util.LuceneTestCase;
 /** TestKnnVectorQuery tests KnnVectorQuery. */
 public class TestKnnVectorQuery extends LuceneTestCase {
 
-  /** testEquals */
   public void testEquals() {
     KnnVectorQuery q1 = new KnnVectorQuery("f1", new float[] {0, 1}, 10);
 
