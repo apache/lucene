@@ -22,8 +22,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 
 /** Base class for queries that expand to sets of simple terms. */
-public abstract class SimpleTerm extends SrndQuery
-    implements DistanceSubQuery, Comparable<SimpleTerm> {
+public abstract class SimpleTerm extends SrndQuery implements DistanceSubQuery {
   public SimpleTerm(boolean q) {
     quoted = q;
   }
