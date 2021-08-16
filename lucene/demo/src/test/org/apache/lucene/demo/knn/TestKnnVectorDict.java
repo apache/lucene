@@ -18,6 +18,7 @@ package org.apache.lucene.demo.knn;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -29,10 +30,19 @@ public class TestKnnVectorDict extends LuceneTestCase {
     KnnVectorDict.build(testVectors, dictPath);
     try (KnnVectorDict dict = new KnnVectorDict(dictPath)) {
       assertEquals(50, dict.getDimension());
-      assertNull(dict.get(new BytesRef("never saw this token")));
-      byte[] theVector = dict.get(new BytesRef("the"));
-      assertNotNull(theVector);
-      assertEquals(200, theVector.length);
+      byte[] vector = new byte[dict.getDimension() * Float.BYTES];
+
+      // not found token has zero vector
+      dict.get(new BytesRef("never saw this token"), vector);
+      assertArrayEquals(new byte[200], vector);
+
+      // found token has nonzero vector
+      dict.get(new BytesRef("the"), vector);
+      assertFalse(Arrays.equals(new byte[200], vector));
+
+      // incorrect dimension for output buffer
+      expectThrows(
+          IllegalArgumentException.class, () -> dict.get(new BytesRef("the"), new byte[10]));
     }
   }
 }

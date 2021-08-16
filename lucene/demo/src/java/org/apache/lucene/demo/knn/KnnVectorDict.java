@@ -26,6 +26,7 @@ import java.nio.FloatBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.regex.Pattern;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -45,12 +46,13 @@ public class KnnVectorDict implements AutoCloseable {
   private final FileChannel vectors;
   private final ByteBuffer vbuffer;
   private final int dimension;
-  private final byte[] output;
 
   /**
-   * sole constructor
+   * Sole constructor
    *
-   * @param knnDictPath the path where the KnnVectorDict is stored
+   * @param knnDictPath the base path name of the files that will store the KnnVectorDict. The file
+   *     with extension '.bin' holds the vectors and the '.fst' maps tokens to offsets in the '.bin'
+   *     file.
    */
   public KnnVectorDict(Path knnDictPath) throws IOException {
     String dictName = knnDictPath.getFileName().toString();
@@ -64,10 +66,9 @@ public class KnnVectorDict implements AutoCloseable {
     }
     vbuffer = vectors.map(FileChannel.MapMode.READ_ONLY, 0, size);
     dimension = vbuffer.getInt((int) (size - Integer.BYTES));
-    output = new byte[dimension * Float.BYTES];
     if ((size - Integer.BYTES) % (dimension * Float.BYTES) != 0) {
       throw new IllegalStateException(
-          "vector file size is not consonant with the vector dimension");
+          "vector file size " + size + " is not consonant with the vector dimension " + dimension);
     }
   }
 
@@ -77,16 +78,27 @@ public class KnnVectorDict implements AutoCloseable {
    * needed.
    *
    * @param token the token to look up
-   * @return the (shared) vector corresponding to the token or null if the token was not present
+   * @param output the array in which to write the corresponding vector. Its length must be {@link
+   *     #getDimension()} * {@link Float#BYTES}. It will be filled with zeros if the token is not
+   *     present in the dictionary.
+   * @throws IllegalArgumentException if the output array is incorrectly sized
+   * @throws IOException if there is a problem reading the dictionary
    */
-  public byte[] get(BytesRef token) throws IOException {
+  public void get(BytesRef token, byte[] output) throws IOException {
+    if (output.length != dimension * Float.BYTES) {
+      throw new IllegalArgumentException(
+          "the output array must be of length "
+              + (dimension * Float.BYTES)
+              + ", got "
+              + output.length);
+    }
     Long ord = Util.get(fst, token);
     if (ord == null) {
-      return null;
+      Arrays.fill(output, (byte) 0);
+    } else {
+      vbuffer.position((int) (ord * dimension * Float.BYTES));
+      vbuffer.get(output);
     }
-    vbuffer.position((int) (ord * dimension * Float.BYTES));
-    vbuffer.get(output);
-    return output;
   }
 
   /**

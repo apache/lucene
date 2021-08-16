@@ -29,7 +29,7 @@ import org.apache.lucene.analysis.standard.StandardTokenizer;
  * This class provides {@link #computeEmbedding(String)} and {@link #computeEmbedding(Reader)} for
  * calculating "semantic" embedding vectors for textual input.
  */
-public class DemoEmbedding {
+public class DemoEmbeddings {
 
   private final Analyzer analyzer;
 
@@ -38,7 +38,7 @@ public class DemoEmbedding {
    *
    * @param vectorDict a token to vector dictionary
    */
-  public DemoEmbedding(KnnVectorDict vectorDict) {
+  public DemoEmbeddings(KnnVectorDict vectorDict) {
     analyzer =
         new Analyzer() {
           @Override

@@ -27,7 +27,7 @@ import java.util.Date;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.demo.knn.DemoEmbedding;
+import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -278,7 +278,7 @@ public class SearchFiles {
       KnnVectorQuery knnQuery =
           new KnnVectorQuery(
               "contents-vector",
-              new DemoEmbedding(vectorDict).computeEmbedding(semanticQueryText.toString()),
+              new DemoEmbeddings(vectorDict).computeEmbedding(semanticQueryText.toString()),
               1);
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
       builder.add(query, BooleanClause.Occur.SHOULD);

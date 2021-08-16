@@ -24,24 +24,30 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
-public class TestDemoEmbedding extends LuceneTestCase {
+public class TestDemoEmbeddings extends LuceneTestCase {
 
   public void testComputeEmbedding() throws IOException {
     Path testVectors = getDataPath("../test-files/knn-dict").resolve("knn-token-vectors");
     Path dictPath = createTempDir("knn-demo").resolve("dict");
     KnnVectorDict.build(testVectors, dictPath);
     try (KnnVectorDict dict = new KnnVectorDict(dictPath)) {
-      DemoEmbedding demoEmbedding = new DemoEmbedding(dict);
+      DemoEmbeddings demoEmbeddings = new DemoEmbeddings(dict);
+
+      // test garbage
       float[] garbageVector =
-          demoEmbedding.computeEmbedding("garbagethathasneverbeen seeneverinlife");
+          demoEmbeddings.computeEmbedding("garbagethathasneverbeen seeneverinlife");
       assertEquals(50, garbageVector.length);
       assertArrayEquals(new float[50], garbageVector, 0);
 
-      float[] realVector = demoEmbedding.computeEmbedding("the real fact");
+      // test space
+      assertArrayEquals(new float[50], demoEmbeddings.computeEmbedding(" "), 0);
+
+      // test some real words that are in the dictionary and some that are not
+      float[] realVector = demoEmbeddings.computeEmbedding("the real fact");
       assertEquals(50, realVector.length);
 
       float[] the = getTermVector(dict, "the");
-      assertNull(dict.get(new BytesRef("real")));
+      assertArrayEquals(new float[50], getTermVector(dict, "real"), 0);
       float[] fact = getTermVector(dict, "fact");
       VectorUtil.add(the, fact);
       VectorUtil.l2normalize(the);
@@ -50,9 +56,10 @@ public class TestDemoEmbedding extends LuceneTestCase {
   }
 
   private float[] getTermVector(KnnVectorDict dict, String term) throws IOException {
-    byte[] vector = dict.get(new BytesRef(term));
-    float[] scratch = new float[50];
-    ByteBuffer.wrap(vector).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(scratch);
-    return scratch;
+    byte[] bytes = new byte[200];
+    dict.get(new BytesRef(term), bytes);
+    float[] vector = new float[50];
+    ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(vector);
+    return vector;
   }
 }

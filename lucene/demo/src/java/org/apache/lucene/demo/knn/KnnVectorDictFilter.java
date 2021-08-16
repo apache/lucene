@@ -19,6 +19,7 @@ package org.apache.lucene.demo.knn;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.util.Arrays;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -34,8 +35,10 @@ public final class KnnVectorDictFilter extends TokenFilter {
 
   private final KnnVectorDict dict;
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  private final float[] scratch;
+  private final float[] scratchFloats;
   private final float[] result;
+  private final byte[] scratchBytes;
+  private final FloatBuffer scratchBuffer;
 
   /**
    * sole constructor
@@ -47,7 +50,9 @@ public final class KnnVectorDictFilter extends TokenFilter {
     super(input);
     this.dict = dict;
     result = new float[dict.getDimension()];
-    scratch = new float[dict.getDimension()];
+    scratchBytes = new byte[dict.getDimension() * Float.BYTES];
+    scratchBuffer = ByteBuffer.wrap(scratchBytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
+    scratchFloats = new float[dict.getDimension()];
   }
 
   @Override
@@ -56,11 +61,10 @@ public final class KnnVectorDictFilter extends TokenFilter {
       return false;
     }
     BytesRef term = new BytesRef(termAtt.toString());
-    byte[] vector = dict.get(term);
-    if (vector != null) {
-      ByteBuffer.wrap(vector).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(scratch);
-      VectorUtil.add(result, scratch);
-    }
+    dict.get(term, scratchBytes);
+    scratchBuffer.position(0);
+    scratchBuffer.get(scratchFloats);
+    VectorUtil.add(result, scratchFloats);
     return true;
   }
 

@@ -30,7 +30,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.demo.knn.DemoEmbedding;
+import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -57,13 +57,13 @@ import org.apache.lucene.store.FSDirectory;
 public class IndexFiles {
 
   // Calculates embedding vectors for KnnVector search
-  private final DemoEmbedding demoEmbedding;
+  private final DemoEmbeddings demoEmbeddings;
 
   private IndexFiles(Path vectorDictPath) throws IOException {
     if (vectorDictPath != null) {
-      demoEmbedding = new DemoEmbedding(new KnnVectorDict(vectorDictPath));
+      demoEmbeddings = new DemoEmbeddings(new KnnVectorDict(vectorDictPath));
     } else {
-      demoEmbedding = null;
+      demoEmbeddings = null;
     }
   }
 
@@ -236,10 +236,10 @@ public class IndexFiles {
               "contents",
               new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
 
-      if (demoEmbedding != null) {
+      if (demoEmbeddings != null) {
         try (InputStream in = Files.newInputStream(file)) {
           float[] vector =
-              demoEmbedding.computeEmbedding(
+              demoEmbeddings.computeEmbedding(
                   new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
           doc.add(
               new KnnVectorField("contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
