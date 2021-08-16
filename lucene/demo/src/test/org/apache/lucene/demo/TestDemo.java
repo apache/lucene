@@ -71,7 +71,7 @@ public class TestDemo extends LuceneTestCase {
       System.setOut(fakeSystemOut);
       SearchFiles.main(
           new String[] {
-            "-query", query, "-index", indexPath.toString(), "-knn_vector", "-paging", "20"
+            "-query", query, "-index", indexPath.toString(), "-knn_vector", "1", "-paging", "20"
           });
       fakeSystemOut.flush();
       String output =
