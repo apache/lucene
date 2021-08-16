@@ -191,6 +191,10 @@ public abstract class Weight implements SegmentCacheable {
     LeafCollector leafCollector = totalHitCountCollector.getLeafCollector(context);
     // TODO: can we cache this bulkScorer call?
     BulkScorer scorer = this.bulkScorer(context);
+    if (scorer == null) {
+      // no docs match
+      return 0;
+    }
     scorer.score(leafCollector, context.reader().getLiveDocs());
     return totalHitCountCollector.getTotalHits();
   }
