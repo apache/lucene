@@ -101,7 +101,7 @@ public class TestDemo extends LuceneTestCase {
           dir.toString(),
           "-index",
           indexDir.toString(),
-          "-knn-dict",
+          "-knn_dict",
           dictPath.toString()
         });
     // These term-based matches are usually also the best semantic matches, but sometimes

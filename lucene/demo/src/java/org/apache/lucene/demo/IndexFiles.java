@@ -71,7 +71,7 @@ public class IndexFiles {
   public static void main(String[] args) throws Exception {
     String usage =
         "java org.apache.lucene.demo.IndexFiles"
-            + " [-index INDEX_PATH] [-docs DOCS_PATH] [-update] [-dict DICT_PATH]\n\n"
+            + " [-index INDEX_PATH] [-docs DOCS_PATH] [-update] [-knn_dict DICT_PATH]\n\n"
             + "This indexes the documents in DOCS_PATH, creating a Lucene index"
             + "in INDEX_PATH that can be searched with SearchFiles\n"
             + "IF DICT_PATH contains a KnnVector dictionary, the index will also support KnnVector search";
@@ -87,7 +87,7 @@ public class IndexFiles {
         case "-docs":
           docsPath = args[++i];
           break;
-        case "-knn-dict":
+        case "-knn_dict":
           vectorDictPath = Paths.get(args[++i]);
           break;
         case "-update":
