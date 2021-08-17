@@ -14,8 +14,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.lucene.util;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+import com.carrotsearch.randomizedtesting.JUnit4MethodProvider;
+import com.carrotsearch.randomizedtesting.LifecycleScope;
+import com.carrotsearch.randomizedtesting.MixWithSuiteName;
+import com.carrotsearch.randomizedtesting.RandomizedContext;
+import com.carrotsearch.randomizedtesting.RandomizedRunner;
+import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.annotations.Listeners;
+import com.carrotsearch.randomizedtesting.annotations.SeedDecorators;
+import com.carrotsearch.randomizedtesting.annotations.TestGroup;
+import com.carrotsearch.randomizedtesting.annotations.TestMethodProviders;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakAction;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakAction.Action;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakGroup;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakGroup.Group;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakLingering;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope.Scope;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakZombies;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakZombies.Consequence;
+import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
+import com.carrotsearch.randomizedtesting.rules.NoClassHooksShadowingRule;
+import com.carrotsearch.randomizedtesting.rules.NoInstanceHooksOverridesRule;
+import com.carrotsearch.randomizedtesting.rules.StaticFieldsInvariantRule;
 import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -69,12 +100,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
+import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
@@ -100,8 +131,8 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.MergeInfo;
-import org.apache.lucene.store.MockDirectoryWrapper.Throttling;
 import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.store.MockDirectoryWrapper.Throttling;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.store.RawDirectoryWrapper;
 import org.apache.lucene.util.automaton.AutomatonTestUtil;
@@ -119,39 +150,6 @@ import org.junit.internal.AssumptionViolatedException;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
-
-import com.carrotsearch.randomizedtesting.JUnit4MethodProvider;
-import com.carrotsearch.randomizedtesting.LifecycleScope;
-import com.carrotsearch.randomizedtesting.MixWithSuiteName;
-import com.carrotsearch.randomizedtesting.RandomizedContext;
-import com.carrotsearch.randomizedtesting.RandomizedRunner;
-import com.carrotsearch.randomizedtesting.RandomizedTest;
-import com.carrotsearch.randomizedtesting.annotations.Listeners;
-import com.carrotsearch.randomizedtesting.annotations.SeedDecorators;
-import com.carrotsearch.randomizedtesting.annotations.TestGroup;
-import com.carrotsearch.randomizedtesting.annotations.TestMethodProviders;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakAction.Action;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakAction;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakGroup.Group;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakGroup;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakLingering;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope.Scope;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakZombies.Consequence;
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakZombies;
-import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
-import com.carrotsearch.randomizedtesting.rules.NoClassHooksShadowingRule;
-import com.carrotsearch.randomizedtesting.rules.NoInstanceHooksOverridesRule;
-import com.carrotsearch.randomizedtesting.rules.StaticFieldsInvariantRule;
-
-import junit.framework.AssertionFailedError;
-
-import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
-import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 
 /**
  * Base class for all Lucene unit tests, Junit3 or Junit4 variant.
@@ -3184,50 +3182,60 @@ public abstract class LuceneTestCase extends Assert {
     return conf;
   }
 
-  /** Creates a {@link BytesRef} holding UTF-8 bytes for the incoming String, that
-   *  sometimes uses a non-zero {@code offset}, and non-zero end-padding, to tickle
-   *  latent bugs that fail to look at {@code BytesRef.offset}. */
+  /**
+   * Creates a {@link BytesRef} holding UTF-8 bytes for the incoming String, that sometimes uses a
+   * non-zero {@code offset}, and non-zero end-padding, to tickle latent bugs that fail to look at
+   * {@code BytesRef.offset}.
+   */
   public static BytesRef newBytesRef(String s) {
     return newBytesRef(s.getBytes(StandardCharsets.UTF_8));
   }
 
-  /** Creates a copy of the incoming {@link BytesRef} that sometimes uses a
-   *  non-zero {@code offset}, and non-zero end-padding, to tickle latent
-   *  bugs that fail to look at {@code BytesRef.offset}. */
+  /**
+   * Creates a copy of the incoming {@link BytesRef} that sometimes uses a non-zero {@code offset},
+   * and non-zero end-padding, to tickle latent bugs that fail to look at {@code BytesRef.offset}.
+   */
   public static BytesRef newBytesRef(BytesRef b) {
     assert b.isValid();
     return newBytesRef(b.bytes, b.offset, b.length);
   }
 
-  /** Creates a random BytesRef from the incoming bytes that sometimes uses a
-   *  non-zero {@code offset}, and non-zero end-padding, to tickle latent
-   *  bugs that fail to look at {@code BytesRef.offset}. */
+  /**
+   * Creates a random BytesRef from the incoming bytes that sometimes uses a non-zero {@code
+   * offset}, and non-zero end-padding, to tickle latent bugs that fail to look at {@code
+   * BytesRef.offset}.
+   */
   public static BytesRef newBytesRef(byte[] b) {
     return newBytesRef(b, 0, b.length);
   }
 
-  /** Creates a random empty BytesRef that sometimes uses a
-   *  non-zero {@code offset}, and non-zero end-padding, to tickle latent
-   *  bugs that fail to look at {@code BytesRef.offset}. */
+  /**
+   * Creates a random empty BytesRef that sometimes uses a non-zero {@code offset}, and non-zero
+   * end-padding, to tickle latent bugs that fail to look at {@code BytesRef.offset}.
+   */
   public static BytesRef newBytesRef() {
     return newBytesRef(new byte[0], 0, 0);
   }
 
-  /** Creates a random empty BytesRef, with at least the requested length
-   *  of bytes free, that sometimes uses a non-zero {@code offset}, and
-   *  non-zero end-padding, to tickle latent bugs that fail to look at
-   *  {@code BytesRef.offset}. */
+  /**
+   * Creates a random empty BytesRef, with at least the requested length of bytes free, that
+   * sometimes uses a non-zero {@code offset}, and non-zero end-padding, to tickle latent bugs that
+   * fail to look at {@code BytesRef.offset}.
+   */
   public static BytesRef newBytesRef(int byteLength) {
     return newBytesRef(new byte[byteLength], 0, byteLength);
   }
 
-  /** Creates a copy of the incoming bytes slice that sometimes uses a
-   *  non-zero {@code offset}, and non-zero end-padding, to tickle latent
-   *  bugs that fail to look at {@code BytesRef.offset}. */
+  /**
+   * Creates a copy of the incoming bytes slice that sometimes uses a non-zero {@code offset}, and
+   * non-zero end-padding, to tickle latent bugs that fail to look at {@code BytesRef.offset}.
+   */
   public static BytesRef newBytesRef(byte[] bytesIn, int offset, int length) {
-    //System.out.println("LTC.newBytesRef!  bytesIn.length=" + bytesIn.length + " offset=" + offset + " length=" + length);
+    // System.out.println("LTC.newBytesRef!  bytesIn.length=" + bytesIn.length + " offset=" + offset
+    // + " length=" + length);
 
-    assert bytesIn.length >= offset + length: "got offset=" + offset + " length=" + length + " bytesIn.length=" + bytesIn.length;
+    assert bytesIn.length >= offset + length
+        : "got offset=" + offset + " length=" + length + " bytesIn.length=" + bytesIn.length;
 
     // randomly set a non-zero offset
     int startOffset;
@@ -3248,11 +3256,11 @@ public abstract class LuceneTestCase extends Assert {
     byte[] bytes = new byte[startOffset + length + endPadding];
 
     System.arraycopy(bytesIn, offset, bytes, startOffset, length);
-    //System.out.println("LTC:  return bytes.length=" + bytes.length + " startOffset=" + startOffset + " length=" + bytesIn.length);
+    // System.out.println("LTC:  return bytes.length=" + bytes.length + " startOffset=" +
+    // startOffset + " length=" + bytesIn.length);
 
     BytesRef it = new BytesRef(bytes, startOffset, bytesIn.length);
     assert it.isValid();
     return it;
   }
 }
-
