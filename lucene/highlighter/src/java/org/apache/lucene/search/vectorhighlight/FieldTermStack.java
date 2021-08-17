@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
@@ -56,7 +57,13 @@ public class FieldTermStack {
     // just return to make null snippet if un-matched fieldName specified when fieldMatch == true
     if (termSet == null) return;
 
-    final Terms vector = reader.getTermVector(docId, fieldName);
+    final Fields vectors = reader.getTermVectors(docId);
+    if (vectors == null) {
+      // null snippet
+      return;
+    }
+
+    final Terms vector = vectors.terms(fieldName);
     if (vector == null || vector.hasPositions() == false) {
       // null snippet
       return;

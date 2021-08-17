@@ -201,7 +201,7 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
       // Default here is trivial
       for (ScoreDoc scoreDoc : docIdOrder(hits.scoreDocs)) {
         Document document = reader.document(scoreDoc.doc, hlFields);
-        Fields tvFields = termVecs ? reader.getTermVectorsReader().get(scoreDoc.doc) : null;
+        Fields tvFields = termVecs ? reader.getTermVectors(scoreDoc.doc) : null;
         for (IndexableField indexableField : document) {
           TokenStream tokenStream;
           if (termVecs) {

@@ -30,6 +30,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.Term;
@@ -710,7 +711,13 @@ public final class MoreLikeThis {
   private PriorityQueue<ScoreTerm> retrieveTerms(int docNum) throws IOException {
     Map<String, Map<String, Int>> field2termFreqMap = new HashMap<>();
     for (String fieldName : fieldNames) {
-      final Terms vector = ir.getTermVector(docNum, fieldName);
+      final Fields vectors = ir.getTermVectors(docNum);
+      final Terms vector;
+      if (vectors != null) {
+        vector = vectors.terms(fieldName);
+      } else {
+        vector = null;
+      }
 
       // field does not store term vector info
       if (vector == null) {

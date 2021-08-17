@@ -293,7 +293,7 @@ public class TestIndexableField extends LuceneTestCase {
         if (indexed) {
           final boolean tv = counter % 2 == 1 && fieldID != 9;
           if (tv) {
-            final Terms tfv = r.getTermVector(docID, name);
+            final Terms tfv = r.getTermVectors(docID).terms(name);
             assertNotNull(tfv);
             TermsEnum termsEnum = tfv.iterator();
             assertEquals(new BytesRef("" + counter), termsEnum.next());
@@ -315,7 +315,8 @@ public class TestIndexableField extends LuceneTestCase {
             // TODO: offsets
 
           } else {
-            assertNull(r.getTermVector(docID, name));
+            Fields vectors = r.getTermVectors(docID);
+            assertTrue(vectors == null || vectors.terms(name) == null);
           }
 
           BooleanQuery.Builder bq = new BooleanQuery.Builder();
