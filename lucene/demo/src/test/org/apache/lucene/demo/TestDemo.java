@@ -104,8 +104,10 @@ public class TestDemo extends LuceneTestCase {
           "-knn_dict",
           dictPath.toString()
         });
-    // These term-based matches are usually also the best semantic matches, but sometimes
-    // the vector search picks a different top hit
+
+    // We add a single semantic hit by passing the "-knn_vector 1" argument to SearchFiles.  The
+    // term-based matches are usually also the best semantic matches and overlap, but sometimes due
+    // to randomness in the vector search algorithm, it picks a different top hit.
     testVectorSearch(indexDir, "apache", 3, 4);
     testVectorSearch(indexDir, "gnu", 6, 7);
     testVectorSearch(indexDir, "derivative", 8, 9);
