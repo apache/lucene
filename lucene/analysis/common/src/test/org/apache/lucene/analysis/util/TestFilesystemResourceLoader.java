@@ -74,8 +74,8 @@ public class TestFilesystemResourceLoader extends LuceneTestCase {
       IOUtils.closeWhileHandlingException(os);
     }
 
-    @SuppressWarnings("deprecation")
-    ResourceLoader rl = new FilesystemResourceLoader(base);
+    ResourceLoader rl =
+        new FilesystemResourceLoader(base, TestFilesystemResourceLoader.class.getClassLoader());
     assertEquals(
         "foobar",
         WordlistLoader.getLines(rl.openResource("template.txt"), StandardCharsets.UTF_8).get(0));

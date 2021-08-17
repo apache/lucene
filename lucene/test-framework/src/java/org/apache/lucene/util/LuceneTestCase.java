@@ -3058,15 +3058,6 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * This method is deprecated for a reason. Do not use it. Call {@link #createTempDir()} or {@link
-   * #createTempDir(String)} or {@link #createTempFile(String, String)}.
-   */
-  @Deprecated
-  public static Path getBaseTempDirForTestClass() {
-    return tempFilesCleanupRule.getPerTestClassTempDir();
-  }
-
-  /**
    * Creates an empty, temporary folder (when the name of the folder is of no importance).
    *
    * @see #createTempDir(String)
@@ -3076,8 +3067,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Creates an empty, temporary folder with the given name prefix under the test class's {@link
-   * #getBaseTempDirForTestClass()}.
+   * Creates an empty, temporary folder with the given name prefix.
    *
    * <p>The folder will be automatically removed after the test class completes successfully. The
    * test should close any file handles that would prevent the folder from being removed.
@@ -3087,8 +3077,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Creates an empty file with the given prefix and suffix under the test class's {@link
-   * #getBaseTempDirForTestClass()}.
+   * Creates an empty file with the given prefix and suffix.
    *
    * <p>The file will be automatically removed after the test class completes successfully. The test
    * should close any file handles that would prevent the folder from being removed.

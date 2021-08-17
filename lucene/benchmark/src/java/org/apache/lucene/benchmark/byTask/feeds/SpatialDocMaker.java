@@ -161,6 +161,7 @@ public class SpatialDocMaker extends DocMaker {
   }
 
   /** Optionally converts points to circles, and optionally bbox'es result. */
+  @SuppressWarnings("deprecation")
   public static ShapeConverter makeShapeConverter(
       final SpatialStrategy spatialStrategy, Config config, String configKeyPrefix) {
     // by default does no conversion
@@ -220,6 +221,7 @@ public class SpatialDocMaker extends DocMaker {
     return doc;
   }
 
+  @SuppressWarnings("deprecation")
   public static Shape makeShapeFromString(SpatialStrategy strategy, String name, String shapeStr) {
     if (shapeStr != null && shapeStr.length() > 0) {
       try {

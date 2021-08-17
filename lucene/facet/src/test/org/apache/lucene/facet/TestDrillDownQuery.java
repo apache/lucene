@@ -259,6 +259,7 @@ public class TestDrillDownQuery extends FacetTestCase {
     assertEquals(base, rewrite);
   }
 
+  @SuppressWarnings("deprecation")
   public void testRequireDimensionDrillDown() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer =
