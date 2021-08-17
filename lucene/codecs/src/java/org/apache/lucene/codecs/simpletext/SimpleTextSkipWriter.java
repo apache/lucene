@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.MultiLevelSkipListWriter;
 import org.apache.lucene.index.Impact;

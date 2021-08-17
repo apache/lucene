@@ -251,7 +251,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
         // no skip data
         return new SlowImpactsEnum(postings(null, flags));
       }
-      return (ImpactsEnum) postings(null,flags);
+      return (ImpactsEnum) postings(null, flags);
     }
   }
 
@@ -287,8 +287,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
       docID = -1;
       tf = 1;
       cost = docFreq;
-      long skipPointer = skipReader.seekSkipPointer(this.inStart.clone(),fp);
-      skipReader.reset(skipPointer,docFreq);
+      long skipPointer = skipReader.seekSkipPointer(this.inStart.clone(), fp);
+      skipReader.reset(skipPointer, docFreq);
       nextSkipDoc = 0;
       lastNumSkipped = 0;
       seekTo = -1;
@@ -327,7 +327,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public int nextDoc() throws IOException {
-      return advance(docID+1);
+      return advance(docID + 1);
     }
 
     private int readDoc() throws IOException {
@@ -367,7 +367,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
                   || StringHelper.startsWith(scratch.get(), TERM)
                   || StringHelper.startsWith(scratch.get(), FIELD)
                   || StringHelper.startsWith(scratch.get(), END)
-                  : "scratch=" + scratch.get().utf8ToString();
+              : "scratch=" + scratch.get().utf8ToString();
           if (!first) {
             in.seek(lineStart);
             if (!omitTF) {
@@ -381,7 +381,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
 
     private int advanceTarget(int target) throws IOException {
-      if(seekTo > 0){
+      if (seekTo > 0) {
         in.seek(seekTo);
         seekTo = -1;
       }
@@ -406,11 +406,11 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      if(skipReader.hasSkipList()){
+      if (skipReader.hasSkipList()) {
         if (target > nextSkipDoc) {
           int numSkipped = skipReader.skipTo(target) + 1;
-          if(numSkipped > lastNumSkipped){
-            if(skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS){
+          if (numSkipped > lastNumSkipped) {
+            if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
               seekTo = skipReader.getNextSkipDocFP();
             }
             lastNumSkipped = numSkipped;
@@ -462,7 +462,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
       return in == inStart;
     }
 
-    public SimpleTextPostingsEnum reset(long fp, IndexOptions indexOptions, int docFreq) throws IOException {
+    public SimpleTextPostingsEnum reset(long fp, IndexOptions indexOptions, int docFreq)
+        throws IOException {
       nextDocStart = fp;
       docID = -1;
       readPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
@@ -473,8 +474,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
         endOffset = -1;
       }
       cost = docFreq;
-      long skipPointer = skipReader.seekSkipPointer(this.inStart.clone(),fp);
-      skipReader.reset(skipPointer,docFreq);
+      long skipPointer = skipReader.seekSkipPointer(this.inStart.clone(), fp);
+      skipReader.reset(skipPointer, docFreq);
       nextSkipDoc = 0;
       lastNumSkipped = 0;
       seekTo = -1;
@@ -493,7 +494,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public int nextDoc() throws IOException {
-      return advance(docID+1);
+      return advance(docID + 1);
     }
 
     private int readDoc() throws IOException {
@@ -528,9 +529,9 @@ class SimpleTextFieldsReader extends FieldsProducer {
           // skip
         } else {
           assert StringHelper.startsWith(scratch.get(), SimpleTextSkipWriter.SKIP_LIST)
-                  || StringHelper.startsWith(scratch.get(), TERM)
-                  || StringHelper.startsWith(scratch.get(), FIELD)
-                  || StringHelper.startsWith(scratch.get(), END);
+              || StringHelper.startsWith(scratch.get(), TERM)
+              || StringHelper.startsWith(scratch.get(), FIELD)
+              || StringHelper.startsWith(scratch.get(), END);
           if (!first) {
             nextDocStart = lineStart;
             in.seek(posStart);
@@ -542,7 +543,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
 
     private int advanceTarget(int target) throws IOException {
-      if(seekTo > 0){
+      if (seekTo > 0) {
         nextDocStart = seekTo;
         seekTo = -1;
       }
@@ -625,7 +626,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      if(skipReader.hasSkipList()) {
+      if (skipReader.hasSkipList()) {
         if (target > nextSkipDoc) {
           int numSkipped = skipReader.skipTo(target) + 1;
           if (numSkipped > lastNumSkipped) {

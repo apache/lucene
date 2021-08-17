@@ -41,8 +41,10 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
 
   /** for write skip data. */
   private int docCount = 0;
+
   private final SimpleTextSkipWriter skipWriter;
-  private final CompetitiveImpactAccumulator competitiveImpactAccumulator = new CompetitiveImpactAccumulator();
+  private final CompetitiveImpactAccumulator competitiveImpactAccumulator =
+      new CompetitiveImpactAccumulator();
   private long lastDocFilePointer = -1;
 
   static final BytesRef END = new BytesRef("END");
@@ -70,7 +72,8 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
     write(writeState.fieldInfos, fields, norms);
   }
 
-  public void write(FieldInfos fieldInfos, Fields fields, NormsProducer normsProducer) throws IOException {
+  public void write(FieldInfos fieldInfos, Fields fields, NormsProducer normsProducer)
+      throws IOException {
 
     // for each field
     for (String field : fields) {
@@ -90,7 +93,7 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
       boolean fieldHasNorms = fieldInfo.hasNorms();
 
       NumericDocValues norms = null;
-      if(fieldHasNorms && normsProducer != null){
+      if (fieldHasNorms && normsProducer != null) {
         norms = normsProducer.getNorms(fieldInfo);
       }
 
@@ -155,7 +158,7 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
             newline();
             wroteTerm = true;
           }
-          if(lastDocFilePointer == -1){
+          if (lastDocFilePointer == -1) {
             lastDocFilePointer = out.getFilePointer();
           }
           write(DOC);

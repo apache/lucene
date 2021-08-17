@@ -16,11 +16,19 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.FREQ;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS_END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.NORM;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC_FP;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.lucene.codecs.MultiLevelSkipListReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
@@ -32,15 +40,6 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.apache.lucene.util.StringHelper;
-
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.FREQ;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACT;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS_END;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.NORM;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC_FP;
-import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
 
 /**
  * This class reads skip lists with multiple levels.
@@ -65,30 +64,31 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
         SimpleTextSkipWriter.maxSkipLevels,
         SimpleTextSkipWriter.BLOCK_SIZE,
         SimpleTextSkipWriter.skipMultiplier);
-    impacts = new Impacts() {
-      @Override
-      public int numLevels() {
-        return numLevels;
-      }
+    impacts =
+        new Impacts() {
+          @Override
+          public int numLevels() {
+            return numLevels;
+          }
 
-      @Override
-      public int getDocIdUpTo(int level) {
-        return skipDoc[level];
-      }
+          @Override
+          public int getDocIdUpTo(int level) {
+            return skipDoc[level];
+          }
 
-      @Override
-      public List<Impact> getImpacts(int level) {
-        assert level < numLevels;
-        return perLevelImpacts.get(level);
-      }
-    };
+          @Override
+          public List<Impact> getImpacts(int level) {
+            assert level < numLevels;
+            return perLevelImpacts.get(level);
+          }
+        };
     init();
   }
 
   @Override
   public int skipTo(int target) throws IOException {
-    if(!hasSkipList){
-        return -1;
+    if (!hasSkipList) {
+      return -1;
     }
     int result = super.skipTo(target);
     if (numberOfSkipLevels > 0) {
@@ -97,7 +97,7 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
       // End of postings don't have skip data anymore, so we fill with dummy data
       // like SlowImpactsEnum.
       numLevels = 1;
-      perLevelImpacts.add(0, Collections.singletonList(new Impact(Integer.MAX_VALUE,1L)));
+      perLevelImpacts.add(0, Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L)));
     }
     return result;
   }
@@ -118,13 +118,14 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
           || scratch.get().equals(SimpleTextFieldsWriter.TERM)
           || scratch.get().equals(SimpleTextFieldsWriter.FIELD)) {
         break;
-      }else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)){
+      } else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)) {
         // continue
       } else if (StringHelper.startsWith(scratch.get(), SKIP_DOC)) {
         scratchUTF16.copyUTF8Bytes(
             scratch.bytes(), SKIP_DOC.length, scratch.length() - SKIP_DOC.length);
         skipDoc = ArrayUtil.parseInt(scratchUTF16.chars(), 0, scratchUTF16.length());
-        // Because the MultiLevelSkipListReader stores doc id delta,but simple text codec stores doc id
+        // Because the MultiLevelSkipListReader stores doc id delta,but simple text codec stores doc
+        // id
         skipDoc = skipDoc - super.skipDoc[level];
       } else if (StringHelper.startsWith(scratch.get(), SKIP_DOC_FP)) {
         scratchUTF16.copyUTF8Bytes(
@@ -146,7 +147,7 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
     return skipDoc;
   }
 
-  long seekSkipPointer(IndexInput skipStream,long docStartFP) throws IOException {
+  long seekSkipPointer(IndexInput skipStream, long docStartFP) throws IOException {
     long skipPointer = -1;
     skipStream.seek(docStartFP);
     ChecksumIndexInput input = new BufferedChecksumIndexInput(skipStream);
@@ -168,20 +169,20 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
 
   void reset(long skipPointer, int docFreq) throws IOException {
     init();
-    if(skipPointer > 0){
-      super.init(skipPointer,docFreq);
+    if (skipPointer > 0) {
+      super.init(skipPointer, docFreq);
       hasSkipList = true;
     }
   }
 
-  private void init(){
+  private void init() {
     nextSkipDocFP = -1;
     numLevels = 1;
     perLevelImpacts = new ArrayList<>(maxNumberOfSkipLevels);
     for (int level = 0; level < maxNumberOfSkipLevels; level++) {
-        List<Impact> impacts = new ArrayList<>();
-        impacts.add(new Impact(Integer.MAX_VALUE,1L));
-        perLevelImpacts.add(level, impacts);
+      List<Impact> impacts = new ArrayList<>();
+      impacts.add(new Impact(Integer.MAX_VALUE, 1L));
+      perLevelImpacts.add(level, impacts);
     }
     hasSkipList = false;
   }
@@ -195,13 +196,13 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
   }
 
   int getNextSkipDoc() {
-    if (!hasSkipList){
-        return DocIdSetIterator.NO_MORE_DOCS;
+    if (!hasSkipList) {
+      return DocIdSetIterator.NO_MORE_DOCS;
     }
     return skipDoc[0];
   }
 
-  boolean hasSkipList(){
+  boolean hasSkipList() {
     return hasSkipList;
   }
 }
