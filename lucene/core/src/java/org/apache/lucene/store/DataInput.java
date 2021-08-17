@@ -337,30 +337,6 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Skip over <code>numBytes</code> bytes. The contract on this method is that it should have the
-   * same behavior as reading the same number of bytes into a buffer and discarding its content.
-   * Negative values of <code>numBytes</code> are not supported.
-   *
-   * @deprecated Implementing subclasses should override #skipBytes with a more performant solution
-   *     where possible.
-   */
-  @Deprecated
-  protected void skipBytesSlowly(final long numBytes) throws IOException {
-    if (numBytes < 0) {
-      throw new IllegalArgumentException("numBytes must be >= 0, got " + numBytes);
-    }
-    if (skipBuffer == null) {
-      skipBuffer = new byte[SKIP_BUFFER_SIZE];
-    }
-    assert skipBuffer.length == SKIP_BUFFER_SIZE;
-    for (long skipped = 0; skipped < numBytes; ) {
-      final int step = (int) Math.min(SKIP_BUFFER_SIZE, numBytes - skipped);
-      readBytes(skipBuffer, 0, step, false);
-      skipped += step;
-    }
-  }
-
-  /**
    * Skip over <code>numBytes</code> bytes. This method may skip bytes in whatever way is most
    * optimal, and may not have the same behavior as reading the skipped bytes. In general, negative
    * <code>numBytes</code> are not supported.
