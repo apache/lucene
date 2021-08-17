@@ -54,7 +54,6 @@ public class FSTTester<T> {
   final int inputMode;
   final Outputs<T> outputs;
   final Directory dir;
-  final boolean doReverseLookup;
   long nodeCount;
   long arcCount;
 
@@ -63,14 +62,12 @@ public class FSTTester<T> {
       Directory dir,
       int inputMode,
       List<InputOutput<T>> pairs,
-      Outputs<T> outputs,
-      boolean doReverseLookup) {
+      Outputs<T> outputs) {
     this.random = random;
     this.dir = dir;
     this.inputMode = inputMode;
     this.pairs = pairs;
     this.outputs = outputs;
-    this.doReverseLookup = doReverseLookup;
   }
 
   static String inputToString(int inputMode, IntsRef term) {
@@ -368,22 +365,8 @@ public class FSTTester<T> {
     final Set<Long> validOutputs;
     long minLong = Long.MAX_VALUE;
     long maxLong = Long.MIN_VALUE;
-
-    if (doReverseLookup) {
-      @SuppressWarnings("unchecked")
-      FST<Long> fstLong0 = (FST<Long>) fst;
-      fstLong = fstLong0;
-      validOutputs = new HashSet<>();
-      for (InputOutput<T> pair : pairs) {
-        Long output = (Long) pair.output;
-        maxLong = Math.max(maxLong, output);
-        minLong = Math.min(minLong, output);
-        validOutputs.add(output);
-      }
-    } else {
-      fstLong = null;
-      validOutputs = null;
-    }
+    fstLong = null;
+    validOutputs = null;
 
     if (pairs.size() == 0) {
       assertNull(fst);
@@ -447,20 +430,6 @@ public class FSTTester<T> {
       termsMap.put(pair.input, pair.output);
     }
 
-    if (doReverseLookup && maxLong > minLong) {
-      // Do random lookups so we test null (output doesn't
-      // exist) case:
-      assertNull(Util.getByOutput(fstLong, minLong - 7));
-      assertNull(Util.getByOutput(fstLong, maxLong + 7));
-
-      final int num = LuceneTestCase.atLeast(random, 100);
-      for (int iter = 0; iter < num; iter++) {
-        Long v = TestUtil.nextLong(random, minLong, maxLong);
-        IntsRef input = Util.getByOutput(fstLong, v);
-        assertTrue(validOutputs.contains(v) || input == null);
-      }
-    }
-
     // find random matching word and make sure it's valid
     if (LuceneTestCase.VERBOSE) {
       System.out.println("TEST: verify random accepted terms");
@@ -474,13 +443,6 @@ public class FSTTester<T> {
           termsMap.containsKey(scratch.get()));
       assertTrue(outputsEqual(termsMap.get(scratch.get()), output));
 
-      if (doReverseLookup) {
-        // System.out.println("lookup output=" + output + " outs=" + fst.outputs);
-        IntsRef input = Util.getByOutput(fstLong, (Long) output);
-        assertNotNull(input);
-        // System.out.println("  got " + Util.toBytesRef(input, new BytesRef()).utf8ToString());
-        assertEquals(scratch.get(), input);
-      }
     }
 
     // test IntsRefFSTEnum.seek:

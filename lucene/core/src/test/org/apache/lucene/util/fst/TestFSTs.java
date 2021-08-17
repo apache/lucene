@@ -133,7 +133,7 @@ public class TestFSTs extends LuceneTestCase {
         for (IntsRef term : terms2) {
           pairs.add(new FSTTester.InputOutput<>(term, NO_OUTPUT));
         }
-        FSTTester<Object> tester = new FSTTester<>(random(), dir, inputMode, pairs, outputs, false);
+        FSTTester<Object> tester = new FSTTester<>(random(), dir, inputMode, pairs, outputs);
         FST<Object> fst = tester.doTest(0, 0, false);
         assertNotNull(fst);
         assertEquals(22, tester.nodeCount);
@@ -147,7 +147,7 @@ public class TestFSTs extends LuceneTestCase {
         for (int idx = 0; idx < terms2.length; idx++) {
           pairs.add(new FSTTester.InputOutput<>(terms2[idx], (long) idx));
         }
-        FSTTester<Long> tester = new FSTTester<>(random(), dir, inputMode, pairs, outputs, true);
+        FSTTester<Long> tester = new FSTTester<>(random(), dir, inputMode, pairs, outputs);
         final FST<Long> fst = tester.doTest(0, 0, false);
         assertNotNull(fst);
         assertEquals(22, tester.nodeCount);
@@ -164,7 +164,7 @@ public class TestFSTs extends LuceneTestCase {
           pairs.add(new FSTTester.InputOutput<>(terms2[idx], output));
         }
         FSTTester<BytesRef> tester =
-            new FSTTester<>(random(), dir, inputMode, pairs, outputs, false);
+            new FSTTester<>(random(), dir, inputMode, pairs, outputs);
         final FST<BytesRef> fst = tester.doTest(0, 0, false);
         assertNotNull(fst);
         assertEquals(24, tester.nodeCount);
@@ -185,7 +185,7 @@ public class TestFSTs extends LuceneTestCase {
       for (IntsRef term : terms) {
         pairs.add(new FSTTester.InputOutput<>(term, NO_OUTPUT));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, false).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
     }
 
     // PositiveIntOutput (ord)
@@ -195,7 +195,7 @@ public class TestFSTs extends LuceneTestCase {
       for (int idx = 0; idx < terms.length; idx++) {
         pairs.add(new FSTTester.InputOutput<>(terms[idx], (long) idx));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, true).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
     }
 
     // PositiveIntOutput (random monotonically increasing positive number)
@@ -208,7 +208,7 @@ public class TestFSTs extends LuceneTestCase {
         lastOutput = value;
         pairs.add(new FSTTester.InputOutput<>(terms[idx], value));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, true).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
     }
 
     // PositiveIntOutput (random positive number)
@@ -220,7 +220,7 @@ public class TestFSTs extends LuceneTestCase {
             new FSTTester.InputOutput<>(
                 terms[idx], TestUtil.nextLong(random(), 0, Long.MAX_VALUE)));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, false).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
     }
 
     // Pair<ord, (random monotonically increasing positive number>
@@ -236,7 +236,7 @@ public class TestFSTs extends LuceneTestCase {
         lastOutput = value;
         pairs.add(new FSTTester.InputOutput<>(terms[idx], outputs.newPair((long) idx, value)));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, false).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
     }
 
     // Sequence-of-bytes
@@ -249,7 +249,7 @@ public class TestFSTs extends LuceneTestCase {
             random().nextInt(30) == 17 ? NO_OUTPUT : new BytesRef(Integer.toString(idx));
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, false).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
     }
 
     // Sequence-of-ints
@@ -265,7 +265,7 @@ public class TestFSTs extends LuceneTestCase {
         }
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, false).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
     }
   }
 
