@@ -25,6 +25,8 @@ API Changes
 * LUCENE-8638: haversin() expressions function now returns its result in meters rather than
   kilometers.
 
+* LUCENE-8638: Jaspell suggester removed.
+
 * LUCENE-8982: Separate out native code to another module to allow cpp
   build with gradle. This also changes the name of the native "posix-support"
   library to LuceneNativeIO. (Zachary Chen, Dawid Weiss)
