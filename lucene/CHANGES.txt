@@ -7,9 +7,9 @@ http://s.apache.org/luceneversions
 
 New Features
 
-* LUCENE-9322 LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
+* LUCENE-9322, LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
-* LUCENE-9004: Approximate nearest vector search via NSW graphs (Mike Sokolov, Tomoko Uchida et al.)
+* LUCENE-9004, LUCENE-10040: Approximate nearest vector search via NSW graphs (Mike Sokolov, Tomoko Uchida et al.)
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
@@ -421,6 +421,10 @@ Optimizations
 * LUCENE-10031: Slightly faster segment merging for sorted indices.
   (Adrien Grand)
 
+* LUCENE-10014: Lucene90DocValuesFormat was using too many bits per
+  value when compressing via gcd, unnecessarily wasting index storage.
+  (weizijun)
+
 Bug Fixes
 ---------------------
 * LUCENE-9988: Fix DrillSideways correctness bug introduced in LUCENE-9944 (Greg Miller)
@@ -444,6 +448,8 @@ Bug Fixes
 
 * LUCENE-9963: FlattenGraphFilter is now more robust when handling
   incoming holes in the input token graph (Geoff Lawson)
+
+* LUCENE-10008: Respect ignoreCase in CommonGramsFilterFactory (Vigya Sharma)
 
 Other
 ---------------------
