@@ -22,6 +22,8 @@ System Requirements
 
 API Changes
 
+* LUCENE-8638: Remove deprecated methods in FST for lookup by output.
+
 * LUCENE-8638: haversin() expressions function now returns its result in meters rather than
   kilometers.
 

@@ -903,12 +903,12 @@ public final class Util {
             + ")";
     BytesReader in = fst.getBytesReader();
     int low = arc.arcIdx();
-    int mid = 0;
+    int mid;
     int high = arc.numArcs() - 1;
     while (low <= high) {
       mid = (low + high) >>> 1;
       in.setPosition(arc.posArcsStart());
-      in.skipBytes(arc.bytesPerArc() * mid + 1);
+      in.skipBytes((long) arc.bytesPerArc() * mid + 1);
       final int midLabel = fst.readLabel(in);
       final int cmp = midLabel - targetLabel;
       if (cmp < 0) {
