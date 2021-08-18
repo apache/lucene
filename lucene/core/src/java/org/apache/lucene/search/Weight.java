@@ -175,8 +175,8 @@ public abstract class Weight implements SegmentCacheable {
   }
 
   /**
-   * Counts the number of documents that match a given {@link Weight#parentQuery} in a leaf. The
-   * default implementation creates a {@link TotalHitCountCollector} and scores it using a
+   * Counts the number of live documents that match a given {@link Weight#parentQuery} in a leaf.
+   * The default implementation creates a {@link TotalHitCountCollector} and scores it using a
    * BulkScorer {@link Weight#bulkScorer(LeafReaderContext)}}. Specific query classes should
    * override it to provide faster implementations. Look at {@link
    * MatchAllDocsQuery#createWeight(IndexSearcher, ScoreMode, float)} for an example

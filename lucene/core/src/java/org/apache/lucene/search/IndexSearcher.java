@@ -414,37 +414,13 @@ public class IndexSearcher {
       }
     }
 
-    // some counts can be computed in constant time
-    if (query instanceof MatchAllDocsQuery) {
-      return reader.numDocs();
-    } else if (query instanceof TermQuery && reader.hasDeletions() == false) {
-      Term term = ((TermQuery) query).getTerm();
-      int count = 0;
-      for (LeafReaderContext leaf : reader.leaves()) {
-        count += leaf.reader().docFreq(term);
-      }
-      return count;
+    final Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
+    int count = 0;
+    for (LeafReaderContext leafReaderContext : leafContexts) {
+      count += weight.count(leafReaderContext);
     }
 
-    // general case: create a collector and count matches
-    final CollectorManager<TotalHitCountCollector, Integer> collectorManager =
-        new CollectorManager<TotalHitCountCollector, Integer>() {
-
-          @Override
-          public TotalHitCountCollector newCollector() throws IOException {
-            return new TotalHitCountCollector();
-          }
-
-          @Override
-          public Integer reduce(Collection<TotalHitCountCollector> collectors) throws IOException {
-            int total = 0;
-            for (TotalHitCountCollector collector : collectors) {
-              total += collector.getTotalHits();
-            }
-            return total;
-          }
-        };
-    return search(query, collectorManager);
+    return count;
   }
 
   /**
