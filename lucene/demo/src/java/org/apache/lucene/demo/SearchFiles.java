@@ -154,6 +154,9 @@ public class SearchFiles {
         break;
       }
     }
+    if (vectorDict != null) {
+      vectorDict.close();
+    }
     reader.close();
   }
 

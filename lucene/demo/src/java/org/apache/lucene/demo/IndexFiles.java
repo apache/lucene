@@ -54,15 +54,18 @@ import org.apache.lucene.store.FSDirectory;
  * <p>This is a command-line application demonstrating simple Lucene indexing. Run it with no
  * command-line arguments for usage information.
  */
-public class IndexFiles {
+public class IndexFiles implements AutoCloseable {
 
   // Calculates embedding vectors for KnnVector search
   private final DemoEmbeddings demoEmbeddings;
+  private final KnnVectorDict vectorDict;
 
   private IndexFiles(Path vectorDictPath) throws IOException {
     if (vectorDictPath != null) {
-      demoEmbeddings = new DemoEmbeddings(new KnnVectorDict(vectorDictPath));
+      vectorDict = new KnnVectorDict(vectorDictPath);
+      demoEmbeddings = new DemoEmbeddings(vectorDict);
     } else {
+      vectorDict = null;
       demoEmbeddings = null;
     }
   }
@@ -139,19 +142,18 @@ public class IndexFiles {
       //
       // iwc.setRAMBufferSizeMB(256.0);
 
-      IndexWriter writer = new IndexWriter(dir, iwc);
-      IndexFiles indexFiles = new IndexFiles(vectorDictPath);
-      indexFiles.indexDocs(writer, docDir);
+      try (IndexWriter writer = new IndexWriter(dir, iwc);
+          IndexFiles indexFiles = new IndexFiles(vectorDictPath)) {
+        indexFiles.indexDocs(writer, docDir);
 
-      // NOTE: if you want to maximize search performance,
-      // you can optionally call forceMerge here.  This can be
-      // a terribly costly operation, so generally it's only
-      // worth it when your index is relatively static (ie
-      // you're done adding documents to it):
-      //
-      // writer.forceMerge(1);
-
-      writer.close();
+        // NOTE: if you want to maximize search performance,
+        // you can optionally call forceMerge here.  This can be
+        // a terribly costly operation, so generally it's only
+        // worth it when your index is relatively static (ie
+        // you're done adding documents to it):
+        //
+        // writer.forceMerge(1);
+      }
 
       Date end = new Date();
       try (IndexReader reader = DirectoryReader.open(dir)) {
@@ -185,10 +187,9 @@ public class IndexFiles {
     if (Files.isDirectory(path)) {
       Files.walkFileTree(
           path,
-          new SimpleFileVisitor<Path>() {
+          new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               try {
                 indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
               } catch (
@@ -257,6 +258,13 @@ public class IndexFiles {
         System.out.println("updating " + file);
         writer.updateDocument(new Term("path", file.toString()), doc);
       }
+    }
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (vectorDict != null) {
+      vectorDict.close();
     }
   }
 }
