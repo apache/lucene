@@ -62,12 +62,6 @@ public class TestLengthGoalBreakIterator extends LuceneTestCase {
             LengthGoalBreakIterator.createClosestToLength(baseBI, 50, alignment);
           });
     }
-    // test backwards compatibility constructors
-    String backwardCompString =
-        LengthGoalBreakIterator.createClosestToLength(baseBI, 50).toString();
-    assertTrue(backwardCompString, backwardCompString.contains("fragAlign=0.0"));
-    backwardCompString = LengthGoalBreakIterator.createMinLength(baseBI, 50).toString();
-    assertTrue(backwardCompString, backwardCompString.contains("fragAlign=0.0"));
   }
 
   public void testTargetLen() throws IOException {
