@@ -1,5 +1,5 @@
 com.carrotsearch.randomizedtesting:*=2.7.6
-com.carrotsearch:hppc=0.8.2
+com.carrotsearch:hppc=0.9.0
 com.github.ben-manes.caffeine:caffeine=2.8.4
 com.google.errorprone:*=2.4.0
 com.google.guava:guava=25.1-jre

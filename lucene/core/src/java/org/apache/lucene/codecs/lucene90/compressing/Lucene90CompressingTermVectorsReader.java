@@ -91,6 +91,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   private final long numDirtyChunks; // number of incomplete compressed blocks written
   private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private final long maxPointer; // end of the data section
+  private BlockState blockState = new BlockState(-1, -1, 0);
 
   // used by clone
   private Lucene90CompressingTermVectorsReader(Lucene90CompressingTermVectorsReader reader) {
@@ -303,6 +304,11 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return new Lucene90CompressingTermVectorsReader(this);
   }
 
+  @Override
+  public TermVectorsReader getMergeInstance() {
+    return new Lucene90CompressingTermVectorsReader(this);
+  }
+
   private static RandomAccessInput slice(IndexInput in) throws IOException {
     final int length = in.readVInt();
     final byte[] bytes = new byte[length];
@@ -310,25 +316,46 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(bytes)));
   }
 
+  /** Checks if a given docID was loaded in the current block state. */
+  boolean isLoaded(int docID) {
+    return blockState.docBase <= docID && docID < blockState.docBase + blockState.chunkDocs;
+  }
+
+  private static class BlockState {
+    final long startPointer;
+    final int docBase;
+    final int chunkDocs;
+
+    BlockState(long startPointer, int docBase, int chunkDocs) {
+      this.startPointer = startPointer;
+      this.docBase = docBase;
+      this.chunkDocs = chunkDocs;
+    }
+  }
+
   @Override
   public Fields get(int doc) throws IOException {
     ensureOpen();
 
     // seek to the right place
-    {
-      final long startPointer = indexReader.getStartPointer(doc);
-      vectorsStream.seek(startPointer);
+    final long startPointer;
+    if (isLoaded(doc)) {
+      startPointer = blockState.startPointer; // avoid searching the start pointer
+    } else {
+      startPointer = indexReader.getStartPointer(doc);
     }
+    vectorsStream.seek(startPointer);
 
     // decode
     // - docBase: first doc ID of the chunk
     // - chunkDocs: number of docs of the chunk
     final int docBase = vectorsStream.readVInt();
-    final int chunkDocs = vectorsStream.readVInt();
+    final int chunkDocs = vectorsStream.readVInt() >>> 1;
     if (doc < docBase || doc >= docBase + chunkDocs || docBase + chunkDocs > numDocs) {
       throw new CorruptIndexException(
           "docBase=" + docBase + ",chunkDocs=" + chunkDocs + ",doc=" + doc, vectorsStream);
     }
+    this.blockState = new BlockState(startPointer, docBase, chunkDocs);
 
     final int skip; // number of fields to skip
     final int numFields; // number of fields of the document we're looking for

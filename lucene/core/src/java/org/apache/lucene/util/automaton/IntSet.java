@@ -36,15 +36,19 @@ abstract class IntSet {
    */
   abstract int size();
 
+  abstract long longHashCode();
+
   @Override
-  public abstract int hashCode();
+  public int hashCode() {
+    return Long.hashCode(longHashCode());
+  }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (!(o instanceof IntSet)) return false;
     IntSet that = (IntSet) o;
-    return hashCode() == that.hashCode()
+    return longHashCode() == that.longHashCode()
         && Arrays.equals(getArray(), 0, size(), that.getArray(), 0, that.size());
   }
 }

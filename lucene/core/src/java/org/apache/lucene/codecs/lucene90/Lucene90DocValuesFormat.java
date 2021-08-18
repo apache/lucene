@@ -52,7 +52,7 @@ import org.apache.lucene.util.packed.DirectWriter;
  *       by accumulating the {@link Long#bitCount(long) bit counts} of the visited longs. Advancing
  *       &gt;= 512 documents is performed by skipping to the start of the needed 512 document
  *       sub-block and iterating to the specific document within that block. The index for the
- *       sub-block that is skipped to is retrieved from a rank-table positioned beforethe bit set.
+ *       sub-block that is skipped to is retrieved from a rank-table positioned before the bit set.
  *       The rank-table holds the origo index numbers for all 512 documents sub-blocks, represented
  *       as an unsigned short for each 128 blocks.
  *   <li>ALL: This strategy is used when a block contains exactly 65536 documents, meaning that the

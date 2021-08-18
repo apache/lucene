@@ -20,13 +20,13 @@ import java.util.Arrays;
 
 final class FrozenIntSet extends IntSet {
   final int[] values;
-  final int hashCode;
   final int state;
+  final long hashCode;
 
-  FrozenIntSet(int[] values, int hashCode, int state) {
+  FrozenIntSet(int[] values, long hashCode, int state) {
     this.values = values;
-    this.hashCode = hashCode;
     this.state = state;
+    this.hashCode = hashCode;
   }
 
   @Override
@@ -40,7 +40,7 @@ final class FrozenIntSet extends IntSet {
   }
 
   @Override
-  public int hashCode() {
+  long longHashCode() {
     return hashCode;
   }
 

@@ -47,6 +47,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hppc.BitMixer;
 
 /**
  * Automata operations.
@@ -690,7 +691,7 @@ public final class Operations {
     // a.writeDot("/l/la/lucene/core/detin.dot");
 
     // Same initial values and state will always have the same hashCode
-    FrozenIntSet initialset = new FrozenIntSet(new int[] {0}, 683, 0);
+    FrozenIntSet initialset = new FrozenIntSet(new int[] {0}, BitMixer.mix(0) + 1, 0);
 
     // Create state 0:
     b.createState();
@@ -706,8 +707,8 @@ public final class Operations {
     // like Set<Integer,PointTransitions>
     final PointTransitionSet points = new PointTransitionSet();
 
-    // like SortedMap<Integer,Integer>
-    final SortedIntSet statesSet = new SortedIntSet(5);
+    // like HashMap<Integer,Integer>, maps state to its count
+    final StateSet statesSet = new StateSet(5);
 
     Transition t = new Transition();
 
@@ -759,10 +760,8 @@ public final class Operations {
 
         final int point = points.points[i].point;
 
-        if (statesSet.upto > 0) {
+        if (statesSet.size() > 0) {
           assert lastPoint != -1;
-
-          statesSet.computeHash();
 
           Integer q = newstate.get(statesSet);
           if (q == null) {
@@ -812,7 +811,7 @@ public final class Operations {
         points.points[i].starts.next = 0;
       }
       points.reset();
-      assert statesSet.upto == 0 : "upto=" + statesSet.upto;
+      assert statesSet.size() == 0 : "size=" + statesSet.size();
     }
 
     Automaton result = b.finish();

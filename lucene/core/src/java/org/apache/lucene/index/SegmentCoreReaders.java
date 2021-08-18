@@ -28,12 +28,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.index.IndexReader.CacheKey;
 import org.apache.lucene.index.IndexReader.ClosedListener;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -57,9 +57,9 @@ final class SegmentCoreReaders {
   final NormsProducer normsProducer;
 
   final StoredFieldsReader fieldsReaderOrig;
-  final TermVectorsReader termVectorsReaderOrig;
+  final TermVectorsReader termVectorsReader;
   final PointsReader pointsReader;
-  final VectorReader vectorReader;
+  final KnnVectorsReader knnVectorsReader;
   final CompoundDirectory cfsReader;
   final String segment;
   /**
@@ -77,14 +77,6 @@ final class SegmentCoreReaders {
         @Override
         protected StoredFieldsReader initialValue() {
           return fieldsReaderOrig.clone();
-        }
-      };
-
-  final CloseableThreadLocal<TermVectorsReader> termVectorsLocal =
-      new CloseableThreadLocal<TermVectorsReader>() {
-        @Override
-        protected TermVectorsReader initialValue() {
-          return (termVectorsReaderOrig == null) ? null : termVectorsReaderOrig.clone();
         }
       };
 
@@ -134,13 +126,13 @@ final class SegmentCoreReaders {
               .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
 
       if (coreFieldInfos.hasVectors()) { // open term vector files only as needed
-        termVectorsReaderOrig =
+        termVectorsReader =
             si.info
                 .getCodec()
                 .termVectorsFormat()
                 .vectorsReader(cfsDir, si.info, coreFieldInfos, context);
       } else {
-        termVectorsReaderOrig = null;
+        termVectorsReader = null;
       }
 
       if (coreFieldInfos.hasPointValues()) {
@@ -150,9 +142,9 @@ final class SegmentCoreReaders {
       }
 
       if (coreFieldInfos.hasVectorValues()) {
-        vectorReader = codec.vectorFormat().fieldsReader(segmentReadState);
+        knnVectorsReader = codec.knnVectorsFormat().fieldsReader(segmentReadState);
       } else {
-        vectorReader = null;
+        knnVectorsReader = null;
       }
 
       success = true;
@@ -186,15 +178,14 @@ final class SegmentCoreReaders {
     if (ref.decrementAndGet() == 0) {
       try (Closeable finalizer = this::notifyCoreClosedListeners) {
         IOUtils.close(
-            termVectorsLocal,
             fieldsReaderLocal,
             fields,
-            termVectorsReaderOrig,
+            termVectorsReader,
             fieldsReaderOrig,
             cfsReader,
             normsProducer,
             pointsReader,
-            vectorReader);
+            knnVectorsReader);
       }
     }
   }
