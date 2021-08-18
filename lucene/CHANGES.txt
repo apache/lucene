@@ -22,12 +22,11 @@ System Requirements
 
 API Changes
 
-* LUCENE-8638: Remove deprecated methods in FST for lookup by output.
+* LUCENE-8638: Remove many deprecated methods and classes including FST.lookupByOutput(),
+  LegacyBM25Similarity and Jaspell suggester.
 
 * LUCENE-8638: haversin() expressions function now returns its result in meters rather than
   kilometers.
-
-* LUCENE-8638: Jaspell suggester removed.
 
 * LUCENE-8982: Separate out native code to another module to allow cpp
   build with gradle. This also changes the name of the native "posix-support"
