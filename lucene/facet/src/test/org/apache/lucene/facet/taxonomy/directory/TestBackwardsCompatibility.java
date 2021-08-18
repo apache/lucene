@@ -98,9 +98,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     DirectoryTaxonomyWriter writer = new DirectoryTaxonomyWriter(dir);
     DirectoryTaxonomyReader reader = new DirectoryTaxonomyReader(writer);
 
-    FacetLabel[] facetLabels = {new FacetLabel("a")};
-    int[] ordinals = new int[] {reader.getOrdinal(facetLabels[0])};
-    // The zip file already contains a category "a" stored with the older StoredFields codec
+    FacetLabel[] facetLabels = {
+      new FacetLabel("a"), new FacetLabel("b"),
+    };
+    int[] ordinals =
+        new int[] {reader.getOrdinal(facetLabels[0]), reader.getOrdinal(facetLabels[1])};
+    // The zip file already contains a category "a" and a category "b" stored with the older
+    // StoredFields codec
     assertArrayEquals(facetLabels, reader.getBulkPath(ordinals));
     reader.close();
     writer.close();
