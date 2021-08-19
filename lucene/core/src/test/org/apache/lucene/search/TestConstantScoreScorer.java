@@ -240,12 +240,12 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
     IndexSearcher is = newSearcher(ir);
 
-    TopScoreDocCollectorManager c = new TopScoreDocCollectorManager(10, null, 10);
+    TopScoreDocCollectorManager c = new TopScoreDocCollectorManager(10, 10);
     TopDocs topDocs = is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), c);
     assertEquals(11, topDocs.totalHits.value);
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
-    c = new TopScoreDocCollectorManager(10, null, 10);
+    c = new TopScoreDocCollectorManager(10, 10);
     Query query =
         new BooleanQuery.Builder()
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), Occur.SHOULD)

@@ -36,7 +36,24 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   private final MaxScoreAccumulator minScoreAcc;
   private final List<TopFieldCollector> collectors;
 
-  public TopFieldCollectorManager(Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
+  /**
+   * Creates a new {@link TopFieldCollectorManager} from the given arguments.
+   *
+   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
+   * <code>numHits</code>.
+   *
+   * @param sort the sort criteria (SortFields).
+   * @param numHits the number of results to collect.
+   * @param after the previous doc after which matching docs will be collected.
+   * @param totalHitsThreshold the number of docs to count accurately. If the query matches more
+   *     than {@code totalHitsThreshold} hits then its hit count will be a lower bound. On the other
+   *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
+   *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
+   *     count accurate, but this will also make query processing slower.
+   * @param supportsConcurrency to use thread-safe and slower internal states for count tracking.
+   */
+  public TopFieldCollectorManager(
+      Sort sort, int numHits, FieldDoc after, int totalHitsThreshold, boolean supportsConcurrency) {
     if (totalHitsThreshold < 0) {
       throw new IllegalArgumentException(
           "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
@@ -45,26 +62,37 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     this.sort = sort;
     this.numHits = numHits;
     this.after = after;
-    /*
-    nocommit
-    Should the following two be passed in instead? Possible custom initialization based on executor status and slices?
-    On the other hand, in a single-threaded environment, shared HitsThresholdChecker and MaxScoreAccumulator should be fast without lock contention anyway?
-
-    final HitsThresholdChecker hitsThresholdChecker =
-            (executor == null || leafSlices.length <= 1)
-                    ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
-                    : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
-
-    final MaxScoreAccumulator minScoreAcc = (executor == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
-    */
     this.hitsThresholdChecker =
-        HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits));
-    this.minScoreAcc = new MaxScoreAccumulator();
+        supportsConcurrency
+            ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
+            : HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits));
+    this.minScoreAcc = supportsConcurrency ? new MaxScoreAccumulator() : null;
     this.collectors = new ArrayList<>();
   }
 
   /**
-   * Creates a new {@link TopFieldCollectorManager} from the given arguments.
+   * Creates a new {@link TopFieldCollectorManager} from the given arguments, with thread-safe
+   * internal states.
+   *
+   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
+   * <code>numHits</code>.
+   *
+   * @param sort the sort criteria (SortFields).
+   * @param numHits the number of results to collect.
+   * @param after the previous doc after which matching docs will be collected.
+   * @param totalHitsThreshold the number of docs to count accurately. If the query matches more
+   *     than {@code totalHitsThreshold} hits then its hit count will be a lower bound. On the other
+   *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
+   *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
+   *     count accurate, but this will also make query processing slower.
+   */
+  public TopFieldCollectorManager(Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
+    this(sort, numHits, after, totalHitsThreshold, true);
+  }
+
+  /**
+   * Creates a new {@link TopFieldCollectorManager} from the given arguments, with thread-safe
+   * internal states.
    *
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>.
@@ -76,11 +104,9 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
    *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
-   * @return a {@link TopFieldCollectorManager} instance which will be used to create {@link
-   *     TopFieldCollector} to sort the results by the sort criteria.
    */
-  public static TopFieldCollectorManager create(Sort sort, int numHits, int totalHitsThreshold) {
-    return new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold);
+  public TopFieldCollectorManager(Sort sort, int numHits, int totalHitsThreshold) {
+    this(sort, numHits, null, totalHitsThreshold, true);
   }
 
   @Override

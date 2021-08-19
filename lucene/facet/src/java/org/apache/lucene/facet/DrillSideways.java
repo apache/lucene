@@ -296,8 +296,9 @@ public class DrillSideways {
         limit = 1; // the collector does not alow numHits = 0
       }
       final int fTopN = Math.min(topN, limit);
+      final boolean supportsConcurrency = searcher.getExecutor() != null;
       final TopFieldCollectorManager collectorManager =
-          new TopFieldCollectorManager(sort, fTopN, after, Integer.MAX_VALUE);
+          new TopFieldCollectorManager(sort, fTopN, after, Integer.MAX_VALUE, supportsConcurrency);
 
       ConcurrentDrillSidewaysResult<TopFieldDocs> r = search(query, collectorManager);
       TopDocs topDocs = r.collectorResult;
@@ -328,8 +329,9 @@ public class DrillSideways {
       limit = 1; // the collector does not alow numHits = 0
     }
     final int fTopN = Math.min(topN, limit);
+    final boolean supportsConcurrency = searcher.getExecutor() != null;
     final TopScoreDocCollectorManager collectorManager =
-        new TopScoreDocCollectorManager(fTopN, after, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(fTopN, after, Integer.MAX_VALUE, supportsConcurrency);
     ConcurrentDrillSidewaysResult<TopDocs> r = search(query, collectorManager);
     return new DrillSidewaysResult(
         r.facets,

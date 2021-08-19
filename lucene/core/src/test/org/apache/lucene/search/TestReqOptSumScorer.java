@@ -264,7 +264,7 @@ public class TestReqOptSumScorer extends LuceneTestCase {
         new BooleanQuery.Builder().add(mustTerm, Occur.MUST).add(shouldTerm, Occur.SHOULD).build();
 
     TopScoreDocCollectorManager collectorManager =
-        new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
     TopDocs topDocs = searcher.search(query, collectorManager);
     ScoreDoc[] expected = topDocs.scoreDocs;
 
@@ -276,7 +276,7 @@ public class TestReqOptSumScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("f", "C")), Occur.FILTER)
             .build();
 
-    collectorManager = new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE);
+    collectorManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
     topDocs = searcher.search(query, collectorManager);
     ScoreDoc[] expectedFiltered = topDocs.scoreDocs;
 
@@ -289,7 +289,7 @@ public class TestReqOptSumScorer extends LuceneTestCase {
               .add(shouldTerm, Occur.SHOULD)
               .build();
 
-      collectorManager = new TopScoreDocCollectorManager(10, null, 1);
+      collectorManager = new TopScoreDocCollectorManager(10, 1);
       topDocs = searcher.search(q, collectorManager);
       ScoreDoc[] actual = topDocs.scoreDocs;
       CheckHits.checkEqual(query, expected, actual);
@@ -299,7 +299,7 @@ public class TestReqOptSumScorer extends LuceneTestCase {
               .add(mustTerm, Occur.MUST)
               .add(new RandomApproximationQuery(shouldTerm, random()), Occur.SHOULD)
               .build();
-      collectorManager = new TopScoreDocCollectorManager(10, null, 1);
+      collectorManager = new TopScoreDocCollectorManager(10, 1);
       topDocs = searcher.search(q, collectorManager);
       actual = topDocs.scoreDocs;
       CheckHits.checkEqual(q, expected, actual);
@@ -309,7 +309,7 @@ public class TestReqOptSumScorer extends LuceneTestCase {
               .add(new RandomApproximationQuery(mustTerm, random()), Occur.MUST)
               .add(new RandomApproximationQuery(shouldTerm, random()), Occur.SHOULD)
               .build();
-      collectorManager = new TopScoreDocCollectorManager(10, null, 1);
+      collectorManager = new TopScoreDocCollectorManager(10, 1);
       topDocs = searcher.search(q, collectorManager);
       actual = topDocs.scoreDocs;
       CheckHits.checkEqual(q, expected, actual);
@@ -331,7 +331,7 @@ public class TestReqOptSumScorer extends LuceneTestCase {
                   Occur.FILTER)
               .build();
 
-      collectorManager = new TopScoreDocCollectorManager(10, null, 1);
+      collectorManager = new TopScoreDocCollectorManager(10, 1);
       topDocs = searcher.search(nestedQ, collectorManager);
       ScoreDoc[] actualFiltered = topDocs.scoreDocs;
       CheckHits.checkEqual(nestedQ, expectedFiltered, actualFiltered);

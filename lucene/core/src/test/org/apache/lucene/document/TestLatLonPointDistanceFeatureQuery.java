@@ -139,7 +139,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
             9);
 
     q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 9, 9, pivotDistance);
-    collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    collectorManager = new TopScoreDocCollectorManager(2, 1);
     topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
     CheckHits.checkExplanations(q, "", searcher);
@@ -196,7 +196,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 0, 179, pivotDistance);
-    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 1);
     TopDocs topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -262,7 +262,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 10, 10, 5);
-    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(3, null, 1);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(3, 1);
     TopDocs topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -341,7 +341,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 0, 0, 200);
-    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 1);
     TopDocs topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -367,7 +367,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
         topHits.scoreDocs);
 
     q = LatLonPoint.newDistanceFeatureQuery("foo", 3, -90, 0, 10000.);
-    collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    collectorManager = new TopScoreDocCollectorManager(2, 1);
     topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
     CheckHits.checkExplanations(q, "", searcher);

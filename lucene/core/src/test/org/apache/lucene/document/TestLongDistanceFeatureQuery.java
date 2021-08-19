@@ -89,7 +89,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
-    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 1);
     TopDocs topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -102,7 +102,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         topHits.scoreDocs);
 
     q = LongPoint.newDistanceFeatureQuery("foo", 3, 7, 5);
-    collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    collectorManager = new TopScoreDocCollectorManager(2, 1);
     topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
     CheckHits.checkExplanations(q, "", searcher);
@@ -157,7 +157,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LongPoint.newDistanceFeatureQuery("foo", 3, Long.MAX_VALUE - 1, 100);
-    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 1);
     TopDocs topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -178,7 +178,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         topHits.scoreDocs);
 
     q = LongPoint.newDistanceFeatureQuery("foo", 3, Long.MIN_VALUE + 1, 100);
-    collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    collectorManager = new TopScoreDocCollectorManager(2, 1);
     topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
     CheckHits.checkExplanations(q, "", searcher);
@@ -240,7 +240,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
-    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(3, null, 1);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(3, 1);
     TopDocs topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -306,7 +306,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
-    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 1);
     TopDocs topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -319,7 +319,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         topHits.scoreDocs);
 
     q = LongPoint.newDistanceFeatureQuery("foo", 3, 7, 5);
-    collectorManager = new TopScoreDocCollectorManager(2, null, 1);
+    collectorManager = new TopScoreDocCollectorManager(2, 1);
     topHits = searcher.search(q, collectorManager);
     assertEquals(2, topHits.scoreDocs.length);
     CheckHits.checkExplanations(q, "", searcher);

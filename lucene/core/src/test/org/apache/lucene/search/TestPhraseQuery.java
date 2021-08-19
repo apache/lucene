@@ -771,12 +771,11 @@ public class TestPhraseQuery extends LuceneTestCase {
             )) {
       for (int topN = 1; topN <= 2; ++topN) {
         TopScoreDocCollectorManager collectorManager1 =
-            new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE);
+            new TopScoreDocCollectorManager(topN, Integer.MAX_VALUE);
         TopDocs topDocs1 = searcher.search(query, collectorManager1);
         ScoreDoc[] hits1 = topDocs1.scoreDocs;
 
-        TopScoreDocCollectorManager collectorManager2 =
-            new TopScoreDocCollectorManager(topN, null, 1);
+        TopScoreDocCollectorManager collectorManager2 = new TopScoreDocCollectorManager(topN, 1);
         TopDocs topDocs2 = searcher.search(query, collectorManager2);
         ScoreDoc[] hits2 = topDocs2.scoreDocs;
 
@@ -1031,11 +1030,11 @@ public class TestPhraseQuery extends LuceneTestCase {
         Query query = new PhraseQuery("foo", new BytesRef(firstTerm), new BytesRef(secondTerm));
 
         TopScoreDocCollectorManager collectorManager1 =
-            new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE); // COMPLETE
+            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
         TopDocs topDocs1 = searcher.search(query, collectorManager1);
 
         TopScoreDocCollectorManager collectorManager2 =
-            new TopScoreDocCollectorManager(10, null, 10); // TOP_SCORES
+            new TopScoreDocCollectorManager(10, 10); // TOP_SCORES
         TopDocs topDocs2 = searcher.search(query, collectorManager2);
 
         CheckHits.checkEqual(query, topDocs1.scoreDocs, topDocs2.scoreDocs);
@@ -1046,11 +1045,10 @@ public class TestPhraseQuery extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "b")), Occur.FILTER)
                 .build();
 
-        collectorManager1 =
-            new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE); // COMPLETE
+        collectorManager1 = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
         topDocs1 = searcher.search(filteredQuery, collectorManager1);
 
-        collectorManager2 = new TopScoreDocCollectorManager(10, null, 10); // TOP_SCORES
+        collectorManager2 = new TopScoreDocCollectorManager(10, 10); // TOP_SCORES
         topDocs2 = searcher.search(filteredQuery, collectorManager2);
         CheckHits.checkEqual(query, topDocs1.scoreDocs, topDocs2.scoreDocs);
       }

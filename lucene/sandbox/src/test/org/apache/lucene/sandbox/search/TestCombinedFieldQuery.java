@@ -151,7 +151,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .build();
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(
-            Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
+            Math.min(reader.numDocs(), Integer.MAX_VALUE), Integer.MAX_VALUE);
     TopDocs topDocs = searcher.search(query, collectorManager);
     assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     // All docs must have the same score
@@ -189,7 +189,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     Similarity searchSimilarity = randomCompatibleSimilarity();
     searcher.setSimilarity(searchSimilarity);
-    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(10, null, 10);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(10, 10);
 
     CombinedFieldQuery query =
         new CombinedFieldQuery.Builder()
@@ -421,12 +421,12 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
   private void checkExpectedHits(
       IndexSearcher searcher, int numHits, Query firstQuery, Query secondQuery) throws IOException {
     TopScoreDocCollectorManager collectorManager =
-        new TopScoreDocCollectorManager(numHits, null, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
 
     TopDocs firstTopDocs = searcher.search(firstQuery, collectorManager);
     assertEquals(numHits, firstTopDocs.totalHits.value);
 
-    collectorManager = new TopScoreDocCollectorManager(numHits, null, Integer.MAX_VALUE);
+    collectorManager = new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
     TopDocs secondTopDocs = searcher.search(secondQuery, collectorManager);
     CheckHits.checkEqual(firstQuery, secondTopDocs.scoreDocs, firstTopDocs.scoreDocs);
   }

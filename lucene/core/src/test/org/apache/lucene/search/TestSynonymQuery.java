@@ -167,7 +167,7 @@ public class TestSynonymQuery extends LuceneTestCase {
 
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(
-            Math.min(reader.numDocs(), totalHitsThreshold), null, totalHitsThreshold);
+            Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, collectorManager);
     if (topDocs.totalHits.value < totalHitsThreshold) {
       assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
@@ -226,7 +226,7 @@ public class TestSynonymQuery extends LuceneTestCase {
 
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(
-            Math.min(reader.numDocs(), totalHitsThreshold), null, totalHitsThreshold);
+            Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, collectorManager);
     if (topDocs.totalHits.value < totalHitsThreshold) {
       assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
@@ -442,9 +442,9 @@ public class TestSynonymQuery extends LuceneTestCase {
               .build();
 
       TopScoreDocCollectorManager collectorManager1 =
-          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE); // COMPLETE
+          new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
       TopScoreDocCollectorManager collectorManager2 =
-          new TopScoreDocCollectorManager(10, null, 1); // TOP_SCORES
+          new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
 
       TopDocs topDocs1 = searcher.search(query, collectorManager1);
       TopDocs topDocs2 = searcher.search(query, collectorManager2);
@@ -457,8 +457,8 @@ public class TestSynonymQuery extends LuceneTestCase {
               .add(new TermQuery(new Term("foo", Integer.toString(filterTerm))), Occur.FILTER)
               .build();
 
-      collectorManager1 = new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE); // COMPLETE
-      collectorManager2 = new TopScoreDocCollectorManager(10, null, 1); // TOP_SCORES
+      collectorManager1 = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      collectorManager2 = new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
 
       topDocs1 = searcher.search(filteredQuery, collectorManager1);
       topDocs2 = searcher.search(filteredQuery, collectorManager2);

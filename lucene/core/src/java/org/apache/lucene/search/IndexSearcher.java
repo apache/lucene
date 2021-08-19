@@ -67,8 +67,8 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  * hits so this trade-off allows to get some minimal information about the hit count without slowing
  * down search too much. The {@link TopDocs#scoreDocs} array is always accurate however. If this
  * behavior doesn't suit your needs, you should create collectorManagers manually with either {@link
- * TopScoreDocCollectorManager#create} or {@link TopFieldCollectorManager#create} and call {@link
- * #search(Query, CollectorManager)}.
+ * TopScoreDocCollectorManager} or {@link TopFieldCollectorManager} and call {@link #search(Query,
+ * CollectorManager)}.
  *
  * <p><a id="thread-safety"></a>
  *
@@ -478,8 +478,10 @@ public class IndexSearcher {
     }
 
     final int cappedNumHits = Math.min(numHits, limit);
+    final boolean supportsConcurrency = executor != null && leafSlices.length > 1;
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        new TopScoreDocCollectorManager(cappedNumHits, after, TOTAL_HITS_THRESHOLD);
+        new TopScoreDocCollectorManager(
+            cappedNumHits, after, TOTAL_HITS_THRESHOLD, supportsConcurrency);
 
     return search(query, manager);
   }
@@ -590,8 +592,10 @@ public class IndexSearcher {
     final int cappedNumHits = Math.min(numHits, limit);
     final Sort rewrittenSort = sort.rewrite(this);
 
+    final boolean supportsConcurrency = executor != null && leafSlices.length > 1;
     final CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-        new TopFieldCollectorManager(rewrittenSort, cappedNumHits, after, TOTAL_HITS_THRESHOLD);
+        new TopFieldCollectorManager(
+            rewrittenSort, cappedNumHits, after, TOTAL_HITS_THRESHOLD, supportsConcurrency);
 
     TopFieldDocs topDocs = search(query, manager);
     if (doDocScores) {

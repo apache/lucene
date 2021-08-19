@@ -639,9 +639,11 @@ public class CheckHits {
   private static void doCheckTopScores(Query query, IndexSearcher searcher, int numHits)
       throws IOException {
     TopScoreDocCollectorManager collectorManager1 =
-        new TopScoreDocCollectorManager(numHits, null, Integer.MAX_VALUE); // COMPLETE
+        new TopScoreDocCollectorManager(
+            numHits, null, Integer.MAX_VALUE, searcher.getExecutor() != null); // COMPLETE
     TopScoreDocCollectorManager collectorManager2 =
-        new TopScoreDocCollectorManager(numHits, null, 1); // TOP_SCORES
+        new TopScoreDocCollectorManager(
+            numHits, null, 1, searcher.getExecutor() != null); // TOP_SCORES
     TopDocs topDocs1 = searcher.search(query, collectorManager1);
     TopDocs topDocs2 = searcher.search(query, collectorManager2);
     checkEqual(query, topDocs1.scoreDocs, topDocs2.scoreDocs);

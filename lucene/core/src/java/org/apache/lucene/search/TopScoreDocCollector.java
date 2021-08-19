@@ -192,13 +192,12 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>, and fill the array with sentinel objects.
    *
-   * @deprecated This method is being deprecated in favor of {@link
-   *     TopScoreDocCollectorManager#create(int, int)} due to its support for concurrency in
-   *     IndexSearcher
+   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
    */
   @Deprecated
   public static TopScoreDocCollector create(int numHits, int totalHitsThreshold) {
-    return TopScoreDocCollectorManager.create(numHits, totalHitsThreshold).newCollector();
+    return new TopScoreDocCollectorManager(numHits, null, totalHitsThreshold, false).newCollector();
   }
 
   /**
@@ -219,7 +218,8 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    */
   @Deprecated
   public static TopScoreDocCollector create(int numHits, ScoreDoc after, int totalHitsThreshold) {
-    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold).newCollector();
+    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, false)
+        .newCollector();
   }
 
   int docBase;

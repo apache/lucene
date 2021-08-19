@@ -109,17 +109,19 @@ public abstract class ReadTask extends PerfTask {
             // the IndexSearcher search methods that take
             // Weight public again, we can go back to
             // pulling the Weight ourselves:
+            int totalHitsThreshold = withTotalHits() ? Integer.MAX_VALUE : 1;
             TopFieldCollectorManager collectorManager =
-                TopFieldCollectorManager.create(
-                    sort, numHits, withTotalHits() ? Integer.MAX_VALUE : 1);
+                new TopFieldCollectorManager(
+                    sort, numHits, null, totalHitsThreshold, searcher.getExecutor() != null);
             hits = searcher.search(q, collectorManager);
           } else {
             hits = searcher.search(q, numHits);
           }
         } else {
+          int totalHitsThreshold = withTotalHits() ? Integer.MAX_VALUE : 1;
           TopScoreDocCollectorManager collectorManager =
-              TopScoreDocCollectorManager.create(
-                  numHits(), withTotalHits() ? Integer.MAX_VALUE : 1);
+              new TopScoreDocCollectorManager(
+                  numHits(), null, totalHitsThreshold, searcher.getExecutor() != null);
           searcher.search(q, collectorManager);
           // hits = collectorManager.topDocs();
         }

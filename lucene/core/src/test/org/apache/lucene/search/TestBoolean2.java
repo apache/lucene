@@ -235,16 +235,16 @@ public class TestBoolean2 extends LuceneTestCase {
     // sometimes return a default impl around the scorer so that we can
     // compare BS1 and BS2
     TopScoreDocCollectorManager collectorManager =
-        TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
     ScoreDoc[] hits1 = searcher.search(query, collectorManager).scoreDocs;
-    collectorManager = TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
     ScoreDoc[] hits2 = searcher.search(query, collectorManager).scoreDocs;
 
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // Since we have no deleted docs, we should also be able to verify identical matches &
     // scores against an single segment copy of our index
-    collectorManager = TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
     TopDocs topDocs2 = singleSegmentSearcher.search(query, collectorManager);
     hits2 = topDocs2.scoreDocs;
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
@@ -253,9 +253,9 @@ public class TestBoolean2 extends LuceneTestCase {
     assertEquals(mulFactor * topDocs2.totalHits.value, bigSearcher.count(query));
 
     // now check 2 diff scorers from the bigSearcher as well
-    collectorManager = TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
     hits1 = bigSearcher.search(query, collectorManager).scoreDocs;
-    collectorManager = TopScoreDocCollectorManager.create(topDocsToCheck, Integer.MAX_VALUE);
+    collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
     hits2 = bigSearcher.search(query, collectorManager).scoreDocs;
 
     // NOTE: just comparing results, not vetting against expDocNrs
@@ -384,9 +384,9 @@ public class TestBoolean2 extends LuceneTestCase {
         }
 
         // check diff (randomized) scorers (from AssertingSearcher) produce the same results
-        TopFieldCollectorManager collectorManager = TopFieldCollectorManager.create(sort, 1000, 1);
+        TopFieldCollectorManager collectorManager = new TopFieldCollectorManager(sort, 1000, 1);
         ScoreDoc[] hits1 = searcher.search(q1, collectorManager).scoreDocs;
-        collectorManager = TopFieldCollectorManager.create(sort, 1000, 1);
+        collectorManager = new TopFieldCollectorManager(sort, 1000, 1);
         TopDocs topDocs = searcher.search(q1, collectorManager);
         ScoreDoc[] hits2 = topDocs.scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
@@ -399,9 +399,9 @@ public class TestBoolean2 extends LuceneTestCase {
             bigSearcher.count(q3.build()));
 
         // test diff (randomized) scorers produce the same results on bigSearcher as well
-        collectorManager = TopFieldCollectorManager.create(sort, 1000 * mulFactor, 1);
+        collectorManager = new TopFieldCollectorManager(sort, 1000 * mulFactor, 1);
         hits1 = bigSearcher.search(q1, collectorManager).scoreDocs;
-        collectorManager = TopFieldCollectorManager.create(sort, 1000 * mulFactor, 1);
+        collectorManager = new TopFieldCollectorManager(sort, 1000 * mulFactor, 1);
         hits2 = bigSearcher.search(q1, collectorManager).scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
       }

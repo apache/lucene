@@ -67,7 +67,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       assertEquals(IndexWriter.MAX_DOCS, ir.numDocs());
       IndexSearcher searcher = new IndexSearcher(ir);
       TopScoreDocCollectorManager collectorManager =
-          TopScoreDocCollectorManager.create(10, Integer.MAX_VALUE);
+          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false);
       TopDocs hits = searcher.search(new TermQuery(new Term("field", "text")), collectorManager);
       assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value);
 

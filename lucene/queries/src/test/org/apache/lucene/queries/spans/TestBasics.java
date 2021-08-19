@@ -510,7 +510,7 @@ public class TestBasics extends LuceneTestCase {
     query.add(sq1, BooleanClause.Occur.SHOULD);
     query.add(sq2, BooleanClause.Occur.SHOULD);
     TopScoreDocCollectorManager collectorManager =
-        TopScoreDocCollectorManager.create(1000, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
     TopDocs topDocs = searcher.search(query.build(), collectorManager);
     hits = topDocs.scoreDocs.length;
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
@@ -546,7 +546,7 @@ public class TestBasics extends LuceneTestCase {
                 new SpanTermQuery(new Term(FIELD, "clckwork"))),
             1.0f);
     TopScoreDocCollectorManager collectorManager =
-        TopScoreDocCollectorManager.create(1000, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
     TopDocs topDocs = searcher.search(query, collectorManager);
     hits = topDocs.scoreDocs.length;
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {

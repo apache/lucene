@@ -708,7 +708,6 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
     // System.out.println("finalQuery=" + finalQuery);
 
     // Sort by weight, descending:
-    TopFieldCollectorManager c = TopFieldCollectorManager.create(SORT, num, 1);
     List<LookupResult> results = null;
     SearcherManager mgr;
     IndexSearcher searcher;
@@ -717,6 +716,8 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       searcher = mgr.acquire();
     }
     try {
+      TopFieldCollectorManager c =
+          new TopFieldCollectorManager(SORT, num, null, 1, searcher.getExecutor() != null);
       // System.out.println("got searcher=" + searcher);
       TopFieldDocs hits = searcher.search(finalQuery, c);
 

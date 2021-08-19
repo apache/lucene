@@ -91,7 +91,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     // System.out.println("TEST: now check");
     // bs2
     TopScoreDocCollectorManager collectorManager =
-        TopScoreDocCollectorManager.create(1000, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
     TopDocs topDocs = s.search(q, collectorManager);
     ScoreDoc[] h2 = topDocs.scoreDocs;
     if (expected != h2.length) {

@@ -382,13 +382,13 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
    * @return a {@link TopFieldCollector} instance which will sort the results by the sort criteria.
-   * @deprecated This method is being deprecated in favor of {@link
-   *     TopFieldCollectorManager#create(Sort, int, int)} due to its support for concurrency in
-   *     IndexSearcher
+   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
    */
   @Deprecated
   public static TopFieldCollector create(Sort sort, int numHits, int totalHitsThreshold) {
-    return TopFieldCollectorManager.create(sort, numHits, totalHitsThreshold).newCollector();
+    return new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold, false)
+        .newCollector();
   }
 
   /**
@@ -416,7 +416,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   @Deprecated
   public static TopFieldCollector create(
       Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
-    return new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold).newCollector();
+    return new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, false)
+        .newCollector();
   }
 
   /**
