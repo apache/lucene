@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
@@ -28,30 +29,31 @@ public class TestDemoEmbeddings extends LuceneTestCase {
 
   public void testComputeEmbedding() throws IOException {
     Path testVectors = getDataPath("../test-files/knn-dict").resolve("knn-token-vectors");
-    Path dictPath = createTempDir("knn-demo").resolve("dict");
-    KnnVectorDict.build(testVectors, dictPath);
-    try (KnnVectorDict dict = new KnnVectorDict(dictPath)) {
-      DemoEmbeddings demoEmbeddings = new DemoEmbeddings(dict);
+    try (Directory directory = newDirectory()) {
+      KnnVectorDict.build(testVectors, directory, "dict");
+      try (KnnVectorDict dict = new KnnVectorDict(directory, "dict")) {
+        DemoEmbeddings demoEmbeddings = new DemoEmbeddings(dict);
 
-      // test garbage
-      float[] garbageVector =
-          demoEmbeddings.computeEmbedding("garbagethathasneverbeen seeneverinlife");
-      assertEquals(50, garbageVector.length);
-      assertArrayEquals(new float[50], garbageVector, 0);
+        // test garbage
+        float[] garbageVector =
+            demoEmbeddings.computeEmbedding("garbagethathasneverbeen seeneverinlife");
+        assertEquals(50, garbageVector.length);
+        assertArrayEquals(new float[50], garbageVector, 0);
 
-      // test space
-      assertArrayEquals(new float[50], demoEmbeddings.computeEmbedding(" "), 0);
+        // test space
+        assertArrayEquals(new float[50], demoEmbeddings.computeEmbedding(" "), 0);
 
-      // test some real words that are in the dictionary and some that are not
-      float[] realVector = demoEmbeddings.computeEmbedding("the real fact");
-      assertEquals(50, realVector.length);
+        // test some real words that are in the dictionary and some that are not
+        float[] realVector = demoEmbeddings.computeEmbedding("the real fact");
+        assertEquals(50, realVector.length);
 
-      float[] the = getTermVector(dict, "the");
-      assertArrayEquals(new float[50], getTermVector(dict, "real"), 0);
-      float[] fact = getTermVector(dict, "fact");
-      VectorUtil.add(the, fact);
-      VectorUtil.l2normalize(the);
-      assertArrayEquals(the, realVector, 0);
+        float[] the = getTermVector(dict, "the");
+        assertArrayEquals(new float[50], getTermVector(dict, "real"), 0);
+        float[] fact = getTermVector(dict, "fact");
+        VectorUtil.add(the, fact);
+        VectorUtil.l2normalize(the);
+        assertArrayEquals(the, realVector, 0);
+      }
     }
   }
 

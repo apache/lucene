@@ -47,6 +47,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * Index all text files under a directory.
@@ -55,17 +56,18 @@ import org.apache.lucene.store.FSDirectory;
  * command-line arguments for usage information.
  */
 public class IndexFiles implements AutoCloseable {
+  static final String KNN_DICT = "knn-dict";
 
   // Calculates embedding vectors for KnnVector search
   private final DemoEmbeddings demoEmbeddings;
   private final KnnVectorDict vectorDict;
 
-  private IndexFiles(Path vectorDictPath) throws IOException {
-    if (vectorDictPath != null) {
-      vectorDict = new KnnVectorDict(vectorDictPath);
+  private IndexFiles(KnnVectorDict vectorDict) throws IOException {
+    if (vectorDict != null) {
+      this.vectorDict = vectorDict;
       demoEmbeddings = new DemoEmbeddings(vectorDict);
     } else {
-      vectorDict = null;
+      this.vectorDict = null;
       demoEmbeddings = null;
     }
   }
@@ -80,7 +82,7 @@ public class IndexFiles implements AutoCloseable {
             + "IF DICT_PATH contains a KnnVector dictionary, the index will also support KnnVector search";
     String indexPath = "index";
     String docsPath = null;
-    Path vectorDictPath = null;
+    String vectorDictSource = null;
     boolean create = true;
     for (int i = 0; i < args.length; i++) {
       switch (args[i]) {
@@ -91,7 +93,7 @@ public class IndexFiles implements AutoCloseable {
           docsPath = args[++i];
           break;
         case "-knn_dict":
-          vectorDictPath = Paths.get(args[++i]);
+          vectorDictSource = args[++i];
           break;
         case "-update":
           create = false;
@@ -142,8 +144,16 @@ public class IndexFiles implements AutoCloseable {
       //
       // iwc.setRAMBufferSizeMB(256.0);
 
+      KnnVectorDict vectorDictInstance = null;
+      long vectorDictSize = 0;
+      if (vectorDictSource != null) {
+        KnnVectorDict.build(Paths.get(vectorDictSource), dir, KNN_DICT);
+        vectorDictInstance = new KnnVectorDict(dir, KNN_DICT);
+        vectorDictSize = vectorDictInstance.ramBytesUsed();
+      }
+
       try (IndexWriter writer = new IndexWriter(dir, iwc);
-          IndexFiles indexFiles = new IndexFiles(vectorDictPath)) {
+          IndexFiles indexFiles = new IndexFiles(vectorDictInstance)) {
         indexFiles.indexDocs(writer, docDir);
 
         // NOTE: if you want to maximize search performance,
@@ -153,6 +163,10 @@ public class IndexFiles implements AutoCloseable {
         // you're done adding documents to it):
         //
         // writer.forceMerge(1);
+      } finally {
+        if (vectorDictInstance != null) {
+          IOUtils.close(vectorDictInstance);
+        }
       }
 
       Date end = new Date();
@@ -163,6 +177,10 @@ public class IndexFiles implements AutoCloseable {
                 + " documents in "
                 + (end.getTime() - start.getTime())
                 + " milliseconds");
+        if (reader.numDocs() > 100 && vectorDictSize < 10_000) {
+          throw new RuntimeException(
+              "Are you (ab)using the toy vector dictionary? See the package javadocs to understand why you got this exception.");
+        }
       }
     } catch (IOException e) {
       System.out.println(" caught a " + e.getClass() + "\n with message: " + e.getMessage());
@@ -263,8 +281,6 @@ public class IndexFiles implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    if (vectorDict != null) {
-      vectorDict.close();
-    }
+    IOUtils.close(vectorDict);
   }
 }

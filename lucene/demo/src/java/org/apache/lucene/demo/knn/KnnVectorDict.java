@@ -17,17 +17,19 @@
 package org.apache.lucene.demo.knn;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.regex.Pattern;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.VectorUtil;
@@ -40,32 +42,29 @@ import org.apache.lucene.util.fst.Util;
  * Manages a map from token to numeric vector for use with KnnVector indexing and search. The map is
  * stored as an FST: token-to-ordinal plus a dense binary file holding the vectors.
  */
-public class KnnVectorDict implements AutoCloseable {
+public class KnnVectorDict implements Closeable {
 
   private final FST<Long> fst;
-  private final FileChannel vectors;
-  private final ByteBuffer vbuffer;
+  private final IndexInput vectors;
   private final int dimension;
 
   /**
    * Sole constructor
    *
-   * @param knnDictPath the base path name of the files that will store the KnnVectorDict. The file
-   *     with extension '.bin' holds the vectors and the '.fst' maps tokens to offsets in the '.bin'
-   *     file.
+   * @param directory Lucene directory from which knn directory should be read.
+   * @param dictName the base name of the directory files that store the knn vector dictionary. A
+   *     file with extension '.bin' holds the vectors and the '.fst' maps tokens to offsets in the
+   *     '.bin' file.
    */
-  public KnnVectorDict(Path knnDictPath) throws IOException {
-    String dictName = knnDictPath.getFileName().toString();
-    Path fstPath = knnDictPath.resolveSibling(dictName + ".fst");
-    Path binPath = knnDictPath.resolveSibling(dictName + ".bin");
-    fst = FST.read(fstPath, PositiveIntOutputs.getSingleton());
-    vectors = FileChannel.open(binPath);
-    long size = vectors.size();
-    if (size > Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("vector file is too large: " + size + " bytes");
+  public KnnVectorDict(Directory directory, String dictName) throws IOException {
+    try (IndexInput fstIn = directory.openInput(dictName + ".fst", IOContext.READ)) {
+      fst = new FST<>(fstIn, fstIn, PositiveIntOutputs.getSingleton());
     }
-    vbuffer = vectors.map(FileChannel.MapMode.READ_ONLY, 0, size);
-    dimension = vbuffer.getInt((int) (size - Integer.BYTES));
+
+    vectors = directory.openInput(dictName + ".bin", IOContext.READ);
+    long size = vectors.length();
+    vectors.seek(size - Integer.BYTES);
+    dimension = vectors.readInt();
     if ((size - Integer.BYTES) % (dimension * Float.BYTES) != 0) {
       throw new IllegalStateException(
           "vector file size " + size + " is not consonant with the vector dimension " + dimension);
@@ -96,8 +95,8 @@ public class KnnVectorDict implements AutoCloseable {
     if (ord == null) {
       Arrays.fill(output, (byte) 0);
     } else {
-      vbuffer.position((int) (ord * dimension * Float.BYTES));
-      vbuffer.get(output);
+      vectors.seek(ord * dimension * Float.BYTES);
+      vectors.readBytes(output, 0, output.length);
     }
   }
 
@@ -122,11 +121,12 @@ public class KnnVectorDict implements AutoCloseable {
    *     and each line is space-delimited. The first column has the token, and the remaining columns
    *     are the vector components, as text. The dictionary must be sorted by its leading tokens
    *     (considered as bytes).
-   * @param dictOutput a dictionary path prefix. The output will be two files, named by appending
-   *     '.fst' and '.bin' to this path.
+   * @param directory a Lucene directory to write the dictionary to.
+   * @param dictName Base name for the knn dictionary files.
    */
-  public static void build(Path gloveInput, Path dictOutput) throws IOException {
-    new Builder().build(gloveInput, dictOutput);
+  public static void build(Path gloveInput, Directory directory, String dictName)
+      throws IOException {
+    new Builder().build(gloveInput, directory, dictName);
   }
 
   private static class Builder {
@@ -140,25 +140,20 @@ public class KnnVectorDict implements AutoCloseable {
     private long ordinal = 1;
     private int numFields;
 
-    void build(Path gloveInput, Path dictOutput) throws IOException {
-      String dictName = dictOutput.getFileName().toString();
-      Path fstPath = dictOutput.resolveSibling(dictName + ".fst");
-      Path binPath = dictOutput.resolveSibling(dictName + ".bin");
+    void build(Path gloveInput, Directory directory, String dictName) throws IOException {
       try (BufferedReader in = Files.newBufferedReader(gloveInput);
-          OutputStream binOut = Files.newOutputStream(binPath);
-          DataOutputStream binDataOut = new DataOutputStream(binOut)) {
+          IndexOutput binOut = directory.createOutput(dictName + ".bin", IOContext.DEFAULT);
+          IndexOutput fstOut = directory.createOutput(dictName + ".fst", IOContext.DEFAULT)) {
         writeFirstLine(in, binOut);
-        while (true) {
-          if (addOneLine(in, binOut) == false) {
-            break;
-          }
+        while (addOneLine(in, binOut)) {
+          // continue;
         }
-        fstCompiler.compile().save(fstPath);
-        binDataOut.writeInt(numFields - 1);
+        fstCompiler.compile().save(fstOut, fstOut);
+        binOut.writeInt(numFields - 1);
       }
     }
 
-    private void writeFirstLine(BufferedReader in, OutputStream out) throws IOException {
+    private void writeFirstLine(BufferedReader in, IndexOutput out) throws IOException {
       String[] fields = readOneLine(in);
       if (fields == null) {
         return;
@@ -178,7 +173,7 @@ public class KnnVectorDict implements AutoCloseable {
       return SPACE_RE.split(line, 0);
     }
 
-    private boolean addOneLine(BufferedReader in, OutputStream out) throws IOException {
+    private boolean addOneLine(BufferedReader in, IndexOutput out) throws IOException {
       String[] fields = readOneLine(in);
       if (fields == null) {
         return false;
@@ -197,7 +192,7 @@ public class KnnVectorDict implements AutoCloseable {
       return true;
     }
 
-    private void writeVector(String[] fields, OutputStream out) throws IOException {
+    private void writeVector(String[] fields, IndexOutput out) throws IOException {
       byteBuffer.position(0);
       FloatBuffer floatBuffer = byteBuffer.asFloatBuffer();
       for (int i = 1; i < fields.length; i++) {
@@ -205,7 +200,12 @@ public class KnnVectorDict implements AutoCloseable {
       }
       VectorUtil.l2normalize(scratch);
       floatBuffer.put(scratch);
-      out.write(byteBuffer.array());
+      byte[] bytes = byteBuffer.array();
+      out.writeBytes(bytes, bytes.length);
     }
+  }
+
+  public long ramBytesUsed() {
+    return fst.ramBytesUsed();
   }
 }

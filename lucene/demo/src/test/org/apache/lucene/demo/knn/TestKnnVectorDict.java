@@ -19,6 +19,7 @@ package org.apache.lucene.demo.knn;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -26,23 +27,25 @@ public class TestKnnVectorDict extends LuceneTestCase {
 
   public void testBuild() throws IOException {
     Path testVectors = getDataPath("../test-files/knn-dict").resolve("knn-token-vectors");
-    Path dictPath = createTempDir("knn-demo").resolve("dict");
-    KnnVectorDict.build(testVectors, dictPath);
-    try (KnnVectorDict dict = new KnnVectorDict(dictPath)) {
-      assertEquals(50, dict.getDimension());
-      byte[] vector = new byte[dict.getDimension() * Float.BYTES];
 
-      // not found token has zero vector
-      dict.get(new BytesRef("never saw this token"), vector);
-      assertArrayEquals(new byte[200], vector);
+    try (Directory directory = newDirectory()) {
+      KnnVectorDict.build(testVectors, directory, "dict");
+      try (KnnVectorDict dict = new KnnVectorDict(directory, "dict")) {
+        assertEquals(50, dict.getDimension());
+        byte[] vector = new byte[dict.getDimension() * Float.BYTES];
 
-      // found token has nonzero vector
-      dict.get(new BytesRef("the"), vector);
-      assertFalse(Arrays.equals(new byte[200], vector));
+        // not found token has zero vector
+        dict.get(new BytesRef("never saw this token"), vector);
+        assertArrayEquals(new byte[200], vector);
 
-      // incorrect dimension for output buffer
-      expectThrows(
-          IllegalArgumentException.class, () -> dict.get(new BytesRef("the"), new byte[10]));
+        // found token has nonzero vector
+        dict.get(new BytesRef("the"), vector);
+        assertFalse(Arrays.equals(new byte[200], vector));
+
+        // incorrect dimension for output buffer
+        expectThrows(
+            IllegalArgumentException.class, () -> dict.get(new BytesRef("the"), new byte[10]));
+      }
     }
   }
 }
