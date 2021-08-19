@@ -164,9 +164,7 @@ public class IndexFiles implements AutoCloseable {
         //
         // writer.forceMerge(1);
       } finally {
-        if (vectorDictInstance != null) {
-          IOUtils.close(vectorDictInstance);
-        }
+        IOUtils.close(vectorDictInstance);
       }
 
       Date end = new Date();
@@ -177,7 +175,7 @@ public class IndexFiles implements AutoCloseable {
                 + " documents in "
                 + (end.getTime() - start.getTime())
                 + " milliseconds");
-        if (reader.numDocs() > 100 && vectorDictSize < 10_000) {
+        if (reader.numDocs() > 100 && vectorDictSize < 1_000_000) {
           throw new RuntimeException(
               "Are you (ab)using the toy vector dictionary? See the package javadocs to understand why you got this exception.");
         }
