@@ -205,7 +205,8 @@ public class KnnVectorDict implements Closeable {
     }
   }
 
+  /** Return the size of the dictionary in bytes */
   public long ramBytesUsed() {
-    return fst.ramBytesUsed();
+    return fst.ramBytesUsed() + vectors.length();
   }
 }
