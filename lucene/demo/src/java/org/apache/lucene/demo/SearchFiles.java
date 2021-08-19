@@ -31,7 +31,6 @@ import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause;
@@ -103,12 +102,12 @@ public class SearchFiles {
       }
     }
 
-    IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(index)));
+    DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(index)));
     IndexSearcher searcher = new IndexSearcher(reader);
     Analyzer analyzer = new StandardAnalyzer();
     KnnVectorDict vectorDict = null;
     if (knnVectors > 0) {
-      vectorDict = new KnnVectorDict(Paths.get(index).resolve("knn-dict"));
+      vectorDict = new KnnVectorDict(reader.directory(), IndexFiles.KNN_DICT);
     }
     BufferedReader in;
     if (queries != null) {
