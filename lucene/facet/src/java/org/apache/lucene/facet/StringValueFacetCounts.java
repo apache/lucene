@@ -22,7 +22,14 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MultiDocValues;
+import org.apache.lucene.index.OrdinalMap;
+import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -323,6 +330,8 @@ public class StringValueFacetCounts extends Facets {
       SortedSetDocValues multiValues, int segmentOrd, FacetsCollector.MatchingDocs hits)
       throws IOException {
 
+    // It's slightly more efficient to work against SortedDocValues if the field is actually
+    // single-valued (see: LUCENE-5309)
     SortedDocValues singleValues = DocValues.unwrapSingleton(multiValues);
     DocIdSetIterator valuesIt = singleValues != null ? singleValues : multiValues;
 

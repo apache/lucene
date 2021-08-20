@@ -36,8 +36,16 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.OrdRange;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
+import org.apache.lucene.index.OrdinalMap;
+import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -168,6 +176,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
         return null;
       }
 
+      // It's slightly more efficient to work against SortedDocValues if the field is actually
+      // single-valued (see: LUCENE-5309)
       SortedDocValues singleValues = DocValues.unwrapSingleton(multiValues);
       DocIdSetIterator valuesIt = singleValues != null ? singleValues : multiValues;
 
