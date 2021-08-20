@@ -105,6 +105,59 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), dir);
   }
 
+  public void testBasicSingleValued() throws Exception {
+    Directory dir = newDirectory();
+
+    FacetsConfig config = new FacetsConfig();
+    config.setMultiValued("a", false);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new SortedSetDocValuesFacetField("a", "foo"));
+    doc.add(new SortedSetDocValuesFacetField("b", "bar"));
+    writer.addDocument(config.build(doc));
+    doc = new Document();
+    doc.add(new SortedSetDocValuesFacetField("a", "foo"));
+    writer.addDocument(config.build(doc));
+    if (random().nextBoolean()) {
+      writer.commit();
+    }
+
+    doc = new Document();
+    doc.add(new SortedSetDocValuesFacetField("a", "baz"));
+    writer.addDocument(config.build(doc));
+
+    // NRT open
+    IndexSearcher searcher = newSearcher(writer.getReader());
+
+    // Per-top-reader state:
+    SortedSetDocValuesReaderState state =
+        new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader());
+
+    ExecutorService exec = randomExecutorServiceOrNull();
+    Facets facets = getAllFacets(searcher, state, exec);
+
+    assertEquals(
+        "dim=a path=[] value=3 childCount=2\n  foo (2)\n  baz (1)\n",
+        facets.getTopChildren(10, "a").toString());
+    assertEquals(
+        "dim=b path=[] value=1 childCount=1\n  bar (1)\n",
+        facets.getTopChildren(10, "b").toString());
+
+    // DrillDown:
+    DrillDownQuery q = new DrillDownQuery(config);
+    q.add("a", "foo");
+    q.add("b", "bar");
+    TopDocs hits = searcher.search(q, 1);
+    assertEquals(1, hits.totalHits.value);
+
+    if (exec != null) {
+      exec.shutdownNow();
+    }
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), dir);
+  }
+
   public void testDrillDownOptions() throws Exception {
     Directory dir = newDirectory();
 
