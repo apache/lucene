@@ -320,7 +320,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(maxDoc));
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -417,7 +417,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(maxDoc));
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -490,7 +490,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(maxDoc));
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -569,7 +569,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(maxDoc));
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -644,7 +644,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(maxDoc));
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");

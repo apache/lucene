@@ -1160,7 +1160,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
   }
 
   private FixedBitSet searchIndex(IndexSearcher s, Query query, int maxDoc) throws IOException {
-    return s.search(query, FixedBitSetCollector.create(maxDoc));
+    return s.search(query, FixedBitSetCollector.createManager(maxDoc));
   }
 
   private void buildError(

@@ -463,7 +463,7 @@ public class DrillSideways {
       throws IOException {
 
     // This mirrors a similar hack from DrillSideways#search(query, collector).
-    // Without this cache, LRU cache will be used, causing acceptDocs to be null during collection
+    // Without this hack, LRU cache will be used, causing acceptDocs to be null during collection
     // for drillDown and drillSideways and returning more results
     //
     // This is a horrible hack in order to make sure IndexSearcher will not

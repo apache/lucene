@@ -614,7 +614,7 @@ public class IndexSearcher {
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
-    if (executor == null || leafSlices.length == 0) {
+    if (executor == null || leafSlices.length <= 1) {
       final C collector = collectorManager.newCollector();
       final Query rewrittenQuery = rewrite(query);
 

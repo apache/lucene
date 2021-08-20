@@ -31,7 +31,6 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopScoreDocCollector;
-import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
 
@@ -118,11 +117,8 @@ public abstract class ReadTask extends PerfTask {
             hits = searcher.search(q, numHits);
           }
         } else {
-          int totalHitsThreshold = withTotalHits() ? Integer.MAX_VALUE : 1;
-          TopScoreDocCollectorManager collectorManager =
-              new TopScoreDocCollectorManager(
-                  numHits(), null, totalHitsThreshold, searcher.getExecutor() != null);
-          searcher.search(q, collectorManager);
+          Collector collector = createCollector();
+          searcher.search(q, collector);
           // hits = collectorManager.topDocs();
         }
 

@@ -573,7 +573,8 @@ public class TestPointQueries extends LuceneTestCase {
                   System.out.println(Thread.currentThread().getName() + ":  using query: " + query);
                 }
 
-                final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(r.maxDoc()));
+                final FixedBitSet hits =
+                    s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
                 if (VERBOSE) {
                   System.out.println(
@@ -850,7 +851,8 @@ public class TestPointQueries extends LuceneTestCase {
                   System.out.println(Thread.currentThread().getName() + ":  using query: " + query);
                 }
 
-                final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(r.maxDoc()));
+                final FixedBitSet hits =
+                    s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
                 if (VERBOSE) {
                   System.out.println(

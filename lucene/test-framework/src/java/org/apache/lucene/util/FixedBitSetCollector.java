@@ -24,7 +24,7 @@ import org.apache.lucene.search.SimpleCollector;
 
 /** Test utility collector that uses FixedBitSet to record hits. */
 public class FixedBitSetCollector extends SimpleCollector {
-  private FixedBitSet hits;
+  private final FixedBitSet hits;
   private int docBase;
 
   public FixedBitSetCollector(int maxDoc) {
@@ -50,7 +50,7 @@ public class FixedBitSetCollector extends SimpleCollector {
     return hits;
   }
 
-  public static CollectorManager<FixedBitSetCollector, FixedBitSet> create(int maxDoc) {
+  public static CollectorManager<FixedBitSetCollector, FixedBitSet> createManager(int maxDoc) {
     return new CollectorManager<>() {
       @Override
       public FixedBitSetCollector newCollector() {
@@ -60,7 +60,7 @@ public class FixedBitSetCollector extends SimpleCollector {
       @Override
       public FixedBitSet reduce(Collection<FixedBitSetCollector> collectors) {
         FixedBitSet result = new FixedBitSet(maxDoc);
-        collectors.stream().forEach(c -> result.or(c.getHits()));
+        collectors.forEach(c -> result.or(c.getHits()));
         return result;
       }
     };

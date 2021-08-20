@@ -1037,7 +1037,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
         System.err.println("  using query: " + query);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.create(r.maxDoc()));
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
       if (VERBOSE) {
         System.err.println("  hitCount: " + hits.cardinality());
