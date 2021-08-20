@@ -19,6 +19,8 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+
 import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -76,6 +78,8 @@ public class CompiledAutomaton implements Accountable {
    * AUTOMATON_TYPE#NORMAL}.
    */
   public final Automaton automaton;
+
+  public final NFARunAutomaton nfaRunAutomaton;
 
   /**
    * Shared common suffix accepted by the automaton. Only valid for {@link AUTOMATON_TYPE#NORMAL},
@@ -149,6 +153,7 @@ public class CompiledAutomaton implements Accountable {
       boolean simplify,
       int determinizeWorkLimit,
       boolean isBinary) {
+    this.nfaRunAutomaton = null;
     if (automaton.getNumStates() == 0) {
       automaton = new Automaton();
       automaton.createState();
@@ -259,6 +264,21 @@ public class CompiledAutomaton implements Accountable {
     // than 1 sink state but auto-prefix will fail
     // to run for those:
     sinkState = findSinkState(this.automaton);
+  }
+
+  public CompiledAutomaton(Automaton automaton, boolean isNFA) {
+    // nocommit: the parameter "isNFA" makes no sense, is only used to distinguish the ctor
+    assert automaton.isDeterministic() == false;
+    this.type = AUTOMATON_TYPE.NORMAL;
+    this.automaton = null;
+    this.runAutomaton = null;
+    this.sinkState = -1;
+    this.term = null;
+    automaton = Operations.removeDeadStates(automaton);
+    this.finite = Operations.isFinite(automaton);
+    this.commonSuffixRef = null;
+    automaton = new UTF32ToUTF8().convert(automaton);
+    this.nfaRunAutomaton = new NFARunAutomaton(automaton, 0xff);
   }
 
   private Transition transition = new Transition();
@@ -490,7 +510,8 @@ public class CompiledAutomaton implements Accountable {
     if (type == AUTOMATON_TYPE.SINGLE) {
       if (!term.equals(other.term)) return false;
     } else if (type == AUTOMATON_TYPE.NORMAL) {
-      if (!runAutomaton.equals(other.runAutomaton)) return false;
+      return Objects.equals(runAutomaton, other.runAutomaton) &&
+              Objects.equals(nfaRunAutomaton, other.nfaRunAutomaton);
     }
 
     return true;

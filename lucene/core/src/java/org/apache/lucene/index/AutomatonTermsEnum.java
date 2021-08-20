@@ -27,7 +27,6 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.automaton.TransitionIterator;
 
 /**
  * A FilteredTermsEnum that enumerates terms based upon what is accepted by a DFA.

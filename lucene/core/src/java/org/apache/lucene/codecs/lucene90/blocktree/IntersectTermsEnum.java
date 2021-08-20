@@ -31,7 +31,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.RunAutomaton;
 import org.apache.lucene.util.automaton.Stepable;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.automaton.TransitionIterator;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Outputs;
@@ -56,7 +56,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   private FST.Arc<BytesRef>[] arcs = new FST.Arc[5];
 
   final Stepable runAutomaton;
-  final TransitionIterator automaton;
+  final TransitionAccessor automaton;
   final BytesRef commonSuffix;
 
   private IntersectTermsEnumFrame currentFrame;
@@ -74,8 +74,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   // regexp foo*bar must be at least length 6 bytes
   public IntersectTermsEnum(
       FieldReader fr,
-      Automaton automaton,
-      RunAutomaton runAutomaton,
+      TransitionAccessor automaton,
+      Stepable runAutomaton,
       BytesRef commonSuffix,
       BytesRef startTerm)
       throws IOException {

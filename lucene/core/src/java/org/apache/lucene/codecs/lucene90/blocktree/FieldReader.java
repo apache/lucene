@@ -183,6 +183,9 @@ public final class FieldReader extends Terms {
     if (compiled.type != CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
       throw new IllegalArgumentException("please use CompiledAutomaton.getTermsEnum instead");
     }
+    if (compiled.nfaRunAutomaton != null) {
+      return new IntersectTermsEnum(this, compiled.nfaRunAutomaton, compiled.nfaRunAutomaton, compiled.commonSuffixRef, startTerm);
+    }
     return new IntersectTermsEnum(
         this, compiled.automaton, compiled.runAutomaton, compiled.commonSuffixRef, startTerm);
   }

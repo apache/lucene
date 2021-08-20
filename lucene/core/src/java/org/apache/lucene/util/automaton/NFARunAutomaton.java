@@ -20,6 +20,7 @@ package org.apache.lucene.util.automaton;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.hppc.BitMixer;
 
@@ -29,7 +30,7 @@ import org.apache.lucene.util.hppc.BitMixer;
  *
  * <p>implemented based on: https://swtch.com/~rsc/regexp/regexp1.html
  */
-public class NFARunAutomaton {
+public class NFARunAutomaton implements Stepable, TransitionAccessor {
 
   /** state ordinal of "no such state" */
   public static final int MISSING = -1;
@@ -41,6 +42,9 @@ public class NFARunAutomaton {
   private final Map<DState, Integer> dStateToOrd = new HashMap<>(); // could init lazily?
   private DState[] dStates;
   private final int alphabetSize;
+
+  private final Operations.PointTransitionSet transitionSet = new Operations.PointTransitionSet(); // reusable
+  private final StateSet statesSet = new StateSet(5); // reusable
 
   /**
    * Constructor, assuming alphabet size is the whole Unicode code point space
@@ -75,9 +79,16 @@ public class NFARunAutomaton {
    * @param c codepoint
    * @return the next state or {@link #MISSING} if the transition doesn't exist
    */
+  @Override
   public int step(int state, int c) {
     assert dStates[state] != null;
     return step(dStates[state], c);
+  }
+
+  @Override
+  public boolean isAccept(int state) {
+    assert dStates[state] != null;
+    return dStates[state].isAccept;
   }
 
   /**
@@ -142,6 +153,58 @@ public class NFARunAutomaton {
     return a;
   }
 
+  @Override
+  public int initTransition(int state, Transition t) {
+    t.source = state;
+    t.transitionUpto = -1;
+    return getNumTransitions(state);
+  }
+
+  @Override
+  public void getNextTransition(Transition t) {
+    assert t.transitionUpto < points.length - 1 && t.transitionUpto >= -1;
+    while (dStates[t.source].transitions[++t.transitionUpto] == MISSING) {
+      // this shouldn't throw AIOOBE as long as this function is only called
+      // numTransitions times
+    }
+    assert dStates[t.source].transitions[t.transitionUpto] != NOT_COMPUTED;
+    t.dest = dStates[t.source].transitions[t.transitionUpto];
+
+    t.min = points[t.transitionUpto];
+    if (t.transitionUpto == points.length - 1) {
+      t.max = alphabetSize - 1;
+    } else {
+      t.max = points[t.transitionUpto + 1] - 1;
+    }
+  }
+
+  @Override
+  public int getNumTransitions(int state) {
+    dStates[state].determinize();
+    return dStates[state].outgoingTransitions;
+  }
+
+  @Override
+  public void getTransition(int state, int index, Transition t) {
+    dStates[state].determinize();
+    int outgoingTransitions = -1;
+    t.transitionUpto = -1;
+    t.source = state;
+    while (outgoingTransitions < index && t.transitionUpto < points.length - 1) {
+      if (dStates[t.source].transitions[++t.transitionUpto] != MISSING) {
+        outgoingTransitions++;
+      }
+    }
+    assert outgoingTransitions == index;
+
+    t.min = points[t.transitionUpto];
+    if (t.transitionUpto == points.length - 1) {
+      t.max = alphabetSize - 1;
+    } else {
+      t.max = points[t.transitionUpto + 1] - 1;
+    }
+  }
+
   private class DState {
     private final int[] nfaStates;
     // this field is lazily init'd when first time caller wants to add a new transition
@@ -149,6 +212,9 @@ public class NFARunAutomaton {
     private final int hashCode;
     private final boolean isAccept;
     private final Transition stepTransition = new Transition();
+    private Transition minimalTransition;
+    private int computedTransitions;
+    private int outgoingTransitions;
 
     private DState(int[] nfaStates) {
       assert nfaStates != null && nfaStates.length > 0;
@@ -169,13 +235,35 @@ public class NFARunAutomaton {
       initTransitions();
       assert charClass < transitions.length;
       if (transitions[charClass] == NOT_COMPUTED) {
-        transitions[charClass] = findDState(step(points[charClass]));
-        // TODO: we could potentially update more than one char classes, but
-        //       this isn't super easy, there're cases where the larger transition
-        //       is accepted but smaller transition isn't, like [0,10] is accepted
-        //       but [5,5] isn't, then we can only update [0,4] and [6,10]
+        assignTransition(charClass, findDState(step(points[charClass])));
+        // we could potentially update more than one char classes
+        if (minimalTransition != null) {
+          // to the left
+          int cls = charClass;
+          while (cls > 0 && points[--cls] >= minimalTransition.min) {
+            assert transitions[cls] == NOT_COMPUTED || transitions[cls] == transitions[charClass];
+            assignTransition(cls, transitions[charClass]);
+          }
+          // to the right
+          cls = charClass;
+          while (cls < points.length - 1 && points[++cls] <= minimalTransition.max) {
+            assert transitions[cls] == NOT_COMPUTED || transitions[cls] == transitions[charClass];
+            assignTransition(cls, transitions[charClass]);
+          }
+          minimalTransition = null;
+        }
       }
       return transitions[charClass];
+    }
+
+    private void assignTransition(int charClass, int dest) {
+      if (transitions[charClass] == NOT_COMPUTED) {
+        computedTransitions++;
+        transitions[charClass] = dest;
+        if (transitions[charClass] != MISSING) {
+          outgoingTransitions++;
+        }
+      }
     }
 
     /**
@@ -183,21 +271,109 @@ public class NFARunAutomaton {
      * wrapped as a DFA state
      */
     private DState step(int c) {
-      StateSet stateSet = new StateSet(5); // fork IntHashSet from hppc instead?
+      statesSet.reset(); // TODO: fork IntHashSet from hppc instead?
       int numTransitions;
+      int left = -1, right = alphabetSize;
       for (int nfaState : nfaStates) {
         numTransitions = automaton.initTransition(nfaState, stepTransition);
+        // TODO: binary search should be faster, since transitions are sorted
         for (int i = 0; i < numTransitions; i++) {
           automaton.getNextTransition(stepTransition);
           if (stepTransition.min <= c && stepTransition.max >= c) {
-            stateSet.incr(stepTransition.dest);
+            statesSet.incr(stepTransition.dest);
+            left = Math.max(stepTransition.min, left);
+            right = Math.min(stepTransition.max, right);
+          }
+          if (stepTransition.max < c) {
+            left = Math.max(stepTransition.max + 1, left);
+          }
+          if (stepTransition.min > c) {
+            right = Math.min(stepTransition.min - 1, right);
+            // transitions in automaton are sorted
+            break;
           }
         }
       }
-      if (stateSet.size() == 0) {
+      if (statesSet.size() == 0) {
         return null;
       }
-      return new DState(stateSet.getArray());
+      minimalTransition = new Transition();
+      minimalTransition.min = left;
+      minimalTransition.max = right;
+      return new DState(statesSet.getArray());
+    }
+
+    // determinize this state only
+    private void determinize() {
+      if (transitions != null && computedTransitions == transitions.length) {
+        // already determinized
+        return;
+      }
+      initTransitions();
+      // Mostly forked from Operations.determinize
+      transitionSet.reset();
+      for (int nfaState : nfaStates) {
+        int numTransitions = automaton.initTransition(nfaState, stepTransition);
+        for (int i = 0; i < numTransitions; i++) {
+          automaton.getNextTransition(stepTransition);
+          transitionSet.add(stepTransition);
+        }
+      }
+      if (transitionSet.count == 0) {
+        // no outgoing transitions
+        Arrays.fill(transitions, MISSING);
+        computedTransitions = transitions.length;
+        return;
+      }
+
+      transitionSet.sort(); // TODO: could use a PQ (heap) instead, since transitions for each state are sorted
+      statesSet.reset();
+      int lastPoint = -1;
+      int charClass = 0;
+      for (int i = 0; i < transitionSet.count; i++) {
+        final int point = transitionSet.points[i].point;
+        if (statesSet.size() > 0) {
+          assert lastPoint != -1;
+          int ord = findDState(new DState(statesSet.getArray()));
+          while (points[charClass] < lastPoint) {
+            assignTransition(charClass++, MISSING);
+          }
+          assert points[charClass] == lastPoint;
+          while (charClass < points.length && points[charClass] < point) {
+            assert transitions[charClass] == NOT_COMPUTED || transitions[charClass] == ord;
+            assignTransition(charClass++, ord);
+          }
+          assert (charClass == points.length && point == alphabetSize) || points[charClass] == point;
+        }
+
+        // process transitions that end on this point
+        // (closes an overlapping interval)
+        int[] transitions = transitionSet.points[i].ends.transitions;
+        int limit = transitionSet.points[i].ends.next;
+        for (int j = 0; j < limit; j += 3) {
+          int dest = transitions[j];
+          statesSet.decr(dest);
+        }
+        transitionSet.points[i].ends.next = 0;
+
+        // process transitions that start on this point
+        // (opens a new interval)
+        transitions = transitionSet.points[i].starts.transitions;
+        limit = transitionSet.points[i].starts.next;
+        for (int j = 0; j < limit; j += 3) {
+          int dest = transitions[j];
+          statesSet.incr(dest);
+        }
+
+        lastPoint = point;
+        transitionSet.points[i].starts.next = 0;
+      }
+      assert statesSet.size() == 0;
+      assert computedTransitions == charClass;
+      // no more outgoing transitions, set rest of transition to MISSING
+      assert charClass == transitions.length || transitions[charClass] == MISSING || transitions[charClass] == NOT_COMPUTED;
+      Arrays.fill(transitions, charClass, transitions.length, MISSING);
+      computedTransitions = transitions.length;
     }
 
     private void initTransitions() {

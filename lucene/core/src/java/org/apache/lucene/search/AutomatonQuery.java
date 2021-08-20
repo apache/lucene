@@ -100,8 +100,12 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
     this.term = term;
     this.automaton = automaton;
     this.automatonIsBinary = isBinary;
-    // TODO: we could take isFinite too, to save a bit of CPU in CompiledAutomaton ctor?:
-    this.compiled = new CompiledAutomaton(automaton, null, true, determinizeWorkLimit, isBinary);
+    if (determinizeWorkLimit == 0) {
+      this.compiled = new CompiledAutomaton(automaton, true);
+    } else {
+      // TODO: we could take isFinite too, to save a bit of CPU in CompiledAutomaton ctor?:
+      this.compiled = new CompiledAutomaton(automaton, null, true, determinizeWorkLimit, isBinary);
+    }
 
     this.ramBytesUsed =
         BASE_RAM_BYTES + term.ramBytesUsed() + automaton.ramBytesUsed() + compiled.ramBytesUsed();

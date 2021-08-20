@@ -17,13 +17,34 @@
 
 package org.apache.lucene.util.automaton;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.apache.lucene.codecs.lucene90.Lucene90Codec;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.AutomatonQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.ToStringUtils;
 
 public class TestNFARunAutomaton extends LuceneTestCase {
 
-  public void testRandom() {
+  private static final String FIELD = "field";
+
+  public void testWithRandomAutomaton() {
     for (int i = 0; i < 100; i++) {
       RegExp regExp = null;
       while (regExp == null) {
@@ -50,6 +71,77 @@ public class TestNFARunAutomaton extends LuceneTestCase {
         }
       }
     }
+  }
+
+  public void testWithRandomAutomatonQuery() throws IOException {
+    final int docNum = 50;
+    final int automatonNum = 50;
+    Directory directory = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setCodec(new Lucene90Codec());
+    IndexWriter writer = new IndexWriter(directory, iwc);
+
+    Set<String> vocab = new HashSet<>();
+    Set<String> perLoopReuse = new HashSet<>();
+    for (int i = 0; i < docNum; i++) {
+      perLoopReuse.clear();
+      int termNum = random().nextInt(20) + 30;
+      while (perLoopReuse.size() < termNum) {
+        String randomString;
+        while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0);
+        perLoopReuse.add(randomString);
+        vocab.add(randomString);
+      }
+      Document document = new Document();
+      document.add(newTextField(FIELD,
+                   perLoopReuse.stream().reduce("", (s1, s2) -> s1 + " " + s2),
+                   Field.Store.NO));
+      writer.addDocument(document);
+    }
+    writer.commit();
+    IndexReader reader = DirectoryReader.open(writer);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    Set<String> foreignVocab = new HashSet<>();
+    while (foreignVocab.size() < vocab.size()) {
+      String randomString;
+      while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0);
+      foreignVocab.add(randomString);
+    }
+
+    ArrayList<String> vocabList = new ArrayList<>(vocab);
+    ArrayList<String> foreignVocabList = new ArrayList<>(foreignVocab);
+
+    for (int i = 0; i < automatonNum; i++) {
+      perLoopReuse.clear();
+      int termNum = random().nextInt(40) + 30;
+      while (perLoopReuse.size() < termNum) {
+        if (random().nextBoolean()) {
+          perLoopReuse.add(vocabList.get(random().nextInt(vocabList.size())));
+        } else {
+          perLoopReuse.add(foreignVocabList.get(random().nextInt(foreignVocabList.size())));
+        }
+      }
+      Automaton a = null;
+      for (String term: perLoopReuse) {
+        if (a == null) {
+          a = Automata.makeString(term);
+        } else {
+          a = Operations.union(a, Automata.makeString(term));
+        }
+      }
+      if (a.isDeterministic()) {
+        i--;
+        continue;
+      }
+      Query dfaQuery = new AutomatonQuery(new Term(FIELD), a);
+      Query nfaQuery = new AutomatonQuery(new Term(FIELD), a, 0);
+
+      assertEquals(searcher.count(dfaQuery), searcher.count(nfaQuery));
+    }
+    reader.close();
+    writer.close();
+    directory.close();
   }
 
   private void testAcceptedString(

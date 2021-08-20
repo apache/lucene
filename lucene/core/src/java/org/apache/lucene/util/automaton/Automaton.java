@@ -46,7 +46,7 @@ import org.apache.lucene.util.Sorter;
  *
  * @lucene.experimental
  */
-public class Automaton implements Accountable, TransitionIterator {
+public class Automaton implements Accountable, TransitionAccessor {
 
   /**
    * Where we next write to the int[] states; this increments by 2 for each added state because we
