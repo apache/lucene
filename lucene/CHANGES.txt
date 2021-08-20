@@ -415,6 +415,8 @@ Improvements
   This prevents caching a query clause when it is much more expensive than
   running the top-level query. (Julie Tibshirani)
 
+* LUCENE-5309: Optimize facet counting for single-valued SSDV / StringValueFacetCounts. (Greg Miller)
+
 Optimizations
 ---------------------
 * LUCENE-9996: Improved memory efficiency of IndexWriter's RAM buffer, in
