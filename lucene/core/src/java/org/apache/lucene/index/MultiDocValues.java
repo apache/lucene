@@ -687,7 +687,8 @@ public class MultiDocValues {
     private int docID = -1;
 
     /** Creates a new MultiSortedDocValues over <code>values</code> */
-    public MultiSortedDocValues(SortedDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost) {
+    public MultiSortedDocValues(
+        SortedDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost) {
       assert docStarts.length == values.length + 1;
       this.values = values;
       this.docStarts = docStarts;
@@ -823,7 +824,8 @@ public class MultiDocValues {
     private int docID = -1;
 
     /** Creates a new MultiSortedSetDocValues over <code>values</code> */
-    public MultiSortedSetDocValues(SortedSetDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost) {
+    public MultiSortedSetDocValues(
+        SortedSetDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost) {
       assert docStarts.length == values.length + 1;
       this.values = values;
       this.docStarts = docStarts;

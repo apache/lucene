@@ -257,8 +257,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
   }
 
   /** Does all the "real work" of tallying up the counts. */
-  private void count(List<MatchingDocs> matchingDocs)
-      throws IOException, InterruptedException {
+  private void count(List<MatchingDocs> matchingDocs) throws IOException, InterruptedException {
 
     OrdinalMap ordinalMap;
 
