@@ -108,7 +108,7 @@ public class TestDemo extends LuceneTestCase {
     testVectorSearch(indexDir, "apache", 3, 4);
     testVectorSearch(indexDir, "gnu", 6, 7);
     testVectorSearch(indexDir, "derivative", 8, 9);
-    testVectorSearch(indexDir, "patent", 9, 10);
+    testVectorSearch(indexDir, "patent", 8, 9);
     testVectorSearch(indexDir, "license", 13, 14);
 
     // this matched 0 by token; semantic matching always adds one
