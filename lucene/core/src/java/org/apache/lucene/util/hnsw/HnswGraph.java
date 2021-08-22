@@ -73,9 +73,9 @@ public final class HnswGraph extends KnnGraphValues {
       graph.add(new ArrayList<>());
     }
     for (int i = 0; i <= levelOfFirstNode; i++) {
-      // Typically with diversity criteria we see nodes not fully occupied; average fanout seems to
-      // be
-      // about 1/2 maxConn. There is some indexing time penalty for under-allocating, but saves RAM
+      // Typically with diversity criteria we see nodes not fully occupied;
+      // average fanout seems to be about 1/2 maxConn.
+      // There is some indexing time penalty for under-allocating, but saves RAM
       graph.get(i).add(new NeighborArray(Math.max(32, maxConn / 4)));
     }
   }
@@ -187,6 +187,7 @@ public final class HnswGraph extends KnnGraphValues {
     return graph.get(0).size(); // all nodes are located on the 0th level
   }
 
+  // TODO: optimize RAM usage so not to store references for all nodes for levels > 0
   public void addNode(int level, int node) {
     if (level > 0) {
       // Levels above 0th don't contain all nodes,
