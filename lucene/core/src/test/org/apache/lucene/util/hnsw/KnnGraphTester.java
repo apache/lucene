@@ -256,7 +256,7 @@ public class KnnGraphTester {
           new HnswGraphBuilder(vectors, SIMILARITY_FUNCTION, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
-        builder.addGraphNode(values.vectorValue(i));
+        builder.addGraphNode(i, values.vectorValue(i));
         System.out.println("\nITERATION " + i);
         dumpGraph(builder.hnsw);
       }
@@ -265,7 +265,7 @@ public class KnnGraphTester {
 
   private void dumpGraph(HnswGraph hnsw) {
     for (int i = 0; i < hnsw.size(); i++) {
-      NeighborArray neighbors = hnsw.getNeighbors(i);
+      NeighborArray neighbors = hnsw.getNeighbors(0, i);
       System.out.printf(Locale.ROOT, "%5d", i);
       NeighborArray sorted = new NeighborArray(neighbors.size());
       for (int j = 0; j < neighbors.size(); j++) {
@@ -297,7 +297,7 @@ public class KnnGraphTester {
     int count = 0;
     int[] leafHist = new int[numDocs];
     for (int node = 0; node < numDocs; node++) {
-      knnValues.seek(node);
+      knnValues.seek(0, node);
       int n = 0;
       while (knnValues.nextNeighbor() != NO_MORE_DOCS) {
         ++n;

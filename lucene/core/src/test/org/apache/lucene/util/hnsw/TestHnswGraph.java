@@ -150,7 +150,7 @@ public class TestHnswGraph extends LuceneTestCase {
     // 45
     assertTrue("sum(result docs)=" + sum, sum < 75);
     for (int i = 0; i < nDoc; i++) {
-      NeighborArray neighbors = hnsw.getNeighbors(i);
+      NeighborArray neighbors = hnsw.getNeighbors(0, i);
       int[] nodes = neighbors.node;
       for (int j = 0; j < neighbors.size(); j++) {
         // all neighbors should be valid node ids.
@@ -252,15 +252,15 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors, VectorSimilarityFunction.DOT_PRODUCT, 2, 10, random().nextInt());
     // node 0 is added by the builder constructor
     // builder.addGraphNode(vectors.vectorValue(0));
-    builder.addGraphNode(vectors.vectorValue(1));
-    builder.addGraphNode(vectors.vectorValue(2));
+    builder.addGraphNode(1, vectors.vectorValue(1));
+    builder.addGraphNode(2, vectors.vectorValue(2));
     // now every node has tried to attach every other node as a neighbor, but
     // some were excluded based on diversity check.
     assertNeighbors(builder.hnsw, 0, 1, 2);
     assertNeighbors(builder.hnsw, 1, 0);
     assertNeighbors(builder.hnsw, 2, 0);
 
-    builder.addGraphNode(vectors.vectorValue(3));
+    builder.addGraphNode(3, vectors.vectorValue(3));
     assertNeighbors(builder.hnsw, 0, 1, 2);
     // we added 3 here
     assertNeighbors(builder.hnsw, 1, 0, 3);
@@ -268,7 +268,7 @@ public class TestHnswGraph extends LuceneTestCase {
     assertNeighbors(builder.hnsw, 3, 1);
 
     // supplant an existing neighbor
-    builder.addGraphNode(vectors.vectorValue(4));
+    builder.addGraphNode(4, vectors.vectorValue(4));
     // 4 is the same distance from 0 that 2 is; we leave the existing node in place
     assertNeighbors(builder.hnsw, 0, 1, 2);
     // 4 is closer to 1 than either existing neighbor (0, 3). 3 fails diversity check with 4, so
@@ -279,7 +279,7 @@ public class TestHnswGraph extends LuceneTestCase {
     assertNeighbors(builder.hnsw, 3, 1, 4);
     assertNeighbors(builder.hnsw, 4, 1, 3);
 
-    builder.addGraphNode(vectors.vectorValue(5));
+    builder.addGraphNode(5, vectors.vectorValue(5));
     assertNeighbors(builder.hnsw, 0, 1, 2);
     assertNeighbors(builder.hnsw, 1, 0, 5);
     assertNeighbors(builder.hnsw, 2, 0);
@@ -291,7 +291,7 @@ public class TestHnswGraph extends LuceneTestCase {
 
   private void assertNeighbors(HnswGraph graph, int node, int... expected) {
     Arrays.sort(expected);
-    NeighborArray nn = graph.getNeighbors(node);
+    NeighborArray nn = graph.getNeighbors(0, node);
     int[] actual = ArrayUtil.copyOfSubArray(nn.node, 0, nn.size());
     Arrays.sort(actual);
     assertArrayEquals(
@@ -439,8 +439,8 @@ public class TestHnswGraph extends LuceneTestCase {
 
   private void assertGraphEqual(KnnGraphValues g, KnnGraphValues h, int size) throws IOException {
     for (int node = 0; node < size; node++) {
-      g.seek(node);
-      h.seek(node);
+      g.seek(0, node);
+      h.seek(0, node);
       assertEquals("arcs differ for node " + node, getNeighborNodes(g), getNeighborNodes(h));
     }
   }
