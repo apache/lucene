@@ -445,8 +445,8 @@ class RenderJavadocTask extends DefaultTask {
 
     def javadocCmd = {
       if (executable == null) {
-        JavaInstallationRegistry registry = project.extensions.getByType(JavaInstallationRegistry)
-        JavaInstallation currentJvm = registry.installationForCurrentVirtualMachine.get()
+        //JavaInstallationRegistry registry = project.extensions.getByType(JavaInstallationRegistry)
+        //JavaInstallation currentJvm = registry.installationForCurrentVirtualMachine.get()
         return currentJvm.jdk.get().javadocExecutable.asFile
       } else {
         return project.file(executable)

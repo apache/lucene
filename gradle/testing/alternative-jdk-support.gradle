@@ -1,3 +1,8 @@
+import org.gradle.internal.jvm.Jvm
+import org.gradle.internal.jvm.inspection.JvmMetadataDetector
+import org.gradle.jvm.toolchain.internal.JavaInstallationRegistry
+import org.gradle.jvm.toolchain.internal.JavaToolchainQueryService
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +23,47 @@
 // This adds support for compiling and testing against a different Java runtime.
 // This is the only way to build against JVMs not yet supported by Gradle itself.
 
+// Set up root project's property.
+rootProject.ext.runtimeJava = null
+rootProject.ext.runtimeJavaVersion = null
+
+def home = Jvm.current().javaHome
+def otherHome = file("c:\\Tools\\java\\jdk13")
+def spec = new org.gradle.jvm.toolchain.internal.SpecificInstallationToolchainSpec(objects, otherHome)
+
+JavaInstallationRegistry installationRegistry = project.services.get(JavaInstallationRegistry)
+JvmMetadataDetector jvmDetector = project.services.get(JvmMetadataDetector)
+JavaToolchainService toolchainService = project.extensions.getByType(JavaToolchainService)
+
+installationRegistry.listInstallations().each {inst ->
+  println "# " + inst.source + " " + inst.location
+  println "  " + jvmDetector.getMetadata(inst.location).languageVersion
+}
+
+JavaVersion runtimeVersion = Jvm.current().javaVersion
+
+configure(project(":lucene:core"), {
+  plugins.withType(JavaPlugin) {
+    java {
+      toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+      }
+    }
+
+    task foo {
+      doFirst {
+        logger.lifecycle("runtime.version: " + runtimeVersion)
+        logger.lifecycle("toolchain: " + java.toolchain.displayName + " " + project.path)
+        logger.lifecycle("compiler: " + toolchainService.launcherFor(java.toolchain).get().executablePath)
+        logger.lifecycle("compiler2: " +
+            toolchainService.launcherFor(spec).get().executablePath)
+      }
+    }
+  }
+})
+
+
+/*
 JavaInstallationRegistry registry = extensions.getByType(JavaInstallationRegistry)
 
 JavaInstallation currentJvm = registry.installationForCurrentVirtualMachine.get()
@@ -75,3 +121,4 @@ if (!currentJvm.javaExecutable.equals(altJvm.javaExecutable)) {
     }
   }
 }
+*/

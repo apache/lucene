@@ -41,7 +41,8 @@ library {
 }
 
 tasks.withType(CppCompile).configureEach {
-  def javaHome = rootProject.ext.runtimeJava.getInstallationDirectory().getAsFile().getPath()
+  // TODO: this should use the default java toolchain, not runtime's
+  def javaHome = null // rootProject.ext.runtimeJava.getInstallationDirectory().getAsFile().getPath()
 
   // Assume standard openjdk layout. This means only one architecture-specific include folder
   // is present.
