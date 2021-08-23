@@ -86,12 +86,6 @@ public class AssertingLeafReader extends FilterLeafReader {
     return terms == null ? null : new AssertingTerms(terms);
   }
 
-  @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    Fields fields = super.getTermVectors(docID);
-    return fields == null ? null : new AssertingFields(fields);
-  }
-
   /** Wraps a Fields but with additional asserts */
   public static class AssertingFields extends FilterFields {
     public AssertingFields(Fields in) {

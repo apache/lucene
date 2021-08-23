@@ -82,7 +82,6 @@ public class MultiDocValues {
 
           if (newDocID == NO_MORE_DOCS) {
             currentValues = null;
-            continue;
           } else {
             docID = currentLeaf.docBase + newDocID;
             return docID;
@@ -221,7 +220,6 @@ public class MultiDocValues {
 
           if (newDocID == NO_MORE_DOCS) {
             currentValues = null;
-            continue;
           } else {
             docID = currentLeaf.docBase + newDocID;
             return docID;
@@ -350,7 +348,6 @@ public class MultiDocValues {
 
           if (newDocID == NO_MORE_DOCS) {
             currentValues = null;
-            continue;
           } else {
             docID = currentLeaf.docBase + newDocID;
             return docID;
@@ -452,7 +449,6 @@ public class MultiDocValues {
 
     boolean anyReal = false;
     final SortedNumericDocValues[] values = new SortedNumericDocValues[size];
-    final int[] starts = new int[size + 1];
     long totalCost = 0;
     for (int i = 0; i < size; i++) {
       LeafReaderContext context = leaves.get(i);
@@ -463,10 +459,8 @@ public class MultiDocValues {
         anyReal = true;
       }
       values[i] = v;
-      starts[i] = context.docBase;
       totalCost += v.cost();
     }
-    starts[size] = r.maxDoc();
 
     if (anyReal == false) {
       return null;
@@ -497,7 +491,6 @@ public class MultiDocValues {
 
           if (newDocID == NO_MORE_DOCS) {
             currentValues = null;
-            continue;
           } else {
             docID = currentLeaf.docBase + newDocID;
             return docID;
@@ -695,8 +688,7 @@ public class MultiDocValues {
 
     /** Creates a new MultiSortedDocValues over <code>values</code> */
     public MultiSortedDocValues(
-        SortedDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost)
-        throws IOException {
+        SortedDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost) {
       assert docStarts.length == values.length + 1;
       this.values = values;
       this.docStarts = docStarts;
@@ -726,7 +718,6 @@ public class MultiDocValues {
 
         if (newDocID == NO_MORE_DOCS) {
           currentValues = null;
-          continue;
         } else {
           docID = currentDocStart + newDocID;
           return docID;
@@ -834,8 +825,7 @@ public class MultiDocValues {
 
     /** Creates a new MultiSortedSetDocValues over <code>values</code> */
     public MultiSortedSetDocValues(
-        SortedSetDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost)
-        throws IOException {
+        SortedSetDocValues[] values, int[] docStarts, OrdinalMap mapping, long totalCost) {
       assert docStarts.length == values.length + 1;
       this.values = values;
       this.docStarts = docStarts;
@@ -865,7 +855,6 @@ public class MultiDocValues {
 
         if (newDocID == NO_MORE_DOCS) {
           currentValues = null;
-          continue;
         } else {
           docID = currentDocStart + newDocID;
           return docID;

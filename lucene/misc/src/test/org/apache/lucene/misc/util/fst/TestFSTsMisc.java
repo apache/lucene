@@ -109,7 +109,7 @@ public class TestFSTsMisc extends LuceneTestCase {
         }
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<Object>(random(), dir, inputMode, pairs, outputs, false) {
+      new FSTTester<Object>(random(), dir, inputMode, pairs, outputs) {
         @Override
         protected boolean outputsEqual(Object output1, Object output2) {
           if (output1 instanceof TwoLongs && output2 instanceof List) {
@@ -157,7 +157,7 @@ public class TestFSTsMisc extends LuceneTestCase {
 
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, false).doTest(false);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(false);
     }
   }
 

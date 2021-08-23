@@ -23,10 +23,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
@@ -40,17 +40,13 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * <h2>Hyperparameters</h2>
  *
  * <ul>
- *   <li><code>numSeed</code> is the equivalent of <code>m</code> in the 2012 paper; it controls the
+ *   <li><code>numSeed</code> is the equivalent of <code>m</code> in the 2014 paper; it controls the
  *       number of random entry points to sample.
  *   <li><code>beamWidth</code> in {@link HnswGraphBuilder} has the same meaning as <code>efConst
- *       </code> in the 2016 paper. It is the number of nearest neighbor candidates to track while
+ *       </code> in the 2018 paper. It is the number of nearest neighbor candidates to track while
  *       searching the graph for each newly inserted node.
  *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the later paper; it controls
  *       how many of the <code>efConst</code> neighbors are connected to the new node
- *   <li><code>fanout</code> the fanout parameter of {@link VectorReader#search(String, float[],
- *       int, int)} is used to control the values of <code>numSeed</code> and <code>topK</code> that
- *       are passed to this API. Thus <code>fanout</code> is like a combination of <code>ef</code>
- *       (search beam width) from the 2016 paper and <code>m</code> from the 2014 paper.
  * </ul>
  *
  * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
@@ -60,22 +56,28 @@ import org.apache.lucene.util.SparseFixedBitSet;
 public final class HnswGraph extends KnnGraphValues {
 
   private final int maxConn;
-
-  // Each entry lists the top maxConn neighbors of a node. The nodes correspond to vectors added to
-  // HnswBuilder, and the
-  // node values are the ordinals of those vectors.
-  private final List<NeighborArray> graph;
+  // graph is a list of graph levels.
+  // Each level is represented as List<NeighborArray> – nodes' connections on this level.
+  // Each entry in the list has the top maxConn neighbors of a node. The nodes correspond to vectors
+  // added to HnswBuilder, and the node values are the ordinals of those vectors.
+  private final List<List<NeighborArray>> graph;
 
   // KnnGraphValues iterator members
   private int upto;
   private NeighborArray cur;
 
-  HnswGraph(int maxConn) {
-    graph = new ArrayList<>();
-    // Typically with diversity criteria we see nodes not fully occupied; average fanout seems to be
-    // about 1/2 maxConn. There is some indexing time penalty for under-allocating, but saves RAM
-    graph.add(new NeighborArray(Math.max(32, maxConn / 4)));
+  HnswGraph(int maxConn, int numLevels, int levelOfFirstNode) {
     this.maxConn = maxConn;
+    this.graph = new ArrayList<>(numLevels);
+    for (int i = 0; i < numLevels; i++) {
+      graph.add(new ArrayList<>());
+    }
+    for (int i = 0; i <= levelOfFirstNode; i++) {
+      // Typically with diversity criteria we see nodes not fully occupied;
+      // average fanout seems to be about 1/2 maxConn.
+      // There is some indexing time penalty for under-allocating, but saves RAM
+      graph.get(i).add(new NeighborArray(Math.max(32, maxConn / 4)));
+    }
   }
 
   /**
@@ -88,22 +90,28 @@ public final class HnswGraph extends KnnGraphValues {
    * @param vectors vector values
    * @param graphValues the graph values. May represent the entire graph, or a level in a
    *     hierarchical graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
    * @param random a source of randomness, used for generating entry points to the graph
    * @return a priority queue holding the closest neighbors found
    */
+  // TODO: implement hierarchical search, currently searches only 0th level
   public static NeighborQueue search(
       float[] query,
       int topK,
       int numSeed,
       RandomAccessVectorValues vectors,
+      VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
+      Bits acceptOrds,
       Random random)
       throws IOException {
-    VectorValues.SimilarityFunction similarityFunction = vectors.similarityFunction();
     int size = graphValues.size();
 
     // MIN heap, holding the top results
     NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
+    // MAX heap, from which to pull the candidate nodes
+    NeighborQueue candidates = new NeighborQueue(numSeed, !similarityFunction.reversed);
 
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
     SparseFixedBitSet visited = new SparseFixedBitSet(size);
@@ -114,12 +122,13 @@ public final class HnswGraph extends KnnGraphValues {
       if (visited.get(entryPoint) == false) {
         visited.set(entryPoint);
         // explore the topK starting points of some random numSeed probes
-        results.add(entryPoint, similarityFunction.compare(query, vectors.vectorValue(entryPoint)));
+        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
+        candidates.add(entryPoint, score);
+        if (acceptOrds == null || acceptOrds.get(entryPoint)) {
+          results.add(entryPoint, score);
+        }
       }
     }
-
-    // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = results.copy(!similarityFunction.reversed);
 
     // Set the bound to the worst current result and below reject any newly-generated candidates
     // failing
@@ -135,7 +144,7 @@ public final class HnswGraph extends KnnGraphValues {
         }
       }
       int topCandidateNode = candidates.pop();
-      graphValues.seek(topCandidateNode);
+      graphValues.seek(0, topCandidateNode);
       int friendOrd;
       while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
@@ -143,10 +152,14 @@ public final class HnswGraph extends KnnGraphValues {
           continue;
         }
         visited.set(friendOrd);
+
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.insertWithOverflow(friendOrd, score)) {
+        if (results.size() < numSeed || bound.check(score) == false) {
           candidates.add(friendOrd, score);
-          bound.set(results.topScore());
+          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+            results.insertWithOverflow(friendOrd, score);
+            bound.set(results.topScore());
+          }
         }
       }
     }
@@ -160,25 +173,36 @@ public final class HnswGraph extends KnnGraphValues {
   /**
    * Returns the {@link NeighborQueue} connected to the given node.
    *
+   * @param level level of the graph
    * @param node the node whose neighbors are returned
    */
-  public NeighborArray getNeighbors(int node) {
-    return graph.get(node);
+  public NeighborArray getNeighbors(int level, int node) {
+    NeighborArray result = graph.get(level).get(node);
+    assert result != null;
+    return result;
   }
 
   @Override
   public int size() {
-    return graph.size();
+    return graph.get(0).size(); // all nodes are located on the 0th level
   }
 
-  int addNode() {
-    graph.add(new NeighborArray(maxConn + 1));
-    return graph.size() - 1;
+  // TODO: optimize RAM usage so not to store references for all nodes for levels > 0
+  public void addNode(int level, int node) {
+    if (level > 0) {
+      // Levels above 0th don't contain all nodes,
+      // so for missing nodes we add null NeighborArray
+      int nullsToAdd = node - graph.get(level).size();
+      for (int i = 0; i < nullsToAdd; i++) {
+        graph.get(level).add(null);
+      }
+    }
+    graph.get(level).add(new NeighborArray(maxConn + 1));
   }
 
   @Override
-  public void seek(int targetNode) {
-    cur = getNeighbors(targetNode);
+  public void seek(int level, int targetNode) {
+    cur = getNeighbors(level, targetNode);
     upto = -1;
   }
 

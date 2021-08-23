@@ -299,9 +299,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   static final class FieldVectorProperties {
     final int numDimensions;
-    final VectorValues.SimilarityFunction similarityFunction;
+    final VectorSimilarityFunction similarityFunction;
 
-    FieldVectorProperties(int numDimensions, VectorValues.SimilarityFunction similarityFunction) {
+    FieldVectorProperties(int numDimensions, VectorSimilarityFunction similarityFunction) {
       this.numDimensions = numDimensions;
       this.similarityFunction = similarityFunction;
     }
@@ -486,7 +486,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   0,
                   0,
-                  VectorValues.SimilarityFunction.NONE,
+                  VectorSimilarityFunction.EUCLIDEAN,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
           addOrGet(fi);
         }
@@ -567,7 +567,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           0,
           0,
-          VectorValues.SimilarityFunction.NONE,
+          VectorSimilarityFunction.EUCLIDEAN,
           isSoftDeletesField);
     }
 

@@ -20,14 +20,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import org.apache.lucene.index.LeafReaderContext;
 
 /**
  * A {@link CollectorManager} implements which wrap a set of {@link CollectorManager} as {@link
  * MultiCollector} acts for {@link Collector}.
  */
-public class MultiCollectorManager
-    implements CollectorManager<MultiCollectorManager.Collectors, Object[]> {
+public class MultiCollectorManager implements CollectorManager<Collector, Object[]> {
 
   private final CollectorManager<Collector, ?>[] collectorManagers;
 
@@ -36,85 +34,44 @@ public class MultiCollectorManager
   public MultiCollectorManager(
       final CollectorManager<? extends Collector, ?>... collectorManagers) {
     if (collectorManagers.length < 1) {
-      throw new IllegalArgumentException("There must be at least one collector");
+      throw new IllegalArgumentException("There must be at least one collector manager");
     }
+
+    for (CollectorManager<? extends Collector, ?> collectorManager : collectorManagers) {
+      if (collectorManager == null) {
+        throw new IllegalArgumentException("Collector managers should all be non-null");
+      }
+    }
+
     this.collectorManagers = (CollectorManager[]) collectorManagers;
   }
 
   @Override
-  public Collectors newCollector() throws IOException {
-    return new Collectors();
+  public Collector newCollector() throws IOException {
+    Collector[] collectors = new Collector[collectorManagers.length];
+    for (int i = 0; i < collectorManagers.length; i++) {
+      collectors[i] = collectorManagers[i].newCollector();
+    }
+    return MultiCollector.wrap(collectors);
   }
 
   @Override
-  public Object[] reduce(Collection<Collectors> reducableCollectors) throws IOException {
+  public Object[] reduce(Collection<Collector> reducableCollectors) throws IOException {
     final int size = reducableCollectors.size();
     final Object[] results = new Object[collectorManagers.length];
     for (int i = 0; i < collectorManagers.length; i++) {
       final List<Collector> reducableCollector = new ArrayList<>(size);
-      for (Collectors collectors : reducableCollectors)
-        reducableCollector.add(collectors.collectors[i]);
+      for (Collector collector : reducableCollectors) {
+        // MultiCollector will not actually wrap the collector if only one is provided, so we
+        // check the instance type here:
+        if (collector instanceof MultiCollector) {
+          reducableCollector.add(((MultiCollector) collector).getCollectors()[i]);
+        } else {
+          reducableCollector.add(collector);
+        }
+      }
       results[i] = collectorManagers[i].reduce(reducableCollector);
     }
     return results;
-  }
-
-  /** Wraps multiple collectors for processing */
-  public class Collectors implements Collector {
-
-    private final Collector[] collectors;
-
-    private Collectors() throws IOException {
-      collectors = new Collector[collectorManagers.length];
-      for (int i = 0; i < collectors.length; i++)
-        collectors[i] = collectorManagers[i].newCollector();
-    }
-
-    @Override
-    public final LeafCollector getLeafCollector(final LeafReaderContext context)
-        throws IOException {
-      return new LeafCollectors(context);
-    }
-
-    @Override
-    public final ScoreMode scoreMode() {
-      ScoreMode scoreMode = null;
-      for (Collector collector : collectors) {
-        if (scoreMode == null) {
-          scoreMode = collector.scoreMode();
-        } else if (scoreMode != collector.scoreMode()) {
-          return ScoreMode.COMPLETE;
-        }
-      }
-      return scoreMode;
-    }
-
-    /**
-     * Wraps multiple leaf collectors and delegates collection across each one
-     *
-     * @lucene.internal
-     */
-    public class LeafCollectors implements LeafCollector {
-
-      private final LeafCollector[] leafCollectors;
-
-      private LeafCollectors(final LeafReaderContext context) throws IOException {
-        leafCollectors = new LeafCollector[collectors.length];
-        for (int i = 0; i < collectors.length; i++)
-          leafCollectors[i] = collectors[i].getLeafCollector(context);
-      }
-
-      @Override
-      public final void setScorer(final Scorable scorer) throws IOException {
-        for (LeafCollector leafCollector : leafCollectors)
-          if (leafCollector != null) leafCollector.setScorer(scorer);
-      }
-
-      @Override
-      public final void collect(final int doc) throws IOException {
-        for (LeafCollector leafCollector : leafCollectors)
-          if (leafCollector != null) leafCollector.collect(doc);
-      }
-    }
   }
 }

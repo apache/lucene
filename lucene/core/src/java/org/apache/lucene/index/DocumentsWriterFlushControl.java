@@ -552,16 +552,6 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     for (final DocumentsWriterPerThread next :
         perThreadPool.filterAndLock(dwpt -> dwpt.deleteQueue == flushingQueue)) {
       try {
-        assert next.deleteQueue == flushingQueue || next.deleteQueue == documentsWriter.deleteQueue
-            : " flushingQueue: "
-                + flushingQueue
-                + " currentqueue: "
-                + documentsWriter.deleteQueue
-                + " perThread queue: "
-                + next.deleteQueue
-                + " numDocsInRam: "
-                + next.getNumDocsInRAM();
-
         if (next.getNumDocsInRAM() > 0) {
           final DocumentsWriterPerThread flushingDWPT;
           synchronized (this) {

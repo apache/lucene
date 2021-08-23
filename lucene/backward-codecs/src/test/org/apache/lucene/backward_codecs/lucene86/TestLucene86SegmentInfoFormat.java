@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
 import org.apache.lucene.util.Version;
 
+@SuppressWarnings("deprecation")
 public class TestLucene86SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
 
   @Override

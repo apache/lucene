@@ -93,6 +93,10 @@ allprojects {
                     exclude "src/**/en-test-lemmas.dict"
                     break
 
+                case ":lucene:demo":
+                    exclude "src/**/knn-token-vectors"
+                    break
+
                 case ":lucene:test-framework":
                     exclude "src/**/europarl.lines.txt.seek"
                     break

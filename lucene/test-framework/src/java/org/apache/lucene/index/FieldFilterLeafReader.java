@@ -56,15 +56,20 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    Fields f = super.getTermVectors(docID);
-    if (f == null) {
-      return null;
-    }
-    f = new FieldFilterFields(f);
-    // we need to check for emptyness, so we can return
-    // null:
-    return f.iterator().hasNext() ? f : null;
+  public TermVectors getTermVectorsReader() {
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) throws IOException {
+        Fields f = in.getTermVectorsReader().get(docID);
+        if (f == null) {
+          return null;
+        }
+        f = new FieldFilterFields(f);
+        // we need to check for emptyness, so we can return
+        // null:
+        return f.iterator().hasNext() ? f : null;
+      }
+    };
   }
 
   @Override

@@ -48,6 +48,7 @@ import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -1102,11 +1103,10 @@ public class UnifiedHighlighter {
       return this.values;
     }
   }
-
   /**
-   * Wraps an IndexReader that remembers/caches the last call to {@link
-   * LeafReader#getTermVectors(int)} so that if the next call has the same ID, then it is reused. If
-   * TV's were column-stride (like doc-values), there would be no need for this.
+   * Wraps an IndexReader that remembers/caches the last call to {@link TermVectors#get(int)} so
+   * that if the next call has the same ID, then it is reused. If TV's were column-stride (like
+   * doc-values), there would be no need for this.
    */
   private static class TermVectorReusingLeafReader extends FilterLeafReader {
 
@@ -1136,12 +1136,21 @@ public class UnifiedHighlighter {
     }
 
     @Override
-    public Fields getTermVectors(int docID) throws IOException {
-      if (docID != lastDocId) {
-        lastDocId = docID;
-        tvFields = in.getTermVectors(docID);
+    public TermVectors getTermVectorsReader() {
+      if (in.getTermVectorsReader() == null) {
+        return null;
       }
-      return tvFields;
+
+      return new TermVectors() {
+        @Override
+        public Fields get(int docID) throws IOException {
+          if (docID != lastDocId) {
+            lastDocId = docID;
+            tvFields = in.getTermVectorsReader().get(docID);
+          }
+          return tvFields;
+        }
+      };
     }
 
     @Override

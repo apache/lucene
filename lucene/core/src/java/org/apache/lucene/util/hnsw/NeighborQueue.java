@@ -42,13 +42,6 @@ public class NeighborQueue {
     }
   }
 
-  NeighborQueue copy(boolean reversed) {
-    int size = size();
-    NeighborQueue copy = new NeighborQueue(size, reversed);
-    copy.heap.pushAll(heap);
-    return copy;
-  }
-
   /** @return the number of elements in the heap */
   public int size() {
     return heap.size();
