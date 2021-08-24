@@ -446,7 +446,7 @@ class RenderJavadocTask extends DefaultTask {
     })
 
     def javadocCmd = project.file(executable.get())
-    logger.lifecycle("Javadoc executable used: ${javadocCmd}")
+    logger.info("Javadoc executable used: ${javadocCmd}")
 
     project.quietExec {
         executable javadocCmd
