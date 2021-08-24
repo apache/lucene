@@ -84,7 +84,7 @@ public final class HnswGraphBuilder {
     }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
-    this.hnsw = new HnswGraph(maxConn, 1, 0);
+    this.hnsw = new HnswGraph(maxConn);
     bound = BoundsChecker.create(similarityFunction.reversed);
     random = new Random(seed);
     scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));
@@ -109,7 +109,7 @@ public final class HnswGraphBuilder {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectors.size(); node++) {
-      addGraphNode(node, vectors.vectorValue(node));
+      addGraphNode(vectors.vectorValue(node));
       if (node % 10000 == 0) {
         if (infoStream.isEnabled(HNSW_COMPONENT)) {
           long now = System.nanoTime();
@@ -133,14 +133,13 @@ public final class HnswGraphBuilder {
   }
 
   /** Inserts a doc with vector value to the graph */
-  // TODO: implement hierarchical graph building
-  void addGraphNode(int node, float[] value) throws IOException {
+  void addGraphNode(float[] value) throws IOException {
     // We pass 'null' for acceptOrds because there are no deletions while building the graph
     NeighborQueue candidates =
         HnswGraph.search(
             value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, null, random);
 
-    hnsw.addNode(0, node);
+    int node = hnsw.addNode();
 
     /* connect neighbors to the new node, using a diversity heuristic that chooses successive
      * nearest neighbors that are closer to the new node than they are to the previously-selected
@@ -159,7 +158,7 @@ public final class HnswGraphBuilder {
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
      */
-    NeighborArray neighbors = hnsw.getNeighbors(0, node);
+    NeighborArray neighbors = hnsw.getNeighbors(node);
     assert neighbors.size() == 0; // new node
     popToScratch(candidates);
     selectDiverse(neighbors, scratch);
@@ -169,7 +168,7 @@ public final class HnswGraphBuilder {
     int size = neighbors.size();
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node[i];
-      NeighborArray nbrNbr = hnsw.getNeighbors(0, nbr);
+      NeighborArray nbrNbr = hnsw.getNeighbors(nbr);
       nbrNbr.add(node, neighbors.score[i]);
       if (nbrNbr.size() > maxConn) {
         diversityUpdate(nbrNbr);
