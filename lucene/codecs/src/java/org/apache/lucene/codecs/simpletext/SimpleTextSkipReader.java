@@ -147,6 +147,9 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
     return skipDoc;
   }
 
+  // NOTE: This method scans the entire postings list to find skip lists.
+  // This isn't great since the goal of skip lists is to avoid scanning entire postings lists,
+  // can we do better?
   long seekSkipPointer(IndexInput skipStream, long docStartFP) throws IOException {
     long skipPointer = -1;
     skipStream.seek(docStartFP);
