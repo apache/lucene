@@ -7,9 +7,9 @@ http://s.apache.org/luceneversions
 
 New Features
 
-* LUCENE-9322 LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
+* LUCENE-9322, LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
-* LUCENE-9004: Approximate nearest vector search via NSW graphs (Mike Sokolov, Tomoko Uchida et al.)
+* LUCENE-9004, LUCENE-10040: Approximate nearest vector search via NSW graphs (Mike Sokolov, Tomoko Uchida et al.)
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
@@ -21,6 +21,12 @@ System Requirements
   (Adrien Grand, Uwe Schindler)
 
 API Changes
+
+* LUCENE-8638: Remove many deprecated methods and classes including FST.lookupByOutput(),
+  LegacyBM25Similarity and Jaspell suggester.
+
+* LUCENE-8638: haversin() expressions function now returns its result in meters rather than
+  kilometers.
 
 * LUCENE-8982: Separate out native code to another module to allow cpp
   build with gradle. This also changes the name of the native "posix-support"
@@ -130,6 +136,10 @@ API Changes
 * LUCENE-7020: TieredMergePolicy#setMaxMergeAtOnceExplicit has been removed.
   TieredMergePolicy no longer sets a limit on the maximum number of segments
   that can be merged at once via a forced merge. (Adrien Grand, Shawn Heisey)
+
+* LUCENE-10027: Directory reader open API from indexCommit and leafSorter has been modified
+  to add an extra parameter - minSupportedMajorVersion. (Mayya Sharipova)
+
 
 Improvements
 
@@ -246,9 +256,6 @@ Improvements
 * LUCENE-10019: Align file starts in CFS files to have proper alignment (8 bytes)
   (Uwe Schinder)
 
-* LUCENE-10030: Lazily evaluate score in DrillSidewaysScorer.doQueryFirstScoring
-  (Grigoriy Troitskiy)
-
 Bug fixes
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
@@ -284,6 +291,9 @@ Bug fixes
 
 * LUCENE-9823: Prevent unsafe rewrites for SynonymQuery and CombinedFieldQuery. Before, rewriting
   could slightly change the scoring when weights were specified. (Naoto Minami via Julie Tibshirani)
+
+* LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
+  (Greg Miller)
 
 Changes in Backwards Compatibility Policy
 
@@ -364,6 +374,9 @@ API Changes
 * LUCENE-10036: Replaced the ScoreCachingWrappingScorer ctor with a static factory method that
   ensures unnecessary wrapping doesn't occur. (Greg Miller)
 
+* LUCENE-10027: Add a new Directory reader open API from indexCommit and
+  a custom comparator for sorting leaf readers. (Mayya Sharipova)
+
 New Features
 ---------------------
 (No changes)
@@ -397,6 +410,18 @@ Improvements
   characters as boundaries for incremental processing, vastly improving worst-case
   performance. (Michael Gibney)
 
+* LUCENE-10030: Lazily evaluate score in DrillSidewaysScorer.doQueryFirstScoring
+  (Grigoriy Troitskiy)
+
+* LUCENE-9945: Extend DrillSideways to support exposing FacetCollectors directly.
+  (Greg Miller, Sejal Pawar)
+
+* LUCENE-10043: Decrease default for LRUQueryCache's skipCacheFactor to 10.
+  This prevents caching a query clause when it is much more expensive than
+  running the top-level query. (Julie Tibshirani)
+
+* LUCENE-5309: Optimize facet counting for single-valued SSDV / StringValueFacetCounts. (Greg Miller)
+
 Optimizations
 ---------------------
 * LUCENE-9996: Improved memory efficiency of IndexWriter's RAM buffer, in
@@ -408,6 +433,10 @@ Optimizations
 
 * LUCENE-10031: Slightly faster segment merging for sorted indices.
   (Adrien Grand)
+
+* LUCENE-10014: Lucene90DocValuesFormat was using too many bits per
+  value when compressing via gcd, unnecessarily wasting index storage.
+  (weizijun)
 
 Bug Fixes
 ---------------------
@@ -427,6 +456,13 @@ Bug Fixes
 
 * LUCENE-10039: Correct CombinedFieldQuery scoring when there is a single
   field. (Julie Tibshirani)
+
+* LUCENE-10046: Counting bug fixed in StringValueFacetCounts. (Greg Miller)
+
+* LUCENE-9963: FlattenGraphFilter is now more robust when handling
+  incoming holes in the input token graph (Geoff Lawson)
+
+* LUCENE-10008: Respect ignoreCase in CommonGramsFilterFactory (Vigya Sharma)
 
 Other
 ---------------------

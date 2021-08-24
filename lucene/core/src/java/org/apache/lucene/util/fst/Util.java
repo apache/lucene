@@ -45,7 +45,7 @@ public final class Util {
   public static <T> T get(FST<T> fst, IntsRef input) throws IOException {
 
     // TODO: would be nice not to alloc this on every lookup
-    final FST.Arc<T> arc = fst.getFirstArc(new FST.Arc<T>());
+    final FST.Arc<T> arc = fst.getFirstArc(new FST.Arc<>());
 
     final BytesReader fstReader = fst.getBytesReader();
 
@@ -89,167 +89,6 @@ public final class Util {
       return fst.outputs.add(output, arc.nextFinalOutput());
     } else {
       return null;
-    }
-  }
-
-  /**
-   * Reverse lookup (lookup by output instead of by input), in the special case when your FSTs
-   * outputs are strictly ascending. This locates the input/output pair where the output is equal to
-   * the target, and will return null if that output does not exist.
-   *
-   * <p>NOTE: this only works with {@code FST<Long>}, only works when the outputs are ascending in
-   * order with the inputs. For example, simple ordinals (0, 1, 2, ...), or file offsets (when
-   * appending to a file) fit this.
-   */
-  @Deprecated
-  public static IntsRef getByOutput(FST<Long> fst, long targetOutput) throws IOException {
-
-    final BytesReader in = fst.getBytesReader();
-
-    // TODO: would be nice not to alloc this on every lookup
-    FST.Arc<Long> arc = fst.getFirstArc(new FST.Arc<Long>());
-
-    FST.Arc<Long> scratchArc = new FST.Arc<>();
-
-    final IntsRefBuilder result = new IntsRefBuilder();
-    return getByOutput(fst, targetOutput, in, arc, scratchArc, result);
-  }
-
-  /**
-   * Expert: like {@link Util#getByOutput(FST, long)} except reusing BytesReader, initial and
-   * scratch Arc, and result.
-   */
-  @Deprecated
-  public static IntsRef getByOutput(
-      FST<Long> fst,
-      long targetOutput,
-      BytesReader in,
-      Arc<Long> arc,
-      Arc<Long> scratchArc,
-      IntsRefBuilder result)
-      throws IOException {
-    long output = arc.output();
-    int upto = 0;
-
-    // System.out.println("reverseLookup output=" + targetOutput);
-
-    while (true) {
-      // System.out.println("loop: output=" + output + " upto=" + upto + " arc=" + arc);
-      if (arc.isFinal()) {
-        final long finalOutput = output + arc.nextFinalOutput();
-        // System.out.println("  isFinal finalOutput=" + finalOutput);
-        if (finalOutput == targetOutput) {
-          result.setLength(upto);
-          // System.out.println("    found!");
-          return result.get();
-        } else if (finalOutput > targetOutput) {
-          // System.out.println("    not found!");
-          return null;
-        }
-      }
-
-      if (FST.targetHasArcs(arc)) {
-        // System.out.println("  targetHasArcs");
-        result.grow(1 + upto);
-
-        fst.readFirstRealTargetArc(arc.target(), arc, in);
-
-        if (arc.bytesPerArc() != 0 && arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH) {
-
-          int low = 0;
-          int high = arc.numArcs() - 1;
-          int mid = 0;
-          // System.out.println("bsearch: numArcs=" + arc.numArcs + " target=" + targetOutput + "
-          // output=" + output);
-          boolean exact = false;
-          while (low <= high) {
-            mid = (low + high) >>> 1;
-            in.setPosition(arc.posArcsStart());
-            in.skipBytes(arc.bytesPerArc() * mid);
-            final byte flags = in.readByte();
-            fst.readLabel(in);
-            final long minArcOutput;
-            if ((flags & FST.BIT_ARC_HAS_OUTPUT) != 0) {
-              final long arcOutput = fst.outputs.read(in);
-              minArcOutput = output + arcOutput;
-            } else {
-              minArcOutput = output;
-            }
-            // System.out.println("  cycle mid=" + mid + " output=" + minArcOutput);
-            if (minArcOutput == targetOutput) {
-              exact = true;
-              break;
-            } else if (minArcOutput < targetOutput) {
-              low = mid + 1;
-            } else {
-              high = mid - 1;
-            }
-          }
-
-          int idx;
-          if (high == -1) {
-            return null;
-          } else if (exact) {
-            idx = mid;
-          } else {
-            idx = low - 1;
-          }
-
-          fst.readArcByIndex(arc, in, idx);
-          result.setIntAt(upto++, arc.label());
-          output += arc.output();
-
-        } else {
-
-          FST.Arc<Long> prevArc = null;
-
-          while (true) {
-            // System.out.println("    cycle label=" + arc.label + " output=" + arc.output);
-
-            // This is the min output we'd hit if we follow
-            // this arc:
-            final long minArcOutput = output + arc.output();
-
-            if (minArcOutput == targetOutput) {
-              // Recurse on this arc:
-              // System.out.println("  match!  break");
-              output = minArcOutput;
-              result.setIntAt(upto++, arc.label());
-              break;
-            } else if (minArcOutput > targetOutput) {
-              if (prevArc == null) {
-                // Output doesn't exist
-                return null;
-              } else {
-                // Recurse on previous arc:
-                arc.copyFrom(prevArc);
-                result.setIntAt(upto++, arc.label());
-                output += arc.output();
-                // System.out.println("    recurse prev label=" + (char) arc.label + " output=" +
-                // output);
-                break;
-              }
-            } else if (arc.isLast()) {
-              // Recurse on this arc:
-              output = minArcOutput;
-              // System.out.println("    recurse last label=" + (char) arc.label + " output=" +
-              // output);
-              result.setIntAt(upto++, arc.label());
-              break;
-            } else {
-              // Read next arc in this node:
-              prevArc = scratchArc;
-              prevArc.copyFrom(arc);
-              // System.out.println("      after copy label=" + (char) prevArc.label + " vs " +
-              // (char) arc.label);
-              fst.readNextRealArc(arc, in);
-            }
-          }
-        }
-      } else {
-        // System.out.println("  no target arcs; not found!");
-        return null;
-      }
     }
   }
 
@@ -899,7 +738,7 @@ public final class Util {
     scratch.setLength(charLimit);
     scratch.grow(charLimit);
     for (int idx = 0; idx < charLimit; idx++) {
-      scratch.setIntAt(idx, (int) s.charAt(idx));
+      scratch.setIntAt(idx, s.charAt(idx));
     }
     return scratch.get();
   }
@@ -1033,9 +872,6 @@ public final class Util {
 
     while (true) {
       // System.out.println("  non-bs cycle");
-      // TODO: we should fix this code to not have to create
-      // object for the output of every arc we scan... only
-      // for the matching arc, if found
       if (arc.label() >= label) {
         // System.out.println("    found!");
         return arc;
@@ -1067,12 +903,12 @@ public final class Util {
             + ")";
     BytesReader in = fst.getBytesReader();
     int low = arc.arcIdx();
-    int mid = 0;
+    int mid;
     int high = arc.numArcs() - 1;
     while (low <= high) {
       mid = (low + high) >>> 1;
       in.setPosition(arc.posArcsStart());
-      in.skipBytes(arc.bytesPerArc() * mid + 1);
+      in.skipBytes((long) arc.bytesPerArc() * mid + 1);
       final int midLabel = fst.readLabel(in);
       final int cmp = midLabel - targetLabel;
       if (cmp < 0) {

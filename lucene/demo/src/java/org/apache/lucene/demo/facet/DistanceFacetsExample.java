@@ -54,10 +54,10 @@ import org.apache.lucene.store.Directory;
  */
 public class DistanceFacetsExample implements Closeable {
 
-  final DoubleRange ONE_KM = new DoubleRange("< 1 km", 0.0, true, 1.0, false);
-  final DoubleRange TWO_KM = new DoubleRange("< 2 km", 0.0, true, 2.0, false);
-  final DoubleRange FIVE_KM = new DoubleRange("< 5 km", 0.0, true, 5.0, false);
-  final DoubleRange TEN_KM = new DoubleRange("< 10 km", 0.0, true, 10.0, false);
+  final DoubleRange ONE_KM = new DoubleRange("< 1 km", 0.0, true, 1000.0, false);
+  final DoubleRange TWO_KM = new DoubleRange("< 2 km", 0.0, true, 2000.0, false);
+  final DoubleRange FIVE_KM = new DoubleRange("< 5 km", 0.0, true, 5000.0, false);
+  final DoubleRange TEN_KM = new DoubleRange("< 10 km", 0.0, true, 10000.0, false);
 
   private final Directory indexDir = new ByteBuffersDirectory();
   private IndexSearcher searcher;

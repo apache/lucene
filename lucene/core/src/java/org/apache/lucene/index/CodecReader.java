@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Bits;
 
 /** LeafReader implemented by codec APIs. */
 public abstract class CodecReader extends LeafReader {
@@ -211,7 +212,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final TopDocs searchNearestVectors(String field, float[] target, int k)
+  public final TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
       throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
@@ -220,7 +221,7 @@ public abstract class CodecReader extends LeafReader {
       return null;
     }
 
-    return getVectorReader().search(field, target, k);
+    return getVectorReader().search(field, target, k, acceptDocs);
   }
 
   @Override
