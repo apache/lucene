@@ -286,7 +286,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
       docID = -1;
       tf = 1;
       cost = docFreq;
-      long skipPointer = skipReader.seekSkipPointer(this.inStart.clone(), fp);
+      long skipPointer = skipReader.seekSkipPointer(in, fp);
+      in.seek(fp);
       skipReader.reset(skipPointer, docFreq);
       nextSkipDoc = 0;
       seekTo = -1;
@@ -466,7 +467,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
         endOffset = -1;
       }
       cost = docFreq;
-      long skipPointer = skipReader.seekSkipPointer(this.inStart.clone(), fp);
+      long skipPointer = skipReader.seekSkipPointer(in, fp);
+      in.seek(fp);
       skipReader.reset(skipPointer, docFreq);
       nextSkipDoc = 0;
       seekTo = -1;
