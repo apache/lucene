@@ -28,6 +28,7 @@ import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.MergePolicy.MergeContext;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.store.Directory;
@@ -864,5 +865,40 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     mergePolicy.setMaxMergedSegmentMB(TestUtil.nextInt(random(), 1024, 10 * 1024));
     int numDocs = TEST_NIGHTLY ? atLeast(10_000_000) : atLeast(1_000_000);
     doTestSimulateUpdates(mergePolicy, numDocs, 2500);
+  }
+
+  // Verify that merges returned by findFullFlushMerges are a subset of the merges returned by
+  // findMerges.
+  public void testFindFullFlushMerges() throws IOException {
+    TieredMergePolicy mergePolicy = mergePolicy();
+    mergePolicy.setMaxMergedSegmentMB(1024);
+    mergePolicy.setFloorSegmentMB(1);
+    mergePolicy.setSegmentsPerTier(10);
+
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+
+    SegmentInfos infos = new SegmentInfos(Version.LATEST.major);
+    // 10 segments above the floor size, no merging required
+    for (int i = 0; i < 10; ++i) {
+      infos.add(makeSegmentCommitInfo("_0", 1_000_000, 0, 10, IndexWriter.SOURCE_FLUSH));
+    }
+    assertNull(mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext));
+    assertNull(mergePolicy.findFullFlushMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext));
+
+    // 12 same-size segments above the floor size, we get natural merges, but no full-flush merges
+    // since segments are large enough
+    for (int i = 0; i < 2; ++i) {
+      infos.add(makeSegmentCommitInfo("_0", 1_000_000, 0, 10, IndexWriter.SOURCE_FLUSH));
+    }
+    assertNotNull(mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext));
+    assertNull(mergePolicy.findFullFlushMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext));
+
+    // 12 segments below the floor size, we get full-flush merges this time
+    infos = new SegmentInfos(Version.LATEST.major);
+    for (int i = 0; i < 12; ++i) {
+      infos.add(makeSegmentCommitInfo("_0", 1_000_000, 0, 0.5, IndexWriter.SOURCE_FLUSH));
+    }
+    assertNotNull(mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext));
+    assertNotNull(mergePolicy.findFullFlushMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext));
   }
 }

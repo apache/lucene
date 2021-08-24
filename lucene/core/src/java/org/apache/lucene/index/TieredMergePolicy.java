@@ -110,6 +110,7 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   private enum MERGE_TYPE {
+    FULL_FLUSH,
     NATURAL,
     FORCE_MERGE,
     FORCE_MERGE_DELETES
@@ -194,9 +195,10 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   /**
-   * Segments smaller than this are "rounded up" to this size, ie treated as equal (floor) size for
-   * merge selection. This is to prevent frequent flushing of tiny segments from allowing a long
-   * tail in the index. Default is 2 MB.
+   * The minimum size that segments should have in the index. Segments below this size will be
+   * likely considered for {@link #findFullFlushMerges(MergeTrigger, SegmentInfos, MergeContext)
+   * full-flush merges} and more aggressively merged through {@link #findMerges(MergeTrigger,
+   * SegmentInfos, MergeContext) natural merges}. Default is 2 MB.
    */
   public TieredMergePolicy setFloorSegmentMB(double v) {
     if (v <= 0.0) {
@@ -320,6 +322,22 @@ public class TieredMergePolicy extends MergePolicy {
   @Override
   public MergeSpecification findMerges(
       MergeTrigger mergeTrigger, SegmentInfos infos, MergeContext mergeContext) throws IOException {
+    return doFindNaturalMerges(mergeTrigger, infos, MERGE_TYPE.NATURAL, mergeContext);
+  }
+
+  @Override
+  public MergeSpecification findFullFlushMerges(
+      MergeTrigger mergeTrigger, SegmentInfos infos, MergeContext mergeContext) throws IOException {
+    return doFindNaturalMerges(mergeTrigger, infos, MERGE_TYPE.FULL_FLUSH, mergeContext);
+  }
+
+  private MergeSpecification doFindNaturalMerges(
+      MergeTrigger mergeTrigger,
+      SegmentInfos infos,
+      MERGE_TYPE mergeType,
+      MergeContext mergeContext)
+      throws IOException {
+    assert mergeType == MERGE_TYPE.NATURAL || mergeType == MERGE_TYPE.FULL_FLUSH;
     final Set<SegmentCommitInfo> merging = mergeContext.getMergingSegments();
     // Compute total index bytes & print details about the index
     long totIndexBytes = 0;
@@ -431,7 +449,7 @@ public class TieredMergePolicy extends MergePolicy {
         mergeFactor,
         (int) allowedSegCount,
         allowedDelCount,
-        MERGE_TYPE.NATURAL,
+        mergeType,
         mergeContext,
         mergingBytes >= maxMergedSegmentBytes);
   }
@@ -506,7 +524,7 @@ public class TieredMergePolicy extends MergePolicy {
       }
 
       final int remainingDelCount = sortedEligible.stream().mapToInt(c -> c.delCount).sum();
-      if (mergeType == MERGE_TYPE.NATURAL
+      if ((mergeType == MERGE_TYPE.NATURAL || mergeType == MERGE_TYPE.FULL_FLUSH)
           && sortedEligible.size() <= allowedSegCount
           && remainingDelCount <= allowedDelCount) {
         return spec;
@@ -603,15 +621,24 @@ public class TieredMergePolicy extends MergePolicy {
       if (best == null) {
         return spec;
       }
-      // The mergeType == FORCE_MERGE_DELETES behaves as the code does currently and can create a
-      // large number of
-      // concurrent big merges. If we make findForcedDeletesMerges behave as findForcedMerges and
-      // cycle through
-      // we should remove this.
-      if (haveOneLargeMerge == false
-          || bestTooLarge == false
-          || mergeType == MERGE_TYPE.FORCE_MERGE_DELETES) {
 
+      final boolean bestMergeIsTooLarge;
+      if (mergeType == MERGE_TYPE.FORCE_MERGE_DELETES) {
+        // The mergeType == FORCE_MERGE_DELETES behaves as the code does currently and can create a
+        // large number of
+        // concurrent big merges. If we make findForcedDeletesMerges behave as findForcedMerges and
+        // cycle through
+        // we should remove this.
+        bestMergeIsTooLarge = false;
+      } else if (mergeType == MERGE_TYPE.FULL_FLUSH) {
+        // Upon refresh, we only allow merges on the lowest level
+        bestMergeIsTooLarge = bestMergeBytes > best.size() * floorSegmentBytes;
+      } else {
+        // at most one large merge
+        bestMergeIsTooLarge = haveOneLargeMerge && bestTooLarge;
+      }
+
+      if (bestMergeIsTooLarge == false) {
         haveOneLargeMerge |= bestTooLarge;
 
         if (spec == null) {
