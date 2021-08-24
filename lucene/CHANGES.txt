@@ -140,7 +140,6 @@ API Changes
 * LUCENE-10027: Directory reader open API from indexCommit and leafSorter has been modified
   to add an extra parameter - minSupportedMajorVersion. (Mayya Sharipova)
 
-
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
