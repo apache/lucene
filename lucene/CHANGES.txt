@@ -22,6 +22,12 @@ System Requirements
 
 API Changes
 
+* LUCENE-8638: Remove many deprecated methods and classes including FST.lookupByOutput(),
+  LegacyBM25Similarity and Jaspell suggester.
+
+* LUCENE-8638: haversin() expressions function now returns its result in meters rather than
+  kilometers.
+
 * LUCENE-8982: Separate out native code to another module to allow cpp
   build with gradle. This also changes the name of the native "posix-support"
   library to LuceneNativeIO. (Zachary Chen, Dawid Weiss)
@@ -408,6 +414,8 @@ Improvements
 * LUCENE-10043: Decrease default for LRUQueryCache's skipCacheFactor to 10.
   This prevents caching a query clause when it is much more expensive than
   running the top-level query. (Julie Tibshirani)
+
+* LUCENE-5309: Optimize facet counting for single-valued SSDV / StringValueFacetCounts. (Greg Miller)
 
 Optimizations
 ---------------------

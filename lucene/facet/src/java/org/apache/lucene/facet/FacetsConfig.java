@@ -211,24 +211,6 @@ public class FacetsConfig {
     dimConfig.indexFieldName = indexFieldName;
   }
 
-  /**
-   * Specify whether drill down on the dimension is necessary.
-   *
-   * @deprecated Use {@link FacetsConfig#setDrillDownTermsIndexing(String, DrillDownTermsIndexing)}
-   *     instead
-   */
-  @Deprecated
-  public synchronized void setRequireDimensionDrillDown(String dimName, boolean value) {
-    DimConfig dimConfig = fieldTypes.get(dimName);
-    if (dimConfig == null) {
-      dimConfig = new DimConfig();
-      fieldTypes.put(dimName, dimConfig);
-    }
-
-    dimConfig.drillDownTermsIndexing =
-        value ? DrillDownTermsIndexing.ALL : DrillDownTermsIndexing.ALL_PATHS_NO_DIM;
-  }
-
   /** Specify drill down terms option on the field / dimension. */
   public synchronized void setDrillDownTermsIndexing(
       String dimName, DrillDownTermsIndexing drillDownTermsIndexing) {
