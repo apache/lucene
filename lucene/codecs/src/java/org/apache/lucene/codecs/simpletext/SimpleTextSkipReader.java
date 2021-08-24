@@ -150,17 +150,16 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
   long seekSkipPointer(IndexInput skipStream, long docStartFP) throws IOException {
     long skipPointer = -1;
     skipStream.seek(docStartFP);
-    ChecksumIndexInput input = new BufferedChecksumIndexInput(skipStream);
     BytesRefBuilder scratch = new BytesRefBuilder();
     while (true) {
-      SimpleTextUtil.readLine(input, scratch);
+      SimpleTextUtil.readLine(skipStream, scratch);
       if (scratch.get().equals(SimpleTextFieldsWriter.END)) {
         break;
       } else if (StringHelper.startsWith(scratch.get(), SimpleTextFieldsWriter.TERM)
           || StringHelper.startsWith(scratch.get(), SimpleTextFieldsWriter.FIELD)) {
         break;
       } else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)) {
-        skipPointer = input.getFilePointer();
+        skipPointer = skipStream.getFilePointer();
         break;
       }
     }
