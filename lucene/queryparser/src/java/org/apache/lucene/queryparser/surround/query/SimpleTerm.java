@@ -22,8 +22,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 
 /** Base class for queries that expand to sets of simple terms. */
-public abstract class SimpleTerm extends SrndQuery
-    implements DistanceSubQuery, Comparable<SimpleTerm> {
+public abstract class SimpleTerm extends SrndQuery implements DistanceSubQuery {
   public SimpleTerm(boolean q) {
     quoted = q;
   }
@@ -43,17 +42,6 @@ public abstract class SimpleTerm extends SrndQuery
   }
 
   public abstract String toStringUnquoted();
-
-  /**
-   * @deprecated (March 2011) Not normally used, to be removed from Lucene 4.0. This class
-   *     implementing Comparable is to be removed at the same time.
-   */
-  @Override
-  @Deprecated
-  public int compareTo(SimpleTerm ost) {
-    /* for ordering terms and prefixes before using an index, not used */
-    return this.toStringUnquoted().compareTo(ost.toStringUnquoted());
-  }
 
   protected void suffixToString(StringBuilder r) {} /* override for prefix query */
 

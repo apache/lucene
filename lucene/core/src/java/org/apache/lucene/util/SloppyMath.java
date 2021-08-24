@@ -59,23 +59,6 @@ public class SloppyMath {
   }
 
   /**
-   * Returns the Haversine distance in kilometers between two points specified in decimal degrees
-   * (latitude/longitude). This works correctly even if the dateline is between the two points.
-   *
-   * @param lat1 Latitude of the first point.
-   * @param lon1 Longitude of the first point.
-   * @param lat2 Latitude of the second point.
-   * @param lon2 Longitude of the second point.
-   * @return distance in kilometers.
-   * @deprecated Use {@link #haversinMeters(double, double, double, double) instead}
-   */
-  @Deprecated
-  public static double haversinKilometers(double lat1, double lon1, double lat2, double lon2) {
-    double h = haversinSortKey(lat1, lon1, lat2, lon2);
-    return TO_KILOMETERS * 2 * asin(Math.min(1, Math.sqrt(h * 0.5)));
-  }
-
-  /**
    * Returns a sort key for distance. This is less expensive to compute than {@link
    * #haversinMeters(double, double, double, double)}, but it always compares the same. This can be
    * converted into an actual distance with {@link #haversinMeters(double)}, which effectively does
@@ -198,7 +181,6 @@ public class SloppyMath {
   // Earth's mean radius, in meters and kilometers; see
   // http://earth-info.nga.mil/GandG/publications/tr8350.2/wgs84fin.pdf
   private static final double TO_METERS = 6_371_008.7714D; // equatorial radius
-  private static final double TO_KILOMETERS = 6_371.0087714D; // equatorial radius
 
   // cos/asin
   private static final double ONE_DIV_F2 = 1 / 2.0;
