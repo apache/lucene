@@ -268,7 +268,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
     // for skip list data
     private SimpleTextSkipReader skipReader;
     private int nextSkipDoc = 0;
-    private int lastNumSkipped = 0;
     private long seekTo = -1;
 
     public SimpleTextDocsEnum() {
@@ -290,7 +289,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
       long skipPointer = skipReader.seekSkipPointer(this.inStart.clone(), fp);
       skipReader.reset(skipPointer, docFreq);
       nextSkipDoc = 0;
-      lastNumSkipped = 0;
       seekTo = -1;
       return this;
     }
@@ -406,19 +404,14 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      if (skipReader.hasSkipList()) {
-        if (target > nextSkipDoc) {
-          int numSkipped = skipReader.skipTo(target) + 1;
-          if (numSkipped > lastNumSkipped) {
-            if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-              seekTo = skipReader.getNextSkipDocFP();
-            }
-            lastNumSkipped = numSkipped;
-          }
-          nextSkipDoc = skipReader.getNextSkipDoc();
+      if (target > nextSkipDoc) {
+        skipReader.skipTo(target);
+        if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          seekTo = skipReader.getNextSkipDocFP();
         }
-        assert nextSkipDoc >= target;
+        nextSkipDoc = skipReader.getNextSkipDoc();
       }
+      assert nextSkipDoc >= target;
     }
 
     @Override
@@ -449,7 +442,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
     // for skip list data
     private SimpleTextSkipReader skipReader;
     private int nextSkipDoc = 0;
-    private int lastNumSkipped = 0;
     private long seekTo = -1;
 
     public SimpleTextPostingsEnum() {
@@ -477,7 +469,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
       long skipPointer = skipReader.seekSkipPointer(this.inStart.clone(), fp);
       skipReader.reset(skipPointer, docFreq);
       nextSkipDoc = 0;
-      lastNumSkipped = 0;
       seekTo = -1;
       return this;
     }
@@ -626,19 +617,14 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      if (skipReader.hasSkipList()) {
-        if (target > nextSkipDoc) {
-          int numSkipped = skipReader.skipTo(target) + 1;
-          if (numSkipped > lastNumSkipped) {
-            if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-              seekTo = skipReader.getNextSkipDocFP();
-            }
-            lastNumSkipped = numSkipped;
-          }
-          nextSkipDoc = skipReader.getNextSkipDoc();
+      if (target > nextSkipDoc) {
+        skipReader.skipTo(target);
+        if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          seekTo = skipReader.getNextSkipDocFP();
         }
-        assert nextSkipDoc >= target;
       }
+      nextSkipDoc = skipReader.getNextSkipDoc();
+      assert nextSkipDoc >= target;
     }
 
     @Override
