@@ -1158,10 +1158,8 @@ public abstract class LuceneTestCase extends Assert {
     TieredMergePolicy tmp = new TieredMergePolicy();
     if (rarely(r)) {
       tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-      tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 2, 9));
     } else {
       tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-      tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 10, 50));
     }
     if (rarely(r)) {
       tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
@@ -1293,10 +1291,8 @@ public abstract class LuceneTestCase extends Assert {
         TieredMergePolicy tmp = (TieredMergePolicy) mp;
         if (rarely(r)) {
           tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-          tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 2, 9));
         } else {
           tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-          tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 10, 50));
         }
         if (rarely(r)) {
           tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);

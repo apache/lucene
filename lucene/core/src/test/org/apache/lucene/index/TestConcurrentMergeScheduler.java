@@ -18,6 +18,9 @@ package org.apache.lucene.index;
 
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -416,11 +419,45 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   public void testLiveMaxMergeCount() throws Exception {
     Directory d = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    TieredMergePolicy tmp = new TieredMergePolicy();
-    tmp.setSegmentsPerTier(1000);
-    tmp.setMaxMergeAtOnce(1000);
-    tmp.setMaxMergeAtOnceExplicit(10);
-    iwc.setMergePolicy(tmp);
+    iwc.setMergePolicy(
+        new MergePolicy() {
+
+          @Override
+          public MergeSpecification findMerges(
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+              throws IOException {
+            // no natural merges
+            return null;
+          }
+
+          @Override
+          public MergeSpecification findForcedDeletesMerges(
+              SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException {
+            // not needed
+            return null;
+          }
+
+          @Override
+          public MergeSpecification findForcedMerges(
+              SegmentInfos segmentInfos,
+              int maxSegmentCount,
+              Map<SegmentCommitInfo, Boolean> segmentsToMerge,
+              MergeContext mergeContext)
+              throws IOException {
+            // The test is about testing that CMS bounds the number of merging threads, so we just
+            // return many merges.
+            MergeSpecification spec = new MergeSpecification();
+            List<SegmentCommitInfo> oneMerge = new ArrayList<>();
+            for (SegmentCommitInfo sci : segmentsToMerge.keySet()) {
+              oneMerge.add(sci);
+              if (oneMerge.size() >= 10) {
+                spec.add(new OneMerge(new ArrayList<>(oneMerge)));
+                oneMerge.clear();
+              }
+            }
+            return spec;
+          }
+        });
     iwc.setMaxBufferedDocs(2);
     iwc.setRAMBufferSizeMB(-1);
 

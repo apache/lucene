@@ -133,6 +133,10 @@ API Changes
 * LUCENE-9959: Add non thread local based API for term vector reader usage. (Zach Chen, Adrien Grand,
   David Smiley, Robert Muir, Mike Drob)
 
+* LUCENE-7020: TieredMergePolicy#setMaxMergeAtOnceExplicit has been removed.
+  TieredMergePolicy no longer sets a limit on the maximum number of segments
+  that can be merged at once via a forced merge. (Adrien Grand, Shawn Heisey)
+
 * LUCENE-10027: Directory reader open API from indexCommit and leafSorter has been modified
   to add an extra parameter - minSupportedMajorVersion. (Mayya Sharipova)
 
@@ -371,6 +375,10 @@ API Changes
 
 * LUCENE-10027: Add a new Directory reader open API from indexCommit and
   a custom comparator for sorting leaf readers. (Mayya Sharipova)
+
+* LUCENE-7020: TieredMergePolicy#setMaxMergeAtOnceExplicit is deprecated
+  and the number of segments that get merged via explicit merges is unlimited
+  by default. (Adrien Grand, Shawn Heisey)
 
 New Features
 ---------------------
