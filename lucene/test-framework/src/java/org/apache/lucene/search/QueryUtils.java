@@ -216,7 +216,7 @@ public class QueryUtils {
       }
 
       @Override
-      public TopDocs searchNearestVectors(String field, float[] target, int k) {
+      public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs) {
         return null;
       }
 

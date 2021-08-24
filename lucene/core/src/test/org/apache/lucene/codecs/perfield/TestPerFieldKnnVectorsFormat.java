@@ -38,6 +38,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.RandomCodec;
 import org.apache.lucene.index.SegmentReadState;
@@ -101,19 +102,13 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
       // Double-check the vectors were written
       try (IndexReader ireader = DirectoryReader.open(directory)) {
+        LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
-            ireader
-                .leaves()
-                .get(0)
-                .reader()
-                .searchNearestVectors("field1", new float[] {1, 2, 3}, 10);
+            reader.searchNearestVectors("field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs());
         assertEquals(1, hits1.scoreDocs.length);
+
         TopDocs hits2 =
-            ireader
-                .leaves()
-                .get(0)
-                .reader()
-                .searchNearestVectors("field2", new float[] {1, 2, 3}, 10);
+            reader.searchNearestVectors("field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs());
         assertEquals(1, hits2.scoreDocs.length);
       }
     }

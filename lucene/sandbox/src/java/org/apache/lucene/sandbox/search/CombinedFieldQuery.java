@@ -254,8 +254,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
-    // optimize zero and single field cases
-    if (terms.length == 0) {
+    if (terms.length == 0 || fieldAndWeights.isEmpty()) {
       return new BooleanQuery.Builder().build();
     }
     return this;
@@ -383,14 +382,9 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       if (scorer != null) {
         int newDoc = scorer.iterator().advance(doc);
         if (newDoc == doc) {
-          final float freq;
-          if (scorer instanceof CombinedFieldScorer) {
-            freq = ((CombinedFieldScorer) scorer).freq();
-          } else {
-            assert scorer instanceof TermScorer;
-            freq = ((TermScorer) scorer).freq();
-          }
-          final MultiNormsLeafSimScorer docScorer =
+          assert scorer instanceof CombinedFieldScorer;
+          float freq = ((CombinedFieldScorer) scorer).freq();
+          MultiNormsLeafSimScorer docScorer =
               new MultiNormsLeafSimScorer(
                   simWeight, context.reader(), fieldAndWeights.values(), true);
           Explanation freqExplanation = Explanation.match(freq, "termFreq=" + freq);
@@ -423,13 +417,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         return null;
       }
 
-      // we must optimize this case (term not in segment), disjunctions require >= 2 subs
-      if (iterators.size() == 1) {
-        final LeafSimScorer scoringSimScorer =
-            new LeafSimScorer(simWeight, context.reader(), fields.get(0).field, true);
-        return new TermScorer(this, iterators.get(0), scoringSimScorer);
-      }
-      final MultiNormsLeafSimScorer scoringSimScorer =
+      MultiNormsLeafSimScorer scoringSimScorer =
           new MultiNormsLeafSimScorer(simWeight, context.reader(), fields, true);
       LeafSimScorer nonScoringSimScorer =
           new LeafSimScorer(simWeight, context.reader(), "pseudo_field", false);

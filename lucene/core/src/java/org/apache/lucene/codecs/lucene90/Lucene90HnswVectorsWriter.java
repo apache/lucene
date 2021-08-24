@@ -208,11 +208,12 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
+    // TODO: implement storing of hierarchical graph; for now stores only 0th level
     for (int ord = 0; ord < count; ord++) {
       // write graph
       offsets[ord] = graphData.getFilePointer() - graphDataOffset;
 
-      NeighborArray neighbors = graph.getNeighbors(ord);
+      NeighborArray neighbors = graph.getNeighbors(0, ord);
       int size = neighbors.size();
 
       // Destructively modify; it's ok we are discarding it after this

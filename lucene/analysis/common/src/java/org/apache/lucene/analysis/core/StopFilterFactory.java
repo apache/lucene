@@ -16,15 +16,12 @@
  */
 package org.apache.lucene.analysis.core;
 
-import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.WordlistLoader;
+import org.apache.lucene.analysis.en.AbstractWordsFileFilterFactory;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
-import org.apache.lucene.util.ResourceLoader;
-import org.apache.lucene.util.ResourceLoaderAware;
 
 /**
  * Factory for {@link StopFilter}.
@@ -65,28 +62,14 @@ import org.apache.lucene.util.ResourceLoaderAware;
  * @since 3.1
  * @lucene.spi {@value #NAME}
  */
-public class StopFilterFactory extends TokenFilterFactory implements ResourceLoaderAware {
+public class StopFilterFactory extends AbstractWordsFileFilterFactory {
 
   /** SPI name */
   public static final String NAME = "stop";
 
-  public static final String FORMAT_WORDSET = "wordset";
-  public static final String FORMAT_SNOWBALL = "snowball";
-
-  private CharArraySet stopWords;
-  private final String stopWordFiles;
-  private final String format;
-  private final boolean ignoreCase;
-
   /** Creates a new StopFilterFactory */
   public StopFilterFactory(Map<String, String> args) {
     super(args);
-    stopWordFiles = get(args, "words");
-    format = get(args, "format", (null == stopWordFiles ? null : FORMAT_WORDSET));
-    ignoreCase = getBoolean(args, "ignoreCase", false);
-    if (!args.isEmpty()) {
-      throw new IllegalArgumentException("Unknown parameters: " + args);
-    }
   }
 
   /** Default ctor for compatibility with SPI */
@@ -94,37 +77,18 @@ public class StopFilterFactory extends TokenFilterFactory implements ResourceLoa
     throw defaultCtorException();
   }
 
-  @Override
-  public void inform(ResourceLoader loader) throws IOException {
-    if (stopWordFiles != null) {
-      if (FORMAT_WORDSET.equalsIgnoreCase(format)) {
-        stopWords = getWordSet(loader, stopWordFiles, ignoreCase);
-      } else if (FORMAT_SNOWBALL.equalsIgnoreCase(format)) {
-        stopWords = getSnowballWordSet(loader, stopWordFiles, ignoreCase);
-      } else {
-        throw new IllegalArgumentException(
-            "Unknown 'format' specified for 'words' file: " + format);
-      }
-    } else {
-      if (null != format) {
-        throw new IllegalArgumentException(
-            "'format' can not be specified w/o an explicit 'words' file: " + format);
-      }
-      stopWords = new CharArraySet(EnglishAnalyzer.ENGLISH_STOP_WORDS_SET, ignoreCase);
-    }
-  }
-
-  public boolean isIgnoreCase() {
-    return ignoreCase;
-  }
-
   public CharArraySet getStopWords() {
-    return stopWords;
+    return getWords();
+  }
+
+  @Override
+  protected CharArraySet createDefaultWords() {
+    return new CharArraySet(EnglishAnalyzer.ENGLISH_STOP_WORDS_SET, isIgnoreCase());
   }
 
   @Override
   public TokenStream create(TokenStream input) {
-    StopFilter stopFilter = new StopFilter(input, stopWords);
+    StopFilter stopFilter = new StopFilter(input, getWords());
     return stopFilter;
   }
 }
