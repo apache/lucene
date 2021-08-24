@@ -269,6 +269,8 @@ class JavaCCTask extends DefaultTask {
    * Apply closures to all generated files before they're copied back
    * to mainline code.
    */
+  // A subtle bug here is that this makes it not an input... should be a list of replacements instead?
+  @Internal
   List<Closure<FileTree>> afterGenerate = new ArrayList<>()
 
   @OutputFiles
