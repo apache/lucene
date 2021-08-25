@@ -268,11 +268,11 @@ public class TestField extends LuceneTestCase {
   }
 
   public void testSortedBytesDocValuesField() throws Exception {
-    SortedDocValuesField field = new SortedDocValuesField("foo", new BytesRef("bar"));
+    SortedDocValuesField field = new SortedDocValuesField("foo", newBytesRef("bar"));
 
     trySetByteValue(field);
     field.setBytesValue("fubar".getBytes(StandardCharsets.UTF_8));
-    field.setBytesValue(new BytesRef("baz"));
+    field.setBytesValue(newBytesRef("baz"));
     trySetDoubleValue(field);
     trySetIntValue(field);
     trySetFloatValue(field);
@@ -282,15 +282,15 @@ public class TestField extends LuceneTestCase {
     trySetStringValue(field);
     trySetTokenStreamValue(field);
 
-    assertEquals(new BytesRef("baz"), field.binaryValue());
+    assertEquals(newBytesRef("baz"), field.binaryValue());
   }
 
   public void testBinaryDocValuesField() throws Exception {
-    BinaryDocValuesField field = new BinaryDocValuesField("foo", new BytesRef("bar"));
+    BinaryDocValuesField field = new BinaryDocValuesField("foo", newBytesRef("bar"));
 
     trySetByteValue(field);
     field.setBytesValue("fubar".getBytes(StandardCharsets.UTF_8));
-    field.setBytesValue(new BytesRef("baz"));
+    field.setBytesValue(newBytesRef("baz"));
     trySetDoubleValue(field);
     trySetIntValue(field);
     trySetFloatValue(field);
@@ -300,7 +300,7 @@ public class TestField extends LuceneTestCase {
     trySetStringValue(field);
     trySetTokenStreamValue(field);
 
-    assertEquals(new BytesRef("baz"), field.binaryValue());
+    assertEquals(newBytesRef("baz"), field.binaryValue());
   }
 
   public void testStringField() throws Exception {
@@ -379,13 +379,13 @@ public class TestField extends LuceneTestCase {
         new Field[] {
           new StoredField("foo", "bar".getBytes(StandardCharsets.UTF_8)),
           new StoredField("foo", "bar".getBytes(StandardCharsets.UTF_8), 0, 3),
-          new StoredField("foo", new BytesRef("bar")),
+          new StoredField("foo", newBytesRef("bar")),
         };
 
     for (Field field : fields) {
       trySetByteValue(field);
       field.setBytesValue("baz".getBytes(StandardCharsets.UTF_8));
-      field.setBytesValue(new BytesRef("baz"));
+      field.setBytesValue(newBytesRef("baz"));
       trySetDoubleValue(field);
       trySetIntValue(field);
       trySetFloatValue(field);
@@ -395,7 +395,7 @@ public class TestField extends LuceneTestCase {
       trySetStringValue(field);
       trySetTokenStreamValue(field);
 
-      assertEquals(new BytesRef("baz"), field.binaryValue());
+      assertEquals(newBytesRef("baz"), field.binaryValue());
     }
   }
 
@@ -488,7 +488,7 @@ public class TestField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    BytesRef br = new BytesRef(new byte[5]);
+    BytesRef br = newBytesRef(new byte[5]);
     Field field = new StringField("binary", br, Field.Store.YES);
     assertEquals(br, field.binaryValue());
     doc.add(field);
@@ -526,7 +526,7 @@ public class TestField extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          f.setBytesValue(new BytesRef("bogus"));
+          f.setBytesValue(newBytesRef("bogus"));
         });
   }
 

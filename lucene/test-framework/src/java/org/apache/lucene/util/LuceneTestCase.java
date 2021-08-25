@@ -3217,7 +3217,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static BytesRef newBytesRef(byte[] bytesIn, int offset, int length) {
     // System.out.println("LTC.newBytesRef!  bytesIn.length=" + bytesIn.length + " offset=" + offset
-    // + " length=" + length);
+    //                 + " length=" + length);
 
     assert bytesIn.length >= offset + length
         : "got offset=" + offset + " length=" + length + " bytesIn.length=" + bytesIn.length;
@@ -3242,10 +3242,16 @@ public abstract class LuceneTestCase extends Assert {
 
     System.arraycopy(bytesIn, offset, bytes, startOffset, length);
     // System.out.println("LTC:  return bytes.length=" + bytes.length + " startOffset=" +
-    // startOffset + " length=" + bytesIn.length);
+    //                 startOffset + " length=" + length);
 
-    BytesRef it = new BytesRef(bytes, startOffset, bytesIn.length);
+    BytesRef it = new BytesRef(bytes, startOffset, length);
     assert it.isValid();
+
+    if (RandomNumbers.randomIntBetween(random(), 1, 17) == 7) {
+      // try to ferret out bugs in this method too!
+      return newBytesRef(it.bytes, it.offset, it.length);
+    }
+
     return it;
   }
 }

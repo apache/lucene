@@ -965,7 +965,7 @@ public class TestPointQueries extends LuceneTestCase {
     if (bytes == null) {
       return "null";
     }
-    return new BytesRef(bytes).toString();
+    return newBytesRef(bytes).toString();
   }
 
   private static boolean matches(int bytesPerDim, byte[][] lower, byte[][] upper, byte[][] value) {
@@ -2091,7 +2091,7 @@ public class TestPointQueries extends LuceneTestCase {
                   new PointInSetQuery.Stream() {
                     @Override
                     public BytesRef next() {
-                      return new BytesRef(new byte[3]);
+                      return newBytesRef(new byte[3]);
                     }
                   }) {
                 @Override

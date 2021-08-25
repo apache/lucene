@@ -845,12 +845,12 @@ public class TestFuzzyQuery extends LuceneTestCase {
   }
 
   private static void assertMatches(ByteRunAutomaton automaton, String text) {
-    BytesRef b = new BytesRef(text);
+    BytesRef b = newBytesRef(text);
     assertTrue(automaton.run(b.bytes, b.offset, b.length));
   }
 
   private static void assertNoMatches(ByteRunAutomaton automaton, String text) {
-    BytesRef b = new BytesRef(text);
+    BytesRef b = newBytesRef(text);
     assertFalse(automaton.run(b.bytes, b.offset, b.length));
   }
 }
