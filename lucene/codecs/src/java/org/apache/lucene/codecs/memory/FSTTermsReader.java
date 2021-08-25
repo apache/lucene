@@ -581,7 +581,7 @@ public class FSTTermsReader extends FieldsProducer {
         int label, upto = 0, limit = target.length;
         while (upto < limit) { // to target prefix, or ceil label (rewind prefix)
           frame = newFrame();
-          label = target.bytes[upto] & 0xff;
+          label = target.bytes[target.offset + upto] & 0xff;
           frame = loadCeilFrame(label, topFrame(), frame);
           if (frame == null || frame.fstArc.label() != label) {
             break;

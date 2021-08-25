@@ -469,6 +469,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                 return table[(int) values.get(doc)];
               }
             };
+          } else if (entry.gcd == 1 && entry.minValue == 0) {
+            // Common case for ordinals, which are encoded as numerics
+            return new DenseNumericDocValues(maxDoc) {
+              @Override
+              public long longValue() throws IOException {
+                return values.get(doc);
+              }
+            };
           } else {
             final long mul = entry.gcd;
             final long delta = entry.minValue;
@@ -520,6 +528,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               @Override
               public long longValue() throws IOException {
                 return table[(int) values.get(disi.index())];
+              }
+            };
+          } else if (entry.gcd == 1 && entry.minValue == 0) {
+            return new SparseNumericDocValues(disi) {
+              @Override
+              public long longValue() throws IOException {
+                return values.get(disi.index());
               }
             };
           } else {

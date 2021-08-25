@@ -1,3 +1,9 @@
+
+import org.gradle.internal.jvm.JavaInfo
+import org.gradle.internal.jvm.Jvm
+import org.gradle.internal.jvm.inspection.JvmInstallationMetadata
+import org.gradle.internal.jvm.inspection.JvmMetadataDetector
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,62 +22,68 @@
  */
 
 // This adds support for compiling and testing against a different Java runtime.
-// This is the only way to build against JVMs not yet supported by Gradle itself.
+//
+// I failed to set it up leveraging Gradle's toolchains because
+// a toolchain spec is not flexible enough to provide an exact location of the JVM to be used;
+// if you have two identical JVM lang. versions in auto-discovered JVMs, an arbitrary one is used (?).
+// This situation is not uncommon when debugging low-level stuff (hand-compiled JVM binaries).
+//
+// The code below is a workaround using internal gradle classes. It may stop working in the future
+// but for now it's fine.
 
-JavaInstallationRegistry registry = extensions.getByType(JavaInstallationRegistry)
-
-JavaInstallation currentJvm = registry.installationForCurrentVirtualMachine.get()
-
-JavaInstallation altJvm = {
+JavaInfo jvmGradle = Jvm.current();
+JavaInfo jvmCurrent = {
   def runtimeJavaHome = propertyOrDefault("runtime.java.home", System.getenv('RUNTIME_JAVA_HOME'))
-  if (!runtimeJavaHome) {
-    return currentJvm
+  if (runtimeJavaHome != null) {
+    return Jvm.forHome(file(runtimeJavaHome))
   } else {
-    return registry.installationForDirectory(
-        layout.projectDirectory.dir(runtimeJavaHome)).get()
+    return jvmGradle
   }
 }()
 
-// Set up root project's property.
-rootProject.ext.runtimeJava = altJvm
-rootProject.ext.runtimeJavaVersion = altJvm.javaVersion
+JvmMetadataDetector jvmDetector = project.services.get(JvmMetadataDetector)
 
-if (!currentJvm.javaExecutable.equals(altJvm.javaExecutable)) {
-  // Set up java toolchain tasks to use the alternative Java.
-  // This is a related Gradle issue for the future:
-  // https://github.com/gradle/gradle/issues/1652
-
+if (jvmGradle != jvmCurrent) {
   configure(rootProject) {
     task altJvmWarning() {
       doFirst {
+
+        def jvmInfo = { JavaInfo javaInfo ->
+          JvmInstallationMetadata jvmMetadata = jvmDetector.getMetadata(javaInfo.javaHome)
+          return "${jvmMetadata.languageVersion} (${jvmMetadata.displayName} ${jvmMetadata.runtimeVersion}, home at: ${jvmMetadata.javaHome})"
+        }
+
         logger.warn("""NOTE: Alternative java toolchain will be used for compilation and tests:
-  Project will use Java ${altJvm.javaVersion} from: ${altJvm.installationDirectory}
-  Gradle runs with Java ${currentJvm.javaVersion} from: ${currentJvm.installationDirectory}
+  Project will use ${jvmInfo(jvmCurrent)}
+  Gradle runs with ${jvmInfo(jvmGradle)}
 """)
       }
     }
   }
 
-  // Set up toolchain-dependent tasks to use the alternative JVM.
   allprojects {
     // Any tests
     tasks.withType(Test) {
       dependsOn ":altJvmWarning"
-      executable = altJvm.javaExecutable
+      executable = jvmCurrent.javaExecutable
     }
 
     // Any javac compilation tasks
     tasks.withType(JavaCompile) {
       dependsOn ":altJvmWarning"
       options.fork = true
-      options.forkOptions.javaHome = altJvm.installationDirectory.asFile
+      options.forkOptions.javaHome = jvmCurrent.javaHome
     }
 
     // Javadoc compilation.
-    def javadocExecutable = altJvm.jdk.get().javadocExecutable.asFile
+    def javadocExecutable = jvmCurrent.javadocExecutable
     tasks.matching { it.name == "renderJavadoc" || it.name == "renderSiteJavadoc" }.all {
       dependsOn ":altJvmWarning"
-      executable = javadocExecutable
+      executable = javadocExecutable.toString()
     }
   }
 }
+
+// Set up root project's properties.
+rootProject.ext.runtimeJavaHome = jvmCurrent.javaHome
+rootProject.ext.runtimeJavaVersion = jvmDetector.getMetadata(jvmCurrent.javaHome).languageVersion
