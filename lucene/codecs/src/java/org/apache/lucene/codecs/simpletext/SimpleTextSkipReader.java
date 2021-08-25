@@ -147,28 +147,6 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
     return skipDoc;
   }
 
-  // NOTE: This method scans the entire postings list to find skip lists.
-  // This isn't great since the goal of skip lists is to avoid scanning entire postings lists,
-  // can we do better?
-  long seekSkipPointer(IndexInput skipStream, long docStartFP) throws IOException {
-    long skipPointer = -1;
-    skipStream.seek(docStartFP);
-    BytesRefBuilder scratch = new BytesRefBuilder();
-    while (true) {
-      SimpleTextUtil.readLine(skipStream, scratch);
-      if (scratch.get().equals(SimpleTextFieldsWriter.END)) {
-        break;
-      } else if (StringHelper.startsWith(scratch.get(), SimpleTextFieldsWriter.TERM)
-          || StringHelper.startsWith(scratch.get(), SimpleTextFieldsWriter.FIELD)) {
-        break;
-      } else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)) {
-        skipPointer = skipStream.getFilePointer();
-        break;
-      }
-    }
-    return skipPointer;
-  }
-
   void reset(long skipPointer, int docFreq) throws IOException {
     init();
     if (skipPointer > 0) {

@@ -25,6 +25,7 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.PAYLOAD
 import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.POS;
 import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.START_OFFSET;
 import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.TERM;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -122,11 +123,15 @@ class SimpleTextFieldsReader extends FieldsProducer {
     private int docFreq;
     private long totalTermFreq;
     private long docsStart;
+    private long skipPointer;
     private boolean ended;
-    private final BytesRefFSTEnum<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>> fstEnum;
+    private final BytesRefFSTEnum<
+            PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
+        fstEnum;
 
     public SimpleTextTermsEnum(
-        FST<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>> fst, IndexOptions indexOptions) {
+        FST<PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>> fst,
+        IndexOptions indexOptions) {
       this.indexOptions = indexOptions;
       fstEnum = new BytesRefFSTEnum<>(fst);
     }
@@ -134,12 +139,16 @@ class SimpleTextFieldsReader extends FieldsProducer {
     @Override
     public boolean seekExact(BytesRef text) throws IOException {
 
-      final BytesRefFSTEnum.InputOutput<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>>
+      final BytesRefFSTEnum.InputOutput<
+              PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
           result = fstEnum.seekExact(text);
       if (result != null) {
-        PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>> pair1 = result.output;
-        PairOutputs.Pair<Long, Long> pair2 = pair1.output2;
+        PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> pair =
+            result.output;
+        PairOutputs.Pair<Long, Long> pair1 = pair.output1;
+        PairOutputs.Pair<Long, Long> pair2 = pair.output2;
         docsStart = pair1.output1;
+        skipPointer = pair1.output2;
         docFreq = pair2.output1.intValue();
         totalTermFreq = pair2.output2;
         return true;
@@ -152,16 +161,20 @@ class SimpleTextFieldsReader extends FieldsProducer {
     public SeekStatus seekCeil(BytesRef text) throws IOException {
 
       // System.out.println("seek to text=" + text.utf8ToString());
-      final BytesRefFSTEnum.InputOutput<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>>
+      final BytesRefFSTEnum.InputOutput<
+              PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
           result = fstEnum.seekCeil(text);
       if (result == null) {
         // System.out.println("  end");
         return SeekStatus.END;
       } else {
         // System.out.println("  got text=" + term.utf8ToString());
-        PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>> pair1 = result.output;
-        PairOutputs.Pair<Long, Long> pair2 = pair1.output2;
+        PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> pair =
+            result.output;
+        PairOutputs.Pair<Long, Long> pair1 = pair.output1;
+        PairOutputs.Pair<Long, Long> pair2 = pair.output2;
         docsStart = pair1.output1;
+        skipPointer = pair1.output2;
         docFreq = pair2.output1.intValue();
         totalTermFreq = pair2.output2;
 
@@ -178,12 +191,16 @@ class SimpleTextFieldsReader extends FieldsProducer {
     @Override
     public BytesRef next() throws IOException {
       assert !ended;
-      final BytesRefFSTEnum.InputOutput<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>>
+      final BytesRefFSTEnum.InputOutput<
+              PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
           result = fstEnum.next();
       if (result != null) {
-        PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>> pair1 = result.output;
-        PairOutputs.Pair<Long, Long> pair2 = pair1.output2;
+        PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> pair =
+            result.output;
+        PairOutputs.Pair<Long, Long> pair1 = pair.output1;
+        PairOutputs.Pair<Long, Long> pair2 = pair.output2;
         docsStart = pair1.output1;
+        skipPointer = pair1.output2;
         docFreq = pair2.output1.intValue();
         totalTermFreq = pair2.output2;
         return result.input;
@@ -231,7 +248,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
         } else {
           docsAndPositionsEnum = new SimpleTextPostingsEnum();
         }
-        return docsAndPositionsEnum.reset(docsStart, indexOptions, docFreq);
+        return docsAndPositionsEnum.reset(docsStart, indexOptions, docFreq, skipPointer);
       }
 
       SimpleTextDocsEnum docsEnum;
@@ -242,7 +259,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       } else {
         docsEnum = new SimpleTextDocsEnum();
       }
-      return docsEnum.reset(docsStart, indexOptions == IndexOptions.DOCS, docFreq);
+      return docsEnum.reset(docsStart, indexOptions == IndexOptions.DOCS, docFreq, skipPointer);
     }
 
     @Override
@@ -280,14 +297,13 @@ class SimpleTextFieldsReader extends FieldsProducer {
       return in == inStart;
     }
 
-    public SimpleTextDocsEnum reset(long fp, boolean omitTF, int docFreq) throws IOException {
+    public SimpleTextDocsEnum reset(long fp, boolean omitTF, int docFreq, long skipPointer)
+        throws IOException {
       in.seek(fp);
       this.omitTF = omitTF;
       docID = -1;
       tf = 1;
       cost = docFreq;
-      long skipPointer = skipReader.seekSkipPointer(in, fp);
-      in.seek(fp);
       skipReader.reset(skipPointer, docFreq);
       nextSkipDoc = 0;
       seekTo = -1;
@@ -455,8 +471,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
       return in == inStart;
     }
 
-    public SimpleTextPostingsEnum reset(long fp, IndexOptions indexOptions, int docFreq)
-        throws IOException {
+    public SimpleTextPostingsEnum reset(
+        long fp, IndexOptions indexOptions, int docFreq, long skipPointer) throws IOException {
       nextDocStart = fp;
       docID = -1;
       readPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
@@ -467,8 +483,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
         endOffset = -1;
       }
       cost = docFreq;
-      long skipPointer = skipReader.seekSkipPointer(in, fp);
-      in.seek(fp);
       skipReader.reset(skipPointer, docFreq);
       nextSkipDoc = 0;
       seekTo = -1;
@@ -648,7 +662,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     private long sumTotalTermFreq;
     private long sumDocFreq;
     private int docCount;
-    private FST<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>> fst;
+    private FST<PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>> fst;
     private int termCount;
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
@@ -662,10 +676,13 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     private void loadTerms() throws IOException {
       PositiveIntOutputs posIntOutputs = PositiveIntOutputs.getSingleton();
-      final FSTCompiler<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>> fstCompiler;
+      final FSTCompiler<
+              PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
+          fstCompiler;
+      final PairOutputs<Long, Long> outputsOuter = new PairOutputs<>(posIntOutputs, posIntOutputs);
       final PairOutputs<Long, Long> outputsInner = new PairOutputs<>(posIntOutputs, posIntOutputs);
-      final PairOutputs<Long, PairOutputs.Pair<Long, Long>> outputs =
-          new PairOutputs<>(posIntOutputs, outputsInner);
+      final PairOutputs<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> outputs =
+          new PairOutputs<>(outputsOuter, outputsInner);
       fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
       IndexInput in = SimpleTextFieldsReader.this.in.clone();
       in.seek(termsStart);
@@ -673,6 +690,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       long lastDocsStart = -1;
       int docFreq = 0;
       long totalTermFreq = 0;
+      long skipPointer = 0;
       FixedBitSet visitedDocs = new FixedBitSet(maxDoc);
       final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();
       while (true) {
@@ -682,7 +700,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
             fstCompiler.add(
                 Util.toIntsRef(lastTerm.get(), scratchIntsRef),
                 outputs.newPair(
-                    lastDocsStart, outputsInner.newPair((long) docFreq, totalTermFreq)));
+                    outputsOuter.newPair(lastDocsStart, skipPointer),
+                    outputsInner.newPair((long) docFreq, totalTermFreq)));
             sumTotalTermFreq += totalTermFreq;
           }
           break;
@@ -696,12 +715,15 @@ class SimpleTextFieldsReader extends FieldsProducer {
         } else if (StringHelper.startsWith(scratch.get(), FREQ)) {
           scratchUTF16.copyUTF8Bytes(scratch.bytes(), FREQ.length, scratch.length() - FREQ.length);
           totalTermFreq += ArrayUtil.parseInt(scratchUTF16.chars(), 0, scratchUTF16.length()) - 1;
+        } else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)) {
+          skipPointer = in.getFilePointer();
         } else if (StringHelper.startsWith(scratch.get(), TERM)) {
           if (lastDocsStart != -1) {
             fstCompiler.add(
                 Util.toIntsRef(lastTerm.get(), scratchIntsRef),
                 outputs.newPair(
-                    lastDocsStart, outputsInner.newPair((long) docFreq, totalTermFreq)));
+                    outputsOuter.newPair(lastDocsStart, skipPointer),
+                    outputsInner.newPair((long) docFreq, totalTermFreq)));
           }
           lastDocsStart = in.getFilePointer();
           final int len = scratch.length() - TERM.length;
@@ -712,6 +734,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
           sumTotalTermFreq += totalTermFreq;
           totalTermFreq = 0;
           termCount++;
+          skipPointer = 0;
         }
       }
       docCount = visitedDocs.cardinality();
