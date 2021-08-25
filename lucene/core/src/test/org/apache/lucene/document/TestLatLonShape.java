@@ -125,8 +125,8 @@ public class TestLatLonShape extends LuceneTestCase {
     // add a line document
     document = new Document();
     // add a line string
-    double lats[] = new double[p.numPoints() - 1];
-    double lons[] = new double[p.numPoints() - 1];
+    double[] lats = new double[p.numPoints() - 1];
+    double[] lons = new double[p.numPoints() - 1];
     for (int i = 0; i < lats.length; ++i) {
       lats[i] = p.getPolyLat(i);
       lons[i] = p.getPolyLon(i);
@@ -169,8 +169,8 @@ public class TestLatLonShape extends LuceneTestCase {
     // add a line document
     document = new Document();
     // add a line string
-    double lats[] = new double[p.numPoints() - 1];
-    double lons[] = new double[p.numPoints() - 1];
+    double[] lats = new double[p.numPoints() - 1];
+    double[] lons = new double[p.numPoints() - 1];
     for (int i = 0; i < lats.length; ++i) {
       lats[i] = p.getPolyLat(i);
       lons[i] = p.getPolyLon(i);

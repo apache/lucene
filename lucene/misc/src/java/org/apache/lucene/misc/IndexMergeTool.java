@@ -47,11 +47,11 @@ public class IndexMergeTool {
   @SuppressForbidden(reason = "System.err required (verbose mode): command line tool")
   static class Options {
     String mergedIndexPath;
-    String indexPaths[];
+    String[] indexPaths;
     IndexWriterConfig config = new IndexWriterConfig(null).setOpenMode(OpenMode.CREATE);
     int maxSegments = 0;
 
-    static Options parse(String args[]) throws ReflectiveOperationException {
+    static Options parse(String[] args) throws ReflectiveOperationException {
       Options options = new Options();
       int index = 0;
       while (index < args.length) {

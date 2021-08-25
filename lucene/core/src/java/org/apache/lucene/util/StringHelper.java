@@ -314,7 +314,7 @@ public abstract class StringHelper {
     //     what impact that has on the period, whereas the simple ++ (mod 2^128)
     //     we use here is guaranteed to have the full period.
 
-    byte bits[];
+    byte[] bits;
     synchronized (idLock) {
       bits = nextId.toByteArray();
       nextId = nextId.add(BigInteger.ONE).and(mask128);
@@ -339,7 +339,7 @@ public abstract class StringHelper {
    * representation for debugging. Never throws an exception. The returned string may indicate if
    * the id is definitely invalid.
    */
-  public static String idToString(byte id[]) {
+  public static String idToString(byte[] id) {
     if (id == null) {
       return "(null)";
     } else {

@@ -94,11 +94,11 @@ public class TestIndexSearcher extends LuceneTestCase {
             new LinkedBlockingQueue<Runnable>(),
             new NamedThreadFactory("TestIndexSearcher"));
 
-    IndexSearcher searchers[] =
+    IndexSearcher[] searchers =
         new IndexSearcher[] {new IndexSearcher(reader), new IndexSearcher(reader, service)};
-    Query queries[] = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
-    Sort sorts[] = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
-    ScoreDoc afters[] =
+    Query[] queries = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
+    Sort[] sorts = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
+    ScoreDoc[] afters =
         new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {newBytesRef("boo!")})};
 
     for (IndexSearcher searcher : searchers) {
@@ -419,9 +419,9 @@ public class TestIndexSearcher extends LuceneTestCase {
 
     IndexSearcher searcher = new IndexSearcher(reader.getContext(), service, sliceExecutor);
 
-    Query queries[] = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
-    Sort sorts[] = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
-    ScoreDoc afters[] =
+    Query[] queries = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
+    Sort[] sorts = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
+    ScoreDoc[] afters =
         new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {newBytesRef("boo!")})};
 
     for (ScoreDoc after : afters) {

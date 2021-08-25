@@ -252,7 +252,7 @@ public class TestPointQueries extends LuceneTestCase {
     assertEquals(1, s.count(DoublePoint.newExactQuery("point", Double.NaN)));
 
     // set query
-    double set[] =
+    double[] set =
         new double[] {
           Double.MAX_VALUE,
           Double.NaN,
@@ -325,7 +325,7 @@ public class TestPointQueries extends LuceneTestCase {
     assertEquals(1, s.count(FloatPoint.newExactQuery("point", Float.NaN)));
 
     // set query
-    float set[] =
+    float[] set =
         new float[] {
           Float.MAX_VALUE,
           Float.NaN,

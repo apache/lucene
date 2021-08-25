@@ -799,7 +799,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
 
   /** mix up field numbers, merge, and check that data is correct */
   public void testMismatchedFields() throws Exception {
-    Directory dirs[] = new Directory[10];
+    Directory[] dirs = new Directory[10];
     for (int i = 0; i < dirs.length; i++) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(null);

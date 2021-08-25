@@ -30,10 +30,10 @@ import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 
 public class TestQueryAutoStopWordAnalyzer extends BaseTokenStreamTestCase {
-  String variedFieldValues[] = {
+  String[] variedFieldValues = {
     "the", "quick", "brown", "fox", "jumped", "over", "the", "lazy", "boring", "dog"
   };
-  String repetitiveFieldValues[] = {"boring", "boring", "vaguelyboring"};
+  String[] repetitiveFieldValues = {"boring", "boring", "vaguelyboring"};
   Directory dir;
   Analyzer appAnalyzer;
   IndexReader reader;

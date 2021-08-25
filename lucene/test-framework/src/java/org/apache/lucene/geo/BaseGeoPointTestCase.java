@@ -1612,7 +1612,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     iwc.setMergeScheduler(new SerialMergeScheduler());
     RandomIndexWriter writer = new RandomIndexWriter(random(), directory, iwc);
 
-    for (double p[] : pts) {
+    for (double[] p : pts) {
       Document doc = new Document();
       addPointToDoc("point", doc, p[0], p[1]);
       writer.addDocument(doc);

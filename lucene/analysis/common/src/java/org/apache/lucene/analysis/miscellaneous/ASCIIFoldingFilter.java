@@ -188,7 +188,7 @@ public final class ASCIIFoldingFilter extends TokenFilter {
    * @lucene.internal
    */
   public static final int foldToASCII(
-      char input[], int inputPos, char output[], int outputPos, int length) {
+      char[] input, int inputPos, char[] output, int outputPos, int length) {
     final int end = inputPos + length;
     for (int pos = inputPos; pos < end; ++pos) {
       final char c = input[pos];

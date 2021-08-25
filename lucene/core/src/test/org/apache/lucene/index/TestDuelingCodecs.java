@@ -108,7 +108,7 @@ public class TestDuelingCodecs extends LuceneTestCase {
       Document document = lineFileDocs.nextDoc();
       // grab the title and add some SortedSet instances for fun
       String title = document.get("titleTokenized");
-      String split[] = title.split("\\s+");
+      String[] split = title.split("\\s+");
       document.removeFields("sortedset");
       for (String trash : split) {
         document.add(new SortedSetDocValuesField("sortedset", new BytesRef(trash)));

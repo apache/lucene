@@ -78,7 +78,7 @@ public class Gener extends Reduce {
     List<CharSequence> cmds = orig.cmds;
     List<Row> rows = new ArrayList<>();
     List<Row> orows = orig.rows;
-    int remap[] = new int[orows.size()];
+    int[] remap = new int[orows.size()];
 
     Arrays.fill(remap, 1);
     for (int j = orows.size() - 1; j >= 0; j--) {
@@ -101,7 +101,7 @@ public class Gener extends Reduce {
    * @return <code>true</code> if the Row should remain, <code>false
    *      </code> otherwise
    */
-  public boolean eat(Row in, int remap[]) {
+  public boolean eat(Row in, int[] remap) {
     int sum = 0;
     for (Iterator<Cell> i = in.cells.values().iterator(); i.hasNext(); ) {
       Cell c = i.next();
