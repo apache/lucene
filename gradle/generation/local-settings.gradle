@@ -40,17 +40,16 @@ configure(rootProject) {
 # See gradlew :helpLocalSettings for more information.
 systemProp.file.encoding=UTF-8
 
-# This is huge but gradle runs out of memory on lower heaps.
-org.gradle.jvmargs=-Xmx3g
-
-# If you plan on using JDK16, open up internal modules for spotless/ java google format
-# by adding the following to org.gradle.jvmargs above (\\ is a multiline property):
+# Set up gradle JVM defaults.
+# The heap seems huge but gradle runs out of memory on lower values (don't know why).
 #
-# --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \\
-# --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \\
-# --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \\
-# --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \\
-# --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+# We also open up internal compiler modules for spotless/ google jaa format.
+org.gradle.jvmargs=-Xmx3g \\
+ --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \\
+ --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \\
+ --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \\
+ --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \\
+ --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
 
 # Run at normal priority, in parallel
 org.gradle.parallel=true
