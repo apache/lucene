@@ -274,8 +274,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
     final int numTerms =
         TestUtil.nextInt(random(), TermInSetQuery.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD + 1, 100);
     for (int i = 0; i < numTerms; ++i) {
-      final BytesRef term =
-          newBytesRef(RandomStrings.randomUnicodeOfCodepointLength(random(), 10));
+      final BytesRef term = newBytesRef(RandomStrings.randomUnicodeOfCodepointLength(random(), 10));
       terms.add(term);
     }
 

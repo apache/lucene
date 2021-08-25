@@ -3216,7 +3216,7 @@ public abstract class LuceneTestCase extends Assert {
    * non-zero end-padding, to tickle latent bugs that fail to look at {@code BytesRef.offset}.
    */
   public static BytesRef newBytesRef(byte[] bytesIn, int offset, int length) {
-    //System.out.println("LTC.newBytesRef!  bytesIn.length=" + bytesIn.length + " offset=" + offset
+    // System.out.println("LTC.newBytesRef!  bytesIn.length=" + bytesIn.length + " offset=" + offset
     //                 + " length=" + length);
 
     assert bytesIn.length >= offset + length
@@ -3251,7 +3251,7 @@ public abstract class LuceneTestCase extends Assert {
       // try to ferret out bugs in this method too!
       return newBytesRef(it.bytes, it.offset, it.length);
     }
-    
+
     return it;
   }
 }
