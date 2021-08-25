@@ -109,9 +109,9 @@ public class TestDocValuesQueries extends LuceneTestCase {
           byte[] encoded = new byte[Long.BYTES];
           LongPoint.encodeDimension(value, encoded, 0);
           if (sortedSet) {
-            doc.add(new SortedSetDocValuesField("dv", new BytesRef(encoded)));
+            doc.add(new SortedSetDocValuesField("dv", newBytesRef(encoded)));
           } else {
-            doc.add(new SortedDocValuesField("dv", new BytesRef(encoded)));
+            doc.add(new SortedDocValuesField("dv", newBytesRef(encoded)));
           }
           doc.add(new LongPoint("idx", value));
         }
@@ -149,16 +149,16 @@ public class TestDocValuesQueries extends LuceneTestCase {
           q2 =
               SortedSetDocValuesField.newSlowRangeQuery(
                   "dv",
-                  min == Long.MIN_VALUE && random().nextBoolean() ? null : new BytesRef(encodedMin),
-                  max == Long.MAX_VALUE && random().nextBoolean() ? null : new BytesRef(encodedMax),
+                  min == Long.MIN_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMin),
+                  max == Long.MAX_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMax),
                   includeMin,
                   includeMax);
         } else {
           q2 =
               SortedDocValuesField.newSlowRangeQuery(
                   "dv",
-                  min == Long.MIN_VALUE && random().nextBoolean() ? null : new BytesRef(encodedMin),
-                  max == Long.MAX_VALUE && random().nextBoolean() ? null : new BytesRef(encodedMax),
+                  min == Long.MIN_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMin),
+                  max == Long.MAX_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMax),
                   includeMin,
                   includeMax);
         }
@@ -205,23 +205,23 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
     Query q2 =
         SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("baz"), true, true);
+            "foo", newBytesRef("bar"), newBytesRef("baz"), true, true);
     QueryUtils.checkEqual(
         q2,
         SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("baz"), true, true));
+            "foo", newBytesRef("bar"), newBytesRef("baz"), true, true));
     QueryUtils.checkUnequal(
         q2,
         SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("baz"), new BytesRef("baz"), true, true));
+            "foo", newBytesRef("baz"), newBytesRef("baz"), true, true));
     QueryUtils.checkUnequal(
         q2,
         SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("bar"), true, true));
+            "foo", newBytesRef("bar"), newBytesRef("bar"), true, true));
     QueryUtils.checkUnequal(
         q2,
         SortedSetDocValuesField.newSlowRangeQuery(
-            "quux", new BytesRef("bar"), new BytesRef("baz"), true, true));
+            "quux", newBytesRef("bar"), newBytesRef("baz"), true, true));
   }
 
   public void testToString() {
@@ -232,19 +232,19 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
     Query q2 =
         SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("baz"), true, true);
+            "foo", newBytesRef("bar"), newBytesRef("baz"), true, true);
     assertEquals("foo:[[62 61 72] TO [62 61 7a]]", q2.toString());
     q2 =
         SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("baz"), false, true);
+            "foo", newBytesRef("bar"), newBytesRef("baz"), false, true);
     assertEquals("foo:{[62 61 72] TO [62 61 7a]]", q2.toString());
     q2 =
         SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("baz"), false, false);
+            "foo", newBytesRef("bar"), newBytesRef("baz"), false, false);
     assertEquals("foo:{[62 61 72] TO [62 61 7a]}", q2.toString());
-    q2 = SortedSetDocValuesField.newSlowRangeQuery("foo", new BytesRef("bar"), null, true, true);
+    q2 = SortedSetDocValuesField.newSlowRangeQuery("foo", newBytesRef("bar"), null, true, true);
     assertEquals("foo:[[62 61 72] TO *}", q2.toString());
-    q2 = SortedSetDocValuesField.newSlowRangeQuery("foo", null, new BytesRef("baz"), true, true);
+    q2 = SortedSetDocValuesField.newSlowRangeQuery("foo", null, newBytesRef("baz"), true, true);
     assertEquals("foo:{* TO [62 61 7a]]", q2.toString());
     assertEquals("{* TO [62 61 7a]]", q2.toString("foo"));
     assertEquals("foo:{* TO [62 61 7a]]", q2.toString("bar"));
@@ -263,14 +263,14 @@ public class TestDocValuesQueries extends LuceneTestCase {
             SortedNumericDocValuesField.newSlowRangeQuery("foo", 2, 4),
             SortedDocValuesField.newSlowRangeQuery(
                 "foo",
-                new BytesRef("abc"),
-                new BytesRef("bcd"),
+                newBytesRef("abc"),
+                newBytesRef("bcd"),
                 random().nextBoolean(),
                 random().nextBoolean()),
             SortedSetDocValuesField.newSlowRangeQuery(
                 "foo",
-                new BytesRef("abc"),
-                new BytesRef("bcd"),
+                newBytesRef("abc"),
+                newBytesRef("bcd"),
                 random().nextBoolean(),
                 random().nextBoolean()))) {
       Weight w = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);

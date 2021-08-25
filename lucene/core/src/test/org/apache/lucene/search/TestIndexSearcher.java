@@ -66,7 +66,7 @@ public class TestIndexSearcher extends LuceneTestCase {
       Document doc = new Document();
       doc.add(newStringField("field", Integer.toString(i), Field.Store.NO));
       doc.add(newStringField("field2", Boolean.toString(i % 2 == 0), Field.Store.NO));
-      doc.add(new SortedDocValuesField("field2", new BytesRef(Boolean.toString(i % 2 == 0))));
+      doc.add(new SortedDocValuesField("field2", newBytesRef(Boolean.toString(i % 2 == 0))));
       iw.addDocument(doc);
 
       if (random.nextBoolean()) {
@@ -100,7 +100,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     Query queries[] = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
     Sort sorts[] = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
     ScoreDoc afters[] =
-        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {new BytesRef("boo!")})};
+        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {newBytesRef("boo!")})};
 
     for (IndexSearcher searcher : searchers) {
       for (ScoreDoc after : afters) {
@@ -423,7 +423,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     Query queries[] = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
     Sort sorts[] = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
     ScoreDoc afters[] =
-        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {new BytesRef("boo!")})};
+        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {newBytesRef("boo!")})};
 
     for (ScoreDoc after : afters) {
       for (Query query : queries) {

@@ -108,7 +108,7 @@ public class TestDateSort extends LuceneTestCase {
     String dateTimeString = DateTools.timeToString(time, DateTools.Resolution.SECOND);
     Field dateTimeField = newStringField(DATE_TIME_FIELD, dateTimeString, Field.Store.YES);
     document.add(dateTimeField);
-    document.add(new SortedDocValuesField(DATE_TIME_FIELD, new BytesRef(dateTimeString)));
+    document.add(new SortedDocValuesField(DATE_TIME_FIELD, newBytesRef(dateTimeString)));
 
     return document;
   }
