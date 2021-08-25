@@ -76,7 +76,8 @@ public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
     }
   }
 
-  @SuppressWarnings("deprecation")
+  // Ignore the deprecated constructor. We do want a unique object here.
+  @SuppressWarnings({"all"})
   private static final Long NO_OUTPUT = new Long(0);
 
   private final boolean doShare;
