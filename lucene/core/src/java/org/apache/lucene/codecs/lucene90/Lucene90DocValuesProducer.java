@@ -695,7 +695,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         data.randomAccessSlice(ordsEntry.indexOffset, ordsEntry.indexLength);
     final DirectMonotonicReader indexReader =
         DirectMonotonicReader.getInstance(ordsEntry.indexMeta, indexSlice);
-    final IndexInput valuesData = data.slice("values", ordsEntry.valuesOffset, ordsEntry.valuesLength);
+    final IndexInput valuesData =
+        data.slice("values", ordsEntry.valuesOffset, ordsEntry.valuesLength);
 
     if (ordsEntry.docsWithFieldOffset == -1) {
       // dense
@@ -1326,7 +1327,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           return values.advance(cur++);
         }
-
       };
     } else {
       // sparse
