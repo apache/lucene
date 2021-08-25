@@ -22,6 +22,8 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -31,8 +33,13 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.HitQueue;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
@@ -140,7 +147,38 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
   @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
-    throw new UnsupportedOperationException();
+    VectorValues values = getVectorValues(field);
+    if (values == null) {
+      return null;
+    }
+    if (target.length != values.dimension()) {
+      throw new IllegalArgumentException(
+          "incorrect dimension for field "
+              + field
+              + "; expected "
+              + values.dimension()
+              + " but target has "
+              + target.length);
+    }
+    FieldInfo info = readState.fieldInfos.fieldInfo(field);
+    VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
+    HitQueue topK = new HitQueue(k, false);
+    int doc;
+    while ((doc = values.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      float[] vector = values.vectorValue();
+      float score = vectorSimilarity.compare(vector, target);
+      if (vectorSimilarity.reversed) {
+        score = 1 / (score + 1);
+      }
+      topK.insertWithOverflow(new ScoreDoc(doc, score));
+    }
+    ScoreDoc[] topScoreDocs = new ScoreDoc[topK.size()];
+    int i = 0;
+    for (ScoreDoc scoreDoc : topK) {
+      topScoreDocs[i++] = scoreDoc;
+    }
+    Arrays.sort(topScoreDocs, Comparator.comparingInt(x -> x.doc));
+    return new TopDocs(new TotalHits(values.size(), TotalHits.Relation.EQUAL_TO), topScoreDocs);
   }
 
   @Override
