@@ -467,6 +467,8 @@ Bug Fixes
 
 * LUCENE-10008: Respect ignoreCase in CommonGramsFilterFactory (Vigya Sharma)
 
+* LUCENE-10060: Ensure DrillSidewaysQuery instances never get cached. (Greg Miller, Zachary Chen)
+
 Other
 ---------------------
 (No changes)
