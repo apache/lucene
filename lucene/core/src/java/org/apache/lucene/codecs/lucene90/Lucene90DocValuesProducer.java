@@ -348,79 +348,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     return getNumeric(entry);
   }
 
-  private abstract static class DenseNumericDocValues extends NumericDocValues {
-
-    final int maxDoc;
-    int doc = -1;
-
-    DenseNumericDocValues(int maxDoc) {
-      this.maxDoc = maxDoc;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= maxDoc) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
-    }
-
-    @Override
-    public boolean advanceExact(int target) {
-      doc = target;
-      return true;
-    }
-
-    @Override
-    public long cost() {
-      return maxDoc;
-    }
-  }
-
-  private abstract static class SparseNumericDocValues extends NumericDocValues {
-
-    final IndexedDISI disi;
-
-    SparseNumericDocValues(IndexedDISI disi) {
-      this.disi = disi;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return disi.advance(target);
-    }
-
-    @Override
-    public boolean advanceExact(int target) throws IOException {
-      return disi.advanceExact(target);
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public long cost() {
-      return disi.cost();
-    }
-  }
-
   private abstract static class NumericValues {
     abstract long advance(long index) throws IOException;
   }
@@ -461,13 +388,69 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       // empty
       return DocValues.emptyNumeric();
     }
-    final NumericValues values = getValues(entry);
+
+    // NOTE: we could make this a bit simpler by reusing #getValues but this
+    // makes things slower.
+
+    final RandomAccessInput indexSlice =
+        data.randomAccessSlice(entry.indexOffset, entry.indexLength);
+    final DirectMonotonicReader indexReader =
+        DirectMonotonicReader.getInstance(entry.indexMeta, indexSlice);
+    final IndexInput valuesData = data.slice("values", entry.valuesOffset, entry.valuesLength);
+
     if (entry.docsWithFieldOffset == -1) {
       // dense
-      return new DenseNumericDocValues(maxDoc) {
+      return new NumericDocValues() {
+
+        private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
+        private int doc = -1;
+        private final DocValuesEncoder decoder = new DocValuesEncoder();
+        private long currentBlockIndex = -1;
+        private final long[] currentBlock = new long[NUMERIC_BLOCK_SIZE];
+
+        @Override
+        public int docID() {
+          return doc;
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          return advance(doc + 1);
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          if (target >= maxDoc) {
+            return doc = NO_MORE_DOCS;
+          }
+          return doc = target;
+        }
+
+        @Override
+        public boolean advanceExact(int target) {
+          doc = target;
+          return true;
+        }
+
+        @Override
+        public long cost() {
+          return maxDoc;
+        }
+
         @Override
         public long longValue() throws IOException {
-          return values.advance(doc);
+          final int index = doc;
+          final int blockIndex = index >>> NUMERIC_BLOCK_SHIFT;
+          final int blockInIndex = index & NUMERIC_BLOCK_MASK;
+          if (blockIndex != currentBlockIndex) {
+            assert blockIndex > currentBlockIndex;
+            if (blockIndex - 1 > currentBlockIndex) {
+              valuesData.seek(indexReader.get(blockIndex));
+            }
+            currentBlockIndex = blockIndex;
+            decoder.decode(valuesData, currentBlock);
+          }
+          return currentBlock[blockInIndex];
         }
       };
     } else {
@@ -479,10 +462,51 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               entry.jumpTableEntryCount,
               entry.denseRankPower,
               entry.numValues);
-      return new SparseNumericDocValues(disi) {
+      return new NumericDocValues() {
+
+        private final DocValuesEncoder decoder = new DocValuesEncoder();
+        private long currentBlockIndex = -1;
+        private final long[] currentBlock = new long[NUMERIC_BLOCK_SIZE];
+
+        @Override
+        public int advance(int target) throws IOException {
+          return disi.advance(target);
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          return disi.advanceExact(target);
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          return disi.nextDoc();
+        }
+
+        @Override
+        public int docID() {
+          return disi.docID();
+        }
+
+        @Override
+        public long cost() {
+          return disi.cost();
+        }
+
         @Override
         public long longValue() throws IOException {
-          return values.advance(disi.index());
+          final int index = disi.index();
+          final int blockIndex = index >>> NUMERIC_BLOCK_SHIFT;
+          final int blockInIndex = index & NUMERIC_BLOCK_MASK;
+          if (blockIndex != currentBlockIndex) {
+            assert blockIndex > currentBlockIndex;
+            if (blockIndex - 1 > currentBlockIndex) {
+              valuesData.seek(indexReader.get(blockIndex));
+            }
+            currentBlockIndex = blockIndex;
+            decoder.decode(valuesData, currentBlock);
+          }
+          return currentBlock[blockInIndex];
         }
       };
     }
@@ -658,39 +682,133 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private SortedDocValues getSorted(SortedEntry entry) throws IOException {
-    final NumericDocValues ords = getNumeric(entry.ordsEntry);
-    return new BaseSortedDocValues(entry, data) {
+    final NumericEntry ordsEntry = entry.ordsEntry;
+    if (ordsEntry.docsWithFieldOffset == -2) {
+      // empty
+      return DocValues.emptySorted();
+    }
 
-      @Override
-      public int ordValue() throws IOException {
-        return (int) ords.longValue();
-      }
+    // NOTE: we could make this a bit simpler by reusing #getValues but this
+    // makes things slower.
 
-      @Override
-      public boolean advanceExact(int target) throws IOException {
-        return ords.advanceExact(target);
-      }
+    final RandomAccessInput indexSlice =
+        data.randomAccessSlice(ordsEntry.indexOffset, ordsEntry.indexLength);
+    final DirectMonotonicReader indexReader =
+        DirectMonotonicReader.getInstance(ordsEntry.indexMeta, indexSlice);
+    final IndexInput valuesData = data.slice("values", ordsEntry.valuesOffset, ordsEntry.valuesLength);
 
-      @Override
-      public int docID() {
-        return ords.docID();
-      }
+    if (ordsEntry.docsWithFieldOffset == -1) {
+      // dense
+      return new BaseSortedDocValues(entry, data) {
 
-      @Override
-      public int nextDoc() throws IOException {
-        return ords.nextDoc();
-      }
+        private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
+        private int doc = -1;
+        private final DocValuesEncoder decoder = new DocValuesEncoder();
+        private long currentBlockIndex = -1;
+        private final long[] currentBlock = new long[NUMERIC_BLOCK_SIZE];
 
-      @Override
-      public int advance(int target) throws IOException {
-        return ords.advance(target);
-      }
+        @Override
+        public int docID() {
+          return doc;
+        }
 
-      @Override
-      public long cost() {
-        return ords.cost();
-      }
-    };
+        @Override
+        public int nextDoc() throws IOException {
+          return advance(doc + 1);
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          if (target >= maxDoc) {
+            return doc = NO_MORE_DOCS;
+          }
+          return doc = target;
+        }
+
+        @Override
+        public boolean advanceExact(int target) {
+          doc = target;
+          return true;
+        }
+
+        @Override
+        public long cost() {
+          return maxDoc;
+        }
+
+        @Override
+        public int ordValue() throws IOException {
+          final int index = doc;
+          final int blockIndex = index >>> NUMERIC_BLOCK_SHIFT;
+          final int blockInIndex = index & NUMERIC_BLOCK_MASK;
+          if (blockIndex != currentBlockIndex) {
+            assert blockIndex > currentBlockIndex;
+            if (blockIndex - 1 > currentBlockIndex) {
+              valuesData.seek(indexReader.get(blockIndex));
+            }
+            currentBlockIndex = blockIndex;
+            decoder.decode(valuesData, currentBlock);
+          }
+          return (int) currentBlock[blockInIndex];
+        }
+      };
+    } else {
+      final IndexedDISI disi =
+          new IndexedDISI(
+              data,
+              ordsEntry.docsWithFieldOffset,
+              ordsEntry.docsWithFieldLength,
+              ordsEntry.jumpTableEntryCount,
+              ordsEntry.denseRankPower,
+              ordsEntry.numValues);
+      return new BaseSortedDocValues(entry, data) {
+
+        private final DocValuesEncoder decoder = new DocValuesEncoder();
+        private long currentBlockIndex = -1;
+        private final long[] currentBlock = new long[NUMERIC_BLOCK_SIZE];
+
+        @Override
+        public int advance(int target) throws IOException {
+          return disi.advance(target);
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          return disi.advanceExact(target);
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          return disi.nextDoc();
+        }
+
+        @Override
+        public int docID() {
+          return disi.docID();
+        }
+
+        @Override
+        public long cost() {
+          return disi.cost();
+        }
+
+        @Override
+        public int ordValue() throws IOException {
+          final int index = disi.index();
+          final int blockIndex = index >>> NUMERIC_BLOCK_SHIFT;
+          final int blockInIndex = index & NUMERIC_BLOCK_MASK;
+          if (blockIndex != currentBlockIndex) {
+            assert blockIndex > currentBlockIndex;
+            if (blockIndex - 1 > currentBlockIndex) {
+              valuesData.seek(indexReader.get(blockIndex));
+            }
+            currentBlockIndex = blockIndex;
+            decoder.decode(valuesData, currentBlock);
+          }
+          return (int) currentBlock[blockInIndex];
+        }
+      };
+    }
   }
 
   private abstract static class BaseSortedDocValues extends SortedDocValues {
@@ -1145,61 +1263,133 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   @Override
   public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
     SortedSetEntry entry = sortedSets.get(field.name);
+    return getSortedSet(entry);
+  }
+
+  private SortedSetDocValues getSortedSet(SortedSetEntry entry) throws IOException {
     if (entry.singleValueEntry != null) {
       return DocValues.singleton(getSorted(entry.singleValueEntry));
     }
 
-    final SortedNumericDocValues ords = getSortedNumeric(entry.ordsEntry);
-    return new BaseSortedSetDocValues(entry, data) {
+    final SortedNumericEntry ordsEntry = entry.ordsEntry;
+    final RandomAccessInput addressesInput =
+        data.randomAccessSlice(ordsEntry.addressesOffset, ordsEntry.addressesLength);
+    final LongValues addresses =
+        DirectMonotonicReader.getInstance(ordsEntry.addressesMeta, addressesInput);
 
-      int i = 0;
-      int count = 0;
+    final NumericValues values = getValues(ordsEntry);
 
-      @Override
-      public long nextOrd() throws IOException {
-        if (i++ == count) {
-          return NO_MORE_ORDS;
+    if (ordsEntry.docsWithFieldOffset == -1) {
+      // dense
+      return new BaseSortedSetDocValues(entry, data) {
+
+        int doc = -1;
+        long cur, end;
+
+        @Override
+        public int nextDoc() throws IOException {
+          return advance(doc + 1);
         }
-        return ords.nextValue();
-      }
 
-      @Override
-      public boolean advanceExact(int target) throws IOException {
-        if (ords.advanceExact(target)) {
-          count = ords.docValueCount();
-          i = 0;
+        @Override
+        public int docID() {
+          return doc;
+        }
+
+        @Override
+        public long cost() {
+          return maxDoc;
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          if (target >= maxDoc) {
+            return doc = NO_MORE_DOCS;
+          }
+          cur = addresses.get(target);
+          end = addresses.get(target + 1L);
+          return doc = target;
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          cur = addresses.get(target);
+          end = addresses.get(target + 1L);
+          doc = target;
           return true;
-        } else {
-          return false;
         }
-      }
 
-      @Override
-      public int docID() {
-        return ords.docID();
-      }
+        @Override
+        public long nextOrd() throws IOException {
+          if (cur >= end) {
+            return NO_MORE_ORDS;
+          }
+          return values.advance(cur++);
+        }
 
-      @Override
-      public int nextDoc() throws IOException {
-        int doc = ords.nextDoc();
-        count = ords.docValueCount();
-        i = 0;
-        return doc;
-      }
+      };
+    } else {
+      // sparse
+      final IndexedDISI disi =
+          new IndexedDISI(
+              data,
+              ordsEntry.docsWithFieldOffset,
+              ordsEntry.docsWithFieldLength,
+              ordsEntry.jumpTableEntryCount,
+              ordsEntry.denseRankPower,
+              ordsEntry.numDocsWithField);
+      return new BaseSortedSetDocValues(entry, data) {
 
-      @Override
-      public int advance(int target) throws IOException {
-        int doc = ords.advance(target);
-        count = ords.docValueCount();
-        i = 0;
-        return doc;
-      }
+        boolean set;
+        long cur, end;
 
-      @Override
-      public long cost() {
-        return ords.cost();
-      }
-    };
+        @Override
+        public int nextDoc() throws IOException {
+          set = false;
+          return disi.nextDoc();
+        }
+
+        @Override
+        public int docID() {
+          return disi.docID();
+        }
+
+        @Override
+        public long cost() {
+          return disi.cost();
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          set = false;
+          return disi.advance(target);
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          set = false;
+          return disi.advanceExact(target);
+        }
+
+        @Override
+        public long nextOrd() throws IOException {
+          set();
+          if (cur >= end) {
+            return NO_MORE_ORDS;
+          }
+          return values.advance(cur++);
+        }
+
+        private void set() {
+          if (set == false) {
+            final int index = disi.index();
+            cur = addresses.get(index);
+            end = addresses.get(index + 1L);
+            set = true;
+          }
+        }
+      };
+    }
   }
 
   @Override
