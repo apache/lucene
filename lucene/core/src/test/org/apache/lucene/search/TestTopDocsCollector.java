@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -717,5 +718,51 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  public void testInvalidConcurrentSearchIncorrectlyConfiguredCollectorManager()
+      throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+      Document doc = new Document();
+      w.addDocuments(Arrays.asList(doc, doc, doc, doc));
+      w.flush();
+      w.addDocuments(Arrays.asList(doc, doc, doc, doc));
+      w.flush();
+
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        ExecutorService service =
+            new ThreadPoolExecutor(
+                4,
+                4,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<Runnable>(),
+                new NamedThreadFactory("TestTopDocsCollector"));
+        try {
+          expectThrows(
+              IllegalStateException.class,
+              () -> {
+                int maxDocPerSlice = 1;
+                int maxSegmentsPerSlice = 1;
+                IndexSearcher searcher =
+                    new IndexSearcher(reader, service) {
+                      @Override
+                      protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                        return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                      }
+                    };
+
+                TopScoreDocCollectorManager collectorManager =
+                    new TopScoreDocCollectorManager(1, null, 1, false);
+
+                searcher.search(new MatchAllDocsQuery(), collectorManager);
+              });
+        } finally {
+          service.shutdown();
+        }
+      }
+    }
   }
 }

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -768,6 +769,54 @@ public class TestTopFieldCollector extends LuceneTestCase {
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
         assertEquals(10, topDocs.totalHits.value);
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+      }
+    }
+  }
+
+  public void testInvalidConcurrentSearchIncorrectlyConfiguredCollectorManager()
+      throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+      Document doc = new Document();
+      doc.add(new TextField("f", "foo bar", Store.NO));
+      w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc));
+      w.flush();
+      w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc));
+      w.flush();
+
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        ExecutorService service =
+            new ThreadPoolExecutor(
+                4,
+                4,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<Runnable>(),
+                new NamedThreadFactory("TestTopFieldCollector"));
+        try {
+          expectThrows(
+              IllegalStateException.class,
+              () -> {
+                int maxDocPerSlice = 1;
+                int maxSegmentsPerSlice = 1;
+                IndexSearcher searcher =
+                    new IndexSearcher(reader, service) {
+                      @Override
+                      protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                        return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                      }
+                    };
+
+                Sort sort = new Sort(SortField.FIELD_SCORE, SortField.FIELD_DOC);
+                TopFieldCollectorManager collectorManager =
+                    new TopFieldCollectorManager(sort, 1, null, 1, false);
+
+                searcher.search(new MatchAllDocsQuery(), collectorManager);
+              });
+        } finally {
+          service.shutdown();
+        }
       }
     }
   }

@@ -35,6 +35,8 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   private final HitsThresholdChecker hitsThresholdChecker;
   private final MaxScoreAccumulator minScoreAcc;
   private final List<TopFieldCollector> collectors;
+  private final boolean supportsConcurrency;
+  private boolean collectorCreated;
 
   /**
    * Creates a new {@link TopFieldCollectorManager} from the given arguments.
@@ -62,6 +64,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     this.sort = sort;
     this.numHits = numHits;
     this.after = after;
+    this.supportsConcurrency = supportsConcurrency;
     this.hitsThresholdChecker =
         supportsConcurrency
             ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
@@ -111,6 +114,13 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
 
   @Override
   public TopFieldCollector newCollector() {
+    if (collectorCreated && supportsConcurrency == false) {
+      throw new IllegalStateException(
+          "The instantiated TopFieldCollectorManager does not support concurrency, but multiple collectors are being created");
+    } else {
+      collectorCreated = true;
+    }
+
     if (sort.fields.length == 0) {
       throw new IllegalArgumentException("Sort must contain at least one field");
     }
