@@ -61,14 +61,22 @@ public final class HnswGraph extends KnnGraphValues {
   // Each entry in the list has the top maxConn neighbors of a node. The nodes correspond to vectors
   // added to HnswBuilder, and the node values are the ordinals of those vectors.
   private final List<List<NeighborArray>> graph;
+  private int curMaxLevel; // the current max graph level
+  private int entryNode; // the current graph entry node on the top level
 
   // KnnGraphValues iterator members
   private int upto;
   private NeighborArray cur;
 
+  // used for iterating over graph values
+  private int curLevel = -1;
+  private int curNode = -1;
+
   HnswGraph(int maxConn, int numLevels, int levelOfFirstNode) {
     this.maxConn = maxConn;
     this.graph = new ArrayList<>(numLevels);
+    this.curMaxLevel = levelOfFirstNode;
+    this.entryNode = 0;
     for (int i = 0; i < numLevels; i++) {
       graph.add(new ArrayList<>());
     }
@@ -81,12 +89,11 @@ public final class HnswGraph extends KnnGraphValues {
   }
 
   /**
-   * Searches for the nearest neighbors of a query vector.
+   * Searches HNSW graph for the nearest neighbors of a query vector.
    *
    * @param query search query vector
    * @param topK the number of nodes to be returned
-   * @param numSeed the size of the queue maintained while searching, and controls the number of
-   *     random entry points to sample
+   * @param numSeed the size of the queue maintained while searching
    * @param vectors vector values
    * @param graphValues the graph values. May represent the entire graph, or a level in a
    *     hierarchical graph.
@@ -95,7 +102,6 @@ public final class HnswGraph extends KnnGraphValues {
    * @param random a source of randomness, used for generating entry points to the graph
    * @return a priority queue holding the closest neighbors found
    */
-  // TODO: implement hierarchical search, currently searches only 0th level
   public static NeighborQueue search(
       float[] query,
       int topK,
@@ -107,32 +113,82 @@ public final class HnswGraph extends KnnGraphValues {
       Random random)
       throws IOException {
     int size = graphValues.size();
+    int boundedNumSeed = Math.min(numSeed, 2 * size);
+    NeighborQueue results;
 
+    if (graphValues.maxLevel() == 0) {
+      // search in SNW; generate a number of entry points randomly
+      final int[] eps = new int[boundedNumSeed];
+      for (int i = 0; i < boundedNumSeed; i++) {
+        eps[i] = random.nextInt(size);
+      }
+      return searchLevel(query, topK, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
+    } else {
+      // search in hierarchical SNW
+      int[] eps = new int[] {graphValues.entryNode()};
+      for (int level = graphValues.maxLevel(); level >= 1; level--) {
+        results =
+            HnswGraph.searchLevel(
+                query, 1, level, eps, vectors, similarityFunction, graphValues, acceptOrds);
+        eps = new int[] {results.pop()};
+      }
+      results =
+          HnswGraph.searchLevel(
+              query, boundedNumSeed, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
+      while (results.size() > topK) {
+        results.pop();
+      }
+      return results;
+    }
+  }
+
+  /**
+   * Searches for the nearest neighbors of a query vector in a given level
+   *
+   * @param query search query vector
+   * @param topK the number of nearest to query results to return
+   * @param level level to search
+   * @param eps the entry points for search at this level
+   * @param vectors vector values
+   * @param similarityFunction similarity function
+   * @param graphValues the graph values
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @return a priority queue holding the closest neighbors found
+   */
+  static NeighborQueue searchLevel(
+      float[] query,
+      int topK,
+      int level,
+      final int[] eps,
+      RandomAccessVectorValues vectors,
+      VectorSimilarityFunction similarityFunction,
+      KnnGraphValues graphValues,
+      Bits acceptOrds)
+      throws IOException {
+
+    int size = graphValues.size();
+    int queueSize = Math.max(eps.length, topK);
     // MIN heap, holding the top results
-    NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
+    NeighborQueue results = new NeighborQueue(queueSize, similarityFunction.reversed);
     // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = new NeighborQueue(numSeed, !similarityFunction.reversed);
-
+    NeighborQueue candidates = new NeighborQueue(queueSize, !similarityFunction.reversed);
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
     SparseFixedBitSet visited = new SparseFixedBitSet(size);
-    // get initial candidates at random
-    int boundedNumSeed = Math.min(numSeed, 2 * size);
-    for (int i = 0; i < boundedNumSeed; i++) {
-      int entryPoint = random.nextInt(size);
-      if (visited.get(entryPoint) == false) {
-        visited.set(entryPoint);
-        // explore the topK starting points of some random numSeed probes
-        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
-        candidates.add(entryPoint, score);
-        if (acceptOrds == null || acceptOrds.get(entryPoint)) {
-          results.add(entryPoint, score);
+
+    for (int i = 0; i < eps.length; i++) {
+      if (visited.get(eps[i]) == false) {
+        visited.set(eps[i]);
+        float score = similarityFunction.compare(query, vectors.vectorValue(eps[i]));
+        candidates.add(eps[i], score);
+        if (level > 0 || acceptOrds == null || acceptOrds.get(eps[i])) {
+          results.add(eps[i], score);
         }
       }
     }
 
     // Set the bound to the worst current result and below reject any newly-generated candidates
-    // failing
-    // to exceed this bound
+    // failing to exceed this bound
     BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
     bound.set(results.topScore());
     while (candidates.size() > 0) {
@@ -144,7 +200,7 @@ public final class HnswGraph extends KnnGraphValues {
         }
       }
       int topCandidateNode = candidates.pop();
-      graphValues.seek(0, topCandidateNode);
+      graphValues.seek(level, topCandidateNode);
       int friendOrd;
       while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
@@ -154,7 +210,7 @@ public final class HnswGraph extends KnnGraphValues {
         visited.set(friendOrd);
 
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.size() < numSeed || bound.check(score) == false) {
+        if (results.size() < topK || bound.check(score) == false) {
           candidates.add(friendOrd, score);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             results.insertWithOverflow(friendOrd, score);
@@ -188,8 +244,20 @@ public final class HnswGraph extends KnnGraphValues {
   }
 
   // TODO: optimize RAM usage so not to store references for all nodes for levels > 0
+  // TODO: add extra levels if level >= numLevels
   public void addNode(int level, int node) {
     if (level > 0) {
+      // if the new node introduces a new level, make this node the graph's new entry point
+      if (level > curMaxLevel) {
+        curMaxLevel = level;
+        entryNode = node;
+        // add more levels if needed
+        if (level >= graph.size()) {
+          for (int i = graph.size(); i <= level; i++) {
+            graph.add(new ArrayList<>());
+          }
+        }
+      }
       // Levels above 0th don't contain all nodes,
       // so for missing nodes we add null NeighborArray
       int nullsToAdd = node - graph.get(level).size();
@@ -197,6 +265,7 @@ public final class HnswGraph extends KnnGraphValues {
         graph.get(level).add(null);
       }
     }
+
     graph.get(level).add(new NeighborArray(maxConn + 1));
   }
 
@@ -206,11 +275,65 @@ public final class HnswGraph extends KnnGraphValues {
     upto = -1;
   }
 
+  /**
+   * Positions the graph on the given level. Must be used before iterating over nodes on this level
+   * with the method {@code nextNodeOnLevel()}.
+   *
+   * <p>Package private access to use only for tests
+   */
+  void seekLevel(int level) {
+    curLevel = level;
+    curNode = -1;
+  }
+
+  /**
+   * Returns the next node on the current level As levels > 0 don't contain all nodes, this returns
+   * the next node on this level expressed as ordinals of nodes on the 0th level.
+   *
+   * <p>Must be used after the graph was positioned on the current level with {@code seekLevel(int)}
+   *
+   * <p>Package private access to use only for tests
+   *
+   * @return next node on the current level
+   */
+  int nextNodeOnLevel() {
+    List<NeighborArray> nodesNeighbors = graph.get(curLevel);
+    curNode++;
+    while (curNode < nodesNeighbors.size()) {
+      if (nodesNeighbors.get(curNode) != null) {
+        return curNode;
+      }
+      curNode++;
+    }
+    return NO_MORE_DOCS;
+  }
+
   @Override
   public int nextNeighbor() {
     if (++upto < cur.size()) {
       return cur.node[upto];
     }
     return NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the current top level of the graph
+   *
+   * @return current maximum level of the graph
+   */
+  @Override
+  public int maxLevel() {
+    return curMaxLevel;
+  }
+
+  /**
+   * Returns the graph's current entry node on the top level shown as ordinals of the nodes on 0th
+   * level
+   *
+   * @return the graph's current entry node on the top level
+   */
+  @Override
+  public int entryNode() {
+    return entryNode;
   }
 }

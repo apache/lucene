@@ -407,7 +407,7 @@ public class TestKnnGraph extends LuceneTestCase {
     assertEquals(expectedCount, totalGraphDocs);
   }
 
-  private void assertMaxConn(int[][] graph, int maxConn) {
+  public static void assertMaxConn(int[][] graph, int maxConn) {
     for (int[] ints : graph) {
       if (ints != null) {
         assert (ints.length <= maxConn);
@@ -418,7 +418,7 @@ public class TestKnnGraph extends LuceneTestCase {
     }
   }
 
-  private void assertConnected(int[][] graph) {
+  private static void assertConnected(int[][] graph) {
     // every node in the graph is reachable from every other node
     Set<Integer> visited = new HashSet<>();
     List<Integer> queue = new LinkedList<>();

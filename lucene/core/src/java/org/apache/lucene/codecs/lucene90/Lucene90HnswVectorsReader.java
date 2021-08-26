@@ -503,5 +503,15 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       arc += dataIn.readVInt();
       return arc;
     }
+
+    @Override
+    public int maxLevel() throws IOException {
+      return 0;
+    }
+
+    @Override
+    public int entryNode() throws IOException {
+      return 0;
+    }
   }
 }

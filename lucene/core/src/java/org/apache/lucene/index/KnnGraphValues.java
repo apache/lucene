@@ -52,6 +52,12 @@ public abstract class KnnGraphValues {
    */
   public abstract int nextNeighbor() throws IOException;
 
+  /** Returns top level of the graph * */
+  public abstract int maxLevel() throws IOException;
+
+  /** Returns graph's entry point on the top level * */
+  public abstract int entryNode() throws IOException;
+
   /** Empty graph value */
   public static KnnGraphValues EMPTY =
       new KnnGraphValues() {
@@ -66,6 +72,16 @@ public abstract class KnnGraphValues {
 
         @Override
         public int size() {
+          return 0;
+        }
+
+        @Override
+        public int maxLevel() {
+          return 0;
+        }
+
+        @Override
+        public int entryNode() {
           return 0;
         }
       };
