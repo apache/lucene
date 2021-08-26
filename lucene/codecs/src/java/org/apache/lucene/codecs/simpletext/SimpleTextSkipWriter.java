@@ -47,6 +47,7 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
   static final BytesRef SKIP_LIST = new BytesRef("    skipList ");
+  static final BytesRef LEVEL_LENGTH = new BytesRef("      levelLength ");
   static final BytesRef LEVEL = new BytesRef("      level ");
   static final BytesRef SKIP_DOC = new BytesRef("        skipDoc ");
   static final BytesRef SKIP_DOC_FP = new BytesRef("        skipDocFP ");
@@ -55,6 +56,7 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
   static final BytesRef FREQ = new BytesRef("            freq ");
   static final BytesRef NORM = new BytesRef("            norm ");
   static final BytesRef IMPACTS_END = new BytesRef("        impactsEnd ");
+  static final BytesRef CHILD_POINTER = new BytesRef("        childPointer ");
 
   SimpleTextSkipWriter(SegmentWriteState writeState) throws IOException {
     super(BLOCK_SIZE, skipMultiplier, maxSkipLevels, writeState.segmentInfo.maxDoc());
@@ -69,21 +71,19 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
   protected void writeSkipData(int level, DataOutput skipBuffer) throws IOException {
     Boolean wroteHeader = wroteHeaderPerLevelMap.get(level);
     if (wroteHeader == null || !wroteHeader) {
-      // because the parent MultiLevelSkipListWriter will write "length"(a VLong) before this new
-      // line or write "childPointer"(a VLong) before this
-      SimpleTextUtil.writeNewline(skipBuffer);
       SimpleTextUtil.write(skipBuffer, LEVEL);
       SimpleTextUtil.write(skipBuffer, level + "", scratch);
+      SimpleTextUtil.writeNewline(skipBuffer);
 
       wroteHeaderPerLevelMap.put(level, true);
     }
-    SimpleTextUtil.writeNewline(skipBuffer);
     SimpleTextUtil.write(skipBuffer, SKIP_DOC);
     SimpleTextUtil.write(skipBuffer, curDoc + "", scratch);
-
     SimpleTextUtil.writeNewline(skipBuffer);
+
     SimpleTextUtil.write(skipBuffer, SKIP_DOC_FP);
     SimpleTextUtil.write(skipBuffer, curDocFilePointer + "", scratch);
+    SimpleTextUtil.writeNewline(skipBuffer);
 
     CompetitiveImpactAccumulator competitiveFreqNorms = curCompetitiveFreqNorms[level];
     Collection<Impact> impacts = competitiveFreqNorms.getCompetitiveFreqNormPairs();
@@ -91,7 +91,6 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
     if (level + 1 < numberOfSkipLevels) {
       curCompetitiveFreqNorms[level + 1].addAll(competitiveFreqNorms);
     }
-    SimpleTextUtil.writeNewline(skipBuffer);
     SimpleTextUtil.write(skipBuffer, IMPACTS);
     SimpleTextUtil.writeNewline(skipBuffer);
     for (Impact impact : impacts) {
@@ -140,5 +139,19 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
     this.curDocFilePointer = docFilePointer;
     this.curCompetitiveFreqNorms[0].addAll(competitiveImpactAccumulator);
     bufferSkip(numDocs);
+  }
+
+  @Override
+  protected void writeLevelLength(long levelLength, IndexOutput output) throws IOException {
+    SimpleTextUtil.write(output, LEVEL_LENGTH);
+    SimpleTextUtil.write(output, levelLength + "", scratch);
+    SimpleTextUtil.writeNewline(output);
+  }
+
+  @Override
+  protected void writeChildPointer(long childPointer, DataOutput skipBuffer) throws IOException {
+    SimpleTextUtil.write(skipBuffer, CHILD_POINTER);
+    SimpleTextUtil.write(skipBuffer, childPointer + "", scratch);
+    SimpleTextUtil.writeNewline(skipBuffer);
   }
 }

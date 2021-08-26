@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.CHILD_POINTER;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.FREQ;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACT;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.IMPACTS_END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.LEVEL_LENGTH;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.NORM;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_DOC_FP;
@@ -52,6 +54,7 @@ import org.apache.lucene.util.StringHelper;
 class SimpleTextSkipReader extends MultiLevelSkipListReader {
 
   private final CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
+  private final BytesRefBuilder scratch = new BytesRefBuilder();
   private Impacts impacts;
   private List<List<Impact>> perLevelImpacts;
   private long nextSkipDocFP = -1;
@@ -107,7 +110,6 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
     perLevelImpacts.get(level).clear();
     int skipDoc = DocIdSetIterator.NO_MORE_DOCS;
     ChecksumIndexInput input = new BufferedChecksumIndexInput(skipStream);
-    BytesRefBuilder scratch = new BytesRefBuilder();
     int freq = 1;
     while (true) {
       SimpleTextUtil.readLine(input, scratch);
@@ -145,6 +147,22 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
       }
     }
     return skipDoc;
+  }
+
+  @Override
+  protected long readLevelLength(IndexInput skipStream) throws IOException {
+    SimpleTextUtil.readLine(skipStream, scratch);
+    scratchUTF16.copyUTF8Bytes(
+        scratch.bytes(), LEVEL_LENGTH.length, scratch.length() - LEVEL_LENGTH.length);
+    return Long.parseLong(scratchUTF16.toString());
+  }
+
+  @Override
+  protected long readChildPointer(IndexInput skipStream) throws IOException {
+    SimpleTextUtil.readLine(skipStream, scratch);
+    scratchUTF16.copyUTF8Bytes(
+        scratch.bytes(), CHILD_POINTER.length, scratch.length() - CHILD_POINTER.length);
+    return Long.parseLong(scratchUTF16.toString());
   }
 
   void reset(long skipPointer, int docFreq) throws IOException {
