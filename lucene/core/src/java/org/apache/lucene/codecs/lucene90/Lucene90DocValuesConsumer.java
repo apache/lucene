@@ -139,7 +139,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
             return DocValues.singleton(valuesProducer.getNumeric(field));
           }
-        });
+        }, false);
   }
 
   private static class MinMaxTracker {
@@ -177,13 +177,13 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
-  private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer) throws IOException {
+  private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords) throws IOException {
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     int numDocsWithValue = 0;
     MinMaxTracker minMax = new MinMaxTracker();
     MinMaxTracker blockMinMax = new MinMaxTracker();
     long gcd = 0;
-    Set<Long> uniqueValues = new HashSet<>();
+    Set<Long> uniqueValues = ords ? null : new HashSet<>();
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       for (int i = 0, count = values.docValueCount(); i < count; ++i) {
         long v = values.nextValue();
@@ -215,6 +215,15 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
     minMax.finish();
     blockMinMax.finish();
+
+    if (ords && minMax.numValues > 0) {
+      if (minMax.min != 0) {
+        throw new IllegalStateException("The min value for ordinals should always be 0, got " + minMax.min);
+      }
+      if (gcd > 1) {
+        throw new IllegalStateException("GCD compression should never be used on ordinals, found gcd=" + gcd);
+      }
+    }
 
     final long numValues = minMax.numValues;
     long min = minMax.min;
@@ -508,7 +517,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
                 };
             return DocValues.singleton(sortedOrds);
           }
-        });
+        }, true);
     addTermsDict(DocValues.singleton(valuesProducer.getSorted(field)));
   }
 
@@ -669,7 +678,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private void doAddSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
-    long[] stats = writeValues(field, valuesProducer);
+    long[] stats = writeValues(field, valuesProducer, false);
     int numDocsWithField = Math.toIntExact(stats[0]);
     long numValues = stats[1];
     assert numValues >= numDocsWithField;
