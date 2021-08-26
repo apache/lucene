@@ -139,7 +139,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
             return DocValues.singleton(valuesProducer.getNumeric(field));
           }
-        }, false);
+        },
+        false);
   }
 
   private static class MinMaxTracker {
@@ -177,7 +178,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
-  private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords) throws IOException {
+  private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
+      throws IOException {
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     int numDocsWithValue = 0;
     MinMaxTracker minMax = new MinMaxTracker();
@@ -218,10 +220,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
     if (ords && minMax.numValues > 0) {
       if (minMax.min != 0) {
-        throw new IllegalStateException("The min value for ordinals should always be 0, got " + minMax.min);
+        throw new IllegalStateException(
+            "The min value for ordinals should always be 0, got " + minMax.min);
       }
       if (gcd > 1) {
-        throw new IllegalStateException("GCD compression should never be used on ordinals, found gcd=" + gcd);
+        throw new IllegalStateException(
+            "GCD compression should never be used on ordinals, found gcd=" + gcd);
       }
     }
 
@@ -517,7 +521,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
                 };
             return DocValues.singleton(sortedOrds);
           }
-        }, true);
+        },
+        true);
     addTermsDict(DocValues.singleton(valuesProducer.getSorted(field)));
   }
 
