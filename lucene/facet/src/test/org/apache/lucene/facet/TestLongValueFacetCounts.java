@@ -38,7 +38,6 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
-import org.junit.Ignore;
 
 /** Tests long value facets. */
 public class TestLongValueFacetCounts extends LuceneTestCase {
@@ -75,7 +74,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     d.close();
   }
 
-  @Ignore // See: LUCENE-10070
+  // See: LUCENE-10070
   public void testCountAll() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
@@ -95,7 +94,7 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     LongValueFacetCounts facets = new LongValueFacetCounts("field", r);
 
     FacetResult result = facets.getAllChildrenSortByValue();
-    assertEquals("dim=field path=[] value=9 childCount=2\n  1 (5)\n  0 (4)\n", result.toString());
+    assertEquals("dim=field path=[] value=9 childCount=2\n  0 (4)\n  1 (5)\n", result.toString());
     r.close();
     d.close();
   }

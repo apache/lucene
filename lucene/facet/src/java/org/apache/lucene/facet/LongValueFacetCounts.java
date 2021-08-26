@@ -34,6 +34,7 @@ import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.PriorityQueue;
 
@@ -201,26 +202,36 @@ public class LongValueFacetCounts extends Facets {
       SortedNumericDocValues multiValues = DocValues.getSortedNumeric(context.reader(), field);
       NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
 
+      Bits liveDocs = context.reader().getLiveDocs();
+
       if (singleValues != null) {
 
-        while (singleValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          totCount++;
-          increment(singleValues.longValue());
+        for (int doc = singleValues.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = singleValues.nextDoc()) {
+          if (liveDocs.get(doc)) {
+            totCount++;
+            increment(singleValues.longValue());
+          }
         }
       } else {
 
-        while (multiValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          int limit = multiValues.docValueCount();
-          if (limit > 0) {
-            totCount++;
-          }
-          long previousValue = 0;
-          for (int i = 0; i < limit; i++) {
-            long value = multiValues.nextValue();
-            // do not increment the count for duplicate values
-            if (i == 0 || value != previousValue) {
-              increment(value);
-              previousValue = value;
+        for (int doc = multiValues.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = multiValues.nextDoc()) {
+          if (liveDocs.get(doc)) {
+            int limit = multiValues.docValueCount();
+            if (limit > 0) {
+              totCount++;
+            }
+            long previousValue = 0;
+            for (int i = 0; i < limit; i++) {
+              long value = multiValues.nextValue();
+              // do not increment the count for duplicate values
+              if (i == 0 || value != previousValue) {
+                increment(value);
+                previousValue = value;
+              }
             }
           }
         }
