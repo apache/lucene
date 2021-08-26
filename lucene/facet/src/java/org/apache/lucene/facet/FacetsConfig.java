@@ -409,13 +409,11 @@ public class FacetsConfig {
         indexDrillDownTerms(doc, indexFieldName, dimConfig, facetLabel);
       }
 
-      // Facet counts:
-      // DocValues are considered stored fields:
-      IntsRef o = ordinals.get();
-      Arrays.sort(o.ints, o.offset, o.length);
+      IntsRef ords = ordinals.get();
+      Arrays.sort(ords.ints, ords.offset, ords.offset + ords.length);
       int prev = -1;
-      for (int i = 0; i < o.length; i++) {
-        int ord = o.ints[o.offset + i];
+      for (int i = 0; i < ords.length; i++) {
+        int ord = ords.ints[ords.offset + i];
         if (ord > prev) {
           doc.add(new SortedNumericDocValuesField(indexFieldName, ord));
           prev = ord;
