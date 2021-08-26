@@ -973,48 +973,45 @@ public final class CheckIndex implements Closeable {
       }
 
       if (checksumsOnly == false) {
-        // This redundant assignment is done to make compiler happy
-        SegmentReader finalReader = reader;
-
         // Test Livedocs
-        segInfoStat.liveDocStatus = testLiveDocs(finalReader, infoStream, failFast);
+        segInfoStat.liveDocStatus = testLiveDocs(reader, infoStream, failFast);
 
         // Test Fieldinfos
-        segInfoStat.fieldInfoStatus = testFieldInfos(finalReader, infoStream, failFast);
+        segInfoStat.fieldInfoStatus = testFieldInfos(reader, infoStream, failFast);
 
         // Test Field Norms
-        segInfoStat.fieldNormStatus = testFieldNorms(finalReader, infoStream, failFast);
+        segInfoStat.fieldNormStatus = testFieldNorms(reader, infoStream, failFast);
 
         // Test the Term Index
         segInfoStat.termIndexStatus =
-            testPostings(finalReader, infoStream, verbose, doSlowChecks, failFast);
+            testPostings(reader, infoStream, verbose, doSlowChecks, failFast);
 
         // Test Stored Fields
-        segInfoStat.storedFieldStatus = testStoredFields(finalReader, infoStream, failFast);
+        segInfoStat.storedFieldStatus = testStoredFields(reader, infoStream, failFast);
 
         // Test Term Vectors
         segInfoStat.termVectorStatus =
-            testTermVectors(finalReader, infoStream, verbose, doSlowChecks, failFast);
+            testTermVectors(reader, infoStream, verbose, doSlowChecks, failFast);
 
         // Test Docvalues
-        segInfoStat.docValuesStatus = testDocValues(finalReader, infoStream, failFast);
+        segInfoStat.docValuesStatus = testDocValues(reader, infoStream, failFast);
 
         // Test PointValues
-        segInfoStat.pointsStatus = testPoints(finalReader, infoStream, failFast);
+        segInfoStat.pointsStatus = testPoints(reader, infoStream, failFast);
 
         // Test VectorValues
-        segInfoStat.vectorValuesStatus = testVectors(finalReader, infoStream, failFast);
+        segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
 
         // Test Index Sort
         if (indexSort != null) {
-          segInfoStat.indexSortStatus = testSort(finalReader, indexSort, infoStream, failFast);
+          segInfoStat.indexSortStatus = testSort(reader, indexSort, infoStream, failFast);
         }
 
         // Test Soft Deletes
         final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
         if (softDeletesField != null) {
           segInfoStat.softDeletesStatus =
-              checkSoftDeletes(softDeletesField, info, finalReader, infoStream, failFast);
+              checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
         }
 
         // Rethrow the first exception we encountered
