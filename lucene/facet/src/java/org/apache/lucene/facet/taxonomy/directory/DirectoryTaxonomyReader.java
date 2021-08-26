@@ -324,10 +324,10 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     // the cache.
     checkOrdinalBounds(ordinal);
 
-    FacetLabel ordinalPath = getPathFromCache(ordinal);
+    FacetLabel[] ordinalPath = getPathFromCache(ordinal);
 
-    if (ordinalPath != null) {
-      return ordinalPath;
+    if (ordinalPath[0] != null) {
+      return ordinalPath[0];
     }
 
     int readerIndex = ReaderUtil.subIndex(ordinal, indexReader.leaves());
@@ -354,23 +354,37 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     return ret;
   }
 
-  private FacetLabel getPathFromCache(int ordinal) {
-    // TODO: can we use an int-based hash impl, such as IntToObjectMap,
+  private FacetLabel[] getPathFromCache(int... ordinals) {
+    FacetLabel[] facetLabels = new FacetLabel[ordinals.length];
+    // TODO LUCENE-10068: can we use an int-based hash impl, such as IntToObjectMap,
     // wrapped as LRU?
     synchronized (categoryCache) {
-      return categoryCache.get(ordinal);
+      for (int i = 0; i < ordinals.length; i++) {
+        facetLabels[i] = categoryCache.get(ordinals[i]);
+      }
     }
+    return facetLabels;
   }
 
-  private void checkOrdinalBounds(int ordinal) throws IllegalArgumentException {
-    if (ordinal < 0 || ordinal >= indexReader.maxDoc()) {
-      throw new IllegalArgumentException(
-          "ordinal "
-              + ordinal
-              + " is out of the range of the indexReader "
-              + indexReader.toString()
-              + ". The maximum possible ordinal number is "
-              + (indexReader.maxDoc() - 1));
+  /**
+   * Checks if the ordinals in the array are >=0 and < {@code
+   * DirectoryTaxonomyReader#indexReader.maxDoc()}
+   *
+   * @param ordinals Integer array of ordinals
+   * @throws IllegalArgumentException Throw an IllegalArgumentException if one of the ordinals is
+   *     out of bounds
+   */
+  private void checkOrdinalBounds(int... ordinals) throws IllegalArgumentException {
+    for (int ordinal : ordinals) {
+      if (ordinal < 0 || ordinal >= indexReader.maxDoc()) {
+        throw new IllegalArgumentException(
+            "ordinal "
+                + ordinal
+                + " is out of the range of the indexReader "
+                + indexReader.toString()
+                + ". The maximum possible ordinal number is "
+                + (indexReader.maxDoc() - 1));
+      }
     }
   }
 
@@ -385,8 +399,10 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
    * @param ordinals Array of ordinals that are assigned to categories inserted into the taxonomy
    *     index
    */
+  @Override
   public FacetLabel[] getBulkPath(int... ordinals) throws IOException {
     ensureOpen();
+    checkOrdinalBounds(ordinals);
 
     int ordinalsLength = ordinals.length;
     FacetLabel[] bulkPath = new FacetLabel[ordinalsLength];
@@ -394,15 +410,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     int[] originalPosition = new int[ordinalsLength];
     Arrays.setAll(originalPosition, IntUnaryOperator.identity());
 
-    for (int i = 0; i < ordinalsLength; i++) {
-      // check whether the ordinal is valid before accessing the cache
-      checkOrdinalBounds(ordinals[i]);
-      // check the cache before trying to find it in the index
-      FacetLabel ordinalPath = getPathFromCache(ordinals[i]);
-      if (ordinalPath != null) {
-        bulkPath[i] = ordinalPath;
-      }
-    }
+    getPathFromCache(ordinals);
 
     /* parallel sort the ordinals and originalPosition array based on the values in the ordinals array */
     new InPlaceMergeSorter() {
@@ -429,6 +437,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     LeafReader leafReader;
     LeafReaderContext leafReaderContext;
     BinaryDocValues values = null;
+    List<Integer> uncachedOrdinalPositions = new ArrayList<>();
 
     for (int i = 0; i < ordinalsLength; i++) {
       if (bulkPath[originalPosition[i]] == null) {
@@ -450,33 +459,24 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
           If the index is constructed with the older StoredFields it will not have any BinaryDocValues field and will return null
            */
           if (values == null) {
-            return getBulkPathForOlderIndexes(ordinals);
+            return super.getBulkPath(ordinals);
           }
         }
+        // values is leaf specific so you only advance till you reach the target within the leaf
         boolean success = values.advanceExact(ordinals[i] - leafReaderDocBase);
         assert success;
         bulkPath[originalPosition[i]] =
             new FacetLabel(FacetsConfig.stringToPath(values.binaryValue().utf8ToString()));
 
-        // add the value to the categoryCache after computation
-        synchronized (categoryCache) {
-          categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
-        }
+        uncachedOrdinalPositions.add(i);
       }
     }
 
-    return bulkPath;
-  }
-
-  /**
-   * This function is only used when the underlying taxonomy index was constructed using an older
-   * (slower) StoredFields based codec (< 8.7). The {@link #getBulkPath(int...)} function calls it
-   * internally when it realizes that the index uses StoredFields.
-   */
-  private FacetLabel[] getBulkPathForOlderIndexes(int... ordinals) throws IOException {
-    FacetLabel[] bulkPath = new FacetLabel[ordinals.length];
-    for (int i = 0; i < ordinals.length; i++) {
-      bulkPath[i] = getPath(ordinals[i]);
+    synchronized (categoryCache) {
+      for (int i : uncachedOrdinalPositions) {
+        // add the value to the categoryCache after computation
+        categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+      }
     }
 
     return bulkPath;

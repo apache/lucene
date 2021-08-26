@@ -569,7 +569,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
   }
 
   public void testCallingBulkPathReturnsCorrectResult() throws Exception {
-    float PROBABILITY_OF_COMMIT = 0.5f;
     Directory src = newDirectory();
     DirectoryTaxonomyWriter w = new DirectoryTaxonomyWriter(src);
     String randomArray[] = new String[random().nextInt(1000)];
@@ -584,7 +583,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       allPaths[i] = new FacetLabel(randomArray[i]);
       w.addCategory(allPaths[i]);
       // add random commits to create multiple segments in the index
-      if (random().nextFloat() < PROBABILITY_OF_COMMIT) {
+      if (random().nextBoolean()) {
         w.commit();
       }
     }
@@ -597,8 +596,48 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       allOrdinals[i] = r1.getOrdinal(allPaths[i]);
     }
 
-    FacetLabel allBulkPaths[] = r1.getBulkPath(allOrdinals);
-    assertArrayEquals(allPaths, allBulkPaths);
+    // create multiple threads to check result correctness and thread contention in the cache
+    Thread[] addThreads = new Thread[atLeast(4)];
+    for (int z = 0; z < addThreads.length; z++) {
+      addThreads[z] =
+          new Thread() {
+            @Override
+            public void run() {
+              // each thread iterates for maxThreadIterations times
+              int maxThreadIterations = random().nextInt(10);
+              for (int threadIterations = 0;
+                  threadIterations < maxThreadIterations;
+                  threadIterations++) {
+
+                // length of the FacetLabel array that we are going to check
+                int numOfOrdinalsToCheck = random().nextInt(allOrdinals.length);
+                int[] ordinals = new int[numOfOrdinalsToCheck];
+                FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
+
+                for (int i = 0; i < numOfOrdinalsToCheck; i++) {
+                  // we deliberately allow it to choose repeat indexes as this will exercise the
+                  // cache
+                  int ordinalIndex = random().nextInt(allOrdinals.length);
+                  ordinals[i] = allOrdinals[ordinalIndex];
+                  path[i] = allPaths[ordinalIndex];
+                }
+
+                try {
+                  // main check for correctness is done here
+                  assertArrayEquals(path, r1.getBulkPath(ordinals));
+                } catch (IOException e) {
+                  // this should ideally never occur, but if it does just rethrow the error to the
+                  // caller
+                  throw new RuntimeException(e);
+                }
+              }
+            }
+          };
+    }
+
+    for (Thread t : addThreads) t.start();
+    for (Thread t : addThreads) t.join();
+
     r1.close();
     src.close();
   }
