@@ -223,7 +223,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         throw new IllegalStateException(
             "The min value for ordinals should always be 0, got " + minMax.min);
       }
-      if (gcd > 1) {
+      if (minMax.max != 0 && gcd != 1) {
         throw new IllegalStateException(
             "GCD compression should never be used on ordinals, found gcd=" + gcd);
       }
