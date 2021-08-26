@@ -1,0 +1,88 @@
+import java.nio.file.Files
+
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+configure(project(":lucene:expressions")) {
+  configurations {
+    antlr
+  }
+
+  dependencies {
+    antlr "org.antlr:antlr4"
+  }
+
+  task generateAntlrInternal() {
+    description "Regenerate Javascript.g4"
+    group "generation"
+
+    dependsOn configurations.antlr
+
+    def generatedPatterns = [
+        "**/JavascriptBaseVisitor.java",
+        "**/JavascriptLexer.java",
+        "**/JavascriptParser.java",
+        "**/JavascriptVisitor.java",
+    ]
+
+    def sourceDir = "src/java/org/apache/lucene/expressions/js"
+    def inputFiles = file("$sourceDir/Javascript.g4")
+    def tempOutput = file("$buildDir/antlr")
+    def outputFiles = fileTree(dir: sourceDir, includes: generatedPatterns)
+
+    inputs.files inputFiles
+    outputs.files outputFiles
+
+    doFirst {
+      project.delete tempOutput
+
+      project.javaexec {
+        main = "org.antlr.v4.Tool"
+        classpath = configurations.antlr
+
+        ignoreExitValue false
+        args = [
+            "-no-listener",
+            "-visitor",
+            "-package", "org.apache.lucene.expressions.js",
+            "-o", tempOutput,
+            inputFiles
+        ]
+      }
+
+      def generatedFiles = fileTree(dir: tempOutput, includes: generatedPatterns)
+      generatedFiles.each { file ->
+        modifyFile(file, { text ->
+          text = text.replaceAll("public ((interface|class) Javascript\\w+)", "\$1")
+          text = text.replaceAll("// Generated from .*", "// ANTLR GENERATED CODE: DO NOT EDIT")
+          return text
+        })
+      }
+
+      project.copy {
+        from tempOutput
+        into sourceDir
+        include generatedPatterns
+      }
+    }
+  }
+
+  def generateAntlr = wrapWithPersistentChecksums(
+      generateAntlrInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+
+  regenerate.dependsOn generateAntlr
+}
