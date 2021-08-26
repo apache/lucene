@@ -24,8 +24,6 @@ import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 
-;
-
 /** RW impersonation of Lucene87StoredFieldsFormat. */
 public class Lucene87RWStoredFieldsFormat extends Lucene87StoredFieldsFormat {
 
