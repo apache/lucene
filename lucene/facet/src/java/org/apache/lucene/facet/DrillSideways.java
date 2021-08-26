@@ -18,7 +18,6 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -458,38 +457,9 @@ public class DrillSideways {
   }
 
   @SuppressWarnings("unchecked")
-  private <C extends Collector, R> ConcurrentDrillSidewaysResult<R> searchSequentially(
-      final DrillDownQuery query, final CollectorManager<C, R> hitCollectorManager)
+  private <R> ConcurrentDrillSidewaysResult<R> searchSequentially(
+      final DrillDownQuery query, final CollectorManager<?, R> hitCollectorManager)
       throws IOException {
-
-    // This mirrors a similar hack from DrillSideways#search(query, collector).
-    // Without this hack, LRU cache will be used, causing acceptDocs to be null during collection
-    // for drillDown and drillSideways and returning more results
-    //
-    // This is a horrible hack in order to make sure IndexSearcher will not
-    // attempt to cache the DrillSidewaysQuery
-    final CollectorManager<C, R> filteredCollectorManager =
-        new CollectorManager<>() {
-          @Override
-          public C newCollector() throws IOException {
-            Collector hitCollector = hitCollectorManager.newCollector();
-            if (hitCollector.scoreMode().needsScores() == false) {
-              hitCollector =
-                  new FilterCollector(hitCollector) {
-                    @Override
-                    public ScoreMode scoreMode() {
-                      return ScoreMode.COMPLETE;
-                    }
-                  };
-            }
-            return (C) hitCollector;
-          }
-
-          @Override
-          public R reduce(Collection<C> collectors) throws IOException {
-            return hitCollectorManager.reduce(collectors);
-          }
-        };
 
     Map<String, Integer> drillDownDims = query.getDims();
 
@@ -502,14 +472,13 @@ public class DrillSideways {
       if (drillDownCollectorManager != null) {
         Object[] mainResults =
             searcher.search(
-                query,
-                new MultiCollectorManager(drillDownCollectorManager, filteredCollectorManager));
+                query, new MultiCollectorManager(drillDownCollectorManager, hitCollectorManager));
         // Extract the results:
         mainFacetsCollector = (FacetsCollector) mainResults[0];
         collectorResult = (R) mainResults[1];
       } else {
         mainFacetsCollector = null;
-        collectorResult = searcher.search(query, filteredCollectorManager);
+        collectorResult = searcher.search(query, hitCollectorManager);
       }
 
       return new ConcurrentDrillSidewaysResult<>(
@@ -547,7 +516,7 @@ public class DrillSideways {
             drillDownQueries,
             scoreSubDocsAtOnce());
 
-    R collectorResult = searcher.search(dsq, filteredCollectorManager);
+    R collectorResult = searcher.search(dsq, hitCollectorManager);
 
     FacetsCollector drillDownCollector;
     if (drillDownCollectorManager != null) {

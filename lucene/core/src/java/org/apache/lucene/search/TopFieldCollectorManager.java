@@ -165,16 +165,8 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) throws IOException {
     final TopFieldDocs[] topDocs = new TopFieldDocs[collectors.size()];
     int i = 0;
-    for (Collector collector : collectors) {
-      if (collector instanceof FilterCollector) {
-        Collector delegateCollector = ((FilterCollector) collector).in;
-
-        if (delegateCollector instanceof TopFieldCollector) {
-          topDocs[i++] = ((TopFieldCollector) delegateCollector).topDocs();
-        }
-      } else if (collector instanceof TopFieldCollector) {
-        topDocs[i++] = ((TopFieldCollector) collector).topDocs();
-      }
+    for (TopFieldCollector collector : collectors) {
+      topDocs[i++] = collector.topDocs();
     }
     return TopDocs.merge(sort, 0, numHits, topDocs);
   }
