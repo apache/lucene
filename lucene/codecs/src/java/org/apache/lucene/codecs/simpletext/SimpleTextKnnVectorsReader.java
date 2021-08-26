@@ -22,8 +22,6 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -173,11 +171,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       topK.insertWithOverflow(new ScoreDoc(doc, score));
     }
     ScoreDoc[] topScoreDocs = new ScoreDoc[topK.size()];
-    int i = 0;
-    for (ScoreDoc scoreDoc : topK) {
-      topScoreDocs[i++] = scoreDoc;
+    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
+      topScoreDocs[i] = topK.pop();
     }
-    Arrays.sort(topScoreDocs, Comparator.comparingInt(x -> x.doc));
     return new TopDocs(new TotalHits(values.size(), TotalHits.Relation.EQUAL_TO), topScoreDocs);
   }
 
