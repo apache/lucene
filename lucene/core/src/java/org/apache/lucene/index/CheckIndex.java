@@ -4029,8 +4029,8 @@ public final class CheckIndex implements Closeable {
     setDoSlowChecks(opts.doSlowChecks);
     setChecksumsOnly(opts.doChecksumsOnly);
     setInfoStream(opts.out, opts.verbose);
-    // when threadCount was not provided via command line, override it with 0 to turn of concurrent
-    // check
+    // when threadCount was not provided via command line, overrides it with 0 to turn off
+    // concurrent check
     setThreadCount(opts.threadCount);
 
     Status result = checkIndex(opts.onlySegments);
