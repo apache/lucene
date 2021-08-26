@@ -146,9 +146,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
     VectorValues values = getVectorValues(field);
-    if (values == null) {
-      return null;
-    }
     if (target.length != values.dimension()) {
       throw new IllegalArgumentException(
           "incorrect dimension for field "
