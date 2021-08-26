@@ -28,6 +28,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
@@ -48,6 +49,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.TestUtil;
+import org.junit.Ignore;
 
 public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
@@ -102,6 +104,57 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     if (exec != null) {
       exec.shutdownNow();
     }
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), dir);
+  }
+
+  @Ignore // See: LUCENE-10070
+  public void testCountAll() throws Exception {
+    Directory dir = newDirectory();
+
+    FacetsConfig config = new FacetsConfig();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new SortedSetDocValuesFacetField("a", "foo"));
+    writer.addDocument(config.build(doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(new SortedSetDocValuesFacetField("a", "bar"));
+    writer.addDocument(config.build(doc));
+
+    writer.deleteDocuments(new Term("id", "0"));
+
+    // NRT open
+    IndexSearcher searcher = newSearcher(writer.getReader());
+
+    // Per-top-reader state:
+    SortedSetDocValuesReaderState state =
+        new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader());
+
+    Facets facets = new SortedSetDocValuesFacetCounts(state);
+
+    assertEquals(
+        "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
+        facets.getTopChildren(10, "a").toString());
+
+    facets =
+        new ConcurrentSortedSetDocValuesFacetCounts(
+            state,
+            new ThreadPoolExecutor(
+                1,
+                TestUtil.nextInt(random(), 2, 6),
+                Long.MAX_VALUE,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<Runnable>(),
+                new NamedThreadFactory("TestIndexSearcher")));
+
+    assertEquals(
+        "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
+        facets.getTopChildren(10, "a").toString());
+
     writer.close();
     IOUtils.close(searcher.getIndexReader(), dir);
   }
