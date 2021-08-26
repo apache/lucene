@@ -23,7 +23,6 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
-import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 
 /** Base class for all taxonomy-based facets that aggregate to a per-ords float[]. */
 public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
@@ -156,7 +155,7 @@ public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       values[i] = ordAndValue.value;
     }
 
-    FacetLabel[] bulkPath = ((DirectoryTaxonomyReader) taxoReader).getBulkPath(ordinals);
+    FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
     for (int i = 0; i < labelValues.length; i++) {
       labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], values[i]);
     }
