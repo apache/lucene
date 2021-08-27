@@ -101,13 +101,13 @@ public class OpenStringBuilder implements Appendable, CharSequence {
     unsafeWrite((char) b);
   }
 
-  public void unsafeWrite(char b[], int off, int len) {
+  public void unsafeWrite(char[] b, int off, int len) {
     System.arraycopy(b, off, buf, this.len, len);
     this.len += len;
   }
 
   protected void resize(int len) {
-    char newbuf[] = new char[Math.max(buf.length << 1, len)];
+    char[] newbuf = new char[Math.max(buf.length << 1, len)];
     System.arraycopy(buf, 0, newbuf, 0, size());
     buf = newbuf;
   }
@@ -131,7 +131,7 @@ public class OpenStringBuilder implements Appendable, CharSequence {
     write(b, 0, b.length);
   }
 
-  public void write(char b[], int off, int len) {
+  public void write(char[] b, int off, int len) {
     reserve(len);
     unsafeWrite(b, off, len);
   }
@@ -153,7 +153,7 @@ public class OpenStringBuilder implements Appendable, CharSequence {
   }
 
   public char[] toCharArray() {
-    char newbuf[] = new char[size()];
+    char[] newbuf = new char[size()];
     System.arraycopy(buf, 0, newbuf, 0, size());
     return newbuf;
   }

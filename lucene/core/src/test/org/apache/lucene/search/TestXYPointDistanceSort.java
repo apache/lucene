@@ -213,7 +213,7 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
       float y = ShapeTestUtil.nextFloat(random());
       double missingValue = Double.POSITIVE_INFINITY;
 
-      Result expected[] = new Result[reader.maxDoc()];
+      Result[] expected = new Result[reader.maxDoc()];
 
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
         Document targetDoc = reader.document(doc);

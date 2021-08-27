@@ -442,7 +442,7 @@ public class UnifiedHighlighter {
    */
   public Map<String, String[]> highlightFields(String[] fields, Query query, TopDocs topDocs)
       throws IOException {
-    int maxPassages[] = new int[fields.length];
+    int[] maxPassages = new int[fields.length];
     Arrays.fill(maxPassages, 1);
     return highlightFields(fields, query, topDocs, maxPassages);
   }
@@ -474,8 +474,8 @@ public class UnifiedHighlighter {
    */
   public Map<String, String[]> highlightFields(
       String[] fields, Query query, TopDocs topDocs, int[] maxPassages) throws IOException {
-    final ScoreDoc scoreDocs[] = topDocs.scoreDocs;
-    int docids[] = new int[scoreDocs.length];
+    final ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+    int[] docids = new int[scoreDocs.length];
     for (int i = 0; i < docids.length; i++) {
       docids[i] = scoreDocs[i].doc;
     }
@@ -556,8 +556,8 @@ public class UnifiedHighlighter {
     copyAndSortDocIdsWithIndex(docIdsIn, docIds, docInIndexes); // latter 2 are "out" params
 
     // Sort fields w/ maxPassages pair: (copy input arrays since we sort in-place)
-    final String fields[] = new String[fieldsIn.length];
-    final int maxPassages[] = new int[maxPassagesIn.length];
+    final String[] fields = new String[fieldsIn.length];
+    final int[] maxPassages = new int[maxPassagesIn.length];
     copyAndSortFieldsWithMaxPassages(
         fieldsIn, maxPassagesIn, fields, maxPassages); // latter 2 are "out" params
 

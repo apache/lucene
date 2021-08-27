@@ -86,16 +86,6 @@ public class BlockJoinSelector {
    * Wraps the provided {@link SortedSetDocValues} in order to only select one value per parent
    * among its {@code children} using the configured {@code selection} type.
    */
-  @Deprecated
-  public static SortedDocValues wrap(
-      SortedSetDocValues sortedSet, Type selection, BitSet parents, BitSet children) {
-    return wrap(sortedSet, selection, parents, toIter(children));
-  }
-
-  /**
-   * Wraps the provided {@link SortedSetDocValues} in order to only select one value per parent
-   * among its {@code children} using the configured {@code selection} type.
-   */
   public static SortedDocValues wrap(
       SortedSetDocValues sortedSet, Type selection, BitSet parents, DocIdSetIterator children) {
     SortedDocValues values;

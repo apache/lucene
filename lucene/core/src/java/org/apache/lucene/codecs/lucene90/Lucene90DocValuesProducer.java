@@ -469,6 +469,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                 return table[(int) values.get(doc)];
               }
             };
+          } else if (entry.gcd == 1 && entry.minValue == 0) {
+            // Common case for ordinals, which are encoded as numerics
+            return new DenseNumericDocValues(maxDoc) {
+              @Override
+              public long longValue() throws IOException {
+                return values.get(doc);
+              }
+            };
           } else {
             final long mul = entry.gcd;
             final long delta = entry.minValue;
@@ -520,6 +528,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               @Override
               public long longValue() throws IOException {
                 return table[(int) values.get(disi.index())];
+              }
+            };
+          } else if (entry.gcd == 1 && entry.minValue == 0) {
+            return new SparseNumericDocValues(disi) {
+              @Override
+              public long longValue() throws IOException {
+                return values.get(disi.index());
               }
             };
           } else {
@@ -765,6 +780,104 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private SortedDocValues getSorted(SortedEntry entry) throws IOException {
+    // Specialize the common case for ordinals: single block of packed integers.
+    final NumericEntry ordsEntry = entry.ordsEntry;
+    if (ordsEntry.blockShift < 0 // single block
+        && ordsEntry.bitsPerValue > 0) { // more than 1 value
+
+      if (ordsEntry.gcd != 1 || ordsEntry.minValue != 0 || ordsEntry.table != null) {
+        throw new IllegalStateException("Ordinals shouldn't use GCD, offset or table compression");
+      }
+
+      final RandomAccessInput slice =
+          data.randomAccessSlice(ordsEntry.valuesOffset, ordsEntry.valuesLength);
+      final LongValues values = DirectReader.getInstance(slice, ordsEntry.bitsPerValue);
+
+      if (ordsEntry.docsWithFieldOffset == -1) { // dense
+        return new BaseSortedDocValues(entry, data) {
+
+          private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
+          private int doc = -1;
+
+          @Override
+          public int ordValue() throws IOException {
+            return (int) values.get(doc);
+          }
+
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            doc = target;
+            return true;
+          }
+
+          @Override
+          public int docID() {
+            return doc;
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            return advance(doc + 1);
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            if (target >= maxDoc) {
+              return doc = NO_MORE_DOCS;
+            }
+            return doc = target;
+          }
+
+          @Override
+          public long cost() {
+            return maxDoc;
+          }
+        };
+      } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
+        final IndexedDISI disi =
+            new IndexedDISI(
+                data,
+                ordsEntry.docsWithFieldOffset,
+                ordsEntry.docsWithFieldLength,
+                ordsEntry.jumpTableEntryCount,
+                ordsEntry.denseRankPower,
+                ordsEntry.numValues);
+
+        return new BaseSortedDocValues(entry, data) {
+
+          @Override
+          public int ordValue() throws IOException {
+            return (int) values.get(disi.index());
+          }
+
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            return disi.advanceExact(target);
+          }
+
+          @Override
+          public int docID() {
+            return disi.docID();
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            return disi.nextDoc();
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            return disi.advance(target);
+          }
+
+          @Override
+          public long cost() {
+            return disi.cost();
+          }
+        };
+      }
+    }
+
     final NumericDocValues ords = getNumeric(entry.ordsEntry);
     return new BaseSortedDocValues(entry, data) {
 

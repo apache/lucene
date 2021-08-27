@@ -617,7 +617,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   public void testRandomQueries2() throws Exception {
-    char chars[] = new char[] {'a', '1', '|', '&', ' ', '(', ')', '"', '-', '~'};
+    char[] chars = new char[] {'a', '1', '|', '&', ' ', '(', ')', '"', '-', '~'};
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < 1000; i++) {
       sb.setLength(0);

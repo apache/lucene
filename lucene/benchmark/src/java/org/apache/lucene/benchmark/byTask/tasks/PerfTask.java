@@ -186,7 +186,7 @@ public abstract class PerfTask implements Cloneable {
 
   // compute a blank string padding for printing this task indented by its depth
   String getPadding() {
-    char c[] = new char[4 * getDepth()];
+    char[] c = new char[4 * getDepth()];
     for (int i = 0; i < c.length; i++) c[i] = ' ';
     return new String(c);
   }

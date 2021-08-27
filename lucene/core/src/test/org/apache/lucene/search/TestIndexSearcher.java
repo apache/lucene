@@ -45,7 +45,6 @@ import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -66,7 +65,7 @@ public class TestIndexSearcher extends LuceneTestCase {
       Document doc = new Document();
       doc.add(newStringField("field", Integer.toString(i), Field.Store.NO));
       doc.add(newStringField("field2", Boolean.toString(i % 2 == 0), Field.Store.NO));
-      doc.add(new SortedDocValuesField("field2", new BytesRef(Boolean.toString(i % 2 == 0))));
+      doc.add(new SortedDocValuesField("field2", newBytesRef(Boolean.toString(i % 2 == 0))));
       iw.addDocument(doc);
 
       if (random.nextBoolean()) {
@@ -95,12 +94,12 @@ public class TestIndexSearcher extends LuceneTestCase {
             new LinkedBlockingQueue<Runnable>(),
             new NamedThreadFactory("TestIndexSearcher"));
 
-    IndexSearcher searchers[] =
+    IndexSearcher[] searchers =
         new IndexSearcher[] {new IndexSearcher(reader), new IndexSearcher(reader, service)};
-    Query queries[] = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
-    Sort sorts[] = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
-    ScoreDoc afters[] =
-        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {new BytesRef("boo!")})};
+    Query[] queries = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
+    Sort[] sorts = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
+    ScoreDoc[] afters =
+        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {newBytesRef("boo!")})};
 
     for (IndexSearcher searcher : searchers) {
       for (ScoreDoc after : afters) {
@@ -420,10 +419,10 @@ public class TestIndexSearcher extends LuceneTestCase {
 
     IndexSearcher searcher = new IndexSearcher(reader.getContext(), service, sliceExecutor);
 
-    Query queries[] = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
-    Sort sorts[] = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
-    ScoreDoc afters[] =
-        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {new BytesRef("boo!")})};
+    Query[] queries = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
+    Sort[] sorts = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
+    ScoreDoc[] afters =
+        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {newBytesRef("boo!")})};
 
     for (ScoreDoc after : afters) {
       for (Query query : queries) {

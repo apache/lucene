@@ -178,8 +178,8 @@ public class Lucene90StoredFieldsFormat extends StoredFieldsFormat {
   public static final CompressionMode BEST_COMPRESSION_MODE =
       new DeflateWithPresetDictCompressionMode();
 
-  // Shoot for 10 sub blocks of 60kB each.
-  private static final int BEST_SPEED_BLOCK_LENGTH = 10 * 60 * 1024;
+  // Shoot for 10 sub blocks of 8kB each.
+  private static final int BEST_SPEED_BLOCK_LENGTH = 10 * 8 * 1024;
 
   /** Compression mode for {@link Mode#BEST_SPEED} */
   public static final CompressionMode BEST_SPEED_MODE = new LZ4WithPresetDictCompressionMode();

@@ -32,7 +32,7 @@ import org.apache.lucene.search.Query;
  */
 public class SimpleQQParser implements QualityQueryParser {
 
-  private String qqNames[];
+  private String[] qqNames;
   private String indexField;
   ThreadLocal<QueryParser> queryParser = new ThreadLocal<>();
 
@@ -42,7 +42,7 @@ public class SimpleQQParser implements QualityQueryParser {
    * @param qqNames name-value pairs of quality query to use for creating the query
    * @param indexField corresponding index field
    */
-  public SimpleQQParser(String qqNames[], String indexField) {
+  public SimpleQQParser(String[] qqNames, String indexField) {
     this.qqNames = qqNames;
     this.indexField = indexField;
   }

@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets;
 // many hunspell dictionaries use this encoding, yet java does not have it?!?!
 final class ISO8859_14Decoder extends CharsetDecoder {
 
-  static final char TABLE[] =
+  static final char[] TABLE =
       new char[] {
         0x00A0, 0x1E02, 0x1E03, 0x00A3, 0x010A, 0x010B, 0x1E0A, 0x00A7,
         0x1E80, 0x00A9, 0x1E82, 0x1E0B, 0x1EF2, 0x00AD, 0x00AE, 0x0178,

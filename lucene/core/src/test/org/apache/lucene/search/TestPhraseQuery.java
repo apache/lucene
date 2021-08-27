@@ -1027,7 +1027,7 @@ public class TestPhraseQuery extends LuceneTestCase {
 
     for (String firstTerm : new String[] {"a", "b", "c"}) {
       for (String secondTerm : new String[] {"a", "b", "c"}) {
-        Query query = new PhraseQuery("foo", new BytesRef(firstTerm), new BytesRef(secondTerm));
+        Query query = new PhraseQuery("foo", newBytesRef(firstTerm), newBytesRef(secondTerm));
 
         TopScoreDocCollectorManager collectorManager1 =
             new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
