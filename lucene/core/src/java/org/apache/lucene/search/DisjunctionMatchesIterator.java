@@ -101,6 +101,47 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
     return null;
   }
 
+  // a guard for queue to prevent an NPE (see LUCENE-10075)
+  private static class NoMatchesIterator implements MatchesIterator {
+    private static final int NO_MATCHES = Integer.MAX_VALUE;
+    private static final NoMatchesIterator INSTANCE = new NoMatchesIterator();
+
+    @Override
+    public boolean next() throws IOException {
+      return false;
+    }
+
+    @Override
+    public int startPosition() {
+      return NO_MATCHES;
+    }
+
+    @Override
+    public int endPosition() {
+      return NO_MATCHES;
+    }
+
+    @Override
+    public int startOffset() throws IOException {
+      return NO_MATCHES;
+    }
+
+    @Override
+    public int endOffset() throws IOException {
+      return NO_MATCHES;
+    }
+
+    @Override
+    public MatchesIterator getSubMatches() throws IOException {
+      return null;
+    }
+
+    @Override
+    public Query getQuery() {
+      return null;
+    }
+  }
+
   // MatchesIterator over a set of terms that only loads the first matching term at construction,
   // waiting until the iterator is actually used before it loads all other matching terms.
   private static class TermsEnumDisjunctionMatchesIterator implements MatchesIterator {
@@ -192,7 +233,7 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
 
   private DisjunctionMatchesIterator(List<MatchesIterator> matches) throws IOException {
     queue =
-        new PriorityQueue<MatchesIterator>(matches.size()) {
+        new PriorityQueue<MatchesIterator>(matches.size() + 1) {
           @Override
           protected boolean lessThan(MatchesIterator a, MatchesIterator b) {
             return a.startPosition() < b.startPosition()
@@ -205,18 +246,20 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
         queue.add(mi);
       }
     }
+    // a guard for queue to prevent an NPE (see LUCENE-10075)
+    queue.add(NoMatchesIterator.INSTANCE);
   }
 
   @Override
   public boolean next() throws IOException {
     if (started == false) {
       started = true;
-      return queue.size() > 0;
+      return queue.size() > 1;
     }
-    if (queue.top().next() == false) {
+    if (queue.top().next() == false && queue.size() != 1) {
       queue.pop();
     }
-    if (queue.size() > 0) {
+    if (queue.size() > 1) {
       queue.updateTop();
       return true;
     }
