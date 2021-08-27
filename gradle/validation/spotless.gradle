@@ -59,9 +59,6 @@ configure(project(":lucene").subprojects) { prj ->
             break
 
           case ":lucene:expressions":
-            targetExclude "**/JavascriptLexer.java",
-                "**/JavascriptParser.java",
-                "**/JavascriptVisitor.java"
             break
 
           case ":lucene:queryparser":
