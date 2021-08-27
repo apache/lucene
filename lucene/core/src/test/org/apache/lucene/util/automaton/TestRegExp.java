@@ -260,7 +260,7 @@ public class TestRegExp extends LuceneTestCase {
     RegExp regex = new RegExp(regexPattern, RegExp.ALL, matchFlags);
     Automaton automaton = regex.toAutomaton();
     ByteRunAutomaton bytesMatcher = new ByteRunAutomaton(automaton);
-    BytesRef br = new BytesRef(docValue);
+    BytesRef br = newBytesRef(docValue);
     assertTrue(
         "["
             + regexPattern

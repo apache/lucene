@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search.suggest.analyzing;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -408,7 +408,7 @@ public class AnalyzingSuggester extends Lookup {
     String tempSortedFileName = null;
 
     count = 0;
-    byte buffer[] = new byte[8];
+    byte[] buffer = new byte[8];
     try {
       ByteArrayDataOutput output = new ByteArrayDataOutput(buffer);
 
@@ -897,7 +897,7 @@ public class AnalyzingSuggester extends Lookup {
 
     // TODO: we can optimize this somewhat by determinizing
     // while we convert
-    automaton = Operations.determinize(automaton, DEFAULT_MAX_DETERMINIZED_STATES);
+    automaton = Operations.determinize(automaton, DEFAULT_DETERMINIZE_WORK_LIMIT);
     return automaton;
   }
 

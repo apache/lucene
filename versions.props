@@ -1,5 +1,5 @@
 com.carrotsearch.randomizedtesting:*=2.7.6
-com.carrotsearch:hppc=0.8.2
+com.carrotsearch:hppc=0.9.0
 com.github.ben-manes.caffeine:caffeine=2.8.4
 com.google.errorprone:*=2.4.0
 com.google.guava:guava=25.1-jre
@@ -21,7 +21,7 @@ org.apache.httpcomponents:httpcore=4.4.13
 org.apache.logging.log4j:*=2.13.2
 org.apache.opennlp:opennlp-tools=1.9.1
 org.carrot2:morfologik-*=2.1.5
-org.eclipse.jetty:*=9.4.34.v20201102
+org.eclipse.jetty:*=9.4.41.v20210516
 org.hamcrest:*=2.2
 org.locationtech.jts:jts-core=1.15.0
 org.locationtech.spatial4j:*=0.7

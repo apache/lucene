@@ -50,12 +50,14 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.codecs.blockterms.LuceneFixedGap;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -1302,6 +1304,14 @@ public final class TestUtil {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Returns the actual default vector format (e.g. LuceneMNKnnVectorsFormat for this version of
+   * Lucene.
+   */
+  public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
+    return new Lucene90HnswVectorsFormat();
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {

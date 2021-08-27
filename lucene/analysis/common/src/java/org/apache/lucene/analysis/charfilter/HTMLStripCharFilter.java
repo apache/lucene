@@ -29678,7 +29678,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
   private static final int ZZ_PUSHBACK_2BIG = 2;
 
   /* error messages for the codes above */
-  private static final String ZZ_ERROR_MSG[] = {
+  private static final String[] ZZ_ERROR_MSG = {
     "Unknown internal scanner error",
     "Error: could not match input",
     "Error: pushback value was too large"
@@ -29806,7 +29806,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
 
   /** this buffer contains the current text to be matched and is
       the source of the yytext() string */
-  private char zzBuffer[] = new char[ZZ_BUFFERSIZE];
+  private char[] zzBuffer = new char[ZZ_BUFFERSIZE];
 
   /** the textposition at the last accepting state */
   private int zzMarkedPos;
@@ -30017,7 +30017,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
   }
 
   @Override
-  public int read(char cbuf[], int off, int len) throws IOException {
+  public int read(char[] cbuf, int off, int len) throws IOException {
     int i = 0;
     for ( ; i < len ; ++i) {
       int ch = read();
@@ -30131,7 +30131,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
     /* is the buffer big enough? */
     if (zzCurrentPos >= zzBuffer.length - zzFinalHighSurrogate) {
       /* if not: blow it up */
-      char newBuffer[] = new char[zzBuffer.length*2];
+      char[] newBuffer = new char[zzBuffer.length*2];
       System.arraycopy(zzBuffer, 0, newBuffer, 0, zzBuffer.length);
       zzBuffer = newBuffer;
       zzEndRead += zzFinalHighSurrogate;

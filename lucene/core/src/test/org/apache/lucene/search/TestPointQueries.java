@@ -252,7 +252,7 @@ public class TestPointQueries extends LuceneTestCase {
     assertEquals(1, s.count(DoublePoint.newExactQuery("point", Double.NaN)));
 
     // set query
-    double set[] =
+    double[] set =
         new double[] {
           Double.MAX_VALUE,
           Double.NaN,
@@ -325,7 +325,7 @@ public class TestPointQueries extends LuceneTestCase {
     assertEquals(1, s.count(FloatPoint.newExactQuery("point", Float.NaN)));
 
     // set query
-    float set[] =
+    float[] set =
         new float[] {
           Float.MAX_VALUE,
           Float.NaN,
@@ -965,7 +965,7 @@ public class TestPointQueries extends LuceneTestCase {
     if (bytes == null) {
       return "null";
     }
-    return new BytesRef(bytes).toString();
+    return newBytesRef(bytes).toString();
   }
 
   private static boolean matches(int bytesPerDim, byte[][] lower, byte[][] upper, byte[][] value) {
@@ -2091,7 +2091,7 @@ public class TestPointQueries extends LuceneTestCase {
                   new PointInSetQuery.Stream() {
                     @Override
                     public BytesRef next() {
-                      return new BytesRef(new byte[3]);
+                      return newBytesRef(new byte[3]);
                     }
                   }) {
                 @Override

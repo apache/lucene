@@ -18,25 +18,17 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute; // javadocs
-import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.TermVectors;
 
 /**
  * Codec API for reading term vectors:
  *
  * @lucene.experimental
  */
-public abstract class TermVectorsReader implements Cloneable, Closeable {
+public abstract class TermVectorsReader extends TermVectors implements Cloneable, Closeable {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected TermVectorsReader() {}
-
-  /**
-   * Returns term vectors for this document, or null if term vectors were not indexed. If offsets
-   * are available they are in an {@link OffsetAttribute} available from the {@link
-   * org.apache.lucene.index.PostingsEnum}.
-   */
-  public abstract Fields get(int doc) throws IOException;
 
   /**
    * Checks consistency of this reader.

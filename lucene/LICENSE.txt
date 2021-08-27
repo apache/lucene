@@ -304,7 +304,7 @@ Here is the copyright for those sources:
 Some code in core/src/java/org/apache/lucene/util/UnicodeUtil.java was
 derived from ICU (http://www.icu-project.org)
 The full license is available here: 
-  http://source.icu-project.org/repos/icu/icu/trunk/license.html
+  https://github.com/unicode-org/icu/blob/main/icu4c/LICENSE
 
 /*
  * Copyright (C) 1999-2010, International Business Machines

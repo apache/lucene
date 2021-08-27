@@ -85,6 +85,23 @@ public class TestFacetsConfig extends FacetTestCase {
     IOUtils.close(indexDir, taxoDir);
   }
 
+  public void testIsDimConfigured() {
+    FacetsConfig config = new FacetsConfig();
+    config.setIndexFieldName("configured1", "name");
+    config.setMultiValued("configured2", true);
+    config.setRequireDimCount("configured3", true);
+    config.setHierarchical("configured4", true);
+    config.setDrillDownTermsIndexing("configured5", FacetsConfig.DrillDownTermsIndexing.ALL);
+
+    assertTrue(config.isDimConfigured("configured1"));
+    assertTrue(config.isDimConfigured("configured2"));
+    assertTrue(config.isDimConfigured("configured3"));
+    assertTrue(config.isDimConfigured("configured4"));
+    assertTrue(config.isDimConfigured("configured5"));
+
+    assertFalse(config.isDimConfigured("unconfigured"));
+  }
+
   /** LUCENE-5479 */
   public void testCustomDefault() {
     FacetsConfig config =

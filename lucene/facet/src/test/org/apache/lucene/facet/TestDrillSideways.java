@@ -19,12 +19,17 @@ package org.apache.lucene.facet;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -37,29 +42,36 @@ import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryCachingPolicy;
 import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
@@ -67,6 +79,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.TestUtil;
 
 public class TestDrillSideways extends FacetTestCase {
@@ -119,7 +132,126 @@ public class TestDrillSideways extends FacetTestCase {
   private IndexSearcher getNewSearcher(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
-    return newSearcher(reader, true, false);
+    return newSearcher(reader, true, false, random().nextBoolean());
+  }
+
+  // See LUCENE-10060:
+  public void testNoCaching() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+
+    // Setup some basic test documents:
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(new SortedDocValuesField("id", new BytesRef("1")));
+    doc.add(new FacetField("Color", "Red"));
+    doc.add(new FacetField("Size", "Small"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.NO));
+    doc.add(new SortedDocValuesField("id", new BytesRef("2")));
+    doc.add(new FacetField("Color", "Green"));
+    doc.add(new FacetField("Size", "Small"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "3", Field.Store.NO));
+    doc.add(new SortedDocValuesField("id", new BytesRef("3")));
+    doc.add(new FacetField("Color", "Blue"));
+    doc.add(new FacetField("Size", "Small"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "4", Field.Store.NO));
+    doc.add(new SortedDocValuesField("id", new BytesRef("4")));
+    doc.add(new FacetField("Color", "Red"));
+    doc.add(new FacetField("Size", "Medium"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "5", Field.Store.NO));
+    doc.add(new SortedDocValuesField("id", new BytesRef("5")));
+    doc.add(new FacetField("Color", "Blue"));
+    doc.add(new FacetField("Size", "Medium"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "6", Field.Store.NO));
+    doc.add(new SortedDocValuesField("id", new BytesRef("6")));
+    doc.add(new FacetField("Color", "Blue"));
+    doc.add(new FacetField("Size", "Large"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    // Delete a couple documents. We'll want to make sure they don't get counted in binning:
+    writer.deleteDocuments(new Term("id", "4"));
+    writer.deleteDocuments(new Term("id", "6"));
+
+    // Simple DDQ that just filters all results by Color == Blue:
+    DrillDownQuery ddq = new DrillDownQuery(config);
+    ddq.add("Color", "Blue");
+
+    // Setup an IndexSearcher that will try to cache queries aggressively:
+    IndexSearcher searcher = getNewSearcher(writer.getReader());
+    searcher.setQueryCachingPolicy(
+        new QueryCachingPolicy() {
+          @Override
+          public void onUse(Query query) {}
+
+          @Override
+          public boolean shouldCache(Query query) {
+            return true;
+          }
+        });
+
+    // Setup a DS instance for searching:
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+    DrillSideways ds = getNewDrillSideways(searcher, config, taxoReader);
+
+    // We'll use a CollectorManager to trigger the trickiest caching behavior:
+    SimpleCollectorManager collectorManager =
+        new SimpleCollectorManager(
+            10, Comparator.comparing(cr -> cr.id), ScoreMode.COMPLETE_NO_SCORES);
+    // Make sure our CM produces Collectors that _do not_ need scores to ensure IndexSearcher tries
+    // to cache:
+    assertFalse(collectorManager.newCollector().scoreMode().needsScores());
+    // If we incorrectly cache here, the "sideways" FacetsCollectors will get populated with counts
+    // for the deleted
+    // docs. Make sure they don't:
+    DrillSideways.ConcurrentDrillSidewaysResult<List<DocAndScore>> concurrentResult =
+        ds.search(ddq, collectorManager);
+    assertEquals(2, concurrentResult.collectorResult.size());
+    assertEquals(
+        "dim=Color path=[] value=4 childCount=3\n  Blue (2)\n  Red (1)\n  Green (1)\n",
+        concurrentResult.facets.getTopChildren(10, "Color").toString());
+    assertEquals(
+        "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
+        concurrentResult.facets.getTopChildren(10, "Size").toString());
+
+    // Now do the same thing but use a Collector directly:
+    SimpleCollector collector = new SimpleCollector(ScoreMode.COMPLETE_NO_SCORES);
+    // Make sure our Collector _does not_ need scores to ensure IndexSearcher tries to cache:
+    assertFalse(collector.scoreMode().needsScores());
+    // If we incorrectly cache here, the "sideways" FacetsCollectors will get populated with counts
+    // for the deleted
+    // docs. Make sure they don't:
+    DrillSidewaysResult result = ds.search(ddq, collector);
+    assertEquals(2, collector.hits.size());
+    assertEquals(
+        "dim=Color path=[] value=4 childCount=3\n  Blue (2)\n  Red (1)\n  Green (1)\n",
+        result.facets.getTopChildren(10, "Color").toString());
+    assertEquals(
+        "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
+        result.facets.getTopChildren(10, "Size").toString());
+
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
 
   public void testBasic() throws Exception {
@@ -327,6 +459,274 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(0, r.hits.totalHits.value);
     assertNull(r.facets.getTopChildren(10, "Publish Date"));
     assertNull(r.facets.getTopChildren(10, "Author"));
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  public void testBasicWithCollectorManager() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    // Writes facet ords to a separate directory from the
+    // main index:
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Publish Date", true);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(newStringField("content", "foo", Field.Store.NO));
+    doc.add(new FacetField("Author", "Bob"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "15"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(newStringField("content", "foo", Field.Store.NO));
+    doc.add(new FacetField("Author", "Lisa"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "20"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(newStringField("content", "foo", Field.Store.NO));
+    doc.add(new FacetField("Author", "Lisa"));
+    doc.add(new FacetField("Publish Date", "2012", "1", "1"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(newStringField("content", "bar", Field.Store.NO));
+    doc.add(new FacetField("Author", "Susan"));
+    doc.add(new FacetField("Publish Date", "2012", "1", "7"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(newStringField("content", "bar", Field.Store.NO));
+    doc.add(new FacetField("Author", "Frank"));
+    doc.add(new FacetField("Publish Date", "1999", "5", "5"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    // NRT open
+    IndexSearcher searcher = getNewSearcher(writer.getReader());
+
+    // NRT open
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    DrillSideways ds = getNewDrillSideways(searcher, config, taxoReader);
+
+    Comparator<CollectedResult> comparator =
+        (a, b) -> {
+          int cmp = Float.compare(b.docAndScore.score, a.docAndScore.score); // highest-to-lowest
+          if (cmp == 0) {
+            cmp = Integer.compare(a.docAndScore.doc, b.docAndScore.doc); // tie-break
+          }
+          return cmp;
+        };
+
+    SimpleCollectorManager manager = new SimpleCollectorManager(10, comparator);
+
+    // case: drill-down on a single field; in this
+    // case the drill-sideways + drill-down counts ==
+    // drill-down of just the query:
+    DrillDownQuery ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    DrillSideways.ConcurrentDrillSidewaysResult<List<DocAndScore>> r = ds.search(ddq, manager);
+    assertEquals(2, r.collectorResult.size());
+    // Publish Date is only drill-down, and Lisa published
+    // one in 2012 and one in 2010:
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+
+    // Author is drill-sideways + drill-down: Lisa
+    // (drill-down) published twice, and Frank/Susan/Bob
+    // published once:
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    // Same simple case, but no baseQuery (pure browse):
+    // drill-down on a single field; in this case the
+    // drill-sideways + drill-down counts == drill-down of
+    // just the query:
+    ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    r = ds.search(ddq, manager);
+
+    assertEquals(2, r.collectorResult.size());
+    // Publish Date is only drill-down, and Lisa published
+    // one in 2012 and one in 2010:
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+
+    // Author is drill-sideways + drill-down: Lisa
+    // (drill-down) published twice, and Frank/Susan/Bob
+    // published once:
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    // Another simple case: drill-down on single fields
+    // but OR of two values
+    ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    ddq.add("Author", "Bob");
+    r = ds.search(ddq, manager);
+    assertEquals(3, r.collectorResult.size());
+    // Publish Date is only drill-down: Lisa and Bob
+    // (drill-down) published twice in 2010 and once in 2012:
+    assertEquals(
+        "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    // Author is drill-sideways + drill-down: Lisa
+    // (drill-down) published twice, and Frank/Susan/Bob
+    // published once:
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    assertTrue(r.facets instanceof MultiFacets);
+    List<FacetResult> allResults = r.facets.getAllDims(10);
+    assertEquals(2, allResults.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        allResults.get(0).toString());
+    assertEquals(
+        "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n  2012 (1)\n",
+        allResults.get(1).toString());
+
+    // More interesting case: drill-down on two fields
+    ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    ddq.add("Publish Date", "2010");
+    r = ds.search(ddq, manager);
+    assertEquals(1, r.collectorResult.size());
+    // Publish Date is drill-sideways + drill-down: Lisa
+    // (drill-down) published once in 2010 and once in 2012:
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    // Author is drill-sideways + drill-down:
+    // only Lisa & Bob published (once each) in 2010:
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    // Even more interesting case: drill down on two fields,
+    // but one of them is OR
+    ddq = new DrillDownQuery(config);
+
+    // Drill down on Lisa or Bob:
+    ddq.add("Author", "Lisa");
+    ddq.add("Publish Date", "2010");
+    ddq.add("Author", "Bob");
+    r = ds.search(ddq, manager);
+    assertEquals(2, r.collectorResult.size());
+    // Publish Date is both drill-sideways + drill-down:
+    // Lisa or Bob published twice in 2010 and once in 2012:
+    assertEquals(
+        "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    // Author is drill-sideways + drill-down:
+    // only Lisa & Bob published (once each) in 2010:
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    // Test drilling down on invalid field:
+    ddq = new DrillDownQuery(config);
+    ddq.add("Foobar", "Baz");
+    r = ds.search(ddq, manager);
+    assertEquals(0, r.collectorResult.size());
+    assertNull(r.facets.getTopChildren(10, "Publish Date"));
+    assertNull(r.facets.getTopChildren(10, "Foobar"));
+
+    // Test drilling down on valid term or'd with invalid term:
+    ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    ddq.add("Author", "Tom");
+    r = ds.search(ddq, manager);
+    assertEquals(2, r.collectorResult.size());
+    // Publish Date is only drill-down, and Lisa published
+    // one in 2012 and one in 2010:
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    // Author is drill-sideways + drill-down: Lisa
+    // (drill-down) published twice, and Frank/Susan/Bob
+    // published once:
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    // LUCENE-4915: test drilling down on a dimension but
+    // NOT facet counting it:
+    ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    ddq.add("Author", "Tom");
+    r = ds.search(ddq, manager);
+    assertEquals(2, r.collectorResult.size());
+    // Publish Date is only drill-down, and Lisa published
+    // one in 2012 and one in 2010:
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+
+    // Test main query gets null scorer:
+    ddq = new DrillDownQuery(config, new TermQuery(new Term("foobar", "baz")));
+    ddq.add("Author", "Lisa");
+    r = ds.search(ddq, manager);
+    assertEquals(0, r.collectorResult.size());
+    assertNull(r.facets.getTopChildren(10, "Publish Date"));
+    assertNull(r.facets.getTopChildren(10, "Author"));
+
+    // Test no drill down dims:
+    ddq = new DrillDownQuery(config, new MatchAllDocsQuery());
+    r = ds.search(ddq, manager);
+    assertEquals(5, r.collectorResult.size());
+    assertEquals(
+        "dim=Publish Date path=[] value=5 childCount=3\n  2010 (2)\n  2012 (2)\n  1999 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    // Test no drill down dims with null FacetsCollectorManager for the main query:
+    ddq = new DrillDownQuery(config, new MatchAllDocsQuery());
+    r =
+        new DrillSideways(searcher, config, taxoReader) {
+          @Override
+          protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
+            return null;
+          }
+        }.search(ddq, manager);
+    assertEquals(5, r.collectorResult.size());
+    // Expect null facets since we provided a null FacetsCollectorManager
+    assertNull(r.facets);
+
+    // Test the case where the base query rewrites itself. See LUCENE-9988:
+    Query baseQuery =
+        new TermQuery(new Term("content", "foo")) {
+          @Override
+          public Query rewrite(IndexReader reader) {
+            // return a new instance, forcing the DrillDownQuery to also rewrite itself, exposing
+            // the bug in LUCENE-9988:
+            return new TermQuery(getTerm());
+          }
+        };
+    ddq = new DrillDownQuery(config, baseQuery);
+    ddq.add("Author", "Lisa");
+    r = ds.search(ddq, manager);
+    assertEquals(2, r.collectorResult.size());
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    assertEquals(
+        "dim=Author path=[] value=3 childCount=2\n  Lisa (2)\n  Bob (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
@@ -830,7 +1230,7 @@ public class TestDrillSideways extends FacetTestCase {
       getNewDrillSideways(s, config, tr)
           .search(
               ddq,
-              new SimpleCollector() {
+              new org.apache.lucene.search.SimpleCollector() {
                 int lastDocID;
 
                 @Override
@@ -862,9 +1262,6 @@ public class TestDrillSideways extends FacetTestCase {
             .search(ddq, new AssertingSubDocsAtOnceCollector());
       }
 
-      TestFacetResult expected =
-          slowDrillSidewaysSearch(s, docs, contentToken, drillDowns, dimValues, filter);
-
       Sort sort = new Sort(new SortField("id", SortField.Type.STRING));
       DrillSideways ds;
       if (doUseDV) {
@@ -873,8 +1270,35 @@ public class TestDrillSideways extends FacetTestCase {
         ds = getNewDrillSidewaysBuildFacetsResult(s, config, tr);
       }
 
-      // Retrieve all facets:
-      DrillSidewaysResult actual = ds.search(ddq, filter, null, numDocs, sort, true);
+      DSResults actual = new DSResults();
+      if (random().nextBoolean()) {
+        DrillSidewaysResult dsr = ds.search(ddq, filter, null, numDocs, sort, true);
+        actual.resultCount = dsr.hits.totalHits;
+        for (ScoreDoc scoreDoc : dsr.hits.scoreDocs) {
+          actual.results.add(new DocAndScore(scoreDoc.doc, scoreDoc.score));
+        }
+        actual.facets = dsr.facets;
+      } else {
+
+        // can't support filter queries with this impl
+        filter = null;
+
+        CollectorManager<SimpleCollector, List<DocAndScore>> manager =
+            new SimpleCollectorManager(numDocs, Comparator.comparing(cr -> cr.id));
+        // Because we validate the scores computed through DrillSideways against those found through
+        // a direct search
+        // against IndexSearcher, make sure our Collectors announce themselves as requiring scores.
+        // See conversation
+        // in LUCENE-10060 where this bug was introduced and then discovered:
+        assertTrue(manager.newCollector().scoreMode.needsScores());
+        DrillSideways.ConcurrentDrillSidewaysResult<List<DocAndScore>> cr = ds.search(ddq, manager);
+        actual.results = cr.collectorResult;
+        actual.resultCount = new TotalHits(actual.results.size(), TotalHits.Relation.EQUAL_TO);
+        actual.facets = cr.facets;
+      }
+
+      TestFacetResult expected =
+          slowDrillSidewaysSearch(s, docs, contentToken, drillDowns, dimValues, filter);
 
       TopDocs hits = s.search(baseQuery, numDocs);
       Map<String, Float> scores = new HashMap<>();
@@ -940,6 +1364,120 @@ public class TestDrillSideways extends FacetTestCase {
 
     public TestFacetResult() {}
   }
+
+  private static class DocAndScore {
+    final int doc;
+    final float score;
+
+    DocAndScore(int doc, float score) {
+      this.doc = doc;
+      this.score = score;
+    }
+
+    DocAndScore(DocAndScore other) {
+      this.doc = other.doc;
+      this.score = other.score;
+    }
+  }
+
+  private static class DSResults {
+    TotalHits resultCount;
+    List<DocAndScore> results = new ArrayList<>();
+    Facets facets;
+  }
+
+  private static class CollectedResult {
+    final DocAndScore docAndScore;
+    final String id;
+
+    CollectedResult(DocAndScore docAndScore, String id) {
+      this.docAndScore = docAndScore;
+      this.id = id;
+    }
+  }
+
+  private abstract static class SimpleLeafCollector implements LeafCollector {
+    protected Scorable scorer;
+  }
+
+  private static class SimpleCollector implements Collector {
+
+    private final ScoreMode scoreMode;
+    final List<CollectedResult> hits = new ArrayList<>();
+
+    SimpleCollector(ScoreMode scoreMode) {
+      this.scoreMode = scoreMode;
+    }
+
+    @Override
+    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+
+      int docBase = context.docBase;
+      SortedDocValues idVals = DocValues.getSorted(context.reader(), "id");
+
+      return new SimpleLeafCollector() {
+        @Override
+        public void setScorer(Scorable scorer) {
+          super.scorer = scorer;
+        }
+
+        @Override
+        public void collect(int doc) throws IOException {
+          float score = scorer.score();
+          String id = null;
+          if (idVals.advanceExact(doc)) {
+            id = idVals.lookupOrd(idVals.ordValue()).utf8ToString();
+          }
+          hits.add(new CollectedResult(new DocAndScore(docBase + doc, score), id));
+        }
+      };
+    }
+
+    @Override
+    public ScoreMode scoreMode() {
+      return scoreMode;
+    }
+  }
+
+  private static class SimpleCollectorManager
+      implements CollectorManager<SimpleCollector, List<DocAndScore>> {
+    private final int numDocs;
+    private final Comparator<CollectedResult> comparator;
+    private final ScoreMode scoreMode;
+
+    SimpleCollectorManager(int numDocs, Comparator<CollectedResult> comparator) {
+      this(numDocs, comparator, ScoreMode.COMPLETE);
+    }
+
+    SimpleCollectorManager(
+        int numDocs, Comparator<CollectedResult> comparator, ScoreMode scoreMode) {
+      this.numDocs = numDocs;
+      this.comparator = comparator;
+      this.scoreMode = scoreMode;
+    }
+
+    @Override
+    public SimpleCollector newCollector() {
+      return new SimpleCollector(scoreMode);
+    }
+
+    @Override
+    public List<DocAndScore> reduce(Collection<SimpleCollector> collectors) {
+      List<CollectedResult> all = new ArrayList<>();
+      for (SimpleCollector c : collectors) {
+        all.addAll(c.hits);
+      }
+
+      // Just sorts using the provided comparator returns up to 'numDocs'.
+      // This is an inefficient way to go about doing this, but it's only for unit testing.
+      return all.stream()
+          .sorted(comparator)
+          .map(cr -> new DocAndScore(cr.docAndScore))
+          .limit(numDocs)
+          .collect(Collectors.toList());
+    }
+  }
+  ;
 
   private int[] getTopNOrds(final int[] counts, final String[] values, int topN) {
     final int[] ids = new int[counts.length];
@@ -1097,22 +1635,22 @@ public class TestDrillSideways extends FacetTestCase {
       String[][] dimValues,
       IndexSearcher s,
       TestFacetResult expected,
-      DrillSidewaysResult actual,
+      DSResults actual,
       Map<String, Float> scores,
       boolean isSortedSetDV)
       throws Exception {
     if (VERBOSE) {
       System.out.println("  verify totHits=" + expected.hits.size());
     }
-    assertEquals(expected.hits.size(), actual.hits.totalHits.value);
-    assertEquals(expected.hits.size(), actual.hits.scoreDocs.length);
+    assertEquals(expected.hits.size(), actual.resultCount.value);
+    assertEquals(expected.hits.size(), actual.results.size());
     for (int i = 0; i < expected.hits.size(); i++) {
       if (VERBOSE) {
         System.out.println("    hit " + i + " expected=" + expected.hits.get(i).id);
       }
-      assertEquals(expected.hits.get(i).id, s.doc(actual.hits.scoreDocs[i].doc).get("id"));
+      assertEquals(expected.hits.get(i).id, s.doc(actual.results.get(i).doc).get("id"));
       // Score should be IDENTICAL:
-      assertEquals(scores.get(expected.hits.get(i).id), actual.hits.scoreDocs[i].score, 0.0f);
+      assertEquals(scores.get(expected.hits.get(i).id), actual.results.get(i).score, 0.0f);
     }
 
     for (int dim = 0; dim < expected.counts.length; dim++) {
@@ -1248,6 +1786,115 @@ public class TestDrillSideways extends FacetTestCase {
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }
 
+  public void testNoDrillDownFacetCollection() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    // Writes facet ords to a separate directory from the
+    // main index:
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Publish Date", true);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new FacetField("Author", "Bob"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "15"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new FacetField("Author", "Lisa"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "20"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new FacetField("Author", "Lisa"));
+    doc.add(new FacetField("Publish Date", "2012", "1", "1"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new FacetField("Author", "Susan"));
+    doc.add(new FacetField("Publish Date", "2012", "1", "7"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new FacetField("Author", "Frank"));
+    doc.add(new FacetField("Publish Date", "1999", "5", "5"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    // NRT open
+    IndexSearcher searcher = getNewSearcher(writer.getReader());
+
+    // NRT open
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    // Sometimes pass an ExecutorService to test both paths for providing null drill down collectors
+    // The actual configuration of the ExecutorService doesn't matter at all:
+    ExecutorService executorService = null;
+    if (random().nextBoolean()) {
+      executorService = Executors.newSingleThreadExecutor(new NamedThreadFactory("ds_test"));
+    }
+
+    // Don't collect for drill down faceting
+    DrillSideways ds =
+        new DrillSideways(searcher, config, taxoReader, null, executorService) {
+          @Override
+          protected FacetsCollector createDrillDownFacetsCollector() {
+            return null;
+          }
+
+          @Override
+          protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
+            return null;
+          }
+        };
+
+    // Another simple case: drill-down on single fields
+    // but OR of two values
+    DrillDownQuery ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    ddq.add("Author", "Bob");
+    DrillSidewaysResult r = ds.search(null, ddq, 10);
+    Facets facets = r.facets;
+    assertEquals(3, r.hits.totalHits.value);
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        facets.getTopChildren(10, "Author").toString());
+    // Because we don't collect drill-downs, we shouldn't be able to get counts for Publish Date
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(10, "Publish Date"));
+
+    assertTrue(facets instanceof MultiFacets);
+    List<FacetResult> allResults = facets.getAllDims(10);
+    // Should only have the one dimension because we didn't collect for drill down
+    assertEquals(1, allResults.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        allResults.get(0).toString());
+
+    // More interesting case: drill-down on two fields
+    ddq = new DrillDownQuery(config);
+    ddq.add("Author", "Lisa");
+    ddq.add("Publish Date", "2010");
+    r = ds.search(null, ddq, 10);
+    assertEquals(1, r.hits.totalHits.value);
+    // Should be able to count on both fields since they're both drill sideways cases
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        r.facets.getTopChildren(10, "Publish Date").toString());
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)\n",
+        r.facets.getTopChildren(10, "Author").toString());
+
+    if (executorService != null) {
+      executorService.shutdown();
+    }
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
   public void testScorer() throws Exception {
     // LUCENE-6001 some scorers, eg ReqExlScorer, can hit NPE if cost is called after nextDoc
     Directory dir = newDirectory();
@@ -1285,6 +1932,82 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("dim", bq.build());
     DrillSidewaysResult r = ds.search(null, ddq, 10);
     assertEquals(0, r.hits.totalHits.value);
+
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  public void testExtendedDrillSidewaysResult() throws Exception {
+    // LUCENE-9945: Extend DrillSideways to support exposing FacetCollectors directly
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("dim", true);
+
+    Document doc = new Document();
+    doc.add(new FacetField("dim", "a"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    Document doc2 = new Document();
+    doc.add(new FacetField("dim", "x"));
+    writer.addDocument(config.build(taxoWriter, doc2));
+
+    // open NRT
+    IndexSearcher searcher = getNewSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    DrillDownQuery ddq = new DrillDownQuery(config);
+    ddq.add("dim", "x");
+
+    DrillSideways ds = getNewDrillSidewaysBuildFacetsResult(searcher, config, taxoReader);
+
+    SimpleCollectorManager manager =
+        new SimpleCollectorManager(
+            10, (a, b) -> Float.compare(b.docAndScore.score, a.docAndScore.score));
+    SimpleCollector collector = manager.newCollector();
+
+    // Sometimes pass in a Collector and sometimes CollectorManager
+    // so that we can test both DrillSidewaysResult and ConcurrentDrillSidewaysResult
+    DrillSidewaysResult r;
+    if (random().nextBoolean()) {
+      r = ds.search(ddq, collector);
+    } else {
+      r = ds.search(ddq, manager);
+    }
+
+    // compute Facets using exposed FacetCollectors from DrillSidewaysResult
+    Map<String, Facets> drillSidewaysFacets = new HashMap<>();
+    Facets drillDownFacets = getTaxonomyFacetCounts(taxoReader, config, r.drillDownFacetsCollector);
+    if (r.drillSidewaysFacetsCollector != null) {
+      for (int i = 0; i < r.drillSidewaysFacetsCollector.length; i++) {
+        drillSidewaysFacets.put(
+            r.drillSidewaysDims[i],
+            getTaxonomyFacetCounts(taxoReader, config, r.drillSidewaysFacetsCollector[i]));
+      }
+    }
+
+    Facets facets;
+    if (drillSidewaysFacets.isEmpty()) {
+      facets = drillDownFacets;
+    } else {
+      facets = new MultiFacets(drillSidewaysFacets, drillDownFacets);
+    }
+
+    // Facets computed using FacetsCollecter exposed in DrillSidewaysResult
+    // should match the Facets computed by {@link DrillSideways#buildFacetsResult}
+    FacetResult facetResultActual = facets.getTopChildren(2, "dim");
+    FacetResult facetResultExpected = r.facets.getTopChildren(2, "dim");
+
+    assertEquals(facetResultExpected.dim, facetResultActual.dim);
+    assertEquals(facetResultExpected.path.length, facetResultActual.path.length);
+    assertEquals(facetResultExpected.value, facetResultActual.value);
+    assertEquals(facetResultExpected.childCount, facetResultActual.childCount);
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);

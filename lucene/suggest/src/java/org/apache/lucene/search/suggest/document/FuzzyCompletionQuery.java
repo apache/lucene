@@ -77,7 +77,7 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
   private final int nonFuzzyPrefix;
   private final int minFuzzyLength;
   private final boolean unicodeAware;
-  private final int maxDeterminizedStates;
+  private final int determinizeWorkLimit;
 
   /**
    * Calls {@link FuzzyCompletionQuery#FuzzyCompletionQuery(Analyzer, Term, BitsProducer)} with no
@@ -91,9 +91,9 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
    * Calls {@link FuzzyCompletionQuery#FuzzyCompletionQuery(Analyzer, Term, BitsProducer, int,
    * boolean, int, int, boolean, int)} with defaults for <code>maxEdits</code>, <code>transpositions
    * </code>, <code>nonFuzzyPrefix</code>, <code>minFuzzyLength</code>, <code>unicodeAware</code>
-   * and <code>maxDeterminizedStates</code> See {@link #DEFAULT_MAX_EDITS}, {@link
+   * and <code>determinizeWorkLimit</code> See {@link #DEFAULT_MAX_EDITS}, {@link
    * #DEFAULT_TRANSPOSITIONS}, {@link #DEFAULT_NON_FUZZY_PREFIX}, {@link #DEFAULT_MIN_FUZZY_LENGTH},
-   * {@link #DEFAULT_UNICODE_AWARE} and {@link Operations#DEFAULT_MAX_DETERMINIZED_STATES} for
+   * {@link #DEFAULT_UNICODE_AWARE} and {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} for
    * defaults
    */
   public FuzzyCompletionQuery(Analyzer analyzer, Term term, BitsProducer filter) {
@@ -106,7 +106,7 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
         DEFAULT_NON_FUZZY_PREFIX,
         DEFAULT_MIN_FUZZY_LENGTH,
         DEFAULT_UNICODE_AWARE,
-        Operations.DEFAULT_MAX_DETERMINIZED_STATES);
+        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   /**
@@ -121,7 +121,8 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
    * @param nonFuzzyPrefix prefix length where edits are not allowed
    * @param minFuzzyLength minimum prefix length before any edits are allowed
    * @param unicodeAware treat prefix as unicode rather than bytes
-   * @param maxDeterminizedStates maximum automaton states allowed for {@link LevenshteinAutomata}
+   * @param determinizeWorkLimit maximum effort allowed to determinize the {@link
+   *     LevenshteinAutomata}
    */
   public FuzzyCompletionQuery(
       Analyzer analyzer,
@@ -132,14 +133,14 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
       int nonFuzzyPrefix,
       int minFuzzyLength,
       boolean unicodeAware,
-      int maxDeterminizedStates) {
+      int determinizeWorkLimit) {
     super(analyzer, term, filter);
     this.maxEdits = maxEdits;
     this.transpositions = transpositions;
     this.nonFuzzyPrefix = nonFuzzyPrefix;
     this.minFuzzyLength = minFuzzyLength;
     this.unicodeAware = unicodeAware;
-    this.maxDeterminizedStates = maxDeterminizedStates;
+    this.determinizeWorkLimit = determinizeWorkLimit;
   }
 
   @Override
@@ -154,7 +155,7 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
     Automaton automaton = toLevenshteinAutomata(originalAutomata, refs);
     if (unicodeAware) {
       Automaton utf8automaton = new UTF32ToUTF8().convert(automaton);
-      utf8automaton = Operations.determinize(utf8automaton, maxDeterminizedStates);
+      utf8automaton = Operations.determinize(utf8automaton, determinizeWorkLimit);
       automaton = utf8automaton;
     }
     // TODO Accumulating all refs is bad, because the resulting set may be very big.
@@ -171,7 +172,7 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
       if (string.length <= nonFuzzyPrefix || string.length < minFuzzyLength) {
         subs.add(Automata.makeString(string.ints, string.offset, string.length));
       } else {
-        int ints[] = new int[string.length - nonFuzzyPrefix];
+        int[] ints = new int[string.length - nonFuzzyPrefix];
         System.arraycopy(string.ints, string.offset + nonFuzzyPrefix, ints, 0, ints.length);
         // TODO: maybe add alphaMin to LevenshteinAutomata,
         // and pass 1 instead of 0?  We probably don't want
@@ -199,7 +200,7 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
       Automaton a = Operations.union(subs);
       // TODO: we could call toLevenshteinAutomata() before det?
       // this only happens if you have multiple paths anyway (e.g. synonyms)
-      return Operations.determinize(a, maxDeterminizedStates);
+      return Operations.determinize(a, determinizeWorkLimit);
     }
   }
 
@@ -228,9 +229,9 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
     return unicodeAware;
   }
 
-  /** Get the maximum number of determinized states permitted */
-  public int getMaxDeterminizedStates() {
-    return maxDeterminizedStates;
+  /** Get the maximum effort to use determinizing */
+  public int getDeterminizeWorkLimit() {
+    return determinizeWorkLimit;
   }
 
   @Override

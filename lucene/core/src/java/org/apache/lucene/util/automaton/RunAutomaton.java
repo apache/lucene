@@ -58,18 +58,18 @@ public abstract class RunAutomaton implements Accountable {
    * @param a an automaton
    */
   protected RunAutomaton(Automaton a, int alphabetSize) {
-    this(a, alphabetSize, Operations.DEFAULT_MAX_DETERMINIZED_STATES);
+    this(a, alphabetSize, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   /**
    * Constructs a new <code>RunAutomaton</code> from a deterministic <code>Automaton</code>.
    *
    * @param a an automaton
-   * @param maxDeterminizedStates maximum number of states that can be created while determinizing a
+   * @param determinizeWorkLimit maximum effort to spend while determinizing
    */
-  protected RunAutomaton(Automaton a, int alphabetSize, int maxDeterminizedStates) {
+  protected RunAutomaton(Automaton a, int alphabetSize, int determinizeWorkLimit) {
     this.alphabetSize = alphabetSize;
-    a = Operations.determinize(a, maxDeterminizedStates);
+    a = Operations.determinize(a, determinizeWorkLimit);
     this.automaton = a;
     points = a.getStartPoints();
     size = Math.max(1, a.getNumStates());

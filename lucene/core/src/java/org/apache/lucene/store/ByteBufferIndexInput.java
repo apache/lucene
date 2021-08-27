@@ -426,7 +426,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       throw new AlreadyClosedException("Already closed: " + this);
     }
 
-    final ByteBuffer newBuffers[] = buildSlice(buffers, offset, length);
+    final ByteBuffer[] newBuffers = buildSlice(buffers, offset, length);
     final int ofs = (int) (offset & chunkSizeMask);
 
     final ByteBufferIndexInput clone =
@@ -467,7 +467,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     final int endIndex = (int) (sliceEnd >>> chunkSizePower);
 
     // we always allocate one more slice, the last one may be a 0 byte one
-    final ByteBuffer slices[] = new ByteBuffer[endIndex - startIndex + 1];
+    final ByteBuffer[] slices = new ByteBuffer[endIndex - startIndex + 1];
 
     for (int i = 0; i < slices.length; i++) {
       slices[i] = buffers[startIndex + i].duplicate().order(ByteOrder.LITTLE_ENDIAN);

@@ -95,6 +95,7 @@ org.apache.lucene.analysis.ngram.EdgeNGramFilterFactory
 org.apache.lucene.analysis.ngram.NGramFilterFactory
 org.apache.lucene.analysis.no.NorwegianLightStemFilterFactory
 org.apache.lucene.analysis.no.NorwegianMinimalStemFilterFactory
+org.apache.lucene.analysis.no.NorwegianNormalizationFilterFactory
 org.apache.lucene.analysis.pattern.PatternReplaceFilterFactory
 org.apache.lucene.analysis.pattern.PatternCaptureGroupFilterFactory
 org.apache.lucene.analysis.pattern.PatternTypingFilterFactory
@@ -112,6 +113,7 @@ org.apache.lucene.analysis.shingle.FixedShingleFilterFactory
 org.apache.lucene.analysis.snowball.SnowballPorterFilterFactory
 org.apache.lucene.analysis.sr.SerbianNormalizationFilterFactory
 org.apache.lucene.analysis.sv.SwedishLightStemFilterFactory
+org.apache.lucene.analysis.sv.SwedishMinimalStemFilterFactory
 org.apache.lucene.analysis.synonym.SynonymFilterFactory
 org.apache.lucene.analysis.synonym.SynonymGraphFilterFactory
 org.apache.lucene.analysis.core.FlattenGraphFilterFactory

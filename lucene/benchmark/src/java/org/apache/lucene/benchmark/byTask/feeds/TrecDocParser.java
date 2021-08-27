@@ -124,7 +124,7 @@ public abstract class TrecDocParser {
    * @return text of interest or null if not found
    */
   public static String extract(
-      StringBuilder buf, String startTag, String endTag, int maxPos, String noisePrefixes[]) {
+      StringBuilder buf, String startTag, String endTag, int maxPos, String[] noisePrefixes) {
     int k1 = buf.indexOf(startTag);
     if (k1 >= 0 && (maxPos < 0 || k1 < maxPos)) {
       k1 += startTag.length();

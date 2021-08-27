@@ -776,7 +776,7 @@ public class IndexSearcher {
   /**
    * Returns a QueryVisitor which recursively checks the total number of clauses that a query and
    * its children cumulatively have and validates that the total number does not exceed the
-   * specified limit
+   * specified limit. Throws {@link TooManyNestedClauses} if the limit is exceeded.
    */
   private static QueryVisitor getNumClausesCheckVisitor() {
     return new QueryVisitor() {
@@ -792,7 +792,7 @@ public class IndexSearcher {
       @Override
       public void visitLeaf(Query query) {
         if (numClauses > maxClauseCount) {
-          throw new TooManyClauses();
+          throw new TooManyNestedClauses();
         }
         ++numClauses;
       }
@@ -800,7 +800,7 @@ public class IndexSearcher {
       @Override
       public void consumeTerms(Query query, Term... terms) {
         if (numClauses > maxClauseCount) {
-          throw new TooManyClauses();
+          throw new TooManyNestedClauses();
         }
         ++numClauses;
       }
@@ -809,7 +809,7 @@ public class IndexSearcher {
       public void consumeTermsMatching(
           Query query, String field, Supplier<ByteRunAutomaton> automaton) {
         if (numClauses > maxClauseCount) {
-          throw new TooManyClauses();
+          throw new TooManyNestedClauses();
         }
         ++numClauses;
       }
@@ -966,8 +966,33 @@ public class IndexSearcher {
    * many terms during search.
    */
   public static class TooManyClauses extends RuntimeException {
+    private final int maxClauseCount;
+
+    public TooManyClauses(String msg) {
+      super(msg);
+      this.maxClauseCount = IndexSearcher.getMaxClauseCount();
+    }
+
     public TooManyClauses() {
-      super("maxClauseCount is set to " + maxClauseCount);
+      this("maxClauseCount is set to " + IndexSearcher.getMaxClauseCount());
+    }
+    /** The value of {@link IndexSearcher#getMaxClauseCount()} when this Exception was created */
+    public int getMaxClauseCount() {
+      return maxClauseCount;
+    }
+  }
+
+  /**
+   * Thrown when a client attempts to execute a Query that has more than {@link
+   * #getMaxClauseCount()} total clauses cumulatively in all of it's children.
+   *
+   * @see #rewrite
+   */
+  public static class TooManyNestedClauses extends TooManyClauses {
+    public TooManyNestedClauses() {
+      super(
+          "Query contains too many nested clauses; maxClauseCount is set to "
+              + IndexSearcher.getMaxClauseCount());
     }
   }
 

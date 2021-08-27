@@ -110,7 +110,7 @@ public class Test2BPostingsBytes extends LuceneTestCase {
     w.close();
 
     DirectoryReader oneThousand = DirectoryReader.open(dir);
-    DirectoryReader subReaders[] = new DirectoryReader[1000];
+    DirectoryReader[] subReaders = new DirectoryReader[1000];
     Arrays.fill(subReaders, oneThousand);
     BaseDirectoryWrapper dir2 = newFSDirectory(createTempDir("2BPostingsBytes2"));
     if (dir2 instanceof MockDirectoryWrapper) {

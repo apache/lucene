@@ -47,7 +47,7 @@ public class WordnetSynonymParser extends SynonymMap.Parser {
     try {
       String line = null;
       String lastSynSetID = "";
-      CharsRef synset[] = new CharsRef[8];
+      CharsRef[] synset = new CharsRef[8];
       int synsetSize = 0;
 
       while ((line = br.readLine()) != null) {
@@ -88,7 +88,7 @@ public class WordnetSynonymParser extends SynonymMap.Parser {
     return analyze(text, reuse);
   }
 
-  private void addInternal(CharsRef synset[], int size) {
+  private void addInternal(CharsRef[] synset, int size) {
     if (size <= 1) {
       return; // nothing to do
     }

@@ -27,18 +27,22 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorReader;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90Codec;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.VectorField;
-import org.apache.lucene.index.VectorValues.SimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
@@ -51,9 +55,10 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int maxConn = HnswGraphBuilder.DEFAULT_MAX_CONN;
+  private static int maxConn = Lucene90HnswVectorsFormat.DEFAULT_MAX_CONN;
 
-  private SimilarityFunction similarityFunction;
+  private Codec codec;
+  private VectorSimilarityFunction similarityFunction;
 
   @Before
   public void setup() {
@@ -61,20 +66,29 @@ public class TestKnnGraph extends LuceneTestCase {
     if (random().nextBoolean()) {
       maxConn = random().nextInt(256) + 3;
     }
-    int similarity = random().nextInt(SimilarityFunction.values().length - 1) + 1;
-    similarityFunction = SimilarityFunction.values()[similarity];
+
+    codec =
+        new Lucene90Codec() {
+          @Override
+          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+            return new Lucene90HnswVectorsFormat(
+                maxConn, Lucene90HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+          }
+        };
+
+    int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
+    similarityFunction = VectorSimilarityFunction.values()[similarity];
   }
 
   @After
   public void cleanup() {
-    maxConn = HnswGraphBuilder.DEFAULT_MAX_CONN;
+    maxConn = Lucene90HnswVectorsFormat.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */
   public void testBasic() throws Exception {
     try (Directory dir = newDirectory();
-        IndexWriter iw =
-            new IndexWriter(dir, newIndexWriterConfig(null).setCodec(Codec.forName("Lucene90")))) {
+        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       int numDoc = atLeast(10);
       int dimension = atLeast(3);
       float[][] values = new float[numDoc][];
@@ -93,8 +107,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   public void testSingleDocument() throws Exception {
     try (Directory dir = newDirectory();
-        IndexWriter iw =
-            new IndexWriter(dir, newIndexWriterConfig(null).setCodec(Codec.forName("Lucene90")))) {
+        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
       add(iw, 0, values[0]);
       assertConsistentGraph(iw, values);
@@ -106,8 +119,7 @@ public class TestKnnGraph extends LuceneTestCase {
   /** Verify that the graph properties are preserved when merging */
   public void testMerge() throws Exception {
     try (Directory dir = newDirectory();
-        IndexWriter iw =
-            new IndexWriter(dir, newIndexWriterConfig(null).setCodec(Codec.forName("Lucene90")))) {
+        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       int numDoc = atLeast(100);
       int dimension = atLeast(10);
       float[][] values = randomVectors(numDoc, dimension);
@@ -159,7 +171,7 @@ public class TestKnnGraph extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = newIndexWriterConfig();
       iwc.setMergePolicy(new LogDocMergePolicy()); // for predictable segment ordering when merging
-      iwc.setCodec(Codec.forName("Lucene90")); // don't use SimpleTextCodec
+      iwc.setCodec(codec); // don't use SimpleTextCodec
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
         for (int i = 0; i < values.length; i++) {
           add(iw, i, values[i]);
@@ -171,9 +183,11 @@ public class TestKnnGraph extends LuceneTestCase {
         iw.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
-        Lucene90HnswVectorReader vectorReader =
-            ((Lucene90HnswVectorReader)
-                ((CodecReader) getOnlyLeafReader(reader)).getVectorReader());
+        PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
+            (PerFieldKnnVectorsFormat.FieldsReader)
+                ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
+        Lucene90HnswVectorsReader vectorReader =
+            (Lucene90HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
         graph = copyGraph(vectorReader.getGraphValues(KNN_GRAPH_FIELD));
       }
     }
@@ -213,9 +227,9 @@ public class TestKnnGraph extends LuceneTestCase {
   /** Verify that searching does something reasonable */
   public void testSearch() throws Exception {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
-    similarityFunction = SimilarityFunction.EUCLIDEAN;
+    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
-    config.setCodec(Codec.forName("Lucene90")); // test is not compatible with simpletext
+    config.setCodec(codec); // test is not compatible with simpletext
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, config)) {
       // Add a document for every cartesian point in an NxN square so we can
@@ -278,7 +292,8 @@ public class TestKnnGraph extends LuceneTestCase {
   private static TopDocs doKnnSearch(IndexReader reader, float[] vector, int k) throws IOException {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      results[ctx.ord] = ctx.reader().searchNearestVectors(KNN_GRAPH_FIELD, vector, k, 10);
+      Bits liveDocs = ctx.reader().getLiveDocs();
+      results[ctx.ord] = ctx.reader().searchNearestVectors(KNN_GRAPH_FIELD, vector, k, liveDocs);
       if (ctx.docBase > 0) {
         for (ScoreDoc doc : results[ctx.ord].scoreDocs) {
           doc.doc += ctx.docBase;
@@ -310,11 +325,13 @@ public class TestKnnGraph extends LuceneTestCase {
       for (LeafReaderContext ctx : dr.leaves()) {
         LeafReader reader = ctx.reader();
         VectorValues vectorValues = reader.getVectorValues(KNN_GRAPH_FIELD);
-        Lucene90HnswVectorReader vectorReader =
-            ((Lucene90HnswVectorReader) ((CodecReader) reader).getVectorReader());
-        if (vectorReader == null) {
+        PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
+            (PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) reader).getVectorReader();
+        if (perFieldReader == null) {
           continue;
         }
+        Lucene90HnswVectorsReader vectorReader =
+            (Lucene90HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
         KnnGraphValues graphValues = vectorReader.getGraphValues(KNN_GRAPH_FIELD);
         assertEquals((vectorValues == null), (graphValues == null));
         if (vectorValues == null) {
@@ -438,14 +455,13 @@ public class TestKnnGraph extends LuceneTestCase {
     add(iw, id, vector, similarityFunction);
   }
 
-  private void add(IndexWriter iw, int id, float[] vector, SimilarityFunction similarityFunction)
+  private void add(
+      IndexWriter iw, int id, float[] vector, VectorSimilarityFunction similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      FieldType fieldType =
-          VectorField.createHnswType(
-              vector.length, similarityFunction, maxConn, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-      doc.add(new VectorField(KNN_GRAPH_FIELD, vector, fieldType));
+      FieldType fieldType = KnnVectorField.createFieldType(vector.length, similarityFunction);
+      doc.add(new KnnVectorField(KNN_GRAPH_FIELD, vector, fieldType));
     }
     String idString = Integer.toString(id);
     doc.add(new StringField("id", idString, Field.Store.YES));

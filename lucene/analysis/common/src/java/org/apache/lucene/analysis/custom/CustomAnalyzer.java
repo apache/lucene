@@ -129,7 +129,6 @@ public final class CustomAnalyzer extends Analyzer {
   private final Integer posIncGap, offsetGap;
 
   CustomAnalyzer(
-      Version defaultMatchVersion,
       CharFilterFactory[] charFilters,
       TokenizerFactory tokenizer,
       TokenFilterFactory[] tokenFilters,
@@ -140,9 +139,6 @@ public final class CustomAnalyzer extends Analyzer {
     this.tokenFilters = tokenFilters;
     this.posIncGap = posIncGap;
     this.offsetGap = offsetGap;
-    if (defaultMatchVersion != null) {
-      setVersion(defaultMatchVersion);
-    }
   }
 
   @Override
@@ -590,7 +586,6 @@ public final class CustomAnalyzer extends Analyzer {
         throw new IllegalStateException("You have to set at least a tokenizer.");
       }
       return new CustomAnalyzer(
-          defaultMatchVersion.get(),
           charFilters.toArray(new CharFilterFactory[charFilters.size()]),
           tokenizer.get(),
           tokenFilters.toArray(new TokenFilterFactory[tokenFilters.size()]),

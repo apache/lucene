@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.queryparser.flexible.spans;
 
+import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.builders.QueryTreeBuilder;
 import org.apache.lucene.queryparser.flexible.core.nodes.BooleanQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.FieldQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
 import org.apache.lucene.queryparser.flexible.standard.builders.StandardQueryBuilder;
-import org.apache.lucene.search.spans.SpanQuery;
 
 /**
  * Sets up a query tree builder to build a span query tree from a query node tree.<br>

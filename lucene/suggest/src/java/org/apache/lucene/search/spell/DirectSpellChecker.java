@@ -359,7 +359,7 @@ public class DirectSpellChecker {
 
     // create the suggestword response, sort it, and trim it to size.
 
-    SuggestWord suggestions[] = new SuggestWord[terms.size()];
+    SuggestWord[] suggestions = new SuggestWord[terms.size()];
     int index = suggestions.length - 1;
     for (ScoreTerm s : terms) {
       SuggestWord suggestion = new SuggestWord();
@@ -375,7 +375,7 @@ public class DirectSpellChecker {
 
     ArrayUtil.timSort(suggestions, Collections.reverseOrder(comparator));
     if (numSug < suggestions.length) {
-      SuggestWord trimmed[] = new SuggestWord[numSug];
+      SuggestWord[] trimmed = new SuggestWord[numSug];
       System.arraycopy(suggestions, 0, trimmed, 0, numSug);
       suggestions = trimmed;
     }

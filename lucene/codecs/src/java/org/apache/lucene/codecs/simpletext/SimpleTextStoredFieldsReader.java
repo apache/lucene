@@ -60,7 +60,7 @@ import org.apache.lucene.util.StringHelper;
  */
 public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
 
-  private long offsets[]; /* docid -> offset in .fld file */
+  private long[] offsets; /* docid -> offset in .fld file */
   private IndexInput in;
   private BytesRefBuilder scratch = new BytesRefBuilder();
   private CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
@@ -91,7 +91,7 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
   }
 
   // used by clone
-  SimpleTextStoredFieldsReader(long offsets[], IndexInput in, FieldInfos fieldInfos) {
+  SimpleTextStoredFieldsReader(long[] offsets, IndexInput in, FieldInfos fieldInfos) {
     this.offsets = offsets;
     this.in = in;
     this.fieldInfos = fieldInfos;

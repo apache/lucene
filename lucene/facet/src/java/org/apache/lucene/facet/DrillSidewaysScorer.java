@@ -26,6 +26,7 @@ import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.ScoreCachingWrappingScorer;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.util.Bits;
@@ -86,17 +87,13 @@ class DrillSidewaysScorer extends BulkScorer {
     //  System.out.println("\nscore: reader=" + context.reader());
     // }
     // System.out.println("score r=" + context.reader());
-    ScoreAndDoc scorer = new ScoreAndDoc();
-    collector.setScorer(scorer);
     if (drillDownCollector != null) {
       drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
-      drillDownLeafCollector.setScorer(scorer);
     } else {
       drillDownLeafCollector = null;
     }
     for (DocsAndCost dim : dims) {
       dim.sidewaysLeafCollector = dim.sidewaysCollector.getLeafCollector(context);
-      dim.sidewaysLeafCollector.setScorer(scorer);
     }
 
     // some scorers, eg ReqExlScorer, can hit NPE if cost is called after nextDoc
@@ -155,6 +152,8 @@ class DrillSidewaysScorer extends BulkScorer {
     // if (DEBUG) {
     //  System.out.println("  doQueryFirstScoring");
     // }
+    setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
+
     int docID = baseScorer.docID();
 
     nextDoc:
@@ -195,10 +194,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
       collectDocID = docID;
 
-      // TODO: we could score on demand instead since we are
-      // daat here:
-      collectScore = baseScorer.score();
-
       if (failedCollector == null) {
         // Hit passed all filters, so it's "real":
         collectHit(collector, dims);
@@ -214,6 +209,8 @@ class DrillSidewaysScorer extends BulkScorer {
   /** Used when drill downs are highly constraining vs baseQuery. */
   private void doDrillDownAdvanceScoring(
       Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims) throws IOException {
+    setScorer(collector, new ScoreAndDoc());
+
     final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
 
@@ -424,6 +421,7 @@ class DrillSidewaysScorer extends BulkScorer {
     // if (DEBUG) {
     //  System.out.println("  doUnionScoring");
     // }
+    setScorer(collector, new ScoreAndDoc());
 
     final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
@@ -596,6 +594,16 @@ class DrillSidewaysScorer extends BulkScorer {
     //  System.out.println("      missingDim=" + dim);
     // }
     sidewaysCollector.collect(collectDocID);
+  }
+
+  private void setScorer(LeafCollector mainCollector, Scorable scorer) throws IOException {
+    mainCollector.setScorer(scorer);
+    if (drillDownLeafCollector != null) {
+      drillDownLeafCollector.setScorer(scorer);
+    }
+    for (DocsAndCost dim : dims) {
+      dim.sidewaysLeafCollector.setScorer(scorer);
+    }
   }
 
   private final class ScoreAndDoc extends Scorable {

@@ -50,6 +50,26 @@ import org.apache.lucene.util.packed.PackedInts;
  * <p><b>File formats</b>
  *
  * <ol>
+ *   <li><a id="vector_meta"></a>
+ *       <p>A vector metadata file (extension <code>.tvm</code>).
+ *       <ul>
+ *         <li>VectorMeta (.tvm) --&gt; &lt;Header&gt;, PackedIntsVersion, ChunkSize,
+ *             ChunkIndexMetadata, ChunkCount, DirtyChunkCount, DirtyDocsCount, Footer
+ *         <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
+ *         <li>PackedIntsVersion, ChunkSize --&gt; {@link DataOutput#writeVInt VInt}
+ *         <li>ChunkCount, DirtyChunkCount, DirtyDocsCount --&gt; {@link DataOutput#writeVLong
+ *             VLong}
+ *         <li>ChunkIndexMetadata --&gt; {@link FieldsIndexWriter}
+ *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
+ *       </ul>
+ *       <p>Notes:
+ *       <ul>
+ *         <li>PackedIntsVersion is {@link PackedInts#VERSION_CURRENT}.
+ *         <li>ChunkSize is the number of bytes of terms to accumulate before flushing.
+ *         <li>ChunkCount is not known in advance and is the number of chunks necessary to store all
+ *             document of the segment.
+ *         <li>DirtyChunkCount is the number of prematurely flushed chunks in the .tvd file.
+ *       </ul>
  *   <li><a id="vector_data"></a>
  *       <p>A vector data file (extension <code>.tvd</code>). This file stores terms, frequencies,
  *       positions, offsets and payloads for every document. Upon writing a new segment, it
@@ -59,91 +79,84 @@ import org.apache.lucene.util.packed.PackedInts;
  *       BlockPackedWriter blocks of packed ints} for positions.
  *       <p>Here is a more detailed description of the field data file format:
  *       <ul>
- *         <li>VectorData (.tvd) --&gt; &lt;Header&gt;, PackedIntsVersion, ChunkSize,
- *             &lt;Chunk&gt;<sup>ChunkCount</sup>, ChunkCount, DirtyChunkCount, Footer
+ *         <li>VectorData (.tvd) --&gt; &lt;Header&gt;, &lt;Chunk&gt;<sup>ChunkCount</sup>, Footer
  *         <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
- *         <li>PackedIntsVersion --&gt; {@link PackedInts#VERSION_CURRENT} as a {@link
- *             DataOutput#writeVInt VInt}
- *         <li>ChunkSize is the number of bytes of terms to accumulate before flushing, as a {@link
- *             DataOutput#writeVInt VInt}
- *         <li>ChunkCount is not known in advance and is the number of chunks necessary to store all
- *             document of the segment
  *         <li>Chunk --&gt; DocBase, ChunkDocs, &lt; NumFields &gt;, &lt; FieldNums &gt;, &lt;
  *             FieldNumOffs &gt;, &lt; Flags &gt;, &lt; NumTerms &gt;, &lt; TermLengths &gt;, &lt;
  *             TermFreqs &gt;, &lt; Positions &gt;, &lt; StartOffsets &gt;, &lt; Lengths &gt;, &lt;
  *             PayloadLengths &gt;, &lt; TermAndPayloads &gt;
- *         <li>DocBase is the ID of the first doc of the chunk as a {@link DataOutput#writeVInt
- *             VInt}
- *         <li>ChunkDocs is the number of documents in the chunk
  *         <li>NumFields --&gt; DocNumFields<sup>ChunkDocs</sup>
- *         <li>DocNumFields is the number of fields for each doc, written as a {@link
- *             DataOutput#writeVInt VInt} if ChunkDocs==1 and as a {@link PackedInts} array
- *             otherwise
- *         <li>FieldNums --&gt; FieldNumDelta<sup>TotalDistincFields</sup>, a delta-encoded list of
- *             the sorted unique field numbers present in the chunk
- *         <li>FieldNumOffs --&gt; FieldNumOff<sup>TotalFields</sup>, as a {@link PackedInts} array
- *         <li>FieldNumOff is the offset of the field number in FieldNums
- *         <li>TotalFields is the total number of fields (sum of the values of NumFields)
+ *         <li>FieldNums --&gt; FieldNumDelta<sup>TotalDistincFields</sup>
  *         <li>Flags --&gt; Bit &lt; FieldFlags &gt;
- *         <li>Bit is a single bit which when true means that fields have the same options for every
- *             document in the chunk
  *         <li>FieldFlags --&gt; if Bit==1: Flag<sup>TotalDistinctFields</sup> else
  *             Flag<sup>TotalFields</sup>
+ *         <li>NumTerms --&gt; FieldNumTerms<sup>TotalFields</sup>
+ *         <li>TermLengths --&gt; PrefixLength<sup>TotalTerms</sup>
+ *             SuffixLength<sup>TotalTerms</sup>
+ *         <li>TermFreqs --&gt; TermFreqMinus1<sup>TotalTerms</sup>
+ *         <li>Positions --&gt; PositionDelta<sup>TotalPositions</sup>
+ *         <li>StartOffsets --&gt; (AvgCharsPerTerm<sup>TotalDistinctFields</sup>)
+ *             StartOffsetDelta<sup>TotalOffsets</sup>
+ *         <li>Lengths --&gt; LengthMinusTermLength<sup>TotalOffsets</sup>
+ *         <li>PayloadLengths --&gt; PayloadLength<sup>TotalPayloads</sup>
+ *         <li>TermAndPayloads --&gt; LZ4-compressed representation of &lt; FieldTermsAndPayLoads
+ *             &gt;<sup>TotalFields</sup>
+ *         <li>FieldTermsAndPayLoads --&gt; Terms (Payloads)
+ *         <li>DocBase, ChunkDocs, DocNumFields (with ChunkDocs==1) --&gt; {@link
+ *             DataOutput#writeVInt VInt}
+ *         <li>AvgCharsPerTerm --&gt; {@link DataOutput#writeInt Int}
+ *         <li>DocNumFields (with ChunkDocs&gt;=1), FieldNumOffs --&gt; {@link PackedInts} array
+ *         <li>FieldNumTerms, PrefixLength, SuffixLength, TermFreqMinus1, PositionDelta,
+ *             StartOffsetDelta, LengthMinusTermLength, PayloadLength --&gt; {@link
+ *             BlockPackedWriter blocks of 64 packed ints}
+ *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
+ *       </ul>
+ *       <p>Notes:
+ *       <ul>
+ *         <li>DocBase is the ID of the first doc of the chunk.
+ *         <li>ChunkDocs is the number of documents in the chunk.
+ *         <li>DocNumFields is the number of fields for each doc.
+ *         <li>FieldNums is a delta-encoded list of the sorted unique field numbers present in the
+ *             chunk.
+ *         <li>FieldNumOffs is the array of FieldNumOff; array size is the total number of fields in
+ *             the chunk.
+ *         <li>FieldNumOff is the offset of the field number in FieldNums.
+ *         <li>TotalFields is the total number of fields (sum of the values of NumFields).
+ *         <li>Bit in Flags is a single bit which when true means that fields have the same options
+ *             for every document in the chunk.
  *         <li>Flag: a 3-bits int where:
  *             <ul>
  *               <li>the first bit means that the field has positions
  *               <li>the second bit means that the field has offsets
  *               <li>the third bit means that the field has payloads
  *             </ul>
- *         <li>NumTerms --&gt; FieldNumTerms<sup>TotalFields</sup>
- *         <li>FieldNumTerms: the number of terms for each field, using {@link BlockPackedWriter
- *             blocks of 64 packed ints}
- *         <li>TermLengths --&gt; PrefixLength<sup>TotalTerms</sup>
- *             SuffixLength<sup>TotalTerms</sup>
- *         <li>TotalTerms: total number of terms (sum of NumTerms)
- *         <li>PrefixLength: 0 for the first term of a field, the common prefix with the previous
- *             term otherwise using {@link BlockPackedWriter blocks of 64 packed ints}
- *         <li>SuffixLength: length of the term minus PrefixLength for every term using {@link
- *             BlockPackedWriter blocks of 64 packed ints}
- *         <li>TermFreqs --&gt; TermFreqMinus1<sup>TotalTerms</sup>
- *         <li>TermFreqMinus1: (frequency - 1) for each term using {@link BlockPackedWriter blocks
- *             of 64 packed ints}
- *         <li>Positions --&gt; PositionDelta<sup>TotalPositions</sup>
- *         <li>TotalPositions is the sum of frequencies of terms of all fields that have positions
- *         <li>PositionDelta: the absolute position for the first position of a term, and the
- *             difference with the previous positions for following positions using {@link
- *             BlockPackedWriter blocks of 64 packed ints}
- *         <li>StartOffsets --&gt; (AvgCharsPerTerm<sup>TotalDistinctFields</sup>)
- *             StartOffsetDelta<sup>TotalOffsets</sup>
- *         <li>TotalOffsets is the sum of frequencies of terms of all fields that have offsets
- *         <li>AvgCharsPerTerm: average number of chars per term, encoded as a float on 4 bytes.
- *             They are not present if no field has both positions and offsets enabled.
- *         <li>StartOffsetDelta: (startOffset - previousStartOffset - AvgCharsPerTerm *
+ *         <li>FieldNumTerms is the number of terms for each field.
+ *         <li>TotalTerms is the total number of terms (sum of NumTerms).
+ *         <li>PrefixLength is 0 for the first term of a field, the common prefix with the previous
+ *             term otherwise.
+ *         <li>SuffixLength is the length of the term minus PrefixLength for every term using.
+ *         <li>TermFreqMinus1 is (frequency - 1) for each term.
+ *         <li>TotalPositions is the sum of frequencies of terms of all fields that have positions.
+ *         <li>PositionDelta is the absolute position for the first position of a term, and the
+ *             difference with the previous positions for following positions.
+ *         <li>TotalOffsets is the sum of frequencies of terms of all fields that have offsets.
+ *         <li>AvgCharsPerTerm is the average number of chars per term, encoded as a float on 4
+ *             bytes. They are not present if no field has both positions and offsets enabled.
+ *         <li>StartOffsetDelta is the (startOffset - previousStartOffset - AvgCharsPerTerm *
  *             PositionDelta). previousStartOffset is 0 for the first offset and AvgCharsPerTerm is
- *             0 if the field has no positions using {@link BlockPackedWriter blocks of 64 packed
- *             ints}
- *         <li>Lengths --&gt; LengthMinusTermLength<sup>TotalOffsets</sup>
- *         <li>LengthMinusTermLength: (endOffset - startOffset - termLength) using {@link
- *             BlockPackedWriter blocks of 64 packed ints}
- *         <li>PayloadLengths --&gt; PayloadLength<sup>TotalPayloads</sup>
- *         <li>TotalPayloads is the sum of frequencies of terms of all fields that have payloads
- *         <li>PayloadLength is the payload length encoded using {@link BlockPackedWriter blocks of
- *             64 packed ints}
- *         <li>TermAndPayloads --&gt; LZ4-compressed representation of &lt; FieldTermsAndPayLoads
- *             &gt;<sup>TotalFields</sup>
- *         <li>FieldTermsAndPayLoads --&gt; Terms (Payloads)
- *         <li>Terms: term bytes
- *         <li>Payloads: payload bytes (if the field has payloads)
- *         <li>ChunkCount --&gt; the number of chunks in this file
- *         <li>DirtyChunkCount --&gt; the number of prematurely flushed chunks in this file
- *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
+ *             0 if the field has no positions.
+ *         <li>LengthMinusTermLength is (endOffset - startOffset - termLength).
+ *         <li>TotalPayloads is the sum of frequencies of terms of all fields that have payloads.
+ *         <li>PayloadLength is the payload length encoded.
+ *         <li>Terms is term bytes.
+ *         <li>Payloads is payload bytes (if the field has payloads).
  *       </ul>
  *   <li><a id="vector_index"></a>
  *       <p>An index file (extension <code>.tvx</code>).
  *       <ul>
  *         <li>VectorIndex (.tvx) --&gt; &lt;Header&gt;, &lt;ChunkIndex&gt;, Footer
  *         <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
- *         <li>ChunkIndex: See {@link FieldsIndexWriter}
+ *         <li>ChunkIndex --&gt; {@link FieldsIndexWriter}
  *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  *       </ul>
  * </ol>

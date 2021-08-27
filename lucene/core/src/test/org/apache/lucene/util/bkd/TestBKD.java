@@ -1696,6 +1696,18 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public byte getByteAt(int i, int k) {
+            BytesRef b = new BytesRef();
+            getValue(i, b);
+            return b.bytes[b.offset + k];
+          }
+
+          @Override
+          public void save(int i, int j) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void restore(int i, int j) {
             throw new UnsupportedOperationException();
           }
         };
@@ -1838,6 +1850,16 @@ public class TestBKD extends LuceneTestCase {
           @Override
           public int getDocCount() {
             return 11;
+          }
+
+          @Override
+          public void save(int i, int j) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void restore(int i, int j) {
+            throw new UnsupportedOperationException();
           }
         };
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {

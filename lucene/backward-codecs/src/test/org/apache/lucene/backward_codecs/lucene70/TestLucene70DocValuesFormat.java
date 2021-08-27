@@ -596,7 +596,7 @@ public class TestLucene70DocValuesFormat extends BaseCompressingDocValuesFormatT
       Document doc = new Document();
 
       int valueCount = (int) counts.getAsLong();
-      long valueArray[] = new long[valueCount];
+      long[] valueArray = new long[valueCount];
       for (int j = 0; j < valueCount; j++) {
         long value = values.getAsLong();
         valueArray[j] = value;
@@ -625,11 +625,11 @@ public class TestLucene70DocValuesFormat extends BaseCompressingDocValuesFormatT
         if (i > docValues.docID()) {
           docValues.nextDoc();
         }
-        String expected[] = r.document(i).getValues("stored");
+        String[] expected = r.document(i).getValues("stored");
         if (i < docValues.docID()) {
           assertEquals(0, expected.length);
         } else {
-          String actual[] = new String[docValues.docValueCount()];
+          String[] actual = new String[docValues.docValueCount()];
           for (int j = 0; j < actual.length; j++) {
             actual[j] = Long.toString(docValues.nextValue());
           }

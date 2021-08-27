@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search.suggest.analyzing;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -224,7 +224,7 @@ public final class FuzzySuggester extends AnalyzingSuggester {
   protected Automaton convertAutomaton(Automaton a) {
     if (unicodeAware) {
       Automaton utf8automaton = new UTF32ToUTF8().convert(a);
-      utf8automaton = Operations.determinize(utf8automaton, DEFAULT_MAX_DETERMINIZED_STATES);
+      utf8automaton = Operations.determinize(utf8automaton, DEFAULT_DETERMINIZE_WORK_LIMIT);
       return utf8automaton;
     } else {
       return a;
@@ -245,7 +245,7 @@ public final class FuzzySuggester extends AnalyzingSuggester {
       if (string.length <= nonFuzzyPrefix || string.length < minFuzzyLength) {
         subs.add(Automata.makeString(string.ints, string.offset, string.length));
       } else {
-        int ints[] = new int[string.length - nonFuzzyPrefix];
+        int[] ints = new int[string.length - nonFuzzyPrefix];
         System.arraycopy(string.ints, string.offset + nonFuzzyPrefix, ints, 0, ints.length);
         // TODO: maybe add alphaMin to LevenshteinAutomata,
         // and pass 1 instead of 0?  We probably don't want
@@ -273,7 +273,7 @@ public final class FuzzySuggester extends AnalyzingSuggester {
       Automaton a = Operations.union(subs);
       // TODO: we could call toLevenshteinAutomata() before det?
       // this only happens if you have multiple paths anyway (e.g. synonyms)
-      return Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+      return Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     }
   }
 }

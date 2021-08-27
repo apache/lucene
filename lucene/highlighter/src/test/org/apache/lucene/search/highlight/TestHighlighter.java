@@ -59,6 +59,12 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.CommonTermsQuery;
 import org.apache.lucene.queries.function.FunctionScoreQuery;
 import org.apache.lucene.queries.payloads.SpanPayloadCheckQuery;
+import org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper;
+import org.apache.lucene.queries.spans.SpanNearQuery;
+import org.apache.lucene.queries.spans.SpanNotQuery;
+import org.apache.lucene.queries.spans.SpanOrQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
@@ -81,12 +87,6 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.highlight.SynonymTokenizer.TestHighlightRunner;
-import org.apache.lucene.search.spans.SpanMultiTermQueryWrapper;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanNotQuery;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
@@ -1187,7 +1187,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            SpanQuery clauses[] = {
+            SpanQuery[] clauses = {
               new SpanTermQuery(new Term("contents", "john")),
               new SpanTermQuery(new Term("contents", "kennedy")),
             };
@@ -1230,7 +1230,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            SpanQuery clauses[] = {
+            SpanQuery[] clauses = {
               new SpanTermQuery(new Term("contents", "john")),
               new SpanTermQuery(new Term("contents", "kennedy")),
             };
@@ -1534,10 +1534,10 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
                       query, FIELD_NAME, TestHighlighter.this); // new Highlighter(this, new
               // QueryTermScorer(query));
               highlighter.setTextFragmenter(new SimpleFragmenter(20));
-              String stringResults[] = highlighter.getBestFragments(tokenStream, text, 10);
+              String[] stringResults = highlighter.getBestFragments(tokenStream, text, 10);
 
               tokenStream = analyzer.tokenStream(FIELD_NAME, text);
-              TextFragment fragmentResults[] =
+              TextFragment[] fragmentResults =
                   highlighter.getBestTextFragments(tokenStream, text, true, 10);
 
               assertTrue(

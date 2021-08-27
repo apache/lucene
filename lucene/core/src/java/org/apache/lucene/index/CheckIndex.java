@@ -381,7 +381,7 @@ public final class CheckIndex implements Closeable {
       public long totalVectorValues;
 
       /** Total number of fields with vectors. */
-      public int totalVectorFields;
+      public int totalKnnVectorFields;
 
       /** Exception thrown during vector values test (null on success) */
       public Throwable error;
@@ -1093,9 +1093,9 @@ public final class CheckIndex implements Closeable {
         infoStream.print("    test: index sort..........");
       }
 
-      SortField fields[] = sort.getSort();
-      final int reverseMul[] = new int[fields.length];
-      final LeafFieldComparator comparators[] = new LeafFieldComparator[fields.length];
+      SortField[] fields = sort.getSort();
+      final int[] reverseMul = new int[fields.length];
+      final LeafFieldComparator[] comparators = new LeafFieldComparator[fields.length];
 
       LeafReaderContext readerContext = new LeafReaderContext(reader);
 
@@ -2544,7 +2544,7 @@ public final class CheckIndex implements Closeable {
               continue;
             }
 
-            status.totalVectorFields++;
+            status.totalKnnVectorFields++;
 
             int docCount = 0;
             while (values.nextDoc() != NO_MORE_DOCS) {
@@ -2580,7 +2580,7 @@ public final class CheckIndex implements Closeable {
           String.format(
               Locale.ROOT,
               "OK [%d fields, %d vectors] [took %.3f sec]",
-              status.totalVectorFields,
+              status.totalKnnVectorFields,
               status.totalVectorValues,
               nsToSec(System.nanoTime() - startNS)));
 
@@ -3884,7 +3884,7 @@ public final class CheckIndex implements Closeable {
 
   // actual main: returns exit code instead of terminating JVM (for easy testing)
   @SuppressForbidden(reason = "System.out required: command line tool")
-  private static int doMain(String args[]) throws IOException, InterruptedException {
+  private static int doMain(String[] args) throws IOException, InterruptedException {
     Options opts;
     try {
       opts = parseOptions(args);

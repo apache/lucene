@@ -17,10 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.Closeable;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -46,7 +44,8 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
 
   private final Set<DocumentsWriterPerThread> dwpts =
       Collections.newSetFromMap(new IdentityHashMap<>());
-  private final Deque<DocumentsWriterPerThread> freeList = new ArrayDeque<>();
+  private final ApproximatePriorityQueue<DocumentsWriterPerThread> freeList =
+      new ApproximatePriorityQueue<>();
   private final Supplier<DocumentsWriterPerThread> dwptFactory;
   private int takenWriterPermits = 0;
   private boolean closed;
@@ -116,21 +115,12 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
   DocumentsWriterPerThread getAndLock() {
     synchronized (this) {
       ensureOpen();
-      // Important that we are LIFO here! This way if number of concurrent indexing threads was once
-      // high,
-      // but has now reduced, we only use a limited number of DWPTs. This also guarantees that if we
-      // have suddenly
-      // a single thread indexing
-      final Iterator<DocumentsWriterPerThread> descendingIterator = freeList.descendingIterator();
-      while (descendingIterator.hasNext()) {
-        DocumentsWriterPerThread perThread = descendingIterator.next();
-        if (perThread.tryLock()) {
-          descendingIterator.remove();
-          return perThread;
-        }
+      DocumentsWriterPerThread dwpt = freeList.poll(DocumentsWriterPerThread::tryLock);
+      if (dwpt == null) {
+        dwpt = newWriter();
       }
       // DWPT is already locked before return by this method:
-      return newWriter();
+      return dwpt;
     }
   }
 
@@ -141,10 +131,11 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
   }
 
   void marksAsFreeAndUnlock(DocumentsWriterPerThread state) {
+    final long ramBytesUsed = state.ramBytesUsed();
     synchronized (this) {
       assert dwpts.contains(state)
           : "we tried to add a DWPT back to the pool but the pool doesn't know aobut this DWPT";
-      freeList.add(state);
+      freeList.add(state, ramBytesUsed);
     }
     state.unlock();
   }

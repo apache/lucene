@@ -22,8 +22,7 @@ import org.gradle.util.GradleVersion
 
 configure(rootProject) {
   ext {
-    expectedGradleVersion = '6.8.3'
-    minJavaVersion = JavaVersion.VERSION_11
+    expectedGradleVersion = '7.2'
   }
 
   wrapper {

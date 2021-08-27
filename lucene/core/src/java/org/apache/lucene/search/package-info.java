@@ -34,12 +34,11 @@
  * <h2>Search Basics</h2>
  *
  * <p>Lucene offers a wide variety of {@link org.apache.lucene.search.Query} implementations, most
- * of which are in this package, its subpackage ({@link org.apache.lucene.search.spans spans}), or
- * the <a href="{@docRoot}/../queries/overview-summary.html">queries module</a>. These
- * implementations can be combined in a wide variety of ways to provide complex querying
- * capabilities along with information about where matches took place in the document collection.
- * The <a href="#query">Query Classes</a> section below highlights some of the more important Query
- * classes. For details on implementing your own Query class, see <a
+ * of which are in this package or the <a href="{@docRoot}/../queries/overview-summary.html">queries
+ * module</a>. These implementations can be combined in a wide variety of ways to provide complex
+ * querying capabilities along with information about where matches took place in the document
+ * collection. The <a href="#query">Query Classes</a> section below highlights some of the more
+ * important Query classes. For details on implementing your own Query class, see <a
  * href="#customQueriesExpert">Custom Queries -- Expert Level</a> below.
  *
  * <p>To perform a search, applications usually call {@link
@@ -121,7 +120,7 @@
  *
  * <h3>Phrases</h3>
  *
- * <p>Another common search is to find documents containing certain phrases. This is handled three
+ * <p>Another common search is to find documents containing certain phrases. This is handled in
  * different ways:
  *
  * <ol>
@@ -136,12 +135,8 @@
  *       general form of PhraseQuery that accepts multiple Terms for a position in the phrase. For
  *       example, this can be used to perform phrase queries that also incorporate synonyms.
  *   <li>
- *       <p>{@link org.apache.lucene.search.spans.SpanNearQuery SpanNearQuery} &mdash; Matches a
- *       sequence of other {@link org.apache.lucene.search.spans.SpanQuery SpanQuery} instances.
- *       {@link org.apache.lucene.search.spans.SpanNearQuery SpanNearQuery} allows for much more
- *       complicated phrase queries since it is constructed from other {@link
- *       org.apache.lucene.search.spans.SpanQuery SpanQuery} instances, instead of only {@link
- *       org.apache.lucene.search.TermQuery TermQuery} instances.
+ *       <p>Interval queries in the <a href="{@docRoot}/../queries/overview-summary.html">Queries
+ *       module</a>
  * </ol>
  *
  * <h3>{@link org.apache.lucene.search.PointRangeQuery PointRangeQuery} </h3>

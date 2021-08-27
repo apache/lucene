@@ -482,36 +482,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // would have been the final merge
     // so we check that it was prevented.
     assertNull(specification);
-
-    SegmentInfos manySegmentsInfos = new SegmentInfos(Version.LATEST.major);
-    final int manySegmentsCount = atLeast(500);
-    for (int j = 0; j < manySegmentsCount; ++j) {
-      manySegmentsInfos.add(
-          makeSegmentCommitInfo("_" + j, 1000, 0, 0.1D, IndexWriter.SOURCE_MERGE));
-    }
-
-    // We set one merge to be ongoing. Since we have more than 30 (the max merge count) times the
-    // number of segments
-    // of that we want to merge to this is not the final merge and hence the returned specification
-    // must not be null.
-    mergeContext.setMergingSegments(Collections.singleton(manySegmentsInfos.asList().get(0)));
-    final MergeSpecification specificationManySegments =
-        tmp.findForcedMerges(
-            manySegmentsInfos, expectedCount, segmentsToMerge(manySegmentsInfos), mergeContext);
-    assertMaxSize(specificationManySegments, maxSegmentSize);
-    for (OneMerge merge : specificationManySegments.merges) {
-      assertEquals(
-          "No merges of less than the max merge count are permitted while another merge is in progress",
-          merge.segments.size(),
-          tmp.getMaxMergeAtOnceExplicit());
-    }
-    final int resultingCountManySegments =
-        manySegmentsInfos.size()
-            + specificationManySegments.merges.size()
-            - specificationManySegments.merges.stream()
-                .mapToInt(spec -> spec.segments.size())
-                .sum();
-    assertTrue(resultingCountManySegments >= expectedCount);
   }
 
   private static Map<SegmentCommitInfo, Boolean> segmentsToMerge(SegmentInfos infos) {

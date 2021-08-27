@@ -24,11 +24,11 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
@@ -243,12 +243,6 @@ public final class SegmentReader extends CodecReader {
   }
 
   @Override
-  public TermVectorsReader getTermVectorsReader() {
-    ensureOpen();
-    return core.termVectorsLocal.get();
-  }
-
-  @Override
   public StoredFieldsReader getFieldsReader() {
     ensureOpen();
     return core.fieldsReaderLocal.get();
@@ -273,8 +267,8 @@ public final class SegmentReader extends CodecReader {
   }
 
   @Override
-  public VectorReader getVectorReader() {
-    return core.vectorReader;
+  public KnnVectorsReader getVectorReader() {
+    return core.knnVectorsReader;
   }
 
   @Override
@@ -309,6 +303,16 @@ public final class SegmentReader extends CodecReader {
   }
 
   private final Set<ClosedListener> readerClosedListeners = new CopyOnWriteArraySet<>();
+
+  @Override
+  public TermVectorsReader getTermVectorsReader() {
+    ensureOpen();
+    if (core.termVectorsReader != null) {
+      return core.termVectorsReader.clone();
+    } else {
+      return null;
+    }
+  }
 
   @Override
   void notifyReaderClosedListeners() throws IOException {

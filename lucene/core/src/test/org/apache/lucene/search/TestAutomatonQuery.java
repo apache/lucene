@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -121,7 +121,7 @@ public class TestAutomatonQuery extends LuceneTestCase {
         Operations.minus(
             Automata.makeCharRange('a', 'b'),
             Automata.makeChar('a'),
-            DEFAULT_MAX_DETERMINIZED_STATES));
+            DEFAULT_DETERMINIZE_WORK_LIMIT));
   }
 
   /** Test that a nondeterministic automaton works correctly. (It should will be determinized) */
@@ -194,7 +194,7 @@ public class TestAutomatonQuery extends LuceneTestCase {
   }
 
   public void testHashCodeWithThreads() throws Exception {
-    final AutomatonQuery queries[] = new AutomatonQuery[atLeast(100)];
+    final AutomatonQuery[] queries = new AutomatonQuery[atLeast(100)];
     for (int i = 0; i < queries.length; i++) {
       queries[i] =
           new AutomatonQuery(
