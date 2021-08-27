@@ -82,8 +82,8 @@ public class TestCheckIndex extends BaseTestCheckIndex {
           doc.add(new StoredField("field", "value" + TestUtil.randomSimpleString(random())));
 
           // vector
-          doc.add(new VectorField("v1", randomVector(3), VectorValues.SimilarityFunction.NONE));
-          doc.add(new VectorField("v2", randomVector(3), VectorValues.SimilarityFunction.NONE));
+          doc.add(new KnnVectorField("v1", randomVector(3)));
+          doc.add(new KnnVectorField("v2", randomVector(3)));
 
           // doc value
           doc.add(new NumericDocValuesField("dv", random().nextLong()));
@@ -176,7 +176,7 @@ public class TestCheckIndex extends BaseTestCheckIndex {
 
       // confirm vector testing status
       assertEquals(2 * liveDocCount, segStatus.vectorValuesStatus.totalVectorValues);
-      assertEquals(2, segStatus.vectorValuesStatus.totalVectorFields);
+      assertEquals(2, segStatus.vectorValuesStatus.totalKnnVectorFields);
       assertTrue(output.toString(IOUtils.UTF_8).contains("test: vectors"));
       assertNull(segStatus.vectorValuesStatus.error);
 
