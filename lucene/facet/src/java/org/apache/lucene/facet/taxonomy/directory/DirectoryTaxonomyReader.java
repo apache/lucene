@@ -472,10 +472,12 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
       }
     }
 
-    synchronized (categoryCache) {
-      for (int i : uncachedOrdinalPositions) {
-        // add the value to the categoryCache after computation
-        categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+    if (uncachedOrdinalPositions.isEmpty() == false) {
+      synchronized (categoryCache) {
+        for (int i : uncachedOrdinalPositions) {
+          // add the value to the categoryCache after computation
+          categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+        }
       }
     }
 

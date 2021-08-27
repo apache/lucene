@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -597,16 +598,16 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     }
 
     // create multiple threads to check result correctness and thread contention in the cache
-    Thread[] addThreads = new Thread[atLeast(4)];
+    Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
     for (int z = 0; z < addThreads.length; z++) {
       addThreads[z] =
           new Thread() {
             @Override
             public void run() {
-              // each thread iterates for maxThreadIterations times
-              int maxThreadIterations = random().nextInt(10);
+              // each thread iterates for numThreadIterations times
+              int numThreadIterations = random().nextInt(10);
               for (int threadIterations = 0;
-                  threadIterations < maxThreadIterations;
+                  threadIterations < numThreadIterations;
                   threadIterations++) {
 
                 // length of the FacetLabel array that we are going to check
