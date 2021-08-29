@@ -251,7 +251,8 @@ Improvements
   (Uwe Schinder)
 
 * LUCENE-9476: Add new getBulkPath API to DirectoryTaxonomyReader to more efficiently retrieve FacetLabels for multiple
-  facet ordinals at once (Gautam Worah, Mike McCandless). This API is 2-4% faster than iteratively calling getPath
+  facet ordinals at once (Gautam Worah, Mike McCandless). This API is 2-4% faster than iteratively calling getPath.
+  The getPath API now throws an IAE instead of returning null if the ordinal is out of bounds.
 
 Bug fixes
 
