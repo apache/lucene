@@ -329,9 +329,9 @@ public final class TestUtil {
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
       if (concurrent) {
-        checker.setThreadCount(RandomizedTest.randomIntBetween(1, 5));
+        checker.setThreadCount(RandomizedTest.randomIntBetween(2, 5));
       } else {
-        checker.setThreadCount(0);
+        checker.setThreadCount(1);
       }
       CheckIndex.Status indexStatus = checker.checkIndex(null);
 

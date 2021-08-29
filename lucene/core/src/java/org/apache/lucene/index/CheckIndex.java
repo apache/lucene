@@ -482,10 +482,14 @@ public final class CheckIndex implements Closeable {
 
   /** Set threadCount used for parallelizing index integrity checking. */
   public void setThreadCount(int tc) {
+    if (tc <= 0) {
+      throw new IllegalArgumentException(
+          "setThreadCount requires a number larger than 0, but got: " + tc);
+    }
     threadCount = tc;
   }
 
-  // capped threadCount at 4
+  // capped threadCount at 4 for default
   private int threadCount = Math.min(Runtime.getRuntime().availableProcessors(), 4);
 
   /**
@@ -530,12 +534,14 @@ public final class CheckIndex implements Closeable {
   public Status checkIndex(List<String> onlySegments) throws IOException {
     ExecutorService executorService = null;
 
-    if (threadCount > 0) {
+    // if threadCount == 1, then no executor is created and use the main thread to do index checking
+    // sequentially
+    if (threadCount > 1) {
       executorService =
           Executors.newFixedThreadPool(threadCount, new NamedThreadFactory("async-check-index"));
     }
 
-    msg(infoStream, "Checking index with async threadCount: " + threadCount);
+    msg(infoStream, "Checking index with threadCount: " + threadCount);
     try {
       return checkIndex(onlySegments, executorService);
     } finally {
@@ -3962,6 +3968,10 @@ public final class CheckIndex implements Closeable {
         }
         i++;
         opts.threadCount = Integer.parseInt(args[i]);
+        if (opts.threadCount <= 0) {
+          throw new IllegalArgumentException(
+              "-threadCount requires a number larger than 0, but got: " + opts.threadCount);
+        }
       } else {
         if (opts.indexPath != null) {
           throw new IllegalArgumentException("ERROR: unexpected extra argument '" + args[i] + "'");
@@ -4029,9 +4039,11 @@ public final class CheckIndex implements Closeable {
     setDoSlowChecks(opts.doSlowChecks);
     setChecksumsOnly(opts.doChecksumsOnly);
     setInfoStream(opts.out, opts.verbose);
-    // when threadCount was not provided via command line, overrides it with 0 to turn off
-    // concurrent check
-    setThreadCount(opts.threadCount);
+    // user provided thread count via command line argument, overriding the default with user
+    // provided value
+    if (opts.threadCount > 0) {
+      setThreadCount(opts.threadCount);
+    }
 
     Status result = checkIndex(opts.onlySegments);
 

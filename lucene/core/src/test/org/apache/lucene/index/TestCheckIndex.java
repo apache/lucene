@@ -190,6 +190,11 @@ public class TestCheckIndex extends BaseTestCheckIndex {
     }
   }
 
+  public void testInvalidThreadCountArgument() {
+    String[] args = new String[] {"-threadCount", "0"};
+    expectThrows(IllegalArgumentException.class, () -> CheckIndex.parseOptions(args));
+  }
+
   private float[] randomVector(int dim) {
     float[] v = new float[dim];
     for (int i = 0; i < dim; i++) {
