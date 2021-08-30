@@ -15,6 +15,9 @@ New Features
 
 * LUCENE-9589: Swedish Minimal Stemmer (janhoy)
 
+* LUCENE-10035: The SimpleText codec now writes postings lists.
+  (wuda via Adrien Grand)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
