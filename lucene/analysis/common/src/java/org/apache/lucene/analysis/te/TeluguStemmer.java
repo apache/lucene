@@ -21,15 +21,15 @@ import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 /**
  * Stemmer for Telugu.
  *
- * <p>The algorithm is based on the report in: <i>Natural Language Processing in an Indian Language
- * (Telugu)-I: Verb Phrase Analysis</i> P Sengupta and B B Chaudhuri
- *
- * TODO - see here https://github.com/nirupampratap/lda_te/blob/master/tepy.py
- * @author vinod@vinodsingh.com - WIP
  * @since 9.0.0
  */
 public class TeluguStemmer {
   public int stem(char buffer[], int len) {
+    // 4
+    if ((len > 5)
+        && (endsWith(buffer, len, "ళ్ళు")
+            || endsWith(buffer, len, "డ్లు")))
+      return len - 4;
 
     // 2
     if ((len > 3)
@@ -44,9 +44,11 @@ public class TeluguStemmer {
             || endsWith(buffer, len, "లో")
             || endsWith(buffer, len, "డు")
             || endsWith(buffer, len, "ది")
-            || endsWith(buffer, len, "డు")
-            || endsWith(buffer, len, "పు")
-            || endsWith(buffer, len, "కి"))) return len - 2;
+            || endsWith(buffer, len, "కి")
+            || endsWith(buffer, len, "సు")
+            || endsWith(buffer, len, "వై")
+            || endsWith(buffer, len, "పై")))
+      return len - 2;
 
     // 1
     if ((len > 2)
@@ -58,7 +60,8 @@ public class TeluguStemmer {
             || endsWith(buffer, len, "ే")
             || endsWith(buffer, len, "ొ")
             || endsWith(buffer, len, "ో")
-            || endsWith(buffer, len, "ా"))) return len - 1;
+            || endsWith(buffer, len, "ా")))
+      return len - 1;
 
     return len;
   }
