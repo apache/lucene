@@ -183,7 +183,14 @@ public class TermQuery extends Query {
     @Override
     public int count(LeafReaderContext context) throws IOException {
       if (context.reader().hasDeletions() == false) {
-        return context.reader().docFreq(term);
+        TermsEnum termsEnum = getTermsEnum(context);
+        // termsEnum is not null if term state is available
+        if (termsEnum != null) {
+          return termsEnum.docFreq();
+        } else {
+          // no term state found so rely on the default reader.docFreq call
+          return context.reader().docFreq(term);
+        }
       } else {
         return super.count(context);
       }
