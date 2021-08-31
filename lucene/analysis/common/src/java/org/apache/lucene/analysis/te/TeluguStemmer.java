@@ -44,6 +44,8 @@ public class TeluguStemmer {
             || endsWith(buffer, len, "లో")
             || endsWith(buffer, len, "డు")
             || endsWith(buffer, len, "ది")
+            || endsWith(buffer, len, "డు")
+            || endsWith(buffer, len, "పు")
             || endsWith(buffer, len, "కి"))) return len - 2;
 
     // 1
