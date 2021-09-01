@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.te;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
-
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
@@ -38,9 +37,7 @@ import org.apache.lucene.analysis.standard.StandardTokenizer;
 public final class TeluguAnalyzer extends StopwordAnalyzerBase {
   private final CharArraySet stemExclusionSet;
 
-  /**
-   * File containing default Telugu stopwords.
-   */
+  /** File containing default Telugu stopwords. */
   public static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
 
   private static final String STOPWORDS_COMMENT = "#";
@@ -102,8 +99,8 @@ public final class TeluguAnalyzer extends StopwordAnalyzerBase {
    * the text in the provided {@link Reader}.
    *
    * @return {@link org.apache.lucene.analysis.Analyzer.TokenStreamComponents} built from a {@link
-   *     StandardTokenizer} filtered with {@link DecimalDigitFilter},
-   *     {@link IndicNormalizationFilter}, {@link TeluguNormalizationFilter}, {@link
+   *     StandardTokenizer} filtered with {@link DecimalDigitFilter}, {@link
+   *     IndicNormalizationFilter}, {@link TeluguNormalizationFilter}, {@link
    *     SetKeywordMarkerFilter} if a stem exclusion set is provided, {@link TeluguStemFilter}, and
    *     Telugu Stop words
    */

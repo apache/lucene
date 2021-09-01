@@ -54,5 +54,4 @@ public class TestTeluguAnalyzer extends BaseTokenStreamTestCase {
     checkRandomData(random(), analyzer, 200 * RANDOM_MULTIPLIER);
     analyzer.close();
   }
-
 }

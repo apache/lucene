@@ -24,7 +24,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
 /**
  * A {@link TokenFilter} that applies {@link TeluguStemmer} to stem Telugu words.
- * 
+ *
  * @since 9.0.0
  */
 public final class TeluguStemFilter extends TokenFilter {

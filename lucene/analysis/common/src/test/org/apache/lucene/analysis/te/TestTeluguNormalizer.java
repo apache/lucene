@@ -17,7 +17,6 @@
 package org.apache.lucene.analysis.te;
 
 import java.io.IOException;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenFilter;
@@ -43,17 +42,18 @@ public class TestTeluguNormalizer extends BaseTokenStreamTestCase {
   private void check(String input, String output) throws IOException {
     Tokenizer tokenizer = whitespaceMockTokenizer(input);
     TokenFilter tf = new TeluguNormalizationFilter(tokenizer);
-    assertTokenStreamContents(tf, new String[]{output});
+    assertTokenStreamContents(tf, new String[] {output});
   }
 
   public void testEmptyTerm() throws IOException {
-    Analyzer a = new Analyzer() {
-      @Override
-      protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new KeywordTokenizer();
-        return new TokenStreamComponents(tokenizer, new TeluguNormalizationFilter(tokenizer));
-      }
-    };
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new KeywordTokenizer();
+            return new TokenStreamComponents(tokenizer, new TeluguNormalizationFilter(tokenizer));
+          }
+        };
     checkOneTerm(a, "", "");
     a.close();
   }

@@ -26,9 +26,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 public class TeluguStemmer {
   public int stem(char buffer[], int len) {
     // 4
-    if ((len > 5)
-        && (endsWith(buffer, len, "ళ్ళు")
-            || endsWith(buffer, len, "డ్లు")))
+    if ((len > 5) && (endsWith(buffer, len, "ళ్ళు") || endsWith(buffer, len, "డ్లు")))
       return len - 4;
 
     // 2
@@ -47,8 +45,7 @@ public class TeluguStemmer {
             || endsWith(buffer, len, "కి")
             || endsWith(buffer, len, "సు")
             || endsWith(buffer, len, "వై")
-            || endsWith(buffer, len, "పై")))
-      return len - 2;
+            || endsWith(buffer, len, "పై"))) return len - 2;
 
     // 1
     if ((len > 2)
@@ -60,8 +57,7 @@ public class TeluguStemmer {
             || endsWith(buffer, len, "ే")
             || endsWith(buffer, len, "ొ")
             || endsWith(buffer, len, "ో")
-            || endsWith(buffer, len, "ా")))
-      return len - 1;
+            || endsWith(buffer, len, "ా"))) return len - 1;
 
     return len;
   }
