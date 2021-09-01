@@ -21,7 +21,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.delete;
 /**
  * Normalizer for Telugu.
  *
- * <p>Normalizes text to remove some differences in spelling variations.
+ * <p>Normalizes text to remove some differences in spelling variations.</p>
  *
  * @since 9.0.0
  */
