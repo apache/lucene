@@ -7,13 +7,16 @@ http://s.apache.org/luceneversions
 
 New Features
 
-* LUCENE-9322 LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
+* LUCENE-9322, LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
-* LUCENE-9004: Approximate nearest vector search via NSW graphs (Mike Sokolov, Tomoko Uchida et al.)
+* LUCENE-9004, LUCENE-10040: Approximate nearest vector search via NSW graphs (Mike Sokolov, Tomoko Uchida et al.)
 
 * LUCENE-9659: SpanPayloadCheckQuery now supports inequalities. (Kevin Watters, Gus Heck)
 
 * LUCENE-9589: Swedish Minimal Stemmer (janhoy)
+
+* LUCENE-10035: The SimpleText codec now writes postings lists.
+  (wuda via Adrien Grand)
 
 System Requirements
 
@@ -21,6 +24,12 @@ System Requirements
   (Adrien Grand, Uwe Schindler)
 
 API Changes
+
+* LUCENE-8638: Remove many deprecated methods and classes including FST.lookupByOutput(),
+  LegacyBM25Similarity and Jaspell suggester.
+
+* LUCENE-8638: haversin() expressions function now returns its result in meters rather than
+  kilometers.
 
 * LUCENE-8982: Separate out native code to another module to allow cpp
   build with gradle. This also changes the name of the native "posix-support"
@@ -126,6 +135,10 @@ API Changes
 
 * LUCENE-9959: Add non thread local based API for term vector reader usage. (Zach Chen, Adrien Grand,
   David Smiley, Robert Muir, Mike Drob)
+
+* LUCENE-7020: TieredMergePolicy#setMaxMergeAtOnceExplicit has been removed.
+  TieredMergePolicy no longer sets a limit on the maximum number of segments
+  that can be merged at once via a forced merge. (Adrien Grand, Shawn Heisey)
 
 * LUCENE-10027: Directory reader open API from indexCommit and leafSorter has been modified
   to add an extra parameter - minSupportedMajorVersion. (Mayya Sharipova)
@@ -245,6 +258,9 @@ Improvements
 * LUCENE-10019: Align file starts in CFS files to have proper alignment (8 bytes)
   (Uwe Schinder)
 
+* LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
+  (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
+
 Bug fixes
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
@@ -280,6 +296,9 @@ Bug fixes
 
 * LUCENE-9823: Prevent unsafe rewrites for SynonymQuery and CombinedFieldQuery. Before, rewriting
   could slightly change the scoring when weights were specified. (Naoto Minami via Julie Tibshirani)
+
+* LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
+  (Greg Miller)
 
 Changes in Backwards Compatibility Policy
 
@@ -363,6 +382,10 @@ API Changes
 * LUCENE-10027: Add a new Directory reader open API from indexCommit and
   a custom comparator for sorting leaf readers. (Mayya Sharipova)
 
+* LUCENE-7020: TieredMergePolicy#setMaxMergeAtOnceExplicit is deprecated
+  and the number of segments that get merged via explicit merges is unlimited
+  by default. (Adrien Grand, Shawn Heisey)
+
 New Features
 ---------------------
 (No changes)
@@ -402,6 +425,15 @@ Improvements
 * LUCENE-9945: Extend DrillSideways to support exposing FacetCollectors directly.
   (Greg Miller, Sejal Pawar)
 
+* LUCENE-10043: Decrease default for LRUQueryCache's skipCacheFactor to 10.
+  This prevents caching a query clause when it is much more expensive than
+  running the top-level query. (Julie Tibshirani)
+
+* LUCENE-5309: Optimize facet counting for single-valued SSDV / StringValueFacetCounts. (Greg Miller)
+
+* LUCENE-9917: The BEST_SPEED compression mode now trades more compression ratio
+  in exchange of faster reads. (Adrien Grand)
+
 Optimizations
 ---------------------
 * LUCENE-9996: Improved memory efficiency of IndexWriter's RAM buffer, in
@@ -413,6 +445,10 @@ Optimizations
 
 * LUCENE-10031: Slightly faster segment merging for sorted indices.
   (Adrien Grand)
+
+* LUCENE-10014: Lucene90DocValuesFormat was using too many bits per
+  value when compressing via gcd, unnecessarily wasting index storage.
+  (weizijun)
 
 Bug Fixes
 ---------------------
@@ -432,6 +468,15 @@ Bug Fixes
 
 * LUCENE-10039: Correct CombinedFieldQuery scoring when there is a single
   field. (Julie Tibshirani)
+
+* LUCENE-10046: Counting bug fixed in StringValueFacetCounts. (Greg Miller)
+
+* LUCENE-9963: FlattenGraphFilter is now more robust when handling
+  incoming holes in the input token graph (Geoff Lawson)
+
+* LUCENE-10008: Respect ignoreCase in CommonGramsFilterFactory (Vigya Sharma)
+
+* LUCENE-10060: Ensure DrillSidewaysQuery instances never get cached. (Greg Miller, Zachary Chen)
 
 Other
 ---------------------

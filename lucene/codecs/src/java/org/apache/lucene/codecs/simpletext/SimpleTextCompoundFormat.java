@@ -80,9 +80,9 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
     assert StringHelper.startsWith(scratch.get(), TABLE);
     int numEntries = Integer.parseInt(stripPrefix(scratch, TABLE));
 
-    final String fileNames[] = new String[numEntries];
-    final long startOffsets[] = new long[numEntries];
-    final long endOffsets[] = new long[numEntries];
+    final String[] fileNames = new String[numEntries];
+    final long[] startOffsets = new long[numEntries];
+    final long[] endOffsets = new long[numEntries];
 
     for (int i = 0; i < numEntries; i++) {
       SimpleTextUtil.readLine(in, scratch);
@@ -160,10 +160,10 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
     String dataFile = IndexFileNames.segmentFileName(si.name, "", DATA_EXTENSION);
 
     int numFiles = si.files().size();
-    String names[] = si.files().toArray(new String[numFiles]);
+    String[] names = si.files().toArray(new String[numFiles]);
     Arrays.sort(names);
-    long startOffsets[] = new long[numFiles];
-    long endOffsets[] = new long[numFiles];
+    long[] startOffsets = new long[numFiles];
+    long[] endOffsets = new long[numFiles];
 
     BytesRefBuilder scratch = new BytesRefBuilder();
 
@@ -233,7 +233,7 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
 
   static {
     int numDigits = Long.toString(Long.MAX_VALUE).length();
-    char pattern[] = new char[numDigits];
+    char[] pattern = new char[numDigits];
     Arrays.fill(pattern, '0');
     OFFSETPATTERN = new String(pattern);
   }

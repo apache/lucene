@@ -216,7 +216,7 @@ public class QueryUtils {
       }
 
       @Override
-      public TopDocs searchNearestVectors(String field, float[] target, int k) {
+      public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs) {
         return null;
       }
 
@@ -288,7 +288,7 @@ public class QueryUtils {
 
     final int skip_op = 0;
     final int next_op = 1;
-    final int orders[][] = {
+    final int[][] orders = {
       {next_op},
       {skip_op},
       {skip_op, next_op},
@@ -299,17 +299,17 @@ public class QueryUtils {
     };
     for (int k = 0; k < orders.length; k++) {
 
-      final int order[] = orders[k];
+      final int[] order = orders[k];
       // System.out.print("Order:");for (int i = 0; i < order.length; i++)
       // System.out.print(order[i]==skip_op ? " skip()":" next()");
       // System.out.println();
-      final int opidx[] = {0};
-      final int lastDoc[] = {-1};
+      final int[] opidx = {0};
+      final int[] lastDoc = {-1};
 
       // FUTURE: ensure scorer.doc()==-1
 
       final float maxDiff = 1e-5f;
-      final LeafReader lastReader[] = {null};
+      final LeafReader[] lastReader = {null};
 
       s.search(
           q,
@@ -503,8 +503,8 @@ public class QueryUtils {
   public static void checkFirstSkipTo(final Query q, final IndexSearcher s) throws IOException {
     // System.out.println("checkFirstSkipTo: "+q);
     final float maxDiff = 1e-3f;
-    final int lastDoc[] = {-1};
-    final LeafReader lastReader[] = {null};
+    final int[] lastDoc = {-1};
+    final LeafReader[] lastReader = {null};
     final List<LeafReaderContext> context = s.getTopReaderContext().leaves();
     Query rewritten = s.rewrite(q);
     s.search(

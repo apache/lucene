@@ -618,6 +618,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
   }
 
   private static LongSupplier blocksOfVariousBPV() {
+    // this helps exercise GCD compression:
     final long mul = TestUtil.nextInt(random(), 1, 100);
     final long min = random().nextInt();
     return new LongSupplier() {
@@ -627,6 +628,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       @Override
       public long getAsLong() {
         if (i == Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE) {
+          // change the range of the random generated values on block boundaries, so we exercise
+          // different bits-per-value for each block, and encourage block compression
           maxDelta = 1 << random().nextInt(5);
           i = 0;
         }
@@ -647,17 +650,19 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
 
     final int numDocs = atLeast(Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE * 3);
     final LongSupplier values = blocksOfVariousBPV();
+    List<long[]> writeDocValues = new ArrayList<>();
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
 
       int valueCount = (int) counts.getAsLong();
-      long valueArray[] = new long[valueCount];
+      long[] valueArray = new long[valueCount];
       for (int j = 0; j < valueCount; j++) {
         long value = values.getAsLong();
         valueArray[j] = value;
         doc.add(new SortedNumericDocValuesField("dv", value));
       }
       Arrays.sort(valueArray);
+      writeDocValues.add(valueArray);
       for (int j = 0; j < valueCount; j++) {
         doc.add(new StoredField("stored", Long.toString(valueArray[j])));
       }
@@ -680,15 +685,23 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
         if (i > docValues.docID()) {
           docValues.nextDoc();
         }
-        String expected[] = r.document(i).getValues("stored");
+        String[] expectedStored = r.document(i).getValues("stored");
         if (i < docValues.docID()) {
-          assertEquals(0, expected.length);
+          assertEquals(0, expectedStored.length);
         } else {
-          String actual[] = new String[docValues.docValueCount()];
-          for (int j = 0; j < actual.length; j++) {
-            actual[j] = Long.toString(docValues.nextValue());
+          long[] readValueArray = new long[docValues.docValueCount()];
+          String[] actualDocValue = new String[docValues.docValueCount()];
+          for (int j = 0; j < docValues.docValueCount(); ++j) {
+            long actualDV = docValues.nextValue();
+            readValueArray[j] = actualDV;
+            actualDocValue[j] = Long.toString(readValueArray[j]);
           }
-          assertArrayEquals(expected, actual);
+          long[] writeValueArray = writeDocValues.get(i);
+          // compare write values and read values
+          assertArrayEquals(readValueArray, writeValueArray);
+
+          // compare dv and stored values
+          assertArrayEquals(expectedStored, actualDocValue);
         }
       }
     }

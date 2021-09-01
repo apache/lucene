@@ -439,7 +439,9 @@ public class AnalyzerFactoryTask extends PerfTask {
         if (!Files.isDirectory(baseDir)) {
           baseDir = Paths.get(".");
         }
-        ((ResourceLoaderAware) instance).inform(new FilesystemResourceLoader(baseDir));
+        ((ResourceLoaderAware) instance)
+            .inform(
+                new FilesystemResourceLoader(baseDir, AnalyzerFactoryTask.class.getClassLoader()));
       }
       if (CharFilterFactory.class.isAssignableFrom(clazz)) {
         charFilterFactories.add((CharFilterFactory) instance);

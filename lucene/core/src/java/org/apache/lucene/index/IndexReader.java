@@ -318,7 +318,6 @@ public abstract class IndexReader implements Closeable {
     }
     return null;
   }
-  ;
 
   /** Get TermVectors from this index, or null if term vectors were not indexed. */
   public abstract TermVectors getTermVectorsReader();

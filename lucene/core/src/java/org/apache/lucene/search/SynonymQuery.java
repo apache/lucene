@@ -51,7 +51,7 @@ import org.apache.lucene.util.PriorityQueue;
  */
 public final class SynonymQuery extends Query {
 
-  private final TermAndBoost terms[];
+  private final TermAndBoost[] terms;
   private final String field;
 
   /** A builder for {@link SynonymQuery}. */
@@ -182,7 +182,7 @@ public final class SynonymQuery extends Query {
   }
 
   class SynonymWeight extends Weight {
-    private final TermStates termStates[];
+    private final TermStates[] termStates;
     private final Similarity similarity;
     private final Similarity.SimScorer simWeight;
     private final ScoreMode scoreMode;

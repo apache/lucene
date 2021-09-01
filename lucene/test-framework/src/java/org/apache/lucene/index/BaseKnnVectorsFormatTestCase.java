@@ -31,6 +31,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Bits;
@@ -856,6 +857,16 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               }
             }
           }
+          // assert that searchNearestVectors returns the expected number of documents, in
+          // descending score order
+          int size = ctx.reader().getVectorValues(fieldName).size();
+          int k = random().nextInt(size / 2 + 1);
+          TopDocs results =
+              ctx.reader().searchNearestVectors(fieldName, randomVector(dimension), k, liveDocs);
+          assertEquals(Math.min(k, size), results.scoreDocs.length);
+          for (int i = 0; i < k - 1; i++) {
+            assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
+          }
         }
       }
     }
@@ -916,7 +927,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       }
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, output);
+      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
       assertEquals(1, status.segmentInfos.size());
       CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
       // total 3 vector values were indexed:

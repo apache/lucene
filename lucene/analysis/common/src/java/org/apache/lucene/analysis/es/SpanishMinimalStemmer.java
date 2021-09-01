@@ -24,7 +24,7 @@ package org.apache.lucene.analysis.es;
  */
 public class SpanishMinimalStemmer {
 
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     if (len < 4 || s[len - 1] != 's') return len;
 
     for (int i = 0; i < len; i++)

@@ -740,7 +740,7 @@ index 1b27b96..94f2d4b 100644
 -    public String getCurrent()
 -    {
 -        return current.toString();
-+    public void setCurrent(char text[], int length) {
++    public void setCurrent(char[] text, int length) {
 +        current = text;
 +        cursor = 0;
 +        limit = length;
@@ -778,7 +778,7 @@ index 1b27b96..94f2d4b 100644
  
      // current string
 -    protected StringBuilder current;
-+    private char current[];
++    private char[] current;
  
      protected int cursor;
      protected int limit;
@@ -926,7 +926,7 @@ index 1b27b96..94f2d4b 100644
 +	final int newLength = limit + adjustment;
 +	//resize if necessary
 +	if (newLength > current.length) {
-+	    char newBuffer[] = new char[oversize(newLength)];
++	    char[] newBuffer = new char[oversize(newLength)];
 +	    System.arraycopy(current, 0, newBuffer, 0, limit);
 +	    current = newBuffer;
 +	}

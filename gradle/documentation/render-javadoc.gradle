@@ -1,3 +1,5 @@
+import org.gradle.internal.jvm.Jvm
+
 import javax.annotation.Nullable
 
 /*
@@ -287,7 +289,7 @@ class RenderJavadocTask extends DefaultTask {
 
   @Input
   @Optional
-  Property<String> luceneDocUrl = project.objects.property(String)
+  final Property<String> luceneDocUrl = project.objects.property(String)
 
   // default is to require full javadocs
   @Input
@@ -305,10 +307,10 @@ class RenderJavadocTask extends DefaultTask {
   @Optional
   ListProperty<String> extraOpts = project.objects.listProperty(String)
 
-  @Nullable
   @Optional
   @Input
-  def executable
+  final Property<String> executable = project.objects.property(String).convention(
+      project.provider { Jvm.current().javadocExecutable.toString() })
 
   @Input
   def taskResources
@@ -443,16 +445,7 @@ class RenderJavadocTask extends DefaultTask {
       }
     })
 
-    def javadocCmd = {
-      if (executable == null) {
-        JavaInstallationRegistry registry = project.extensions.getByType(JavaInstallationRegistry)
-        JavaInstallation currentJvm = registry.installationForCurrentVirtualMachine.get()
-        return currentJvm.jdk.get().javadocExecutable.asFile
-      } else {
-        return project.file(executable)
-      }
-    }()
-
+    def javadocCmd = project.file(executable.get())
     logger.info("Javadoc executable used: ${javadocCmd}")
 
     project.quietExec {

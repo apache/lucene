@@ -251,11 +251,11 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       // writeOffsets);
     }
 
-    int termFreqs[]; // # times this term occurs in the current doc
-    int lastDocIDs[]; // Last docID where this term occurred
-    int lastDocCodes[]; // Code for prior doc
-    int lastPositions[]; // Last position where this term occurred
-    int lastOffsets[]; // Last endOffset where this term occurred
+    int[] termFreqs; // # times this term occurs in the current doc
+    int[] lastDocIDs; // Last docID where this term occurred
+    int[] lastDocCodes; // Code for prior doc
+    int[] lastPositions; // Last position where this term occurred
+    int[] lastOffsets; // Last endOffset where this term occurred
 
     @Override
     ParallelPostingsArray newInstance(int size) {

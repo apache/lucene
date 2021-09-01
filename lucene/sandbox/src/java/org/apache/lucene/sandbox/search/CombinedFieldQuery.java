@@ -171,9 +171,9 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   // sorted map for fields.
   private final TreeMap<String, FieldAndWeight> fieldAndWeights;
   // array of terms, sorted.
-  private final BytesRef terms[];
+  private final BytesRef[] terms;
   // array of terms per field, sorted
-  private final Term fieldTerms[];
+  private final Term[] fieldTerms;
 
   private final long ramBytesUsed;
 
@@ -317,7 +317,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
   class CombinedFieldWeight extends Weight {
     private final IndexSearcher searcher;
-    private final TermStates termStates[];
+    private final TermStates[] termStates;
     private final Similarity.SimScorer simWeight;
 
     CombinedFieldWeight(Query query, IndexSearcher searcher, ScoreMode scoreMode, float boost)

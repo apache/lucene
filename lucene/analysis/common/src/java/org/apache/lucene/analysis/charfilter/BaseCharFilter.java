@@ -28,8 +28,8 @@ import org.apache.lucene.util.ArrayUtil;
  */
 public abstract class BaseCharFilter extends CharFilter {
 
-  private int offsets[];
-  private int diffs[];
+  private int[] offsets;
+  private int[] diffs;
   private int size = 0;
 
   public BaseCharFilter(Reader in) {

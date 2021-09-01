@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.lucene.util;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
@@ -41,6 +42,7 @@ import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope.Scope;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakZombies;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakZombies.Consequence;
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import com.carrotsearch.randomizedtesting.rules.NoClassHooksShadowingRule;
 import com.carrotsearch.randomizedtesting.rules.NoInstanceHooksOverridesRule;
@@ -60,6 +62,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -1155,10 +1158,8 @@ public abstract class LuceneTestCase extends Assert {
     TieredMergePolicy tmp = new TieredMergePolicy();
     if (rarely(r)) {
       tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-      tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 2, 9));
     } else {
       tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-      tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 10, 50));
     }
     if (rarely(r)) {
       tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
@@ -1290,10 +1291,8 @@ public abstract class LuceneTestCase extends Assert {
         TieredMergePolicy tmp = (TieredMergePolicy) mp;
         if (rarely(r)) {
           tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-          tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 2, 9));
         } else {
           tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-          tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 10, 50));
         }
         if (rarely(r)) {
           tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
@@ -1314,8 +1313,8 @@ public abstract class LuceneTestCase extends Assert {
     }
     if (VERBOSE && didChange) {
       String current = c.toString();
-      String previousLines[] = previous.split("\n");
-      String currentLines[] = current.split("\n");
+      String[] previousLines = previous.split("\n");
+      String[] currentLines = current.split("\n");
       StringBuilder diff = new StringBuilder();
 
       // this should always be the case, diff each line
@@ -1653,7 +1652,7 @@ public abstract class LuceneTestCase extends Assert {
    * @see <a href="http://issues.apache.org/jira/browse/LUCENE-4020">LUCENE-4020</a>
    */
   public static TimeZone randomTimeZone(Random random) {
-    String tzIds[] = TimeZone.getAvailableIDs();
+    String[] tzIds = TimeZone.getAvailableIDs();
     return TimeZone.getTimeZone(tzIds[random.nextInt(tzIds.length)]);
   }
 
@@ -2386,7 +2385,7 @@ public abstract class LuceneTestCase extends Assert {
           }
         } else if (code == 2) {
           // term, but ensure a non-zero offset
-          byte newbytes[] = new byte[term.length + 5];
+          byte[] newbytes = new byte[term.length + 5];
           System.arraycopy(term.bytes, term.offset, newbytes, 5, term.length);
           tests.add(new BytesRef(newbytes, 5, term.length));
         } else if (code == 3) {
@@ -3058,15 +3057,6 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * This method is deprecated for a reason. Do not use it. Call {@link #createTempDir()} or {@link
-   * #createTempDir(String)} or {@link #createTempFile(String, String)}.
-   */
-  @Deprecated
-  public static Path getBaseTempDirForTestClass() {
-    return tempFilesCleanupRule.getPerTestClassTempDir();
-  }
-
-  /**
    * Creates an empty, temporary folder (when the name of the folder is of no importance).
    *
    * @see #createTempDir(String)
@@ -3076,8 +3066,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Creates an empty, temporary folder with the given name prefix under the test class's {@link
-   * #getBaseTempDirForTestClass()}.
+   * Creates an empty, temporary folder with the given name prefix.
    *
    * <p>The folder will be automatically removed after the test class completes successfully. The
    * test should close any file handles that would prevent the folder from being removed.
@@ -3087,8 +3076,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Creates an empty file with the given prefix and suffix under the test class's {@link
-   * #getBaseTempDirForTestClass()}.
+   * Creates an empty file with the given prefix and suffix.
    *
    * <p>The file will be automatically removed after the test class completes successfully. The test
    * should close any file handles that would prevent the folder from being removed.
@@ -3177,5 +3165,93 @@ public abstract class LuceneTestCase extends Assert {
       mp.setNoCFSRatio(Math.max(0.25d, mp.getNoCFSRatio()));
     }
     return conf;
+  }
+
+  /**
+   * Creates a {@link BytesRef} holding UTF-8 bytes for the incoming String, that sometimes uses a
+   * non-zero {@code offset}, and non-zero end-padding, to tickle latent bugs that fail to look at
+   * {@code BytesRef.offset}.
+   */
+  public static BytesRef newBytesRef(String s) {
+    return newBytesRef(s.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Creates a copy of the incoming {@link BytesRef} that sometimes uses a non-zero {@code offset},
+   * and non-zero end-padding, to tickle latent bugs that fail to look at {@code BytesRef.offset}.
+   */
+  public static BytesRef newBytesRef(BytesRef b) {
+    assert b.isValid();
+    return newBytesRef(b.bytes, b.offset, b.length);
+  }
+
+  /**
+   * Creates a random BytesRef from the incoming bytes that sometimes uses a non-zero {@code
+   * offset}, and non-zero end-padding, to tickle latent bugs that fail to look at {@code
+   * BytesRef.offset}.
+   */
+  public static BytesRef newBytesRef(byte[] b) {
+    return newBytesRef(b, 0, b.length);
+  }
+
+  /**
+   * Creates a random empty BytesRef that sometimes uses a non-zero {@code offset}, and non-zero
+   * end-padding, to tickle latent bugs that fail to look at {@code BytesRef.offset}.
+   */
+  public static BytesRef newBytesRef() {
+    return newBytesRef(new byte[0], 0, 0);
+  }
+
+  /**
+   * Creates a random empty BytesRef, with at least the requested length of bytes free, that
+   * sometimes uses a non-zero {@code offset}, and non-zero end-padding, to tickle latent bugs that
+   * fail to look at {@code BytesRef.offset}.
+   */
+  public static BytesRef newBytesRef(int byteLength) {
+    return newBytesRef(new byte[byteLength], 0, byteLength);
+  }
+
+  /**
+   * Creates a copy of the incoming bytes slice that sometimes uses a non-zero {@code offset}, and
+   * non-zero end-padding, to tickle latent bugs that fail to look at {@code BytesRef.offset}.
+   */
+  public static BytesRef newBytesRef(byte[] bytesIn, int offset, int length) {
+    // System.out.println("LTC.newBytesRef!  bytesIn.length=" + bytesIn.length + " offset=" + offset
+    //                 + " length=" + length);
+
+    assert bytesIn.length >= offset + length
+        : "got offset=" + offset + " length=" + length + " bytesIn.length=" + bytesIn.length;
+
+    // randomly set a non-zero offset
+    int startOffset;
+    if (random().nextBoolean()) {
+      startOffset = RandomNumbers.randomIntBetween(random(), 1, 20);
+    } else {
+      startOffset = 0;
+    }
+
+    // also randomly set an end padding:
+    int endPadding;
+    if (random().nextBoolean()) {
+      endPadding = RandomNumbers.randomIntBetween(random(), 1, 20);
+    } else {
+      endPadding = 0;
+    }
+
+    byte[] bytes = new byte[startOffset + length + endPadding];
+
+    System.arraycopy(bytesIn, offset, bytes, startOffset, length);
+    // System.out.println("LTC:  return bytes.length=" + bytes.length + " startOffset=" +
+    //                 startOffset + " length=" + length);
+
+    BytesRef it = new BytesRef(bytes, startOffset, length);
+    assert it.isValid();
+
+    if (RandomNumbers.randomIntBetween(random(), 1, 17) == 7) {
+      // try to ferret out bugs in this method too!
+      return newBytesRef(it.bytes, it.offset, it.length);
+    }
+
+    return it;
   }
 }
