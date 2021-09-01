@@ -117,17 +117,44 @@ public final class VectorUtil {
    * thrown for zero vectors.
    */
   public static void l2normalize(float[] v) {
+    l2normalize(v, true);
+  }
+
+  /**
+   * Modifies the argument to be unit length, dividing by its l2-norm.
+   *
+   * @param v the vector to normalize
+   * @param throwOnZero whether to throw an exception when <code>v</code> has all zeros
+   * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
+   */
+  public static void l2normalize(float[] v, boolean throwOnZero) {
     double squareSum = 0.0f;
     int dim = v.length;
     for (float x : v) {
       squareSum += x * x;
     }
     if (squareSum == 0) {
-      throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return;
+      }
     }
     double length = Math.sqrt(squareSum);
     for (int i = 0; i < dim; i++) {
       v[i] /= length;
+    }
+  }
+
+  /**
+   * Adds the second argument to the first
+   *
+   * @param u the destination
+   * @param v the vector to add to the destination
+   */
+  public static void add(float[] u, float[] v) {
+    for (int i = 0; i < u.length; i++) {
+      u[i] += v[i];
     }
   }
 }

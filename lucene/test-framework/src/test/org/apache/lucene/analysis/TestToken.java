@@ -18,7 +18,15 @@ package org.apache.lucene.analysis;
 
 import java.io.StringReader;
 import java.util.HashMap;
-import org.apache.lucene.analysis.tokenattributes.*;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
+import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
+import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.Attribute;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
@@ -26,7 +34,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
-@Deprecated
 public class TestToken extends LuceneTestCase {
 
   public void testCtor() throws Exception {
@@ -49,20 +56,20 @@ public class TestToken extends LuceneTestCase {
     char[] content = "hello".toCharArray();
     t.copyBuffer(content, 0, 5);
     char[] buf = t.buffer();
-    Token copy = TestCharTermAttributeImpl.assertCloneIsEqual(t);
+    Token copy = assertCloneIsEqual(t);
     assertEquals(t.toString(), copy.toString());
     assertNotSame(buf, copy.buffer());
 
     BytesRef pl = new BytesRef(new byte[] {1, 2, 3, 4});
     t.setPayload(pl);
-    copy = TestCharTermAttributeImpl.assertCloneIsEqual(t);
+    copy = assertCloneIsEqual(t);
     assertEquals(pl, copy.getPayload());
     assertNotSame(pl, copy.getPayload());
   }
 
   public void testCopyTo() throws Exception {
     Token t = new Token();
-    Token copy = TestCharTermAttributeImpl.assertCopyIsEqual(t);
+    Token copy = assertCopyIsEqual(t);
     assertEquals("", t.toString());
     assertEquals("", copy.toString());
 
@@ -71,13 +78,13 @@ public class TestToken extends LuceneTestCase {
     char[] content = "hello".toCharArray();
     t.copyBuffer(content, 0, 5);
     char[] buf = t.buffer();
-    copy = TestCharTermAttributeImpl.assertCopyIsEqual(t);
+    copy = assertCopyIsEqual(t);
     assertEquals(t.toString(), copy.toString());
     assertNotSame(buf, copy.buffer());
 
     BytesRef pl = new BytesRef(new byte[] {1, 2, 3, 4});
     t.setPayload(pl);
-    copy = TestCharTermAttributeImpl.assertCopyIsEqual(t);
+    copy = assertCopyIsEqual(t);
     assertEquals(pl, copy.getPayload());
     assertNotSame(pl, copy.getPayload());
   }
@@ -161,5 +168,22 @@ public class TestToken extends LuceneTestCase {
             put(TermFrequencyAttribute.class.getName() + "#termFrequency", 42);
           }
         });
+  }
+
+  public static <T extends AttributeImpl> T assertCloneIsEqual(T att) {
+    @SuppressWarnings("unchecked")
+    T clone = (T) att.clone();
+    assertEquals("Clone must be equal", att, clone);
+    assertEquals("Clone's hashcode must be equal", att.hashCode(), clone.hashCode());
+    return clone;
+  }
+
+  public static <T extends AttributeImpl> T assertCopyIsEqual(T att) throws Exception {
+    @SuppressWarnings("unchecked")
+    T copy = (T) att.getClass().getConstructor().newInstance();
+    att.copyTo(copy);
+    assertEquals("Copied instance must be equal", att, copy);
+    assertEquals("Copied instance's hashcode must be equal", att.hashCode(), copy.hashCode());
+    return copy;
   }
 }

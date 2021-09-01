@@ -44,10 +44,10 @@ public class Passage {
     assert startOffset >= this.startOffset && startOffset <= this.endOffset;
     if (numMatches == matchStarts.length) {
       int newLength = ArrayUtil.oversize(numMatches + 1, RamUsageEstimator.NUM_BYTES_OBJECT_REF);
-      int newMatchStarts[] = new int[newLength];
-      int newMatchEnds[] = new int[newLength];
-      int newMatchTermFreqInDoc[] = new int[newLength];
-      BytesRef newMatchTerms[] = new BytesRef[newLength];
+      int[] newMatchStarts = new int[newLength];
+      int[] newMatchEnds = new int[newLength];
+      int[] newMatchTermFreqInDoc = new int[newLength];
+      BytesRef[] newMatchTerms = new BytesRef[newLength];
       System.arraycopy(matchStarts, 0, newMatchStarts, 0, numMatches);
       System.arraycopy(matchEnds, 0, newMatchEnds, 0, numMatches);
       System.arraycopy(matchTerms, 0, newMatchTerms, 0, numMatches);

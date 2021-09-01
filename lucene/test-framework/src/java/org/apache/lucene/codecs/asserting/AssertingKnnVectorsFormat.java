@@ -26,6 +26,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestUtil;
 
 /** Wraps the default KnnVectorsFormat and provides additional assertions. */
@@ -98,8 +99,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k) throws IOException {
-      TopDocs hits = delegate.search(field, target, k);
+    public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+      TopDocs hits = delegate.search(field, target, k, acceptDocs);
       assert hits != null;
       assert hits.scoreDocs.length <= k;
       return hits;

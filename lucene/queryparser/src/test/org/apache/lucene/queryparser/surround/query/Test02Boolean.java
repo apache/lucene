@@ -21,7 +21,7 @@ import junit.textui.TestRunner;
 import org.apache.lucene.util.LuceneTestCase;
 
 public class Test02Boolean extends LuceneTestCase {
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     TestRunner.run(new TestSuite(Test02Boolean.class));
   }
 

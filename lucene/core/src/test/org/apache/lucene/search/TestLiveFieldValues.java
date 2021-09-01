@@ -34,7 +34,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
@@ -112,7 +111,7 @@ public class TestLiveFieldValues extends LuceneTestCase {
                         String.format(
                             Locale.ROOT, "%d_%04x", threadID, threadRandom.nextInt(idCount));
                     Integer field = threadRandom.nextInt(Integer.MAX_VALUE);
-                    doc.add(newStringField("id", new BytesRef(id), Field.Store.YES));
+                    doc.add(newStringField("id", newBytesRef(id), Field.Store.YES));
                     doc.add(new StoredField("field", field.intValue()));
                     w.updateDocument(new Term("id", id), doc);
                     rt.add(id, field);
@@ -123,7 +122,7 @@ public class TestLiveFieldValues extends LuceneTestCase {
 
                   if (allIDs.size() > 0 && threadRandom.nextDouble() <= deleteChance) {
                     String randomID = allIDs.get(threadRandom.nextInt(allIDs.size()));
-                    w.deleteDocuments(new Term("id", new BytesRef(randomID)));
+                    w.deleteDocuments(new Term("id", newBytesRef(randomID)));
                     rt.delete(randomID);
                     values.put(randomID, missing);
                   }

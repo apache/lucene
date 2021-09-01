@@ -69,14 +69,14 @@ public class TestRegexpRandom2 extends LuceneTestCase {
     Document doc = new Document();
     Field field = newStringField(fieldName, "", Field.Store.NO);
     doc.add(field);
-    Field dvField = new SortedDocValuesField(fieldName, new BytesRef());
+    Field dvField = new SortedDocValuesField(fieldName, newBytesRef());
     doc.add(dvField);
     List<String> terms = new ArrayList<>();
     int num = atLeast(200);
     for (int i = 0; i < num; i++) {
       String s = TestUtil.randomUnicodeString(random());
       field.setStringValue(s);
-      dvField.setBytesValue(new BytesRef(s));
+      dvField.setBytesValue(newBytesRef(s));
       terms.add(s);
       writer.addDocument(doc);
     }
@@ -124,7 +124,7 @@ public class TestRegexpRandom2 extends LuceneTestCase {
 
       private SimpleAutomatonTermsEnum(TermsEnum tenum) {
         super(tenum);
-        setInitialSeekTerm(new BytesRef(""));
+        setInitialSeekTerm(newBytesRef(""));
       }
 
       @Override

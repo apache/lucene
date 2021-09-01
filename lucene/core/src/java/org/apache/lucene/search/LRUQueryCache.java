@@ -146,7 +146,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * of the top-level query will be cached in order to not hurt latency too much because of caching.
    */
   public LRUQueryCache(int maxSize, long maxRamBytesUsed) {
-    this(maxSize, maxRamBytesUsed, new MinSegmentSizePredicate(10000, .03f), 250);
+    this(maxSize, maxRamBytesUsed, new MinSegmentSizePredicate(10000, .03f), 10);
   }
 
   // pkg-private for testing
@@ -505,7 +505,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
   private static DocIdSet cacheIntoBitSet(BulkScorer scorer, int maxDoc) throws IOException {
     final FixedBitSet bitSet = new FixedBitSet(maxDoc);
-    long cost[] = new long[1];
+    long[] cost = new long[1];
     scorer.score(
         new LeafCollector() {
 

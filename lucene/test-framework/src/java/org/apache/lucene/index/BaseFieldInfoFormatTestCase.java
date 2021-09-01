@@ -328,7 +328,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     }
 
     if (r.nextBoolean()) {
-      DocValuesType[] values = DocValuesType.values();
+      DocValuesType values[] = DocValuesType.values();
       type.setDocValuesType(values[r.nextInt(values.length)]);
     }
 

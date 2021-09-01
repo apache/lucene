@@ -25,7 +25,7 @@ public class TestIntsRef extends LuceneTestCase {
   }
 
   public void testFromInts() {
-    int ints[] = new int[] {1, 2, 3, 4};
+    int[] ints = new int[] {1, 2, 3, 4};
     IntsRef i = new IntsRef(ints, 0, 4);
     assertEquals(ints, i.ints);
     assertEquals(0, i.offset);

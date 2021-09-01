@@ -37,20 +37,6 @@ configure(rootProject) {
   }
 }
 
-/**
- * Utility function to read a file, apply changes to its content and write it back.
- */
-def modifyFile = { File path, Function<String, String> modify ->
-  Function<String, String> normalizeEols = { text -> text.replace("\r\n", "\n") }
-  modify = normalizeEols.andThen(modify).andThen(normalizeEols)
-
-  String original = path.getText("UTF-8")
-  String modified = modify.apply(original)
-  if (!original.equals(modified)) {
-    path.write(modified, "UTF-8")
-  }
-}
-
 def commonCleanups = { FileTree generatedFiles ->
   // This is a minor typo in a comment that nonetheless people have hand-corrected in the past.
   generatedFiles.matching({ include "CharStream.java" }).each {file ->
@@ -269,6 +255,8 @@ class JavaCCTask extends DefaultTask {
    * Apply closures to all generated files before they're copied back
    * to mainline code.
    */
+  // A subtle bug here is that this makes it not an input... should be a list of replacements instead?
+  @Internal
   List<Closure<FileTree>> afterGenerate = new ArrayList<>()
 
   @OutputFiles

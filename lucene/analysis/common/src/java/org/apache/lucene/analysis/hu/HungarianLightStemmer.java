@@ -60,7 +60,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * Portuguese, German and Hungarian Languages</i> Jacques Savoy
  */
 public class HungarianLightStemmer {
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     for (int i = 0; i < len; i++)
       switch (s[i]) {
         case 'á':
@@ -94,7 +94,7 @@ public class HungarianLightStemmer {
     return normalize(s, len);
   }
 
-  private int removeCase(char s[], int len) {
+  private int removeCase(char[] s, int len) {
     if (len > 6 && endsWith(s, len, "kent")) return len - 4;
 
     if (len > 5) {
@@ -147,7 +147,7 @@ public class HungarianLightStemmer {
     return len;
   }
 
-  private int removePossessive(char s[], int len) {
+  private int removePossessive(char[] s, int len) {
     if (len > 6) {
       if (!isVowel(s[len - 5])
           && (endsWith(s, len, "atok") || endsWith(s, len, "otok") || endsWith(s, len, "etek")))
@@ -202,7 +202,7 @@ public class HungarianLightStemmer {
   }
 
   @SuppressWarnings("fallthrough")
-  private int removePlural(char s[], int len) {
+  private int removePlural(char[] s, int len) {
     if (len > 3 && s[len - 1] == 'k')
       switch (s[len - 2]) {
         case 'a':
@@ -215,7 +215,7 @@ public class HungarianLightStemmer {
     return len;
   }
 
-  private int normalize(char s[], int len) {
+  private int normalize(char[] s, int len) {
     if (len > 3)
       switch (s[len - 1]) {
         case 'a':

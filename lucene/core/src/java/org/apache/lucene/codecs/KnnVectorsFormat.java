@@ -23,6 +23,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
 
 /**
@@ -99,7 +100,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             }
 
             @Override
-            public TopDocs search(String field, float[] target, int k) {
+            public TopDocs search(String field, float[] target, int k, Bits acceptDocs) {
               return TopDocsCollector.EMPTY_TOPDOCS;
             }
 
