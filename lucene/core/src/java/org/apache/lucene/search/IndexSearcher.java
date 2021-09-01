@@ -434,22 +434,25 @@ public class IndexSearcher {
   public int count(Query query) throws IOException {
     query = rewrite(query);
     Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f);
-    return search(query, new CollectorManager<ShortcutHitCountCollector, Integer>() {
+    return search(
+        query,
+        new CollectorManager<ShortcutHitCountCollector, Integer>() {
 
-      @Override
-      public ShortcutHitCountCollector newCollector() throws IOException {
-        return new ShortcutHitCountCollector(weight);
-      }
+          @Override
+          public ShortcutHitCountCollector newCollector() throws IOException {
+            return new ShortcutHitCountCollector(weight);
+          }
 
-      @Override
-      public Integer reduce(Collection<ShortcutHitCountCollector> collectors) throws IOException {
-        int totalHitCount = 0;
-        for (ShortcutHitCountCollector c : collectors) {
-          totalHitCount += c.weightCount + c.totalHitCountCollector.getTotalHits();
-        }
-        return totalHitCount;
-      }
-    });
+          @Override
+          public Integer reduce(Collection<ShortcutHitCountCollector> collectors)
+              throws IOException {
+            int totalHitCount = 0;
+            for (ShortcutHitCountCollector c : collectors) {
+              totalHitCount += c.weightCount + c.totalHitCountCollector.getTotalHits();
+            }
+            return totalHitCount;
+          }
+        });
   }
 
   /**

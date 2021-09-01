@@ -177,14 +177,14 @@ public abstract class Weight implements SegmentCacheable {
   /**
    * Counts the number of live documents that match a given {@link Weight#parentQuery} in a leaf.
    *
-   * <p>
-   * The default implementation returns -1 for every query. This indicates that the count could not computed in O(1) time.
-   * 
-   * Specific query classes should override it to provide other accurate O(1) implementations (that actually return the count).
-   * Look at {@link MatchAllDocsQuery#createWeight(IndexSearcher, ScoreMode, float)} for an example
-   *    
-   * We use this property of the function to to count hits in {@link IndexSearcher#count(Query)}.
-   * </p>
+   * <p>The default implementation returns -1 for every query. This indicates that the count could
+   * not computed in O(1) time.
+   *
+   * <p>Specific query classes should override it to provide other accurate O(1) implementations
+   * (that actually return the count). Look at {@link MatchAllDocsQuery#createWeight(IndexSearcher,
+   * ScoreMode, float)} for an example
+   *
+   * <p>We use this property of the function to to count hits in {@link IndexSearcher#count(Query)}.
    *
    * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
    *     count.
