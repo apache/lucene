@@ -78,7 +78,7 @@ public class TestHNSWGraph2 extends LuceneTestCase {
       for (int node = hnsw.nextNodeOnLevel();
           node != DocIdSetIterator.NO_MORE_DOCS;
           node = hnsw.nextNodeOnLevel()) {
-        hnsw.seek(level, node);
+        hnsw.seek(node);
         int arc;
         List<Integer> friends = new ArrayList<>();
         while ((arc = hnsw.nextNeighbor()) != NO_MORE_DOCS) {
@@ -104,8 +104,8 @@ public class TestHNSWGraph2 extends LuceneTestCase {
       } else {
         assertFalse("Graph has orphan nodes with no friends on level [" + level + "]", foundOrphan);
         if (maxConn > nodesCount) {
-          // assert that the graph in fully connected, i.e. any node can be reached from any other
-          // node
+          // assert that the graph is fully connected,
+          // i.e. any node can be reached from any other node
           assertConnected(graph);
         } else {
           // assert that max-connections was respected

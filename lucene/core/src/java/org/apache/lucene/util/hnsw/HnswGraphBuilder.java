@@ -93,12 +93,10 @@ public final class HnswGraphBuilder {
     this.random = new Random(seed);
 
     if (ml == 0) {
-      this.hnsw = new HnswGraph(maxConn, 1, 0);
+      this.hnsw = new HnswGraph(maxConn, 0);
     } else {
       int levelOfFirstNode = getRandomGraphLevel(ml, random);
-      // 6 initial levels should be enough for most cases
-      int numLevels = Math.max(6, levelOfFirstNode + 1);
-      this.hnsw = new HnswGraph(maxConn, numLevels, levelOfFirstNode);
+      this.hnsw = new HnswGraph(maxConn, levelOfFirstNode);
     }
     bound = BoundsChecker.create(similarityFunction.reversed);
     scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));
@@ -121,7 +119,7 @@ public final class HnswGraphBuilder {
       infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
     }
     if (ml == 0) {
-      buildSNW(vectors);
+      buildNSW(vectors);
     } else {
       buildHNSW(vectors);
     }
@@ -133,24 +131,13 @@ public final class HnswGraphBuilder {
   }
 
   // build navigable small world graph (single-layered)
-  private void buildSNW(RandomAccessVectorValues vectors) throws IOException {
+  private void buildNSW(RandomAccessVectorValues vectors) throws IOException {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectors.size(); node++) {
       addGraphNode(node, vectors.vectorValue(node));
-      if (node % 10000 == 0) {
-        if (infoStream.isEnabled(HNSW_COMPONENT)) {
-          long now = System.nanoTime();
-          infoStream.message(
-              HNSW_COMPONENT,
-              String.format(
-                  Locale.ROOT,
-                  "built %d in %d/%d ms",
-                  node,
-                  ((now - t) / 1_000_000),
-                  ((now - start) / 1_000_000)));
-          t = now;
-        }
+      if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
+        t = printGraphBuildStatus(node, start, t);
       }
     }
   }
@@ -177,19 +164,8 @@ public final class HnswGraphBuilder {
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectors.size(); node++) {
       addGraphNodeHNSW(node, vectors.vectorValue(node));
-      if (node % 10000 == 0) {
-        if (infoStream.isEnabled(HNSW_COMPONENT)) {
-          long now = System.nanoTime();
-          infoStream.message(
-              HNSW_COMPONENT,
-              String.format(
-                  Locale.ROOT,
-                  "built %d in %d/%d ms",
-                  node,
-                  ((now - t) / 1_000_000),
-                  ((now - start) / 1_000_000)));
-          t = now;
-        }
+      if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
+        t = printGraphBuildStatus(node, start, t);
       }
     }
   }
@@ -220,6 +196,19 @@ public final class HnswGraphBuilder {
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
     }
+  }
+
+  private long printGraphBuildStatus(int node, long start, long t) {
+    long now = System.nanoTime();
+    infoStream.message(
+        HNSW_COMPONENT,
+        String.format(
+            Locale.ROOT,
+            "built %d in %d/%d ms",
+            node,
+            ((now - t) / 1_000_000),
+            ((now - start) / 1_000_000)));
+    return now;
   }
 
   /* TODO: we are not maintaining nodes in strict score order; the forward links
@@ -343,10 +332,10 @@ public final class HnswGraphBuilder {
   }
 
   private static int getRandomGraphLevel(double ml, Random random) {
-    float randFloat = random.nextFloat();
-    while (randFloat == 0.0f) {
+    float randFloat;
+    do {
       randFloat = random.nextFloat(); // avoid 0 value, as log(0) is undefined
-    }
+    } while (randFloat == 0.0f);
     return ((int) (-log(randFloat) * ml));
   }
 }

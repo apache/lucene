@@ -212,9 +212,10 @@ public class TestKnnGraph extends LuceneTestCase {
     int size = values.size();
     int[][] graph = new int[size][];
     int[] scratch = new int[maxConn];
+    values.seekLevel(0);
     for (int node = 0; node < size; node++) {
       int n, count = 0;
-      values.seek(0, node);
+      values.seek(node);
       while ((n = values.nextNeighbor()) != NO_MORE_DOCS) {
         scratch[count++] = n;
         // graph[node][i++] = n;
@@ -340,6 +341,7 @@ public class TestKnnGraph extends LuceneTestCase {
         int[][] graph = new int[reader.maxDoc()][];
         boolean foundOrphan = false;
         int graphSize = 0;
+        graphValues.seekLevel(0);
         for (int i = 0; i < reader.maxDoc(); i++) {
           int nextDocWithVectors = vectorValues.advance(i);
           // System.out.println("advanced to " + nextDocWithVectors);
@@ -352,7 +354,7 @@ public class TestKnnGraph extends LuceneTestCase {
             break;
           }
           int id = Integer.parseInt(reader.document(i).get("id"));
-          graphValues.seek(0, graphSize);
+          graphValues.seek(graphSize);
           // documents with KnnGraphValues have the expected vectors
           float[] scratch = vectorValues.vectorValue();
           assertArrayEquals(

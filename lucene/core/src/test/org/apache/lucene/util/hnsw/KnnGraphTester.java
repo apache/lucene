@@ -296,8 +296,9 @@ public class KnnGraphTester {
     int min = Integer.MAX_VALUE, max = 0, total = 0;
     int count = 0;
     int[] leafHist = new int[numDocs];
+    knnValues.seekLevel(0);
     for (int node = 0; node < numDocs; node++) {
-      knnValues.seek(0, node);
+      knnValues.seek(node);
       int n = 0;
       while (knnValues.nextNeighbor() != NO_MORE_DOCS) {
         ++n;

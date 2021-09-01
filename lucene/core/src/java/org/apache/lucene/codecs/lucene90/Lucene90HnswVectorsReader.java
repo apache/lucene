@@ -480,8 +480,12 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       this.dataIn = dataIn;
     }
 
+    // TODO : implement hierarchy
     @Override
-    public void seek(int level, int targetOrd) throws IOException {
+    public void seekLevel(int level) throws IOException {}
+
+    @Override
+    public void seek(int targetOrd) throws IOException {
       // unsafe; no bounds checking
       dataIn.seek(entry.ordOffsets[targetOrd]);
       arcCount = dataIn.readInt();

@@ -172,9 +172,10 @@ public class TestHnswGraph extends LuceneTestCase {
 
   public void testSearchWithAcceptOrds() throws IOException {
     int nDoc = 100;
-    int maxConn = 10;
+    int maxConn = 16;
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
-    Bits acceptOrds = createRandomAcceptOrds(vectors.size);
+    // the first 10 docs must not be deleted to ensure the expected recall
+    Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
 
     double ml1 = 0; // single level graph
     double ml2 = 1 / Math.log(1.0 * maxConn); // multi level graph
@@ -394,7 +395,7 @@ public class TestHnswGraph extends LuceneTestCase {
       HnswGraphBuilder builder =
           new HnswGraphBuilder(vectors, similarityFunction, maxConn, 30, random().nextLong(), ml);
       HnswGraph hnsw = builder.build(vectors);
-      Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(size);
+      Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
       int totalMatches = 0;
       for (int i = 0; i < 100; i++) {
@@ -522,9 +523,11 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   private void assertGraphEqual(KnnGraphValues g, KnnGraphValues h, int size) throws IOException {
+    g.seekLevel(0);
+    h.seekLevel(0);
     for (int node = 0; node < size; node++) {
-      g.seek(0, node);
-      h.seek(0, node);
+      g.seek(node);
+      h.seek(node);
       assertEquals("arcs differ for node " + node, getNeighborNodes(g), getNeighborNodes(h));
     }
   }
@@ -577,9 +580,14 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   /** Generate a random bitset where each entry has a 2/3 probability of being set. */
-  private static Bits createRandomAcceptOrds(int length) {
+  private static Bits createRandomAcceptOrds(int startIndex, int length) {
     FixedBitSet bits = new FixedBitSet(length);
-    for (int i = 0; i < bits.length(); i++) {
+    // all bits are set before startIndex
+    for (int i = 0; i < startIndex; i++) {
+      bits.set(i);
+    }
+    // after startIndex, bits are set with 2/3 probability
+    for (int i = startIndex; i < bits.length(); i++) {
       if (random().nextFloat() < 0.667f) {
         bits.set(i);
       }
