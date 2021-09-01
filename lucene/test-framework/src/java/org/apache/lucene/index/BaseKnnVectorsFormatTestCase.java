@@ -819,12 +819,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       int dimension = atLeast(10);
       float[][] id2value = new float[numDoc][];
       int[] id2ord = new int[numDoc];
+      int nDocsWithVectors = 0;
       for (int i = 0; i < numDoc; i++) {
         int id = random().nextInt(numDoc);
         float[] value;
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
           value = randomVector(dimension);
+          nDocsWithVectors ++;
         } else {
           value = null;
         }
@@ -859,10 +861,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           }
           // assert that searchNearestVectors returns the expected number of documents, in
           // descending score order
-          int k = random().nextInt(numDoc / 2);
+          int size = ctx.reader().getVectorValues(fieldName).size();
+          int k = random().nextInt(size / 2 + 1);
           TopDocs results =
               ctx.reader().searchNearestVectors(fieldName, randomVector(dimension), k, liveDocs);
-          assertEquals(k, results.scoreDocs.length);
+          assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
           }
