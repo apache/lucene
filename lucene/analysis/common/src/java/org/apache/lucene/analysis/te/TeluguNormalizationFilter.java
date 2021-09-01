@@ -28,7 +28,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
  *
  * <p>In some cases the normalization may cause unrelated terms to conflate, so to prevent terms
  * from being normalized use an instance of {@link SetKeywordMarkerFilter} or a custom {@link
- * TokenFilter} that sets the {@link KeywordAttribute} before this {@link TokenStream}.</p>
+ * TokenFilter} that sets the {@link KeywordAttribute} before this {@link TokenStream}.
  *
  * @since 9.0.0
  * @see TeluguNormalizer
