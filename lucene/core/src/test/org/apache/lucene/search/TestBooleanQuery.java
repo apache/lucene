@@ -766,14 +766,16 @@ public class TestBooleanQuery extends LuceneTestCase {
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
 
-    PhraseQuery pq = new PhraseQuery("field", "a", "b");
-
     BooleanQuery.Builder q = new BooleanQuery.Builder();
-    q.add(pq, Occur.SHOULD);
+    q.add(new PhraseQuery("field", "a", "b"), Occur.SHOULD);
     q.add(new TermQuery(new Term("field", "c")), Occur.SHOULD);
 
-    final Weight weight = searcher.createWeight(q.build(), ScoreMode.COMPLETE, 1);
-    assert weight.count(reader.leaves().get(0)) == numMatchingDocs;
+    Query builtQuery = q.build();
+
+    assert searcher.count(builtQuery) == numMatchingDocs;
+    final Weight weight = searcher.createWeight(builtQuery, ScoreMode.COMPLETE, 1);
+    // tests that the Weight#count API returns -1 instead of returning the total number of matches
+    assert weight.count(reader.leaves().get(0)) == -1;
 
     IOUtils.close(reader, w, dir);
   }

@@ -128,8 +128,9 @@ public class TestTermQuery extends LuceneTestCase {
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
 
-    final Weight weight =
-        searcher.createWeight(new TermQuery(new Term("foo", "bar")), ScoreMode.COMPLETE, 1);
+    Query testQuery = new TermQuery(new Term("foo", "bar"));
+    assert searcher.count(testQuery) == numMatchingDocs;
+    final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
     assert weight.count(reader.leaves().get(0)) == numMatchingDocs;
 
     IOUtils.close(reader, w, dir);

@@ -188,8 +188,8 @@ public class TermQuery extends Query {
         if (termsEnum != null) {
           return termsEnum.docFreq();
         } else {
-          // no term state found so rely on the default reader.docFreq call
-          return context.reader().docFreq(term);
+          // the term cannot be found in the dictionary so the count is 0
+          return 0;
         }
       } else {
         return super.count(context);

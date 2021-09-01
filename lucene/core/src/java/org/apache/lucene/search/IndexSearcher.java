@@ -402,25 +402,54 @@ public class IndexSearcher {
     return similarity;
   }
 
-  /** Count how many documents match the given query. */
-  public int count(Query query) throws IOException {
-    query = rewrite(query);
-    while (true) {
-      // remove wrappers that don't matter for counts
-      if (query instanceof ConstantScoreQuery) {
-        query = ((ConstantScoreQuery) query).getQuery();
+  private static class ShortcutHitCountCollector implements Collector {
+    private final Weight weight;
+    private final TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
+    private int weightCount;
+
+    ShortcutHitCountCollector(Weight weight) {
+      this.weight = weight;
+    }
+
+    @Override
+    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      int count = weight.count(context);
+      // check if the number of hits can be computed in constant time
+      if (count == -1) {
+        // use a TotalHitCountCollector to calculate the number of hits in the usual way
+        return totalHitCountCollector.getLeafCollector(context);
       } else {
-        break;
+        weightCount += count;
+        throw new CollectionTerminatedException();
       }
     }
 
-    final Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
-    int count = 0;
-    for (LeafReaderContext leafReaderContext : leafContexts) {
-      count += weight.count(leafReaderContext);
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE_NO_SCORES;
     }
+  }
 
-    return count;
+  /** Count how many documents match the given query. */
+  public int count(Query query) throws IOException {
+    query = rewrite(query);
+    Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    return search(query, new CollectorManager<ShortcutHitCountCollector, Integer>() {
+
+      @Override
+      public ShortcutHitCountCollector newCollector() throws IOException {
+        return new ShortcutHitCountCollector(weight);
+      }
+
+      @Override
+      public Integer reduce(Collection<ShortcutHitCountCollector> collectors) throws IOException {
+        int totalHitCount = 0;
+        for (ShortcutHitCountCollector c : collectors) {
+          totalHitCount += c.weightCount + c.totalHitCountCollector.getTotalHits();
+        }
+        return totalHitCount;
+      }
+    });
   }
 
   /**
