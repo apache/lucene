@@ -100,7 +100,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
-          "Inconsistency of field data structures across documents for field [f] of doc [1].";
+          "Inconsistency of field data structures across documents for field [f] of doc [1]."
+              + " vector dimension: expected '4', but it has '3'.";
       assertEquals(errMsg, expected.getMessage());
     }
 
@@ -136,7 +137,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
-          "Inconsistency of field data structures across documents for field [f] of doc [1].";
+          "Inconsistency of field data structures across documents for field [f] of doc [1]."
+              + " vector similarity function: expected 'DOT_PRODUCT', but it has 'EUCLIDEAN'.";
       assertEquals(errMsg, expected.getMessage());
     }
 

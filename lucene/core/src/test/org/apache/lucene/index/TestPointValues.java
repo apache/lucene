@@ -74,7 +74,8 @@ public class TestPointValues extends LuceneTestCase {
               w.addDocument(doc);
             });
     assertEquals(
-        "Inconsistency of field data structures across documents for field [dim] of doc [0].",
+        "Inconsistency of field data structures across documents for field [dim] of doc [0]."
+            + " point dimension: expected '1', but it has '2'.",
         expected.getMessage());
     w.close();
     dir.close();
@@ -97,7 +98,8 @@ public class TestPointValues extends LuceneTestCase {
               w.addDocument(doc2);
             });
     assertEquals(
-        "Inconsistency of field data structures across documents for field [dim] of doc [1].",
+        "Inconsistency of field data structures across documents for field [dim] of doc [1]."
+            + " point dimension: expected '1', but it has '2'.",
         expected.getMessage());
     w.close();
     dir.close();
@@ -254,7 +256,8 @@ public class TestPointValues extends LuceneTestCase {
               w.addDocument(doc);
             });
     assertEquals(
-        "Inconsistency of field data structures across documents for field [dim] of doc [0].",
+        "Inconsistency of field data structures across documents for field [dim] of doc [0]."
+            + " point num bytes: expected '4', but it has '6'.",
         expected.getMessage());
     w.close();
     dir.close();
@@ -277,7 +280,8 @@ public class TestPointValues extends LuceneTestCase {
               w.addDocument(doc2);
             });
     assertEquals(
-        "Inconsistency of field data structures across documents for field [dim] of doc [1].",
+        "Inconsistency of field data structures across documents for field [dim] of doc [1]."
+            + " point num bytes: expected '4', but it has '6'.",
         expected.getMessage());
     w.close();
     dir.close();
