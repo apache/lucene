@@ -859,10 +859,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           }
           // assert that searchNearestVectors returns the expected number of documents, in
           // descending score order
-          int k = random().nextInt(numDoc / 2);
+          int size = ctx.reader().getVectorValues(fieldName).size();
+          int k = random().nextInt(size / 2 + 1);
           TopDocs results =
               ctx.reader().searchNearestVectors(fieldName, randomVector(dimension), k, liveDocs);
-          assertEquals(k, results.scoreDocs.length);
+          assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
           }

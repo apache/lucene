@@ -148,18 +148,16 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     VectorValues values = getVectorValues(field);
     if (target.length != values.dimension()) {
       throw new IllegalArgumentException(
-          "incorrect dimension for field "
-              + field
-              + "; expected "
-              + values.dimension()
-              + " but target has "
-              + target.length);
+          "vector dimensions differ: " + target.length + "!=" + values.dimension());
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
     HitQueue topK = new HitQueue(k, false);
     int doc;
     while ((doc = values.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+        continue;
+      }
       float[] vector = values.vectorValue();
       float score = vectorSimilarity.compare(vector, target);
       if (vectorSimilarity.reversed) {
