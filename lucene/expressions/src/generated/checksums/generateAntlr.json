@@ -1,0 +1,7 @@
+{
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/Javascript.g4": "818e89aae0b6c7601051802013898c128fe7c1ba",
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptBaseVisitor.java": "45e3c7093f3e485a07be507efbdefc5e3d112576",
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptLexer.java": "f0a53549fb8329dd4181f836d1778417de08550e",
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptParser.java": "ca9d587e6e98436647370ee5b7c82ae07243ee50",
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptVisitor.java": "ebf033dc72e63203e5d4d85fd57114dd973482dc"
+}

@@ -238,9 +238,9 @@ public class GeoTestUtil {
   // see http://www-ma2.upc.es/geoc/Schirra-pointPolygon.pdf for more info on some of these
   // strategies
   public static double[] nextPointNear(Polygon polygon) {
-    double polyLats[] = polygon.getPolyLats();
-    double polyLons[] = polygon.getPolyLons();
-    Polygon holes[] = polygon.getHoles();
+    double[] polyLats = polygon.getPolyLats();
+    double[] polyLons = polygon.getPolyLons();
+    Polygon[] holes = polygon.getHoles();
 
     // if there are any holes, target them aggressively
     if (holes.length > 0 && random().nextInt(3) == 0) {
@@ -268,8 +268,8 @@ public class GeoTestUtil {
       // target points around the bounding box edges
       Polygon container =
           boxPolygon(new Rectangle(polygon.minLat, polygon.maxLat, polygon.minLon, polygon.maxLon));
-      double containerLats[] = container.getPolyLats();
-      double containerLons[] = container.getPolyLons();
+      double[] containerLats = container.getPolyLats();
+      double[] containerLons = container.getPolyLons();
       int startVertex = random().nextInt(containerLats.length - 1);
       return nextPointAroundLine(
           containerLats[startVertex], containerLons[startVertex],
@@ -288,11 +288,11 @@ public class GeoTestUtil {
 
   /** Returns next box for testing near a Polygon */
   public static Rectangle nextBoxNear(Polygon polygon) {
-    final double point1[];
-    final double point2[];
+    final double[] point1;
+    final double[] point2;
 
     // if there are any holes, target them aggressively
-    Polygon holes[] = polygon.getHoles();
+    Polygon[] holes = polygon.getHoles();
     if (holes.length > 0 && random().nextInt(3) == 0) {
       return nextBoxNear(holes[random().nextInt(holes.length)]);
     }
@@ -307,8 +307,8 @@ public class GeoTestUtil {
       point1 = nextPointNear(polygon);
       point2 = new double[2];
       // now figure out a good delta: we use a rough heuristic, up to the length of an edge
-      double polyLats[] = polygon.getPolyLats();
-      double polyLons[] = polygon.getPolyLons();
+      double[] polyLats = polygon.getPolyLats();
+      double[] polyLons = polygon.getPolyLons();
       int vertex = random().nextInt(polyLats.length - 1);
       double deltaX = polyLons[vertex + 1] - polyLons[vertex];
       double deltaY = polyLats[vertex + 1] - polyLats[vertex];
@@ -644,7 +644,7 @@ public class GeoTestUtil {
     for (Object o : flattened) {
       // tostring
       if (o instanceof double[]) {
-        double point[] = (double[]) o;
+        double[] point = (double[]) o;
         sb.append("<!-- point: ");
         sb.append(point[0]).append(',').append(point[1]);
         sb.append(" -->\n");
@@ -661,7 +661,7 @@ public class GeoTestUtil {
         style = "fill:lightskyblue;stroke:black;stroke-width:0.2%;stroke-dasharray:0.5%,1%;";
         opacity = "0.3";
       } else if (o instanceof double[]) {
-        double point[] = (double[]) o;
+        double[] point = (double[]) o;
         gon =
             boxPolygon(
                 new Rectangle(
@@ -677,8 +677,8 @@ public class GeoTestUtil {
         opacity = "0.5";
       }
       // polygon
-      double polyLats[] = gon.getPolyLats();
-      double polyLons[] = gon.getPolyLons();
+      double[] polyLats = gon.getPolyLats();
+      double[] polyLons = gon.getPolyLons();
       sb.append("<polygon fill-opacity=\"").append(opacity).append("\" points=\"");
       for (int i = 0; i < polyLats.length; i++) {
         if (i > 0) {
@@ -688,8 +688,8 @@ public class GeoTestUtil {
       }
       sb.append("\" style=\"").append(style).append("\"/>\n");
       for (Polygon hole : gon.getHoles()) {
-        double holeLats[] = hole.getPolyLats();
-        double holeLons[] = hole.getPolyLons();
+        double[] holeLats = hole.getPolyLats();
+        double[] holeLons = hole.getPolyLons();
         sb.append("<polygon points=\"");
         for (int i = 0; i < holeLats.length; i++) {
           if (i > 0) {
@@ -743,8 +743,8 @@ public class GeoTestUtil {
     if (polygon.getHoles().length > 0) {
       throw new UnsupportedOperationException("this testing method does not support holes");
     }
-    double polyLats[] = polygon.getPolyLats();
-    double polyLons[] = polygon.getPolyLons();
+    double[] polyLats = polygon.getPolyLats();
+    double[] polyLons = polygon.getPolyLons();
     // bounding box check required due to rounding errors (we don't solve that problem)
     if (latitude < polygon.minLat
         || latitude > polygon.maxLat
@@ -756,8 +756,8 @@ public class GeoTestUtil {
     boolean c = false;
     int i, j;
     int nvert = polyLats.length;
-    double verty[] = polyLats;
-    double vertx[] = polyLons;
+    double[] verty = polyLats;
+    double[] vertx = polyLons;
     double testy = latitude;
     double testx = longitude;
     for (i = 0, j = 1; j < nvert; ++i, ++j) {

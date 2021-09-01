@@ -45,7 +45,7 @@ public final class LuceneLevenshteinDistance implements StringDistance {
     IntsRef targetPoints;
     IntsRef otherPoints;
     int n;
-    int d[][]; // cost array
+    int[][] d; // cost array
 
     // NOTE: if we cared, we could 3*m space instead of m*n space, similar to
     // what LevenshteinDistance does, except cycling thru a ring of three

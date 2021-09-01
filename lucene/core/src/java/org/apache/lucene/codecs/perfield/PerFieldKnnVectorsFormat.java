@@ -33,6 +33,7 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -240,12 +241,12 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k) throws IOException {
+    public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
       KnnVectorsReader knnVectorsReader = fields.get(field);
       if (knnVectorsReader == null) {
         return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
       } else {
-        return knnVectorsReader.search(field, target, k);
+        return knnVectorsReader.search(field, target, k, acceptDocs);
       }
     }
 

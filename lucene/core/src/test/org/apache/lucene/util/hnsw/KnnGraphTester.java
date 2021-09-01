@@ -58,6 +58,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PrintStreamInfoStream;
@@ -424,7 +425,8 @@ public class KnnGraphTester {
       IndexReader reader, String field, float[] vector, int k, int fanout) throws IOException {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      results[ctx.ord] = ctx.reader().searchNearestVectors(field, vector, k + fanout);
+      Bits liveDocs = ctx.reader().getLiveDocs();
+      results[ctx.ord] = ctx.reader().searchNearestVectors(field, vector, k + fanout, liveDocs);
       int docBase = ctx.docBase;
       for (ScoreDoc scoreDoc : results[ctx.ord].scoreDocs) {
         scoreDoc.doc += docBase;

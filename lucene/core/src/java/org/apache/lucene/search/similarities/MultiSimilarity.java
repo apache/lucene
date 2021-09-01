@@ -31,10 +31,10 @@ import org.apache.lucene.search.TermStatistics;
  */
 public class MultiSimilarity extends Similarity {
   /** the sub-similarities used to create the combined score */
-  protected final Similarity sims[];
+  protected final Similarity[] sims;
 
   /** Creates a MultiSimilarity which will sum the scores of the provided <code>sims</code>. */
-  public MultiSimilarity(Similarity sims[]) {
+  public MultiSimilarity(Similarity[] sims) {
     this.sims = sims;
   }
 
@@ -46,7 +46,7 @@ public class MultiSimilarity extends Similarity {
   @Override
   public SimScorer scorer(
       float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
-    SimScorer subScorers[] = new SimScorer[sims.length];
+    SimScorer[] subScorers = new SimScorer[sims.length];
     for (int i = 0; i < subScorers.length; i++) {
       subScorers[i] = sims[i].scorer(boost, collectionStats, termStats);
     }
@@ -54,9 +54,9 @@ public class MultiSimilarity extends Similarity {
   }
 
   static class MultiSimScorer extends SimScorer {
-    private final SimScorer subScorers[];
+    private final SimScorer[] subScorers;
 
-    MultiSimScorer(SimScorer subScorers[]) {
+    MultiSimScorer(SimScorer[] subScorers) {
       this.subScorers = subScorers;
     }
 

@@ -112,7 +112,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     // non-existent segment:
     copyFile(dir, "_0_1" + ext, "_188_1" + ext);
 
-    String cfsFiles0[] =
+    String[] cfsFiles0 =
         si0.getCodec() instanceof SimpleTextCodec
             ? new String[] {"_0.scf"}
             : new String[] {"_0.cfs", "_0.cfe"};
@@ -128,7 +128,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     // TODO: assert is bogus (relies upon codec-specific filenames)
     assertTrue(slowFileExists(dir, "_3.fdt") || slowFileExists(dir, "_3.fld"));
 
-    String cfsFiles3[] =
+    String[] cfsFiles3 =
         si3.getCodec() instanceof SimpleTextCodec
             ? new String[] {"_3.scf"}
             : new String[] {"_3.cfs", "_3.cfe"};
@@ -136,7 +136,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
       assertTrue(!slowFileExists(dir, f));
     }
 
-    String cfsFiles1[] =
+    String[] cfsFiles1 =
         si1.getCodec() instanceof SimpleTextCodec
             ? new String[] {"_1.scf"}
             : new String[] {"_1.cfs", "_1.cfe"};

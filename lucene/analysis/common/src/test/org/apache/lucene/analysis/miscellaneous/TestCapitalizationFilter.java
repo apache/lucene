@@ -192,7 +192,7 @@ public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
 
   static void assertCapitalizesTo(
       Tokenizer tokenizer,
-      String expected[],
+      String[] expected,
       boolean onlyFirstWord,
       CharArraySet keep,
       boolean forceFirstLetter,
@@ -216,7 +216,7 @@ public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
 
   static void assertCapitalizesTo(
       String input,
-      String expected[],
+      String[] expected,
       boolean onlyFirstWord,
       CharArraySet keep,
       boolean forceFirstLetter,

@@ -35,26 +35,48 @@ configure(rootProject) {
         def testsJvms = (int) Math.max(1d, Math.min(cpus * 0.5d, 12))
 
         // Write the defaults for this machine.
-        rootProject.file("gradle.properties").write(
-            [
-                "# These settings have been generated automatically on the first run.",
-                "# See gradlew :helpLocalSettings for more information.",
-                "systemProp.file.encoding=UTF-8",
-                "org.gradle.jvmargs=-Xmx3g", // TODO figure out why "gradlew check" runs out of memory if 2g
-                "org.gradle.parallel=true",
-                "org.gradle.priority=normal",
-                "org.gradle.warning.mode=none", // Silence gradle warnings. We'll deal with them when we upgrade the wrapper.
-                "",
-                "# You may disable the background daemon if it consumes too much memory.",
-                "org.gradle.daemon=true",
-                "org.gradle.daemon.idletimeout=900000", // timeout after 15 mins.
-                "",
-                "# Maximum number of parallel gradle workers.",
-                "org.gradle.workers.max=${maxWorkers}",
-                "",
-                "# Maximum number of test JVMs forked per test task.",
-                "tests.jvms=${testsJvms}"
-            ].join("\n"), "UTF-8")
+        rootProject.file("gradle.properties").write("""
+# These settings have been generated automatically on the first run.
+# See gradlew :helpLocalSettings for more information.
+systemProp.file.encoding=UTF-8
+
+# Set up gradle JVM defaults.
+# The heap seems huge but gradle runs out of memory on lower values (don't know why).
+#
+# We also open up internal compiler modules for spotless/ google jaa format.
+org.gradle.jvmargs=-Xmx3g \\
+ --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \\
+ --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \\
+ --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \\
+ --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \\
+ --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+
+# Run at normal priority, in parallel
+org.gradle.parallel=true
+org.gradle.priority=normal
+
+# Silence gradle warnings. We'll deal with them when we upgrade the wrapper.
+org.gradle.warning.mode=none
+
+# You may disable the background daemon if it consumes too much memory.
+org.gradle.daemon=true
+# timeout after 15 mins of inactivity.
+org.gradle.daemon.idletimeout=900000
+
+# Maximum number of parallel gradle workers.
+org.gradle.workers.max=${maxWorkers}
+
+# Maximum number of test JVMs forked per test task.
+tests.jvms=${testsJvms}
+
+# Disable auto JVM provisioning (we don't use toolchains yet but want no surprises).
+org.gradle.java.installations.auto-download=false
+
+# Set these to enable automatic JVM location discovery.
+org.gradle.java.installations.fromEnv=JDK11,JDK12,JDK13,JDK14,JDK15,JDK16,JDK17
+org.gradle.java.installations.paths=(custom paths)
+
+""", "UTF-8")
 
         logger.log(LogLevel.WARN, "\nIMPORTANT. This is the first time you ran the build. " +
             "I wrote some sane defaults (for this machine) to 'gradle.properties', " +

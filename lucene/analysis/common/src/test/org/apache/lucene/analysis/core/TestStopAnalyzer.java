@@ -86,7 +86,7 @@ public class TestStopAnalyzer extends BaseTokenStreamTestCase {
     CharArraySet stopWordsSet = new CharArraySet(asSet("good", "test", "analyzer"), false);
     StopAnalyzer newStop = new StopAnalyzer(stopWordsSet);
     String s = "This is a good test of the english stop analyzer with positions";
-    int expectedIncr[] = {1, 1, 1, 3, 1, 1, 1, 2, 1};
+    int[] expectedIncr = {1, 1, 1, 3, 1, 1, 1, 2, 1};
     try (TokenStream stream = newStop.tokenStream("test", s)) {
       assertNotNull(stream);
       int i = 0;

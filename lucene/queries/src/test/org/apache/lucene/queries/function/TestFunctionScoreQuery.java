@@ -150,7 +150,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
 
     QueryUtils.check(random(), q, searcher, rarely());
 
-    int expectedDocs[] = new int[] {4, 7, 9};
+    int[] expectedDocs = new int[] {4, 7, 9};
     TopDocs docs = searcher.search(q, 4);
     assertEquals(expectedDocs.length, docs.totalHits.value);
     for (int i = 0; i < expectedDocs.length; i++) {

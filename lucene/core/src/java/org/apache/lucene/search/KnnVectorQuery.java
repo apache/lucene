@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.util.Bits;
 
 /** Uses {@link KnnVectorsReader#search} to perform nearest Neighbour search. */
 public class KnnVectorQuery extends Query {
@@ -70,7 +71,8 @@ public class KnnVectorQuery extends Query {
   }
 
   private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf) throws IOException {
-    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf);
+    Bits liveDocs = ctx.reader().getLiveDocs();
+    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, liveDocs);
     if (results == null) {
       return NO_RESULTS;
     }
@@ -115,7 +117,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return "<vector:" + this.field + "[" + target[0] + ",...][" + k + "]>";
+    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
   }
 
   @Override
@@ -127,7 +129,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof KnnVectorQuery
+    return sameClassAs(obj)
         && ((KnnVectorQuery) obj).k == k
         && ((KnnVectorQuery) obj).field.equals(field)
         && Arrays.equals(((KnnVectorQuery) obj).target, target);
@@ -135,7 +137,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, k, Arrays.hashCode(target));
+    return Objects.hash(classHash(), field, k, Arrays.hashCode(target));
   }
 
   /** Caches the results of a KnnVector search: a list of docs and their scores */
@@ -291,7 +293,7 @@ public class KnnVectorQuery extends Query {
 
     @Override
     public boolean equals(Object obj) {
-      if (obj instanceof DocAndScoreQuery == false) {
+      if (sameClassAs(obj) == false) {
         return false;
       }
       return Arrays.equals(docs, ((DocAndScoreQuery) obj).docs)
@@ -300,8 +302,7 @@ public class KnnVectorQuery extends Query {
 
     @Override
     public int hashCode() {
-      return Objects.hash(
-          DocAndScoreQuery.class.hashCode(), Arrays.hashCode(docs), Arrays.hashCode(scores));
+      return Objects.hash(classHash(), Arrays.hashCode(docs), Arrays.hashCode(scores));
     }
   }
 }

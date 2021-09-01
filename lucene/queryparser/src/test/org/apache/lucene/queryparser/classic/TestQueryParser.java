@@ -918,7 +918,7 @@ public class TestQueryParser extends QueryParserTestBase {
     @Override
     public boolean incrementToken() throws IOException {
       if (input.incrementToken()) {
-        char term[] = termAtt.buffer();
+        char[] term = termAtt.buffer();
         for (int i = 0; i < term.length; i++)
           switch (term[i]) {
             case 'ü':

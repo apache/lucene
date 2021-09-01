@@ -388,7 +388,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
       data.writeByte((byte) 0);
       data.writeLong(min);
     } else {
-      final int bitsPerValue = LegacyDirectWriter.unsignedBitsRequired(max - min);
+      final int bitsPerValue = LegacyDirectWriter.unsignedBitsRequired((max - min) / gcd);
       buffer.reset();
       assert buffer.size() == 0;
       final LegacyDirectWriter w = LegacyDirectWriter.getInstance(buffer, length, bitsPerValue);

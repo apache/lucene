@@ -34,5 +34,5 @@ public abstract class PassageFormatter {
    *     that return String, the toString method on the Object returned by this method is used to
    *     compute the string.
    */
-  public abstract Object format(Passage passages[], String content);
+  public abstract Object format(Passage[] passages, String content);
 }

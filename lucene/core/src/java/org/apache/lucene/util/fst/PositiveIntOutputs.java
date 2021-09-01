@@ -30,7 +30,8 @@ import org.apache.lucene.util.SuppressForbidden;
 @SuppressForbidden(reason = "Uses a Long instance as a marker")
 public final class PositiveIntOutputs extends Outputs<Long> {
 
-  @SuppressWarnings("deprecation")
+  // Ignore the deprecated constructor. We do want a unique object here.
+  @SuppressWarnings({"all"})
   private static final Long NO_OUTPUT = new Long(0);
 
   private static final PositiveIntOutputs singleton = new PositiveIntOutputs();

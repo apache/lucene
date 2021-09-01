@@ -201,10 +201,10 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
     assertEquals(expected, w.isCacheable(ctx));
   }
 
-  void assertHits(DoubleValuesSource vs, float scores[]) throws Exception {
+  void assertHits(DoubleValuesSource vs, float[] scores) throws Exception {
     Query q = new FunctionScoreQuery(new MatchAllDocsQuery(), vs);
-    ScoreDoc expected[] = new ScoreDoc[scores.length];
-    int expectedDocs[] = new int[scores.length];
+    ScoreDoc[] expected = new ScoreDoc[scores.length];
+    int[] expectedDocs = new int[scores.length];
     for (int i = 0; i < expected.length; i++) {
       expectedDocs[i] = i;
       expected[i] = new ScoreDoc(i, scores[i]);
@@ -218,7 +218,7 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
     assertSort(vs, expected);
   }
 
-  void assertSort(DoubleValuesSource vs, ScoreDoc expected[]) throws Exception {
+  void assertSort(DoubleValuesSource vs, ScoreDoc[] expected) throws Exception {
     boolean reversed = random().nextBoolean();
     Arrays.sort(
         expected, (a, b) -> reversed ? (int) (b.score - a.score) : (int) (a.score - b.score));

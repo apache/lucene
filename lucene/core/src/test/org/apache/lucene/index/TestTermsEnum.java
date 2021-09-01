@@ -106,9 +106,9 @@ public class TestTermsEnum extends LuceneTestCase {
         if (random().nextBoolean()) {
           // likely fake term
           if (random().nextBoolean()) {
-            target = new BytesRef(TestUtil.randomSimpleString(random()));
+            target = newBytesRef(TestUtil.randomSimpleString(random()));
           } else {
-            target = new BytesRef(TestUtil.randomRealisticUnicodeString(random()));
+            target = newBytesRef(TestUtil.randomRealisticUnicodeString(random()));
           }
           exists = "likely not";
         } else {
@@ -179,7 +179,7 @@ public class TestTermsEnum extends LuceneTestCase {
     }
     for (String s2 : terms) {
       doc.add(newStringField("f", s2, Field.Store.NO));
-      termToID.put(new BytesRef(s2), id);
+      termToID.put(newBytesRef(s2), id);
     }
     w.addDocument(doc);
     terms.clear();
@@ -223,7 +223,7 @@ public class TestTermsEnum extends LuceneTestCase {
     {
       int upto = 0;
       for (String s : terms) {
-        final BytesRef b = new BytesRef(s);
+        final BytesRef b = newBytesRef(s);
         termsArray[upto++] = b;
         termsSet.add(b);
       }
@@ -275,7 +275,7 @@ public class TestTermsEnum extends LuceneTestCase {
             s2 = getRandomString();
           }
           acceptTerms.add(s2);
-          sortedAcceptTerms.add(new BytesRef(s2));
+          sortedAcceptTerms.add(newBytesRef(s2));
         }
         a = Automata.makeStringUnion(sortedAcceptTerms);
       }
@@ -286,7 +286,7 @@ public class TestTermsEnum extends LuceneTestCase {
       final Set<BytesRef> acceptTermsSet = new HashSet<>();
       int upto = 0;
       for (String s : acceptTerms) {
-        final BytesRef b = new BytesRef(s);
+        final BytesRef b = newBytesRef(s);
         acceptTermsArray[upto++] = b;
         acceptTermsSet.add(b);
         assertTrue(accepts(c, b));
@@ -598,7 +598,7 @@ public class TestTermsEnum extends LuceneTestCase {
 
   // sugar
   private boolean seekExact(TermsEnum te, String term) throws IOException {
-    return te.seekExact(new BytesRef(term));
+    return te.seekExact(newBytesRef(term));
   }
 
   // sugar
@@ -615,7 +615,7 @@ public class TestTermsEnum extends LuceneTestCase {
     BytesRef t = null;
     while (true) {
       final String ts = getRandomString();
-      t = new BytesRef(ts);
+      t = newBytesRef(ts);
       if (Arrays.binarySearch(terms, t) < 0) {
         return t;
       }
@@ -635,7 +635,7 @@ public class TestTermsEnum extends LuceneTestCase {
   private void testRandomSeeks(IndexReader r, String... validTermStrings) throws IOException {
     final BytesRef[] validTerms = new BytesRef[validTermStrings.length];
     for (int termIDX = 0; termIDX < validTermStrings.length; termIDX++) {
-      validTerms[termIDX] = new BytesRef(validTermStrings[termIDX]);
+      validTerms[termIDX] = newBytesRef(validTermStrings[termIDX]);
     }
     Arrays.sort(validTerms);
     if (VERBOSE) {
@@ -781,14 +781,14 @@ public class TestTermsEnum extends LuceneTestCase {
     assertEquals(2, te.postings(null, PostingsEnum.NONE).nextDoc());
     assertNull(te.next());
 
-    te = terms.intersect(ca, new BytesRef("abc"));
+    te = terms.intersect(ca, newBytesRef("abc"));
     assertEquals("bbb", te.next().utf8ToString());
     assertEquals(1, te.postings(null, PostingsEnum.NONE).nextDoc());
     assertEquals("ccc", te.next().utf8ToString());
     assertEquals(2, te.postings(null, PostingsEnum.NONE).nextDoc());
     assertNull(te.next());
 
-    te = terms.intersect(ca, new BytesRef("aaa"));
+    te = terms.intersect(ca, newBytesRef("aaa"));
     assertEquals("bbb", te.next().utf8ToString());
     assertEquals(1, te.postings(null, PostingsEnum.NONE).nextDoc());
     assertEquals("ccc", te.next().utf8ToString());
@@ -831,7 +831,7 @@ public class TestTermsEnum extends LuceneTestCase {
     TermsEnum te;
 
     // should seek to startTerm
-    te = terms.intersect(ca, new BytesRef("aad"));
+    te = terms.intersect(ca, newBytesRef("aad"));
     assertEquals("abd", te.next().utf8ToString());
     assertEquals(1, te.postings(null, PostingsEnum.NONE).nextDoc());
     assertEquals("acd", te.next().utf8ToString());
@@ -841,15 +841,15 @@ public class TestTermsEnum extends LuceneTestCase {
     assertNull(te.next());
 
     // should fail to find ceil label on second arc, rewind
-    te = terms.intersect(ca, new BytesRef("add"));
+    te = terms.intersect(ca, newBytesRef("add"));
     assertEquals("bcd", te.next().utf8ToString());
     assertEquals(3, te.postings(null, PostingsEnum.NONE).nextDoc());
     assertNull(te.next());
 
     // should reach end
-    te = terms.intersect(ca, new BytesRef("bcd"));
+    te = terms.intersect(ca, newBytesRef("bcd"));
     assertNull(te.next());
-    te = terms.intersect(ca, new BytesRef("ddd"));
+    te = terms.intersect(ca, newBytesRef("ddd"));
     assertNull(te.next());
 
     r.close();
@@ -899,7 +899,7 @@ public class TestTermsEnum extends LuceneTestCase {
     assertNull(te.next());
 
     // pass empty string
-    te = terms.intersect(ca, new BytesRef(""));
+    te = terms.intersect(ca, newBytesRef(""));
 
     assertEquals("abc", te.next().utf8ToString());
     de = te.postings(null, PostingsEnum.NONE);
@@ -959,7 +959,7 @@ public class TestTermsEnum extends LuceneTestCase {
         System.out.println("  shouldExist?=" + shouldExist);
       }
 
-      BytesRef termBytesRef = new BytesRef(term);
+      BytesRef termBytesRef = newBytesRef(term);
 
       boolean actualResult = termsEnum.seekExact(termBytesRef);
       assertEquals(shouldExist, actualResult);
@@ -1000,7 +1000,7 @@ public class TestTermsEnum extends LuceneTestCase {
     Set<BytesRef> terms = new HashSet<BytesRef>();
     int MAX_TERMS = atLeast(1000);
     while (terms.size() < MAX_TERMS) {
-      terms.add(new BytesRef(TestUtil.randomSimpleString(random(), 1, 40)));
+      terms.add(newBytesRef(TestUtil.randomSimpleString(random(), 1, 40)));
     }
     List<BytesRef> termsList = new ArrayList<>(terms);
     StringBuilder sb = new StringBuilder();
