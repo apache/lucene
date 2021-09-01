@@ -145,7 +145,7 @@ public final class IndexFileNames {
   /** Returns the generation from this file name, or 0 if there is no generation. */
   public static long parseGeneration(String filename) {
     assert filename.startsWith("_");
-    String parts[] = stripExtension(filename).substring(1).split("_");
+    String[] parts = stripExtension(filename).substring(1).split("_");
     // 4 cases:
     // segment.ext
     // segment_gen.ext

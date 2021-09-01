@@ -1142,7 +1142,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(i, dvByte.nextDoc());
       assertEquals(id, dvByte.longValue());
 
-      byte bytes[] =
+      byte[] bytes =
           new byte[] {(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
       BytesRef expectedRef = new BytesRef(bytes);
 
@@ -1426,7 +1426,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     // add docvalues fields
     doc.add(new NumericDocValuesField("dvByte", (byte) id));
-    byte bytes[] =
+    byte[] bytes =
         new byte[] {(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
     BytesRef ref = new BytesRef(bytes);
     doc.add(new BinaryDocValuesField("dvBytesDerefFixed", ref));

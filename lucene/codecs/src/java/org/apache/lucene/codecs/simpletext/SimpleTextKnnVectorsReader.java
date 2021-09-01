@@ -31,8 +31,13 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.HitQueue;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
@@ -140,7 +145,31 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
   @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
-    throw new UnsupportedOperationException();
+    VectorValues values = getVectorValues(field);
+    if (target.length != values.dimension()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + target.length + "!=" + values.dimension());
+    }
+    FieldInfo info = readState.fieldInfos.fieldInfo(field);
+    VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
+    HitQueue topK = new HitQueue(k, false);
+    int doc;
+    while ((doc = values.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+        continue;
+      }
+      float[] vector = values.vectorValue();
+      float score = vectorSimilarity.compare(vector, target);
+      if (vectorSimilarity.reversed) {
+        score = 1 / (score + 1);
+      }
+      topK.insertWithOverflow(new ScoreDoc(doc, score));
+    }
+    ScoreDoc[] topScoreDocs = new ScoreDoc[topK.size()];
+    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
+      topScoreDocs[i] = topK.pop();
+    }
+    return new TopDocs(new TotalHits(values.size(), TotalHits.Relation.EQUAL_TO), topScoreDocs);
   }
 
   @Override

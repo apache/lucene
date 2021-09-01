@@ -33,7 +33,7 @@ public class SimpleSloppyPhraseQueryMaker extends SimpleQueryMaker {
   @Override
   protected Query[] prepareQueries() throws Exception {
     // extract some 100 words from doc text to an array
-    String words[];
+    String[] words;
     ArrayList<String> w = new ArrayList<>();
     StringTokenizer st = new StringTokenizer(SingleDocSource.DOC_TEXT);
     while (st.hasMoreTokens() && w.size() < 100) {

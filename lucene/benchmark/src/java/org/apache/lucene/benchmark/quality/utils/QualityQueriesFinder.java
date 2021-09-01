@@ -55,17 +55,17 @@ public class QualityQueriesFinder {
       System.exit(1);
     }
     QualityQueriesFinder qqf = new QualityQueriesFinder(FSDirectory.open(Paths.get(args[0])));
-    String q[] = qqf.bestQueries("body", 20);
+    String[] q = qqf.bestQueries("body", 20);
     for (int i = 0; i < q.length; i++) {
       System.out.println(newline + formatQueryAsTrecTopic(i, q[i], null, null));
     }
   }
 
   private String[] bestQueries(String field, int numQueries) throws IOException {
-    String words[] = bestTerms("body", 4 * numQueries);
+    String[] words = bestTerms("body", 4 * numQueries);
     int n = words.length;
     int m = n / 4;
-    String res[] = new String[m];
+    String[] res = new String[m];
     for (int i = 0; i < res.length; i++) {
       res[i] = words[i] + " " + words[m + i] + "  " + words[n - 1 - m - i] + " " + words[n - 1 - i];
       // System.out.println("query["+i+"]:  "+res[i]);
@@ -117,7 +117,7 @@ public class QualityQueriesFinder {
     } finally {
       ir.close();
     }
-    String res[] = new String[pq.size()];
+    String[] res = new String[pq.size()];
     int i = 0;
     while (pq.size() > 0) {
       TermDf tdf = pq.pop();

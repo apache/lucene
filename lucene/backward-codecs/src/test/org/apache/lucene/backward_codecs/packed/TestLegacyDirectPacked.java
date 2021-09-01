@@ -97,7 +97,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
     MyRandom random = new MyRandom(random().nextLong());
     int numIters = TEST_NIGHTLY ? 100 : 10;
     for (int i = 0; i < numIters; i++) {
-      long original[] = randomLongs(random, bpv);
+      long[] original = randomLongs(random, bpv);
       int bitsRequired = bpv == 64 ? 64 : LegacyDirectWriter.bitsRequired(1L << (bpv - 1));
       String name = "bpv" + bpv + "_" + i;
       IndexOutput output = EndiannessReverserUtil.createOutput(directory, name, IOContext.DEFAULT);
@@ -124,7 +124,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
 
   private long[] randomLongs(MyRandom random, int bpv) {
     int amount = random.nextInt(5000);
-    long longs[] = new long[amount];
+    long[] longs = new long[amount];
     for (int i = 0; i < longs.length; i++) {
       longs[i] = random.nextLong(bpv);
     }
@@ -133,7 +133,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
 
   // java.util.Random only returns 48bits of randomness in nextLong...
   static class MyRandom extends Random {
-    byte buffer[] = new byte[8];
+    byte[] buffer = new byte[8];
     ByteArrayDataInput input = new ByteArrayDataInput();
 
     MyRandom(long seed) {

@@ -90,7 +90,7 @@ public final class TurkishLowerCaseFilter extends TokenFilter {
   }
 
   /** lookahead for a combining dot above. other NSMs may be in between. */
-  private boolean isBeforeDot(char s[], int pos, int len) {
+  private boolean isBeforeDot(char[] s, int pos, int len) {
     for (int i = pos; i < len; ) {
       final int ch = Character.codePointAt(s, i, len);
       if (Character.getType(ch) != Character.NON_SPACING_MARK) return false;
@@ -104,7 +104,7 @@ public final class TurkishLowerCaseFilter extends TokenFilter {
   /**
    * delete a character in-place. rarely happens, only if COMBINING_DOT_ABOVE is found after an i
    */
-  private int delete(char s[], int pos, int len) {
+  private int delete(char[] s, int pos, int len) {
     if (pos < len) System.arraycopy(s, pos + 1, s, pos, len - pos - 1);
 
     return len - 1;

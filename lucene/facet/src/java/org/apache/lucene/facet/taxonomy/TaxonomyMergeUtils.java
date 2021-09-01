@@ -51,12 +51,12 @@ public abstract class TaxonomyMergeUtils {
 
     // merge the taxonomies
     destTaxoWriter.addTaxonomy(srcTaxoDir, map);
-    int ordinalMap[] = map.getMap();
+    int[] ordinalMap = map.getMap();
     DirectoryReader reader = DirectoryReader.open(srcIndexDir);
     try {
       List<LeafReaderContext> leaves = reader.leaves();
       int numReaders = leaves.size();
-      CodecReader wrappedLeaves[] = new CodecReader[numReaders];
+      CodecReader[] wrappedLeaves = new CodecReader[numReaders];
       for (int i = 0; i < numReaders; i++) {
         wrappedLeaves[i] =
             SlowCodecReaderWrapper.wrap(

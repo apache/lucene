@@ -51,7 +51,7 @@ public class VocabularyAssert {
     String inputLine = null;
     while ((inputLine = vocReader.readLine()) != null) {
       if (inputLine.startsWith("#") || inputLine.trim().length() == 0) continue; /* comment */
-      String words[] = inputLine.split("\t");
+      String[] words = inputLine.split("\t");
       BaseTokenStreamTestCase.checkOneTerm(a, words[0], words[1]);
     }
   }

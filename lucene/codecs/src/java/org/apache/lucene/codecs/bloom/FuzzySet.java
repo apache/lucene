@@ -79,7 +79,7 @@ public class FuzzySet implements Accountable {
   // a large bitset and then mapped to a smaller set can be looked up using a single
   // AND operation of the query term's hash rather than needing to perform a 2-step
   // translation of the query term that mirrors the stored content's reprojections.
-  static final int usableBitSetSizes[];
+  static final int[] usableBitSetSizes;
 
   static {
     usableBitSetSizes = new int[30];

@@ -215,7 +215,7 @@ public class TestPagedBytes extends LuceneTestCase {
     PagedBytes b = new PagedBytes(blockBits);
     final int totalBytes = random().nextInt(10000);
     for (long pointer = 0; pointer < totalBytes; ) {
-      BytesRef bytes = new BytesRef(TestUtil.randomSimpleString(random(), 10));
+      BytesRef bytes = newBytesRef(TestUtil.randomSimpleString(random(), 10));
       pointer = b.copyUsingLengthPrefix(bytes);
     }
     assertEquals(RamUsageTester.sizeOf(b), b.ramBytesUsed());

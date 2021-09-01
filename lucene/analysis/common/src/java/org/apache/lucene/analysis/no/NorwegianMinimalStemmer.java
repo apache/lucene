@@ -78,7 +78,7 @@ public class NorwegianMinimalStemmer {
     useNynorsk = (flags & NYNORSK) != 0;
   }
 
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     // Remove genitiv s
     if (len > 4 && s[len - 1] == 's') len--;
 

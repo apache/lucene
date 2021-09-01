@@ -43,7 +43,7 @@ public class ArabicStemmer {
   public static final char WAW = '\u0648';
   public static final char YEH = '\u064A';
 
-  public static final char prefixes[][] = {
+  public static final char[][] prefixes = {
     ("" + ALEF + LAM).toCharArray(),
     ("" + WAW + ALEF + LAM).toCharArray(),
     ("" + BEH + ALEF + LAM).toCharArray(),
@@ -53,7 +53,7 @@ public class ArabicStemmer {
     ("" + WAW).toCharArray(),
   };
 
-  public static final char suffixes[][] = {
+  public static final char[][] suffixes = {
     ("" + HEH + ALEF).toCharArray(),
     ("" + ALEF + NOON).toCharArray(),
     ("" + ALEF + TEH).toCharArray(),
@@ -73,7 +73,7 @@ public class ArabicStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     len = stemPrefix(s, len);
     len = stemSuffix(s, len);
 
@@ -87,7 +87,7 @@ public class ArabicStemmer {
    * @param len length of input buffer
    * @return new length of input buffer after stemming.
    */
-  public int stemPrefix(char s[], int len) {
+  public int stemPrefix(char[] s, int len) {
     for (int i = 0; i < prefixes.length; i++)
       if (startsWithCheckLength(s, len, prefixes[i])) return deleteN(s, 0, len, prefixes[i].length);
     return len;
@@ -100,7 +100,7 @@ public class ArabicStemmer {
    * @param len length of input buffer
    * @return new length of input buffer after stemming
    */
-  public int stemSuffix(char s[], int len) {
+  public int stemSuffix(char[] s, int len) {
     for (int i = 0; i < suffixes.length; i++)
       if (endsWithCheckLength(s, len, suffixes[i]))
         len = deleteN(s, len - suffixes[i].length, len, suffixes[i].length);
@@ -115,7 +115,7 @@ public class ArabicStemmer {
    * @param prefix prefix to check
    * @return true if the prefix matches and can be stemmed
    */
-  boolean startsWithCheckLength(char s[], int len, char prefix[]) {
+  boolean startsWithCheckLength(char[] s, int len, char[] prefix) {
     if (prefix.length == 1 && len < 4) { // wa- prefix requires at least 3 characters
       return false;
     } else if (len < prefix.length + 2) { // other prefixes require only 2.
@@ -139,7 +139,7 @@ public class ArabicStemmer {
    * @param suffix suffix to check
    * @return true if the suffix matches and can be stemmed
    */
-  boolean endsWithCheckLength(char s[], int len, char suffix[]) {
+  boolean endsWithCheckLength(char[] s, int len, char[] suffix) {
     if (len < suffix.length + 2) { // all suffixes require at least 2 characters after stemming
       return false;
     } else {

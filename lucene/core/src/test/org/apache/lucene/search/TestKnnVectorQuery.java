@@ -35,10 +35,8 @@ import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 
 /** TestKnnVectorQuery tests KnnVectorQuery. */
-@SuppressCodecs("SimpleText") // The codec must support kNN searches
 public class TestKnnVectorQuery extends LuceneTestCase {
 
   public void testEquals() {
@@ -313,15 +311,11 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       final int numDocs = atLeast(100);
       final int dim = 30;
-      int docIndex = 0;
       for (int i = 0; i < numDocs; ++i) {
         Document d = new Document();
+        d.add(new StringField("index", String.valueOf(i), Field.Store.YES));
         if (frequently()) {
-          d.add(new StringField("index", String.valueOf(docIndex), Field.Store.YES));
           d.add(new KnnVectorField("vector", randomVector(dim)));
-          docIndex++;
-        } else {
-          d.add(new StringField("other", "value" + (i % 5), Field.Store.NO));
         }
         w.addDocument(d);
       }
@@ -329,18 +323,18 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
       // Delete some documents at random, both those with and without vectors
       Set<Term> toDelete = new HashSet<>();
-      for (int i = 0; i < 20; i++) {
-        int index = random().nextInt(docIndex);
+      for (int i = 0; i < 25; i++) {
+        int index = random().nextInt(numDocs);
         toDelete.add(new Term("index", String.valueOf(index)));
       }
       w.deleteDocuments(toDelete.toArray(new Term[0]));
-      w.deleteDocuments(new Term("other", "value" + random().nextInt(5)));
       w.commit();
 
+      int hits = 50;
       try (IndexReader reader = DirectoryReader.open(dir)) {
         Set<String> allIds = new HashSet<>();
         IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs);
+        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), hits);
         TopDocs topDocs = searcher.search(query, numDocs);
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
           Document doc = reader.document(scoreDoc.doc, Set.of("index"));
@@ -350,7 +344,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
               toDelete.contains(new Term("index", index)));
           allIds.add(index);
         }
-        assertEquals("search missed some documents", docIndex - toDelete.size(), allIds.size());
+        assertEquals("search missed some documents", hits, allIds.size());
       }
     }
   }
