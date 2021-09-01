@@ -819,14 +819,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       int dimension = atLeast(10);
       float[][] id2value = new float[numDoc][];
       int[] id2ord = new int[numDoc];
-      int nDocsWithVectors = 0;
       for (int i = 0; i < numDoc; i++) {
         int id = random().nextInt(numDoc);
         float[] value;
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
           value = randomVector(dimension);
-          nDocsWithVectors ++;
         } else {
           value = null;
         }

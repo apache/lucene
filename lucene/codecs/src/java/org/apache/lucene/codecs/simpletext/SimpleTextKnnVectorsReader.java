@@ -147,7 +147,8 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
     VectorValues values = getVectorValues(field);
     if (target.length != values.dimension()) {
-      throw new IllegalArgumentException("vector dimensions differ: " + target.length + "!=" + values.dimension());
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + target.length + "!=" + values.dimension());
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
