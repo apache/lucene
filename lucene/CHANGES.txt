@@ -15,7 +15,7 @@ New Features
 
 * LUCENE-9589: Swedish Minimal Stemmer (janhoy)
 
-* LUCENE-10035: The SimpleText codec now writes postings lists.
+* LUCENE-10035: The SimpleText codec now writes skip lists.
   (wuda via Adrien Grand)
 
 System Requirements
