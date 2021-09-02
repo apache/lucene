@@ -756,12 +756,8 @@ public class TestBooleanQuery extends LuceneTestCase {
       }
       doc.add(f);
       w.addDocument(doc);
-      if (random().nextBoolean()) {
-        w.commit();
-      }
     }
     w.commit();
-    w.forceMerge(1);
 
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
@@ -772,10 +768,10 @@ public class TestBooleanQuery extends LuceneTestCase {
 
     Query builtQuery = q.build();
 
-    assert searcher.count(builtQuery) == numMatchingDocs;
+    assertEquals(searcher.count(builtQuery), numMatchingDocs);
     final Weight weight = searcher.createWeight(builtQuery, ScoreMode.COMPLETE, 1);
     // tests that the Weight#count API returns -1 instead of returning the total number of matches
-    assert weight.count(reader.leaves().get(0)) == -1;
+    assertEquals(weight.count(reader.leaves().get(0)), -1);
 
     IOUtils.close(reader, w, dir);
   }

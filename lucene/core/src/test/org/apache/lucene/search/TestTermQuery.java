@@ -118,20 +118,16 @@ public class TestTermQuery extends LuceneTestCase {
         numMatchingDocs++;
       }
       w.addDocument(doc);
-      if (random().nextBoolean()) {
-        w.commit();
-      }
     }
     w.commit();
-    w.forceMerge(1);
 
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
 
     Query testQuery = new TermQuery(new Term("foo", "bar"));
-    assert searcher.count(testQuery) == numMatchingDocs;
+    assertEquals(searcher.count(testQuery), numMatchingDocs);
     final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
-    assert weight.count(reader.leaves().get(0)) == numMatchingDocs;
+    assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
 
     IOUtils.close(reader, w, dir);
   }

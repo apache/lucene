@@ -178,7 +178,7 @@ public abstract class Weight implements SegmentCacheable {
    * Counts the number of live documents that match a given {@link Weight#parentQuery} in a leaf.
    *
    * <p>The default implementation returns -1 for every query. This indicates that the count could
-   * not computed in O(1) time.
+   * not be computed in O(1) time.
    *
    * <p>Specific query classes should override it to provide other accurate O(1) implementations
    * (that actually return the count). Look at {@link MatchAllDocsQuery#createWeight(IndexSearcher,
