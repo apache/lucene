@@ -842,6 +842,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             continue;
           }
           int docId;
+          int numLiveDocsWithVectors = 0;
           while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
             float[] v = vectorValues.vectorValue();
             assertEquals(dimension, v.length);
@@ -853,16 +854,25 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   id2value[id],
                   v,
                   0);
+              numLiveDocsWithVectors++;
             } else {
               if (id2value[id] != null) {
                 assertFalse(Arrays.equals(id2value[id], v));
               }
             }
           }
-          // assert that searchNearestVectors returns the expected number of documents, in
-          // descending score order
+
+          if (numLiveDocsWithVectors == 0) {
+            continue;
+          }
+
+          // assert that searchNearestVectors returns the expected number of documents,
+          // in descending score order
           int size = ctx.reader().getVectorValues(fieldName).size();
-          int k = random().nextInt(size / 2 + 1);
+          int k = random().nextInt(size / 2 + 1) + 1;
+          if (k > numLiveDocsWithVectors) {
+            k = numLiveDocsWithVectors;
+          }
           TopDocs results =
               ctx.reader().searchNearestVectors(fieldName, randomVector(dimension), k, liveDocs);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
