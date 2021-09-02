@@ -261,6 +261,11 @@ Improvements
 * LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
   (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
 
+* LUCENE-9476: Add new getBulkPath API to DirectoryTaxonomyReader to more efficiently retrieve FacetLabels for multiple
+  facet ordinals at once. This API is 2-4% faster than iteratively calling getPath.
+  The getPath API now throws an IAE instead of returning null if the ordinal is out of bounds.
+  (Gautam Worah, Mike McCandless)
+
 Bug fixes
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,

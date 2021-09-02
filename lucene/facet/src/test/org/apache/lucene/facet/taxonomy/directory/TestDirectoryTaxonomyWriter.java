@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -314,7 +315,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
       System.out.println("TEST: use cache=" + cache);
     }
     final DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(dir, OpenMode.CREATE, cache);
-    Thread[] addThreads = new Thread[atLeast(4)];
+    Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
     for (int z = 0; z < addThreads.length; z++) {
       addThreads[z] =
           new Thread() {

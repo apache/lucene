@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -413,7 +414,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
       // check that r1 doesn't see cp_b
       assertEquals(TaxonomyReader.INVALID_ORDINAL, r1.getOrdinal(cp_b));
-      assertNull(r1.getPath(2));
+      expectThrows(IllegalArgumentException.class, () -> r1.getPath(2));
 
       r1.close();
       r2.close();
@@ -566,5 +567,79 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     assertTrue(taxoReader.getChildResources().size() > 0);
     taxoReader.close();
     dir.close();
+  }
+
+  public void testCallingBulkPathReturnsCorrectResult() throws Exception {
+    Directory src = newDirectory();
+    DirectoryTaxonomyWriter w = new DirectoryTaxonomyWriter(src);
+    String randomArray[] = new String[random().nextInt(1000)];
+    // adding a smaller bound on ints ensures that we will have some duplicate ordinals in random
+    // test cases
+    Arrays.setAll(randomArray, i -> Integer.toString(random().nextInt(500)));
+
+    FacetLabel allPaths[] = new FacetLabel[randomArray.length];
+    int allOrdinals[] = new int[randomArray.length];
+
+    for (int i = 0; i < randomArray.length; i++) {
+      allPaths[i] = new FacetLabel(randomArray[i]);
+      w.addCategory(allPaths[i]);
+      // add random commits to create multiple segments in the index
+      if (random().nextBoolean()) {
+        w.commit();
+      }
+    }
+    w.commit();
+    w.close();
+
+    DirectoryTaxonomyReader r1 = new DirectoryTaxonomyReader(src);
+
+    for (int i = 0; i < allPaths.length; i++) {
+      allOrdinals[i] = r1.getOrdinal(allPaths[i]);
+    }
+
+    // create multiple threads to check result correctness and thread contention in the cache
+    Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
+    for (int z = 0; z < addThreads.length; z++) {
+      addThreads[z] =
+          new Thread() {
+            @Override
+            public void run() {
+              // each thread iterates for numThreadIterations times
+              int numThreadIterations = random().nextInt(10);
+              for (int threadIterations = 0;
+                  threadIterations < numThreadIterations;
+                  threadIterations++) {
+
+                // length of the FacetLabel array that we are going to check
+                int numOfOrdinalsToCheck = random().nextInt(allOrdinals.length);
+                int[] ordinals = new int[numOfOrdinalsToCheck];
+                FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
+
+                for (int i = 0; i < numOfOrdinalsToCheck; i++) {
+                  // we deliberately allow it to choose repeat indexes as this will exercise the
+                  // cache
+                  int ordinalIndex = random().nextInt(allOrdinals.length);
+                  ordinals[i] = allOrdinals[ordinalIndex];
+                  path[i] = allPaths[ordinalIndex];
+                }
+
+                try {
+                  // main check for correctness is done here
+                  assertArrayEquals(path, r1.getBulkPath(ordinals));
+                } catch (IOException e) {
+                  // this should ideally never occur, but if it does just rethrow the error to the
+                  // caller
+                  throw new RuntimeException(e);
+                }
+              }
+            }
+          };
+    }
+
+    for (Thread t : addThreads) t.start();
+    for (Thread t : addThreads) t.join();
+
+    r1.close();
+    src.close();
   }
 }
