@@ -167,24 +167,27 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors, VectorSimilarityFunction.DOT_PRODUCT, 16, 100, random().nextInt());
     HnswGraph hnsw = builder.build(vectors);
 
-    Bits acceptOrds = createRandomAcceptOrds(vectors.size);
+    // the first 10 docs must not be deleted to ensure the expected recall
+    Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
         HnswGraph.search(
             new float[] {1, 0},
             10,
-            5,
+            10,
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             acceptOrds,
             random());
     int sum = 0;
-    for (int node : nn.nodes()) {
+    int[] nodes = nn.nodes();
+    assert (nodes.length == 10);
+    for (int node : nodes) {
       assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
       sum += node;
     }
-    // We expect to get approximately 100% recall; the lowest docIds are closest to zero; sum(0,9) =
-    // 45
+    // We expect to get approximately 100% recall;
+    // the lowest docIds are closest to zero; sum(0,9) = 45
     assertTrue("sum(result docs)=" + sum, sum < 75);
   }
 
@@ -311,7 +314,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder builder =
         new HnswGraphBuilder(vectors, similarityFunction, 10, 30, random().nextLong());
     HnswGraph hnsw = builder.build(vectors);
-    Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(size);
+    Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
@@ -493,9 +496,14 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   /** Generate a random bitset where each entry has a 2/3 probability of being set. */
-  private static Bits createRandomAcceptOrds(int length) {
+  private static Bits createRandomAcceptOrds(int startIndex, int length) {
     FixedBitSet bits = new FixedBitSet(length);
-    for (int i = 0; i < bits.length(); i++) {
+    // all bits are set before startIndex
+    for (int i = 0; i < startIndex; i++) {
+      bits.set(i);
+    }
+    // after startIndex, bits are set with 2/3 probability
+    for (int i = startIndex; i < bits.length(); i++) {
       if (random().nextFloat() < 0.667f) {
         bits.set(i);
       }
