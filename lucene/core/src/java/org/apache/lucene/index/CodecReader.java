@@ -42,11 +42,10 @@ public abstract class CodecReader extends LeafReader {
   public abstract StoredFieldsReader getFieldsReader();
 
   /**
-   * Expert: retrieve TermVectorsReader
+   * Expert: retrieve thread-private TermVectorsReader
    *
    * @lucene.internal
    */
-  @Override
   public abstract TermVectorsReader getTermVectorsReader();
 
   /**
@@ -88,6 +87,16 @@ public abstract class CodecReader extends LeafReader {
   public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
     checkBounds(docID);
     getFieldsReader().visitDocument(docID, visitor);
+  }
+
+  @Override
+  public final Fields getTermVectors(int docID) throws IOException {
+    TermVectorsReader termVectorsReader = getTermVectorsReader();
+    if (termVectorsReader == null) {
+      return null;
+    }
+    checkBounds(docID);
+    return termVectorsReader.get(docID);
   }
 
   private void checkBounds(int docID) {
