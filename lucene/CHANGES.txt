@@ -15,9 +15,6 @@ New Features
 
 * LUCENE-9589: Swedish Minimal Stemmer (janhoy)
 
-* LUCENE-10035: The SimpleText codec now writes skip lists.
-  (wuda via Adrien Grand)
-
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
@@ -395,6 +392,9 @@ API Changes
 New Features
 ---------------------
 * LUCENE-10083: Analyzer and stemmer for Telugu language (Vinod Singh)
+
+* LUCENE-10035: The SimpleText codec now writes skip lists.
+  (wuda via Adrien Grand)
 
 Improvements
 ---------------------
