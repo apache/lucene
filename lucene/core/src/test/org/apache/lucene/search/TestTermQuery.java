@@ -119,7 +119,7 @@ public class TestTermQuery extends LuceneTestCase {
       }
       w.addDocument(doc);
     }
-    w.commit();
+    w.forceMerge(1);
 
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
