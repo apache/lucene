@@ -16,9 +16,11 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import com.carrotsearch.hppc.AbstractIterator;
 import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetsCollector;
@@ -27,6 +29,8 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Base class for all taxonomy-based facets that aggregate to a per-ords int[]. */
 public abstract class IntTaxonomyFacets extends TaxonomyFacets {
@@ -34,7 +38,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
   /** Per-ordinal value. */
   private final int[] values;
 
-  private final IntIntHashMap sparseValues;
+  private final IntIntHashMapWithFixedBitSet sparseValues;
 
   /** Sole constructor. */
   protected IntTaxonomyFacets(
@@ -43,7 +47,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     super(indexFieldName, taxoReader, config);
 
     if (useHashTable(fc, taxoReader)) {
-      sparseValues = new IntIntHashMap();
+      sparseValues = new IntIntHashMapWithFixedBitSet(taxoReader.getSize());
       values = null;
     } else {
       sparseValues = null;
@@ -252,5 +256,79 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
 
     return new FacetResult(dim, path, totValue, labelValues, childCount);
+  }
+
+  /**
+   * Class that uses FixedBitSet to store counts for all ordinals with 1 count and IntIntHashMap for
+   * all other counts
+   */
+  private static class IntIntHashMapWithFixedBitSet implements Iterable<IntIntCursor> {
+    // if the key exists, fixedBitSet[key] will be true, if fixedBitSet[key] is true but the key in
+    // intIntHashMap
+    // does not exist, then the value is 1
+    private final FixedBitSet fixedBitSet;
+    private final IntIntHashMap intIntHashMap;
+
+    IntIntHashMapWithFixedBitSet(int numCategories) {
+      fixedBitSet = new FixedBitSet(numCategories);
+      intIntHashMap = new IntIntHashMap();
+    }
+
+    public int addTo(int key, int incrementValue) {
+      if (!fixedBitSet.getAndSet(key) && incrementValue == 1) {
+        return 1;
+      }
+      int currentValue = intIntHashMap.addTo(key, incrementValue);
+      if (currentValue == 1) {
+        intIntHashMap.remove(key);
+      }
+      return currentValue;
+    }
+
+    public int get(int key) {
+      if (fixedBitSet.get(key)) {
+        return intIntHashMap.getOrDefault(key, 1);
+      }
+      return 0;
+    }
+
+    @Override
+    public Iterator<IntIntCursor> iterator() {
+      return new AbstractIterator<>() {
+
+        final IntIntCursor cursor;
+
+        {
+          cursor = new IntIntCursor();
+          cursor.index = -1;
+          cursor.key = -1;
+          cursor.value = -1;
+        }
+
+        @Override
+        protected IntIntCursor fetch() {
+          if (cursor.index == -1) {
+            if (fixedBitSet.get(0)) {
+              cursor.index = 0;
+              cursor.key = 0;
+              cursor.value = get(0);
+              return cursor;
+            } else {
+              cursor.index = 0;
+            }
+          }
+          cursor.index = fixedBitSet.nextSetBit(cursor.index);
+          if (cursor.index != DocIdSetIterator.NO_MORE_DOCS) {
+            cursor.key = cursor.index;
+            cursor.value = get(cursor.key);
+            return cursor;
+          } else {
+            cursor.key = -1;
+            cursor.value = -1;
+            return done();
+          }
+        }
+      };
+    }
   }
 }
