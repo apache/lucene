@@ -136,25 +136,29 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraph.search(
             new float[] {1, 0},
             10,
-            5,
+            10,
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             null,
             random());
+
+    int[] nodes = nn.nodes();
+    assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
-    for (int node : nn.nodes()) {
+    for (int node : nodes) {
       sum += node;
     }
-    // We expect to get approximately 100% recall; the lowest docIds are closest to zero; sum(0,9) =
-    // 45
+    // We expect to get approximately 100% recall;
+    // the lowest docIds are closest to zero; sum(0,9) = 45
     assertTrue("sum(result docs)=" + sum, sum < 75);
+
     for (int i = 0; i < nDoc; i++) {
       NeighborArray neighbors = hnsw.getNeighbors(i);
-      int[] nodes = neighbors.node;
+      int[] nnodes = neighbors.node;
       for (int j = 0; j < neighbors.size(); j++) {
         // all neighbors should be valid node ids.
-        assertTrue(nodes[j] < nDoc);
+        assertTrue(nnodes[j] < nDoc);
       }
     }
   }
@@ -179,9 +183,9 @@ public class TestHnswGraph extends LuceneTestCase {
             hnsw,
             acceptOrds,
             random());
-    int sum = 0;
     int[] nodes = nn.nodes();
-    assert (nodes.length == 10);
+    assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
+    int sum = 0;
     for (int node : nodes) {
       assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
       sum += node;
@@ -495,7 +499,10 @@ public class TestHnswGraph extends LuceneTestCase {
     }
   }
 
-  /** Generate a random bitset where each entry has a 2/3 probability of being set. */
+  /**
+   * Generate a random bitset where before startIndex all bits are set, and after startIndex each
+   * entry has a 2/3 probability of being set.
+   */
   private static Bits createRandomAcceptOrds(int startIndex, int length) {
     FixedBitSet bits = new FixedBitSet(length);
     // all bits are set before startIndex
