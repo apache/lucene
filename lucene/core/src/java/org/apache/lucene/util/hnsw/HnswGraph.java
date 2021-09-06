@@ -244,7 +244,6 @@ public final class HnswGraph extends KnnGraphValues {
   }
 
   // TODO: optimize RAM usage so not to store references for all nodes for levels > 0
-  // TODO: add extra levels if level >= numLevels
   public void addNode(int level, int node) {
     if (level > 0) {
       // if the new node introduces a new level, add more levels to the graph,

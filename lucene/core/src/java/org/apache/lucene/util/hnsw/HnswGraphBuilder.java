@@ -67,17 +67,17 @@ public final class HnswGraphBuilder {
    * @param maxConn the number of connections to make when adding a new graph node; roughly speaking
    *     the graph fanout.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
+   * @param ml normalization factor for level generation
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
-   * @param ml normalization factor for level generation
    */
   public HnswGraphBuilder(
       RandomAccessVectorValuesProducer vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
-      long seed,
-      double ml) {
+      double ml,
+      long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);

@@ -480,7 +480,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       this.dataIn = dataIn;
     }
 
-    // TODO : implement hierarchy
     @Override
     public void seekLevel(int level) throws IOException {}
 

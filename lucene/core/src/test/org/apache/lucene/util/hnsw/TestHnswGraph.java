@@ -68,7 +68,7 @@ public class TestHnswGraph extends LuceneTestCase {
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
     HnswGraphBuilder builder =
-        new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, seed, 0);
+        new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0, seed);
     HnswGraph hnsw = builder.build(vectors);
 
     // Recreate the graph while indexing with the same random seed and write it out
@@ -140,7 +140,7 @@ public class TestHnswGraph extends LuceneTestCase {
     TestHnswGraph.CircularVectorValues vectors = new TestHnswGraph.CircularVectorValues(nDoc);
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt(), ml);
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, ml, random().nextInt());
     HnswGraph hnsw = builder.build(vectors);
     // run some searches
     NeighborQueue nn =
@@ -182,7 +182,7 @@ public class TestHnswGraph extends LuceneTestCase {
     for (double ml : new double[] {ml1, ml2}) {
       HnswGraphBuilder builder =
           new HnswGraphBuilder(
-              vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt(), ml);
+              vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, ml, random().nextInt());
       HnswGraph hnsw = builder.build(vectors);
       NeighborQueue nn =
           HnswGraph.search(
@@ -268,7 +268,7 @@ public class TestHnswGraph extends LuceneTestCase {
     // First add nodes until everybody gets a full neighbor list
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, 2, 10, random().nextInt(), 0);
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, 2, 10, 0, random().nextInt());
     // node 0 is added by the builder constructor
     // builder.addGraphNode(vectors.vectorValue(0));
     builder.addGraphNode(1, vectors.vectorValue(1));
@@ -325,7 +325,7 @@ public class TestHnswGraph extends LuceneTestCase {
     double ml = 1 / Math.log(1.0 * maxConn);
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 10, random().nextInt(), ml);
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 10, ml, random().nextInt());
     // node 0 is added by the builder constructor
     builder.addGraphNodeHNSW(1, vectors.vectorValue(1));
     builder.addGraphNodeHNSW(2, vectors.vectorValue(2));
@@ -393,7 +393,7 @@ public class TestHnswGraph extends LuceneTestCase {
 
     for (double ml : new double[] {ml1, ml2}) {
       HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, similarityFunction, maxConn, 30, random().nextLong(), ml);
+          new HnswGraphBuilder(vectors, similarityFunction, maxConn, 30, ml, random().nextLong());
       HnswGraph hnsw = builder.build(vectors);
       Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 

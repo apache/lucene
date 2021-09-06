@@ -47,7 +47,7 @@ public class TestHNSWGraph2 extends LuceneTestCase {
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
     HnswGraphBuilder builder =
-        new HnswGraphBuilder(values, similarityFunction, maxConn, beamWidth, seed, ml);
+        new HnswGraphBuilder(values, similarityFunction, maxConn, beamWidth, ml, seed);
     HnswGraph hnsw = builder.build(values);
     assertConsistentGraph(hnsw, maxConn);
   }
