@@ -204,7 +204,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     HnswGraphBuilder hnswGraphBuilder =
         new HnswGraphBuilder(
-            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+            vectorValues, similarityFunction, maxConn, beamWidth, 0, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 

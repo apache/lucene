@@ -253,7 +253,7 @@ public class KnnGraphTester {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
       HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, SIMILARITY_FUNCTION, maxConn, beamWidth, 0);
+          new HnswGraphBuilder(vectors, SIMILARITY_FUNCTION, maxConn, beamWidth, 0, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
         builder.addGraphNode(i, values.vectorValue(i));
@@ -296,8 +296,9 @@ public class KnnGraphTester {
     int min = Integer.MAX_VALUE, max = 0, total = 0;
     int count = 0;
     int[] leafHist = new int[numDocs];
+    knnValues.seekLevel(0);
     for (int node = 0; node < numDocs; node++) {
-      knnValues.seek(0, node);
+      knnValues.seek(node);
       int n = 0;
       while (knnValues.nextNeighbor() != NO_MORE_DOCS) {
         ++n;
