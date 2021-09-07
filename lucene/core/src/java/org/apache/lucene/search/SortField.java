@@ -130,6 +130,9 @@ public class SortField {
   // Used for 'sortMissingFirst/Last'
   protected Object missingValue = null;
 
+  // Indicates if numeric sort optimization is disabled. Enabled by default.
+  private boolean sortOptimizationDisabled = false;
+
   /**
    * Creates a sort by terms in the given field with the type of term values explicitly given.
    *
@@ -605,5 +608,21 @@ public class SortField {
       default:
         return null;
     }
+  }
+
+  /**
+   * Disable numeric sort optimization. By default sorting on a numeric field activates sort
+   * optimization that can efficiently skip non-competitive hits. Sort optimization has a number of
+   * requirements, one of which is that SortField.Type matches the Point type with which the field
+   * was indexed (e.g. sort on IntPoint field should use SortField.Type.INT).
+   *
+   * <p>This allows to disable sort optimization, in cases where these requirements can't be met.
+   */
+  public void disableSortOptimization() {
+    this.sortOptimizationDisabled = true;
+  }
+
+  protected boolean sortOptimizationDisabled() {
+    return sortOptimizationDisabled;
   }
 }

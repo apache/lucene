@@ -605,27 +605,30 @@ public class TestSortOptimization extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(reader);
+
+    SortField longSortOnIntField = new SortField("intField", SortField.Type.LONG);
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            searcher.search(
-                new MatchAllDocsQuery(),
-                1,
-                new Sort(new SortField("intField", SortField.Type.LONG))));
+        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField)));
+    // assert that when sort optimization is disabled we can use LONG sort on int field
+    longSortOnIntField.disableSortOptimization();
+    searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField));
+
+    SortField intSortOnLongField = new SortField("longField", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            searcher.search(
-                new MatchAllDocsQuery(),
-                1,
-                new Sort(new SortField("longField", SortField.Type.INT))));
+        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField)));
+    // assert that when sort optimization is disabled we can use INT sort on long field
+    intSortOnLongField.disableSortOptimization();
+    searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField));
+
+    SortField intSortOnIntRangeField = new SortField("intRange", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            searcher.search(
-                new MatchAllDocsQuery(),
-                1,
-                new Sort(new SortField("intRange", SortField.Type.INT))));
+        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField)));
+    // assert that when sort optimization is disabled we can use INT sort on intRange field
+    intSortOnIntRangeField.disableSortOptimization();
+    searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField));
 
     reader.close();
     dir.close();

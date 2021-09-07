@@ -135,6 +135,7 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
       SortField field = fields[i];
       reverseMul[i] = field.reverse ? -1 : 1;
       comparators[i] = field.getComparator(size, i);
+      if (field.sortOptimizationDisabled()) comparators[i].disableSkipping();
     }
     if (numComparators == 1) {
       // inform a comparator that sort is based on this single field
