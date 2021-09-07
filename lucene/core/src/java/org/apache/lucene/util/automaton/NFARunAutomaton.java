@@ -42,6 +42,7 @@ public class NFARunAutomaton implements Stepable, TransitionAccessor {
   private final Map<DState, Integer> dStateToOrd = new HashMap<>(); // could init lazily?
   private DState[] dStates;
   private final int alphabetSize;
+  final int[] classmap; // map from char number to class
 
   private final Operations.PointTransitionSet transitionSet = new Operations.PointTransitionSet(); // reusable
   private final StateSet statesSet = new StateSet(5); // reusable
@@ -69,6 +70,18 @@ public class NFARunAutomaton implements Stepable, TransitionAccessor {
     this.alphabetSize = alphabetSize;
     dStates = new DState[10];
     findDState(new DState(new int[] {0}));
+
+    /*
+     * Set alphabet table for optimal run performance.
+     */
+    classmap = new int[Math.min(256, alphabetSize)];
+    int i = 0;
+    for (int j = 0; j < classmap.length; j++) {
+      if (i + 1 < points.length && j == points[i + 1]) {
+        i++;
+      }
+      classmap[j] = i;
+    }
   }
 
   /**
@@ -141,6 +154,11 @@ public class NFARunAutomaton implements Stepable, TransitionAccessor {
   /** Gets character class of given codepoint */
   final int getCharClass(int c) {
     assert c < alphabetSize;
+
+    if (c < classmap.length) {
+      return classmap[c];
+    }
+
     // binary search
     int a = 0;
     int b = points.length;
