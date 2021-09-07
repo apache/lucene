@@ -594,28 +594,28 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new POS.Tag[] {POS.Tag.SL});
   }
 
-    public void testEmptyBacktrace() throws IOException {
-      String text = "";
+  public void testEmptyBacktrace() throws IOException {
+    String text = "";
 
-      // since the max backtrace gap ({@link KoreanTokenizer#MAX_BACKTRACE_GAP
-      // is set to 1024, we want the first 1023 characters to generate multiple paths
-      // so that the regular backtrace is not executed.
-      for (int i = 0; i < 1023; i++) {
-        text += "끙";
-      }
-
-      // and the last 2 characters to be a valid word so that they
-      // will end-up together
-      text += "언어";
-
-      List<String> outputs = new ArrayList<>();
-      outputs.add("끙");
-      for (int i = 0; i < 511; i++) {
-        outputs.add("끙끙");
-      }
-      outputs.add("언어");
-      assertAnalyzesTo(analyzer, text, outputs.toArray(new String[0]));
+    // since the max backtrace gap ({@link KoreanTokenizer#MAX_BACKTRACE_GAP
+    // is set to 1024, we want the first 1023 characters to generate multiple paths
+    // so that the regular backtrace is not executed.
+    for (int i = 0; i < 1023; i++) {
+      text += "끙";
     }
+
+    // and the last 2 characters to be a valid word so that they
+    // will end-up together
+    text += "언어";
+
+    List<String> outputs = new ArrayList<>();
+    outputs.add("끙");
+    for (int i = 0; i < 511; i++) {
+      outputs.add("끙끙");
+    }
+    outputs.add("언어");
+    assertAnalyzesTo(analyzer, text, outputs.toArray(new String[0]));
+  }
 
   private void assertReadings(Analyzer analyzer, String input, String... readings)
       throws IOException {
