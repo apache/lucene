@@ -936,6 +936,11 @@ public final class KoreanTokenizer extends Tokenizer {
     if (pos > 0) {
 
       final Position endPosData = positions.get(pos);
+      if (endPosData.pos == lastBackTracePos) {
+        // no more characters after the last backtrace; return no tokens!
+        return;
+      }
+
       int leastCost = Integer.MAX_VALUE;
       int leastIDX = -1;
       if (VERBOSE) {
@@ -963,6 +968,11 @@ public final class KoreanTokenizer extends Tokenizer {
   // (last token should be returned first).
   private void backtrace(final Position endPosData, final int fromIDX) {
     final int endPos = endPosData.pos;
+
+    // empty backtrace
+    if (endPos == lastBackTracePos) {
+      return;
+    }
 
     if (VERBOSE) {
       System.out.println(
