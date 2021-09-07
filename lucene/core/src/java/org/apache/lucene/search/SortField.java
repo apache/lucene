@@ -19,6 +19,10 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Objects;
+import org.apache.lucene.document.DoublePoint;
+import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexSorter;
 import org.apache.lucene.index.SortFieldProvider;
@@ -68,25 +72,25 @@ public class SortField {
 
     /**
      * Sort using term values as encoded Integers. Sort values are Integer and lower values are at
-     * the front.
+     * the front. Fields must either be not indexed, or indexed with {@link IntPoint}.
      */
     INT,
 
     /**
      * Sort using term values as encoded Floats. Sort values are Float and lower values are at the
-     * front.
+     * front. Fields must either be not indexed, or indexed with {@link FloatPoint}.
      */
     FLOAT,
 
     /**
      * Sort using term values as encoded Longs. Sort values are Long and lower values are at the
-     * front.
+     * front. Fields must either be not indexed, or indexed with {@link LongPoint}.
      */
     LONG,
 
     /**
      * Sort using term values as encoded Doubles. Sort values are Double and lower values are at the
-     * front.
+     * front. Fields must either be not indexed, or indexed with {@link DoublePoint}.
      */
     DOUBLE,
 
