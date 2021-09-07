@@ -910,5 +910,10 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     outputs.add("手紙");
 
     assertAnalyzesTo(analyzer, text, outputs.toArray(new String[0]));
+    try (TokenStream ts = analyzerNormalNBest.tokenStream("", text)) {
+      ts.reset();
+      while (ts.incrementToken()) {}
+      ts.end();
+    }
   }
 }

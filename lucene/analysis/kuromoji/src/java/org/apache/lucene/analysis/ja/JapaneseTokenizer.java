@@ -1021,6 +1021,11 @@ public final class JapaneseTokenizer extends Tokenizer {
     if (pos > 0) {
 
       final Position endPosData = positions.get(pos);
+      if (endPosData.pos == lastBackTracePos) {
+        // no more characters after the last backtrace; return no tokens!
+        return;
+      }
+
       int leastCost = Integer.MAX_VALUE;
       int leastIDX = -1;
       if (VERBOSE) {
@@ -1764,15 +1769,6 @@ public final class JapaneseTokenizer extends Tokenizer {
   // (last token should be returned first).
   private void backtrace(final Position endPosData, final int fromIDX) throws IOException {
     final int endPos = endPosData.pos;
-
-    /**
-     * LUCENE-10059: If the endPos is the same as lastBackTracePos, we don't want to backtrace to
-     * avoid an assertion error {@link RollingCharBuffer#get(int)} when it tries to generate an
-     * empty buffer
-     */
-    if (endPos == lastBackTracePos) {
-      return;
-    }
 
     if (VERBOSE) {
       System.out.println(
