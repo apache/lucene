@@ -141,7 +141,7 @@ API Changes
   The Weight#count API represents a cleaner way for Query classes to optimize their counting method.
   (Gautam Worah, Adrien Grand)
 
-* LUCENE-10089 Add a method to SortField that allows to disable numeric sort
+* LUCENE-10089: Add a method to SortField that allows to disable numeric sort
   optimization to use the points index to skip over non-competitive documents,
   which is enabled by default from 9.0 (Mayya Sharipova, Adrien Grand)
 

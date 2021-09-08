@@ -130,8 +130,8 @@ public class SortField {
   // Used for 'sortMissingFirst/Last'
   protected Object missingValue = null;
 
-  // Indicates if numeric sort optimization is disabled. Enabled by default.
-  private boolean pointSortOptimizationDisabled = false;
+  // Indicates if numeric sort should be optimized with Points index. Set to true by default.
+  @Deprecated private boolean optimizeSortWithPoints = true;
 
   /**
    * Creates a sort by terms in the given field with the type of term values explicitly given.
@@ -623,12 +623,18 @@ public class SortField {
    * @deprecated should only be used for compatibility with 8.x indices that got created with
    *     inconsistent data across fields, or the wrong sort configuration in the index sort
    */
-  @Deprecated // Remove in Lucene 9
-  public void disablePointSortOptimization() {
-    this.pointSortOptimizationDisabled = true;
+  @Deprecated // Remove in Lucene 10
+  public void disableSortOptimizationWithPoints() {
+    this.optimizeSortWithPoints = false;
   }
 
-  protected boolean pointSortOptimizationDisabled() {
-    return pointSortOptimizationDisabled;
+  /**
+   * Returns whether sort optimization should be optimized with points index
+   *
+   * @return whether sort optimization should be optimized with points index
+   */
+  @Deprecated // Remove in Lucene 10
+  public boolean getOptimizeSortWithPoints() {
+    return optimizeSortWithPoints;
   }
 }
