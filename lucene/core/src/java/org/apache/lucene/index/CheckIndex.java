@@ -489,8 +489,7 @@ public final class CheckIndex implements Closeable {
     threadCount = tc;
   }
 
-  // capped threadCount at 4 for default
-  private int threadCount = Math.min(Runtime.getRuntime().availableProcessors(), 4);
+  private int threadCount = Runtime.getRuntime().availableProcessors();
 
   /**
    * Set infoStream where messages should go. If null, no messages are printed. If verbose is true
@@ -3994,8 +3993,8 @@ public final class CheckIndex implements Closeable {
               + "  -segment X: only check the specified segments.  This can be specified multiple\n"
               + "              times, to check more than one segment, eg '-segment _2 -segment _a'.\n"
               + "              You can't use this with the -exorcise option\n"
-              + "  -threadCount X: number of new threads created and used to check index concurrently.\n"
-              + "                  When not specified, this will default to the number of CPU cores up to 4.\n"
+              + "  -threadCount X: number of threads used to check index concurrently.\n"
+              + "                  When not specified, this will default to the number of CPU cores.\n"
               + "                  When '-threadCount 1' is used, index checking will be performed sequentially.\n"
               + "  -dir-impl X: use a specific "
               + FSDirectory.class.getSimpleName()
