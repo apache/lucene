@@ -611,7 +611,7 @@ public class TestSortOptimization extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField)));
     // assert that when sort optimization is disabled we can use LONG sort on int field
-    longSortOnIntField.disableSortOptimization();
+    longSortOnIntField.disablePointSortOptimization();
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField));
 
     SortField intSortOnLongField = new SortField("longField", SortField.Type.INT);
@@ -619,7 +619,7 @@ public class TestSortOptimization extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField)));
     // assert that when sort optimization is disabled we can use INT sort on long field
-    intSortOnLongField.disableSortOptimization();
+    intSortOnLongField.disablePointSortOptimization();
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField));
 
     SortField intSortOnIntRangeField = new SortField("intRange", SortField.Type.INT);
@@ -627,7 +627,7 @@ public class TestSortOptimization extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField)));
     // assert that when sort optimization is disabled we can use INT sort on intRange field
-    intSortOnIntRangeField.disableSortOptimization();
+    intSortOnIntRangeField.disablePointSortOptimization();
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField));
 
     reader.close();

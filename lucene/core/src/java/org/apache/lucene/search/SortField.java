@@ -131,7 +131,7 @@ public class SortField {
   protected Object missingValue = null;
 
   // Indicates if numeric sort optimization is disabled. Enabled by default.
-  private boolean sortOptimizationDisabled = false;
+  private boolean pointSortOptimizationDisabled = false;
 
   /**
    * Creates a sort by terms in the given field with the type of term values explicitly given.
@@ -611,18 +611,24 @@ public class SortField {
   }
 
   /**
-   * Disable numeric sort optimization. By default sorting on a numeric field activates sort
-   * optimization that can efficiently skip non-competitive hits. Sort optimization has a number of
-   * requirements, one of which is that SortField.Type matches the Point type with which the field
-   * was indexed (e.g. sort on IntPoint field should use SortField.Type.INT).
+   * Disable numeric sort optimization to use the Points index to skip over non-competitive
+   * documents. By default sorting on a numeric field activates point sort optimization that can
+   * efficiently skip non-competitive hits. Sort optimization has a number of requirements, one of
+   * which is that SortField.Type matches the Point type with which the field was indexed (e.g. sort
+   * on IntPoint field should use SortField.Type.INT). Another requirement is that the same data is
+   * indexed with points and doc values for the field.
    *
    * <p>This allows to disable sort optimization, in cases where these requirements can't be met.
+   *
+   * @deprecated should only be used for compatibility with 8.x indices that got created with
+   *     inconsistent data across fields, or the wrong sort configuration in the index sort
    */
-  public void disableSortOptimization() {
-    this.sortOptimizationDisabled = true;
+  @Deprecated // Remove in Lucene 9
+  public void disablePointSortOptimization() {
+    this.pointSortOptimizationDisabled = true;
   }
 
-  protected boolean sortOptimizationDisabled() {
-    return sortOptimizationDisabled;
+  protected boolean pointSortOptimizationDisabled() {
+    return pointSortOptimizationDisabled;
   }
 }
