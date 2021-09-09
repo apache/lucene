@@ -481,10 +481,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public void seekLevel(int level) throws IOException {}
-
-    @Override
-    public void seek(int targetOrd) throws IOException {
+    public void seek(int level, int targetOrd) throws IOException {
       // unsafe; no bounds checking
       dataIn.seek(entry.ordOffsets[targetOrd]);
       arcCount = dataIn.readInt();

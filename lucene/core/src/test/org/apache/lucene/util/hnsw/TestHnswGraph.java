@@ -523,11 +523,9 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   private void assertGraphEqual(KnnGraphValues g, KnnGraphValues h, int size) throws IOException {
-    g.seekLevel(0);
-    h.seekLevel(0);
     for (int node = 0; node < size; node++) {
-      g.seek(node);
-      h.seek(node);
+      g.seek(0, node);
+      h.seek(0, node);
       assertEquals("arcs differ for node " + node, getNeighborNodes(g), getNeighborNodes(h));
     }
   }
