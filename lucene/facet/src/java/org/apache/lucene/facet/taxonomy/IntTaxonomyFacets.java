@@ -275,14 +275,14 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
 
     public int addTo(int key, int incrementValue) {
-      if (!fixedBitSet.getAndSet(key) && incrementValue == 1) {
+      assert incrementValue > 0;
+      if (fixedBitSet.getAndSet(key) == false && incrementValue == 1) {
         return 1;
+      } else if (intIntHashMap.containsKey(key)) {
+        return intIntHashMap.addTo(key, incrementValue);
+      } else {
+        return intIntHashMap.put(key, incrementValue + 1);
       }
-      int currentValue = intIntHashMap.addTo(key, incrementValue);
-      if (currentValue == 1) {
-        intIntHashMap.remove(key);
-      }
-      return currentValue;
     }
 
     public int get(int key) {
