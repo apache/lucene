@@ -331,6 +331,7 @@ public final class HnswGraph extends KnnGraphValues {
    * @param level level for which to get all nodes
    * @return an iterator over nodes where {@code nextDoc} returns a next node
    */
+  // TODO: return a more suitable iterator over nodes than DocIdSetIterator
   public DocIdSetIterator getAllNodesOnLevel(int level) {
     return new DocIdSetIterator() {
       int[] nodes = level == 0 ? null : nodesByLevel.get(level);
