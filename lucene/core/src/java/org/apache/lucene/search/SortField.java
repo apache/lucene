@@ -611,21 +611,22 @@ public class SortField {
   }
 
   /**
-   * Disable numeric sort optimization to use the Points index to skip over non-competitive
-   * documents. By default sorting on a numeric field activates point sort optimization that can
-   * efficiently skip non-competitive hits. Sort optimization has a number of requirements, one of
-   * which is that SortField.Type matches the Point type with which the field was indexed (e.g. sort
-   * on IntPoint field should use SortField.Type.INT). Another requirement is that the same data is
-   * indexed with points and doc values for the field.
+   * Enables/disables numeric sort optimization to use the Points index.
    *
-   * <p>This allows to disable sort optimization, in cases where these requirements can't be met.
+   * <p>Enabled by default. By default, sorting on a numeric field activates point sort optimization
+   * that can efficiently skip over non-competitive hits. Sort optimization has a number of
+   * requirements, one of which is that SortField.Type matches the Point type with which the field
+   * was indexed (e.g. sort on IntPoint field should use SortField.Type.INT). Another requirement is
+   * that the same data is indexed with points and doc values for the field.
    *
+   * @param optimizeSortWithPoints providing {@code false} disables the optimization, in cases where
+   *     these requirements can't be met.
    * @deprecated should only be used for compatibility with 8.x indices that got created with
    *     inconsistent data across fields, or the wrong sort configuration in the index sort
    */
   @Deprecated // Remove in Lucene 10
-  public void disableSortOptimizationWithPoints() {
-    this.optimizeSortWithPoints = false;
+  public void setOptimizeSortWithPoints(boolean optimizeSortWithPoints) {
+    this.optimizeSortWithPoints = optimizeSortWithPoints;
   }
 
   /**
