@@ -67,18 +67,17 @@ public class TestHNSWGraph2 extends LuceneTestCase {
    * <p>copy from TestKnnGraph::assertConsistentGraph with parts relevant only to in-memory graphs
    * TODO: remove when hierarchical graph is implemented on disk
    */
-  private static void assertConsistentGraph(HnswGraph hnsw, int maxConn) {
+  private static void assertConsistentGraph(HnswGraph hnsw, int maxConn) throws IOException {
     for (int level = hnsw.maxLevel(); level >= 0; level--) {
-      hnsw.seekLevel(level);
-
       int[][] graph = new int[hnsw.size()][];
       int nodesCount = 0;
       boolean foundOrphan = false;
 
-      for (int node = hnsw.nextNodeOnLevel();
+      DocIdSetIterator nodesItr = hnsw.getAllNodesOnLevel(level);
+      for (int node = nodesItr.nextDoc();
           node != DocIdSetIterator.NO_MORE_DOCS;
-          node = hnsw.nextNodeOnLevel()) {
-        hnsw.seek(node);
+          node = nodesItr.nextDoc()) {
+        hnsw.seek(level, node);
         int arc;
         List<Integer> friends = new ArrayList<>();
         while ((arc = hnsw.nextNeighbor()) != NO_MORE_DOCS) {

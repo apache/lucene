@@ -32,28 +32,21 @@ public abstract class KnnGraphValues {
   protected KnnGraphValues() {}
 
   /**
-   * Positions the graph on the given {@code level}. After this method returns, call {@link
-   * #seek(int)} to position the graph on a specific node of the current level.
-   *
-   * @param level level of the graph
-   */
-  public abstract void seekLevel(int level) throws IOException;
-
-  /**
-   * Move the pointer to exactly {@code target}, the id of a node in the graph. After this method
+   * Move the pointer to exactly the given {@code level}'s {@code target}. After this method
    * returns, call {@link #nextNeighbor()} to return successive (ordered) connected node ordinals.
    *
-   * @param target must be a valid node in the graph, ie. &ge; 0 and &lt; {@link
+   * @param level level of the graph
+   * @param target ordinal of a node in the graph, must be &ge; 0 and &lt; {@link
    *     VectorValues#size()}.
    */
-  public abstract void seek(int target) throws IOException;
+  public abstract void seek(int level, int target) throws IOException;
 
   /** Returns the number of nodes in the graph */
   public abstract int size();
 
   /**
    * Iterates over the neighbor list. It is illegal to call this method after it returns
-   * NO_MORE_DOCS without calling {@link #seek(int)}, which resets the iterator.
+   * NO_MORE_DOCS without calling {@link #seek(int, int)}, which resets the iterator.
    *
    * @return a node ordinal in the graph, or NO_MORE_DOCS if the iteration is complete.
    */
@@ -75,10 +68,7 @@ public abstract class KnnGraphValues {
         }
 
         @Override
-        public void seekLevel(int level) {}
-
-        @Override
-        public void seek(int target) {}
+        public void seek(int level, int target) {}
 
         @Override
         public int size() {

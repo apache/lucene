@@ -27,6 +27,7 @@ import java.util.Random;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
@@ -75,10 +76,6 @@ public final class HnswGraph extends KnnGraphValues {
   // KnnGraphValues iterator members
   private int upto;
   private NeighborArray cur;
-
-  // used for iterating over graph values
-  private int curLevel = -1;
-  private int curNodeOrd = -1;
 
   HnswGraph(int maxConn, int levelOfFirstNode) {
     this.maxConn = maxConn;
@@ -180,7 +177,6 @@ public final class HnswGraph extends KnnGraphValues {
       Bits acceptOrds)
       throws IOException {
 
-    graphValues.seekLevel(level);
     int size = graphValues.size();
     int queueSize = Math.max(eps.length, topK);
     // MIN heap, holding the top results
@@ -214,7 +210,7 @@ public final class HnswGraph extends KnnGraphValues {
         }
       }
       int topCandidateNode = candidates.pop();
-      graphValues.seek(topCandidateNode);
+      graphValues.seek(level, topCandidateNode);
       int friendOrd;
       while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
@@ -250,9 +246,9 @@ public final class HnswGraph extends KnnGraphValues {
     if (level == 0) {
       return graph.get(level).get(node);
     }
-    int nodeOrd = Arrays.binarySearch(nodesByLevel.get(level), 0, graph.get(level).size(), node);
-    assert nodeOrd >= 0;
-    return graph.get(level).get(nodeOrd);
+    int nodeIndex = Arrays.binarySearch(nodesByLevel.get(level), 0, graph.get(level).size(), node);
+    assert nodeIndex >= 0;
+    return graph.get(level).get(nodeIndex);
   }
 
   @Override
@@ -295,39 +291,9 @@ public final class HnswGraph extends KnnGraphValues {
   }
 
   @Override
-  public void seek(int targetNode) {
-    cur = getNeighbors(curLevel, targetNode);
+  public void seek(int level, int targetNode) {
+    cur = getNeighbors(level, targetNode);
     upto = -1;
-  }
-
-  /**
-   * Positions the graph on the given level. Must be used before iterating over nodes on this level
-   * with the method {@code nextNodeOnLevel()}.
-   *
-   * <p>Package private access to use only for tests
-   */
-  @Override
-  public void seekLevel(int level) {
-    curLevel = level;
-    curNodeOrd = -1;
-  }
-
-  /**
-   * Returns the next node on the current level expressed as ordinals of nodes on the 0th level.
-   *
-   * <p>Must be used after the graph was positioned on the current level with {@code seekLevel(int)}
-   *
-   * <p>Package private access to use only for tests
-   *
-   * @return next node on the current level represented as an ordinal on the level 0.
-   */
-  int nextNodeOnLevel() {
-    curNodeOrd++;
-    if (curNodeOrd < graph.get(curLevel).size()) {
-      return curLevel == 0 ? curNodeOrd : nodesByLevel.get(curLevel)[curNodeOrd];
-    } else {
-      return NO_MORE_DOCS;
-    }
   }
 
   @Override
@@ -357,5 +323,44 @@ public final class HnswGraph extends KnnGraphValues {
   @Override
   public int entryNode() {
     return entryNode;
+  }
+
+  /**
+   * Get all nodes on a given level as node 0th ordinals
+   *
+   * @param level level for which to get all nodes
+   * @return an iterator over nodes where {@code nextDoc} returns a next node
+   */
+  public DocIdSetIterator getAllNodesOnLevel(int level) {
+    return new DocIdSetIterator() {
+      int[] nodes = level == 0 ? null : nodesByLevel.get(level);
+      int size = level == 0 ? size() : graph.get(level).size();
+      int idx = -1;
+
+      @Override
+      public int docID() {
+        return level == 0 ? idx : nodes[idx];
+      }
+
+      @Override
+      public int nextDoc() {
+        idx++;
+        if (idx >= size) {
+          idx = NO_MORE_DOCS;
+          return NO_MORE_DOCS;
+        }
+        return level == 0 ? idx : nodes[idx];
+      }
+
+      @Override
+      public int advance(int target) {
+        throw new UnsupportedOperationException("Not supported");
+      }
+
+      @Override
+      public long cost() {
+        throw new UnsupportedOperationException("Not supported");
+      }
+    };
   }
 }
