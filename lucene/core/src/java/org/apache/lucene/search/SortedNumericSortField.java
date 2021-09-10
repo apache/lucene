@@ -242,9 +242,10 @@ public class SortedNumericSortField extends SortField {
 
   @Override
   public FieldComparator<?> getComparator(int numHits, int sortPos) {
+    final FieldComparator<?> fieldComparator;
     switch (type) {
       case INT:
-        return new IntComparator(numHits, getField(), (Integer) missingValue, reverse, sortPos) {
+        fieldComparator = new IntComparator(numHits, getField(), (Integer) missingValue, reverse, sortPos) {
           @Override
           public LeafFieldComparator getLeafComparator(LeafReaderContext context)
               throws IOException {
@@ -258,8 +259,9 @@ public class SortedNumericSortField extends SortField {
             };
           }
         };
+        break;
       case FLOAT:
-        return new FloatComparator(numHits, getField(), (Float) missingValue, reverse, sortPos) {
+        fieldComparator = new FloatComparator(numHits, getField(), (Float) missingValue, reverse, sortPos) {
           @Override
           public LeafFieldComparator getLeafComparator(LeafReaderContext context)
               throws IOException {
@@ -273,8 +275,9 @@ public class SortedNumericSortField extends SortField {
             };
           }
         };
+        break;
       case LONG:
-        return new LongComparator(numHits, getField(), (Long) missingValue, reverse, sortPos) {
+        fieldComparator = new LongComparator(numHits, getField(), (Long) missingValue, reverse, sortPos) {
           @Override
           public LeafFieldComparator getLeafComparator(LeafReaderContext context)
               throws IOException {
@@ -288,8 +291,9 @@ public class SortedNumericSortField extends SortField {
             };
           }
         };
+        break;
       case DOUBLE:
-        return new DoubleComparator(numHits, getField(), (Double) missingValue, reverse, sortPos) {
+        fieldComparator = new DoubleComparator(numHits, getField(), (Double) missingValue, reverse, sortPos) {
           @Override
           public LeafFieldComparator getLeafComparator(LeafReaderContext context)
               throws IOException {
@@ -303,6 +307,7 @@ public class SortedNumericSortField extends SortField {
             };
           }
         };
+        break;
       case CUSTOM:
       case DOC:
       case REWRITEABLE:
@@ -312,6 +317,10 @@ public class SortedNumericSortField extends SortField {
       default:
         throw new AssertionError();
     }
+    if (getOptimizeSortWithPoints() == false) {
+      fieldComparator.disableSkipping();
+    }
+    return fieldComparator;
   }
 
   private NumericDocValues getValue(LeafReader reader) throws IOException {
