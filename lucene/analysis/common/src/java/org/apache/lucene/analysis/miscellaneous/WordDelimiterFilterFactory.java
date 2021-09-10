@@ -18,10 +18,9 @@ package org.apache.lucene.analysis.miscellaneous;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.CharArraySet;
@@ -158,7 +157,8 @@ public class WordDelimiterFilterFactory extends TokenFilterFactory implements Re
 
   // parses a list of MappingCharFilter style rules into a custom byte[] type table
   private byte[] parseTypes(List<String> rules) {
-    SortedMap<Character, Byte> typeMap = new TreeMap<>();
+    Map<Character, Byte> typeMap = new HashMap<>();
+    char maxChar = 0;
     for (String rule : rules) {
       Matcher m = typePattern.matcher(rule);
       if (!m.find()) throw new IllegalArgumentException("Invalid Mapping Rule : [" + rule + "]");
@@ -169,14 +169,16 @@ public class WordDelimiterFilterFactory extends TokenFilterFactory implements Re
             "Invalid Mapping Rule : [" + rule + "]. Only a single character is allowed.");
       if (rhs == null)
         throw new IllegalArgumentException("Invalid Mapping Rule : [" + rule + "]. Illegal type.");
-      typeMap.put(lhs.charAt(0), rhs);
+      char c = lhs.charAt(0);
+      typeMap.put(c, rhs);
+      if (c > maxChar) {
+        maxChar = c;
+      }
     }
 
     // ensure the table is always at least as big as DEFAULT_WORD_DELIM_TABLE for performance
     byte[] types =
-        new byte
-            [Math.max(
-                typeMap.lastKey() + 1, WordDelimiterIterator.DEFAULT_WORD_DELIM_TABLE.length)];
+        new byte[Math.max(maxChar + 1, WordDelimiterIterator.DEFAULT_WORD_DELIM_TABLE.length)];
     for (int i = 0; i < types.length; i++) types[i] = WordDelimiterIterator.getType(i);
     for (Map.Entry<Character, Byte> mapping : typeMap.entrySet())
       types[mapping.getKey()] = mapping.getValue();
