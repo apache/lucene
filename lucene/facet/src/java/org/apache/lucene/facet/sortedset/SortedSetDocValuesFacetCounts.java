@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.facet.FacetResult;
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
@@ -44,6 +45,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
 
@@ -152,7 +154,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   }
 
   private void countOneSegment(
-      OrdinalMap ordinalMap, LeafReader reader, int segOrd, MatchingDocs hits) throws IOException {
+      OrdinalMap ordinalMap, LeafReader reader, int segOrd, MatchingDocs hits, Bits liveDocs)
+      throws IOException {
     SortedSetDocValues multiValues = DocValues.getSortedSet(reader, field);
     if (multiValues == null) {
       // nothing to count
@@ -166,7 +169,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
     DocIdSetIterator it;
     if (hits == null) {
-      it = valuesIt;
+      it = (liveDocs != null) ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
     } else {
       it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
     }
@@ -272,7 +275,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
             "the SortedSetDocValuesReaderState provided to this class does not match the reader being searched; you must create a new SortedSetDocValuesReaderState every time you open a new IndexReader");
       }
 
-      countOneSegment(ordinalMap, hits.context.reader(), hits.context.ord, hits);
+      countOneSegment(ordinalMap, hits.context.reader(), hits.context.ord, hits, null);
     }
   }
 
@@ -291,7 +294,9 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     }
 
     for (LeafReaderContext context : state.getReader().leaves()) {
-      countOneSegment(ordinalMap, context.reader(), context.ord, null);
+
+      countOneSegment(
+          ordinalMap, context.reader(), context.ord, null, context.reader().getLiveDocs());
     }
   }
 
