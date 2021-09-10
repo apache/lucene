@@ -1719,7 +1719,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("id", "1")), BooleanClause.Occur.FILTER)
             .build();
-    assertEquals(1, searcher.count(query));
+    searcher.search(query, 10);
     assertEquals(1, queryCache.getCacheSize());
     assertEquals(0, queryCache.getEvictionCount());
 
