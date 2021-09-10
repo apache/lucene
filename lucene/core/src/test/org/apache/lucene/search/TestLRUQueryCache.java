@@ -1860,6 +1860,30 @@ public class TestLRUQueryCache extends LuceneTestCase {
     dir.close();
   }
 
+  public void testCountDelegation() throws IOException {
+    Directory dir = newDirectory();
+    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(new StringField("foo", "bar", Store.NO));
+    int numDocs = random().nextInt(100) + 20;
+    for (int i = 0; i < numDocs; i++) {
+      w.addDocument(doc);
+    }
+    final IndexReader reader = w.getReader();
+    final IndexSearcher searcher = newSearcher(reader);
+    searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+    Query q = new TermQuery(new Term("foo", "bar"));
+    searcher.count(q); // add to cache
+
+    Weight weight = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE_NO_SCORES, 1);
+    assertNotEquals(-1, weight.count(reader.leaves().get(0)));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
   public void testSkipCachingForTermQuery() throws IOException {
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
