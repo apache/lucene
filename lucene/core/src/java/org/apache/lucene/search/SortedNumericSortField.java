@@ -245,68 +245,72 @@ public class SortedNumericSortField extends SortField {
     final FieldComparator<?> fieldComparator;
     switch (type) {
       case INT:
-        fieldComparator = new IntComparator(numHits, getField(), (Integer) missingValue, reverse, sortPos) {
-          @Override
-          public LeafFieldComparator getLeafComparator(LeafReaderContext context)
-              throws IOException {
-            return new IntLeafComparator(context) {
+        fieldComparator =
+            new IntComparator(numHits, getField(), (Integer) missingValue, reverse, sortPos) {
               @Override
-              protected NumericDocValues getNumericDocValues(
-                  LeafReaderContext context, String field) throws IOException {
-                return SortedNumericSelector.wrap(
-                    DocValues.getSortedNumeric(context.reader(), field), selector, type);
+              public LeafFieldComparator getLeafComparator(LeafReaderContext context)
+                  throws IOException {
+                return new IntLeafComparator(context) {
+                  @Override
+                  protected NumericDocValues getNumericDocValues(
+                      LeafReaderContext context, String field) throws IOException {
+                    return SortedNumericSelector.wrap(
+                        DocValues.getSortedNumeric(context.reader(), field), selector, type);
+                  }
+                };
               }
             };
-          }
-        };
         break;
       case FLOAT:
-        fieldComparator = new FloatComparator(numHits, getField(), (Float) missingValue, reverse, sortPos) {
-          @Override
-          public LeafFieldComparator getLeafComparator(LeafReaderContext context)
-              throws IOException {
-            return new FloatLeafComparator(context) {
+        fieldComparator =
+            new FloatComparator(numHits, getField(), (Float) missingValue, reverse, sortPos) {
               @Override
-              protected NumericDocValues getNumericDocValues(
-                  LeafReaderContext context, String field) throws IOException {
-                return SortedNumericSelector.wrap(
-                    DocValues.getSortedNumeric(context.reader(), field), selector, type);
+              public LeafFieldComparator getLeafComparator(LeafReaderContext context)
+                  throws IOException {
+                return new FloatLeafComparator(context) {
+                  @Override
+                  protected NumericDocValues getNumericDocValues(
+                      LeafReaderContext context, String field) throws IOException {
+                    return SortedNumericSelector.wrap(
+                        DocValues.getSortedNumeric(context.reader(), field), selector, type);
+                  }
+                };
               }
             };
-          }
-        };
         break;
       case LONG:
-        fieldComparator = new LongComparator(numHits, getField(), (Long) missingValue, reverse, sortPos) {
-          @Override
-          public LeafFieldComparator getLeafComparator(LeafReaderContext context)
-              throws IOException {
-            return new LongLeafComparator(context) {
+        fieldComparator =
+            new LongComparator(numHits, getField(), (Long) missingValue, reverse, sortPos) {
               @Override
-              protected NumericDocValues getNumericDocValues(
-                  LeafReaderContext context, String field) throws IOException {
-                return SortedNumericSelector.wrap(
-                    DocValues.getSortedNumeric(context.reader(), field), selector, type);
+              public LeafFieldComparator getLeafComparator(LeafReaderContext context)
+                  throws IOException {
+                return new LongLeafComparator(context) {
+                  @Override
+                  protected NumericDocValues getNumericDocValues(
+                      LeafReaderContext context, String field) throws IOException {
+                    return SortedNumericSelector.wrap(
+                        DocValues.getSortedNumeric(context.reader(), field), selector, type);
+                  }
+                };
               }
             };
-          }
-        };
         break;
       case DOUBLE:
-        fieldComparator = new DoubleComparator(numHits, getField(), (Double) missingValue, reverse, sortPos) {
-          @Override
-          public LeafFieldComparator getLeafComparator(LeafReaderContext context)
-              throws IOException {
-            return new DoubleLeafComparator(context) {
+        fieldComparator =
+            new DoubleComparator(numHits, getField(), (Double) missingValue, reverse, sortPos) {
               @Override
-              protected NumericDocValues getNumericDocValues(
-                  LeafReaderContext context, String field) throws IOException {
-                return SortedNumericSelector.wrap(
-                    DocValues.getSortedNumeric(context.reader(), field), selector, type);
+              public LeafFieldComparator getLeafComparator(LeafReaderContext context)
+                  throws IOException {
+                return new DoubleLeafComparator(context) {
+                  @Override
+                  protected NumericDocValues getNumericDocValues(
+                      LeafReaderContext context, String field) throws IOException {
+                    return SortedNumericSelector.wrap(
+                        DocValues.getSortedNumeric(context.reader(), field), selector, type);
+                  }
+                };
               }
             };
-          }
-        };
         break;
       case CUSTOM:
       case DOC:

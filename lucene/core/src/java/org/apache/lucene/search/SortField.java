@@ -512,11 +512,13 @@ public class SortField {
         break;
 
       case INT:
-        fieldComparator = new IntComparator(numHits, field, (Integer) missingValue, reverse, sortPos);
+        fieldComparator =
+            new IntComparator(numHits, field, (Integer) missingValue, reverse, sortPos);
         break;
 
       case FLOAT:
-        fieldComparator = new FloatComparator(numHits, field, (Float) missingValue, reverse, sortPos);
+        fieldComparator =
+            new FloatComparator(numHits, field, (Float) missingValue, reverse, sortPos);
         break;
 
       case LONG:
@@ -524,7 +526,8 @@ public class SortField {
         break;
 
       case DOUBLE:
-        fieldComparator = new DoubleComparator(numHits, field, (Double) missingValue, reverse, sortPos);
+        fieldComparator =
+            new DoubleComparator(numHits, field, (Double) missingValue, reverse, sortPos);
         break;
 
       case CUSTOM:
@@ -537,7 +540,8 @@ public class SortField {
             numHits, field, missingValue == STRING_LAST);
 
       case STRING_VAL:
-        fieldComparator = new FieldComparator.TermValComparator(numHits, field, missingValue == STRING_LAST);
+        fieldComparator =
+            new FieldComparator.TermValComparator(numHits, field, missingValue == STRING_LAST);
         break;
 
       case REWRITEABLE:
