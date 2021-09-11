@@ -1877,7 +1877,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     searcher.count(q); // add to cache
 
     Weight weight = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE_NO_SCORES, 1);
-    assertNotEquals(-1, weight.count(reader.leaves().get(0)));
+    assertNotEquals(-1, weight.count(searcher.reader.leaves().get(0)));
 
     reader.close();
     w.close();
