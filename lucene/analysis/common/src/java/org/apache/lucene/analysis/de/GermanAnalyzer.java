@@ -45,7 +45,13 @@ import org.apache.lucene.util.IOUtils;
  * <p><b>NOTE</b>: This class uses the same {@link org.apache.lucene.util.Version} dependent
  * settings as {@link StandardAnalyzer}.
  *
+ * <p><b>NOTE</b>: This class does not decompound nouns, additional data files are needed. You can
+ * find these data files and example code for decompounding <a
+ * href="https://github.com/uschindler/german-decompounder#lucene-api-example">here</a>.
+ *
  * @since 3.1
+ * @see <a
+ *     href="https://github.com/uschindler/german-decompounder">https://github.com/uschindler/german-decompounder</a>
  */
 public final class GermanAnalyzer extends StopwordAnalyzerBase {
 
