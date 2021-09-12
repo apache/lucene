@@ -23,7 +23,8 @@ allprojects {
   plugins.withType(JavaPlugin) {
     ext {
       testOptions += [
-          [propName: 'tests.profile', value: false, description: "Enable java flight recorder profiling."]
+          [propName: 'tests.profile', value: false, description: "Enable java flight recorder profiling."],
+          [propName: 'tests.asyncprofile', value: false, description: "Enable asyncprofiler profiling."]
       ]
     }
 
@@ -43,6 +44,28 @@ allprojects {
         }
       }
     }
+
+
+    if (resolvedTestOption("tests.asyncprofile").toBoolean()) {
+      allprojects {
+        tasks.withType(Test) {
+          jvmArgs("-javaagent:" + project.rootProject.file('buildSrc/build/libs/buildSrc.jar').getAbsolutePath(), "-XX:+UnlockDiagnosticVMOptions",
+                  "-XX:+DebugNonSafepoints") // some gradle guy prob has something better for reaching to the buildSrc.jar
+
+          // delete any previous profile results
+          doFirst {
+            project.delete fileTree(dir: workingDir, include: '*.jfr')
+            print 'classpath:'
+            classpath.forEach(k -> print k.getAbsolutePath())
+          }
+          doLast {
+            recordings = recordings.plus fileTree(dir: workingDir, include: '*.jfr')
+          }
+        }
+      }
+    }
+
+
   }
 }
 

@@ -38,3 +38,11 @@ dependencies {
   implementation "commons-codec:commons-codec:${scriptDepVersions['commons-codec']}"
 }
 
+jar {
+  manifest {
+    attributes(
+            "Premain-Class": "org.apache.lucene.gradle.AsyncProfiler",
+            "Agent-Class": "org.apache.lucene.gradle.AsyncProfiler"
+    )
+  }
+}

@@ -114,7 +114,7 @@ public class ProfileResults {
 
   /** true if the thread is gradle epoll thread (which we don't care about) */
   static boolean isGradlePollThread(RecordedThread thread) {
-    return (thread != null && thread.getJavaName().startsWith("/127.0.0.1"));
+    return (thread != null && thread.getJavaName() != null && thread.getJavaName().startsWith("/127.0.0.1"));
   }
 
   /** value we accumulate for this event */
@@ -156,32 +156,32 @@ public class ProfileResults {
     if (!"cpu".equals(mode) && !"heap".equals(mode)) {
       throw new IllegalArgumentException("tests.profile.mode must be one of (cpu,heap)");
     }
-    if (stacksize < 1) {
-      throw new IllegalArgumentException("tests.profile.stacksize must be positive");
-    }
-    if (count < 1) {
-      throw new IllegalArgumentException("tests.profile.count must be positive");
-    }
-    Map<String, SimpleEntry<String, Long>> histogram = new HashMap<>();
-    int totalEvents = 0;
-    long sumValues = 0;
-    String framePadding = " ".repeat(COLUMN_SIZE * 2);
-    for (String file : files) {
-      try (RecordingFile recording = new RecordingFile(Paths.get(file))) {
-        while (recording.hasMoreEvents()) {
-          RecordedEvent event = recording.readEvent();
-          if (!isInteresting(mode, event)) {
-            continue;
-          }
-          RecordedStackTrace trace = event.getStackTrace();
-          if (trace != null) {
-            StringBuilder stack = new StringBuilder();
-            for (int i = 0; i < Math.min(stacksize, trace.getFrames().size()); i++) {
-              if (stack.length() > 0) {
-                stack.append("\n")
-                     .append(framePadding)
-                     .append("  at ");
-              }
+      if (stacksize < 1) {
+        throw new IllegalArgumentException("tests.profile.stacksize must be positive");
+      }
+      if (count < 1) {
+        throw new IllegalArgumentException("tests.profile.count must be positive");
+      }
+      Map<String, SimpleEntry<String, Long>> histogram = new HashMap<>();
+      int totalEvents = 0;
+      long sumValues = 0;
+      String framePadding = " ".repeat(COLUMN_SIZE * 2);
+      for (String file : files) {
+        try (RecordingFile recording = new RecordingFile(Paths.get(file))) {
+          while (recording.hasMoreEvents()) {
+            RecordedEvent event = recording.readEvent();
+            if (!isInteresting(mode, event)) {
+              continue;
+            }
+            RecordedStackTrace trace = event.getStackTrace();
+            if (trace != null) {
+              StringBuilder stack = new StringBuilder();
+              for (int i = 0; i < Math.min(stacksize, trace.getFrames().size()); i++) {
+                if (stack.length() > 0) {
+                  stack.append("\n")
+                      .append(framePadding)
+                      .append("  at ");
+                }
               stack.append(frameToString(trace.getFrames().get(i), lineNumbers));
             }
             String line = stack.toString();
@@ -189,9 +189,9 @@ public class ProfileResults {
             long value = getValue(event);
             entry.setValue(entry.getValue() + value);
             totalEvents++;
-            sumValues += value;
+              sumValues += value;
+            }
           }
-        }
       }
     }
     // print summary from histogram
@@ -204,8 +204,8 @@ public class ProfileResults {
     List<SimpleEntry<String, Long>> entries = new ArrayList<>(histogram.values());
     entries.sort((u, v) -> v.getValue().compareTo(u.getValue()));
     int seen = 0;
-    for (SimpleEntry<String, Long> c : entries) {
-      if (seen++ == count) {
+      for (SimpleEntry<String, Long> c : entries) {
+        if (seen++ == count) {
         break;
       }
       String percent = String.format("%2.2f%%", 100 * (c.getValue() / (float) sumValues));
