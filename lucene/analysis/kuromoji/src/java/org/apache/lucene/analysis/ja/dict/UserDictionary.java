@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import org.apache.lucene.analysis.ja.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
@@ -160,15 +158,12 @@ public final class UserDictionary implements Dictionary {
    * @param chars text
    * @param off offset into text
    * @param len length of text
-   * @return array of {wordId, position, length}
+   * @return List of {wordId, position, length}
    */
-  public int[][] lookup(char[] chars, int off, int len) throws IOException {
-    // TODO: can we avoid this treemap/toIndexArray?
-    TreeMap<Integer, int[]> result = new TreeMap<>(); // index, [length, length...]
-    boolean found = false; // true if we found any results
-
-    final FST.BytesReader fstReader = fst.getBytesReader();
-
+  public List<int[]> lookup(char[] chars, int off, int len) throws IOException {
+    ArrayList<int[]> occurrences = null;
+    boolean found = false; // true if we found any occurrences.
+    FST.BytesReader fstReader = fst.getBytesReader();
     FST.Arc<Long> arc = new FST.Arc<>();
     int end = off + len;
     for (int startOffset = off; startOffset < end; startOffset++) {
@@ -182,41 +177,26 @@ public final class UserDictionary implements Dictionary {
         }
         output += arc.output().intValue();
         if (arc.isFinal()) {
-          final int finalOutput = output + arc.nextFinalOutput().intValue();
-          result.put(startOffset - off, segmentations[finalOutput]);
           found = true;
+          if (occurrences == null) {
+            occurrences = new ArrayList<>();
+          }
+          int index = startOffset - off;
+          int[] wordIdAndLengths = segmentations[output + arc.nextFinalOutput().intValue()];
+          int wordId = wordIdAndLengths[0]; // First entry is wordId offset.
+          for (int j = 1; j < wordIdAndLengths.length; j++) {
+            int[] token = {wordId + j - 1, index, wordIdAndLengths[j]};
+            occurrences.add(token);
+            index += wordIdAndLengths[j];
+          }
         }
       }
     }
-
-    return found ? toIndexArray(result) : EMPTY_RESULT;
+    return found ? occurrences : Collections.emptyList();
   }
 
   public TokenInfoFST getFST() {
     return fst;
-  }
-
-  private static final int[][] EMPTY_RESULT = new int[0][];
-
-  /**
-   * Convert Map of index and wordIdAndLength to array of {wordId, index, length}
-   *
-   * @return array of {wordId, index, length}
-   */
-  private int[][] toIndexArray(Map<Integer, int[]> input) {
-    ArrayList<int[]> result = new ArrayList<>();
-    for (Map.Entry<Integer, int[]> entry : input.entrySet()) {
-      int[] wordIdAndLength = entry.getValue();
-      int wordId = wordIdAndLength[0];
-      // convert length to index
-      int current = entry.getKey();
-      for (int j = 1; j < wordIdAndLength.length; j++) { // first entry is wordId offset
-        int[] token = {wordId + j - 1, current, wordIdAndLength[j]};
-        result.add(token);
-        current += wordIdAndLength[j];
-      }
-    }
-    return result.toArray(new int[result.size()][]);
   }
 
   public int[] lookupSegmentation(int phraseID) {
