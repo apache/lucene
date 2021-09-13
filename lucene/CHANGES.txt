@@ -15,6 +15,12 @@ New Features
 
 * LUCENE-9589: Swedish Minimal Stemmer (janhoy)
 
+* LUCENE-9313: Add SerbianAnalyzer based on the snowball stemmer. (Dragan Ivanovic)
+
+* LUCENE-10095: Add NepaliAnalyzer based on the snowball stemmer. (Robert Muir)
+
+* LUCENE-10096: Add TamilAnalyzer based on the snowball stemmer. (Robert Muir)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
@@ -141,6 +147,10 @@ API Changes
   The Weight#count API represents a cleaner way for Query classes to optimize their counting method.
   (Gautam Worah, Adrien Grand)
 
+* LUCENE-10089: Add a method to SortField that allows to enable or disable numeric sort
+  optimization to use the points index to skip over non-competitive documents,
+  which is enabled by default from 9.0 (Mayya Sharipova, Adrien Grand)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
@@ -212,8 +222,6 @@ Improvements
   sort fields the skipping functionality works when the same field is indexed both
   with doc values and points. In this case, there is an assumption that the same data is
   stored in these points and doc values (Mayya Sharipova, Jim Ferenczi, Adrien Grand)
-
-* LUCENE-9313: Add SerbianAnalyzer based on the snowball stemmer. (Dragan Ivanovic)
 
 * LUCENE-9449: Enhance DocComparator to provide an iterator over competitive
   documents when searching with "after". This iterator can quickly position
@@ -367,6 +375,35 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+* LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
+  (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+
+* LUCENE-10098: Add docs/links to GermanAnalyzer describing how to decompound nouns. (Robert Muir)
 
 ======================= Lucene 8.10.0 =======================
 
