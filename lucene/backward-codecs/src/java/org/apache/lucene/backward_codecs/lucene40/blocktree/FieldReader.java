@@ -17,6 +17,7 @@
 package org.apache.lucene.backward_codecs.lucene40.blocktree;
 
 import java.io.IOException;
+
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
@@ -187,8 +188,11 @@ public final class FieldReader extends Terms {
     if (compiled.type != CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
       throw new IllegalArgumentException("please use CompiledAutomaton.getTermsEnum instead");
     }
+    if (compiled.nfaRunAutomaton != null) {
+      return new IntersectTermsEnum(this, compiled.nfaRunAutomaton, compiled.nfaRunAutomaton, compiled.commonSuffixRef, startTerm);
+    }
     return new IntersectTermsEnum(
-        this, compiled.automaton, compiled.runAutomaton, compiled.commonSuffixRef, startTerm);
+            this, compiled.automaton, compiled.runAutomaton, compiled.commonSuffixRef, startTerm);
   }
 
   @Override

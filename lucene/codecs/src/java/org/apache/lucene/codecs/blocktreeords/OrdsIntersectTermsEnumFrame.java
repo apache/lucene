@@ -126,10 +126,10 @@ final class OrdsIntersectTermsEnumFrame {
   public void setState(int state) {
     this.state = state;
     transitionIndex = 0;
-    transitionCount = ite.compiledAutomaton.automaton.getNumTransitions(state);
+    transitionCount = ite.automaton.getNumTransitions(state);
     if (transitionCount != 0) {
-      ite.compiledAutomaton.automaton.initTransition(state, transition);
-      ite.compiledAutomaton.automaton.getNextTransition(transition);
+      ite.automaton.initTransition(state, transition);
+      ite.automaton.getNextTransition(transition);
       curTransitionMax = transition.max;
     } else {
       curTransitionMax = -1;

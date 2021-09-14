@@ -30,7 +30,7 @@ import org.apache.lucene.util.hppc.BitMixer;
  *
  * <p>implemented based on: https://swtch.com/~rsc/regexp/regexp1.html
  */
-public class NFARunAutomaton implements Stepable, TransitionAccessor {
+public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
 
   /** state ordinal of "no such state" */
   public static final int MISSING = -1;
@@ -102,6 +102,11 @@ public class NFARunAutomaton implements Stepable, TransitionAccessor {
   public boolean isAccept(int state) {
     assert dStates[state] != null;
     return dStates[state].isAccept;
+  }
+
+  @Override
+  public int getSize() {
+    return dStates.length;
   }
 
   /**
@@ -387,7 +392,7 @@ public class NFARunAutomaton implements Stepable, TransitionAccessor {
         transitionSet.points[i].starts.next = 0;
       }
       assert statesSet.size() == 0;
-      assert computedTransitions == charClass;
+      assert computedTransitions >= charClass; // it's also possible that some transitions after the charClass has already been explored
       // no more outgoing transitions, set rest of transition to MISSING
       assert charClass == transitions.length || transitions[charClass] == MISSING || transitions[charClass] == NOT_COMPUTED;
       Arrays.fill(transitions, charClass, transitions.length, MISSING);

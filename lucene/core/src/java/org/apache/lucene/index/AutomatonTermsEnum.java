@@ -24,9 +24,10 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 
 /**
  * A FilteredTermsEnum that enumerates terms based upon what is accepted by a DFA.
@@ -47,16 +48,16 @@ import org.apache.lucene.util.automaton.Transition;
  */
 public class AutomatonTermsEnum extends FilteredTermsEnum {
   // a tableized array-based form of the DFA
-  private final ByteRunAutomaton runAutomaton;
+  private final ByteRunnable runAutomaton;
   // common suffix of the automaton
   private final BytesRef commonSuffixRef;
   // true if the automaton accepts a finite language
   private final boolean finite;
   // array of sorted transitions for each state, indexed by state number
-  private final Automaton automaton;
+  private final TransitionAccessor automaton;
   // Used for visited state tracking: each short records gen when we last
   // visited the state; we use gens to avoid having to clear
-  private final short[] visited;
+  private short[] visited;
   private short curGen;
   // the reference used for seeking forwards through the term dictionary
   private final BytesRefBuilder seekBytesRef = new BytesRefBuilder();
@@ -82,10 +83,15 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
       throw new IllegalArgumentException("please use CompiledAutomaton.getTermsEnum instead");
     }
     this.finite = compiled.finite;
-    this.runAutomaton = compiled.runAutomaton;
-    assert this.runAutomaton != null;
+    if (compiled.nfaRunAutomaton != null) {
+      this.runAutomaton = compiled.nfaRunAutomaton;
+      this.automaton = compiled.nfaRunAutomaton;
+    } else {
+      this.runAutomaton = compiled.runAutomaton;
+      assert this.runAutomaton != null;
+      this.automaton = compiled.automaton;
+    }
     this.commonSuffixRef = compiled.commonSuffixRef;
-    this.automaton = compiled.automaton;
 
     // No need to track visited states for a finite language without loops.
     visited = finite ? null : new short[runAutomaton.getSize()];
@@ -94,13 +100,16 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
   /** Records the given state has been visited. */
   private void setVisited(int state) {
     if (!finite) {
+      if (state >= visited.length) {
+        visited = ArrayUtil.grow(visited, state + 1);
+      }
       visited[state] = curGen;
     }
   }
 
   /** Indicates whether the given state has been visited. */
   private boolean isVisited(int state) {
-    return !finite && visited[state] == curGen;
+    return !finite && state < visited.length && visited[state] == curGen;
   }
 
   /**

@@ -29,8 +29,10 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 
 /**
  * The "intersect" {@link TermsEnum} response to {@link
@@ -72,8 +74,8 @@ public class IntersectBlockReader extends BlockReader {
    */
   protected final int NUM_CONSECUTIVELY_REJECTED_TERMS_THRESHOLD = 4;
 
-  protected final Automaton automaton;
-  protected final ByteRunAutomaton runAutomaton;
+  protected final TransitionAccessor automaton;
+  protected final ByteRunnable runAutomaton;
   protected final boolean finite;
   protected final BytesRef commonSuffix; // maybe null
   protected final int minTermLength;
@@ -106,8 +108,14 @@ public class IntersectBlockReader extends BlockReader {
       BlockDecoder blockDecoder)
       throws IOException {
     super(dictionaryBrowserSupplier, blockInput, postingsReader, fieldMetadata, blockDecoder);
-    automaton = compiled.automaton;
-    runAutomaton = compiled.runAutomaton;
+    if (compiled.nfaRunAutomaton != null) {
+      this.runAutomaton = compiled.nfaRunAutomaton;
+      this.automaton = compiled.nfaRunAutomaton;
+    } else {
+      this.runAutomaton = compiled.runAutomaton;
+      assert this.runAutomaton != null;
+      this.automaton = compiled.automaton;
+    }
     finite = compiled.finite;
     commonSuffix = compiled.commonSuffixRef;
     minTermLength = getMinTermLength();
@@ -366,7 +374,7 @@ public class IntersectBlockReader extends BlockReader {
   protected class AutomatonNextTermCalculator {
     // for path tracking: each short records gen when we last
     // visited the state; we use gens to avoid having to clear
-    protected final short[] visited;
+    protected short[] visited;
     protected short curGen;
     // the reference used for seeking forwards through the term dictionary
     protected final BytesRefBuilder seekBytesRef = new BytesRefBuilder();
@@ -384,15 +392,18 @@ public class IntersectBlockReader extends BlockReader {
     }
 
     /** Records the given state has been visited. */
-    protected void setVisited(int state) {
+    private void setVisited(int state) {
       if (!finite) {
+        if (state >= visited.length) {
+          visited = ArrayUtil.grow(visited, state + 1);
+        }
         visited[state] = curGen;
       }
     }
 
     /** Indicates whether the given state has been visited. */
-    protected boolean isVisited(int state) {
-      return !finite && visited[state] == curGen;
+    private boolean isVisited(int state) {
+      return !finite && state < visited.length && visited[state] == curGen;
     }
 
     /** True if the current state of the automata is best iterated linearly (without seeking). */

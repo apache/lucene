@@ -46,6 +46,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.BytesRefFSTEnum.InputOutput;
@@ -436,7 +437,7 @@ public class FSTTermsReader extends FieldsProducer {
       final Outputs<FSTTermOutputs.TermData> fstOutputs;
 
       /* query automaton to intersect with */
-      final ByteRunAutomaton fsa;
+      final ByteRunnable fsa;
 
       private final class Frame {
         /* fst stats */
@@ -464,7 +465,11 @@ public class FSTTermsReader extends FieldsProducer {
         this.fst = dict;
         this.fstReader = fst.getBytesReader();
         this.fstOutputs = dict.outputs;
-        this.fsa = compiled.runAutomaton;
+        if (compiled.nfaRunAutomaton != null) {
+          this.fsa = compiled.nfaRunAutomaton;
+        } else {
+          this.fsa = compiled.runAutomaton;
+        }
         this.level = -1;
         this.stack = new Frame[16];
         for (int i = 0; i < stack.length; i++) {

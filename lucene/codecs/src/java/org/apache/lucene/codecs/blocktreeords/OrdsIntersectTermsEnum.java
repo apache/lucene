@@ -27,8 +27,10 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.RunAutomaton;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 import org.apache.lucene.util.fst.FST;
 
 // NOTE: cannot seek!
@@ -40,8 +42,9 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
   @SuppressWarnings({"rawtypes", "unchecked"})
   private FST.Arc<Output>[] arcs = new FST.Arc[5];
 
-  final RunAutomaton runAutomaton;
-  final CompiledAutomaton compiledAutomaton;
+  final ByteRunnable runAutomaton;
+  protected final TransitionAccessor automaton;
+  private final BytesRef commonSuffixRef;
 
   private OrdsIntersectTermsEnumFrame currentFrame;
 
@@ -62,8 +65,15 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
     // brToString(compiled.commonSuffixRef));
     // }
     this.fr = fr;
-    runAutomaton = compiled.runAutomaton;
-    compiledAutomaton = compiled;
+    if (compiled.nfaRunAutomaton != null) {
+      this.runAutomaton = compiled.nfaRunAutomaton;
+      this.automaton = compiled.nfaRunAutomaton;
+    } else {
+      this.runAutomaton = compiled.runAutomaton;
+      assert this.runAutomaton != null;
+      this.automaton = compiled.automaton;
+    }
+    commonSuffixRef = compiled.commonSuffixRef;
     in = fr.parent.in.clone();
     stack = new OrdsIntersectTermsEnumFrame[5];
     for (int idx = 0; idx < stack.length; idx++) {
@@ -390,7 +400,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
             continue nextTerm;
           }
           currentFrame.transitionIndex++;
-          compiledAutomaton.automaton.getNextTransition(currentFrame.transition);
+          automaton.getNextTransition(currentFrame.transition);
           currentFrame.curTransitionMax = currentFrame.transition.max;
           // if (DEBUG) System.out.println("      next trans=" +
           // currentFrame.transitions[currentFrame.transitionIndex]);
@@ -398,9 +408,9 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
       }
 
       // First test the common suffix, if set:
-      if (compiledAutomaton.commonSuffixRef != null && !isSubBlock) {
+      if (commonSuffixRef != null && !isSubBlock) {
         final int termLen = currentFrame.prefix + currentFrame.suffix;
-        if (termLen < compiledAutomaton.commonSuffixRef.length) {
+        if (termLen < commonSuffixRef.length) {
           // No match
           // if (DEBUG) {
           //   System.out.println("      skip: common suffix length");
@@ -409,10 +419,10 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
         }
 
         final byte[] suffixBytes = currentFrame.suffixBytes;
-        final byte[] commonSuffixBytes = compiledAutomaton.commonSuffixRef.bytes;
+        final byte[] commonSuffixBytes = commonSuffixRef.bytes;
 
-        final int lenInPrefix = compiledAutomaton.commonSuffixRef.length - currentFrame.suffix;
-        assert compiledAutomaton.commonSuffixRef.offset == 0;
+        final int lenInPrefix = commonSuffixRef.length - currentFrame.suffix;
+        assert commonSuffixRef.offset == 0;
         int suffixBytesPos;
         int commonSuffixBytesPos = 0;
 
@@ -437,11 +447,11 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
           suffixBytesPos =
               currentFrame.startBytePos
                   + currentFrame.suffix
-                  - compiledAutomaton.commonSuffixRef.length;
+                  - commonSuffixRef.length;
         }
 
         // Test overlapping suffix part:
-        final int commonSuffixBytesPosEnd = compiledAutomaton.commonSuffixRef.length;
+        final int commonSuffixBytesPosEnd = commonSuffixRef.length;
         while (commonSuffixBytesPos < commonSuffixBytesPosEnd) {
           if (suffixBytes[suffixBytesPos++] != commonSuffixBytes[commonSuffixBytesPos++]) {
             // if (DEBUG) {
