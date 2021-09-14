@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
+import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.junit.Test;
@@ -40,23 +41,21 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
   }
 
   /** blast random strings against the analyzer */
-  // TODO: currently this sometimes fails, maybe because of incorrect offsets.
-  /*@Test
+  @Test
   public void testRandom() throws IOException {
     Random random = random();
     final Analyzer a = new JapaneseCompletionAnalyzer();
     checkRandomData(random, a, atLeast(100));
     a.close();
-  }*/
+  }
 
   /** blast some random large strings through the analyzer */
-  // TODO: currently this sometimes fails, maybe because of incorrect offsets.
-  /*@Test
+  @Test
   public void testRandomHugeStrings() throws Exception {
     Random random = random();
     final Analyzer a = new JapaneseCompletionAnalyzer();
     checkRandomData(random, a, 2 * RANDOM_MULTIPLIER, 8192);
     a.close();
-  }*/
+  }
 
 }
