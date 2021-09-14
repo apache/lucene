@@ -57,5 +57,4 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
     checkRandomData(random, a, 2 * RANDOM_MULTIPLIER, 8192);
     a.close();
   }
-
 }

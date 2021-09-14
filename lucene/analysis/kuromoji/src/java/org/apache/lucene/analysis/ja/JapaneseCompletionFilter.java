@@ -72,7 +72,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
     super(input);
     this.tokenGenerator = new CompletionTokenGenerator(mode);
   }
-  
+
   @Override
   public void reset() throws IOException {
     super.reset();
@@ -144,7 +144,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
       this.mode = mode;
       outputs = new ArrayList<>();
     }
-    
+
     public void reset() {
       clearPendingToken();
       outputs.clear();
