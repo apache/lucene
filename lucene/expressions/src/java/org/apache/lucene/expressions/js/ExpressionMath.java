@@ -25,6 +25,8 @@ public final class ExpressionMath {
 
   private ExpressionMath() {}
 
+  private static final double TO_KILOMETERS = 1D / 1000;
+
   /**
    * Returns the Haversine distance in kilometers between two points specified in decimal degrees
    * (latitude/longitude). This works correctly even if the dateline is between the two points.
@@ -39,6 +41,6 @@ public final class ExpressionMath {
    * @return distance in kilometers.
    */
   public static double haversinKilometers(double lat1, double lon1, double lat2, double lon2) {
-    return haversinMeters(haversinSortKey(lat1, lon1, lat2, lon2)) / 1000;
+    return haversinMeters(haversinSortKey(lat1, lon1, lat2, lon2)) * TO_KILOMETERS;
   }
 }
