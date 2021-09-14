@@ -310,6 +310,9 @@ Bug fixes
 
 * LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
   (Greg Miller)
+  
+* LUCENE-10101, LUCENE-9281: Use getField() instead of getDeclaredField() to
+  minimize security impact by analysis SPI discovery. (Uwe Schindler)
 
 Changes in Backwards Compatibility Policy
 
