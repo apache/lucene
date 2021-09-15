@@ -16,7 +16,8 @@
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource
 doc.tokenized=false
 doc.body.tokenized=true
-docs.dir=reuters-out
+work.dir=data
+docs.dir=reuters21578
 log.step=1000
 
 -AnalyzerFactory(name:shingle-bigrams-unigrams,
