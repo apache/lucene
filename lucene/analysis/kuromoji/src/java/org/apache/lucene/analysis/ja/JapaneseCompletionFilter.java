@@ -33,18 +33,25 @@ import org.apache.lucene.util.CharsRef;
 
 /**
  * A {@link org.apache.lucene.analysis.TokenFilter} that adds Japanese romanized tokens to the term
- * attribute. Also, this keeps original tokens (surace forms).
+ * attribute. Also, this keeps original tokens (surface forms). Main usage of this filter is Query
+ * Auto-Completion.
  *
  * <p>Supported romanization form: (modified) Hepburn-shiki, Kunrei-shiki (Nihon-shiki) and Wāpuro
  * shiki.
  *
- * <p>This does NOT support romanji forms which are official but not used with commonly used
+ * <p>This does NOT support some romanji forms which are official but not commonly used with
  * Japanese <a href="https://en.wikipedia.org/wiki/Input_method">Input Methods</a>. e.g.: circumflex
  * or macron representing <a href="https://en.wikipedia.org/wiki/Ch%C5%8Donpu">Chōonpu (長音符)</a> are
  * not supported.
  *
  * <p>The romanization behaviour changes according to its {@link Mode}. The default mode is {@link
  * Mode#INDEX}.
+ *
+ * <p>Note: This filter must be applied AFTER half-width and full-width normalization. Please ensure
+ * that a width normalizer such as {@link org.apache.lucene.analysis.cjk.CJKWidthCharFilter} or
+ * {@link org.apache.lucene.analysis.cjk.CJKWidthFilter} is included in your analysis chain. IF THE
+ * WIDTH NORMALIZATION IS NOT PERFORMED, THIS DOES NOT WORK AS EXPECTED. See also: {@link
+ * JapaneseCompletionAnalyzer}.
  */
 public final class JapaneseCompletionFilter extends TokenFilter {
   public static final Mode DEFAULT_MODE = Mode.INDEX;
@@ -95,7 +102,6 @@ public final class JapaneseCompletionFilter extends TokenFilter {
       } else {
         posIncAtt.setPositionIncrement(0);
       }
-      // TODO: correct offsets.
       offsetAtt.setOffset(token.startOffset, token.endOffset);
       return true;
     } else {

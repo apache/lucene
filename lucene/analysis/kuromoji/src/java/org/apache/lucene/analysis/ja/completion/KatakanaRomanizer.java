@@ -30,9 +30,11 @@ import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 
 /**
- * Converts a Katakana string to romaji based on the built-in Katakana-Romaji mapping. Internally,
- * this repeatedly performs prefix match on the given string to the pre-built keystroke array until
- * it reaches the end of the string, or there are no matched keystrokes.
+ * Converts a Katakana string to <a
+ * href="https://en.wikipedia.org/wiki/Romanization_of_Japanese">Romaji</a> using the pre-defined
+ * Katakana-Romaji mapping rules. Internally, this repeatedly performs prefix match on the given
+ * char sequence to the pre-built keystroke array until it reaches the end of the sequence, or there
+ * are no matched keystrokes.
  */
 public class KatakanaRomanizer {
   private static final String ROMAJI_MAP_FILE = "romaji_map.txt";
@@ -103,7 +105,7 @@ public class KatakanaRomanizer {
     CharsRefBuilder buffer = new CharsRefBuilder();
     int pos = 0;
     while (pos < input.length) {
-      // Greedily looks up the longest matched.
+      // Greedily looks up the longest matched keystroke.
       // e.g.: Consider input="キョウ", then there are two matched keystrokes (romaji mapping rules)
       // "キ" -> "ki" and "キョ" -> "kyo". Only the longest one "キョ" will be selected.
       MatchedKeystroke matched = longestKeystrokeMatch(input, pos);
@@ -115,7 +117,7 @@ public class KatakanaRomanizer {
           romajiMap.get(keystrokes[matched.keystrokeLen - 1][matched.keystrokeIndex]);
       for (CharsRef cref : candidates) {
         if (pendingOutputs.size() == 0) {
-          // the first matched keystroke; there's no pending output
+          // the first matched keystroke; there's no pending output.
           outputs.add(cref);
         } else {
           // Combine the matched keystroke with all previously matched keystrokes.
