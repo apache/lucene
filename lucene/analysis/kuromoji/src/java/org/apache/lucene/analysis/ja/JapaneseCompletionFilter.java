@@ -211,7 +211,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
     }
 
     boolean hasPendingToken() {
-      return pdgSurface != null && !pdgSurface.isEmpty();
+      return pdgSurface != null;
     }
 
     void clearPendingToken() {

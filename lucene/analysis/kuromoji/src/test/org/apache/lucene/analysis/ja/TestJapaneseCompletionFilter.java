@@ -22,6 +22,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.cjk.CJKWidthCharFilter;
+import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
@@ -153,5 +154,28 @@ public class TestJapaneseCompletionFilter extends BaseTokenStreamTestCase {
     assertAnalyzesTo(queryAnalyzer, "さーきゅｒ", new String[] {"サーキュr", "saーkyur"}, new int[] {1, 0});
 
     assertAnalyzesTo(queryAnalyzer, "是々ｈ", new String[] {"是", "ze", "々h"}, new int[] {1, 0, 1});
+  }
+
+  public void testEnglish() throws IOException {
+    assertAnalyzesTo(indexAnalyzer, "this atest", new String[] {"this", "atest"});
+    assertAnalyzesTo(queryAnalyzer, "this atest", new String[] {"this", "atest"});
+  }
+
+  public void testRandomStrings() throws IOException {
+    checkRandomData(random(), indexAnalyzer, atLeast(200));
+    checkRandomData(random(), queryAnalyzer, atLeast(200));
+  }
+
+  public void testEmptyTerm() throws IOException {
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new KeywordTokenizer();
+            return new TokenStreamComponents(tokenizer, new JapaneseCompletionFilter(tokenizer));
+          }
+        };
+    checkOneTerm(a, "", "");
+    a.close();
   }
 }
