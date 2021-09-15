@@ -676,7 +676,7 @@ public class TestSortOptimization extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     List<Long> seqNos = LongStream.range(0, atLeast(10_000)).boxed().collect(Collectors.toList());
-    Collections.shuffle(seqNos);
+    Collections.shuffle(seqNos, random());
     int pendingDocs = 0;
     for (long seqNo : seqNos) {
       Document doc = new Document();
