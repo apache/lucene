@@ -34,7 +34,9 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
         new String[] {"東京", "toukyou"},
         new int[] {0, 0},
         new int[] {2, 2},
-        new int[] {1, 0});
+        null,
+        new int[] {1, 0},
+        new int[] {1, 1});
     analyzer.close();
   }
 
@@ -48,7 +50,9 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
         new String[] {"東京t", "toukyout"},
         new int[] {0, 0},
         new int[] {3, 3},
-        new int[] {1, 0});
+        null,
+        new int[] {1, 0},
+        new int[] {2, 2});
     analyzer.close();
   }
 
