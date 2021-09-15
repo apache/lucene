@@ -28,7 +28,13 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
   public void testCompletionDefault() throws IOException {
     // mode=INDEX (default)
     Analyzer analyzer = new JapaneseCompletionAnalyzer();
-    assertAnalyzesTo(analyzer, "東京", new String[] {"東京", "toukyou"});
+    assertAnalyzesTo(
+        analyzer,
+        "東京",
+        new String[] {"東京", "toukyou"},
+        new int[] {0, 0},
+        new int[] {2, 2},
+        new int[] {1, 0});
     analyzer.close();
   }
 
@@ -36,7 +42,13 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
   public void testCompletionQuery() throws IOException {
     // mode=QUERY
     Analyzer analyzer = new JapaneseCompletionAnalyzer(null, JapaneseCompletionFilter.Mode.QUERY);
-    assertAnalyzesTo(analyzer, "東京ｔ", new String[] {"東京t", "toukyout"});
+    assertAnalyzesTo(
+        analyzer,
+        "東京ｔ",
+        new String[] {"東京t", "toukyout"},
+        new int[] {0, 0},
+        new int[] {3, 3},
+        new int[] {1, 0});
     analyzer.close();
   }
 

@@ -26,7 +26,9 @@ import org.apache.lucene.analysis.ja.completion.KatakanaRomanizer;
 import org.apache.lucene.analysis.ja.completion.StringUtils;
 import org.apache.lucene.analysis.ja.tokenattributes.ReadingAttribute;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.CharsRef;
 
 /**
@@ -51,6 +53,8 @@ public final class JapaneseCompletionFilter extends TokenFilter {
   private final ReadingAttribute readingAttr = addAttribute(ReadingAttribute.class);
   private final PositionIncrementAttribute posIncAtt =
       addAttribute(PositionIncrementAttribute.class);
+  private final PositionLengthAttribute posLengthAtt = addAttribute(PositionLengthAttribute.class);
+  private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
 
   private final CompletionTokenGenerator tokenGenerator;
 
@@ -92,7 +96,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
         posIncAtt.setPositionIncrement(0);
       }
       // TODO: correct offsets.
-
+      offsetAtt.setOffset(token.startOffset, token.endOffset);
       return true;
     } else {
       return false;
@@ -104,11 +108,13 @@ public final class JapaneseCompletionFilter extends TokenFilter {
       if (input.incrementToken()) {
         String surface = termAttr.toString();
         String reading = readingAttr.getReading();
+        int startOffset = offsetAtt.startOffset();
+        int endOffset = offsetAtt.endOffset();
         if (reading == null && StringUtils.isKana(surface)) {
           // use the surface form as reading when possible.
           reading = StringUtils.toKatakana(surface);
         }
-        tokenGenerator.addToken(surface, reading);
+        tokenGenerator.addToken(surface, reading, startOffset, endOffset);
       } else {
         if (tokenGenerator.hasPendingToken()) {
           // a pending token remains.
@@ -124,10 +130,14 @@ public final class JapaneseCompletionFilter extends TokenFilter {
   private static class CompletionToken {
     final String term;
     final boolean isFirst;
+    final int startOffset;
+    final int endOffset;
 
-    CompletionToken(String term, boolean isFirst) {
+    CompletionToken(String term, boolean isFirst, int startOffset, int endOffset) {
       this.term = term;
       this.isFirst = isFirst;
+      this.startOffset = startOffset;
+      this.endOffset = endOffset;
     }
   }
 
@@ -139,6 +149,8 @@ public final class JapaneseCompletionFilter extends TokenFilter {
 
     private String pdgSurface;
     private String pdgReading;
+    private int pdgStartOffset;
+    private int pdgEndOffset;
 
     CompletionTokenGenerator(Mode mode) {
       this.mode = mode;
@@ -160,7 +172,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
       return outputs.remove(0);
     }
 
-    void addToken(String surface, String reading) {
+    void addToken(String surface, String reading, int startOffset, int endOffset) {
       assert surface != null : "surface must not be null.";
 
       if (hasPendingToken()) {
@@ -170,7 +182,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
           // Note: in this case, the reading attribute is null; use the surface form in place of the
           // reading.
           // e.g.: "サッ" + "k" => "サッk", "反" + "sy" => "反sy"
-          generateOutputs(pdgSurface + surface, pdgReading + surface);
+          generateOutputs(pdgSurface + surface, pdgReading + surface, pdgStartOffset, endOffset);
           clearPendingToken();
         } else if (mode == Mode.QUERY
             && StringUtils.isKana(pdgSurface)
@@ -178,27 +190,28 @@ public final class JapaneseCompletionFilter extends TokenFilter {
           // words that are all composed only of Katakana or Hiragana should be concatenated when
           // querying.
           // e.g.: "こい" + "ぬ" => "こいぬ"
-          pdgSurface = StringUtils.toKatakana(pdgSurface + surface);
-          pdgReading = pdgReading + reading;
+          resetPendingToken(
+              StringUtils.toKatakana(pdgSurface + surface),
+              pdgReading + reading,
+              pdgStartOffset,
+              endOffset);
         } else {
-          generateOutputs(pdgSurface, pdgReading);
-          pdgSurface = surface;
-          pdgReading = reading;
+          generateOutputs(pdgSurface, pdgReading, pdgStartOffset, pdgEndOffset);
+          resetPendingToken(surface, reading, startOffset, endOffset);
         }
       } else {
-        pdgSurface = surface;
-        pdgReading = reading;
+        resetPendingToken(surface, reading, startOffset, endOffset);
       }
     }
 
     void finish() {
-      generateOutputs(pdgSurface, pdgReading);
+      generateOutputs(pdgSurface, pdgReading, pdgStartOffset, pdgEndOffset);
       clearPendingToken();
     }
 
-    private void generateOutputs(String surface, String reading) {
+    private void generateOutputs(String surface, String reading, int startOffset, int endOffset) {
       // preserve original surface form as an output.
-      outputs.add(new CompletionToken(surface, true));
+      outputs.add(new CompletionToken(surface, true, startOffset, endOffset));
       // skip readings that cannot be translated to romaji.
       if (reading == null || reading.isEmpty() || !StringUtils.isKatakanaOrHWAlphabets(reading)) {
         return;
@@ -206,7 +219,8 @@ public final class JapaneseCompletionFilter extends TokenFilter {
       // translate the reading to romaji.
       List<CharsRef> romaji = KatakanaRomanizer.getInstance().romanize(new CharsRef(reading));
       for (CharsRef ref : romaji) {
-        outputs.add(new CompletionToken(ref.toString(), false));
+        // set the same start/end offset as the original surface form for romanized tokens.
+        outputs.add(new CompletionToken(ref.toString(), false, startOffset, endOffset));
       }
     }
 
@@ -214,9 +228,18 @@ public final class JapaneseCompletionFilter extends TokenFilter {
       return pdgSurface != null;
     }
 
+    void resetPendingToken(String surface, String reading, int startOffset, int endOffset) {
+      this.pdgSurface = surface;
+      this.pdgReading = reading;
+      this.pdgStartOffset = startOffset;
+      this.pdgEndOffset = endOffset;
+    }
+
     void clearPendingToken() {
       this.pdgSurface = null;
       this.pdgReading = null;
+      this.pdgStartOffset = 0;
+      this.pdgEndOffset = 0;
     }
   }
 }
