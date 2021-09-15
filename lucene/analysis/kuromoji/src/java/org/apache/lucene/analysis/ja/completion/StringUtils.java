@@ -86,7 +86,7 @@ public class StringUtils {
   }
 
   /** Convert all hiragana in a string into kanataka */
-  public static String hiraganaToKatakana(String s) {
+  public static String toKatakana(String s) {
     char[] chars = new char[s.length()];
     for (int i = 0; i < s.length(); i++) {
       char ch = s.charAt(i);
