@@ -60,7 +60,6 @@ public final class JapaneseCompletionFilter extends TokenFilter {
   private final ReadingAttribute readingAttr = addAttribute(ReadingAttribute.class);
   private final PositionIncrementAttribute posIncAtt =
       addAttribute(PositionIncrementAttribute.class);
-  private final PositionLengthAttribute posLengthAtt = addAttribute(PositionLengthAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
 
   private final CompletionTokenGenerator tokenGenerator;
