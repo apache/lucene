@@ -1,3 +1,9 @@
+# mapping rules of katakana (an unit of keystroke) to list of acceptable romanizations.
+# longest-match is used to find entries in this list.
+# covers romanization systems: modified Hepburn-shiki, Kunrei-shiki (Nihon-shiki), and Wāpuro shiki.
+# note: this is not strictly comply with the romanization systems listed above,
+# but tries to cover possible keystoroke supported by various Input Methods.
+
 ア,a
 イ,i
 ウ,u
@@ -331,5 +337,8 @@
 ッr,rr
 ッw,ww
 
+# below are characters that should be kept but have not explicit romanization rules.
+# Chōonpu (Katakana-Hiragana Prolonged Sound Mark)
 ー,ー
+# Interpunct (Middle Dot)
 ・,・

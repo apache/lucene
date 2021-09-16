@@ -51,6 +51,9 @@ public class KatakanaRomanizer {
       Map<CharsRef, List<CharsRef>> romajiMap = new HashMap<>();
       String line;
       while ((line = ir.readLine()) != null) {
+        if (line.startsWith("#")) {
+          continue;
+        }
         String[] cols = line.trim().split(",");
         if (cols.length < 2) {
           continue;
