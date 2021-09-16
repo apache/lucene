@@ -434,7 +434,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       HitsThresholdChecker hitsThresholdChecker,
       MaxScoreAccumulator minScoreAcc) {
 
-    if (sort.fields.length == 0) {
+    if (sort.getSort().length == 0) {
       throw new IllegalArgumentException("Sort must contain at least one field");
     }
 
@@ -447,7 +447,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       throw new IllegalArgumentException("hitsThresholdChecker should not be null");
     }
 
-    FieldValueHitQueue<Entry> queue = FieldValueHitQueue.create(sort.fields, numHits);
+    FieldValueHitQueue<Entry> queue = FieldValueHitQueue.create(sort.getSort(), numHits);
 
     if (after == null) {
       return new SimpleFieldCollector(sort, queue, numHits, hitsThresholdChecker, minScoreAcc);

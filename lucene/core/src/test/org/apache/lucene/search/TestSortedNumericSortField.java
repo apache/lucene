@@ -34,15 +34,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     IndexSearcher empty = newSearcher(new MultiReader());
     Query query = new TermQuery(new Term("contents", "foo"));
 
-    Sort sort = new Sort();
-    sort.setSort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG));
-    TopDocs td = empty.search(query, 10, sort, true);
+    TopDocs td = empty.search(query, 10, new Sort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG)), true);
     assertEquals(0, td.totalHits.value);
 
     // for an empty index, any selector should work
     for (SortedNumericSelector.Type v : SortedNumericSelector.Type.values()) {
-      sort.setSort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG, false, v));
-      td = empty.search(query, 10, sort, true);
+      td = empty.search(query, 10, new Sort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG, false, v)), true);
       assertEquals(0, td.totalHits.value);
     }
   }
