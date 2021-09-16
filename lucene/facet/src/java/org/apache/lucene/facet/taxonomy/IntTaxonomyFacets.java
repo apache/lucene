@@ -274,6 +274,15 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       intIntHashMap = new IntIntHashMap();
     }
 
+    /**
+     * Adds <code>incrementValue</code> to any existing value for the given <code>key</code> or
+     * inserts <code>incrementValue</code> if <code>key</code> did not previously exist.
+     *
+     * @param key The key of the value to adjust.
+     * @param incrementValue The value to put or add to the existing value if <code>key</code>
+     *     exists.
+     * @return Returns the current value associated with <code>key</code> (after changes).
+     */
     public int addTo(int key, int incrementValue) {
       assert incrementValue > 0;
       if (fixedBitSet.getAndSet(key) == false) {
@@ -289,6 +298,12 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       }
     }
 
+    /**
+     * Gets corresponding value given a key, defaults to 0 if key not found
+     *
+     * @param key The key of the value to get
+     * @return The value corresponding to the key
+     */
     public int get(int key) {
       if (fixedBitSet.get(key)) {
         return intIntHashMap.getOrDefault(key, 1);
