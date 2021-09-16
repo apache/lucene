@@ -228,44 +228,44 @@ public class TestMultiCollector extends LuceneTestCase {
     w.close();
 
     Scorable scorer =
-            new Scorable() {
-              @Override
-              public int docID() {
-                throw new UnsupportedOperationException();
-              }
+        new Scorable() {
+          @Override
+          public int docID() {
+            throw new UnsupportedOperationException();
+          }
 
-              @Override
-              public float score() {
-                return 0;
-              }
+          @Override
+          public float score() {
+            return 0;
+          }
 
-              @Override
-              public void setMinCompetitiveScore(float minScore) {
-                throw new AssertionError();
-              }
-            };
+          @Override
+          public void setMinCompetitiveScore(float minScore) {
+            throw new AssertionError();
+          }
+        };
 
     Collector collector =
-            new SimpleCollector() {
-              private Scorable scorer;
-              float minScore = 0;
+        new SimpleCollector() {
+          private Scorable scorer;
+          float minScore = 0;
 
-              @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.TOP_SCORES;
-              }
+          @Override
+          public ScoreMode scoreMode() {
+            return ScoreMode.TOP_SCORES;
+          }
 
-              @Override
-              public void setScorer(Scorable scorer) throws IOException {
-                this.scorer = scorer;
-              }
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {
+            this.scorer = scorer;
+          }
 
-              @Override
-              public void collect(int doc) throws IOException {
-                minScore = Math.nextUp(minScore);
-                scorer.setMinCompetitiveScore(minScore);
-              }
-            };
+          @Override
+          public void collect(int doc) throws IOException {
+            minScore = Math.nextUp(minScore);
+            scorer.setMinCompetitiveScore(minScore);
+          }
+        };
     for (int numCol = 1; numCol < 4; numCol++) {
       List<Collector> cols = new ArrayList<>();
       cols.add(collector);

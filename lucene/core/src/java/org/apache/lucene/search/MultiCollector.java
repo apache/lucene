@@ -130,18 +130,17 @@ public class MultiCollector implements Collector {
       }
       leafCollectors.add(leafCollector);
     }
-    switch (leafCollectors.size()) {
-      case 0:
-        throw new CollectionTerminatedException();
-      case 1:
-        if (scoreMode() == ScoreMode.TOP_SCORES || leafScoreMode != ScoreMode.TOP_SCORES) {
-          return leafCollectors.get(0);
-        }
-        // Wraps single leaf collector that wants to skip low-scoring hits (ScoreMode.TOP_SCORES)
-        // but the global score mode doesn't allow it.
-      default:
-        return new MultiLeafCollector(
-            leafCollectors, cacheScores, scoreMode() == ScoreMode.TOP_SCORES);
+    if (leafCollectors.isEmpty()) {
+      throw new CollectionTerminatedException();
+    } else {
+      // Wraps single leaf collector that wants to skip low-scoring hits (ScoreMode.TOP_SCORES)
+      // but the global score mode doesn't allow it.
+      if (leafCollectors.size() == 1
+          && (scoreMode() == ScoreMode.TOP_SCORES || leafScoreMode != ScoreMode.TOP_SCORES)) {
+        return leafCollectors.get(0);
+      }
+      return new MultiLeafCollector(
+          leafCollectors, cacheScores, scoreMode() == ScoreMode.TOP_SCORES);
     }
   }
 
