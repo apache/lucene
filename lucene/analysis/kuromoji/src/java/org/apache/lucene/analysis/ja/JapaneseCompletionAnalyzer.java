@@ -48,14 +48,9 @@ public class JapaneseCompletionAnalyzer extends Analyzer {
   protected TokenStreamComponents createComponents(String fieldName) {
     Tokenizer tokenizer =
         new JapaneseTokenizer(userDict, true, true, JapaneseTokenizer.Mode.NORMAL);
-    TokenStream stream = new JapaneseCompletionFilter(tokenizer, mode);
+    TokenStream stream = new LowerCaseFilter(tokenizer);
+    stream = new JapaneseCompletionFilter(stream, mode);
     return new TokenStreamComponents(tokenizer, stream);
-  }
-
-  @Override
-  protected TokenStream normalize(String fieldName, TokenStream in) {
-    TokenStream result = new LowerCaseFilter(in);
-    return result;
   }
 
   @Override
