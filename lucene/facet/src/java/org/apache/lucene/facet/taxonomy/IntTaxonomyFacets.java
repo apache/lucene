@@ -262,7 +262,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
    * Class that uses FixedBitSet to store counts for all ordinals with 1 count and IntIntHashMap for
    * all other counts
    */
-  private static class IntIntHashMapWithFixedBitSet implements Iterable<IntIntCursor> {
+  protected static class IntIntHashMapWithFixedBitSet implements Iterable<IntIntCursor> {
     // if the key exists, fixedBitSet[key] will be true, if fixedBitSet[key] is true but the key in
     // intIntHashMap
     // does not exist, then the value is 1
@@ -276,12 +276,16 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     public int addTo(int key, int incrementValue) {
       assert incrementValue > 0;
-      if (fixedBitSet.getAndSet(key) == false && incrementValue == 1) {
-        return 1;
+      if (fixedBitSet.getAndSet(key) == false) {
+        if (incrementValue == 1) {
+          return 1;
+        } else {
+          return intIntHashMap.addTo(key, incrementValue);
+        }
       } else if (intIntHashMap.containsKey(key)) {
         return intIntHashMap.addTo(key, incrementValue);
       } else {
-        return intIntHashMap.put(key, incrementValue + 1);
+        return intIntHashMap.addTo(key, incrementValue + 1);
       }
     }
 
@@ -294,39 +298,34 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     @Override
     public Iterator<IntIntCursor> iterator() {
-      return new AbstractIterator<>() {
+      return new AbstractIterator<IntIntCursor>() {
 
-        final IntIntCursor cursor;
+        private final IntIntCursor cursor;
+        int nextIndexToCheckFrom;
 
         {
           cursor = new IntIntCursor();
-          cursor.index = -1;
-          cursor.key = -1;
-          cursor.value = -1;
         }
 
         @Override
         protected IntIntCursor fetch() {
-          if (cursor.index == -1) {
-            if (fixedBitSet.get(0)) {
-              cursor.index = 0;
-              cursor.key = 0;
-              cursor.value = get(0);
-              return cursor;
-            } else {
-              cursor.index = 0;
-            }
-          }
-          cursor.index = fixedBitSet.nextSetBit(cursor.index);
-          if (cursor.index != DocIdSetIterator.NO_MORE_DOCS) {
-            cursor.key = cursor.index;
-            cursor.value = get(cursor.key);
-            return cursor;
-          } else {
-            cursor.key = -1;
-            cursor.value = -1;
+          if (nextIndexToCheckFrom >= fixedBitSet.length()) {
             return done();
           }
+          cursor.index = fixedBitSet.nextSetBit(nextIndexToCheckFrom);
+          if (cursor.index == DocIdSetIterator.NO_MORE_DOCS) {
+            return done();
+          }
+          if (cursor.index >= nextIndexToCheckFrom) {
+            nextIndexToCheckFrom = cursor.index + 1;
+          }
+          if (intIntHashMap.containsKey(cursor.index)) {
+            cursor.value = intIntHashMap.get(cursor.index);
+          } else {
+            cursor.value = 1;
+          }
+          cursor.key = cursor.index;
+          return cursor;
         }
       };
     }
