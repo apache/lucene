@@ -220,6 +220,68 @@ public class TestMultiCollector extends LuceneTestCase {
     dir.close();
   }
 
+  public void testDisablesSetMinScoreWithEarlyTermination() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    w.addDocument(new Document());
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+
+    Scorable scorer =
+            new Scorable() {
+              @Override
+              public int docID() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public float score() {
+                return 0;
+              }
+
+              @Override
+              public void setMinCompetitiveScore(float minScore) {
+                throw new AssertionError();
+              }
+            };
+
+    Collector collector =
+            new SimpleCollector() {
+              private Scorable scorer;
+              float minScore = 0;
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.TOP_SCORES;
+              }
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                minScore = Math.nextUp(minScore);
+                scorer.setMinCompetitiveScore(minScore);
+              }
+            };
+    for (int numCol = 1; numCol < 4; numCol++) {
+      List<Collector> cols = new ArrayList<>();
+      cols.add(collector);
+      for (int col = 0; col < numCol; col++) {
+        cols.add(new TerminateAfterCollector(new TotalHitCountCollector(), 0));
+      }
+      Collector multiCollector = MultiCollector.wrap(cols);
+      LeafCollector leafCollector = multiCollector.getLeafCollector(reader.leaves().get(0));
+      leafCollector.setScorer(scorer);
+      leafCollector.collect(0); // no exception
+    }
+
+    reader.close();
+    dir.close();
+  }
+
   private static class DummyCollector extends SimpleCollector {
 
     boolean collectCalled = false;
