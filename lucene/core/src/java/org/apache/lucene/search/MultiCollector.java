@@ -30,7 +30,7 @@ import org.apache.lucene.index.LeafReaderContext;
  * <p><b>NOTE:</b>When mixing collectors that want to skip low-scoring hits ({@link ScoreMode#TOP_SCORES})
  * with ones that require to see all hits, such as mixing {@link TopScoreDocCollector} and
  * {@link TotalHitCountCollector}, it should be faster to run the query twice, once for each collector,
- * rather than using this wrapper on a single search. 
+ * rather than using this wrapper on a single search.
  */
 public class MultiCollector implements Collector {
 

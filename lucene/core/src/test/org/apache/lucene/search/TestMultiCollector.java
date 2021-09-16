@@ -272,7 +272,7 @@ public class TestMultiCollector extends LuceneTestCase {
       for (int col = 0; col < numCol; col++) {
         cols.add(new TerminateAfterCollector(new TotalHitCountCollector(), 0));
       }
-      Collections.shuffle(cols);
+      Collections.shuffle(cols, random());
       Collector multiCollector = MultiCollector.wrap(cols);
       LeafCollector leafCollector = multiCollector.getLeafCollector(reader.leaves().get(0));
       leafCollector.setScorer(scorer);
