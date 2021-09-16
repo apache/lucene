@@ -130,6 +130,9 @@ public class SortField {
   // Used for 'sortMissingFirst/Last'
   protected Object missingValue = null;
 
+  // Indicates if numeric sort should be optimized with Points index. Set to true by default.
+  @Deprecated private boolean optimizeSortWithPoints = true;
+
   /**
    * Creates a sort by terms in the given field with the type of term values explicitly given.
    *
@@ -498,36 +501,48 @@ public class SortField {
    * @return {@link FieldComparator} to use when sorting
    */
   public FieldComparator<?> getComparator(final int numHits, final int sortPos) {
-
+    final FieldComparator<?> fieldComparator;
     switch (type) {
       case SCORE:
-        return new FieldComparator.RelevanceComparator(numHits);
+        fieldComparator = new FieldComparator.RelevanceComparator(numHits);
+        break;
 
       case DOC:
-        return new DocComparator(numHits, reverse, sortPos);
+        fieldComparator = new DocComparator(numHits, reverse, sortPos);
+        break;
 
       case INT:
-        return new IntComparator(numHits, field, (Integer) missingValue, reverse, sortPos);
+        fieldComparator =
+            new IntComparator(numHits, field, (Integer) missingValue, reverse, sortPos);
+        break;
 
       case FLOAT:
-        return new FloatComparator(numHits, field, (Float) missingValue, reverse, sortPos);
+        fieldComparator =
+            new FloatComparator(numHits, field, (Float) missingValue, reverse, sortPos);
+        break;
 
       case LONG:
-        return new LongComparator(numHits, field, (Long) missingValue, reverse, sortPos);
+        fieldComparator = new LongComparator(numHits, field, (Long) missingValue, reverse, sortPos);
+        break;
 
       case DOUBLE:
-        return new DoubleComparator(numHits, field, (Double) missingValue, reverse, sortPos);
+        fieldComparator =
+            new DoubleComparator(numHits, field, (Double) missingValue, reverse, sortPos);
+        break;
 
       case CUSTOM:
         assert comparatorSource != null;
-        return comparatorSource.newComparator(field, numHits, sortPos, reverse);
+        fieldComparator = comparatorSource.newComparator(field, numHits, sortPos, reverse);
+        break;
 
       case STRING:
         return new FieldComparator.TermOrdValComparator(
             numHits, field, missingValue == STRING_LAST);
 
       case STRING_VAL:
-        return new FieldComparator.TermValComparator(numHits, field, missingValue == STRING_LAST);
+        fieldComparator =
+            new FieldComparator.TermValComparator(numHits, field, missingValue == STRING_LAST);
+        break;
 
       case REWRITEABLE:
         throw new IllegalStateException(
@@ -536,6 +551,10 @@ public class SortField {
       default:
         throw new IllegalStateException("Illegal sort type: " + type);
     }
+    if (getOptimizeSortWithPoints() == false) {
+      fieldComparator.disableSkipping();
+    }
+    return fieldComparator;
   }
 
   /**
@@ -605,5 +624,34 @@ public class SortField {
       default:
         return null;
     }
+  }
+
+  /**
+   * Enables/disables numeric sort optimization to use the Points index.
+   *
+   * <p>Enabled by default. By default, sorting on a numeric field activates point sort optimization
+   * that can efficiently skip over non-competitive hits. Sort optimization has a number of
+   * requirements, one of which is that SortField.Type matches the Point type with which the field
+   * was indexed (e.g. sort on IntPoint field should use SortField.Type.INT). Another requirement is
+   * that the same data is indexed with points and doc values for the field.
+   *
+   * @param optimizeSortWithPoints providing {@code false} disables the optimization, in cases where
+   *     these requirements can't be met.
+   * @deprecated should only be used for compatibility with 8.x indices that got created with
+   *     inconsistent data across fields, or the wrong sort configuration in the index sort
+   */
+  @Deprecated // Remove in Lucene 10
+  public void setOptimizeSortWithPoints(boolean optimizeSortWithPoints) {
+    this.optimizeSortWithPoints = optimizeSortWithPoints;
+  }
+
+  /**
+   * Returns whether sort optimization should be optimized with points index
+   *
+   * @return whether sort optimization should be optimized with points index
+   */
+  @Deprecated // Remove in Lucene 10
+  public boolean getOptimizeSortWithPoints() {
+    return optimizeSortWithPoints;
   }
 }
