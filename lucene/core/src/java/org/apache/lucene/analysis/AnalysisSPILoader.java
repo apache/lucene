@@ -174,11 +174,11 @@ public final class AnalysisSPILoader<S extends AbstractAnalysisFactory> {
    */
   public static String lookupSPIName(Class<? extends AbstractAnalysisFactory> service)
       throws NoSuchFieldException, IllegalAccessException, IllegalStateException {
-    final Field field = service.getDeclaredField("NAME");
+    final Field field = service.getField("NAME");
     int modifier = field.getModifiers();
-    if (Modifier.isPublic(modifier)
-        && Modifier.isStatic(modifier)
+    if (Modifier.isStatic(modifier)
         && Modifier.isFinal(modifier)
+        && Objects.equals(field.getDeclaringClass(), service)
         && Objects.equals(field.getType(), String.class)) {
       return ((String) field.get(null));
     }

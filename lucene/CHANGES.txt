@@ -31,9 +31,6 @@ API Changes
 * LUCENE-8638: Remove many deprecated methods and classes including FST.lookupByOutput(),
   LegacyBM25Similarity and Jaspell suggester.
 
-* LUCENE-8638: haversin() expressions function now returns its result in meters rather than
-  kilometers.
-
 * LUCENE-8982: Separate out native code to another module to allow cpp
   build with gradle. This also changes the name of the native "posix-support"
   library to LuceneNativeIO. (Zachary Chen, Dawid Weiss)
@@ -310,6 +307,9 @@ Bug fixes
 
 * LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
   (Greg Miller)
+  
+* LUCENE-10101, LUCENE-9281: Use getField() instead of getDeclaredField() to
+  minimize security impact by analysis SPI discovery. (Uwe Schindler)
 
 Changes in Backwards Compatibility Policy
 
@@ -399,6 +399,11 @@ Optimizations
 Bug Fixes
 ---------------------
 (No changes)
+
+Build
+---------------------
+
+* LUCENE-10104, SOLR-15631: Upgrade forbiddenapis to version 3.2.  (Uwe Schindler)
 
 Other
 ---------------------
