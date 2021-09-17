@@ -179,6 +179,22 @@ public class TermQuery extends Query {
       }
       return Explanation.noMatch("no matching term");
     }
+
+    @Override
+    public int count(LeafReaderContext context) throws IOException {
+      if (context.reader().hasDeletions() == false) {
+        TermsEnum termsEnum = getTermsEnum(context);
+        // termsEnum is not null if term state is available
+        if (termsEnum != null) {
+          return termsEnum.docFreq();
+        } else {
+          // the term cannot be found in the dictionary so the count is 0
+          return 0;
+        }
+      } else {
+        return super.count(context);
+      }
+    }
   }
 
   /** Constructs a query for the term <code>t</code>. */

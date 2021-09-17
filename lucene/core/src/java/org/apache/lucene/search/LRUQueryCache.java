@@ -824,6 +824,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     @Override
+    public int count(LeafReaderContext context) throws IOException {
+      return in.count(context);
+    }
+
+    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return in.isCacheable(ctx);
     }

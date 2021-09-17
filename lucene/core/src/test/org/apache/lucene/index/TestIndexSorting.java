@@ -2821,7 +2821,11 @@ public class TestIndexSorting extends LuceneTestCase {
         doc.add(dvs.get(j));
         exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
         assertEquals(
-            "Inconsistency of field data structures across documents for field [field] of doc [2].",
+            "Inconsistency of field data structures across documents for field [field] of doc [2]. doc values type: expected '"
+                + dvs.get(i).fieldType().docValuesType()
+                + "', but it has '"
+                + dvs.get(j).fieldType().docValuesType()
+                + "'.",
             exc.getMessage());
         w.rollback();
         IOUtils.close(w);

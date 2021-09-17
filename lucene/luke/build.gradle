@@ -133,13 +133,8 @@ task run() {
 
   doFirst {
     logger.lifecycle("Launching Luke ${project.version} right now...")
-    def javaExecutable = {
-      def registry = project.extensions.getByType(JavaInstallationRegistry)
-      def currentJvm = registry.installationForCurrentVirtualMachine.get()
-      currentJvm.getJavaExecutable().asFile
-    }()
     ant.exec(
-        executable: javaExecutable,
+        executable: rootProject.ext.runtimeJavaExecutable,
         spawn: true,
         vmlauncher: true
     ) {

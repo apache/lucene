@@ -2,6 +2,8 @@ import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import org.apache.commons.codec.digest.DigestUtils
 
+import java.util.function.Function
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -62,6 +64,24 @@ def computeChecksummedEntries = { Task sourceTask ->
   return allEntries
 }
 
+configure(rootProject) {
+  ext {
+    /**
+     * Utility function to read a file, apply changes to its content and write it back.
+     */
+    modifyFile = { File path, Function<String, String> modify ->
+      Function<String, String> normalizeEols = { text -> text.replace("\r\n", "\n") }
+      modify = normalizeEols.andThen(modify).andThen(normalizeEols)
+
+      String original = path.getText("UTF-8")
+      String modified = modify.apply(original)
+      if (!original.equals(modified)) {
+        path.write(modified, "UTF-8")
+      }
+    }
+  }
+}
+
 configure([
         project(":lucene:analysis:common"),
         project(":lucene:analysis:icu"),
@@ -70,6 +90,7 @@ configure([
         project(":lucene:backward-codecs"),
         project(":lucene:core"),
         project(":lucene:queryparser"),
+        project(":lucene:expressions"),
 ]) {
     task regenerate() {
       description "Rerun any code or static data generation tasks."

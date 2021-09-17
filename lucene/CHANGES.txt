@@ -15,6 +15,12 @@ New Features
 
 * LUCENE-9589: Swedish Minimal Stemmer (janhoy)
 
+* LUCENE-9313: Add SerbianAnalyzer based on the snowball stemmer. (Dragan Ivanovic)
+
+* LUCENE-10095: Add NepaliAnalyzer based on the snowball stemmer. (Robert Muir)
+
+* LUCENE-10096: Add TamilAnalyzer based on the snowball stemmer. (Robert Muir)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
@@ -24,9 +30,6 @@ API Changes
 
 * LUCENE-8638: Remove many deprecated methods and classes including FST.lookupByOutput(),
   LegacyBM25Similarity and Jaspell suggester.
-
-* LUCENE-8638: haversin() expressions function now returns its result in meters rather than
-  kilometers.
 
 * LUCENE-8982: Separate out native code to another module to allow cpp
   build with gradle. This also changes the name of the native "posix-support"
@@ -130,15 +133,20 @@ API Changes
 * LUCENE-9998: Remove unused parameter fis in StoredFieldsWriter.finish() and TermVectorsWriter.finish(),
   including those subclasses. (kkewwei)
 
-* LUCENE-9959: Add non thread local based API for term vector reader usage. (Zach Chen, Adrien Grand,
-  David Smiley, Robert Muir, Mike Drob)
-
 * LUCENE-7020: TieredMergePolicy#setMaxMergeAtOnceExplicit has been removed.
   TieredMergePolicy no longer sets a limit on the maximum number of segments
   that can be merged at once via a forced merge. (Adrien Grand, Shawn Heisey)
 
 * LUCENE-10027: Directory reader open API from indexCommit and leafSorter has been modified
   to add an extra parameter - minSupportedMajorVersion. (Mayya Sharipova)
+
+* LUCENE-9620: Added a (sometimes) faster implementation for IndexSearcher#count that relies on the new Weight#count API.
+  The Weight#count API represents a cleaner way for Query classes to optimize their counting method.
+  (Gautam Worah, Adrien Grand)
+
+* LUCENE-10089: Add a method to SortField that allows to enable or disable numeric sort
+  optimization to use the points index to skip over non-competitive documents,
+  which is enabled by default from 9.0 (Mayya Sharipova, Adrien Grand)
 
 Improvements
 
@@ -212,8 +220,6 @@ Improvements
   with doc values and points. In this case, there is an assumption that the same data is
   stored in these points and doc values (Mayya Sharipova, Jim Ferenczi, Adrien Grand)
 
-* LUCENE-9313: Add SerbianAnalyzer based on the snowball stemmer. (Dragan Ivanovic)
-
 * LUCENE-9449: Enhance DocComparator to provide an iterator over competitive
   documents when searching with "after". This iterator can quickly position
   on the desired "after" document skipping all documents and segments before
@@ -255,6 +261,14 @@ Improvements
 * LUCENE-10019: Align file starts in CFS files to have proper alignment (8 bytes)
   (Uwe Schinder)
 
+* LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
+  (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
+
+* LUCENE-9476: Add new getBulkPath API to DirectoryTaxonomyReader to more efficiently retrieve FacetLabels for multiple
+  facet ordinals at once. This API is 2-4% faster than iteratively calling getPath.
+  The getPath API now throws an IAE instead of returning null if the ordinal is out of bounds.
+  (Gautam Worah, Mike McCandless)
+
 Bug fixes
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
@@ -293,6 +307,9 @@ Bug fixes
 
 * LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
   (Greg Miller)
+  
+* LUCENE-10101, LUCENE-9281: Use getField() instead of getDeclaredField() to
+  minimize security impact by analysis SPI discovery. (Uwe Schindler)
 
 Changes in Backwards Compatibility Policy
 
@@ -359,6 +376,40 @@ Other
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
 
+======================= Lucene 8.11.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+* LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
+  (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Build
+---------------------
+
+* LUCENE-10104, SOLR-15631: Upgrade forbiddenapis to version 3.2.  (Uwe Schindler)
+
+Other
+---------------------
+
+* LUCENE-10098: Add docs/links to GermanAnalyzer describing how to decompound nouns. (Robert Muir)
+
 ======================= Lucene 8.10.0 =======================
 
 API Changes
@@ -382,7 +433,10 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* LUCENE-10083: Analyzer and stemmer for Telugu language (Vinod Singh)
+
+* LUCENE-10035: The SimpleText codec now writes skip lists.
+  (wuda via Adrien Grand)
 
 Improvements
 ---------------------
@@ -471,6 +525,9 @@ Bug Fixes
 * LUCENE-10008: Respect ignoreCase in CommonGramsFilterFactory (Vigya Sharma)
 
 * LUCENE-10060: Ensure DrillSidewaysQuery instances never get cached. (Greg Miller, Zachary Chen)
+
+* LUCENE-10081: KoreanTokenizer should check the max backtrace gap on whitespaces.
+  (Jim Ferenczi)
 
 Other
 ---------------------

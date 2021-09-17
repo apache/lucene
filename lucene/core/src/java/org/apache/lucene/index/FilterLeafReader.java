@@ -351,8 +351,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public TermVectors getTermVectorsReader() {
-    return in.getTermVectorsReader();
+  public Fields getTermVectors(int docID) throws IOException {
+    ensureOpen();
+    return in.getTermVectors(docID);
   }
 
   @Override

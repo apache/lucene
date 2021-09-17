@@ -72,6 +72,11 @@ public final class MatchAllDocsQuery extends Query {
           }
         };
       }
+
+      @Override
+      public int count(LeafReaderContext context) {
+        return context.reader().numDocs();
+      }
     };
   }
 
