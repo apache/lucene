@@ -23,14 +23,13 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiBits;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollectorManager;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
 
@@ -117,9 +116,11 @@ public abstract class ReadTask extends PerfTask {
             hits = searcher.search(q, numHits);
           }
         } else {
-          Collector collector = createCollector();
-          searcher.search(q, collector);
-          // hits = collectorManager.topDocs();
+          int totalHitsThreshold = withTotalHits() ? Integer.MAX_VALUE : 1;
+          TopScoreDocCollectorManager collectorManager =
+              new TopScoreDocCollectorManager(
+                  numHits(), null, totalHitsThreshold, searcher.getExecutor() != null);
+          hits = searcher.search(q, collectorManager);
         }
 
         if (hits != null) {
@@ -179,11 +180,6 @@ public abstract class ReadTask extends PerfTask {
       }
     }
     return res;
-  }
-
-  @Deprecated
-  protected Collector createCollector() throws Exception {
-    return TopScoreDocCollector.create(numHits(), withTotalHits() ? Integer.MAX_VALUE : 1);
   }
 
   protected Document retrieveDoc(IndexReader ir, int id) throws IOException {

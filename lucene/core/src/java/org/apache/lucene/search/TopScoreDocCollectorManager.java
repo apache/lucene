@@ -58,6 +58,11 @@ public class TopScoreDocCollectorManager
    */
   public TopScoreDocCollectorManager(
       int numHits, ScoreDoc after, int totalHitsThreshold, boolean supportsConcurrency) {
+    if (totalHitsThreshold < 0) {
+      throw new IllegalArgumentException(
+          "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
+    }
+
     if (numHits <= 0) {
       throw new IllegalArgumentException(
           "numHits must be > 0; please use TotalHitCountCollectorManager if you just need the total hit count");

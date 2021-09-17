@@ -36,7 +36,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
-import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
@@ -368,7 +367,7 @@ public class TestOmitTf extends LuceneTestCase {
     bq.add(q1, Occur.MUST);
     bq.add(q4, Occur.MUST);
 
-    int count = searcher.search(bq.build(), new TotalHitCountCollectorManager());
+    int count = searcher.count(bq.build());
     assertEquals(15, count);
 
     reader.close();

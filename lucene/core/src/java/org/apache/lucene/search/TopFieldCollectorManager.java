@@ -61,6 +61,30 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
           "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
     }
 
+    if (numHits <= 0) {
+      throw new IllegalArgumentException(
+          "numHits must be > 0; please use TotalHitCountCollector if you just need the total hit count");
+    }
+
+    if (sort.getSort().length == 0) {
+      throw new IllegalArgumentException("Sort must contain at least one field");
+    }
+
+    if (after != null) {
+      if (after.fields == null) {
+        throw new IllegalArgumentException(
+            "after.fields wasn't set; you must pass fillFields=true for the previous search");
+      }
+
+      if (after.fields.length != sort.getSort().length) {
+        throw new IllegalArgumentException(
+            "after.fields has "
+                + after.fields.length
+                + " values but sort has "
+                + sort.getSort().length);
+      }
+    }
+
     this.sort = sort;
     this.numHits = numHits;
     this.after = after;
@@ -121,15 +145,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
       collectorCreated = true;
     }
 
-    if (sort.fields.length == 0) {
-      throw new IllegalArgumentException("Sort must contain at least one field");
-    }
-
-    if (numHits <= 0) {
-      throw new IllegalArgumentException(
-          "numHits must be > 0; please use TotalHitCountCollector if you just need the total hit count");
-    }
-
     FieldValueHitQueue<FieldValueHitQueue.Entry> queue =
         FieldValueHitQueue.create(sort.fields, numHits);
 
@@ -139,19 +154,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
           new TopFieldCollector.SimpleFieldCollector(
               sort, queue, numHits, hitsThresholdChecker, minScoreAcc);
     } else {
-      if (after.fields == null) {
-        throw new IllegalArgumentException(
-            "after.fields wasn't set; you must pass fillFields=true for the previous search");
-      }
-
-      if (after.fields.length != sort.getSort().length) {
-        throw new IllegalArgumentException(
-            "after.fields has "
-                + after.fields.length
-                + " values but sort has "
-                + sort.getSort().length);
-      }
-
       collector =
           new TopFieldCollector.PagingFieldCollector(
               sort, queue, after, numHits, hitsThresholdChecker, minScoreAcc);

@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -426,25 +425,7 @@ public class IndexSearcher {
       return count;
     }
 
-    // general case: create a collector and count matches
-    final CollectorManager<TotalHitCountCollector, Integer> collectorManager =
-        new CollectorManager<TotalHitCountCollector, Integer>() {
-
-          @Override
-          public TotalHitCountCollector newCollector() throws IOException {
-            return new TotalHitCountCollector();
-          }
-
-          @Override
-          public Integer reduce(Collection<TotalHitCountCollector> collectors) throws IOException {
-            int total = 0;
-            for (TotalHitCountCollector collector : collectors) {
-              total += collector.getTotalHits();
-            }
-            return total;
-          }
-        };
-    return search(query, collectorManager);
+    return search(query, new TotalHitCountCollectorManager());
   }
 
   /**

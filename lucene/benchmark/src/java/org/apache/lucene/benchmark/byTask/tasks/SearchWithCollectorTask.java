@@ -19,8 +19,6 @@ package org.apache.lucene.benchmark.byTask.tasks;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.QueryMaker;
 import org.apache.lucene.benchmark.byTask.utils.Config;
-import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.TopScoreDocCollector;
 
 /** Does search w/ a custom collector */
 public class SearchWithCollectorTask extends SearchTask {
@@ -43,20 +41,6 @@ public class SearchWithCollectorTask extends SearchTask {
   @Override
   public boolean withCollector() {
     return true;
-  }
-
-  @Override
-  protected Collector createCollector() throws Exception {
-    Collector collector = null;
-    if (clnName.equalsIgnoreCase("topScoreDoc") == true) {
-      collector = TopScoreDocCollector.create(numHits(), Integer.MAX_VALUE);
-    } else if (clnName.length() > 0) {
-      collector = Class.forName(clnName).asSubclass(Collector.class).getConstructor().newInstance();
-
-    } else {
-      collector = super.createCollector();
-    }
-    return collector;
   }
 
   @Override

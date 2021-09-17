@@ -163,14 +163,12 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
         new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
-    TopDocs topDocs = searcher.search(testQuery, regularCollector);
-
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
-
     TopDocs firstTopDocs = largeCollector.topDocs();
 
-    assertEquals(firstTopDocs.scoreDocs.length, topDocs.scoreDocs.length);
+    TopDocs secondTopDocs = searcher.search(testQuery, regularCollector);
 
-    CheckHits.checkEqual(testQuery, firstTopDocs.scoreDocs, topDocs.scoreDocs);
+    assertEquals(largeCollector.totalHits, secondTopDocs.totalHits.value);
+    assertEquals(firstTopDocs.scoreDocs.length, secondTopDocs.scoreDocs.length);
+    CheckHits.checkEqual(testQuery, firstTopDocs.scoreDocs, secondTopDocs.scoreDocs);
   }
 }
