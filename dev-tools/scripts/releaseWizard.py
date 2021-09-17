@@ -116,7 +116,7 @@ def expand_jinja(text, vars=None):
         'set_java_home': set_java_home,
         'latest_version': state.get_latest_version(),
         'latest_lts_version': state.get_latest_lts_version(),
-        'master_version': state.get_master_version(),
+        'main_version': state.get_main_version(),
         'mirrored_versions': state.get_mirrored_versions(),
         'mirrored_versions_to_delete': state.get_mirrored_versions_to_delete(),
         'home': os.path.expanduser("~")
@@ -361,7 +361,7 @@ class ReleaseState:
             raise Exception("Release version %s must have same major version as current minor or lts release")
         return [ver for ver in versions if ver not in to_keep]
 
-    def get_master_version(self):
+    def get_main_version(self):
         v = Version.parse(self.get_latest_version())
         return "%s.%s.%s" % (v.major + 1, 0, 0)
 
@@ -390,10 +390,10 @@ class ReleaseState:
             if not ver.is_minor_release():
                 sys.exit("You can only release minor releases from an existing stable branch")
         elif branch_type == BranchType.unstable:
-            if not branch == 'master':
+            if not branch == 'main':
                 sys.exit("Incompatible branch and branch_type")
             if not ver.is_major_release():
-                sys.exit("You can only release a new major version from master branch")
+                sys.exit("You can only release a new major version from main branch")
         if not getScriptVersion() == release_version:
             print("WARNING: Expected release version %s when on branch %s, but got %s" % (
                 getScriptVersion(), branch, release_version))
@@ -401,7 +401,7 @@ class ReleaseState:
     def get_base_branch_name(self):
         v = Version.parse(self.release_version)
         if v.is_major_release():
-            return 'master'
+            return 'main'
         elif v.is_minor_release():
             return self.get_stable_branch_name()
         elif v.major == Version.parse(self.get_latest_version()).major:
@@ -569,7 +569,7 @@ class ReleaseState:
 
     def get_stable_branch_name(self):
         if self.release_type == 'major':
-            v = Version.parse(self.get_master_version())
+            v = Version.parse(self.get_main_version())
         else:
             v = Version.parse(self.get_latest_version())
         return "branch_%sx" % v.major
