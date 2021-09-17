@@ -273,6 +273,8 @@ Improvements
 
 Bug fixes
 
+* LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
+
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
   Julie Tibshirani)
 
