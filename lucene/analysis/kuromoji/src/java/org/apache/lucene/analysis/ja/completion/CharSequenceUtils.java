@@ -16,13 +16,11 @@
  */
 package org.apache.lucene.analysis.ja.completion;
 
-import org.apache.lucene.util.CharsRef;
-
 /** Utility functions for {@link org.apache.lucene.analysis.ja.JapaneseCompletionFilter} */
-public class StringUtils {
+public class CharSequenceUtils {
 
   /** Checks if a string is composed only of lowercase alphabets */
-  public static boolean isLowercaseAlphabets(String s) {
+  public static boolean isLowercaseAlphabets(CharSequence s) {
     for (int i = 0; i < s.length(); i++) {
       char ch = s.charAt(i);
       if (!(isHalfWidthLowercaseAlphabet(ch) || isFullWidthLowercaseAlphabet(ch))) {
@@ -33,7 +31,7 @@ public class StringUtils {
   }
 
   /** Checks if a string is composed only of Katakana or hiragana */
-  public static boolean isKana(String s) {
+  public static boolean isKana(CharSequence s) {
     for (int i = 0; i < s.length(); i++) {
       char ch = s.charAt(i);
       if (!(isHiragana(ch) || isKatakana(ch))) {
@@ -43,19 +41,8 @@ public class StringUtils {
     return true;
   }
 
-  /** Checks if a string is composed only of Katakana or lowercase alphabets */
-  public static boolean isKatakanaOrHWAlphabets(String s) {
-    for (int i = 0; i < s.length(); i++) {
-      char ch = s.charAt(i);
-      if (!isKatakana(ch) && !isHalfWidthLowercaseAlphabet(ch)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   /** Checks if a char sequence is composed only of Katakana or lowercase alphabets */
-  public static boolean isKatakanaOrHWAlphabets(CharsRef ref) {
+  public static boolean isKatakanaOrHWAlphabets(CharSequence ref) {
     for (int i = 0; i < ref.length(); i++) {
       char ch = ref.charAt(i);
       if (!isKatakana(ch) && !isHalfWidthLowercaseAlphabet(ch)) {
@@ -66,17 +53,17 @@ public class StringUtils {
   }
 
   /** Checks if a char is a Hiragana */
-  public static boolean isHiragana(char ch) {
+  private static boolean isHiragana(char ch) {
     return ch >= 0x3040 && ch <= 0x309f;
   }
 
   /** Checks if a char is a Katakana */
-  public static boolean isKatakana(char ch) {
+  private static boolean isKatakana(char ch) {
     return ch >= 0x30a0 && ch <= 0x30ff;
   }
 
   /** Checks if a char is a half-width lowercase alphabet */
-  public static boolean isHalfWidthLowercaseAlphabet(char ch) {
+  private static boolean isHalfWidthLowercaseAlphabet(char ch) {
     return ch >= 0x61 && ch <= 0x7a;
   }
 
@@ -86,7 +73,7 @@ public class StringUtils {
   }
 
   /** Convert all hiragana in a string into kanataka */
-  public static String toKatakana(String s) {
+  public static String toKatakana(CharSequence s) {
     char[] chars = new char[s.length()];
     for (int i = 0; i < s.length(); i++) {
       char ch = s.charAt(i);
@@ -100,5 +87,5 @@ public class StringUtils {
     return new String(chars);
   }
 
-  private StringUtils() {}
+  private CharSequenceUtils() {}
 }

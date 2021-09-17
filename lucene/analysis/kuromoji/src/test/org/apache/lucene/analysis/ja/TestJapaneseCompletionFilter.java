@@ -232,7 +232,7 @@ public class TestJapaneseCompletionFilter extends BaseTokenStreamTestCase {
     assertAnalyzesTo(
         queryAnalyzer,
         "さーきゅｒ",
-        new String[] {"サーキュr", "saーkyur"},
+        new String[] {"さーきゅr", "saーkyur"},
         new int[] {0, 0},
         new int[] {5, 5},
         new int[] {1, 0});

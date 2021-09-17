@@ -102,10 +102,9 @@ public class KatakanaRomanizer {
    * keystroke can be mapped to multiple romajis.
    */
   public List<CharsRef> romanize(CharsRef input) {
-    assert StringUtils.isKatakanaOrHWAlphabets(input);
+    assert CharSequenceUtils.isKatakanaOrHWAlphabets(input);
 
-    List<CharsRef> pendingOutputs = new ArrayList<>();
-    CharsRefBuilder buffer = new CharsRefBuilder();
+    List<CharsRefBuilder> pendingOutputs = new ArrayList<>();
     int pos = 0;
     while (pos < input.length) {
       // Greedily looks up the longest matched keystroke.
@@ -115,50 +114,59 @@ public class KatakanaRomanizer {
       if (matched == null) {
         break;
       }
-      List<CharsRef> outputs = new ArrayList<>();
+
       List<CharsRef> candidates =
           romajiMap.get(keystrokes[matched.keystrokeLen - 1][matched.keystrokeIndex]);
-      for (CharsRef cref : candidates) {
-        if (pendingOutputs.size() == 0) {
-          // the first matched keystroke; there's no pending output.
-          outputs.add(cref);
-        } else {
-          // Combine the matched keystroke with all previously matched keystrokes.
-          // e.g.: Consider we already have two pending outputs "shi" and "si" and the matched
-          // keystroke "n" and "nn".
-          // To produce all possible keystroke patterns, result outputs should be "shin", "shinn",
-          // "sin" and "sinn".
-          for (CharsRef pdgOutput : pendingOutputs) {
-            buffer.copyChars(pdgOutput);
+
+      if (pendingOutputs.size() == 0) {
+        // There is no pending output.
+        // Add the matched keystrokes to pending outputs list.
+        for (CharsRef cref : candidates) {
+          CharsRefBuilder output = new CharsRefBuilder();
+          output.copyChars(cref);
+          pendingOutputs.add(output);
+        }
+      } else if (candidates.size() == 1) {
+        // There are one or more pending output(s) and one matched keystroke.
+        // Append the matched keystroke to all pending outputs.
+        // e.g.: Consider we already have two pending outputs "shi" and "si" and the matched
+        // keystroke "ka";
+        // then results are "shika" and "sika".
+        CharsRef cref = candidates.get(0);
+        for (CharsRefBuilder pdgOutput : pendingOutputs) {
+          pdgOutput.append(cref.chars, 0, cref.length);
+        }
+      } else {
+        // There are one or more pending output(s) and multiple matched keystrokes.
+        // Combine the matched keystrokes to all pending outputs.
+        // e.g.: Consider we already have two pending outputs "shi" and "si" and the matched
+        // keystroke "n" and "nn".
+        // To produce all possible keystroke patterns, result outputs should be "shin", "shinn",
+        // "sin" and "sinn".
+        List<CharsRefBuilder> outputs = new ArrayList<>();
+        for (CharsRef cref : candidates) {
+          for (CharsRefBuilder pdgOutput : pendingOutputs) {
+            CharsRefBuilder buffer = new CharsRefBuilder();
+            buffer.copyChars(pdgOutput.chars(), 0, pdgOutput.length());
             buffer.append(cref.chars, cref.offset, cref.length);
-            outputs.add(buffer.toCharsRef());
+            outputs.add(buffer);
           }
         }
+        // update the pending outputs
+        pendingOutputs = outputs;
       }
-      // update the pending outputs
-      pendingOutputs = outputs;
+
       // proceed to the next input position
       pos += matched.keystrokeLen;
     }
 
     if (pos < input.length) {
       // add the remnants (that cannot be mapped to any romaji) as suffix
-      CharsRefBuilder suffix = new CharsRefBuilder();
-      for (int i = pos; i < input.length; i++) {
-        suffix.append(input.chars[i]);
+      for (CharsRefBuilder output : pendingOutputs) {
+        output.append(input.chars, pos, input.length - pos);
       }
-      return pendingOutputs.stream()
-          .map(
-              output -> {
-                CharsRefBuilder builder = new CharsRefBuilder();
-                builder.copyChars(output);
-                builder.append(suffix.chars(), 0, suffix.length());
-                return builder.toCharsRef();
-              })
-          .collect(Collectors.toList());
-    } else {
-      return pendingOutputs;
     }
+    return pendingOutputs.stream().map(CharsRefBuilder::toCharsRef).collect(Collectors.toList());
   }
 
   private MatchedKeystroke longestKeystrokeMatch(CharsRef input, int inputOffset) {
