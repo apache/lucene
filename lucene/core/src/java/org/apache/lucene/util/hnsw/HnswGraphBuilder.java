@@ -67,7 +67,6 @@ public final class HnswGraphBuilder {
    * @param maxConn the number of connections to make when adding a new graph node; roughly speaking
    *     the graph fanout.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
-   * @param ml normalization factor for level generation
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
    */
@@ -76,7 +75,6 @@ public final class HnswGraphBuilder {
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
-      double ml,
       long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
@@ -89,15 +87,11 @@ public final class HnswGraphBuilder {
     }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
-    this.ml = ml;
+    // normalization factor for level generation; currently not configurable
+    this.ml = 1 / Math.log(1.0 * maxConn);
     this.random = new Random(seed);
-
-    if (ml == 0) {
-      this.hnsw = new HnswGraph(maxConn, 0);
-    } else {
-      int levelOfFirstNode = getRandomGraphLevel(ml, random);
-      this.hnsw = new HnswGraph(maxConn, levelOfFirstNode);
-    }
+    int levelOfFirstNode = getRandomGraphLevel(ml, random);
+    this.hnsw = new HnswGraph(maxConn, levelOfFirstNode);
     bound = BoundsChecker.create(similarityFunction.reversed);
     scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
@@ -118,20 +112,6 @@ public final class HnswGraphBuilder {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
     }
-    if (ml == 0) {
-      buildNSW(vectors);
-    } else {
-      buildHNSW(vectors);
-    }
-    return hnsw;
-  }
-
-  public void setInfoStream(InfoStream infoStream) {
-    this.infoStream = infoStream;
-  }
-
-  // build navigable small world graph (single-layered)
-  private void buildNSW(RandomAccessVectorValues vectors) throws IOException {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectors.size(); node++) {
@@ -140,41 +120,18 @@ public final class HnswGraphBuilder {
         t = printGraphBuildStatus(node, start, t);
       }
     }
+    return hnsw;
+  }
+
+  public void setInfoStream(InfoStream infoStream) {
+    this.infoStream = infoStream;
   }
 
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(int node, float[] value) throws IOException {
-    // We pass 'null' for acceptOrds because there are no deletions while building the graph
-    NeighborQueue candidates =
-        HnswGraph.search(
-            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, null, random);
-
-    hnsw.addNode(0, node);
-
-    /* connect neighbors to the new node, using a diversity heuristic that chooses successive
-     * nearest neighbors that are closer to the new node than they are to the previously-selected
-     * neighbors
-     */
-    addDiverseNeighbors(0, node, candidates);
-  }
-
-  // build hierarchical navigable small world graph (multi-layered)
-  void buildHNSW(RandomAccessVectorValues vectors) throws IOException {
-    long start = System.nanoTime(), t = start;
-    // start at node 1! node 0 is added implicitly, in the constructor
-    for (int node = 1; node < vectors.size(); node++) {
-      addGraphNodeHNSW(node, vectors.vectorValue(node));
-      if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
-        t = printGraphBuildStatus(node, start, t);
-      }
-    }
-  }
-
-  /** Inserts a doc with vector value to the graph */
-  void addGraphNodeHNSW(int node, float[] value) throws IOException {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
-    int curMaxLevel = hnsw.maxLevel();
+    int curMaxLevel = hnsw.numOfLevels() - 1;
     int[] eps = new int[] {hnsw.entryNode()};
 
     // if a node introduces new levels to the graph, add this new node on new levels

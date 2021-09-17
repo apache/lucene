@@ -43,6 +43,7 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
@@ -68,7 +69,7 @@ public class TestHnswGraph extends LuceneTestCase {
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
     HnswGraphBuilder builder =
-        new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0, seed);
+        new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors);
 
     // Recreate the graph while indexing with the same random seed and write it out
@@ -115,8 +116,37 @@ public class TestHnswGraph extends LuceneTestCase {
                               ((CodecReader) ctx.reader()).getVectorReader())
                           .getFieldReader("field"))
                   .getGraphValues("field");
-          assertGraphEqual(hnsw, graphValues, nVec);
+          assertGraphEqual(hnsw, graphValues);
         }
+      }
+    }
+  }
+
+  private void assertGraphEqual(KnnGraphValues g, KnnGraphValues h) throws IOException {
+    assertEquals(
+        "the number of levels in the graphs are different!", g.numOfLevels(), h.numOfLevels());
+    assertEquals("the number of nodes in the graphs are different!", g.size(), h.size());
+
+    // assert equal nodes on each level
+    for (int level = 0; level < g.numOfLevels(); level++) {
+      DocIdSetIterator nodesOnLevel = g.getAllNodesOnLevel(level);
+      DocIdSetIterator nodesOnLevel2 = h.getAllNodesOnLevel(level);
+      for (int node = nodesOnLevel.nextDoc(), node2 = nodesOnLevel2.nextDoc();
+          node != DocIdSetIterator.NO_MORE_DOCS && node2 != DocIdSetIterator.NO_MORE_DOCS;
+          node = nodesOnLevel.nextDoc(), node2 = nodesOnLevel2.nextDoc()) {
+        assertEquals("nodes in the graphs are different", node, node2);
+      }
+    }
+
+    // assert equal nodes' neighbours on each level
+    for (int level = 0; level < g.numOfLevels(); level++) {
+      DocIdSetIterator nodesOnLevel = g.getAllNodesOnLevel(level);
+      for (int node = nodesOnLevel.nextDoc();
+          node != DocIdSetIterator.NO_MORE_DOCS;
+          node = nodesOnLevel.nextDoc()) {
+        g.seek(level, node);
+        h.seek(level, node);
+        assertEquals("arcs differ for node " + node, getNeighborNodes(g), getNeighborNodes(h));
       }
     }
   }
@@ -126,21 +156,11 @@ public class TestHnswGraph extends LuceneTestCase {
   // oriented in the right directions
   public void testAknnDiverse() throws IOException {
     int maxConn = 10;
-    // single level graph
-    double ml = 0;
-    doTestAknnDiverse(maxConn, ml);
-
-    // multi level graph
-    ml = 1 / Math.log(1.0 * maxConn);
-    doTestAknnDiverse(maxConn, ml);
-  }
-
-  private void doTestAknnDiverse(int maxConn, double ml) throws IOException {
     int nDoc = 100;
     TestHnswGraph.CircularVectorValues vectors = new TestHnswGraph.CircularVectorValues(nDoc);
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, ml, random().nextInt());
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
     HnswGraph hnsw = builder.build(vectors);
     // run some searches
     NeighborQueue nn =
@@ -176,33 +196,28 @@ public class TestHnswGraph extends LuceneTestCase {
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
-
-    double ml1 = 0; // single level graph
-    double ml2 = 1 / Math.log(1.0 * maxConn); // multi level graph
-    for (double ml : new double[] {ml1, ml2}) {
-      HnswGraphBuilder builder =
-          new HnswGraphBuilder(
-              vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, ml, random().nextInt());
-      HnswGraph hnsw = builder.build(vectors);
-      NeighborQueue nn =
-          HnswGraph.search(
-              new float[] {1, 0},
-              10,
-              5,
-              vectors.randomAccess(),
-              VectorSimilarityFunction.DOT_PRODUCT,
-              hnsw,
-              acceptOrds,
-              random());
-      int sum = 0;
-      for (int node : nn.nodes()) {
-        assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
-        sum += node;
-      }
-      // We expect to get approximately 100% recall;
-      // the lowest docIds are closest to zero; sum(0,9) = 45
-      assertTrue("sum(result docs)=" + sum, sum < 75);
+    HnswGraphBuilder builder =
+        new HnswGraphBuilder(
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
+    HnswGraph hnsw = builder.build(vectors);
+    NeighborQueue nn =
+        HnswGraph.search(
+            new float[] {1, 0},
+            10,
+            5,
+            vectors.randomAccess(),
+            VectorSimilarityFunction.DOT_PRODUCT,
+            hnsw,
+            acceptOrds,
+            random());
+    int sum = 0;
+    for (int node : nn.nodes()) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
+      sum += node;
     }
+    // We expect to get approximately 100% recall;
+    // the lowest docIds are closest to zero; sum(0,9) = 45
+    assertTrue("sum(result docs)=" + sum, sum < 75);
   }
 
   public void testBoundsCheckerMax() {
@@ -230,7 +245,7 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   public void testHnswGraphBuilderInvalid() {
-    expectThrows(NullPointerException.class, () -> new HnswGraphBuilder(null, null, 0, 0, 0, 0));
+    expectThrows(NullPointerException.class, () -> new HnswGraphBuilder(null, null, 0, 0, 0));
     expectThrows(
         IllegalArgumentException.class,
         () ->
@@ -239,7 +254,6 @@ public class TestHnswGraph extends LuceneTestCase {
                 VectorSimilarityFunction.EUCLIDEAN,
                 0,
                 10,
-                0,
                 0));
     expectThrows(
         IllegalArgumentException.class,
@@ -248,7 +262,6 @@ public class TestHnswGraph extends LuceneTestCase {
                 new RandomVectorValues(1, 1, random()),
                 VectorSimilarityFunction.EUCLIDEAN,
                 10,
-                0,
                 0,
                 0));
   }
@@ -268,103 +281,47 @@ public class TestHnswGraph extends LuceneTestCase {
     // First add nodes until everybody gets a full neighbor list
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, 2, 10, 0, random().nextInt());
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, 2, 10, random().nextInt());
     // node 0 is added by the builder constructor
     // builder.addGraphNode(vectors.vectorValue(0));
     builder.addGraphNode(1, vectors.vectorValue(1));
     builder.addGraphNode(2, vectors.vectorValue(2));
     // now every node has tried to attach every other node as a neighbor, but
     // some were excluded based on diversity check.
-    assertNeighbors(builder.hnsw, 0, 1, 2);
-    assertNeighbors(builder.hnsw, 1, 0);
-    assertNeighbors(builder.hnsw, 2, 0);
+    assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
+    assertLevel0Neighbors(builder.hnsw, 1, 0);
+    assertLevel0Neighbors(builder.hnsw, 2, 0);
 
     builder.addGraphNode(3, vectors.vectorValue(3));
-    assertNeighbors(builder.hnsw, 0, 1, 2);
+    assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     // we added 3 here
-    assertNeighbors(builder.hnsw, 1, 0, 3);
-    assertNeighbors(builder.hnsw, 2, 0);
-    assertNeighbors(builder.hnsw, 3, 1);
+    assertLevel0Neighbors(builder.hnsw, 1, 0, 3);
+    assertLevel0Neighbors(builder.hnsw, 2, 0);
+    assertLevel0Neighbors(builder.hnsw, 3, 1);
 
     // supplant an existing neighbor
     builder.addGraphNode(4, vectors.vectorValue(4));
     // 4 is the same distance from 0 that 2 is; we leave the existing node in place
-    assertNeighbors(builder.hnsw, 0, 1, 2);
+    assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     // 4 is closer to 1 than either existing neighbor (0, 3). 3 fails diversity check with 4, so
     // replace it
-    assertNeighbors(builder.hnsw, 1, 0, 4);
-    assertNeighbors(builder.hnsw, 2, 0);
+    assertLevel0Neighbors(builder.hnsw, 1, 0, 4);
+    assertLevel0Neighbors(builder.hnsw, 2, 0);
     // 1 survives the diversity check
-    assertNeighbors(builder.hnsw, 3, 1, 4);
-    assertNeighbors(builder.hnsw, 4, 1, 3);
+    assertLevel0Neighbors(builder.hnsw, 3, 1, 4);
+    assertLevel0Neighbors(builder.hnsw, 4, 1, 3);
 
     builder.addGraphNode(5, vectors.vectorValue(5));
-    assertNeighbors(builder.hnsw, 0, 1, 2);
-    assertNeighbors(builder.hnsw, 1, 0, 5);
-    assertNeighbors(builder.hnsw, 2, 0);
+    assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
+    assertLevel0Neighbors(builder.hnsw, 1, 0, 5);
+    assertLevel0Neighbors(builder.hnsw, 2, 0);
     // even though 5 is closer, 3 is not a neighbor of 5, so no update to *its* neighbors occurs
-    assertNeighbors(builder.hnsw, 3, 1, 4);
-    assertNeighbors(builder.hnsw, 4, 3, 5);
-    assertNeighbors(builder.hnsw, 5, 1, 4);
+    assertLevel0Neighbors(builder.hnsw, 3, 1, 4);
+    assertLevel0Neighbors(builder.hnsw, 4, 3, 5);
+    assertLevel0Neighbors(builder.hnsw, 5, 1, 4);
   }
 
-  public void testDiversityHNSW() throws IOException {
-    // Some carefully checked test cases with simple 2d vectors on the unit circle:
-    MockVectorValues vectors =
-        new MockVectorValues(
-            new float[][] {
-              unitVector2d(0.5),
-              unitVector2d(0.75),
-              unitVector2d(0.2),
-              unitVector2d(0.9),
-              unitVector2d(0.8),
-              unitVector2d(0.77),
-            });
-    // First add nodes until everybody gets a full neighbor list
-    int maxConn = 2;
-    double ml = 1 / Math.log(1.0 * maxConn);
-    HnswGraphBuilder builder =
-        new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 10, ml, random().nextInt());
-    // node 0 is added by the builder constructor
-    builder.addGraphNodeHNSW(1, vectors.vectorValue(1));
-    builder.addGraphNodeHNSW(2, vectors.vectorValue(2));
-    // now every node has tried to attach every other node as a neighbor, but
-    // some were excluded based on diversity check.
-    assertNeighbors(builder.hnsw, 0, 1, 2);
-    assertNeighbors(builder.hnsw, 1, 0);
-    assertNeighbors(builder.hnsw, 2, 0);
-
-    builder.addGraphNodeHNSW(3, vectors.vectorValue(3));
-    assertNeighbors(builder.hnsw, 0, 1, 2);
-    // we added 3 here
-    assertNeighbors(builder.hnsw, 1, 0, 3);
-    assertNeighbors(builder.hnsw, 2, 0);
-    assertNeighbors(builder.hnsw, 3, 1);
-
-    // supplant an existing neighbor
-    builder.addGraphNodeHNSW(4, vectors.vectorValue(4));
-    // 4 is the same distance from 0 that 2 is; we leave the existing node in place
-    assertNeighbors(builder.hnsw, 0, 1, 2);
-    // 4 is closer to 1 than either existing neighbor (0, 3). 3 fails diversity check with 4, so
-    // replace it
-    assertNeighbors(builder.hnsw, 1, 0, 4);
-    assertNeighbors(builder.hnsw, 2, 0);
-    // 1 survives the diversity check
-    assertNeighbors(builder.hnsw, 3, 1, 4);
-    assertNeighbors(builder.hnsw, 4, 1, 3);
-
-    builder.addGraphNodeHNSW(5, vectors.vectorValue(5));
-    assertNeighbors(builder.hnsw, 0, 1, 2);
-    assertNeighbors(builder.hnsw, 1, 0, 5);
-    assertNeighbors(builder.hnsw, 2, 0);
-    // even though 5 is closer, 3 is not a neighbor of 5, so no update to *its* neighbors occurs
-    assertNeighbors(builder.hnsw, 3, 1, 4);
-    assertNeighbors(builder.hnsw, 4, 3, 5);
-    assertNeighbors(builder.hnsw, 5, 1, 4);
-  }
-
-  private void assertNeighbors(HnswGraph graph, int node, int... expected) {
+  private void assertLevel0Neighbors(HnswGraph graph, int node, int... expected) {
     assertLevelNeighbors(graph, 0, node, expected);
   }
 
@@ -383,42 +340,37 @@ public class TestHnswGraph extends LuceneTestCase {
     int size = atLeast(100);
     int dim = atLeast(10);
     int maxConn = 10;
-    double ml1 = 0; // single level graph
-    double ml2 = 1 / Math.log(1.0 * maxConn); // multi level graph
     RandomVectorValues vectors = new RandomVectorValues(size, dim, random());
     VectorSimilarityFunction similarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
     int topK = 5;
+    HnswGraphBuilder builder =
+        new HnswGraphBuilder(vectors, similarityFunction, maxConn, 30, random().nextLong());
+    HnswGraph hnsw = builder.build(vectors);
+    Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
-    for (double ml : new double[] {ml1, ml2}) {
-      HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, similarityFunction, maxConn, 30, ml, random().nextLong());
-      HnswGraph hnsw = builder.build(vectors);
-      Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
-
-      int totalMatches = 0;
-      for (int i = 0; i < 100; i++) {
-        float[] query = randomVector(random(), dim);
-        NeighborQueue actual =
-            HnswGraph.search(
-                query, topK, 100, vectors, similarityFunction, hnsw, acceptOrds, random());
-        NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
-        for (int j = 0; j < size; j++) {
-          if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
-            expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)));
-            if (expected.size() > topK) {
-              expected.pop();
-            }
+    int totalMatches = 0;
+    for (int i = 0; i < 100; i++) {
+      float[] query = randomVector(random(), dim);
+      NeighborQueue actual =
+          HnswGraph.search(
+              query, topK, 100, vectors, similarityFunction, hnsw, acceptOrds, random());
+      NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
+      for (int j = 0; j < size; j++) {
+        if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
+          expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)));
+          if (expected.size() > topK) {
+            expected.pop();
           }
         }
-        assertEquals(topK, actual.size());
-        totalMatches += computeOverlap(actual.nodes(), expected.nodes());
       }
-      double overlap = totalMatches / (double) (100 * topK);
-      System.out.println("overlap=" + overlap + " totalMatches=" + totalMatches);
-      assertTrue("overlap=" + overlap, overlap > 0.9);
+      assertEquals(topK, actual.size());
+      totalMatches += computeOverlap(actual.nodes(), expected.nodes());
     }
+    double overlap = totalMatches / (double) (100 * topK);
+    System.out.println("overlap=" + overlap + " totalMatches=" + totalMatches);
+    assertTrue("overlap=" + overlap, overlap > 0.9);
   }
 
   private int computeOverlap(int[] a, int[] b) {
@@ -520,14 +472,6 @@ public class TestHnswGraph extends LuceneTestCase {
     value[0] = (float) Math.cos(Math.PI * piRadians);
     value[1] = (float) Math.sin(Math.PI * piRadians);
     return value;
-  }
-
-  private void assertGraphEqual(KnnGraphValues g, KnnGraphValues h, int size) throws IOException {
-    for (int node = 0; node < size; node++) {
-      g.seek(0, node);
-      h.seek(0, node);
-      assertEquals("arcs differ for node " + node, getNeighborNodes(g), getNeighborNodes(h));
-    }
   }
 
   private Set<Integer> getNeighborNodes(KnnGraphValues g) throws IOException {

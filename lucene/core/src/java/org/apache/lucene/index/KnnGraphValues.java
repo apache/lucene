@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 
 /**
  * Access to per-document neighbor lists in a (hierarchical) knn search graph.
@@ -52,11 +53,20 @@ public abstract class KnnGraphValues {
    */
   public abstract int nextNeighbor() throws IOException;
 
-  /** Returns top level of the graph * */
-  public abstract int maxLevel() throws IOException;
+  /** Returns the number of levels of the graph */
+  public abstract int numOfLevels() throws IOException;
 
   /** Returns graph's entry point on the top level * */
   public abstract int entryNode() throws IOException;
+
+  /**
+   * Get all nodes on a given level as node 0th ordinals
+   *
+   * @param level level for which to get all nodes
+   * @return an iterator over nodes where {@code nextDoc} returns a next node ordinal
+   */
+  // TODO: return a more suitable iterator over nodes than DocIdSetIterator
+  public abstract DocIdSetIterator getAllNodesOnLevel(int level) throws IOException;
 
   /** Empty graph value */
   public static KnnGraphValues EMPTY =
@@ -76,13 +86,18 @@ public abstract class KnnGraphValues {
         }
 
         @Override
-        public int maxLevel() {
+        public int numOfLevels() {
           return 0;
         }
 
         @Override
         public int entryNode() {
           return 0;
+        }
+
+        @Override
+        public DocIdSetIterator getAllNodesOnLevel(int level) {
+          return DocIdSetIterator.empty();
         }
       };
 }
