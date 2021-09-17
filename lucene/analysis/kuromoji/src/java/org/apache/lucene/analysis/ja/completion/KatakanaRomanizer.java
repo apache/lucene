@@ -166,7 +166,7 @@ public class KatakanaRomanizer {
         output.append(input.chars, pos, input.length - pos);
       }
     }
-    return pendingOutputs.stream().map(CharsRefBuilder::toCharsRef).collect(Collectors.toList());
+    return pendingOutputs.stream().map(CharsRefBuilder::get).collect(Collectors.toList());
   }
 
   private MatchedKeystroke longestKeystrokeMatch(CharsRef input, int inputOffset) {
