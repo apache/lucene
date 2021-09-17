@@ -21,6 +21,8 @@ New Features
 
 * LUCENE-10096: Add TamilAnalyzer based on the snowball stemmer. (Robert Muir)
 
+* LUCENE-10102: Add JapaneseCompletionFilter for Input Method-aware auto-completion (Tomoko Uchida, Robert Muir, Jun Ohtani)
+
 System Requirements
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
