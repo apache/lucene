@@ -190,13 +190,13 @@
 ッシュ,ssyu,sshu
 ッショ,ssyo,ssho
 ッザ,zza
-ッジ,zzi
+ッジ,zzi,jji
 ッズ,zzu
 ッゼ,zze
 ッゾ,zzo
-ッジャ,zzya
-ッジュ,zzyu
-ッジョ,zzyo
+ッジャ,zzya,jja
+ッジュ,zzyu,jju
+ッジョ,zzyo,jjo
 ッタ,tta
 ッチ,tti
 ッツ,ttu
@@ -337,7 +337,7 @@
 ッr,rr
 ッw,ww
 
-# below are characters that should be kept but have not explicit romanization rules.
+# below are characters that should be kept but have no explicit romanization rules.
 # Chōonpu (Katakana-Hiragana Prolonged Sound Mark)
 ー,ー
 # Interpunct (Middle Dot)
