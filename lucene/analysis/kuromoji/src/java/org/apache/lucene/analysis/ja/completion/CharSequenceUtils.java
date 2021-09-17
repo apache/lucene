@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ja.completion;
 /** Utility functions for {@link org.apache.lucene.analysis.ja.JapaneseCompletionFilter} */
 public class CharSequenceUtils {
 
-  /** Checks if a string is composed only of lowercase alphabets */
+  /** Checks if a char sequence is composed only of lowercase alphabets */
   public static boolean isLowercaseAlphabets(CharSequence s) {
     for (int i = 0; i < s.length(); i++) {
       char ch = s.charAt(i);
@@ -30,7 +30,7 @@ public class CharSequenceUtils {
     return true;
   }
 
-  /** Checks if a string is composed only of Katakana or hiragana */
+  /** Checks if a char sequence is composed only of Katakana or hiragana */
   public static boolean isKana(CharSequence s) {
     for (int i = 0; i < s.length(); i++) {
       char ch = s.charAt(i);
