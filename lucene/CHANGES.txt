@@ -410,6 +410,9 @@ Improvements
 * LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
   (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
 
+* LUCENE-10111: Missing calculating the bytes used of DocsWithFieldSet in NormValuesWriter.
+  (Lu Xugang)
+
 Optimizations
 ---------------------
 (No changes)
