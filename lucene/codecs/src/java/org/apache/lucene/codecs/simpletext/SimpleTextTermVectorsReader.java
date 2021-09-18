@@ -56,7 +56,7 @@ import org.apache.lucene.util.StringHelper;
  */
 public class SimpleTextTermVectorsReader extends TermVectorsReader {
 
-  private long offsets[]; /* docid -> offset in .vec file */
+  private long[] offsets; /* docid -> offset in .vec file */
   private IndexInput in;
   private BytesRefBuilder scratch = new BytesRefBuilder();
   private CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
@@ -83,7 +83,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
   }
 
   // used by clone
-  SimpleTextTermVectorsReader(long offsets[], IndexInput in) {
+  SimpleTextTermVectorsReader(long[] offsets, IndexInput in) {
     this.offsets = offsets;
     this.in = in;
   }
@@ -185,7 +185,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
                 if (scratch.length() - PAYLOAD.length == 0) {
                   postings.payloads[k] = null;
                 } else {
-                  byte payloadBytes[] = new byte[scratch.length() - PAYLOAD.length];
+                  byte[] payloadBytes = new byte[scratch.length() - PAYLOAD.length];
                   System.arraycopy(
                       scratch.bytes(), PAYLOAD.length, payloadBytes, 0, payloadBytes.length);
                   postings.payloads[k] = new BytesRef(payloadBytes);
@@ -332,10 +332,10 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
 
   private static class SimpleTVPostings {
     private int freq;
-    private int positions[];
-    private int startOffsets[];
-    private int endOffsets[];
-    private BytesRef payloads[];
+    private int[] positions;
+    private int[] startOffsets;
+    private int[] endOffsets;
+    private BytesRef[] payloads;
   }
 
   private static class SimpleTVTermsEnum extends BaseTermsEnum {
@@ -525,7 +525,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
       return slowAdvance(target);
     }
 
-    public void reset(int[] positions, int[] startOffsets, int[] endOffsets, BytesRef payloads[]) {
+    public void reset(int[] positions, int[] startOffsets, int[] endOffsets, BytesRef[] payloads) {
       this.positions = positions;
       this.startOffsets = startOffsets;
       this.endOffsets = endOffsets;

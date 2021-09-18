@@ -59,7 +59,7 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
                 .setCodec(TestUtil.getDefaultCodec()));
 
     Document doc = new Document();
-    byte bytes[] = new byte[4];
+    byte[] bytes = new byte[4];
     BytesRef data = new BytesRef(bytes);
     BinaryDocValuesField dvField = new BinaryDocValuesField("dv", data);
     doc.add(dvField);
@@ -122,7 +122,7 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
                 .setCodec(TestUtil.getDefaultCodec()));
 
     Document doc = new Document();
-    byte bytes[] = new byte[4];
+    byte[] bytes = new byte[4];
     ByteArrayDataOutput encoder = new ByteArrayDataOutput(bytes);
     BytesRef data = new BytesRef(bytes);
     BinaryDocValuesField dvField = new BinaryDocValuesField("dv", data);

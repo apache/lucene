@@ -283,7 +283,7 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
             new HashSet<>(
                 Arrays.asList("rrdpafa", "pupmmlu", "xlq", "dyy", "zqrxrrck", "o", "hsrlfvcha")),
             false);
-    final byte table[] =
+    final byte[] table =
         new byte[] {
           -57, 26, 1, 48, 63, -23, 55, -84, 18, 120, -97, 103, 58, 13, 84, 89, 57, -13, -63, 5, 28,
           97, -54, -94, 102, -108, -5, 5, 46, 40, 43, 78, 43, -72, 36, 29, 124, -106, -22, -51, 65,

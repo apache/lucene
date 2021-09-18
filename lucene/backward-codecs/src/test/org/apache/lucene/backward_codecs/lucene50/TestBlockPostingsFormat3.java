@@ -235,7 +235,7 @@ public class TestBlockPostingsFormat3 extends LuceneTestCase {
           }
         } else if (code == 2) {
           // term, but ensure a non-zero offset
-          byte newbytes[] = new byte[term.length + 5];
+          byte[] newbytes = new byte[term.length + 5];
           System.arraycopy(term.bytes, term.offset, newbytes, 5, term.length);
           tests.add(new BytesRef(newbytes, 5, term.length));
         }

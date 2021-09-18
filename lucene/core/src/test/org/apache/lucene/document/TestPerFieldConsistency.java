@@ -115,7 +115,9 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     }
     IllegalArgumentException exception =
         expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc));
-    assertTrue(exception.getMessage().contains(errorMsg));
+    assertTrue(
+        "'" + errorMsg + "' not found in '" + exception.getMessage() + "'",
+        exception.getMessage().contains(errorMsg));
   }
 
   private static void doTestDocWithExtraSchemaOptionsThrowsError(
@@ -125,7 +127,9 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     doc.add(extra);
     IllegalArgumentException exception =
         expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc));
-    assertTrue(exception.getMessage().contains(errorMsg));
+    assertTrue(
+        "'" + errorMsg + "' not found in '" + exception.getMessage() + "'",
+        exception.getMessage().contains(errorMsg));
   }
 
   public void testDocWithMissingSchemaOptionsThrowsError() throws IOException {

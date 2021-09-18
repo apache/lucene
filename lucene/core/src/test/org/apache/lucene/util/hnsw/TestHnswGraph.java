@@ -45,12 +45,14 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
 /** Tests HNSW KNN graphs */
-public class TestHnsw extends LuceneTestCase {
+public class TestHnswGraph extends LuceneTestCase {
 
   // test writing out and reading in a graph gives the expected graph
   public void testReadWrite() throws IOException {
@@ -134,26 +136,63 @@ public class TestHnsw extends LuceneTestCase {
         HnswGraph.search(
             new float[] {1, 0},
             10,
-            5,
+            10,
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
+            null,
             random());
+
+    int[] nodes = nn.nodes();
+    assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
-    for (int node : nn.nodes()) {
+    for (int node : nodes) {
       sum += node;
     }
-    // We expect to get approximately 100% recall; the lowest docIds are closest to zero; sum(0,9) =
-    // 45
+    // We expect to get approximately 100% recall;
+    // the lowest docIds are closest to zero; sum(0,9) = 45
     assertTrue("sum(result docs)=" + sum, sum < 75);
+
     for (int i = 0; i < nDoc; i++) {
       NeighborArray neighbors = hnsw.getNeighbors(i);
-      int[] nodes = neighbors.node;
+      int[] nnodes = neighbors.node;
       for (int j = 0; j < neighbors.size(); j++) {
         // all neighbors should be valid node ids.
-        assertTrue(nodes[j] < nDoc);
+        assertTrue(nnodes[j] < nDoc);
       }
     }
+  }
+
+  public void testSearchWithAcceptOrds() throws IOException {
+    int nDoc = 100;
+    CircularVectorValues vectors = new CircularVectorValues(nDoc);
+    HnswGraphBuilder builder =
+        new HnswGraphBuilder(
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, 16, 100, random().nextInt());
+    HnswGraph hnsw = builder.build(vectors);
+
+    // the first 10 docs must not be deleted to ensure the expected recall
+    Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
+    NeighborQueue nn =
+        HnswGraph.search(
+            new float[] {1, 0},
+            10,
+            10,
+            vectors.randomAccess(),
+            VectorSimilarityFunction.DOT_PRODUCT,
+            hnsw,
+            acceptOrds,
+            random());
+    int[] nodes = nn.nodes();
+    assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
+    int sum = 0;
+    for (int node : nodes) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
+      sum += node;
+    }
+    // We expect to get approximately 100% recall;
+    // the lowest docIds are closest to zero; sum(0,9) = 45
+    assertTrue("sum(result docs)=" + sum, sum < 75);
   }
 
   public void testBoundsCheckerMax() {
@@ -279,16 +318,21 @@ public class TestHnsw extends LuceneTestCase {
     HnswGraphBuilder builder =
         new HnswGraphBuilder(vectors, similarityFunction, 10, 30, random().nextLong());
     HnswGraph hnsw = builder.build(vectors);
+    Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
+
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
-          HnswGraph.search(query, topK, 100, vectors, similarityFunction, hnsw, random());
+          HnswGraph.search(
+              query, topK, 100, vectors, similarityFunction, hnsw, acceptOrds, random());
       NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
       for (int j = 0; j < size; j++) {
-        float[] v = vectors.vectorValue(j);
-        if (v != null) {
-          expected.insertWithOverflow(j, similarityFunction.compare(query, vectors.vectorValue(j)));
+        if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
+          expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)));
+          if (expected.size() > topK) {
+            expected.pop();
+          }
         }
       }
       assertEquals(topK, actual.size());
@@ -453,6 +497,25 @@ public class TestHnsw extends LuceneTestCase {
       }
       return vectors;
     }
+  }
+
+  /**
+   * Generate a random bitset where before startIndex all bits are set, and after startIndex each
+   * entry has a 2/3 probability of being set.
+   */
+  private static Bits createRandomAcceptOrds(int startIndex, int length) {
+    FixedBitSet bits = new FixedBitSet(length);
+    // all bits are set before startIndex
+    for (int i = 0; i < startIndex; i++) {
+      bits.set(i);
+    }
+    // after startIndex, bits are set with 2/3 probability
+    for (int i = startIndex; i < bits.length(); i++) {
+      if (random().nextFloat() < 0.667f) {
+        bits.set(i);
+      }
+    }
+    return bits;
   }
 
   private static float[] randomVector(Random random, int dim) {

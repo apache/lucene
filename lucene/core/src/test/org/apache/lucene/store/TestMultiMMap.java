@@ -198,12 +198,12 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
     for (int i = 0; i < 17; i++) {
       MMapDirectory mmapDir = new MMapDirectory(createTempDir("testSeekEnd"), 1 << i);
       IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
-      byte bytes[] = new byte[1 << i];
+      byte[] bytes = new byte[1 << i];
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
       IndexInput ii = mmapDir.openInput("bytes", newIOContext(random()));
-      byte actual[] = new byte[1 << i];
+      byte[] actual = new byte[1 << i];
       ii.readBytes(actual, 0, actual.length);
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
       ii.seek(1 << i);
@@ -216,13 +216,13 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
     for (int i = 0; i < 17; i++) {
       MMapDirectory mmapDir = new MMapDirectory(createTempDir("testSeekSliceEnd"), 1 << i);
       IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
-      byte bytes[] = new byte[1 << i];
+      byte[] bytes = new byte[1 << i];
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
       IndexInput slicer = mmapDir.openInput("bytes", newIOContext(random()));
       IndexInput ii = slicer.slice("full slice", 0, bytes.length);
-      byte actual[] = new byte[1 << i];
+      byte[] actual = new byte[1 << i];
       ii.readBytes(actual, 0, actual.length);
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
       ii.seek(1 << i);
@@ -237,17 +237,17 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
     for (int i = 0; i < numIters; i++) {
       MMapDirectory mmapDir = new MMapDirectory(createTempDir("testSeeking"), 1 << i);
       IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
-      byte bytes[] = new byte[1 << (i + 1)]; // make sure we switch buffers
+      byte[] bytes = new byte[1 << (i + 1)]; // make sure we switch buffers
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
       IndexInput ii = mmapDir.openInput("bytes", newIOContext(random()));
-      byte actual[] = new byte[1 << (i + 1)]; // first read all bytes
+      byte[] actual = new byte[1 << (i + 1)]; // first read all bytes
       ii.readBytes(actual, 0, actual.length);
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
       for (int sliceStart = 0; sliceStart < bytes.length; sliceStart++) {
         for (int sliceLength = 0; sliceLength < bytes.length - sliceStart; sliceLength++) {
-          byte slice[] = new byte[sliceLength];
+          byte[] slice = new byte[sliceLength];
           ii.seek(sliceStart);
           ii.readBytes(slice, 0, slice.length);
           assertEquals(new BytesRef(bytes, sliceStart, sliceLength), new BytesRef(slice));
@@ -265,12 +265,12 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
     for (int i = 0; i < numIters; i++) {
       MMapDirectory mmapDir = new MMapDirectory(createTempDir("testSlicedSeeking"), 1 << i);
       IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
-      byte bytes[] = new byte[1 << (i + 1)]; // make sure we switch buffers
+      byte[] bytes = new byte[1 << (i + 1)]; // make sure we switch buffers
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
       IndexInput ii = mmapDir.openInput("bytes", newIOContext(random()));
-      byte actual[] = new byte[1 << (i + 1)]; // first read all bytes
+      byte[] actual = new byte[1 << (i + 1)]; // first read all bytes
       ii.readBytes(actual, 0, actual.length);
       ii.close();
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
@@ -291,12 +291,12 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
     for (int i = 0; i < upto; i++) {
       MMapDirectory mmapDir = new MMapDirectory(createTempDir("testSliceOfSlice"), 1 << i);
       IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
-      byte bytes[] = new byte[1 << (i + 1)]; // make sure we switch buffers
+      byte[] bytes = new byte[1 << (i + 1)]; // make sure we switch buffers
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
       IndexInput ii = mmapDir.openInput("bytes", newIOContext(random()));
-      byte actual[] = new byte[1 << (i + 1)]; // first read all bytes
+      byte[] actual = new byte[1 << (i + 1)]; // first read all bytes
       ii.readBytes(actual, 0, actual.length);
       ii.close();
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
@@ -319,7 +319,7 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
   private void assertSlice(
       byte[] bytes, IndexInput slicer, int outerSliceStart, int sliceStart, int sliceLength)
       throws IOException {
-    byte slice[] = new byte[sliceLength];
+    byte[] slice = new byte[sliceLength];
     IndexInput input = slicer.slice("bytesSlice", sliceStart, slice.length);
     input.readBytes(slice, 0, slice.length);
     input.close();
@@ -375,12 +375,12 @@ public class TestMultiMMap extends BaseDirectoryTestCase {
       MMapDirectory mmapDir = new MMapDirectory(createTempDir("testImplementations"), chunkSize);
       IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
       int size = random().nextInt(chunkSize * 2) + 3; // add some buffer of 3 for slice tests
-      byte bytes[] = new byte[size];
+      byte[] bytes = new byte[size];
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
       IndexInput ii = mmapDir.openInput("bytes", newIOContext(random()));
-      byte actual[] = new byte[size]; // first read all bytes
+      byte[] actual = new byte[size]; // first read all bytes
       ii.readBytes(actual, 0, actual.length);
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
       // reinit:

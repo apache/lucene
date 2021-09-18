@@ -39,7 +39,6 @@ import org.apache.lucene.search.suggest.analyzing.FreeTextSuggester;
 import org.apache.lucene.search.suggest.analyzing.FuzzySuggester;
 import org.apache.lucene.search.suggest.fst.FSTCompletionLookup;
 import org.apache.lucene.search.suggest.fst.WFSTCompletionLookup;
-import org.apache.lucene.search.suggest.jaspell.JaspellLookup;
 import org.apache.lucene.search.suggest.tst.TSTLookup;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -56,7 +55,6 @@ public class TestLookupBenchmark extends LuceneTestCase {
           FuzzySuggester.class,
           AnalyzingSuggester.class,
           AnalyzingInfixSuggester.class,
-          JaspellLookup.class,
           TSTLookup.class,
           FSTCompletionLookup.class,
           WFSTCompletionLookup.class,

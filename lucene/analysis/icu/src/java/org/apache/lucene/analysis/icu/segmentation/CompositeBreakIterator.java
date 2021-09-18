@@ -39,13 +39,13 @@ import com.ibm.icu.text.BreakIterator;
  */
 final class CompositeBreakIterator {
   private final ICUTokenizerConfig config;
-  private final BreakIteratorWrapper wordBreakers[] =
+  private final BreakIteratorWrapper[] wordBreakers =
       new BreakIteratorWrapper[1 + UCharacter.getIntPropertyMaxValue(UProperty.SCRIPT)];
 
   private BreakIteratorWrapper rbbi;
   private final ScriptIterator scriptIterator;
 
-  private char text[];
+  private char[] text;
 
   CompositeBreakIterator(ICUTokenizerConfig config) {
     this.config = config;
@@ -111,7 +111,7 @@ final class CompositeBreakIterator {
    * @param start offset into buffer
    * @param length maximum length to examine
    */
-  void setText(final char text[], int start, int length) {
+  void setText(final char[] text, int start, int length) {
     this.text = text;
     scriptIterator.setText(text, start, length);
     if (scriptIterator.next()) {

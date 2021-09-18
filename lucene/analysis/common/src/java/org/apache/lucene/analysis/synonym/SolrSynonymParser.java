@@ -87,19 +87,19 @@ public class SolrSynonymParser extends SynonymMap.Parser {
       }
 
       // TODO: we could process this more efficiently.
-      String sides[] = split(line, "=>");
+      String[] sides = split(line, "=>");
       if (sides.length > 1) { // explicit mapping
         if (sides.length != 2) {
           throw new IllegalArgumentException(
               "more than one explicit mapping specified on the same line");
         }
-        String inputStrings[] = split(sides[0], ",");
+        String[] inputStrings = split(sides[0], ",");
         CharsRef[] inputs = new CharsRef[inputStrings.length];
         for (int i = 0; i < inputs.length; i++) {
           inputs[i] = analyze(unescape(inputStrings[i]).trim(), new CharsRefBuilder());
         }
 
-        String outputStrings[] = split(sides[1], ",");
+        String[] outputStrings = split(sides[1], ",");
         CharsRef[] outputs = new CharsRef[outputStrings.length];
         for (int i = 0; i < outputs.length; i++) {
           outputs[i] = analyze(unescape(outputStrings[i]).trim(), new CharsRefBuilder());
@@ -111,7 +111,7 @@ public class SolrSynonymParser extends SynonymMap.Parser {
           }
         }
       } else {
-        String inputStrings[] = split(line, ",");
+        String[] inputStrings = split(line, ",");
         CharsRef[] inputs = new CharsRef[inputStrings.length];
         for (int i = 0; i < inputs.length; i++) {
           inputs[i] = analyze(unescape(inputStrings[i]).trim(), new CharsRefBuilder());

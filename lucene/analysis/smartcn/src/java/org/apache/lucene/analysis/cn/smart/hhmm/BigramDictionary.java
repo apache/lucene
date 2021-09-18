@@ -181,7 +181,7 @@ class BigramDictionary extends AbstractDictionary {
           if (i != 3755 + GB2312_FIRST_CHAR) {
             tmpword = currentStr + tmpword;
           }
-          char carray[] = tmpword.toCharArray();
+          char[] carray = tmpword.toCharArray();
           long hashId = hash1(carray);
           int index = getAvaliableIndex(hashId, carray);
           if (index != -1) {
@@ -199,7 +199,7 @@ class BigramDictionary extends AbstractDictionary {
     // log.info("load dictionary done! " + dctFilePath + " total:" + total);
   }
 
-  private int getAvaliableIndex(long hashId, char carray[]) {
+  private int getAvaliableIndex(long hashId, char[] carray) {
     int hash1 = (int) (hashId % PRIME_BIGRAM_LENGTH);
     int hash2 = hash2(carray) % PRIME_BIGRAM_LENGTH;
     if (hash1 < 0) hash1 = PRIME_BIGRAM_LENGTH + hash1;
@@ -223,7 +223,7 @@ class BigramDictionary extends AbstractDictionary {
   /*
    * lookup the index into the frequency array.
    */
-  private int getBigramItemIndex(char carray[]) {
+  private int getBigramItemIndex(char[] carray) {
     long hashId = hash1(carray);
     int hash1 = (int) (hashId % PRIME_BIGRAM_LENGTH);
     int hash2 = hash2(carray) % PRIME_BIGRAM_LENGTH;

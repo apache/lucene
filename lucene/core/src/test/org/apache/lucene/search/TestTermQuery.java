@@ -103,6 +103,35 @@ public class TestTermQuery extends LuceneTestCase {
     IOUtils.close(reader, w, dir);
   }
 
+  // LUCENE-9620 Add Weight#count(LeafReaderContext)
+  public void testQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int randomNumDocs = random().nextInt(500);
+    int numMatchingDocs = 0;
+
+    for (int i = 0; i < randomNumDocs; i++) {
+      Document doc = new Document();
+      if (random().nextBoolean()) {
+        doc.add(new StringField("foo", "bar", Store.NO));
+        numMatchingDocs++;
+      }
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+
+    DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+
+    Query testQuery = new TermQuery(new Term("foo", "bar"));
+    assertEquals(searcher.count(testQuery), numMatchingDocs);
+    final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
+
+    IOUtils.close(reader, w, dir);
+  }
+
   public void testGetTermStates() throws Exception {
 
     // no term states:

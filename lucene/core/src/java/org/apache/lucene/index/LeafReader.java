@@ -222,10 +222,12 @@ public abstract class LeafReader extends IndexReader {
    * @param field the vector field to search
    * @param target the vector-valued query
    * @param k the number of docs to return
+   * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
+   *     if they are all allowed to match.
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    * @lucene.experimental
    */
-  public abstract TopDocs searchNearestVectors(String field, float[] target, int k)
+  public abstract TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
       throws IOException;
 
   /**

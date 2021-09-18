@@ -194,7 +194,7 @@ final class BooleanScorer extends BulkScorer {
   }
 
   private void scoreMatches(LeafCollector collector, int base) throws IOException {
-    long matching[] = this.matching;
+    long[] matching = this.matching;
     for (int idx = 0; idx < matching.length; idx++) {
       long bits = matching[idx];
       while (bits != 0L) {

@@ -359,7 +359,7 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
             String segName = IndexFileNames.parseSegmentName(fileName);
             if (segSeen.contains(segName) == false) {
               segSeen.add(segName);
-              byte id[] = readSegmentInfoID(dir, fileName);
+              byte[] id = readSegmentInfoID(dir, fileName);
               SegmentInfo si =
                   TestUtil.getDefaultCodec()
                       .segmentInfoFormat()
@@ -394,7 +394,7 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
       in.readInt(); // magic
       in.readString(); // codec name
       in.readInt(); // version
-      byte id[] = new byte[StringHelper.ID_LENGTH];
+      byte[] id = new byte[StringHelper.ID_LENGTH];
       in.readBytes(id, 0, id.length);
       return id;
     }

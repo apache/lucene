@@ -43,6 +43,7 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -232,7 +233,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k) throws IOException {
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
@@ -250,6 +251,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
             vectorValues,
             fieldEntry.similarityFunction,
             getGraphValues(fieldEntry),
+            getAcceptOrds(acceptDocs, fieldEntry),
             random);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
@@ -259,7 +261,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       float score = results.topScore();
       results.pop();
       if (reversed) {
-        score = (float) Math.exp(-score / target.length);
+        score = 1 / (1 + score);
       }
       scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
     }
@@ -274,6 +276,23 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     return new OffHeapVectorValues(fieldEntry, bytesSlice);
+  }
+
+  private Bits getAcceptOrds(Bits acceptDocs, FieldEntry fieldEntry) {
+    if (acceptDocs == null) {
+      return null;
+    }
+    return new Bits() {
+      @Override
+      public boolean get(int index) {
+        return acceptDocs.get(fieldEntry.ordToDoc[index]);
+      }
+
+      @Override
+      public int length() {
+        return fieldEntry.ordToDoc.length;
+      }
+    };
   }
 
   public KnnGraphValues getGraphValues(String field) throws IOException {

@@ -26,6 +26,7 @@ import java.util.Random;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
@@ -83,6 +84,8 @@ public final class HnswGraph extends KnnGraphValues {
    * @param vectors vector values
    * @param graphValues the graph values. May represent the entire graph, or a level in a
    *     hierarchical graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
    * @param random a source of randomness, used for generating entry points to the graph
    * @return a priority queue holding the closest neighbors found
    */
@@ -93,12 +96,15 @@ public final class HnswGraph extends KnnGraphValues {
       RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
+      Bits acceptOrds,
       Random random)
       throws IOException {
     int size = graphValues.size();
 
     // MIN heap, holding the top results
     NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
+    // MAX heap, from which to pull the candidate nodes
+    NeighborQueue candidates = new NeighborQueue(numSeed, !similarityFunction.reversed);
 
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
     SparseFixedBitSet visited = new SparseFixedBitSet(size);
@@ -109,12 +115,13 @@ public final class HnswGraph extends KnnGraphValues {
       if (visited.get(entryPoint) == false) {
         visited.set(entryPoint);
         // explore the topK starting points of some random numSeed probes
-        results.add(entryPoint, similarityFunction.compare(query, vectors.vectorValue(entryPoint)));
+        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
+        candidates.add(entryPoint, score);
+        if (acceptOrds == null || acceptOrds.get(entryPoint)) {
+          results.add(entryPoint, score);
+        }
       }
     }
-
-    // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = results.copy(!similarityFunction.reversed);
 
     // Set the bound to the worst current result and below reject any newly-generated candidates
     // failing
@@ -138,10 +145,14 @@ public final class HnswGraph extends KnnGraphValues {
           continue;
         }
         visited.set(friendOrd);
+
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.insertWithOverflow(friendOrd, score)) {
+        if (results.size() < numSeed || bound.check(score) == false) {
           candidates.add(friendOrd, score);
-          bound.set(results.topScore());
+          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+            results.insertWithOverflow(friendOrd, score);
+            bound.set(results.topScore());
+          }
         }
       }
     }

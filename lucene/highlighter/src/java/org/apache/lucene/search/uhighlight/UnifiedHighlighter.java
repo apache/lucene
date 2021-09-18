@@ -48,7 +48,6 @@ import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -442,7 +441,7 @@ public class UnifiedHighlighter {
    */
   public Map<String, String[]> highlightFields(String[] fields, Query query, TopDocs topDocs)
       throws IOException {
-    int maxPassages[] = new int[fields.length];
+    int[] maxPassages = new int[fields.length];
     Arrays.fill(maxPassages, 1);
     return highlightFields(fields, query, topDocs, maxPassages);
   }
@@ -474,8 +473,8 @@ public class UnifiedHighlighter {
    */
   public Map<String, String[]> highlightFields(
       String[] fields, Query query, TopDocs topDocs, int[] maxPassages) throws IOException {
-    final ScoreDoc scoreDocs[] = topDocs.scoreDocs;
-    int docids[] = new int[scoreDocs.length];
+    final ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+    int[] docids = new int[scoreDocs.length];
     for (int i = 0; i < docids.length; i++) {
       docids[i] = scoreDocs[i].doc;
     }
@@ -556,8 +555,8 @@ public class UnifiedHighlighter {
     copyAndSortDocIdsWithIndex(docIdsIn, docIds, docInIndexes); // latter 2 are "out" params
 
     // Sort fields w/ maxPassages pair: (copy input arrays since we sort in-place)
-    final String fields[] = new String[fieldsIn.length];
-    final int maxPassages[] = new int[maxPassagesIn.length];
+    final String[] fields = new String[fieldsIn.length];
+    final int[] maxPassages = new int[maxPassagesIn.length];
     copyAndSortFieldsWithMaxPassages(
         fieldsIn, maxPassagesIn, fields, maxPassages); // latter 2 are "out" params
 
@@ -1103,10 +1102,11 @@ public class UnifiedHighlighter {
       return this.values;
     }
   }
+
   /**
-   * Wraps an IndexReader that remembers/caches the last call to {@link TermVectors#get(int)} so
-   * that if the next call has the same ID, then it is reused. If TV's were column-stride (like
-   * doc-values), there would be no need for this.
+   * Wraps an IndexReader that remembers/caches the last call to {@link
+   * LeafReader#getTermVectors(int)} so that if the next call has the same ID, then it is reused. If
+   * TV's were column-stride (like doc-values), there would be no need for this.
    */
   private static class TermVectorReusingLeafReader extends FilterLeafReader {
 
@@ -1136,21 +1136,12 @@ public class UnifiedHighlighter {
     }
 
     @Override
-    public TermVectors getTermVectorsReader() {
-      if (in.getTermVectorsReader() == null) {
-        return null;
+    public Fields getTermVectors(int docID) throws IOException {
+      if (docID != lastDocId) {
+        lastDocId = docID;
+        tvFields = in.getTermVectors(docID);
       }
-
-      return new TermVectors() {
-        @Override
-        public Fields get(int docID) throws IOException {
-          if (docID != lastDocId) {
-            lastDocId = docID;
-            tvFields = in.getTermVectorsReader().get(docID);
-          }
-          return tvFields;
-        }
-      };
+      return tvFields;
     }
 
     @Override

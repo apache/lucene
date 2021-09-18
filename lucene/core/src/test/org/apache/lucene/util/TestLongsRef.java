@@ -25,7 +25,7 @@ public class TestLongsRef extends LuceneTestCase {
   }
 
   public void testFromLongs() {
-    long longs[] = new long[] {1, 2, 3, 4};
+    long[] longs = new long[] {1, 2, 3, 4};
     LongsRef i = new LongsRef(longs, 0, 4);
     assertEquals(longs, i.longs);
     assertEquals(0, i.offset);

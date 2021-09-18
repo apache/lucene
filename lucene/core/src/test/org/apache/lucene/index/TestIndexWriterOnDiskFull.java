@@ -328,7 +328,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               }
               writer.forceMerge(1);
             } else if (1 == method) {
-              DirectoryReader readers[] = new DirectoryReader[dirs.length];
+              DirectoryReader[] readers = new DirectoryReader[dirs.length];
               for (int i = 0; i < dirs.length; i++) {
                 readers[i] = DirectoryReader.open(dirs[i]);
               }

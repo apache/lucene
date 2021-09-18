@@ -34,6 +34,7 @@ import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.PriorityQueue;
 
@@ -168,8 +169,8 @@ public class LongValueFacetCounts extends Facets {
             // do not increment the count for duplicate values
             if (i == 0 || value != previousValue) {
               increment(value);
+              previousValue = value;
             }
-            previousValue = value;
           }
         }
       }
@@ -201,15 +202,24 @@ public class LongValueFacetCounts extends Facets {
       SortedNumericDocValues multiValues = DocValues.getSortedNumeric(context.reader(), field);
       NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
 
+      Bits liveDocs = context.reader().getLiveDocs();
+
+      DocIdSetIterator valuesIt = singleValues != null ? singleValues : multiValues;
+      valuesIt = (liveDocs != null) ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
+
       if (singleValues != null) {
 
-        while (singleValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        for (int doc = valuesIt.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = valuesIt.nextDoc()) {
           totCount++;
           increment(singleValues.longValue());
         }
       } else {
 
-        while (multiValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        for (int doc = valuesIt.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = valuesIt.nextDoc()) {
           int limit = multiValues.docValueCount();
           if (limit > 0) {
             totCount++;
@@ -220,8 +230,8 @@ public class LongValueFacetCounts extends Facets {
             // do not increment the count for duplicate values
             if (i == 0 || value != previousValue) {
               increment(value);
+              previousValue = value;
             }
-            previousValue = value;
           }
         }
       }

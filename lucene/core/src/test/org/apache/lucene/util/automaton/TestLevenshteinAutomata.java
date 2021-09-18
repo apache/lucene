@@ -64,8 +64,8 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
   private void assertLev(String s, int maxDistance) {
     LevenshteinAutomata builder = new LevenshteinAutomata(s, false);
     LevenshteinAutomata tbuilder = new LevenshteinAutomata(s, true);
-    Automaton automata[] = new Automaton[maxDistance + 1];
-    Automaton tautomata[] = new Automaton[maxDistance + 1];
+    Automaton[] automata = new Automaton[maxDistance + 1];
+    Automaton[] tautomata = new Automaton[maxDistance + 1];
     for (int n = 0; n < automata.length; n++) {
       automata[n] = builder.toAutomaton(n);
       tautomata[n] = tbuilder.toAutomaton(n);
@@ -263,9 +263,9 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
   private int getDistance(String target, String other) {
     char[] sa;
     int n;
-    int p[]; // 'previous' cost array, horizontally
-    int d[]; // cost array, horizontally
-    int _d[]; // placeholder to assist in swapping p and d
+    int[] p; // 'previous' cost array, horizontally
+    int[] d; // cost array, horizontally
+    int[] _d; // placeholder to assist in swapping p and d
 
     /*
       The difference between this impl. and the previous is that, rather
@@ -334,7 +334,7 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
   private int getTDistance(String target, String other) {
     char[] sa;
     int n;
-    int d[][]; // cost array
+    int[][] d; // cost array
 
     sa = target.toCharArray();
     n = sa.length;

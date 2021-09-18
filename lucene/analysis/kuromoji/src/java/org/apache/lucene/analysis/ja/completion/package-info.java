@@ -15,5 +15,5 @@
  * limitations under the License.
  */
 
-/** JaSpell-based autosuggest. */
-package org.apache.lucene.search.suggest.jaspell;
+/** Utilities for {@link org.apache.lucene.analysis.ja.JapaneseCompletionFilter} */
+package org.apache.lucene.analysis.ja.completion;

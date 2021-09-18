@@ -238,12 +238,12 @@ public class TestWildcard extends LuceneTestCase {
    */
   public void testParsingAndSearching() throws Exception {
     String field = "content";
-    String docs[] = {
+    String[] docs = {
       "\\ abcdefg1", "\\79 hijklmn1", "\\\\ opqrstu1",
     };
 
     // queries that should find all docs
-    Query matchAll[] = {
+    Query[] matchAll = {
       new WildcardQuery(new Term(field, "*")),
       new WildcardQuery(new Term(field, "*1")),
       new WildcardQuery(new Term(field, "**1")),
@@ -256,7 +256,7 @@ public class TestWildcard extends LuceneTestCase {
     };
 
     // queries that should find no docs
-    Query matchNone[] = {
+    Query[] matchNone = {
       new WildcardQuery(new Term(field, "a*h")),
       new WildcardQuery(new Term(field, "a?h")),
       new WildcardQuery(new Term(field, "*a*h")),
@@ -264,7 +264,7 @@ public class TestWildcard extends LuceneTestCase {
       new WildcardQuery(new Term(field, "a?"))
     };
 
-    PrefixQuery matchOneDocPrefix[][] = {
+    PrefixQuery[][] matchOneDocPrefix = {
       {
         new PrefixQuery(new Term(field, "a")),
         new PrefixQuery(new Term(field, "ab")),
@@ -284,7 +284,7 @@ public class TestWildcard extends LuceneTestCase {
       }, // these should find only doc 2
     };
 
-    WildcardQuery matchOneDocWild[][] = {
+    WildcardQuery[][] matchOneDocWild = {
       {
         new WildcardQuery(new Term(field, "*a*")), // these should find only doc 0
         new WildcardQuery(new Term(field, "*ab*")),

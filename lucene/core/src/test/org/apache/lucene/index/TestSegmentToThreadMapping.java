@@ -24,7 +24,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -67,7 +66,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public TermVectorsReader getTermVectorsReader() {
+      public Fields getTermVectors(int doc) {
         return null;
       }
 
@@ -112,7 +111,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public TopDocs searchNearestVectors(String field, float[] target, int k) {
+      public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs) {
         return null;
       }
 

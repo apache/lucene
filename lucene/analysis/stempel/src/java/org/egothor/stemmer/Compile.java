@@ -107,7 +107,7 @@ public class Compile {
 
     String charset = System.getProperty("egothor.stemmer.charset", "UTF-8");
 
-    char optimizer[] = new char[args[0].length() - qq];
+    char[] optimizer = new char[args[0].length() - qq];
     for (int i = 0; i < optimizer.length; i++) {
       optimizer[i] = args[0].charAt(qq + i);
     }

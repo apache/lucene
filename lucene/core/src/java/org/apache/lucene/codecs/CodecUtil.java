@@ -360,7 +360,7 @@ public final class CodecUtil {
 
   /** Expert: just reads and verifies the object ID of an index header */
   public static byte[] checkIndexHeaderID(DataInput in, byte[] expectedID) throws IOException {
-    byte id[] = new byte[StringHelper.ID_LENGTH];
+    byte[] id = new byte[StringHelper.ID_LENGTH];
     in.readBytes(id, 0, id.length);
     if (!Arrays.equals(id, expectedID)) {
       throw new CorruptIndexException(
@@ -377,7 +377,7 @@ public final class CodecUtil {
   public static String checkIndexHeaderSuffix(DataInput in, String expectedSuffix)
       throws IOException {
     int suffixLength = in.readByte() & 0xFF;
-    byte suffixBytes[] = new byte[suffixLength];
+    byte[] suffixBytes = new byte[suffixLength];
     in.readBytes(suffixBytes, 0, suffixBytes.length);
     String suffix = new String(suffixBytes, 0, suffixBytes.length, StandardCharsets.UTF_8);
     if (!suffix.equals(expectedSuffix)) {
@@ -490,12 +490,17 @@ public final class CodecUtil {
 
           // now check the footer
           long checksum = checkFooter(in);
-          priorException.addSuppressed(
-              new CorruptIndexException(
-                  "checksum passed ("
-                      + Long.toHexString(checksum)
-                      + "). possibly transient resource issue, or a Lucene or JVM bug",
-                  in));
+          if (!(priorException instanceof IndexFormatTooOldException)) {
+            // If the index format is too old and no corruption, do not add checksums
+            // matching message since this may tend to unnecessarily alarm people who
+            // see "JVM bug" in their logs
+            priorException.addSuppressed(
+                new CorruptIndexException(
+                    "checksum passed ("
+                        + Long.toHexString(checksum)
+                        + "). possibly transient resource issue, or a Lucene or JVM bug",
+                    in));
+          }
         }
       } catch (CorruptIndexException corruptException) {
         corruptException.addSuppressed(priorException);

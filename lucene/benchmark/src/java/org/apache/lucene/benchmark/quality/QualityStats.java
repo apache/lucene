@@ -29,7 +29,7 @@ public class QualityStats {
 
   private double maxGoodPoints;
   private double recall;
-  private double pAt[];
+  private double[] pAt;
   private double pReleventSum = 0;
   private double numPoints = 0;
   private double numGoodPoints = 0;

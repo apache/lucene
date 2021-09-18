@@ -29,12 +29,10 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -54,23 +52,16 @@ public class FSTTester<T> {
   final int inputMode;
   final Outputs<T> outputs;
   final Directory dir;
-  final boolean doReverseLookup;
   long nodeCount;
   long arcCount;
 
   public FSTTester(
-      Random random,
-      Directory dir,
-      int inputMode,
-      List<InputOutput<T>> pairs,
-      Outputs<T> outputs,
-      boolean doReverseLookup) {
+      Random random, Directory dir, int inputMode, List<InputOutput<T>> pairs, Outputs<T> outputs) {
     this.random = random;
     this.dir = dir;
     this.inputMode = inputMode;
     this.pairs = pairs;
     this.outputs = outputs;
-    this.doReverseLookup = doReverseLookup;
   }
 
   static String inputToString(int inputMode, IntsRef term) {
@@ -181,11 +172,7 @@ public class FSTTester<T> {
 
     @Override
     public int compareTo(InputOutput<T> other) {
-      if (other instanceof InputOutput) {
-        return input.compareTo((other).input);
-      } else {
-        throw new IllegalArgumentException();
-      }
+      return input.compareTo(other.input);
     }
   }
 
@@ -208,9 +195,8 @@ public class FSTTester<T> {
   // of the term prefix that matches
   private T run(FST<T> fst, IntsRef term, int[] prefixLength) throws IOException {
     assert prefixLength == null || prefixLength.length == 1;
-    final FST.Arc<T> arc = fst.getFirstArc(new FST.Arc<T>());
-    final T NO_OUTPUT = fst.outputs.getNoOutput();
-    T output = NO_OUTPUT;
+    final FST.Arc<T> arc = fst.getFirstArc(new FST.Arc<>());
+    T output = fst.outputs.getNoOutput();
     final FST.BytesReader fstReader = fst.getBytesReader();
 
     for (int i = 0; i <= term.length; i++) {
@@ -243,12 +229,11 @@ public class FSTTester<T> {
   }
 
   private T randomAcceptedWord(FST<T> fst, IntsRefBuilder in) throws IOException {
-    FST.Arc<T> arc = fst.getFirstArc(new FST.Arc<T>());
+    FST.Arc<T> arc = fst.getFirstArc(new FST.Arc<>());
 
     final List<FST.Arc<T>> arcs = new ArrayList<>();
     in.clear();
-    final T NO_OUTPUT = fst.outputs.getNoOutput();
-    T output = NO_OUTPUT;
+    T output = fst.outputs.getNoOutput();
     final FST.BytesReader fstReader = fst.getBytesReader();
 
     while (true) {
@@ -311,14 +296,12 @@ public class FSTTester<T> {
 
     if (random.nextBoolean() && fst != null) {
       IOContext context = LuceneTestCase.newIOContext(random);
-      IndexOutput out = dir.createOutput("fst.bin", context);
-      fst.save(out, out);
-      out.close();
-      IndexInput in = dir.openInput("fst.bin", context);
-      try {
-        fst = new FST<T>(in, in, outputs);
+      try (IndexOutput out = dir.createOutput("fst.bin", context)) {
+        fst.save(out, out);
+      }
+      try (IndexInput in = dir.openInput("fst.bin", context)) {
+        fst = new FST<>(in, in, outputs);
       } finally {
-        in.close();
         dir.deleteFile("fst.bin");
       }
     }
@@ -361,29 +344,7 @@ public class FSTTester<T> {
   }
 
   // FST is complete
-  @SuppressWarnings("deprecation")
   private void verifyUnPruned(int inputMode, FST<T> fst) throws IOException {
-
-    final FST<Long> fstLong;
-    final Set<Long> validOutputs;
-    long minLong = Long.MAX_VALUE;
-    long maxLong = Long.MIN_VALUE;
-
-    if (doReverseLookup) {
-      @SuppressWarnings("unchecked")
-      FST<Long> fstLong0 = (FST<Long>) fst;
-      fstLong = fstLong0;
-      validOutputs = new HashSet<>();
-      for (InputOutput<T> pair : pairs) {
-        Long output = (Long) pair.output;
-        maxLong = Math.max(maxLong, output);
-        minLong = Math.min(minLong, output);
-        validOutputs.add(output);
-      }
-    } else {
-      fstLong = null;
-      validOutputs = null;
-    }
 
     if (pairs.size() == 0) {
       assertNull(fst);
@@ -447,20 +408,6 @@ public class FSTTester<T> {
       termsMap.put(pair.input, pair.output);
     }
 
-    if (doReverseLookup && maxLong > minLong) {
-      // Do random lookups so we test null (output doesn't
-      // exist) case:
-      assertNull(Util.getByOutput(fstLong, minLong - 7));
-      assertNull(Util.getByOutput(fstLong, maxLong + 7));
-
-      final int num = LuceneTestCase.atLeast(random, 100);
-      for (int iter = 0; iter < num; iter++) {
-        Long v = TestUtil.nextLong(random, minLong, maxLong);
-        IntsRef input = Util.getByOutput(fstLong, v);
-        assertTrue(validOutputs.contains(v) || input == null);
-      }
-    }
-
     // find random matching word and make sure it's valid
     if (LuceneTestCase.VERBOSE) {
       System.out.println("TEST: verify random accepted terms");
@@ -473,14 +420,6 @@ public class FSTTester<T> {
           "accepted word " + inputToString(inputMode, scratch.get()) + " is not valid",
           termsMap.containsKey(scratch.get()));
       assertTrue(outputsEqual(termsMap.get(scratch.get()), output));
-
-      if (doReverseLookup) {
-        // System.out.println("lookup output=" + output + " outs=" + fst.outputs);
-        IntsRef input = Util.getByOutput(fstLong, (Long) output);
-        assertNotNull(input);
-        // System.out.println("  got " + Util.toBytesRef(input, new BytesRef()).utf8ToString());
-        assertEquals(scratch.get(), input);
-      }
     }
 
     // test IntsRefFSTEnum.seek:
@@ -497,7 +436,7 @@ public class FSTTester<T> {
         // seek to term that doesn't exist:
         while (true) {
           final IntsRef term = toIntsRef(getRandomString(random), inputMode);
-          int pos = Collections.binarySearch(pairs, new InputOutput<T>(term, null));
+          int pos = Collections.binarySearch(pairs, new InputOutput<>(term, null));
           if (pos < 0) {
             pos = -(pos + 1);
             // ok doesn't exist
@@ -617,7 +556,7 @@ public class FSTTester<T> {
           for (; attempt < 10; attempt++) {
             IntsRef term = toIntsRef(getRandomString(random), inputMode);
             if (!termsMap.containsKey(term) && term.compareTo(pairs.get(upto).input) > 0) {
-              int pos = Collections.binarySearch(pairs, new InputOutput<T>(term, null));
+              int pos = Collections.binarySearch(pairs, new InputOutput<>(term, null));
               assert pos < 0;
               upto = -(pos + 1);
 
@@ -806,10 +745,8 @@ public class FSTTester<T> {
               cmo2 != null
                   && ((prune2 > 1 && cmo2.count >= prune2)
                       || (prune2 == 1 && (cmo2.count >= 2 || prefix.length <= 1)));
-        } else if (cmo.count >= prune2) {
-          keep = true;
         } else {
-          keep = false;
+          keep = cmo.count >= prune2;
         }
       }
 

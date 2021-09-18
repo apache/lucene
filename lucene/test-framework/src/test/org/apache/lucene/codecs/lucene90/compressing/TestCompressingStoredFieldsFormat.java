@@ -99,7 +99,7 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
   }
 
   public void testZFloat() throws Exception {
-    byte buffer[] = new byte[5]; // we never need more than 5 bytes
+    byte[] buffer = new byte[5]; // we never need more than 5 bytes
     ByteArrayDataOutput out = new ByteArrayDataOutput(buffer);
     ByteArrayDataInput in = new ByteArrayDataInput(buffer);
 
@@ -120,7 +120,7 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     }
 
     // round-trip special values
-    float special[] = {
+    float[] special = {
       -0.0f,
       +0.0f,
       Float.NEGATIVE_INFINITY,
@@ -156,7 +156,7 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
   }
 
   public void testZDouble() throws Exception {
-    byte buffer[] = new byte[9]; // we never need more than 9 bytes
+    byte[] buffer = new byte[9]; // we never need more than 9 bytes
     ByteArrayDataOutput out = new ByteArrayDataOutput(buffer);
     ByteArrayDataInput in = new ByteArrayDataInput(buffer);
 
@@ -177,7 +177,7 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     }
 
     // round-trip special values
-    double special[] = {
+    double[] special = {
       -0.0d,
       +0.0d,
       Double.NEGATIVE_INFINITY,
@@ -223,7 +223,7 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
   }
 
   public void testTLong() throws Exception {
-    byte buffer[] = new byte[10]; // we never need more than 10 bytes
+    byte[] buffer = new byte[10]; // we never need more than 10 bytes
     ByteArrayDataOutput out = new ByteArrayDataOutput(buffer);
     ByteArrayDataInput in = new ByteArrayDataInput(buffer);
 
