@@ -16,9 +16,7 @@
  */
 package org.apache.lucene.store;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -27,13 +25,6 @@ import org.apache.lucene.util.BytesRef;
  * @lucene.experimental
  */
 public final class ByteArrayDataInput extends DataInput {
-
-  private static final VarHandle VH_SHORT =
-      MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
-  private static final VarHandle VH_INT =
-      MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
-  private static final VarHandle VH_LONG =
-      MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
   private byte[] bytes;
 
@@ -91,21 +82,21 @@ public final class ByteArrayDataInput extends DataInput {
 
   @Override
   public short readShort() {
-    final short ret = (short) VH_SHORT.get(bytes, pos);
+    final short ret = (short) BitUtil.VH_LE_SHORT.get(bytes, pos);
     pos += Short.BYTES;
     return ret;
   }
 
   @Override
   public int readInt() {
-    final int ret = (int) VH_INT.get(bytes, pos);
+    final int ret = (int) BitUtil.VH_LE_INT.get(bytes, pos);
     pos += Integer.BYTES;
     return ret;
   }
 
   @Override
   public long readLong() {
-    final long ret = (long) VH_LONG.get(bytes, pos);
+    final long ret = (long) BitUtil.VH_LE_LONG.get(bytes, pos);
     pos += Long.BYTES;
     return ret;
   }

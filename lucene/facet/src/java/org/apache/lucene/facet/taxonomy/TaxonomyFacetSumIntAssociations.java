@@ -17,15 +17,13 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
 import java.util.List;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -49,9 +47,6 @@ public class TaxonomyFacetSumIntAssociations extends IntTaxonomyFacets {
     super(indexFieldName, taxoReader, config, fc);
     sumValues(fc.getMatchingDocs());
   }
-
-  private static final VarHandle VH_BE_INT =
-      MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
 
   private final void sumValues(List<MatchingDocs> matchingDocs) throws IOException {
     // System.out.println("count matchingDocs=" + matchingDocs + " facetsField=" + facetsFieldName);
@@ -77,9 +72,9 @@ public class TaxonomyFacetSumIntAssociations extends IntTaxonomyFacets {
           int end = bytesRef.offset + bytesRef.length;
           int offset = bytesRef.offset;
           while (offset < end) {
-            int ord = (int) VH_BE_INT.get(bytes, offset);
+            int ord = (int) BitUtil.VH_BE_INT.get(bytes, offset);
             offset += 4;
-            int value = (int) VH_BE_INT.get(bytes, offset);
+            int value = (int) BitUtil.VH_BE_INT.get(bytes, offset);
             offset += 4;
             increment(ord, value);
           }

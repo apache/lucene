@@ -18,14 +18,12 @@ package org.apache.lucene.util.bkd;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -180,13 +178,10 @@ public final class OfflinePointReader implements PointReader {
       return packedValue;
     }
 
-    private static final VarHandle VH_BE_INT =
-        MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
-
     @Override
     public int docID() {
       int position = packedValueDocID.offset + packedValueLength;
-      return (int) VH_BE_INT.get(packedValueDocID.bytes, position);
+      return (int) BitUtil.VH_BE_INT.get(packedValueDocID.bytes, position);
     }
 
     @Override

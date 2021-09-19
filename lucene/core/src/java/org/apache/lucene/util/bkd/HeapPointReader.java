@@ -16,9 +16,7 @@
  */
 package org.apache.lucene.util.bkd;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -85,13 +83,10 @@ public final class HeapPointReader implements PointReader {
       return packedValue;
     }
 
-    private static final VarHandle VH_BE_INT =
-        MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
-
     @Override
     public int docID() {
       int position = packedValueDocID.offset + packedValueLength;
-      return (int) VH_BE_INT.get(packedValueDocID.bytes, position);
+      return (int) BitUtil.VH_BE_INT.get(packedValueDocID.bytes, position);
     }
 
     @Override
