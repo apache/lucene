@@ -26,7 +26,8 @@ public class PayloadHelper {
   }
 
   public static byte[] encodeFloat(float payload, byte[] data, int offset) {
-    return encodeInt(Float.floatToIntBits(payload), data, offset);
+    BitUtil.VH_BE_FLOAT.set(data, offset, payload);
+    return data;
   }
 
   public static byte[] encodeInt(int payload) {
@@ -57,8 +58,7 @@ public class PayloadHelper {
    * @see #encodeFloat(float)
    */
   public static final float decodeFloat(byte[] bytes, int offset) {
-
-    return Float.intBitsToFloat(decodeInt(bytes, offset));
+    return (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
   }
 
   public static final int decodeInt(byte[] bytes, int offset) {
