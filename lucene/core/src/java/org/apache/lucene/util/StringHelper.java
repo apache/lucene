@@ -16,8 +16,11 @@
  */
 package org.apache.lucene.util;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.io.DataInputStream;
 import java.math.BigInteger;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -149,6 +152,9 @@ public abstract class StringHelper {
     }
   }
 
+  private static final VarHandle VH_INT =
+      MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
+
   /**
    * Returns the MurmurHash3_x86_32 hash. Original source/tests at
    * https://github.com/yonik/java_util/
@@ -164,11 +170,7 @@ public abstract class StringHelper {
 
     for (int i = offset; i < roundedEnd; i += 4) {
       // little endian load order
-      int k1 =
-          (data[i] & 0xff)
-              | ((data[i + 1] & 0xff) << 8)
-              | ((data[i + 2] & 0xff) << 16)
-              | (data[i + 3] << 24);
+      int k1 = (int) VH_INT.get(data, i);
       k1 *= c1;
       k1 = Integer.rotateLeft(k1, 15);
       k1 *= c2;
