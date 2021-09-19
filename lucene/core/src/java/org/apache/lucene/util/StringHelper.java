@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import java.io.DataInputStream;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.io.DataInputStream;
 import java.math.BigInteger;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
