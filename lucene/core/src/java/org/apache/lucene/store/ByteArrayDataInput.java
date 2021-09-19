@@ -82,23 +82,29 @@ public final class ByteArrayDataInput extends DataInput {
 
   @Override
   public short readShort() {
-    final short ret = (short) BitUtil.VH_LE_SHORT.get(bytes, pos);
-    pos += Short.BYTES;
-    return ret;
+    try {
+      return (short) BitUtil.VH_LE_SHORT.get(bytes, pos);
+    } finally {
+      pos += Short.BYTES;
+    }
   }
 
   @Override
   public int readInt() {
-    final int ret = (int) BitUtil.VH_LE_INT.get(bytes, pos);
-    pos += Integer.BYTES;
-    return ret;
+    try {
+      return (int) BitUtil.VH_LE_INT.get(bytes, pos);
+    } finally {
+      pos += Integer.BYTES;
+    }
   }
 
   @Override
   public long readLong() {
-    final long ret = (long) BitUtil.VH_LE_LONG.get(bytes, pos);
-    pos += Long.BYTES;
-    return ret;
+    try {
+      return (long) BitUtil.VH_LE_LONG.get(bytes, pos);
+    } finally {
+      pos += Long.BYTES;
+    }
   }
 
   @Override
