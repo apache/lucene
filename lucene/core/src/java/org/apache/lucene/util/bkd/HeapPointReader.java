@@ -91,11 +91,7 @@ public final class HeapPointReader implements PointReader {
     @Override
     public int docID() {
       int position = packedValueDocID.offset + packedValueLength;
-      try {
-        return (int) VH_BE_INT.get(packedValueDocID.bytes, position);
-      } finally {
-        position += 4;
-      }
+      return (int) VH_BE_INT.get(packedValueDocID.bytes, position);
     }
 
     @Override
