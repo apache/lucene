@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.store;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -24,6 +27,13 @@ import org.apache.lucene.util.BytesRef;
  * @lucene.experimental
  */
 public final class ByteArrayDataInput extends DataInput {
+
+  private static final VarHandle VH_SHORT =
+      MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
+  private static final VarHandle VH_INT =
+      MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
+  private static final VarHandle VH_LONG =
+      MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
   private byte[] bytes;
 
@@ -81,38 +91,23 @@ public final class ByteArrayDataInput extends DataInput {
 
   @Override
   public short readShort() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    return (short) ((b2 & 0xFF) << 8 | (b1 & 0xFF));
+    final short ret = (short) VH_SHORT.get(bytes, pos);
+    pos += Short.BYTES;
+    return ret;
   }
 
   @Override
   public int readInt() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    final byte b3 = bytes[pos++];
-    final byte b4 = bytes[pos++];
-    return (b4 & 0xFF) << 24 | (b3 & 0xFF) << 16 | (b2 & 0xFF) << 8 | (b1 & 0xFF);
+    final int ret = (int) VH_INT.get(bytes, pos);
+    pos += Integer.BYTES;
+    return ret;
   }
 
   @Override
   public long readLong() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    final byte b3 = bytes[pos++];
-    final byte b4 = bytes[pos++];
-    final byte b5 = bytes[pos++];
-    final byte b6 = bytes[pos++];
-    final byte b7 = bytes[pos++];
-    final byte b8 = bytes[pos++];
-    return (b8 & 0xFFL) << 56
-        | (b7 & 0xFFL) << 48
-        | (b6 & 0xFFL) << 40
-        | (b5 & 0xFFL) << 32
-        | (b4 & 0xFFL) << 24
-        | (b3 & 0xFFL) << 16
-        | (b2 & 0xFFL) << 8
-        | (b1 & 0xFFL);
+    final long ret = (long) VH_LONG.get(bytes, pos);
+    pos += Long.BYTES;
+    return ret;
   }
 
   @Override

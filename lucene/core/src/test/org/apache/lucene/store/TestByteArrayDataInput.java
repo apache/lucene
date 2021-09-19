@@ -29,4 +29,21 @@ public class TestByteArrayDataInput extends LuceneTestCase {
     in.reset(bytes, 1, 2);
     assertEquals("A", in.readString());
   }
+
+  public void testDatatypes() throws Exception {
+    final byte[] bytes = new byte[32];
+    final ByteArrayDataOutput out = new ByteArrayDataOutput(bytes);
+    out.writeByte((byte) 43);
+    out.writeShort((short) 12345);
+    out.writeInt(1234567890);
+    out.writeLong(1234567890123456789L);
+    final int size = out.getPosition();
+    assertEquals(15, size);
+
+    final ByteArrayDataInput in = new ByteArrayDataInput(bytes, 0, size);
+    assertEquals(43, in.readByte());
+    assertEquals(12345, in.readShort());
+    assertEquals(1234567890, in.readInt());
+    assertEquals(1234567890123456789L, in.readLong());
+  }
 }
