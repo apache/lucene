@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.payloads;
 
+import org.apache.lucene.util.BitUtil;
+
 /** Utility methods for encoding payloads. */
 public class PayloadHelper {
 
@@ -32,10 +34,7 @@ public class PayloadHelper {
   }
 
   public static byte[] encodeInt(int payload, byte[] data, int offset) {
-    data[offset] = (byte) (payload >> 24);
-    data[offset + 1] = (byte) (payload >> 16);
-    data[offset + 2] = (byte) (payload >> 8);
-    data[offset + 3] = (byte) payload;
+    BitUtil.VH_BE_INT.set(data, offset, payload);
     return data;
   }
 
@@ -63,9 +62,6 @@ public class PayloadHelper {
   }
 
   public static final int decodeInt(byte[] bytes, int offset) {
-    return ((bytes[offset] & 0xFF) << 24)
-        | ((bytes[offset + 1] & 0xFF) << 16)
-        | ((bytes[offset + 2] & 0xFF) << 8)
-        | (bytes[offset + 3] & 0xFF);
+    return (int) BitUtil.VH_BE_INT.get(bytes, offset);
   }
 }
