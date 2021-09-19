@@ -74,9 +74,9 @@ public class TaxonomyFacetSumFloatAssociations extends FloatTaxonomyFacets {
           while (offset < end) {
             int ord = (int) BitUtil.VH_BE_INT.get(bytes, offset);
             offset += 4;
-            int value = (int) BitUtil.VH_BE_INT.get(bytes, offset);
+            float value = (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
             offset += 4;
-            values[ord] += Float.intBitsToFloat(value);
+            values[ord] += value;
           }
         }
       }
