@@ -201,7 +201,7 @@ public class PayloadMatcherFactory {
     }
 
     private float decodeFloat(byte[] bytes, int offset) {
-      return Float.intBitsToFloat((int) BitUtil.VH_BE_INT.get(bytes, offset));
+      return (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
     }
 
     protected abstract boolean floatCompare(float val, float threshold);

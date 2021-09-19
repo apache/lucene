@@ -51,6 +51,20 @@ public final class BitUtil {
       MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
   /**
+   * A {@link VarHandle} to read/write big endian {@code float} from a byte array. Shape: {@code
+   * float vh.get(byte[] arr, int offset)}
+   */
+  public static final VarHandle VH_LE_FLOAT =
+      MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.LITTLE_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write big endian {@code double} from a byte array. Shape: {@code
+   * double vh.get(byte[] arr, int offset)}
+   */
+  public static final VarHandle VH_LE_DOUBLE =
+      MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.LITTLE_ENDIAN);
+
+  /**
    * A {@link VarHandle} to read/write big endian {@code short} from a byte array. Shape: {@code
    * short vh.get(byte[] arr, int offset)}
    *
@@ -79,6 +93,26 @@ public final class BitUtil {
   @Deprecated
   public static final VarHandle VH_BE_LONG =
       MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write big endian {@code float} from a byte array. Shape: {@code
+   * float vh.get(byte[] arr, int offset)}
+   *
+   * @deprecated Better use little endian unless it is needed for backwards compatibility.
+   */
+  @Deprecated
+  public static final VarHandle VH_BE_FLOAT =
+      MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.BIG_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write big endian {@code double} from a byte array. Shape: {@code
+   * double vh.get(byte[] arr, int offset)}
+   *
+   * @deprecated Better use little endian unless it is needed for backwards compatibility.
+   */
+  @Deprecated
+  public static final VarHandle VH_BE_DOUBLE =
+      MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.BIG_ENDIAN);
 
   // The pop methods used to rely on bit-manipulation tricks for speed but it
   // turns out that it is faster to use the Long.bitCount method (which is an
