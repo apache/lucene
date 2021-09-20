@@ -27,6 +27,9 @@
 package org.apache.lucene.util.compress;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.store.DataInput;
@@ -53,6 +56,7 @@ public final class LZ4 {
   static final int LAST_LITERALS = 5; // the last 5 bytes must be encoded as literals
   static final int HASH_LOG_HC = 15; // log size of the dictionary for compressHC
   static final int HASH_TABLE_SIZE_HC = 1 << HASH_LOG_HC;
+  private static final VarHandle intPlatformNative = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.nativeOrder());
 
   private static int hash(int i, int hashBits) {
     return (i * -1640531535) >>> (32 - hashBits);
@@ -63,10 +67,7 @@ public final class LZ4 {
   }
 
   private static int readInt(byte[] buf, int i) {
-    return ((buf[i] & 0xFF) << 24)
-        | ((buf[i + 1] & 0xFF) << 16)
-        | ((buf[i + 2] & 0xFF) << 8)
-        | (buf[i + 3] & 0xFF);
+    return (int) intPlatformNative.get(buf, i);
   }
 
   private static int commonBytes(byte[] b, int o1, int o2, int limit) {
@@ -107,7 +108,7 @@ public final class LZ4 {
       }
 
       // matchs
-      final int matchDec = (compressed.readByte() & 0xFF) | ((compressed.readByte() & 0xFF) << 8);
+      final int matchDec = Short.toUnsignedInt(compressed.readShort());
       assert matchDec > 0;
 
       int matchLen = token & 0x0F;
@@ -176,8 +177,7 @@ public final class LZ4 {
     // encode match dec
     final int matchDec = matchOff - matchRef;
     assert matchDec > 0 && matchDec < 1 << 16;
-    out.writeByte((byte) matchDec);
-    out.writeByte((byte) (matchDec >>> 8));
+    out.writeShort((short) matchDec);
 
     // encode match len
     if (matchLen >= MIN_MATCH + 0x0F) {
