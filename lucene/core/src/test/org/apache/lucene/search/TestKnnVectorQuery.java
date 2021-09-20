@@ -285,7 +285,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = newSearcher(reader);
         for (int i = 0; i < numIters; i++) {
-          int k = random().nextInt(100) + 1;
+          int k = random().nextInt(80) + 1;
           KnnVectorQuery query = new KnnVectorQuery("field", randomVector(dimension), k);
           int n = random().nextInt(100) + 1;
           TopDocs results = searcher.search(query, n);
