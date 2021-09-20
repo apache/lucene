@@ -90,5 +90,4 @@ public class ByteArrayDataOutput extends DataOutput {
     BitUtil.VH_LE_LONG.set(bytes, pos, i);
     pos += Long.BYTES;
   }
-  
 }

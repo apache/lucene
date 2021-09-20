@@ -21,7 +21,7 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 
 /**
- * A variety of high efficiency bit twiddling routines.
+ * A variety of high efficiency bit twiddling routines and encoders for primitives.
  *
  * @lucene.internal
  */
@@ -30,43 +30,44 @@ public final class BitUtil {
   private BitUtil() {} // no instance
 
   /**
-   * A {@link VarHandle} to read/write little endian {@code short} from a byte array. Shape: {@code
-   * short vh.get(byte[] arr, int offset)}
+   * A {@link VarHandle} to read/write little endian {@code short} from/to a byte array. Shape:
+   * {@code short vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, short
+   * val)}
    */
   public static final VarHandle VH_LE_SHORT =
       MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
 
   /**
    * A {@link VarHandle} to read/write little endian {@code int} from a byte array. Shape: {@code
-   * int vh.get(byte[] arr, int offset)}
+   * int vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, int val)}
    */
   public static final VarHandle VH_LE_INT =
       MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
 
   /**
    * A {@link VarHandle} to read/write little endian {@code long} from a byte array. Shape: {@code
-   * long vh.get(byte[] arr, int offset)}
+   * long vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, long val)}
    */
   public static final VarHandle VH_LE_LONG =
       MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
   /**
-   * A {@link VarHandle} to read/write big endian {@code float} from a byte array. Shape: {@code
-   * float vh.get(byte[] arr, int offset)}
+   * A {@link VarHandle} to read/write little endian {@code float} from a byte array. Shape: {@code
+   * float vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, float val)}
    */
   public static final VarHandle VH_LE_FLOAT =
       MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.LITTLE_ENDIAN);
 
   /**
-   * A {@link VarHandle} to read/write big endian {@code double} from a byte array. Shape: {@code
-   * double vh.get(byte[] arr, int offset)}
+   * A {@link VarHandle} to read/write little endian {@code double} from a byte array. Shape: {@code
+   * double vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, double val)}
    */
   public static final VarHandle VH_LE_DOUBLE =
       MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.LITTLE_ENDIAN);
 
   /**
    * A {@link VarHandle} to read/write big endian {@code short} from a byte array. Shape: {@code
-   * short vh.get(byte[] arr, int offset)}
+   * short vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, short val)}
    *
    * @deprecated Better use little endian unless it is needed for backwards compatibility.
    */
@@ -76,7 +77,7 @@ public final class BitUtil {
 
   /**
    * A {@link VarHandle} to read/write big endian {@code int} from a byte array. Shape: {@code int
-   * vh.get(byte[] arr, int offset)}
+   * vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, int val)}
    *
    * @deprecated Better use little endian unless it is needed for backwards compatibility.
    */
@@ -86,7 +87,7 @@ public final class BitUtil {
 
   /**
    * A {@link VarHandle} to read/write big endian {@code long} from a byte array. Shape: {@code long
-   * vh.get(byte[] arr, int offset)}
+   * vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, long val)}
    *
    * @deprecated Better use little endian unless it is needed for backwards compatibility.
    */
@@ -96,7 +97,7 @@ public final class BitUtil {
 
   /**
    * A {@link VarHandle} to read/write big endian {@code float} from a byte array. Shape: {@code
-   * float vh.get(byte[] arr, int offset)}
+   * float vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, float val)}
    *
    * @deprecated Better use little endian unless it is needed for backwards compatibility.
    */
@@ -106,7 +107,7 @@ public final class BitUtil {
 
   /**
    * A {@link VarHandle} to read/write big endian {@code double} from a byte array. Shape: {@code
-   * double vh.get(byte[] arr, int offset)}
+   * double vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, double val)}
    *
    * @deprecated Better use little endian unless it is needed for backwards compatibility.
    */

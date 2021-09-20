@@ -18,7 +18,6 @@ package org.apache.lucene.store;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-
 import org.apache.lucene.util.LuceneTestCase;
 
 public class TestByteArrayDataInput extends LuceneTestCase {
@@ -51,7 +50,7 @@ public class TestByteArrayDataInput extends LuceneTestCase {
     assertEquals(1234567890, buf.getInt());
     assertEquals(1234567890123456789L, buf.getLong());
     assertEquals(0, buf.remaining());
-    
+
     // read the primitives using ByteArrayDataInput:
     final ByteArrayDataInput in = new ByteArrayDataInput(bytes, 0, size);
     assertEquals(43, in.readByte());
