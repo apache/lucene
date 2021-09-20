@@ -49,6 +49,8 @@ public final class UserDictionary implements Dictionary {
 
   public static final int RIGHT_ID = 5;
 
+  private static final int[][] EMPTY_RESULT = new int[0][];
+
   public static UserDictionary open(Reader reader) throws IOException {
 
     BufferedReader br = new BufferedReader(reader);
@@ -160,7 +162,7 @@ public final class UserDictionary implements Dictionary {
    * @param len length of text
    * @return List of {wordId, position, length}
    */
-  public List<int[]> lookup(char[] chars, int off, int len) throws IOException {
+  public int[][] lookup(char[] chars, int off, int len) throws IOException {
     ArrayList<int[]> occurrences = null;
     boolean found = false; // true if we found any occurrences.
     FST.BytesReader fstReader = fst.getBytesReader();
@@ -192,7 +194,7 @@ public final class UserDictionary implements Dictionary {
         }
       }
     }
-    return found ? occurrences : Collections.emptyList();
+    return found ? occurrences.toArray(new int[0][]) : EMPTY_RESULT;
   }
 
   public TokenInfoFST getFST() {

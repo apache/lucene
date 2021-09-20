@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.ja.dict;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.List;
 import org.apache.lucene.analysis.ja.TestJapaneseTokenizer;
 import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
@@ -29,46 +28,46 @@ public class TestUserDictionary extends LuceneTestCase {
   public void testLookup() throws IOException {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
     String s = "関西国際空港に行った";
-    List<int[]> dictionaryEntryResult = dictionary.lookup(s.toCharArray(), 0, s.length());
+    int[][] dictionaryEntryResult = dictionary.lookup(s.toCharArray(), 0, s.length());
     // Length should be three 関西, 国際, 空港
-    assertEquals(3, dictionaryEntryResult.size());
+    assertEquals(3, dictionaryEntryResult.length);
 
     // Test positions
-    assertEquals(0, dictionaryEntryResult.get(0)[1]); // index of 関西
-    assertEquals(2, dictionaryEntryResult.get(1)[1]); // index of 国際
-    assertEquals(4, dictionaryEntryResult.get(2)[1]); // index of 空港
+    assertEquals(0, dictionaryEntryResult[0][1]); // index of 関西
+    assertEquals(2, dictionaryEntryResult[1][1]); // index of 国際
+    assertEquals(4, dictionaryEntryResult[2][1]); // index of 空港
 
     // Test lengths
-    assertEquals(2, dictionaryEntryResult.get(0)[2]); // length of 関西
-    assertEquals(2, dictionaryEntryResult.get(1)[2]); // length of 国際
-    assertEquals(2, dictionaryEntryResult.get(2)[2]); // length of 空港
+    assertEquals(2, dictionaryEntryResult[0][2]); // length of 関西
+    assertEquals(2, dictionaryEntryResult[1][2]); // length of 国際
+    assertEquals(2, dictionaryEntryResult[2][2]); // length of 空港
 
     s = "関西国際空港と関西国際空港に行った";
-    List<int[]> dictionaryEntryResult2 = dictionary.lookup(s.toCharArray(), 0, s.length());
+    int[][] dictionaryEntryResult2 = dictionary.lookup(s.toCharArray(), 0, s.length());
     // Length should be six
-    assertEquals(6, dictionaryEntryResult2.size());
+    assertEquals(6, dictionaryEntryResult2.length);
   }
 
   @Test
   public void testReadings() throws IOException {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
-    List<int[]> result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
-    assertEquals(3, result.size());
-    int wordIdNihon = result.get(0)[0]; // wordId of 日本 in 日本経済新聞
+    int[][] result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
+    assertEquals(3, result.length);
+    int wordIdNihon = result[0][0]; // wordId of 日本 in 日本経済新聞
     assertEquals("ニホン", dictionary.getReading(wordIdNihon, "日本".toCharArray(), 0, 2));
 
     result = dictionary.lookup("朝青龍".toCharArray(), 0, 3);
-    assertEquals(1, result.size());
-    int wordIdAsashoryu = result.get(0)[0]; // wordId for 朝青龍
+    assertEquals(1, result.length);
+    int wordIdAsashoryu = result[0][0]; // wordId for 朝青龍
     assertEquals("アサショウリュウ", dictionary.getReading(wordIdAsashoryu, "朝青龍".toCharArray(), 0, 3));
   }
 
   @Test
   public void testPartOfSpeech() throws IOException {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
-    List<int[]> result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
-    assertEquals(3, result.size());
-    int wordIdKeizai = result.get(1)[0]; // wordId of 経済 in 日本経済新聞
+    int[][] result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
+    assertEquals(3, result.length);
+    int wordIdKeizai = result[1][0]; // wordId of 経済 in 日本経済新聞
     assertEquals("カスタム名詞", dictionary.getPartOfSpeech(wordIdKeizai));
   }
 
@@ -109,8 +108,8 @@ public class TestUserDictionary extends LuceneTestCase {
 
     for (String input : inputs) {
       System.out.println(input);
-      List<int[]> result = dictionary.lookup(input.toCharArray(), 0, input.length());
-      assertEquals("カスタム名刺", dictionary.getPartOfSpeech(result.get(0)[0]));
+      int[][] result = dictionary.lookup(input.toCharArray(), 0, input.length());
+      assertEquals("カスタム名刺", dictionary.getPartOfSpeech(result[0][0]));
     }
   }
 }
