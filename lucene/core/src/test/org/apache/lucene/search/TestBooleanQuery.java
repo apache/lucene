@@ -742,7 +742,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
-    int randomNumDocs = random().nextInt(500);
+    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
     int numMatchingDocs = 0;
 
     for (int i = 0; i < randomNumDocs; i++) {

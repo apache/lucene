@@ -37,6 +37,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
 
 public class TestTermQuery extends LuceneTestCase {
 
@@ -108,7 +109,7 @@ public class TestTermQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
-    int randomNumDocs = random().nextInt(500);
+    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
     int numMatchingDocs = 0;
 
     for (int i = 0; i < randomNumDocs; i++) {
