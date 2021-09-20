@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -79,9 +78,7 @@ public class CompiledAutomaton implements Accountable {
    */
   public final Automaton automaton;
 
-  /**
-   * Matcher directly run on a NFA, it will determinize the state on need and caches it
-   */
+  /** Matcher directly run on a NFA, it will determinize the state on need and caches it */
   public final NFARunAutomaton nfaRunAutomaton;
 
   /**
@@ -143,16 +140,31 @@ public class CompiledAutomaton implements Accountable {
     this(automaton, finite, simplify, ByteRunnable.TYPE.DFA);
   }
 
-  public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify, ByteRunnable.TYPE runnableType) {
-    this(automaton, finite, simplify, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false, runnableType);
+  /**
+   * Similar to {@link #CompiledAutomaton(Automaton, Boolean, boolean)} but allow using NFA version
+   * by specify the runnableType parameter
+   */
+  public CompiledAutomaton(
+      Automaton automaton, Boolean finite, boolean simplify, ByteRunnable.TYPE runnableType) {
+    this(
+        automaton,
+        finite,
+        simplify,
+        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+        false,
+        runnableType);
   }
 
+  /**
+   * A DFA version ctor, see {@link #CompiledAutomaton(Automaton, Boolean, boolean, int, boolean,
+   * ByteRunnable.TYPE)}
+   */
   public CompiledAutomaton(
-          Automaton automaton,
-          Boolean finite,
-          boolean simplify,
-          int determinizeWorkLimit,
-          boolean isBinary) {
+      Automaton automaton,
+      Boolean finite,
+      boolean simplify,
+      int determinizeWorkLimit,
+      boolean isBinary) {
     this(automaton, finite, simplify, determinizeWorkLimit, isBinary, ByteRunnable.TYPE.DFA);
   }
 
@@ -163,8 +175,8 @@ public class CompiledAutomaton implements Accountable {
    * determinizing the automaton then at most determinizeWorkLimit effort will be spent. Any more
    * than that will cause a TooComplexToDeterminizeException.
    *
-   * If we decide to use NFA to run, the {@link NFARunAutomaton} will be created iff the automaton is NOT
-   * determinized yet
+   * <p>If we decide to use NFA to run, the {@link NFARunAutomaton} will be created iff the
+   * automaton is NOT determinized yet
    */
   public CompiledAutomaton(
       Automaton automaton,
@@ -296,7 +308,6 @@ public class CompiledAutomaton implements Accountable {
       sinkState = findSinkState(this.automaton);
       nfaRunAutomaton = null;
     }
-
   }
 
   private Transition transition = new Transition();
@@ -528,8 +539,8 @@ public class CompiledAutomaton implements Accountable {
     if (type == AUTOMATON_TYPE.SINGLE) {
       if (!term.equals(other.term)) return false;
     } else if (type == AUTOMATON_TYPE.NORMAL) {
-      return Objects.equals(runAutomaton, other.runAutomaton) &&
-              Objects.equals(nfaRunAutomaton, other.nfaRunAutomaton);
+      return Objects.equals(runAutomaton, other.runAutomaton)
+          && Objects.equals(nfaRunAutomaton, other.nfaRunAutomaton);
     }
 
     return true;

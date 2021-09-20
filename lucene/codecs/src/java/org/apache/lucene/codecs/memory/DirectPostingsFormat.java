@@ -46,7 +46,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.RunAutomaton;
 import org.apache.lucene.util.automaton.Transition;
 import org.apache.lucene.util.automaton.TransitionAccessor;
 
@@ -1063,10 +1062,8 @@ public final class DirectPostingsFormat extends PostingsFormat {
                     stateUpto++;
                     states[stateUpto].changeOrd = skips[skipOffset + skipUpto++];
                     states[stateUpto].state = nextState;
-                    states[stateUpto].transitionCount =
-                        automaton.getNumTransitions(nextState);
-                    automaton.initTransition(
-                        states[stateUpto].state, states[stateUpto].transition);
+                    states[stateUpto].transitionCount = automaton.getNumTransitions(nextState);
+                    automaton.initTransition(states[stateUpto].state, states[stateUpto].transition);
                     states[stateUpto].transitionUpto = -1;
                     states[stateUpto].transitionMax = -1;
                     // System.out.println("  push " + states[stateUpto].transitions.length + "
@@ -1350,8 +1347,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
             stateUpto++;
             states[stateUpto].state = nextState;
             states[stateUpto].changeOrd = skips[skipOffset + skipUpto++];
-            states[stateUpto].transitionCount =
-                automaton.getNumTransitions(nextState);
+            states[stateUpto].transitionCount = automaton.getNumTransitions(nextState);
             automaton.initTransition(nextState, states[stateUpto].transition);
             states[stateUpto].transitionUpto = -1;
             states[stateUpto].transitionMax = -1;

@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -61,6 +60,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
       try {
         randomStringGen = new AutomatonTestUtil.RandomAcceptedStrings(dfa);
       } catch (IllegalArgumentException e) {
+        ignoreException(e);
         i--;
         continue; // sometimes the automaton accept nothing and throw this exception
       }
@@ -99,14 +99,15 @@ public class TestNFARunAutomaton extends LuceneTestCase {
       int termNum = random().nextInt(20) + 30;
       while (perLoopReuse.size() < termNum) {
         String randomString;
-        while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0);
+        while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0)
+          ;
         perLoopReuse.add(randomString);
         vocab.add(randomString);
       }
       Document document = new Document();
-      document.add(newTextField(FIELD,
-                   perLoopReuse.stream().reduce("", (s1, s2) -> s1 + " " + s2),
-                   Field.Store.NO));
+      document.add(
+          newTextField(
+              FIELD, perLoopReuse.stream().reduce("", (s1, s2) -> s1 + " " + s2), Field.Store.NO));
       writer.addDocument(document);
     }
     writer.commit();
@@ -116,7 +117,8 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     Set<String> foreignVocab = new HashSet<>();
     while (foreignVocab.size() < vocab.size()) {
       String randomString;
-      while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0);
+      while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0)
+        ;
       foreignVocab.add(randomString);
     }
 
@@ -134,7 +136,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
         }
       }
       Automaton a = null;
-      for (String term: perLoopReuse) {
+      for (String term : perLoopReuse) {
         if (a == null) {
           a = Automata.makeString(term);
         } else {
@@ -181,6 +183,6 @@ public class TestNFARunAutomaton extends LuceneTestCase {
   }
 
   private void ignoreException(Exception e) {
-    // do nothing
+    // do nothing, otherwise will fail ecjLintTest
   }
 }

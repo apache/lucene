@@ -20,7 +20,6 @@ package org.apache.lucene.util.automaton;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.hppc.BitMixer;
 
@@ -44,7 +43,8 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
   private final int alphabetSize;
   final int[] classmap; // map from char number to class
 
-  private final Operations.PointTransitionSet transitionSet = new Operations.PointTransitionSet(); // reusable
+  private final Operations.PointTransitionSet transitionSet =
+      new Operations.PointTransitionSet(); // reusable
   private final StateSet statesSet = new StateSet(5); // reusable
 
   /**
@@ -349,7 +349,9 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
         return;
       }
 
-      transitionSet.sort(); // TODO: could use a PQ (heap) instead, since transitions for each state are sorted
+      transitionSet
+          .sort(); // TODO: could use a PQ (heap) instead, since transitions for each state are
+      // sorted
       statesSet.reset();
       int lastPoint = -1;
       int charClass = 0;
@@ -366,7 +368,8 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
             assert transitions[charClass] == NOT_COMPUTED || transitions[charClass] == ord;
             assignTransition(charClass++, ord);
           }
-          assert (charClass == points.length && point == alphabetSize) || points[charClass] == point;
+          assert (charClass == points.length && point == alphabetSize)
+              || points[charClass] == point;
         }
 
         // process transitions that end on this point
@@ -392,9 +395,13 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
         transitionSet.points[i].starts.next = 0;
       }
       assert statesSet.size() == 0;
-      assert computedTransitions >= charClass; // it's also possible that some transitions after the charClass has already been explored
+      assert computedTransitions
+          >= charClass; // it's also possible that some transitions after the charClass has already
+      // been explored
       // no more outgoing transitions, set rest of transition to MISSING
-      assert charClass == transitions.length || transitions[charClass] == MISSING || transitions[charClass] == NOT_COMPUTED;
+      assert charClass == transitions.length
+          || transitions[charClass] == MISSING
+          || transitions[charClass] == NOT_COMPUTED;
       Arrays.fill(transitions, charClass, transitions.length, MISSING);
       computedTransitions = transitions.length;
     }

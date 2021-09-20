@@ -29,7 +29,6 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.RunAutomaton;
 import org.apache.lucene.util.automaton.TransitionAccessor;
 import org.apache.lucene.util.fst.FST;
 
@@ -444,10 +443,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
           }
           suffixBytesPos = currentFrame.startBytePos;
         } else {
-          suffixBytesPos =
-              currentFrame.startBytePos
-                  + currentFrame.suffix
-                  - commonSuffixRef.length;
+          suffixBytesPos = currentFrame.startBytePos + currentFrame.suffix - commonSuffixRef.length;
         }
 
         // Test overlapping suffix part:
