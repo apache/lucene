@@ -26,10 +26,12 @@ public class TestByteArrayDataInput extends LuceneTestCase {
     byte[] bytes = new byte[] {1, 65};
     ByteArrayDataInput in = new ByteArrayDataInput(bytes);
     assertEquals("A", in.readString());
+    assertTrue(in.eof());
 
     bytes = new byte[] {1, 1, 65};
     in.reset(bytes, 1, 2);
     assertEquals("A", in.readString());
+    assertTrue(in.eof());
   }
 
   public void testDatatypes() throws Exception {
@@ -57,5 +59,6 @@ public class TestByteArrayDataInput extends LuceneTestCase {
     assertEquals(12345, in.readShort());
     assertEquals(1234567890, in.readInt());
     assertEquals(1234567890123456789L, in.readLong());
+    assertTrue(in.eof());
   }
 }
