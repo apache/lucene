@@ -108,8 +108,7 @@ public final class LZ4 {
       }
 
       // matchs
-      // LZ4 match offsets are defined to be little endian like DataInput:
-      final int matchDec = Short.toUnsignedInt(compressed.readShort());
+      final int matchDec = (compressed.readByte() & 0xFF) | ((compressed.readByte() & 0xFF) << 8);
       assert matchDec > 0;
 
       int matchLen = token & 0x0F;
@@ -178,8 +177,8 @@ public final class LZ4 {
     // encode match dec
     final int matchDec = matchOff - matchRef;
     assert matchDec > 0 && matchDec < 1 << 16;
-    // LZ4 match offsets are defined to be little endian like DataOutput:
-    out.writeShort((short) matchDec);
+    out.writeByte((byte) matchDec);
+    out.writeByte((byte) (matchDec >>> 8));
 
     // encode match len
     if (matchLen >= MIN_MATCH + 0x0F) {
