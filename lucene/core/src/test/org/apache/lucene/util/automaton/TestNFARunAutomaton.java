@@ -40,7 +40,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
 
   private static final String FIELD = "field";
 
-  public void testWithRandomAutomaton() {
+  public void testWithRandomRegex() {
     for (int i = 0; i < 100; i++) {
       RegExp regExp = null;
       while (regExp == null) {
@@ -50,8 +50,13 @@ public class TestNFARunAutomaton extends LuceneTestCase {
           ignoreException(e);
         }
       }
+      Automaton nfa = regExp.toNFA();
+      if (nfa.isDeterministic()) {
+        i--;
+        continue;
+      }
       Automaton dfa = regExp.toAutomaton();
-      NFARunAutomaton candidate = new NFARunAutomaton(regExp.toNFA());
+      NFARunAutomaton candidate = new NFARunAutomaton(nfa);
       AutomatonTestUtil.RandomAcceptedStrings randomStringGen;
       try {
         randomStringGen = new AutomatonTestUtil.RandomAcceptedStrings(dfa);
