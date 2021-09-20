@@ -24,6 +24,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 
@@ -101,7 +102,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
     this.automaton = automaton;
     this.automatonIsBinary = isBinary;
     if (determinizeWorkLimit == 0) {
-      this.compiled = new CompiledAutomaton(automaton, true);
+      this.compiled = new CompiledAutomaton(automaton, null, false, ByteRunnable.TYPE.NFA);
     } else {
       // TODO: we could take isFinite too, to save a bit of CPU in CompiledAutomaton ctor?:
       this.compiled = new CompiledAutomaton(automaton, null, true, determinizeWorkLimit, isBinary);
@@ -163,6 +164,10 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
   /** Returns the automaton used to create this query */
   public Automaton getAutomaton() {
     return automaton;
+  }
+
+  public CompiledAutomaton getCompiled() {
+    return compiled;
   }
 
   /** Is this a binary (byte) oriented automaton. See the constructor. */

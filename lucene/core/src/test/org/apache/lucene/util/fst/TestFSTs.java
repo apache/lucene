@@ -352,7 +352,7 @@ public class TestFSTs extends LuceneTestCase {
       BytesRef term;
       int ord = 0;
 
-      Automaton automaton = new RegExp(".*", RegExp.NONE).toDFA();
+      Automaton automaton = new RegExp(".*", RegExp.NONE).toAutomaton();
       final TermsEnum termsEnum2 =
           terms.intersect(new CompiledAutomaton(automaton, false, false), null);
 

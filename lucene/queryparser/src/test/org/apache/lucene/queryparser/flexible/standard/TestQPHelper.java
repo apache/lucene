@@ -1201,7 +1201,7 @@ public class TestQPHelper extends LuceneTestCase {
 
   public void testStopwords() throws Exception {
     StandardQueryParser qp = new StandardQueryParser();
-    CharacterRunAutomaton stopSet = new CharacterRunAutomaton(new RegExp("the|foo").toDFA());
+    CharacterRunAutomaton stopSet = new CharacterRunAutomaton(new RegExp("the|foo").toAutomaton());
     qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.SIMPLE, true, stopSet));
 
     Query result = qp.parse("a:the OR a:foo", "a");

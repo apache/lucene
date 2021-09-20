@@ -131,7 +131,7 @@ public class TestFiniteStringsIterator extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          Automaton a = new RegExp("abc.*", RegExp.NONE).toDFA();
+          Automaton a = new RegExp("abc.*", RegExp.NONE).toAutomaton();
           FiniteStringsIterator iterator = new FiniteStringsIterator(a);
           getFiniteStrings(iterator);
         });

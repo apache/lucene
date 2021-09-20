@@ -1005,7 +1005,7 @@ public class TestIntervals extends LuceneTestCase {
   public void testMultiTerm() throws IOException {
     RegExp re = new RegExp("p.*e");
     IntervalsSource source =
-        Intervals.multiterm(new CompiledAutomaton(re.toDFA()), re.toString());
+        Intervals.multiterm(new CompiledAutomaton(re.toAutomaton()), re.toString());
 
     checkIntervals(
         source,
@@ -1025,7 +1025,7 @@ public class TestIntervals extends LuceneTestCase {
             IllegalStateException.class,
             () -> {
               IntervalsSource s =
-                  Intervals.multiterm(new CompiledAutomaton(re.toDFA()), 1, re.toString());
+                  Intervals.multiterm(new CompiledAutomaton(re.toAutomaton()), 1, re.toString());
               for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
                 s.intervals("field1", ctx);
               }

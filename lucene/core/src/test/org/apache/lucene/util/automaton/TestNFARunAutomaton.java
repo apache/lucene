@@ -23,23 +23,18 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.lucene.codecs.lucene90.Lucene90Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.AutomatonQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
-import org.apache.lucene.util.ToStringUtils;
 
 public class TestNFARunAutomaton extends LuceneTestCase {
 
@@ -55,10 +50,15 @@ public class TestNFARunAutomaton extends LuceneTestCase {
           ignoreException(e);
         }
       }
-      Automaton dfa = regExp.toDFA();
+      Automaton dfa = regExp.toAutomaton();
       NFARunAutomaton candidate = new NFARunAutomaton(regExp.toNFA());
-      AutomatonTestUtil.RandomAcceptedStrings randomStringGen =
-          new AutomatonTestUtil.RandomAcceptedStrings(dfa);
+      AutomatonTestUtil.RandomAcceptedStrings randomStringGen;
+      try {
+        randomStringGen = new AutomatonTestUtil.RandomAcceptedStrings(dfa);
+      } catch (IllegalArgumentException e) {
+        i--;
+        continue; // sometimes the automaton accept nothing and throw this exception
+      }
 
       for (int round = 0; round < 20; round++) {
         // test order of accepted strings and random (likely rejected) strings alternatively to make
@@ -75,7 +75,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
   }
 
   public void testWithRandomAutomatonQuery() throws IOException {
-    final int n = 20;
+    final int n = 5;
     for (int i = 0; i < n; i++) {
       randomAutomatonQueryTest();
     }
@@ -140,10 +140,10 @@ public class TestNFARunAutomaton extends LuceneTestCase {
         i--;
         continue;
       }
-      Query dfaQuery = new AutomatonQuery(new Term(FIELD), a);
-      searcher.count(dfaQuery);
-//      Query nfaQuery = new AutomatonQuery(new Term(FIELD), a, 0);
-//      assertEquals(searcher.count(dfaQuery), searcher.count(nfaQuery));
+      AutomatonQuery dfaQuery = new AutomatonQuery(new Term(FIELD), a);
+      AutomatonQuery nfaQuery = new AutomatonQuery(new Term(FIELD), a, 0);
+      assertNotNull(nfaQuery.getCompiled().nfaRunAutomaton);
+      assertEquals(searcher.count(dfaQuery), searcher.count(nfaQuery));
     }
     reader.close();
     writer.close();

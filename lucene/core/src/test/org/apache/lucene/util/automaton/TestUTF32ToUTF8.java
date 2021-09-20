@@ -165,7 +165,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
 
   public void testSpecialCase() {
     RegExp re = new RegExp(".?");
-    Automaton automaton = re.toDFA();
+    Automaton automaton = re.toAutomaton();
     CharacterRunAutomaton cra = new CharacterRunAutomaton(automaton);
     ByteRunAutomaton bra = new ByteRunAutomaton(automaton);
     // make sure character dfa accepts empty string
@@ -181,7 +181,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
   public void testSpecialCase2() throws Exception {
     RegExp re = new RegExp(".+\u0775");
     String input = "\ufadc\ufffd\ub80b\uda5a\udc68\uf234\u0056\uda5b\udcc1\ufffd\ufffd\u0775";
-    Automaton automaton = re.toDFA();
+    Automaton automaton = re.toAutomaton();
     CharacterRunAutomaton cra = new CharacterRunAutomaton(automaton);
     ByteRunAutomaton bra = new ByteRunAutomaton(automaton);
 
@@ -195,7 +195,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     RegExp re = new RegExp("(\\鯺)*(.)*\\Ӕ");
     String input =
         "\u5cfd\ufffd\ub2f7\u0033\ue304\u51d7\u3692\udb50\udfb3\u0576\udae2\udc62\u0053\u0449\u04d4";
-    Automaton automaton = re.toDFA();
+    Automaton automaton = re.toAutomaton();
     CharacterRunAutomaton cra = new CharacterRunAutomaton(automaton);
     ByteRunAutomaton bra = new ByteRunAutomaton(automaton);
 
@@ -209,7 +209,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     int num = atLeast(50);
     for (int i = 0; i < num; i++) {
       assertAutomaton(
-          new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toDFA());
+          new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton());
     }
   }
 

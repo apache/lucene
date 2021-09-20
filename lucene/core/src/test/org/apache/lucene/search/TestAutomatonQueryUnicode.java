@@ -116,7 +116,7 @@ public class TestAutomatonQueryUnicode extends LuceneTestCase {
    * or a supplementary character.
    */
   public void testSortOrder() throws IOException {
-    Automaton a = new RegExp("((\uD866\uDF05)|\uFB94).*").toDFA();
+    Automaton a = new RegExp("((\uD866\uDF05)|\uFB94).*").toAutomaton();
     assertAutomatonHits(2, a);
   }
 }

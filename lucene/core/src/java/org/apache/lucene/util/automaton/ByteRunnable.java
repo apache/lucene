@@ -2,6 +2,11 @@ package org.apache.lucene.util.automaton;
 
 public interface ByteRunnable {
 
+    enum TYPE {
+        NFA, // use NFARunAutomaton
+        DFA // use ByteRunAutomaton
+    }
+
     /**
      * Returns the state obtained by reading the given char from the given state. Returns -1 if not
      * obtaining any such state.

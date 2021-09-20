@@ -84,7 +84,7 @@ public final class SimplePatternTokenizer extends Tokenizer {
 
   /** See {@link RegExp} for the accepted syntax. */
   public SimplePatternTokenizer(AttributeFactory factory, String regexp, int determinizeWorkLimit) {
-    this(factory, new RegExp(regexp).toDFA());
+    this(factory, new RegExp(regexp).toAutomaton());
   }
 
   /** Runs a pre-built automaton. */

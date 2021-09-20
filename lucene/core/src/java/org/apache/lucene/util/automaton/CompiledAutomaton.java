@@ -79,6 +79,9 @@ public class CompiledAutomaton implements Accountable {
    */
   public final Automaton automaton;
 
+  /**
+   * Matcher directly run on a NFA, it will determinize the state on need and caches it
+   */
   public final NFARunAutomaton nfaRunAutomaton;
 
   /**
@@ -137,7 +140,20 @@ public class CompiledAutomaton implements Accountable {
    * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
    */
   public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify) {
-    this(automaton, finite, simplify, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false);
+    this(automaton, finite, simplify, ByteRunnable.TYPE.DFA);
+  }
+
+  public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify, ByteRunnable.TYPE runnableType) {
+    this(automaton, finite, simplify, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false, runnableType);
+  }
+
+  public CompiledAutomaton(
+          Automaton automaton,
+          Boolean finite,
+          boolean simplify,
+          int determinizeWorkLimit,
+          boolean isBinary) {
+    this(automaton, finite, simplify, determinizeWorkLimit, isBinary, ByteRunnable.TYPE.DFA);
   }
 
   /**
@@ -146,20 +162,25 @@ public class CompiledAutomaton implements Accountable {
    * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}. If simplify requires
    * determinizing the automaton then at most determinizeWorkLimit effort will be spent. Any more
    * than that will cause a TooComplexToDeterminizeException.
+   *
+   * If we decide to use NFA to run, the {@link NFARunAutomaton} will be created iff the automaton is NOT
+   * determinized yet
    */
   public CompiledAutomaton(
       Automaton automaton,
       Boolean finite,
       boolean simplify,
       int determinizeWorkLimit,
-      boolean isBinary) {
-    this.nfaRunAutomaton = null;
+      boolean isBinary,
+      ByteRunnable.TYPE byteRunnableType) {
     if (automaton.getNumStates() == 0) {
       automaton = new Automaton();
       automaton.createState();
     }
 
     if (simplify) {
+      // to determine whether we could simplify we need to determinize the automaton first
+      assert byteRunnableType == ByteRunnable.TYPE.DFA;
 
       // Test whether the automaton is a "simple" form and
       // if so, don't create a runAutomaton.  Note that on a
@@ -174,6 +195,7 @@ public class CompiledAutomaton implements Accountable {
         this.automaton = null;
         this.finite = null;
         sinkState = -1;
+        nfaRunAutomaton = null;
         return;
       }
 
@@ -195,6 +217,7 @@ public class CompiledAutomaton implements Accountable {
         this.automaton = null;
         this.finite = null;
         sinkState = -1;
+        nfaRunAutomaton = null;
         return;
       }
 
@@ -218,6 +241,7 @@ public class CompiledAutomaton implements Accountable {
                   UnicodeUtil.newString(singleton.ints, singleton.offset, singleton.length));
         }
         sinkState = -1;
+        nfaRunAutomaton = null;
         return;
       }
     }
@@ -255,30 +279,24 @@ public class CompiledAutomaton implements Accountable {
       }
     }
 
-    // This will determinize the binary automaton for us:
-    runAutomaton = new ByteRunAutomaton(binary, true, determinizeWorkLimit);
+    if (automaton.isDeterministic() == false && byteRunnableType == ByteRunnable.TYPE.NFA) {
+      this.automaton = null;
+      this.runAutomaton = null;
+      this.sinkState = -1;
+      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0xff);
+    } else {
+      // This will determinize the binary automaton for us:
+      runAutomaton = new ByteRunAutomaton(binary, true, determinizeWorkLimit);
 
-    this.automaton = runAutomaton.automaton;
+      this.automaton = runAutomaton.automaton;
 
-    // TODO: this is a bit fragile because if the automaton is not minimized there could be more
-    // than 1 sink state but auto-prefix will fail
-    // to run for those:
-    sinkState = findSinkState(this.automaton);
-  }
+      // TODO: this is a bit fragile because if the automaton is not minimized there could be more
+      // than 1 sink state but auto-prefix will fail
+      // to run for those:
+      sinkState = findSinkState(this.automaton);
+      nfaRunAutomaton = null;
+    }
 
-  public CompiledAutomaton(Automaton automaton, boolean isNFA) {
-    // nocommit: the parameter "isNFA" makes no sense, is only used to distinguish the ctor
-    assert automaton.isDeterministic() == false;
-    this.type = AUTOMATON_TYPE.NORMAL;
-    this.automaton = null;
-    this.runAutomaton = null;
-    this.sinkState = -1;
-    this.term = null;
-    automaton = Operations.removeDeadStates(automaton);
-    this.finite = Operations.isFinite(automaton);
-    this.commonSuffixRef = null;
-    automaton = new UTF32ToUTF8().convert(automaton);
-    this.nfaRunAutomaton = new NFARunAutomaton(automaton, 0xff);
   }
 
   private Transition transition = new Transition();

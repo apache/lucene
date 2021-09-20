@@ -770,7 +770,7 @@ public class TestTermsEnum extends LuceneTestCase {
     w.close();
     LeafReader sub = getOnlyLeafReader(r);
     Terms terms = sub.terms("field");
-    Automaton automaton = new RegExp(".*", RegExp.NONE).toDFA();
+    Automaton automaton = new RegExp(".*", RegExp.NONE).toAutomaton();
     CompiledAutomaton ca = new CompiledAutomaton(automaton, false, false);
     TermsEnum te = terms.intersect(ca, null);
     assertEquals("aaa", te.next().utf8ToString());
@@ -826,7 +826,7 @@ public class TestTermsEnum extends LuceneTestCase {
     LeafReader sub = getOnlyLeafReader(r);
     Terms terms = sub.terms("field");
 
-    Automaton automaton = new RegExp(".*d", RegExp.NONE).toDFA();
+    Automaton automaton = new RegExp(".*d", RegExp.NONE).toAutomaton();
     CompiledAutomaton ca = new CompiledAutomaton(automaton, false, false);
     TermsEnum te;
 
@@ -880,7 +880,7 @@ public class TestTermsEnum extends LuceneTestCase {
     LeafReader sub = getOnlyLeafReader(r);
     Terms terms = sub.terms("field");
 
-    Automaton automaton = new RegExp(".*", RegExp.NONE).toDFA(); // accept ALL
+    Automaton automaton = new RegExp(".*", RegExp.NONE).toAutomaton(); // accept ALL
     CompiledAutomaton ca = new CompiledAutomaton(automaton, false, false);
 
     TermsEnum te = terms.intersect(ca, null);
@@ -1049,7 +1049,7 @@ public class TestTermsEnum extends LuceneTestCase {
     IndexReader r = w.getReader();
     Terms terms = MultiTerms.getTerms(r, "field");
     CompiledAutomaton automaton =
-        new CompiledAutomaton(new RegExp("do_not_match_anything").toDFA());
+        new CompiledAutomaton(new RegExp("do_not_match_anything").toAutomaton());
     String message =
         expectThrows(
                 IllegalArgumentException.class,

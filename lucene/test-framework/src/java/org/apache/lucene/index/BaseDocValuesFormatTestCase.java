@@ -994,7 +994,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(2, termsEnum.ord());
 
     // NORMAL automaton
-    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp(".*l.*").toDFA()));
+    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp(".*l.*").toAutomaton()));
     assertEquals("hello", termsEnum.next().utf8ToString());
     assertEquals(1, termsEnum.ord());
     assertEquals("world", termsEnum.next().utf8ToString());
@@ -1002,7 +1002,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertNull(termsEnum.next());
 
     // SINGLE automaton
-    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp("hello").toDFA()));
+    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp("hello").toAutomaton()));
     assertEquals("hello", termsEnum.next().utf8ToString());
     assertEquals(1, termsEnum.ord());
     assertNull(termsEnum.next());
@@ -2191,7 +2191,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(2, termsEnum.ord());
 
     // NORMAL automaton
-    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp(".*l.*").toDFA()));
+    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp(".*l.*").toAutomaton()));
     assertEquals("hello", termsEnum.next().utf8ToString());
     assertEquals(1, termsEnum.ord());
     assertEquals("world", termsEnum.next().utf8ToString());
@@ -2199,7 +2199,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertNull(termsEnum.next());
 
     // SINGLE automaton
-    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp("hello").toDFA()));
+    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp("hello").toAutomaton()));
     assertEquals("hello", termsEnum.next().utf8ToString());
     assertEquals(1, termsEnum.ord());
     assertNull(termsEnum.next());

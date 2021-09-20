@@ -74,7 +74,7 @@ public class SimplePatternSplitTokenizerFactory extends TokenizerFactory {
         getInt(args, "determinizeWorkLimit", Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     dfa =
         Operations.determinize(
-            new RegExp(require(args, PATTERN)).toDFA(), determinizeWorkLimit);
+            new RegExp(require(args, PATTERN)).toAutomaton(), determinizeWorkLimit);
     if (args.isEmpty() == false) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }

@@ -890,11 +890,11 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
         "field_super_exact", new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
     fieldAnalyzers.put(
         "field_characters",
-        new MockAnalyzer(random(), new CharacterRunAutomaton(new RegExp(".").toDFA()), true));
+        new MockAnalyzer(random(), new CharacterRunAutomaton(new RegExp(".").toAutomaton()), true));
     fieldAnalyzers.put(
         "field_tripples",
         new MockAnalyzer(
-            random(), new CharacterRunAutomaton(new RegExp("...").toDFA()), true));
+            random(), new CharacterRunAutomaton(new RegExp("...").toAutomaton()), true));
     fieldAnalyzers.put("field_sliced", fieldAnalyzers.get("field"));
     fieldAnalyzers.put(
         "field_der_red",

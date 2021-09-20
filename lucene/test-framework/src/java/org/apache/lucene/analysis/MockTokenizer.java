@@ -42,16 +42,16 @@ import org.apache.lucene.util.automaton.RegExp;
 public class MockTokenizer extends Tokenizer {
   /** Acts Similar to WhitespaceTokenizer */
   public static final CharacterRunAutomaton WHITESPACE =
-      new CharacterRunAutomaton(new RegExp("[^ \t\r\n]+").toDFA());
+      new CharacterRunAutomaton(new RegExp("[^ \t\r\n]+").toAutomaton());
   /**
    * Acts Similar to KeywordTokenizer. TODO: Keyword returns an "empty" token for an empty reader...
    */
   public static final CharacterRunAutomaton KEYWORD =
-      new CharacterRunAutomaton(new RegExp(".*").toDFA());
+      new CharacterRunAutomaton(new RegExp(".*").toAutomaton());
   /** Acts like LetterTokenizer. */
   // the ugly regex below is incomplete Unicode 5.2 [:Letter:]
   public static final CharacterRunAutomaton SIMPLE =
-      new CharacterRunAutomaton(new RegExp("[A-Za-zªµºÀ-ÖØ-öø-ˁ一-鿌]+").toDFA());
+      new CharacterRunAutomaton(new RegExp("[A-Za-zªµºÀ-ÖØ-öø-ˁ一-鿌]+").toAutomaton());
 
   private final CharacterRunAutomaton runAutomaton;
   private final boolean lowerCase;

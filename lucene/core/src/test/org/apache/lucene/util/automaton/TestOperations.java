@@ -86,7 +86,7 @@ public class TestOperations extends LuceneTestCase {
 
       final RegExp re = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
       // System.out.println("TEST i=" + i + " re=" + re);
-      final Automaton a = Operations.determinize(re.toDFA(), DEFAULT_DETERMINIZE_WORK_LIMIT);
+      final Automaton a = Operations.determinize(re.toAutomaton(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       assertFalse(Operations.isEmpty(a));
 
       final AutomatonTestUtil.RandomAcceptedStrings rx =
