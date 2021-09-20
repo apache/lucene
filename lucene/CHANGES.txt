@@ -315,6 +315,9 @@ Bug fixes
 * LUCENE-10101, LUCENE-9281: Use getField() instead of getDeclaredField() to
   minimize security impact by analysis SPI discovery. (Uwe Schindler)
 
+* LUCENE-10114: Remove unused byte order mark in Lucene90PostingsWriter. This
+  was initially introduced by accident in Lucene 8.4. (Uwe Schindler)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
