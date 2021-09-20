@@ -271,6 +271,11 @@ Improvements
   The getPath API now throws an IAE instead of returning null if the ordinal is out of bounds.
   (Gautam Worah, Mike McCandless)
 
+* LUCENE-10113: Use VarHandles to access int/long/short primitive types in byte arrays.
+  This improves readability and performance of encoding/decoding of primitives to index
+  file format in input/output classes like DataInput / DataOutput and codecs.
+  (Uwe Schindler, Robert Muir)
+
 Bug fixes
 
 * LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
