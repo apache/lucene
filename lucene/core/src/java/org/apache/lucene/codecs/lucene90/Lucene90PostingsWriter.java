@@ -25,7 +25,6 @@ import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.TERMS_COD
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
-import java.nio.ByteOrder;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
