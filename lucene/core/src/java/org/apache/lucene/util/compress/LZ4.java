@@ -27,13 +27,11 @@
 package org.apache.lucene.util.compress;
 
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -56,7 +54,6 @@ public final class LZ4 {
   static final int LAST_LITERALS = 5; // the last 5 bytes must be encoded as literals
   static final int HASH_LOG_HC = 15; // log size of the dictionary for compressHC
   static final int HASH_TABLE_SIZE_HC = 1 << HASH_LOG_HC;
-  private static final VarHandle intPlatformNative = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.nativeOrder());
 
   private static int hash(int i, int hashBits) {
     return (i * -1640531535) >>> (32 - hashBits);
@@ -67,7 +64,10 @@ public final class LZ4 {
   }
 
   private static int readInt(byte[] buf, int i) {
-    return (int) intPlatformNative.get(buf, i);
+    // we hardcode LITTLE ENDIAN here as this is most performant on most platforms.
+    // According to LZ4's alogrithm the endianness does not matter at all, but we
+    // want to prevent indexes to differ just because of platform endianness! 
+    return (int) BitUtil.VH_LE_INT.get(buf, i);
   }
 
   private static int commonBytes(byte[] b, int o1, int o2, int limit) {
@@ -108,6 +108,7 @@ public final class LZ4 {
       }
 
       // matchs
+      // LZ4 match offsets are defined to be little endian like DataInput:
       final int matchDec = Short.toUnsignedInt(compressed.readShort());
       assert matchDec > 0;
 
@@ -177,6 +178,7 @@ public final class LZ4 {
     // encode match dec
     final int matchDec = matchOff - matchRef;
     assert matchDec > 0 && matchDec < 1 << 16;
+    // LZ4 match offsets are defined to be little endian like DataOutput:
     out.writeShort((short) matchDec);
 
     // encode match len
