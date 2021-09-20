@@ -19,8 +19,11 @@ package org.apache.lucene.codecs.simpletext;
 import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -108,7 +111,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
 
   @Override
   public Fields get(int doc) throws IOException {
-    SortedMap<String, SimpleTVTerms> fields = new TreeMap<>();
+    Map<String, SimpleTVTerms> fields = new HashMap<>();
     in.seek(offsets[doc]);
     readLine();
     assert StringHelper.startsWith(scratch.get(), NUMFIELDS);
@@ -242,15 +245,19 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
   }
 
   private static class SimpleTVFields extends Fields {
-    private final SortedMap<String, SimpleTVTerms> fields;
+    private final Map<String, SimpleTVTerms> fields;
+    private final List<String> fieldNames;
 
-    SimpleTVFields(SortedMap<String, SimpleTVTerms> fields) {
+    SimpleTVFields(Map<String, SimpleTVTerms> fields) {
       this.fields = fields;
+      List<String> fieldNames = new ArrayList<>(fields.keySet());
+      fieldNames.sort(null);
+      this.fieldNames = Collections.unmodifiableList(fieldNames);
     }
 
     @Override
     public Iterator<String> iterator() {
-      return Collections.unmodifiableSet(fields.keySet()).iterator();
+      return fieldNames.iterator();
     }
 
     @Override

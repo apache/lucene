@@ -17,9 +17,12 @@
 package org.apache.lucene.codecs.blocktreeords;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.TreeMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -50,7 +53,8 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
   // produce DocsEnum on demand
   final PostingsReaderBase postingsReader;
 
-  private final TreeMap<String, OrdsFieldReader> fields = new TreeMap<>();
+  private final Map<String, OrdsFieldReader> fields = new HashMap<>();
+  private final List<String> fieldNames;
 
   /** Sole constructor. */
   public OrdsBlockTreeTermsReader(PostingsReaderBase postingsReader, SegmentReadState state)
@@ -173,7 +177,9 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
         }
       }
       indexIn.close();
-
+      List<String> fieldNames = new ArrayList<>(fields.keySet());
+      fieldNames.sort(null);
+      this.fieldNames = Collections.unmodifiableList(fieldNames);
       success = true;
     } finally {
       if (!success) {
@@ -216,7 +222,7 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
 
   @Override
   public Iterator<String> iterator() {
-    return Collections.unmodifiableSet(fields.keySet()).iterator();
+    return fieldNames.iterator();
   }
 
   @Override

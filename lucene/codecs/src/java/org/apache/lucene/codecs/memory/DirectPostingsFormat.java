@@ -17,10 +17,12 @@
 package org.apache.lucene.codecs.memory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -118,7 +120,8 @@ public final class DirectPostingsFormat extends PostingsFormat {
   }
 
   private static final class DirectFields extends FieldsProducer {
-    private final Map<String, DirectField> fields = new TreeMap<>();
+    private final Map<String, DirectField> fields = new HashMap<>();
+    private final List<String> fieldNames;
 
     public DirectFields(SegmentReadState state, Fields fields, int minSkipCount, int lowFreqCutoff)
         throws IOException {
@@ -126,11 +129,14 @@ public final class DirectPostingsFormat extends PostingsFormat {
         this.fields.put(
             field, new DirectField(state, field, fields.terms(field), minSkipCount, lowFreqCutoff));
       }
+      List<String> fieldNames = new ArrayList<>(this.fields.keySet());
+      fieldNames.sort(null);
+      this.fieldNames = Collections.unmodifiableList(fieldNames);
     }
 
     @Override
     public Iterator<String> iterator() {
-      return Collections.unmodifiableSet(fields.keySet()).iterator();
+      return fieldNames.iterator();
     }
 
     @Override

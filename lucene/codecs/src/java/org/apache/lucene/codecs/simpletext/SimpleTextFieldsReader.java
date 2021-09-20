@@ -29,12 +29,13 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.FieldInfo;
@@ -72,7 +73,8 @@ import org.apache.lucene.util.fst.Util;
 
 class SimpleTextFieldsReader extends FieldsProducer {
 
-  private final TreeMap<String, Long> fields;
+  private final Map<String, Long> fields;
+  private final List<String> fieldNames;
   private final IndexInput in;
   private final FieldInfos fieldInfos;
   private final int maxDoc;
@@ -88,6 +90,9 @@ class SimpleTextFieldsReader extends FieldsProducer {
     boolean success = false;
     try {
       fields = readFields(in.clone());
+      List<String> fieldNames = new ArrayList<>(fields.keySet());
+      fieldNames.sort(null);
+      this.fieldNames = Collections.unmodifiableList(fieldNames);
       success = true;
     } finally {
       if (!success) {
@@ -96,10 +101,10 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
   }
 
-  private TreeMap<String, Long> readFields(IndexInput in) throws IOException {
+  private Map<String, Long> readFields(IndexInput in) throws IOException {
     ChecksumIndexInput input = new BufferedChecksumIndexInput(in);
     BytesRefBuilder scratch = new BytesRefBuilder();
-    TreeMap<String, Long> fields = new TreeMap<>();
+    Map<String, Long> fields = new HashMap<>();
 
     while (true) {
       SimpleTextUtil.readLine(input, scratch);
@@ -834,7 +839,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
   @Override
   public Iterator<String> iterator() {
-    return Collections.unmodifiableSet(fields.keySet()).iterator();
+    return fieldNames.iterator();
   }
 
   private final Map<String, SimpleTextTerms> termsCache = new HashMap<>();

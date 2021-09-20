@@ -17,9 +17,12 @@
 package org.apache.lucene.codecs.blockterms;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.TreeMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -61,7 +64,8 @@ public class BlockTermsReader extends FieldsProducer {
   // produce DocsEnum on demand
   private final PostingsReaderBase postingsReader;
 
-  private final TreeMap<String, FieldReader> fields = new TreeMap<>();
+  private final Map<String, FieldReader> fields = new HashMap<>();
+  private final List<String> fieldNames;
 
   // Reads the terms index
   private TermsIndexReaderBase indexReader;
@@ -170,6 +174,9 @@ public class BlockTermsReader extends FieldsProducer {
           throw new CorruptIndexException("duplicate fields: " + fieldInfo.name, in);
         }
       }
+      List<String> fieldNames = new ArrayList<>(fields.keySet());
+      fieldNames.sort(null);
+      this.fieldNames = Collections.unmodifiableList(fieldNames);
       success = true;
     } finally {
       if (!success) {
@@ -203,6 +210,9 @@ public class BlockTermsReader extends FieldsProducer {
         }
       }
     } finally {
+      // Clear so refs to terms index is GCable even if
+      // app hangs onto us:
+      fields.clear();
       if (postingsReader != null) {
         postingsReader.close();
       }
@@ -211,7 +221,7 @@ public class BlockTermsReader extends FieldsProducer {
 
   @Override
   public Iterator<String> iterator() {
-    return Collections.unmodifiableSet(fields.keySet()).iterator();
+    return fieldNames.iterator();
   }
 
   @Override

@@ -20,8 +20,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.TreeMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -61,7 +63,8 @@ import org.apache.lucene.util.fst.Util;
  * @lucene.experimental
  */
 public class FSTTermsReader extends FieldsProducer {
-  final TreeMap<String, TermsReader> fields = new TreeMap<>();
+  final Map<String, TermsReader> fields = new HashMap<>();
+  final List<String> fieldNames;
   final PostingsReaderBase postingsReader;
   // static boolean TEST = false;
 
@@ -103,6 +106,9 @@ public class FSTTermsReader extends FieldsProducer {
         TermsReader previous = fields.put(fieldInfo.name, current);
         checkFieldSummary(state.segmentInfo, in, current, previous);
       }
+      List<String> fieldNames = new ArrayList<>(fields.keySet());
+      fieldNames.sort(null);
+      this.fieldNames = Collections.unmodifiableList(fieldNames);
       success = true;
     } finally {
       if (success) {
@@ -146,7 +152,7 @@ public class FSTTermsReader extends FieldsProducer {
 
   @Override
   public Iterator<String> iterator() {
-    return Collections.unmodifiableSet(fields.keySet()).iterator();
+    return fieldNames.iterator();
   }
 
   @Override
