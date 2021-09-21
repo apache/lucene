@@ -17,10 +17,13 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -51,13 +54,13 @@ public class ParallelLeafReader extends LeafReader {
   private final FieldInfos fieldInfos;
   private final LeafReader[] parallelReaders, storedFieldsReaders;
   private final Set<LeafReader> completeReaderSet =
-      Collections.newSetFromMap(new IdentityHashMap<LeafReader, Boolean>());
+      Collections.newSetFromMap(new IdentityHashMap<>());
   private final boolean closeSubReaders;
   private final int maxDoc, numDocs;
   private final boolean hasDeletions;
   private final LeafMetaData metaData;
-  private final SortedMap<String, LeafReader> tvFieldToReader = new TreeMap<>();
-  private final SortedMap<String, LeafReader> fieldToReader = new TreeMap<>(); // TODO needn't sort?
+  private final Map<String, LeafReader> tvFieldToReader;
+  private final Map<String, LeafReader> fieldToReader = new HashMap<>();
   private final Map<String, LeafReader> termsFieldToReader = new HashMap<>();
 
   /**
@@ -119,6 +122,7 @@ public class ParallelLeafReader extends LeafReader {
     int createdVersionMajor = -1;
 
     // build FieldInfos and fieldToReader map:
+    SortedMap<String, LeafReader> tvFieldToReader = new TreeMap<>();
     for (final LeafReader reader : this.parallelReaders) {
       LeafMetaData leafMetaData = reader.getMetaData();
 
@@ -163,6 +167,7 @@ public class ParallelLeafReader extends LeafReader {
         }
       }
     }
+    this.tvFieldToReader = new LinkedHashMap<>(tvFieldToReader);
     if (createdVersionMajor == -1) {
       // empty reader
       createdVersionMajor = Version.LATEST.major;
@@ -204,27 +209,29 @@ public class ParallelLeafReader extends LeafReader {
 
   // Single instance of this, per ParallelReader instance
   private static final class ParallelFields extends Fields {
-    final Map<String, Terms> fields = new TreeMap<>();
+    final Map<String, Terms> fieldToTerms;
+    final List<String> fieldNames;
 
-    ParallelFields() {}
-
-    void addField(String fieldName, Terms terms) {
-      fields.put(fieldName, terms);
+    ParallelFields(Map<String, Terms> fieldToTerms) {
+      this.fieldToTerms = fieldToTerms;
+      List<String> fieldNames = new ArrayList<>(fieldToTerms.keySet());
+      fieldNames.sort(null);
+      this.fieldNames = Collections.unmodifiableList(fieldNames);
     }
 
     @Override
     public Iterator<String> iterator() {
-      return Collections.unmodifiableSet(fields.keySet()).iterator();
+      return fieldNames.iterator();
     }
 
     @Override
     public Terms terms(String field) {
-      return fields.get(field);
+      return fieldToTerms.get(field);
     }
 
     @Override
     public int size() {
-      return fields.size();
+      return fieldToTerms.size();
     }
   }
 
@@ -302,19 +309,18 @@ public class ParallelLeafReader extends LeafReader {
   @Override
   public Fields getTermVectors(int docID) throws IOException {
     ensureOpen();
-    ParallelFields fields = null;
+    Map<String, Terms> fieldToTerms = null;
     for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
       String fieldName = ent.getKey();
-      Terms vector = ent.getValue().getTermVector(docID, fieldName);
-      if (vector != null) {
-        if (fields == null) {
-          fields = new ParallelFields();
+      Terms terms = ent.getValue().getTermVector(docID, fieldName);
+      if (terms != null) {
+        if (fieldToTerms == null) {
+          fieldToTerms = new HashMap<>();
         }
-        fields.addField(fieldName, vector);
+        fieldToTerms.put(fieldName, terms);
       }
     }
-
-    return fields;
+    return fieldToTerms == null ? null : new ParallelFields(fieldToTerms);
   }
 
   @Override
