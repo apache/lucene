@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -57,6 +59,11 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 public class BlockTermsReader extends FieldsProducer {
+
+  // Below this number of fields, we optimize #fields for performance (HashMap+List).
+  // Above it, we optimize #fields for memory (TreeMap).
+  private static final int FIELDS_THRESHOLD = 500;
+
   // Open input to the main terms dict file (_X.tis)
   private final IndexInput in;
 
@@ -64,8 +71,8 @@ public class BlockTermsReader extends FieldsProducer {
   // produce DocsEnum on demand
   private final PostingsReaderBase postingsReader;
 
-  private final Map<String, FieldReader> fields = new HashMap<>();
-  private final List<String> fieldNames;
+  private final Map<String, FieldReader> fields;
+  private final Iterable<String> fieldNames;
 
   // Reads the terms index
   private TermsIndexReaderBase indexReader;
@@ -136,6 +143,9 @@ public class BlockTermsReader extends FieldsProducer {
       if (numFields < 0) {
         throw new CorruptIndexException("invalid number of fields: " + numFields, in);
       }
+      // Depending on the number of fields, we optimize fields either for performance
+      // (HashMap+List) or memory (TreeMap).
+      fields = numFields > FIELDS_THRESHOLD ? new TreeMap<>() : new HashMap<>();
       for (int i = 0; i < numFields; i++) {
         final int field = in.readVInt();
         final long numTerms = in.readVLong();
@@ -174,9 +184,13 @@ public class BlockTermsReader extends FieldsProducer {
           throw new CorruptIndexException("duplicate fields: " + fieldInfo.name, in);
         }
       }
-      List<String> fieldNames = new ArrayList<>(fields.keySet());
-      fieldNames.sort(null);
-      this.fieldNames = Collections.unmodifiableList(fieldNames);
+      if (numFields > FIELDS_THRESHOLD) {
+        fieldNames = Collections.unmodifiableCollection(fields.keySet());
+      } else {
+        List<String> fieldNames = new ArrayList<>(fields.keySet());
+        fieldNames.sort(null);
+        this.fieldNames = Collections.unmodifiableList(fieldNames);
+      }
       success = true;
     } finally {
       if (!success) {
