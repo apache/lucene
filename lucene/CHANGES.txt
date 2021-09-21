@@ -150,6 +150,9 @@ API Changes
   optimization to use the points index to skip over non-competitive documents,
   which is enabled by default from 9.0 (Mayya Sharipova, Adrien Grand)
 
+* LUCENE-10115: Add an extension point, BaseQueryParser#getFuzzyDistance, to allow custom
+  query parsers to determine the similarity distance for fuzzy queries. (Chris Hegarty)
+
 Improvements
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
