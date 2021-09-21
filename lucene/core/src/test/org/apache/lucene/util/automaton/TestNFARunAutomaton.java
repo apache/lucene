@@ -148,7 +148,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
         continue;
       }
       AutomatonQuery dfaQuery = new AutomatonQuery(new Term(FIELD), a);
-      AutomatonQuery nfaQuery = new AutomatonQuery(new Term(FIELD), a, 0);
+      AutomatonQuery nfaQuery = new AutomatonQuery(new Term(FIELD), a, ByteRunnable.TYPE.NFA);
       assertNotNull(nfaQuery.getCompiled().nfaRunAutomaton);
       assertEquals(searcher.count(dfaQuery), searcher.count(nfaQuery));
     }

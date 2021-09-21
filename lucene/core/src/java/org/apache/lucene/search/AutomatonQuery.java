@@ -66,7 +66,19 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    * @param automaton Automaton to run, terms that are accepted are considered a match.
    */
   public AutomatonQuery(final Term term, Automaton automaton) {
-    this(term, automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    this(term, automaton, ByteRunnable.TYPE.DFA);
+  }
+
+  /**
+   * Create a new AutomatonQuery from an {@link Automaton}. Using specific type of RunAutomaton
+   *
+   * @param term Term containing field and possibly some pattern structure. The term text is
+   *     ignored.
+   * @param automaton Automaton to run, terms that are accepted are considered a match.
+   * @param runnableType NFA or DFA
+   */
+  public AutomatonQuery(final Term term, Automaton automaton, ByteRunnable.TYPE runnableType) {
+    this(term, automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false, runnableType);
   }
 
   /**
@@ -80,7 +92,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    *     thrown. Higher numbers require more space but can process more complex automata.
    */
   public AutomatonQuery(final Term term, Automaton automaton, int determinizeWorkLimit) {
-    this(term, automaton, determinizeWorkLimit, false);
+    this(term, automaton, determinizeWorkLimit, false, ByteRunnable.TYPE.DFA);
   }
 
   /**
@@ -97,16 +109,35 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    */
   public AutomatonQuery(
       final Term term, Automaton automaton, int determinizeWorkLimit, boolean isBinary) {
+    this(term, automaton, determinizeWorkLimit, isBinary, ByteRunnable.TYPE.DFA);
+  }
+
+  /**
+   * Create a new AutomatonQuery from an {@link Automaton}.
+   *
+   * @param term Term containing field and possibly some pattern structure. The term text is
+   *     ignored.
+   * @param automaton Automaton to run, terms that are accepted are considered a match.
+   * @param determinizeWorkLimit maximum effort to spend determinizing the automaton. If the
+   *     automaton will need more than this much effort, TooComplexToDeterminizeException is thrown.
+   *     Higher numbers require more space but can process more complex automata.
+   * @param isBinary if true, this automaton is already binary and will not go through the
+   *     UTF32ToUTF8 conversion
+   * @param runnableType NFA or DFA
+   */
+  public AutomatonQuery(
+      final Term term,
+      Automaton automaton,
+      int determinizeWorkLimit,
+      boolean isBinary,
+      ByteRunnable.TYPE runnableType) {
     super(term.field());
     this.term = term;
     this.automaton = automaton;
     this.automatonIsBinary = isBinary;
-    if (determinizeWorkLimit == 0) {
-      this.compiled = new CompiledAutomaton(automaton, null, false, ByteRunnable.TYPE.NFA);
-    } else {
-      // TODO: we could take isFinite too, to save a bit of CPU in CompiledAutomaton ctor?:
-      this.compiled = new CompiledAutomaton(automaton, null, true, determinizeWorkLimit, isBinary);
-    }
+    // TODO: we could take isFinite too, to save a bit of CPU in CompiledAutomaton ctor?:
+    this.compiled =
+        new CompiledAutomaton(automaton, null, true, determinizeWorkLimit, isBinary, runnableType);
 
     this.ramBytesUsed =
         BASE_RAM_BYTES + term.ramBytesUsed() + automaton.ramBytesUsed() + compiled.ramBytesUsed();
