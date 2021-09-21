@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -278,7 +279,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
   private static class FieldsReader extends FieldsProducer {
 
     private final Map<String, FieldsProducer> fields = new HashMap<>();
-    private final List<String> fieldList;
+    private final List<String> fieldNames;
     private final Map<String, FieldsProducer> formats = new HashMap<>();
     private final String segment;
 
@@ -298,7 +299,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
         assert producer != null;
         fields.put(ent.getKey(), producer);
       }
-      fieldList = buildFieldList(fields);
+      fieldNames = createSortedCopy(fields.keySet());
 
       segment = other.segment;
     }
@@ -331,7 +332,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
             }
           }
         }
-        fieldList = buildFieldList(fields);
+        fieldNames = createSortedCopy(fields.keySet());
         success = true;
       } finally {
         if (!success) {
@@ -342,15 +343,15 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       this.segment = readState.segmentInfo.name;
     }
 
-    private static List<String> buildFieldList(Map<String, FieldsProducer> fields) {
-      List<String> fieldList = new ArrayList<>(fields.keySet());
-      fieldList.sort(null);
-      return Collections.unmodifiableList(fieldList);
+    private static List<String> createSortedCopy(Collection<String> strings) {
+      List<String> sortedStrings = new ArrayList<>(strings);
+      sortedStrings.sort(null);
+      return Collections.unmodifiableList(sortedStrings);
     }
 
     @Override
     public Iterator<String> iterator() {
-      return fieldList.iterator();
+      return fieldNames.iterator();
     }
 
     @Override
