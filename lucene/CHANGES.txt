@@ -410,9 +410,6 @@ Improvements
 * LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
   (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
 
-* LUCENE-10111: Missing calculating the bytes used of DocsWithFieldSet in NormValuesWriter.
-  (Lu Xugang)
-
 Optimizations
 ---------------------
 (No changes)
@@ -422,6 +419,9 @@ Bug Fixes
 
 * LUCENE-10110: MultiCollector now handles single leaf collector that wants to skip low-scoring hits
  but the combined score mode doesn't allow it. (Jim Ferenczi)
+
+* LUCENE-10111: Missing calculating the bytes used of DocsWithFieldSet in NormValuesWriter.
+  (Lu Xugang)
 
 Build
 ---------------------
