@@ -105,7 +105,12 @@ allprojects {
       ignoreFailures = resolvedTestOption("tests.haltonfailure").toBoolean() == false
 
       jvmArgs Commandline.translateCommandline(resolvedTestOption("tests.jvmargs"))
-      jvmArgs '--illegal-access=deny'
+      
+      // Up to JDK-15 we have to enforce --illegal-access=deny, because we want no code to access
+      // JDK internals; JDK-16 and later will default to deny, see https://openjdk.java.net/jeps/396:
+      if (rootProject.runtimeJavaVersion < JavaVersion.VERSION_16) {
+        jvmArgs '--illegal-access=deny'
+      }
 
       systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
       systemProperty 'java.awt.headless', 'true'
