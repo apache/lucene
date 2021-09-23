@@ -106,6 +106,7 @@ If you want to build the documentation, type:
 
 ## Contributing
 
+Bug fixes, improvements and new features are always welcome!
 Please review the [Contributing to Lucene
 Guide](https://cwiki.apache.org/confluence/display/lucene/HowToContribute) for information on
 contributing.
