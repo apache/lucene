@@ -20,6 +20,7 @@ import static org.apache.lucene.search.SortField.FIELD_DOC;
 import static org.apache.lucene.search.SortField.FIELD_SCORE;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -675,7 +676,23 @@ public class TestSortOptimization extends LuceneTestCase {
   public void testRandomLong() throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
-    List<Long> seqNos = LongStream.range(0, atLeast(10_000)).boxed().collect(Collectors.toList());
+    int numDocs = 10000 + random().nextInt(10000);
+    List<Long> seqNos = new ArrayList<>();
+    long seqNoGenerator = random().nextInt(1000);
+    for (long i = 0; i < numDocs; i++) {
+      if (random().nextInt(100) <= 5) {
+        int duplicates = 1 + random().nextInt(3);
+        for (int j = 0; j < duplicates; j++) {
+          seqNos.add(seqNoGenerator);
+        }
+      }
+      seqNos.add(seqNoGenerator);
+      seqNoGenerator++;
+      if (random().nextInt(100) <= 1) {
+        seqNoGenerator += random().nextInt(10);
+      }
+    }
+
     Collections.shuffle(seqNos, random());
     int pendingDocs = 0;
     for (long seqNo : seqNos) {
