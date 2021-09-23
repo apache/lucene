@@ -71,7 +71,7 @@ public class GenerateUTR30DataFiles {
   private static final Pattern NUMERIC_VALUE_PATTERN =
       Pattern.compile("Numeric[-\\s_]*Value", Pattern.CASE_INSENSITIVE);
 
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     try {
       if (args.length != 1) {
         throw new IllegalArgumentException(

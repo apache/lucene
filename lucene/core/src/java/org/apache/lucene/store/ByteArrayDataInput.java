@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.store;
 
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -81,38 +82,29 @@ public final class ByteArrayDataInput extends DataInput {
 
   @Override
   public short readShort() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    return (short) ((b2 & 0xFF) << 8 | (b1 & 0xFF));
+    try {
+      return (short) BitUtil.VH_LE_SHORT.get(bytes, pos);
+    } finally {
+      pos += Short.BYTES;
+    }
   }
 
   @Override
   public int readInt() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    final byte b3 = bytes[pos++];
-    final byte b4 = bytes[pos++];
-    return (b4 & 0xFF) << 24 | (b3 & 0xFF) << 16 | (b2 & 0xFF) << 8 | (b1 & 0xFF);
+    try {
+      return (int) BitUtil.VH_LE_INT.get(bytes, pos);
+    } finally {
+      pos += Integer.BYTES;
+    }
   }
 
   @Override
   public long readLong() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    final byte b3 = bytes[pos++];
-    final byte b4 = bytes[pos++];
-    final byte b5 = bytes[pos++];
-    final byte b6 = bytes[pos++];
-    final byte b7 = bytes[pos++];
-    final byte b8 = bytes[pos++];
-    return (b8 & 0xFFL) << 56
-        | (b7 & 0xFFL) << 48
-        | (b6 & 0xFFL) << 40
-        | (b5 & 0xFFL) << 32
-        | (b4 & 0xFFL) << 24
-        | (b3 & 0xFFL) << 16
-        | (b2 & 0xFFL) << 8
-        | (b1 & 0xFFL);
+    try {
+      return (long) BitUtil.VH_LE_LONG.get(bytes, pos);
+    } finally {
+      pos += Long.BYTES;
+    }
   }
 
   @Override

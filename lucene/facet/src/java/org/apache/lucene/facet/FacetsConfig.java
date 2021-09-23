@@ -40,6 +40,7 @@ import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -500,10 +501,8 @@ public class FacetsConfig {
           bytes = ArrayUtil.grow(bytes, upto + 4);
         }
         // big-endian:
-        bytes[upto++] = (byte) (ordinal >> 24);
-        bytes[upto++] = (byte) (ordinal >> 16);
-        bytes[upto++] = (byte) (ordinal >> 8);
-        bytes[upto++] = (byte) ordinal;
+        BitUtil.VH_BE_INT.set(bytes, upto, ordinal);
+        upto += 4;
         if (upto + field.assoc.length > bytes.length) {
           bytes = ArrayUtil.grow(bytes, upto + field.assoc.length);
         }

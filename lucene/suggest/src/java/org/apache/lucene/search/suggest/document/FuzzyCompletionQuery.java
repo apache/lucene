@@ -172,7 +172,7 @@ public class FuzzyCompletionQuery extends PrefixCompletionQuery {
       if (string.length <= nonFuzzyPrefix || string.length < minFuzzyLength) {
         subs.add(Automata.makeString(string.ints, string.offset, string.length));
       } else {
-        int ints[] = new int[string.length - nonFuzzyPrefix];
+        int[] ints = new int[string.length - nonFuzzyPrefix];
         System.arraycopy(string.ints, string.offset + nonFuzzyPrefix, ints, 0, ints.length);
         // TODO: maybe add alphaMin to LevenshteinAutomata,
         // and pass 1 instead of 0?  We probably don't want

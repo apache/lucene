@@ -29,7 +29,9 @@ written in Java.
 This README file only contains basic setup instructions.  For more
 comprehensive documentation, visit:
 
-- Lucene: <https://lucene.apache.org/core/documentation.html>
+- Latest Releases: <https://lucene.apache.org/core/documentation.html>
+- Nightly: <https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/javadoc/>
+- Build System Documentation: [help/](./help/)
 
 ## Building with Gradle
 

@@ -42,6 +42,17 @@ class QueryProfilerWeight extends Weight {
   }
 
   @Override
+  public int count(LeafReaderContext context) throws IOException {
+    QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.COUNT);
+    timer.start();
+    try {
+      return subQueryWeight.count(context);
+    } finally {
+      timer.stop();
+    }
+  }
+
+  @Override
   public Scorer scorer(LeafReaderContext context) throws IOException {
     ScorerSupplier supplier = scorerSupplier(context);
     if (supplier == null) {

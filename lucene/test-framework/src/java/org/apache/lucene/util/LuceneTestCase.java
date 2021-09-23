@@ -1158,10 +1158,8 @@ public abstract class LuceneTestCase extends Assert {
     TieredMergePolicy tmp = new TieredMergePolicy();
     if (rarely(r)) {
       tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-      tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 2, 9));
     } else {
       tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-      tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 10, 50));
     }
     if (rarely(r)) {
       tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
@@ -1293,10 +1291,8 @@ public abstract class LuceneTestCase extends Assert {
         TieredMergePolicy tmp = (TieredMergePolicy) mp;
         if (rarely(r)) {
           tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-          tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 2, 9));
         } else {
           tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-          tmp.setMaxMergeAtOnceExplicit(TestUtil.nextInt(r, 10, 50));
         }
         if (rarely(r)) {
           tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
@@ -1317,8 +1313,8 @@ public abstract class LuceneTestCase extends Assert {
     }
     if (VERBOSE && didChange) {
       String current = c.toString();
-      String previousLines[] = previous.split("\n");
-      String currentLines[] = current.split("\n");
+      String[] previousLines = previous.split("\n");
+      String[] currentLines = current.split("\n");
       StringBuilder diff = new StringBuilder();
 
       // this should always be the case, diff each line
@@ -1656,7 +1652,7 @@ public abstract class LuceneTestCase extends Assert {
    * @see <a href="http://issues.apache.org/jira/browse/LUCENE-4020">LUCENE-4020</a>
    */
   public static TimeZone randomTimeZone(Random random) {
-    String tzIds[] = TimeZone.getAvailableIDs();
+    String[] tzIds = TimeZone.getAvailableIDs();
     return TimeZone.getTimeZone(tzIds[random.nextInt(tzIds.length)]);
   }
 
@@ -2389,7 +2385,7 @@ public abstract class LuceneTestCase extends Assert {
           }
         } else if (code == 2) {
           // term, but ensure a non-zero offset
-          byte newbytes[] = new byte[term.length + 5];
+          byte[] newbytes = new byte[term.length + 5];
           System.arraycopy(term.bytes, term.offset, newbytes, 5, term.length);
           tests.add(new BytesRef(newbytes, 5, term.length));
         } else if (code == 3) {
@@ -3221,7 +3217,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static BytesRef newBytesRef(byte[] bytesIn, int offset, int length) {
     // System.out.println("LTC.newBytesRef!  bytesIn.length=" + bytesIn.length + " offset=" + offset
-    // + " length=" + length);
+    //                 + " length=" + length);
 
     assert bytesIn.length >= offset + length
         : "got offset=" + offset + " length=" + length + " bytesIn.length=" + bytesIn.length;
@@ -3246,10 +3242,16 @@ public abstract class LuceneTestCase extends Assert {
 
     System.arraycopy(bytesIn, offset, bytes, startOffset, length);
     // System.out.println("LTC:  return bytes.length=" + bytes.length + " startOffset=" +
-    // startOffset + " length=" + bytesIn.length);
+    //                 startOffset + " length=" + length);
 
-    BytesRef it = new BytesRef(bytes, startOffset, bytesIn.length);
+    BytesRef it = new BytesRef(bytes, startOffset, length);
     assert it.isValid();
+
+    if (RandomNumbers.randomIntBetween(random(), 1, 17) == 7) {
+      // try to ferret out bugs in this method too!
+      return newBytesRef(it.bytes, it.offset, it.length);
+    }
+
     return it;
   }
 }

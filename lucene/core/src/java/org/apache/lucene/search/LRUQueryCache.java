@@ -505,7 +505,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
   private static DocIdSet cacheIntoBitSet(BulkScorer scorer, int maxDoc) throws IOException {
     final FixedBitSet bitSet = new FixedBitSet(maxDoc);
-    long cost[] = new long[1];
+    long[] cost = new long[1];
     scorer.score(
         new LeafCollector() {
 
@@ -821,6 +821,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
         return null;
       }
       return scorerSupplier.get(Long.MAX_VALUE);
+    }
+
+    @Override
+    public int count(LeafReaderContext context) throws IOException {
+      return in.count(context);
     }
 
     @Override

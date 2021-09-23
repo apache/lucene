@@ -64,7 +64,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
 
     int num = atLeast(13);
     for (int i = 0; i < num; i++) {
-      BytesRef bytes = new BytesRef("1");
+      BytesRef bytes = newBytesRef("1");
       IndexReaderContext topReaderContext = reader.getContext();
       for (LeafReaderContext leafReaderContext : topReaderContext.leaves()) {
         PostingsEnum docsAndPosEnum = getDocsAndPositions(leafReaderContext.reader(), bytes);
@@ -150,7 +150,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
 
     int num = atLeast(13);
     for (int i = 0; i < num; i++) {
-      BytesRef bytes = new BytesRef("" + term);
+      BytesRef bytes = newBytesRef("" + term);
       IndexReaderContext topReaderContext = reader.getContext();
       for (LeafReaderContext leafReaderContext : topReaderContext.leaves()) {
         PostingsEnum docsAndPosEnum = getDocsAndPositions(leafReaderContext.reader(), bytes);
@@ -238,7 +238,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
 
     int num = atLeast(13);
     for (int i = 0; i < num; i++) {
-      BytesRef bytes = new BytesRef("" + term);
+      BytesRef bytes = newBytesRef("" + term);
       IndexReaderContext topReaderContext = reader.getContext();
       for (LeafReaderContext context : topReaderContext.leaves()) {
         int maxDoc = context.reader().maxDoc();
@@ -321,7 +321,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
 
     int num = atLeast(13);
     for (int i = 0; i < num; i++) {
-      BytesRef bytes = new BytesRef("even");
+      BytesRef bytes = newBytesRef("even");
 
       IndexReaderContext topReaderContext = reader.getContext();
       for (LeafReaderContext leafReaderContext : topReaderContext.leaves()) {
@@ -365,14 +365,14 @@ public class TestDocsAndPositions extends LuceneTestCase {
     DirectoryReader reader = writer.getReader();
     LeafReader r = getOnlyLeafReader(reader);
     PostingsEnum disi =
-        TestUtil.docs(random(), r, "foo", new BytesRef("bar"), null, PostingsEnum.NONE);
+        TestUtil.docs(random(), r, "foo", newBytesRef("bar"), null, PostingsEnum.NONE);
     int docid = disi.docID();
     assertEquals(-1, docid);
     assertTrue(disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
 
     // now reuse and check again
     TermsEnum te = r.terms("foo").iterator();
-    assertTrue(te.seekExact(new BytesRef("bar")));
+    assertTrue(te.seekExact(newBytesRef("bar")));
     disi = TestUtil.docs(random(), te, disi, PostingsEnum.NONE);
     docid = disi.docID();
     assertEquals(-1, docid);
@@ -397,7 +397,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
 
     // now reuse and check again
     TermsEnum te = r.terms("foo").iterator();
-    assertTrue(te.seekExact(new BytesRef("bar")));
+    assertTrue(te.seekExact(newBytesRef("bar")));
     disi = te.postings(disi, PostingsEnum.ALL);
     docid = disi.docID();
     assertEquals(-1, docid);

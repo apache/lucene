@@ -112,7 +112,7 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
 
     final int size = col.terms.size();
     if (size > 0) {
-      final int sort[] = col.terms.sort();
+      final int[] sort = col.terms.sort();
       final float[] boost = col.array.boost;
       final TermStates[] termStates = col.array.termState;
       for (int i = 0; i < size; i++) {

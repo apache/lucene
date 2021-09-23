@@ -212,6 +212,21 @@ public abstract class TaxonomyReader implements Closeable {
   /** Returns the path name of the category with the given ordinal. */
   public abstract FacetLabel getPath(int ordinal) throws IOException;
 
+  /**
+   * Returns the path names of the list of ordinals associated with different categories.
+   *
+   * <p>The implementation in {@link
+   * org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader} is generally faster than
+   * the default implementation which iteratively calls {@link #getPath(int)}
+   */
+  public FacetLabel[] getBulkPath(int... ordinals) throws IOException {
+    FacetLabel[] facetLabels = new FacetLabel[ordinals.length];
+    for (int i = 0; i < ordinals.length; i++) {
+      facetLabels[i] = getPath(ordinals[i]);
+    }
+    return facetLabels;
+  }
+
   /** Returns the current refCount for this taxonomy reader. */
   public final int getRefCount() {
     return refCount.get();

@@ -61,7 +61,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 public class PortugueseLightStemmer {
 
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     if (len < 4) return len;
 
     len = removeSuffix(s, len);
@@ -119,7 +119,7 @@ public class PortugueseLightStemmer {
     return len;
   }
 
-  private int removeSuffix(char s[], int len) {
+  private int removeSuffix(char[] s, int len) {
     if (len > 4 && endsWith(s, len, "es"))
       switch (s[len - 3]) {
         case 'r':
@@ -169,7 +169,7 @@ public class PortugueseLightStemmer {
     return len;
   }
 
-  private int normFeminine(char s[], int len) {
+  private int normFeminine(char[] s, int len) {
     if (len > 7
         && (endsWith(s, len, "inha") || endsWith(s, len, "iaca") || endsWith(s, len, "eira"))) {
       s[len - 1] = 'o';

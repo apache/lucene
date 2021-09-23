@@ -18,10 +18,12 @@ package org.apache.lucene.facet.taxonomy.directory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntUnaryOperator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.lucene.document.Document;
@@ -35,6 +37,7 @@ import org.apache.lucene.index.CorruptIndexException; // javadocs
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
@@ -44,6 +47,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -318,23 +322,16 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     // doOpenIfChanged, we need to ensure that the ordinal is one that this DTR
     // instance recognizes. Therefore we do this check up front, before we hit
     // the cache.
-    if (ordinal < 0 || ordinal >= indexReader.maxDoc()) {
-      return null;
-    }
+    checkOrdinalBounds(ordinal);
 
-    // TODO: can we use an int-based hash impl, such as IntToObjectMap,
-    // wrapped as LRU?
-    Integer catIDInteger = Integer.valueOf(ordinal);
-    synchronized (categoryCache) {
-      FacetLabel res = categoryCache.get(catIDInteger);
-      if (res != null) {
-        return res;
-      }
+    FacetLabel[] ordinalPath = getPathFromCache(ordinal);
+
+    if (ordinalPath[0] != null) {
+      return ordinalPath[0];
     }
 
     int readerIndex = ReaderUtil.subIndex(ordinal, indexReader.leaves());
     LeafReader leafReader = indexReader.leaves().get(readerIndex).reader();
-    // TODO: Use LUCENE-9476 to get the bulk lookup API for extracting BinaryDocValues
     BinaryDocValues values = leafReader.getBinaryDocValues(Consts.FULL);
 
     FacetLabel ret;
@@ -351,10 +348,140 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
 
     synchronized (categoryCache) {
-      categoryCache.put(catIDInteger, ret);
+      categoryCache.put(ordinal, ret);
     }
 
     return ret;
+  }
+
+  private FacetLabel[] getPathFromCache(int... ordinals) {
+    FacetLabel[] facetLabels = new FacetLabel[ordinals.length];
+    // TODO LUCENE-10068: can we use an int-based hash impl, such as IntToObjectMap,
+    // wrapped as LRU?
+    synchronized (categoryCache) {
+      for (int i = 0; i < ordinals.length; i++) {
+        facetLabels[i] = categoryCache.get(ordinals[i]);
+      }
+    }
+    return facetLabels;
+  }
+
+  /**
+   * Checks if the ordinals in the array are >=0 and < {@code
+   * DirectoryTaxonomyReader#indexReader.maxDoc()}
+   *
+   * @param ordinals Integer array of ordinals
+   * @throws IllegalArgumentException Throw an IllegalArgumentException if one of the ordinals is
+   *     out of bounds
+   */
+  private void checkOrdinalBounds(int... ordinals) throws IllegalArgumentException {
+    for (int ordinal : ordinals) {
+      if (ordinal < 0 || ordinal >= indexReader.maxDoc()) {
+        throw new IllegalArgumentException(
+            "ordinal "
+                + ordinal
+                + " is out of the range of the indexReader "
+                + indexReader.toString()
+                + ". The maximum possible ordinal number is "
+                + (indexReader.maxDoc() - 1));
+      }
+    }
+  }
+
+  /**
+   * Returns an array of FacetLabels for a given array of ordinals.
+   *
+   * <p>This API is generally faster than iteratively calling {@link #getPath(int)} over an array of
+   * ordinals. It uses the {@link #getPath(int)} method iteratively when it detects that the index
+   * was created using StoredFields (with no performance gains) and uses DocValues based iteration
+   * when the index is based on BinaryDocValues. Lucene switched to BinaryDocValues in version 9.0
+   *
+   * @param ordinals Array of ordinals that are assigned to categories inserted into the taxonomy
+   *     index
+   */
+  @Override
+  public FacetLabel[] getBulkPath(int... ordinals) throws IOException {
+    ensureOpen();
+    checkOrdinalBounds(ordinals);
+
+    int ordinalsLength = ordinals.length;
+    FacetLabel[] bulkPath = new FacetLabel[ordinalsLength];
+    // remember the original positions of ordinals before they are sorted
+    int[] originalPosition = new int[ordinalsLength];
+    Arrays.setAll(originalPosition, IntUnaryOperator.identity());
+
+    getPathFromCache(ordinals);
+
+    /* parallel sort the ordinals and originalPosition array based on the values in the ordinals array */
+    new InPlaceMergeSorter() {
+      @Override
+      protected void swap(int i, int j) {
+        int x = ordinals[i];
+        ordinals[i] = ordinals[j];
+        ordinals[j] = x;
+
+        x = originalPosition[i];
+        originalPosition[i] = originalPosition[j];
+        originalPosition[j] = x;
+      }
+
+      @Override
+      public int compare(int i, int j) {
+        return Integer.compare(ordinals[i], ordinals[j]);
+      }
+    }.sort(0, ordinalsLength);
+
+    int readerIndex;
+    int leafReaderMaxDoc = 0;
+    int leafReaderDocBase = 0;
+    LeafReader leafReader;
+    LeafReaderContext leafReaderContext;
+    BinaryDocValues values = null;
+    List<Integer> uncachedOrdinalPositions = new ArrayList<>();
+
+    for (int i = 0; i < ordinalsLength; i++) {
+      if (bulkPath[originalPosition[i]] == null) {
+        /*
+        If ordinals[i] >= leafReaderDocBase + leafReaderMaxDoc then we find the next leaf that contains our ordinal.
+        Remember: ordinals[i] operates in the global ordinal space and hence we add leafReaderDocBase to the leafReaderMaxDoc
+        (which is the maxDoc of the specific leaf)
+         */
+        if (values == null || ordinals[i] >= leafReaderDocBase + leafReaderMaxDoc) {
+
+          readerIndex = ReaderUtil.subIndex(ordinals[i], indexReader.leaves());
+          leafReaderContext = indexReader.leaves().get(readerIndex);
+          leafReader = leafReaderContext.reader();
+          leafReaderMaxDoc = leafReader.maxDoc();
+          leafReaderDocBase = leafReaderContext.docBase;
+          values = leafReader.getBinaryDocValues(Consts.FULL);
+
+          /*
+          If the index is constructed with the older StoredFields it will not have any BinaryDocValues field and will return null
+           */
+          if (values == null) {
+            return super.getBulkPath(ordinals);
+          }
+        }
+        // values is leaf specific so you only advance till you reach the target within the leaf
+        boolean success = values.advanceExact(ordinals[i] - leafReaderDocBase);
+        assert success;
+        bulkPath[originalPosition[i]] =
+            new FacetLabel(FacetsConfig.stringToPath(values.binaryValue().utf8ToString()));
+
+        uncachedOrdinalPositions.add(i);
+      }
+    }
+
+    if (uncachedOrdinalPositions.isEmpty() == false) {
+      synchronized (categoryCache) {
+        for (int i : uncachedOrdinalPositions) {
+          // add the value to the categoryCache after computation
+          categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+        }
+      }
+    }
+
+    return bulkPath;
   }
 
   @Override

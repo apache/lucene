@@ -531,7 +531,7 @@ final class IndexingChain implements Accountable {
     int newHashSize = (fieldHash.length * 2);
     assert newHashSize > fieldHash.length;
 
-    PerField newHashArray[] = new PerField[newHashSize];
+    PerField[] newHashArray = new PerField[newHashSize];
 
     // Rehash
     int newHashMask = newHashSize - 1;
@@ -1336,10 +1336,38 @@ final class IndexingChain implements Accountable {
       this.name = name;
     }
 
-    private void assertSame(boolean same) {
-      if (same == false) {
-        throw new IllegalArgumentException(errMsg + "[" + name + "] of doc [" + docID + "].");
+    private void assertSame(String label, boolean expected, boolean given) {
+      if (expected != given) {
+        raiseNotSame(label, expected, given);
       }
+    }
+
+    private void assertSame(String label, int expected, int given) {
+      if (expected != given) {
+        raiseNotSame(label, expected, given);
+      }
+    }
+
+    private void assertSame(String label, Object expected, Object given) {
+      if (expected != given) {
+        raiseNotSame(label, expected, given);
+      }
+    }
+
+    private void raiseNotSame(String label, Object expected, Object given) {
+      throw new IllegalArgumentException(
+          errMsg
+              + "["
+              + name
+              + "] of doc ["
+              + docID
+              + "]. "
+              + label
+              + ": expected '"
+              + expected
+              + "', but it has '"
+              + given
+              + "'.");
     }
 
     void updateAttributes(Map<String, String> attrs) {
@@ -1353,10 +1381,9 @@ final class IndexingChain implements Accountable {
         omitNorms = newOmitNorms;
         storeTermVector = newStoreTermVector;
       } else {
-        assertSame(
-            indexOptions == newIndexOptions
-                && omitNorms == newOmitNorms
-                && storeTermVector == newStoreTermVector);
+        assertSame("index options", indexOptions, newIndexOptions);
+        assertSame("omit norms", omitNorms, newOmitNorms);
+        assertSame("store term vector", storeTermVector, newStoreTermVector);
       }
     }
 
@@ -1365,7 +1392,8 @@ final class IndexingChain implements Accountable {
         this.docValuesType = newDocValuesType;
         this.dvGen = newDvGen;
       } else {
-        assertSame(docValuesType == newDocValuesType && dvGen == newDvGen);
+        assertSame("doc values type", docValuesType, newDocValuesType);
+        assertSame("doc values generation", dvGen, newDvGen);
       }
     }
 
@@ -1375,10 +1403,9 @@ final class IndexingChain implements Accountable {
         pointIndexDimensionCount = indexDimensionCount;
         pointNumBytes = numBytes;
       } else {
-        assertSame(
-            pointDimensionCount == dimensionCount
-                && pointIndexDimensionCount == indexDimensionCount
-                && pointNumBytes == numBytes);
+        assertSame("point dimension", pointDimensionCount, dimensionCount);
+        assertSame("point index dimension", pointIndexDimensionCount, indexDimensionCount);
+        assertSame("point num bytes", pointNumBytes, numBytes);
       }
     }
 
@@ -1387,7 +1414,8 @@ final class IndexingChain implements Accountable {
         this.vectorDimension = dimension;
         this.vectorSimilarityFunction = similarityFunction;
       } else {
-        assertSame(vectorSimilarityFunction == similarityFunction && vectorDimension == dimension);
+        assertSame("vector similarity function", vectorSimilarityFunction, similarityFunction);
+        assertSame("vector dimension", vectorDimension, dimension);
       }
     }
 
@@ -1406,17 +1434,18 @@ final class IndexingChain implements Accountable {
     }
 
     void assertSameSchema(FieldInfo fi) {
+      assertSame("index options", fi.getIndexOptions(), indexOptions);
+      assertSame("omit norms", fi.omitsNorms(), omitNorms);
+      assertSame("store term vector", fi.hasVectors(), storeTermVector);
+      assertSame("doc values type", fi.getDocValuesType(), docValuesType);
+      assertSame("doc values generation", fi.getDocValuesGen(), dvGen);
       assertSame(
-          indexOptions == fi.getIndexOptions()
-              && omitNorms == fi.omitsNorms()
-              && storeTermVector == fi.hasVectors()
-              && docValuesType == fi.getDocValuesType()
-              && dvGen == fi.getDocValuesGen()
-              && pointDimensionCount == fi.getPointDimensionCount()
-              && pointIndexDimensionCount == fi.getPointIndexDimensionCount()
-              && pointNumBytes == fi.getPointNumBytes()
-              && vectorDimension == fi.getVectorDimension()
-              && vectorSimilarityFunction == fi.getVectorSimilarityFunction());
+          "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
+      assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
+      assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
+      assertSame(
+          "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);
+      assertSame("point num bytes", fi.getPointNumBytes(), pointNumBytes);
     }
   }
 }

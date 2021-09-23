@@ -360,7 +360,7 @@ public final class CodecUtil {
 
   /** Expert: just reads and verifies the object ID of an index header */
   public static byte[] checkIndexHeaderID(DataInput in, byte[] expectedID) throws IOException {
-    byte id[] = new byte[StringHelper.ID_LENGTH];
+    byte[] id = new byte[StringHelper.ID_LENGTH];
     in.readBytes(id, 0, id.length);
     if (!Arrays.equals(id, expectedID)) {
       throw new CorruptIndexException(
@@ -377,7 +377,7 @@ public final class CodecUtil {
   public static String checkIndexHeaderSuffix(DataInput in, String expectedSuffix)
       throws IOException {
     int suffixLength = in.readByte() & 0xFF;
-    byte suffixBytes[] = new byte[suffixLength];
+    byte[] suffixBytes = new byte[suffixLength];
     in.readBytes(suffixBytes, 0, suffixBytes.length);
     String suffix = new String(suffixBytes, 0, suffixBytes.length, StandardCharsets.UTF_8);
     if (!suffix.equals(expectedSuffix)) {
