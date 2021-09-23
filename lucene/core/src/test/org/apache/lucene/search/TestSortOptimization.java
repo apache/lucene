@@ -674,19 +674,17 @@ public class TestSortOptimization extends LuceneTestCase {
   public void testRandomLong() throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
-    int numDocs = 10000 + random().nextInt(10000);
     List<Long> seqNos = new ArrayList<>();
+    int iterations = 10000 + random().nextInt(10000);
     long seqNoGenerator = random().nextInt(1000);
-    for (long i = 0; i < numDocs; i++) {
-      if (random().nextInt(100) <= 5) {
-        int duplicates = 1 + random().nextInt(3);
-        for (int j = 0; j < duplicates; j++) {
-          seqNos.add(seqNoGenerator);
-        }
+    for (long i = 0; i < iterations; i++) {
+      int copies = random().nextInt(100) <= 5 ? 1 : 1 + random().nextInt(5);
+      for (int j = 0; j < copies; j++) {
+        seqNos.add(seqNoGenerator);
       }
       seqNos.add(seqNoGenerator);
       seqNoGenerator++;
-      if (random().nextInt(100) <= 1) {
+      if (random().nextInt(100) <= 5) {
         seqNoGenerator += random().nextInt(10);
       }
     }
