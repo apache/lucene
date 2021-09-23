@@ -412,7 +412,9 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10121: Better performance of pure disjunctions over queries whose
+  scores are constant or almost-constant. (Adrien Grand)
 
 Bug Fixes
 ---------------------

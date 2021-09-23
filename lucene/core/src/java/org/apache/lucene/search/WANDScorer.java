@@ -120,6 +120,7 @@ final class WANDScorer extends Scorer {
   private final int scalingFactor;
   // scaled min competitive score
   private long minCompetitiveScore = 0;
+  private float unscaledMinCompetitiveScore;
 
   // list of scorers which 'lead' the iteration and are currently
   // positioned on 'doc'. This is sometimes called the 'pivot' in
@@ -243,6 +244,7 @@ final class WANDScorer extends Scorer {
     long scaledMinScore = scaleMinScore(minScore, scalingFactor);
     assert scaledMinScore >= minCompetitiveScore;
     minCompetitiveScore = scaledMinScore;
+    unscaledMinCompetitiveScore = minScore;
     maxScorePropagator.setMinCompetitiveScore(minScore);
   }
 
@@ -385,42 +387,69 @@ final class WANDScorer extends Scorer {
   }
 
   private void updateMaxScores(int target) throws IOException {
-    if (head.size() == 0) {
-      // If the head is empty we use the greatest score contributor as a lead
-      // like for conjunctions.
-      upTo = tail[0].scorer.advanceShallow(target);
-    } else {
-      // If we still have entries in 'head', we treat them all as leads and
-      // take the minimum of their next block boundaries as a next boundary.
-      // We don't take entries in 'tail' into account on purpose: 'tail' is
-      // supposed to contain the least score contributors, and taking them
-      // into account might not move the boundary fast enough, so we'll waste
-      // CPU re-computing the next boundary all the time.
-      int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
-      for (DisiWrapper w : head) {
-        if (w.doc <= newUpTo) {
-          newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
-          w.maxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
+    while (upTo < DocIdSetIterator.NO_MORE_DOCS) {
+      if (head.size() == 0) {
+        // If the head is empty we use the greatest score contributor as a lead
+        // like for conjunctions.
+        upTo = tail[0].scorer.advanceShallow(target);
+      } else {
+        // If we still have entries in 'head', we treat them all as leads and
+        // take the minimum of their next block boundaries as a next boundary.
+        // We don't take entries in 'tail' into account on purpose: 'tail' is
+        // supposed to contain the least score contributors, and taking them
+        // into account might not move the boundary fast enough, so we'll waste
+        // CPU re-computing the next boundary all the time.
+        int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
+        for (DisiWrapper w : head) {
+          if (w.doc <= newUpTo) {
+            newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
+            w.maxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
+          }
+        }
+        upTo = newUpTo;
+      }
+
+      // Because the scaling process involves rounding, it is possible that a
+      // block is considered as possibly containing a competitive document
+      // according to the scaled scores, while the unscaled scores could tell us
+      // that the block has not competitive document. We try to detect such
+      // situations here.
+      while (target < DocIdSetIterator.NO_MORE_DOCS && getMaxScore(upTo) < unscaledMinCompetitiveScore) {
+        target = upTo + 1;
+        if (target < 0) { // overflow
+          target = DocIdSetIterator.NO_MORE_DOCS;
+        }
+        upTo = advanceShallow(target);
+      }
+
+      tailMaxScore = 0;
+      for (int i = 0; i < tailSize; ++i) {
+        DisiWrapper w = tail[i];
+        w.scorer.advanceShallow(target);
+        w.maxScore = scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
+        upHeapMaxScore(tail, i); // the heap might need to be reordered
+        tailMaxScore += w.maxScore;
+      }
+
+      // We need to make sure that entries in 'tail' alone cannot match
+      // a competitive hit.
+      while (tailSize > 0 && tailMaxScore >= minCompetitiveScore) {
+        DisiWrapper w = popTail();
+        w.doc = w.iterator.advance(target);
+        head.add(w);
+      }
+
+      // Make sure the head is now beyond the target
+      DisiWrapper top = head.top();
+      if (top != null) {
+        while (top.doc < target) {
+          top.doc = top.iterator.advance(target);
+          top = head.updateTop();
+        }
+        if (top.doc <= upTo) {
+          break;
         }
       }
-      upTo = newUpTo;
-    }
-
-    tailMaxScore = 0;
-    for (int i = 0; i < tailSize; ++i) {
-      DisiWrapper w = tail[i];
-      w.scorer.advanceShallow(target);
-      w.maxScore = scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
-      upHeapMaxScore(tail, i); // the heap might need to be reordered
-      tailMaxScore += w.maxScore;
-    }
-
-    // We need to make sure that entries in 'tail' alone cannot match
-    // a competitive hit.
-    while (tailSize > 0 && tailMaxScore >= minCompetitiveScore) {
-      DisiWrapper w = popTail();
-      w.doc = w.iterator.advance(target);
-      head.add(w);
     }
   }
 
@@ -529,13 +558,7 @@ final class WANDScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    // Propagate to improve score bounds
-    maxScorePropagator.advanceShallow(target);
-    if (target <= upTo) {
-      return upTo;
-    }
-    // TODO: implement
-    return DocIdSetIterator.NO_MORE_DOCS;
+    return maxScorePropagator.advanceShallow(target);
   }
 
   @Override

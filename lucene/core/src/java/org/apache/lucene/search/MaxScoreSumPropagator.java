@@ -91,12 +91,20 @@ final class MaxScoreSumPropagator {
     sumOfOtherMaxScores = computeSumOfComplement(maxScores);
   }
 
-  void advanceShallow(int target) throws IOException {
+  /**
+   * Call {@link Scorer#advanceShallow(int)} on all sub scorers and return the
+   * minimum boundary across all scorers.
+   */
+  int advanceShallow(int target) throws IOException {
+    int upTo = DocIdSetIterator.NO_MORE_DOCS;
     for (Scorer s : scorers) {
       if (s.docID() < target) {
-        s.advanceShallow(target);
+        upTo = Math.min(upTo, s.advanceShallow(target));
+      } else {
+        upTo = Math.min(upTo, s.docID());
       }
     }
+    return upTo;
   }
 
   float getMaxScore(int upTo) throws IOException {
