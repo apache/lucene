@@ -255,12 +255,13 @@ public class TestSortOptimization extends LuceneTestCase {
               < numDocs); // assert that some docs were skipped => optimization was run
     }
 
-    { // test that sorting on a single field with equal values and after parameter uses the
-      // optimization
+    { // test that sorting on a single field with equal values and after parameter
+      // doesn't use the optimization
       final int afterValue = 100;
+      final int afterDocID = 10 + random().nextInt(1000);
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
       final Sort sort = new Sort(sortField);
-      FieldDoc after = new FieldDoc(10, Float.NaN, new Integer[] {afterValue});
+      FieldDoc after = new FieldDoc(afterDocID, Float.NaN, new Integer[] {afterValue});
       final TopFieldCollector collector =
           TopFieldCollector.create(sort, numHits, after, totalHitsThreshold);
       searcher.search(new MatchAllDocsQuery(), collector);
@@ -269,10 +270,9 @@ public class TestSortOptimization extends LuceneTestCase {
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
         assertEquals(100, fieldDoc.fields[0]);
+        assertTrue(fieldDoc.doc > afterDocID);
       }
-      assertTrue(
-          topDocs.totalHits.value
-              < numDocs); // assert that some docs were skipped => optimization was run
+      assertEquals(topDocs.totalHits.value, numDocs);
     }
 
     { // test that sorting on main field with equal values + another field for tie breaks doesn't
