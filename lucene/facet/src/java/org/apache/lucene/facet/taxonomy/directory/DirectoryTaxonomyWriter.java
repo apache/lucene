@@ -92,6 +92,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   private final Directory dir;
   private final IndexWriter indexWriter;
   private final boolean useOlderStoredFieldIndex;
+  private final boolean useOlderBinaryOrdinals;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
 
@@ -161,12 +162,14 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       indexEpoch = 1;
       // no commit exists so we can safely use the new BinaryDocValues field
       useOlderStoredFieldIndex = false;
+      useOlderBinaryOrdinals = false;
     } else {
       String epochStr = null;
 
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
       /* a previous commit exists, so check the version of the last commit */
       useOlderStoredFieldIndex = infos.getIndexCreatedVersionMajor() <= 8;
+      useOlderBinaryOrdinals = infos.getIndexCreatedVersionMajor() <= 9;
 
       Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
@@ -990,5 +993,10 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   public final long getTaxonomyEpoch() {
     return indexEpoch;
+  }
+
+  @Override
+  public boolean useNumericDocValuesForOrdinals() {
+    return useOlderBinaryOrdinals == false;
   }
 }

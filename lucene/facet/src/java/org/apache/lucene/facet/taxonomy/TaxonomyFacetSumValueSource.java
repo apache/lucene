@@ -18,6 +18,8 @@ package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
 import java.util.List;
+
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
@@ -48,7 +50,15 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       DoubleValuesSource valueSource)
       throws IOException {
     super(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, taxoReader, config);
-    this.ordinalsReader = null;
+
+    // TODO: Remove this logic and set ordinalsReader to null in Lucene 10:
+    MatchingDocs first = fc.getMatchingDocs().isEmpty() ? null : fc.getMatchingDocs().get(0);
+    if (first != null && FacetUtils.usesOlderBinaryOrdinals(first.context.reader(), FacetsConfig.DEFAULT_INDEX_FIELD_NAME)) {
+      this.ordinalsReader = new DocValuesOrdinalsReader(FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
+    } else {
+      this.ordinalsReader = null;
+    }
+
     sumValues(fc.getMatchingDocs(), fc.getKeepScores(), valueSource);
   }
 

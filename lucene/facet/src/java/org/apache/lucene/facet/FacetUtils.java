@@ -18,6 +18,11 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 
@@ -80,5 +85,11 @@ public final class FacetUtils {
         return it.cost();
       }
     };
+  }
+
+  @Deprecated
+  public static boolean usesOlderBinaryOrdinals(LeafReader reader, String field) {
+    FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+    return fieldInfo != null && DocValuesType.BINARY == fieldInfo.getDocValuesType();
   }
 }

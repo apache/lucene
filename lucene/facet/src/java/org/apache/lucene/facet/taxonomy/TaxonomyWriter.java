@@ -97,4 +97,8 @@ public interface TaxonomyWriter extends Closeable, TwoPhaseCommit {
 
   /** Returns the commit user data iterable that was set on {@link #setLiveCommitData(Iterable)}. */
   public Iterable<Map.Entry<String, String>> getLiveCommitData();
+
+  default boolean useNumericDocValuesForOrdinals() {
+    return false;
+  }
 }
