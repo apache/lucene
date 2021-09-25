@@ -699,12 +699,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       throws IOException {
     meta.writeInt(field.number);
     meta.writeByte(Lucene90DocValuesFormat.SORTED_NUMERIC);
-    doAddSortedNumericField(field, valuesProducer);
+    doAddSortedNumericField(field, valuesProducer, false);
   }
 
-  private void doAddSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer)
+  private void doAddSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
       throws IOException {
-    long[] stats = writeValues(field, valuesProducer, false);
+    long[] stats = writeValues(field, valuesProducer, ords);
     int numDocsWithField = Math.toIntExact(stats[0]);
     long numValues = stats[1];
     assert numValues >= numDocsWithField;
@@ -825,7 +825,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
               }
             };
           }
-        });
+        },
+        true);
 
     addTermsDict(valuesProducer.getSortedSet(field));
   }
