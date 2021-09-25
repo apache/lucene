@@ -711,25 +711,29 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
+  private static boolean isSingleValued(SortedSetDocValues values) throws IOException {
+    if (DocValues.unwrapSingleton(values) != null) {
+      return true;
+    }
+
+    assert values.docID() == -1;
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      final long firstOrd = values.nextOrd();
+      assert firstOrd != SortedSetDocValues.NO_MORE_ORDS;
+      if (values.nextOrd() != SortedSetDocValues.NO_MORE_ORDS) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public void addSortedSetField(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeByte(Lucene90DocValuesFormat.SORTED_SET);
 
-    SortedSetDocValues values = valuesProducer.getSortedSet(field);
-    int numDocsWithField = 0;
-    long numOrds = 0;
-    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      numDocsWithField++;
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
-        numOrds++;
-      }
-    }
-
-    if (numDocsWithField == numOrds) {
+    if (isSingleValued(valuesProducer.getSortedSet(field))) {
       meta.writeByte((byte) 0); // multiValued (0 = singleValued)
       doAddSortedField(
           field,
@@ -804,6 +808,6 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           }
         });
 
-    addTermsDict(values);
+    addTermsDict(valuesProducer.getSortedSet(field));
   }
 }
