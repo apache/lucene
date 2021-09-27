@@ -417,7 +417,7 @@ public abstract class DocValuesConsumer implements Closeable {
                 values = DocValues.emptySortedNumeric();
               }
               cost += values.cost();
-              if (DocValues.unwrapSingleton(values) == null) {
+              if (allSingletons && DocValues.unwrapSingleton(values) == null) {
                 allSingletons = false;
               }
               subs.add(new SortedNumericDocValuesSub(mergeState.docMaps[i], values));
@@ -880,7 +880,7 @@ public abstract class DocValuesConsumer implements Closeable {
                 values = DocValues.emptySortedSet();
               }
               cost += values.cost();
-              if (DocValues.unwrapSingleton(values) == null) {
+              if (allSingletons && DocValues.unwrapSingleton(values) == null) {
                 allSingletons = false;
               }
               subs.add(
