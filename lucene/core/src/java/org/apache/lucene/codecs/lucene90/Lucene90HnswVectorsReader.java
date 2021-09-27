@@ -94,9 +94,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
               Lucene90HnswVectorsFormat.GRAPH_DATA_EXTENSION,
               Lucene90HnswVectorsFormat.GRAPH_DATA_CODEC_NAME,
               checksumRef);
-      // fill graph nodes and offsets by level.
-      // TODO: should we do this on the first field access?
-      fillGraphNodesAndOffsetsByLevel();
       success = true;
     } finally {
       if (success == false) {
@@ -217,39 +214,43 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     return new FieldEntry(input, similarityFunction);
   }
 
-  private void fillGraphNodesAndOffsetsByLevel() throws IOException {
-    for (FieldEntry entry : fields.values()) {
-      IndexInput input =
-          graphIndex.slice("graph-index", entry.graphIndexOffset, entry.graphIndexLength);
-      int numOfLevels = input.readInt();
-      assert entry.numOfLevels == numOfLevels;
-      int[] numOfNodesByLevel = new int[numOfLevels];
+  private void fillGraphNodesAndOffsetsByLevel(FieldEntry entry) throws IOException {
+    IndexInput input =
+        graphIndex.slice("graph-index", entry.graphIndexOffset, entry.graphIndexLength);
+    int numOfLevels = input.readInt();
+    assert entry.numOfLevels == numOfLevels;
+    int[] numOfNodesByLevel = new int[numOfLevels];
+    List<int[]> nodesByLevel = new ArrayList<>(entry.numOfLevels);
+    List<long[]> ordOffsetsByLevel = new ArrayList<>(entry.numOfLevels);
 
-      // read nodes by level
-      for (int level = 0; level < numOfLevels; level++) {
-        numOfNodesByLevel[level] = input.readInt();
-        if (level == 0) {
-          entry.nodesByLevel.add(null);
-        } else {
-          final int[] nodesOnLevel = new int[numOfNodesByLevel[level]];
-          for (int i = 0; i < numOfNodesByLevel[level]; i++) {
-            nodesOnLevel[i] = input.readVInt();
-          }
-          entry.nodesByLevel.add(nodesOnLevel);
+    // read nodes by level
+    for (int level = 0; level < numOfLevels; level++) {
+      numOfNodesByLevel[level] = input.readInt();
+      if (level == 0) {
+        // we don't store nodes for level 0th, as this level contains all nodes
+        nodesByLevel.add(null);
+      } else {
+        final int[] nodesOnLevel = new int[numOfNodesByLevel[level]];
+        for (int i = 0; i < numOfNodesByLevel[level]; i++) {
+          nodesOnLevel[i] = input.readVInt();
         }
-      }
-
-      // read offsets by level
-      long offset = 0;
-      for (int level = 0; level < numOfLevels; level++) {
-        long[] ordOffsets = new long[numOfNodesByLevel[level]];
-        for (int i = 0; i < ordOffsets.length; i++) {
-          offset += input.readVLong();
-          ordOffsets[i] = offset;
-        }
-        entry.ordOffsetsByLevel.add(ordOffsets);
+        nodesByLevel.add(nodesOnLevel);
       }
     }
+
+    // read offsets by level
+    long offset = 0;
+    for (int level = 0; level < numOfLevels; level++) {
+      assert numOfNodesByLevel[level] > 0;
+      long[] ordOffsets = new long[numOfNodesByLevel[level]];
+      for (int i = 0; i < ordOffsets.length; i++) {
+        offset += input.readVLong();
+        ordOffsets[i] = offset;
+      }
+      ordOffsetsByLevel.add(ordOffsets);
+    }
+    entry.nodesByLevel = nodesByLevel;
+    entry.ordOffsetsByLevel = ordOffsetsByLevel;
   }
 
   @Override
@@ -358,6 +359,13 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
+    if (entry.ordOffsetsByLevel == null) {
+      synchronized (entry) {
+        if (entry.ordOffsetsByLevel == null) {
+          fillGraphNodesAndOffsetsByLevel(entry);
+        }
+      }
+    }
     IndexInput bytesSlice =
         graphData.slice("graph-data", entry.graphDataOffset, entry.graphDataLength);
     return new IndexedKnnGraphReader(entry, bytesSlice);
@@ -380,8 +388,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     final int numOfLevels;
     final int dimension;
     final int[] ordToDoc;
-    final List<int[]> nodesByLevel;
-    final List<long[]> ordOffsetsByLevel;
+    volatile List<int[]> nodesByLevel;
+    volatile List<long[]> ordOffsetsByLevel;
 
     FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
@@ -394,14 +402,11 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       numOfLevels = input.readInt();
       dimension = input.readInt();
       int size = input.readInt();
-
       ordToDoc = new int[size];
       for (int i = 0; i < size; i++) {
         int doc = input.readVInt();
         ordToDoc[i] = doc;
       }
-      nodesByLevel = new ArrayList<>(numOfLevels);
-      ordOffsetsByLevel = new ArrayList<>(numOfLevels);
     }
 
     int size() {
@@ -520,32 +525,36 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   /** Read the nearest-neighbors graph from the index input */
   private static final class IndexedKnnGraphReader extends KnnGraphValues {
 
-    final FieldEntry entry;
     final IndexInput dataIn;
+    final List<int[]> nodesByLevel;
+    final List<long[]> ordOffsetsByLevel;
+    final int numOfLevels;
     final int entryNode;
+    final int size;
 
     int arcCount;
     int arcUpTo;
     int arc;
 
     IndexedKnnGraphReader(FieldEntry entry, IndexInput dataIn) {
-      this.entry = entry;
       this.dataIn = dataIn;
-      this.entryNode =
-          entry.numOfLevels == 1 ? 0 : entry.nodesByLevel.get(entry.numOfLevels - 1)[0];
+      this.nodesByLevel = entry.nodesByLevel;
+      this.ordOffsetsByLevel = entry.ordOffsetsByLevel;
+      this.numOfLevels = entry.numOfLevels;
+      this.entryNode = numOfLevels == 1 ? 0 : nodesByLevel.get(numOfLevels - 1)[0];
+      this.size = entry.size();
     }
 
     @Override
     public void seek(int level, int targetOrd) throws IOException {
       long graphDataOffset;
       if (level == 0) {
-        graphDataOffset = entry.ordOffsetsByLevel.get(0)[targetOrd];
+        graphDataOffset = ordOffsetsByLevel.get(0)[targetOrd];
       } else {
         int targetIndex =
             Arrays.binarySearch(
-                entry.nodesByLevel.get(level), 0, entry.nodesByLevel.get(level).length, targetOrd);
-        assert targetIndex >= 0;
-        graphDataOffset = entry.ordOffsetsByLevel.get(level)[targetIndex];
+                nodesByLevel.get(level), 0, nodesByLevel.get(level).length, targetOrd);
+        graphDataOffset = ordOffsetsByLevel.get(level)[targetIndex];
       }
 
       // unsafe; no bounds checking
@@ -557,7 +566,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public int size() {
-      return entry.size();
+      return size;
     }
 
     @Override
@@ -572,7 +581,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public int numOfLevels() throws IOException {
-      return entry.numOfLevels;
+      return numOfLevels;
     }
 
     @Override
@@ -582,36 +591,67 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public DocIdSetIterator getAllNodesOnLevel(int level) {
-      return new DocIdSetIterator() {
-        int[] nodes = level == 0 ? null : entry.nodesByLevel.get(level);
-        int numOfNodes = level == 0 ? size() : nodes.length;
-        int idx = -1;
+      if (level == 0) {
+        return new DocIdSetIterator() {
+          int numOfNodes = size();
+          int idx = -1;
 
-        @Override
-        public int docID() {
-          return level == 0 ? idx : nodes[idx];
-        }
-
-        @Override
-        public int nextDoc() {
-          idx++;
-          if (idx >= numOfNodes) {
-            idx = NO_MORE_DOCS;
-            return NO_MORE_DOCS;
+          @Override
+          public int docID() {
+            return idx;
           }
-          return level == 0 ? idx : nodes[idx];
-        }
 
-        @Override
-        public long cost() {
-          return numOfNodes;
-        }
+          @Override
+          public int nextDoc() {
+            idx++;
+            if (idx >= numOfNodes) {
+              idx = NO_MORE_DOCS;
+              return NO_MORE_DOCS;
+            }
+            return idx;
+          }
 
-        @Override
-        public int advance(int target) {
-          throw new UnsupportedOperationException("Not supported");
-        }
-      };
+          @Override
+          public long cost() {
+            return numOfNodes;
+          }
+
+          @Override
+          public int advance(int target) {
+            throw new UnsupportedOperationException("Not supported");
+          }
+        };
+      } else {
+        return new DocIdSetIterator() {
+          final int[] nodes = nodesByLevel.get(level);
+          int idx = -1;
+
+          @Override
+          public int docID() {
+            return nodes[idx];
+          }
+
+          @Override
+          public int nextDoc() {
+            idx++;
+            if (idx >= nodes.length) {
+              idx = NO_MORE_DOCS;
+              return NO_MORE_DOCS;
+            }
+            return nodes[idx];
+          }
+
+          @Override
+          public long cost() {
+            return nodes.length;
+          }
+
+          @Override
+          public int advance(int target) {
+            throw new UnsupportedOperationException("Not supported");
+          }
+        };
+      }
     }
   }
 }

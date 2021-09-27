@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
@@ -40,12 +41,17 @@ import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SearcherFactory;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
@@ -275,31 +281,7 @@ public class TestKnnGraph extends LuceneTestCase {
     config.setCodec(codec); // test is not compatible with simpletext
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, config)) {
-      // Add a document for every cartesian point in an NxN square so we can
-      // easily know which are the nearest neighbors to every point. Insert by iterating
-      // using a prime number that is not a divisor of N*N so that we will hit each point once,
-      // and chosen so that points will be inserted in a deterministic
-      // but somewhat distributed pattern
-      int n = 5, stepSize = 17;
-      float[][] values = new float[n * n][];
-      int index = 0;
-      for (int i = 0; i < values.length; i++) {
-        // System.out.printf("%d: (%d, %d)\n", i, index % n, index / n);
-        int x = index % n, y = index / n;
-        values[i] = new float[] {x, y};
-        index = (index + stepSize) % (n * n);
-        add(iw, i, values[i]);
-        if (i == 13) {
-          // create 2 segments
-          iw.commit();
-        }
-      }
-      boolean forceMerge = random().nextBoolean();
-      // System.out.println("");
-      if (forceMerge) {
-        iw.forceMerge(1);
-      }
-      assertConsistentGraph(iw, values);
+      indexData(iw);
       try (DirectoryReader dr = DirectoryReader.open(iw)) {
         // results are ordered by score (descending) and docid (ascending);
         // This is the insertion order:
@@ -320,6 +302,77 @@ public class TestKnnGraph extends LuceneTestCase {
         assertGraphSearch(new int[] {15, 18, 0, 3, 5}, new float[] {0.3f, 0.8f}, dr);
       }
     }
+  }
+
+  private void indexData(IndexWriter iw) throws IOException {
+    // Add a document for every cartesian point in an NxN square so we can
+    // easily know which are the nearest neighbors to every point. Insert by iterating
+    // using a prime number that is not a divisor of N*N so that we will hit each point once,
+    // and chosen so that points will be inserted in a deterministic
+    // but somewhat distributed pattern
+    int n = 5, stepSize = 17;
+    float[][] values = new float[n * n][];
+    int index = 0;
+    for (int i = 0; i < values.length; i++) {
+      // System.out.printf("%d: (%d, %d)\n", i, index % n, index / n);
+      int x = index % n, y = index / n;
+      values[i] = new float[] {x, y};
+      index = (index + stepSize) % (n * n);
+      add(iw, i, values[i]);
+      if (i == 13) {
+        // create 2 segments
+        iw.commit();
+      }
+    }
+    boolean forceMerge = random().nextBoolean();
+    if (forceMerge) {
+      iw.forceMerge(1);
+    }
+    assertConsistentGraph(iw, values);
+  }
+
+  public void testMultiThreadedSearch() throws Exception {
+    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    IndexWriterConfig config = newIndexWriterConfig();
+    config.setCodec(codec);
+    Directory dir = newDirectory();
+    IndexWriter iw = new IndexWriter(dir, config);
+    indexData(iw);
+
+    final SearcherManager manager = new SearcherManager(iw, new SearcherFactory());
+    Thread[] threads = new Thread[randomIntBetween(2, 5)];
+    final CountDownLatch latch = new CountDownLatch(1);
+    for (int i = 0; i < threads.length; i++) {
+      threads[i] =
+          new Thread(
+              () -> {
+                try {
+                  latch.await();
+                  IndexSearcher searcher = manager.acquire();
+                  try {
+                    KnnVectorQuery query = new KnnVectorQuery("vector", new float[] {0f, 0.1f}, 5);
+                    TopDocs results = searcher.search(query, 5);
+                    for (ScoreDoc doc : results.scoreDocs) {
+                      // map docId to insertion id
+                      doc.doc =
+                          Integer.parseInt(searcher.getIndexReader().document(doc.doc).get("id"));
+                    }
+                    assertResults(new int[] {0, 15, 3, 18, 5}, results);
+                  } finally {
+                    manager.release(searcher);
+                  }
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              });
+      threads[i].start();
+    }
+
+    latch.countDown();
+    for (Thread t : threads) {
+      t.join();
+    }
+    IOUtils.close(manager, iw, dir);
   }
 
   private void assertGraphSearch(int[] expected, float[] vector, IndexReader reader)
