@@ -282,6 +282,9 @@ Improvements
 * LUCENE-10112: Improve LZ4 Compression performance with direct primitive read/writes.
   (Tim Brooks, Uwe Schindler, Robert Muir, Adrien Grand)
 
+* LUCENE-10125: Optimize primitive writes in OutputStreamIndexOutput.
+  (Uwe Schindler, Robert Muir, Adrien Grand)
+
 Bug fixes
 
 * LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
