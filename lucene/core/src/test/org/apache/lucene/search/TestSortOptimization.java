@@ -37,9 +37,11 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.LuceneTestCase;
 
 public class TestSortOptimization extends LuceneTestCase {
@@ -58,7 +60,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newIndexSearcher(reader);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
@@ -143,7 +145,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newIndexSearcher(reader);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
@@ -182,7 +184,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newIndexSearcher(reader);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
@@ -220,7 +222,7 @@ public class TestSortOptimization extends LuceneTestCase {
   public void testSortOptimizationEqualValues() throws IOException {
     final Directory dir = newDirectory();
     final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
-    final int numDocs = atLeast(10000);
+    final int numDocs = atLeast(TEST_NIGHTLY ? 50_000 : 10_000);
     for (int i = 1; i <= numDocs; ++i) {
       final Document doc = new Document();
       doc.add(
@@ -234,7 +236,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newIndexSearcher(reader);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
@@ -313,7 +315,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newIndexSearcher(reader);
     final SortField sortField = new SortField("my_field", SortField.Type.FLOAT);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
@@ -661,7 +663,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newIndexSearcher(reader);
     SortField sortField = new SortField("my_field", SortField.Type.LONG);
     TopFieldDocs topDocs =
         searcher.search(new MatchAllDocsQuery(), 1 + random().nextInt(100), new Sort(sortField));
@@ -706,7 +708,7 @@ public class TestSortOptimization extends LuceneTestCase {
     seqNos.sort(Long::compare);
     IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newIndexSearcher(reader);
     SortField sortField = new SortField("seq_no", SortField.Type.LONG);
     int visitedHits = 0;
     ScoreDoc after = null;
@@ -729,5 +731,53 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     reader.close();
     dir.close();
+  }
+
+  private static class ChunkedBulkScorer extends BulkScorer {
+    private final BulkScorer in;
+
+    ChunkedBulkScorer(BulkScorer in) {
+      this.in = in;
+    }
+
+    @Override
+    public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+        throws IOException {
+      while (min < max) {
+        final int interval;
+        if (random().nextInt(100) <= 5) {
+          interval = 1 + random().nextInt(10);
+        } else {
+          interval = 1 + random().nextInt(random().nextBoolean() ? 100 : 5000);
+        }
+        final int newMax = Math.toIntExact(Math.min(min + interval, max));
+        min = in.score(collector, acceptDocs, min, newMax);
+      }
+      return min;
+    }
+
+    @Override
+    public long cost() {
+      return in.cost();
+    }
+  }
+
+  private static IndexSearcher newIndexSearcher(IndexReader reader) {
+    return new IndexSearcher(reader) {
+      @Override
+      protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
+          throws IOException {
+        if (random().nextBoolean()) {
+          weight =
+              new FilterWeight(weight) {
+                @Override
+                public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+                  return new ChunkedBulkScorer(super.bulkScorer(context));
+                }
+              };
+        }
+        super.search(leaves, weight, collector);
+      }
+    };
   }
 }

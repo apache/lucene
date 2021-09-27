@@ -274,6 +274,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (enableSkipping == false) return null;
       return new DocIdSetIterator() {
         private int docID = -1;
+        private final int startDocID = competitiveIterator.docID();
 
         @Override
         public int nextDoc() throws IOException {
@@ -292,7 +293,11 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
         @Override
         public int advance(int target) throws IOException {
-          return docID = competitiveIterator.advance(target);
+          if (target <= startDocID) {
+            return docID = startDocID;
+          } else {
+            return docID = competitiveIterator.advance(target);
+          }
         }
       };
     }
