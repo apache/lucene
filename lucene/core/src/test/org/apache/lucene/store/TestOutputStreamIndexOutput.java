@@ -28,7 +28,7 @@ public class TestOutputStreamIndexOutput extends LuceneTestCase {
       doTestDataTypes(i);
     }
   }
-  
+
   private void doTestDataTypes(int offset) throws Exception {
     final ByteArrayOutputStream bos = new ByteArrayOutputStream();
     final IndexOutput out = new OutputStreamIndexOutput("test" + offset, "test", bos, 12);
