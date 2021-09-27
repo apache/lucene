@@ -287,8 +287,6 @@ Improvements
 
 Bug fixes
 
-* LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
-
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
   Julie Tibshirani)
 
@@ -428,6 +426,8 @@ Bug Fixes
 
 * LUCENE-10116: Missing calculating the bytes used of DocsWithFieldSet and currentValues in SortedSetDocValuesWriter.
   (Lu Xugang)
+
+* LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
 
 Build
 ---------------------
