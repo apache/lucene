@@ -608,7 +608,7 @@ public final class WordDelimiterGraphFilter extends TokenFilter {
      * @param offset Offset in the concetenation to add the text
      * @param length Length of the text to append
      */
-    void append(char text[], int offset, int length) {
+    void append(char[] text, int offset, int length) {
       buffer.append(text, offset, length);
       subwordCount++;
     }

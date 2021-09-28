@@ -42,7 +42,7 @@ public class IndonesianStemmer {
    * <p>Use <code>stemDerivational</code> to control whether full stemming or only light
    * inflectional stemming is done.
    */
-  public int stem(char text[], int length, boolean stemDerivational) {
+  public int stem(char[] text, int length, boolean stemDerivational) {
     flags = 0;
     numSyllables = 0;
     for (int i = 0; i < length; i++) if (isVowel(text[i])) numSyllables++;
@@ -54,7 +54,7 @@ public class IndonesianStemmer {
     return length;
   }
 
-  private int stemDerivational(char text[], int length) {
+  private int stemDerivational(char[] text, int length) {
     int oldLength = length;
     if (numSyllables > 2) length = removeFirstOrderPrefix(text, length);
     if (oldLength != length) { // a rule is fired
@@ -82,7 +82,7 @@ public class IndonesianStemmer {
     }
   }
 
-  private int removeParticle(char text[], int length) {
+  private int removeParticle(char[] text, int length) {
     if (endsWith(text, length, "kah")
         || endsWith(text, length, "lah")
         || endsWith(text, length, "pun")) {
@@ -93,7 +93,7 @@ public class IndonesianStemmer {
     return length;
   }
 
-  private int removePossessivePronoun(char text[], int length) {
+  private int removePossessivePronoun(char[] text, int length) {
     if (endsWith(text, length, "ku") || endsWith(text, length, "mu")) {
       numSyllables--;
       return length - 2;
@@ -107,7 +107,7 @@ public class IndonesianStemmer {
     return length;
   }
 
-  private int removeFirstOrderPrefix(char text[], int length) {
+  private int removeFirstOrderPrefix(char[] text, int length) {
     if (startsWith(text, length, "meng")) {
       flags |= REMOVED_MENG;
       numSyllables--;
@@ -198,7 +198,7 @@ public class IndonesianStemmer {
     return length;
   }
 
-  private int removeSecondOrderPrefix(char text[], int length) {
+  private int removeSecondOrderPrefix(char[] text, int length) {
     if (startsWith(text, length, "ber")) {
       flags |= REMOVED_BER;
       numSyllables--;
@@ -240,7 +240,7 @@ public class IndonesianStemmer {
     return length;
   }
 
-  private int removeSuffix(char text[], int length) {
+  private int removeSuffix(char[] text, int length) {
     if (endsWith(text, length, "kan")
         && (flags & REMOVED_KE) == 0
         && (flags & REMOVED_PENG) == 0

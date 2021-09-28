@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.sandbox.search;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,6 +32,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -47,7 +48,6 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
-import org.apache.lucene.search.spans.SpanNearQuery;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
@@ -125,17 +125,18 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
   /** Call this once you are done adding states/transitions. */
   public void finish() {
-    finish(DEFAULT_MAX_DETERMINIZED_STATES);
+    finish(DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   /**
    * Call this once you are done adding states/transitions.
    *
-   * @param maxDeterminizedStates Maximum number of states created when determinizing the automaton.
-   *     Higher numbers allow this operation to consume more memory but allow more complex
-   *     automatons.
+   * @param determinizeWorkLimit Maximum effort to spend determinizing the automaton. Higher numbers
+   *     allow this operation to consume more memory but allow more complex automatons. Use {@link
+   *     Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't otherwise know
+   *     what to specify.
    */
-  public void finish(int maxDeterminizedStates) {
+  public void finish(int determinizeWorkLimit) {
     Automaton automaton = builder.finish();
 
     // System.out.println("before det:\n" + automaton.toDot());
@@ -199,7 +200,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
       automaton = newAutomaton;
     }
 
-    det = Operations.removeDeadStates(Operations.determinize(automaton, maxDeterminizedStates));
+    det = Operations.removeDeadStates(Operations.determinize(automaton, determinizeWorkLimit));
 
     if (det.isAccept(0)) {
       throw new IllegalStateException("cannot accept the empty string");

@@ -34,6 +34,15 @@ class AssertingWeight extends FilterWeight {
   }
 
   @Override
+  public int count(LeafReaderContext context) throws IOException {
+    final int count = in.count(context);
+    if (count < -1 || count > context.reader().numDocs()) {
+      throw new AssertionError("count=" + count + ", numDocs=" + context.reader().numDocs());
+    }
+    return count;
+  }
+
+  @Override
   public Matches matches(LeafReaderContext context, int doc) throws IOException {
     Matches matches = in.matches(context, doc);
     if (matches == null) return null;

@@ -1,4 +1,21 @@
 <!--
+    Licensed to the Apache Software Foundation (ASF) under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    The ASF licenses this file to You under the Apache License, Version 2.0
+    the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+
+<!--
 	<h3>Background</h3>
 	This DTD describes the XML syntax used to perform advanced searches using the core Lucene search engine. The motivation behind the XML query syntax is:
 	<ol>
@@ -191,7 +208,7 @@ Passes content directly through to the standard LuceneQuery parser see "Lucene Q
 
   (Text below is copied from the javadocs of BoostingTermQuery)
    
-  The BoostingTermQuery is very similar to the {@link org.apache.lucene.search.spans.SpanTermQuery} except
+  The BoostingTermQuery is very similar to the {@link org.apache.lucene.queries.spans.SpanTermQuery} except
   that it factors in the value of the payload located at each of the positions where the
   {@link org.apache.lucene.index.Term} occurs.
 

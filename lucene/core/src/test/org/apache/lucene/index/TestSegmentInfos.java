@@ -64,7 +64,7 @@ public class TestSegmentInfos extends LuceneTestCase {
   public void testVersionsOneSegment() throws IOException {
     BaseDirectoryWrapper dir = newDirectory();
     dir.setCheckIndexOnClose(false);
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     Codec codec = Codec.getDefault();
 
     SegmentInfos sis = new SegmentInfos(Version.LATEST.major);
@@ -98,7 +98,7 @@ public class TestSegmentInfos extends LuceneTestCase {
   public void testVersionsTwoSegments() throws IOException {
     BaseDirectoryWrapper dir = newDirectory();
     dir.setCheckIndexOnClose(false);
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     Codec codec = Codec.getDefault();
 
     SegmentInfos sis = new SegmentInfos(Version.LATEST.major);
@@ -266,7 +266,7 @@ public class TestSegmentInfos extends LuceneTestCase {
   public void testIDChangesOnAdvance() throws IOException {
     try (BaseDirectoryWrapper dir = newDirectory()) {
       dir.setCheckIndexOnClose(false);
-      byte id[] = StringHelper.randomId();
+      byte[] id = StringHelper.randomId();
       SegmentInfo info =
           new SegmentInfo(
               dir,
@@ -309,7 +309,7 @@ public class TestSegmentInfos extends LuceneTestCase {
   public void testBitFlippedTriggersCorruptIndexException() throws IOException {
     BaseDirectoryWrapper dir = newDirectory();
     dir.setCheckIndexOnClose(false);
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     Codec codec = Codec.getDefault();
 
     SegmentInfos sis = new SegmentInfos(Version.LATEST.major);

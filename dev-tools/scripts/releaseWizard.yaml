@@ -410,7 +410,7 @@ groups:
         cmd: "{{ gradle_cmd }} clean check -x test"
   - !Todo
     id: create_stable_branch
-    title: Create a new stable branch, off from master
+    title: Create a new stable branch, off from main
     description: In our case we'll create {{ stable_branch }}
     types:
     - major
@@ -420,7 +420,7 @@ groups:
       commands_text: Run these commands to create a stable branch
       commands:
       - !Command
-        cmd: git checkout master
+        cmd: git checkout main
         tee: true
       - !Command
         cmd: git pull --ff-only
@@ -467,7 +467,7 @@ groups:
         tee: true
   - !Todo
     id: add_version_major
-    title: Add a new major version on master branch
+    title: Add a new major version on main branch
     types:
     - major
     depends: clean_git_checkout
@@ -475,10 +475,10 @@ groups:
       next_version: "{{ release_version_major + 1 }}.0.0"
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
-      commands_text: Run these commands to add the new major version {{ next_version }} to the master branch
+      commands_text: Run these commands to add the new major version {{ next_version }} to the main branch
       commands:
       - !Command
-        cmd: git checkout master
+        cmd: git checkout main
         tee: true
       - !Command
         cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
@@ -632,7 +632,7 @@ groups:
       Go to the JIRA "Manage Versions" Administration pages and add the new version:
 
       {% if release_type == 'major' -%}
-      . Change name of version `master ({{ release_version_major }}.0)` into `{{ release_version_major }}.0`
+      . Change name of version `main ({{ release_version_major }}.0)` into `{{ release_version_major }}.0`
       {%- endif %}
       . Create a new (unreleased) version `{{ get_next_version }}`
 
@@ -972,7 +972,7 @@ groups:
         logfile: svn_rm_containing.log
         comment: Clean up containing folder on the staging repo
         tee: true
-    post_description: 'Note at this point you will see the Jenkins job "Lucene-Solr-SmokeRelease-master" begin to fail, until you run the "Generate Backcompat Indexes" '
+    post_description: 'Note at this point you will see the Jenkins job "Lucene-Solr-SmokeRelease-main" begin to fail, until you run the "Generate Backcompat Indexes" '
   - !Todo
     id: stage_maven
     title: Stage the maven artifacts for publishing
@@ -1061,11 +1061,11 @@ groups:
         cmd: "{{ gradle_cmd }} documentation -Dversion.release={{ release_version }}"
         comment: Build documentation
       - !Command
-        cmd: svn -m "Add docs, changes and javadocs for Lucene {{ release_version }}"  import {{ git_checkout_folder }}/lucene/build/docs  https://svn.apache.org/repos/infra/websites/production/lucene/content/core/{{ version }}
+        cmd: svn -m "Add docs, changes and javadocs for Lucene {{ release_version }}"  import {{ git_checkout_folder }}/lucene/build/docs  https://svn.apache.org/repos/infra/sites/lucene/core/{{ version }}
         logfile: add-docs-lucene.log
         comment: Add docs for Lucene
       - !Command
-        cmd: svn -m "Add docs, changes and javadocs for Solr {{ release_version }}"  import {{ git_checkout_folder }}/solr/build/docs  https://svn.apache.org/repos/infra/websites/production/lucene/content/solr/{{ version }}
+        cmd: svn -m "Add docs, changes and javadocs for Solr {{ release_version }}"  import {{ git_checkout_folder }}/solr/build/docs  https://svn.apache.org/repos/infra/sites/solr/docs/{{ version }}
         logfile: add-docs-solr.log
         comment: Add docs for Solr
   - !Todo
@@ -1191,7 +1191,7 @@ groups:
     depends:
     - prepare_announce_solr
     description: |
-      Push the website changes to 'master' branch, and check the staging site.
+      Push the website changes to 'main' branch, and check the staging site.
       You will get a chance to preview the diff of all changes before you push.
       If you need to do changes, do the changes (e.g. by re-running previous step 'Update rest of webpage')
       and commit your changes. Then re-run this step and push when everything is OK.
@@ -1202,7 +1202,7 @@ groups:
         You have to exit the editor after review to continue.
       commands:
       - !Command
-        cmd: git checkout master && git status
+        cmd: git checkout main && git status
         stdout: true
       - !Command
         cmd: git diff
@@ -1241,7 +1241,7 @@ groups:
           cmd: git checkout production && git pull --ff-only
           stdout: true
         - !Command
-          cmd: git merge master
+          cmd: git merge main
           stdout: true
         - !Command
           cmd: git push origin
@@ -1272,9 +1272,9 @@ groups:
       commands_text: Edit DOAP files
       commands:
       - !Command
-        cmd: git checkout master && git pull --ff-only
+        cmd: git checkout main && git pull --ff-only
         stdout: true
-        comment: Goto master branch
+        comment: Goto main branch
       - !Command
         cmd: "{{ editor }} dev-tools/doap/lucene.rdf"
         comment: Edit Lucene DOAP, add version {{ release_version }}
@@ -1291,16 +1291,16 @@ groups:
         cmd: git push origin
         logfile: push.log
         stdout: true
-        comment: Push the master branch
+        comment: Push the main branch
       - !Command
         cmd: "git checkout {{ stable_branch }} && git pull --ff-only"
         stdout: true
         comment: Checkout the stable branch
       - !Command
-        cmd: "git cherry-pick master"
+        cmd: "git cherry-pick main"
         logfile: commit.log
         stdout: true
-        comment: Cherrypick the DOAP changes from master onto the stable branch.
+        comment: Cherrypick the DOAP changes from main onto the stable branch.
       - !Command
         cmd: git show HEAD
         stdout: true
@@ -1410,24 +1410,24 @@ groups:
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
       commands_text: |
-        Update versions on master and stable branch.
+        Update versions on main and stable branch.
         You may have to hand-edit some files before commit, so go slowly :)
       confirm_each_command: true
       commands:
       - !Command
-        cmd: git checkout master && git pull --ff-only && git clean -df && git checkout -- .
-        comment: Go to master branch
-        logfile: checkout-master.log
+        cmd: git checkout main && git pull --ff-only && git clean -df && git checkout -- .
+        comment: Go to main branch
+        logfile: checkout-main.log
       - !Command
         cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }}
-        logfile: addversion-master.log
+        logfile: addversion-main.log
       - !Command
         cmd: git diff
-        logfile: diff-master.log
+        logfile: diff-main.log
         tee: true
       - !Command
         cmd: git add -u .  && git commit -m "Add bugfix version {{ release_version }}"  && git push
-        logfile: commit-master.log
+        logfile: commit-main.log
       - !Command
         cmd: git checkout {{ stable_branch }} && git pull --ff-only && git clean -df && git checkout -- .
         logfile: checkout-stable.log
@@ -1468,9 +1468,9 @@ groups:
         tee: true
         comment: Find version regexes
       - !Command
-        cmd: git checkout master && git pull --ff-only && git clean -df && git checkout -- .
-        comment: Go to master branch
-        logfile: checkout-master.log
+        cmd: git checkout main && git pull --ff-only && git clean -df && git checkout -- .
+        comment: Go to main branch
+        logfile: checkout-main.log
       - !Command
         cmd: "{{ editor }} solr/CHANGES.txt"
         comment: Edit Solr CHANGES, do necessary changes
@@ -1481,7 +1481,7 @@ groups:
         stdout: true
       - !Command
         cmd: git add -u .  && git commit -m "Sync CHANGES for {{ release_version }}"  && git push
-        logfile: commit-master.log
+        logfile: commit-main.log
       - !Command
         cmd: git checkout {{ stable_branch }} && git pull --ff-only && git clean -df && git checkout -- .
         comment: Go to stable branch
@@ -1594,22 +1594,22 @@ groups:
         cmd: git commit -m "Add back-compat indices for {{ release_version }}"  && git push
         logfile: commit.log
   - !Todo
-    id: backcompat_master
+    id: backcompat_main
     title: Generate Backcompat Indexes for unstable branch
     description: |
-      Now generate back-compat for unstable (master) branch.
+      Now generate back-compat for unstable (main) branch.
       Note that this time we do not specify `--no-cleanup` meaning the tmp folder will be deleted
     depends: 
     - increment_release_version
     vars:
       temp_dir: "{{ [release_folder, 'backcompat'] | path_join }}"
-      version: "{{ set_java_home(master_version) }}"
+      version: "{{ set_java_home(main_version) }}"
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
-      commands_text: Run these commands to add back-compat indices to master
+      commands_text: Run these commands to add back-compat indices to main
       commands:
       - !Command
-        cmd: git checkout master && git pull --ff-only && git clean -df && git checkout -- .
+        cmd: git checkout main && git pull --ff-only && git clean -df && git checkout -- .
         tee: true
         logfile: checkout.log
       - !Command
@@ -1627,7 +1627,7 @@ groups:
     post_description: |
       When doing a major version release, eg. 8.0.0, you might also need to reenable some 
       backward compatibility tests for corner cases. To find them, run grep -r assume 
-      lucene/backward-codecs/, which should find tests that have been disabled on master 
+      lucene/backward-codecs/, which should find tests that have been disabled on main 
       because there was no released Lucene version to test against.
       {{ set_java_home(release_version) }}
   - !Todo

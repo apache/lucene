@@ -29,13 +29,15 @@ written in Java.
 This README file only contains basic setup instructions.  For more
 comprehensive documentation, visit:
 
-- Lucene: <https://lucene.apache.org/core/documentation.html>
+- Latest Releases: <https://lucene.apache.org/core/documentation.html>
+- Nightly: <https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/javadoc/>
+- Build System Documentation: [help/](./help/)
 
 ## Building with Gradle
 
 ### Basic steps:
   
-  0. Install OpenJDK 11 (or greater)
+  0. Install OpenJDK 11 (or greater up until version 15)
   1. Download Lucene from Apache and unpack it (or clone the git repository).
   2. Run gradle launcher script (`gradlew`).
 
@@ -44,9 +46,11 @@ comprehensive documentation, visit:
 We'll assume that you know how to get and set up the JDK - if you
 don't, then we suggest starting at https://jdk.java.net/ and learning
 more about Java, before returning to this README. Lucene runs with
-Java 11 or later.
+Java 11 or later. 
 
-Lucene uses [Gradle](https://gradle.org/) for build control.
+Lucene uses [Gradle](https://gradle.org/) for build control. Gradle is itself Java-based
+and may be incompatible with newer Java versions; you can still build and test 
+Lucene with these Java releases, see help/tests.txt for more information.
 
 NOTE: Lucene changed from Ant to Gradle as of release 9.0. Prior releases
 still use Ant.
@@ -102,6 +106,7 @@ If you want to build the documentation, type:
 
 ## Contributing
 
+Bug fixes, improvements and new features are always welcome!
 Please review the [Contributing to Lucene
 Guide](https://cwiki.apache.org/confluence/display/lucene/HowToContribute) for information on
 contributing.

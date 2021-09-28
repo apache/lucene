@@ -196,6 +196,34 @@ public class TestQueryParser extends QueryParserTestBase {
     assertEquals(qp.parse("a:[11.95 TO 12.95]"), qp.parse("12.45~1€"));
   }
 
+  public void testFuzzyDistanceExtendability() throws ParseException {
+    QueryParser qp =
+        new QueryParser("a", new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false)) {
+          @Override
+          protected float getFuzzyDistance(Token fuzzySlop, String termStr) {
+            try {
+              return Float.parseFloat(fuzzySlop.image.substring(1));
+            } catch (
+                @SuppressWarnings("unused")
+                Exception ignored) {
+            }
+            return 1f; // alternative value to the default min similarity
+          }
+        };
+    assertEquals(qp.parse("term~"), qp.parse("term~1"));
+    assertEquals(qp.parse("term~XXX"), qp.parse("term~1"));
+
+    QueryParser qp2 =
+        new QueryParser("a", new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false)) {
+          @Override
+          protected float getFuzzyDistance(Token fuzzySlop, String termStr) {
+            return termStr.length(); // distance based on the term length
+          }
+        };
+    assertEquals(qp2.parse("a~"), qp2.parse("a~1"));
+    assertEquals(qp2.parse("ab~"), qp2.parse("ab~2"));
+  }
+
   @Override
   public void testStarParsing() throws Exception {
     final int[] type = new int[1];
@@ -502,10 +530,10 @@ public class TestQueryParser extends QueryParserTestBase {
     assertEquals(expected, qp.parse("\"中国\"~3^2"));
   }
 
-  /** LUCENE-6677: make sure wildcard query respects maxDeterminizedStates. */
-  public void testWildcardMaxDeterminizedStates() throws Exception {
+  /** LUCENE-6677: make sure wildcard query respects determinizeWorkLimit. */
+  public void testWildcardDeterminizeWorkLimit() throws Exception {
     QueryParser qp = new QueryParser(FIELD, new MockAnalyzer(random()));
-    qp.setMaxDeterminizedStates(10);
+    qp.setDeterminizeWorkLimit(1);
     expectThrows(
         TooComplexToDeterminizeException.class,
         () -> {
@@ -918,7 +946,7 @@ public class TestQueryParser extends QueryParserTestBase {
     @Override
     public boolean incrementToken() throws IOException {
       if (input.incrementToken()) {
-        char term[] = termAtt.buffer();
+        char[] term = termAtt.buffer();
         for (int i = 0; i < term.length; i++)
           switch (term[i]) {
             case 'ü':

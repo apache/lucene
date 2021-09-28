@@ -65,7 +65,7 @@ public abstract class DataOutput {
   /**
    * Writes an int as four bytes.
    *
-   * <p>32-bit unsigned integer written as four bytes, high-order bytes first.
+   * <p>32-bit unsigned integer written as four bytes, low-order bytes first.
    *
    * @see DataInput#readInt()
    */
@@ -217,7 +217,7 @@ public abstract class DataOutput {
   /**
    * Writes a long as eight bytes.
    *
-   * <p>64-bit unsigned integer written as eight bytes, high-order bytes first.
+   * <p>64-bit unsigned integer written as eight bytes, low-order bytes first.
    *
    * @see DataInput#readLong()
    */

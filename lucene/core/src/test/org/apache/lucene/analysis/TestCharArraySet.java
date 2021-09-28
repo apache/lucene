@@ -57,7 +57,7 @@ public class TestCharArraySet extends LuceneTestCase {
   public void testObjectContains() {
     CharArraySet set = new CharArraySet(10, true);
     Integer val = Integer.valueOf(1);
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("all")
     Integer val1 = new Integer(1);
     // Verify explicitly the case of different Integer instances
     assertNotSame(val, val1);

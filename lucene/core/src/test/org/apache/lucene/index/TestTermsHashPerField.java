@@ -130,22 +130,22 @@ public class TestTermsHashPerField extends LuceneTestCase {
     TermsHashPerField hash = createNewHash(newCalled, addCalled);
     hash.start(null, true);
 
-    hash.add(new BytesRef("start"), 0); // tid = 0;
-    hash.add(new BytesRef("foo"), 0); // tid = 1;
-    hash.add(new BytesRef("bar"), 0); // tid = 2;
+    hash.add(newBytesRef("start"), 0); // tid = 0;
+    hash.add(newBytesRef("foo"), 0); // tid = 1;
+    hash.add(newBytesRef("bar"), 0); // tid = 2;
     hash.finish();
-    hash.add(new BytesRef("bar"), 1);
-    hash.add(new BytesRef("foobar"), 1); // tid = 3;
-    hash.add(new BytesRef("bar"), 1);
-    hash.add(new BytesRef("bar"), 1);
-    hash.add(new BytesRef("foobar"), 1);
-    hash.add(new BytesRef("verylongfoobarbaz"), 1); // tid = 4;
+    hash.add(newBytesRef("bar"), 1);
+    hash.add(newBytesRef("foobar"), 1); // tid = 3;
+    hash.add(newBytesRef("bar"), 1);
+    hash.add(newBytesRef("bar"), 1);
+    hash.add(newBytesRef("foobar"), 1);
+    hash.add(newBytesRef("verylongfoobarbaz"), 1); // tid = 4;
     hash.finish();
-    hash.add(new BytesRef("verylongfoobarbaz"), 2);
-    hash.add(new BytesRef("boom"), 2); // tid = 5;
+    hash.add(newBytesRef("verylongfoobarbaz"), 2);
+    hash.add(newBytesRef("boom"), 2); // tid = 5;
     hash.finish();
-    hash.add(new BytesRef("verylongfoobarbaz"), 3);
-    hash.add(new BytesRef("end"), 3); // tid = 6;
+    hash.add(newBytesRef("verylongfoobarbaz"), 3);
+    hash.add(newBytesRef("end"), 3); // tid = 6;
     hash.finish();
 
     assertEquals(7, newCalled.get());
@@ -254,7 +254,7 @@ public class TestTermsHashPerField extends LuceneTestCase {
     for (int i = 0; i < numStrings; i++) {
       String randomString =
           RandomStrings.randomRealisticUnicodeOfCodepointLengthBetween(random(), 1, 10);
-      postingMap.putIfAbsent(new BytesRef(randomString), new Posting());
+      postingMap.putIfAbsent(newBytesRef(randomString), new Posting());
     }
     List<BytesRef> bytesRefs = Arrays.asList(postingMap.keySet().toArray(new BytesRef[0]));
     Collections.sort(bytesRefs);

@@ -164,11 +164,7 @@ public abstract class StringHelper {
 
     for (int i = offset; i < roundedEnd; i += 4) {
       // little endian load order
-      int k1 =
-          (data[i] & 0xff)
-              | ((data[i + 1] & 0xff) << 8)
-              | ((data[i + 2] & 0xff) << 16)
-              | (data[i + 3] << 24);
+      int k1 = (int) BitUtil.VH_LE_INT.get(data, i);
       k1 *= c1;
       k1 = Integer.rotateLeft(k1, 15);
       k1 *= c2;
@@ -314,7 +310,7 @@ public abstract class StringHelper {
     //     what impact that has on the period, whereas the simple ++ (mod 2^128)
     //     we use here is guaranteed to have the full period.
 
-    byte bits[];
+    byte[] bits;
     synchronized (idLock) {
       bits = nextId.toByteArray();
       nextId = nextId.add(BigInteger.ONE).and(mask128);
@@ -339,7 +335,7 @@ public abstract class StringHelper {
    * representation for debugging. Never throws an exception. The returned string may indicate if
    * the id is definitely invalid.
    */
-  public static String idToString(byte id[]) {
+  public static String idToString(byte[] id) {
     if (id == null) {
       return "(null)";
     } else {

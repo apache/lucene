@@ -168,6 +168,11 @@ public final class ConstantScoreQuery extends Query {
         public boolean isCacheable(LeafReaderContext ctx) {
           return innerWeight.isCacheable(ctx);
         }
+
+        @Override
+        public int count(LeafReaderContext context) throws IOException {
+          return innerWeight.count(context);
+        }
       };
     } else {
       return innerWeight;

@@ -19,6 +19,7 @@ package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -59,7 +60,7 @@ public class TestIntervals extends LuceneTestCase {
   //   0         1         2         3         4         5         6         7         8         9
   //
   // 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-  private static String field1_docs[] = {
+  private static String[] field1_docs = {
     "Nothing of interest to anyone here",
     "Pease porridge hot, pease porridge cold, pease porridge in the pot nine days old.  Some like it hot, some like it cold, some like it in the pot nine days old",
     "Pease porridge cold, pease porridge hot, pease porridge in the pot twelve days old.  Some like it cold, some like it hot, some like it in the fraggle",
@@ -71,7 +72,7 @@ public class TestIntervals extends LuceneTestCase {
   //   0         1         2         3         4         5         6         7         8         9
   //
   // 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-  private static String field2_docs[] = {
+  private static String[] field2_docs = {
     "In Xanadu did Kubla Khan a stately pleasure dome decree",
     "Where Alph the sacred river ran through caverns measureless to man",
     "a b a c b a b c",
@@ -399,6 +400,35 @@ public class TestIntervals extends LuceneTestCase {
                 Intervals.term("pease"), Intervals.term("pease"), Intervals.term("hot")));
     checkIntervals(
         source, "field1", 3, new int[][] {{}, {0, 3, 2, 6}, {3, 6}, {}, {0, 3, 2, 6}, {}});
+  }
+
+  public void testIntervalDisjunctionToStringStability() {
+    /*
+    Sanity check that the subclauses of a disjunction are presented in sorted order via the toString() method.
+    The exact order is irrelevant, but ensuring stability of output makes the output more useful; e.g., for external
+    comparison across different JVMs, etc...
+     */
+    final int size =
+        random().nextInt(22) + 4; // ensure a reasonably large minimum number of clauses
+    final String[] terms = new String[size];
+    for (int i = 0; i < size; i++) {
+      terms[i] = Character.toString((char) ('a' + i));
+    }
+    final String expected = Arrays.stream(terms).collect(Collectors.joining(",", "or(", ")"));
+
+    /*
+    NOTE: shuffling below shouldn't matter at the moment (because the disjunction subSources are destined for a
+    HashMap, so will be reordered anyway); but it might matter if the internal implementation of
+    DisjunctionIntervalsSource changes.
+     */
+    Collections.shuffle(Arrays.asList(terms), random());
+
+    IntervalsSource source =
+        Intervals.or(
+            Arrays.stream(terms)
+                .map((term) -> Intervals.term(term))
+                .toArray((sz) -> new IntervalsSource[sz]));
+    assertEquals(expected, source.toString());
   }
 
   public void testIntervalDisjunction() throws IOException {

@@ -140,7 +140,7 @@ public class RandomPostingsTester {
               0,
               0,
               0,
-              VectorValues.SimilarityFunction.NONE,
+              VectorSimilarityFunction.EUCLIDEAN,
               false);
       fieldUpto++;
 
@@ -711,7 +711,7 @@ public class RandomPostingsTester {
               0,
               0,
               0,
-              VectorValues.SimilarityFunction.NONE,
+              VectorSimilarityFunction.EUCLIDEAN,
               false);
     }
 

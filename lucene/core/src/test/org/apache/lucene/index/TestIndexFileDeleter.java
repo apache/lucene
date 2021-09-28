@@ -112,7 +112,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     // non-existent segment:
     copyFile(dir, "_0_1" + ext, "_188_1" + ext);
 
-    String cfsFiles0[] =
+    String[] cfsFiles0 =
         si0.getCodec() instanceof SimpleTextCodec
             ? new String[] {"_0.scf"}
             : new String[] {"_0.cfs", "_0.cfe"};
@@ -128,7 +128,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     // TODO: assert is bogus (relies upon codec-specific filenames)
     assertTrue(slowFileExists(dir, "_3.fdt") || slowFileExists(dir, "_3.fld"));
 
-    String cfsFiles3[] =
+    String[] cfsFiles3 =
         si3.getCodec() instanceof SimpleTextCodec
             ? new String[] {"_3.scf"}
             : new String[] {"_3.cfs", "_3.cfe"};
@@ -136,7 +136,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
       assertTrue(!slowFileExists(dir, f));
     }
 
-    String cfsFiles1[] =
+    String[] cfsFiles1 =
         si1.getCodec() instanceof SimpleTextCodec
             ? new String[] {"_1.scf"}
             : new String[] {"_1.cfs", "_1.cfe"};
@@ -573,6 +573,53 @@ public class TestIndexFileDeleter extends LuceneTestCase {
         }
       }
       dir.close();
+    }
+  }
+
+  public void testThrowExceptionWhileDeleteCommits() throws Exception {
+    try (MockDirectoryWrapper dir = newMockDirectory()) {
+      final AtomicBoolean failOnDeleteCommits = new AtomicBoolean();
+      dir.failOn(
+          new MockDirectoryWrapper.Failure() {
+            @Override
+            public void eval(MockDirectoryWrapper dir) throws IOException {
+              if (failOnDeleteCommits.get()) {
+                if (callStackContains(IndexFileDeleter.class, "deleteCommits")
+                    && callStackContains(MockDirectoryWrapper.class, "deleteFile")
+                    && random().nextInt(4) == 1) {
+                  throw new MockDirectoryWrapper.FakeIOException();
+                }
+              }
+            }
+          });
+      final SnapshotDeletionPolicy snapshotDeletionPolicy =
+          new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
+      final IndexWriterConfig config =
+          newIndexWriterConfig().setIndexDeletionPolicy(snapshotDeletionPolicy);
+
+      try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir, config)) {
+        writer.addDocument(new Document());
+        writer.commit();
+
+        final IndexCommit snapshotCommit = snapshotDeletionPolicy.snapshot();
+        int commits = TestUtil.nextInt(random(), 1, 3);
+        for (int i = 0; i < commits; i++) {
+          writer.addDocument(new Document());
+          writer.commit();
+        }
+        snapshotDeletionPolicy.release(snapshotCommit);
+        failOnDeleteCommits.set(true);
+        try {
+          writer.w.deleteUnusedFiles();
+        } catch (IOException e) {
+          assertTrue(e instanceof MockDirectoryWrapper.FakeIOException);
+        }
+        failOnDeleteCommits.set(false);
+        for (int c = 0; c < commits; c++) {
+          writer.addDocument(new Document());
+          writer.commit();
+        }
+      }
     }
   }
 }

@@ -39,7 +39,7 @@ public class TestUAX29URLEmailAnalyzer extends BaseTokenStreamTestCase {
 
   public void testHugeDoc() throws IOException {
     StringBuilder sb = new StringBuilder();
-    char whitespace[] = new char[4094];
+    char[] whitespace = new char[4094];
     Arrays.fill(whitespace, ' ');
     sb.append(whitespace);
     sb.append("testing 1234");

@@ -88,7 +88,7 @@ public class RBBIRuleCompiler {
     }
   }
 
-  public static void main(String args[]) throws Exception {
+  public static void main(String[] args) throws Exception {
     if (args.length < 2) {
       System.err.println("Usage: RBBIRuleComputer <sourcedir> <destdir>");
       System.exit(1);

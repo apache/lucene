@@ -20,15 +20,17 @@ import java.io.IOException;
 import org.apache.lucene.codecs.MutablePointValues;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.PagedBytes;
 
 /** Buffers up pending byte[][] value(s) per doc, then flushes when segment flushes. */
 class PointValuesWriter {
   private final FieldInfo fieldInfo;
-  private final ByteBlockPool bytes;
+  private final PagedBytes bytes;
+  private final DataOutput bytesOut;
   private final Counter iwBytesUsed;
   private int[] docIDs;
   private int numPoints;
@@ -36,17 +38,18 @@ class PointValuesWriter {
   private int lastDocID = -1;
   private final int packedBytesLength;
 
-  PointValuesWriter(ByteBlockPool.Allocator allocator, Counter bytesUsed, FieldInfo fieldInfo) {
+  PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = bytesUsed;
-    this.bytes = new ByteBlockPool(allocator);
+    this.bytes = new PagedBytes(12);
+    bytesOut = bytes.getDataOutput();
     docIDs = new int[16];
     iwBytesUsed.addAndGet(16 * Integer.BYTES);
     packedBytesLength = fieldInfo.getPointDimensionCount() * fieldInfo.getPointNumBytes();
   }
 
   // TODO: if exactly the same value is added to exactly the same doc, should we dedup?
-  public void addPackedValue(int docID, BytesRef value) {
+  public void addPackedValue(int docID, BytesRef value) throws IOException {
     if (value == null) {
       throw new IllegalArgumentException(
           "field=" + fieldInfo.name + ": point value must not be null");
@@ -65,7 +68,9 @@ class PointValuesWriter {
       docIDs = ArrayUtil.grow(docIDs, numPoints + 1);
       iwBytesUsed.addAndGet((docIDs.length - numPoints) * Integer.BYTES);
     }
-    bytes.append(value);
+    final long bytesRamBytesUsedBefore = bytes.ramBytesUsed();
+    bytesOut.writeBytes(value.bytes, value.offset, value.length);
+    iwBytesUsed.addAndGet(bytes.ramBytesUsed() - bytesRamBytesUsedBefore);
     docIDs[numPoints] = docID;
     if (docID != lastDocID) {
       numDocs++;
@@ -86,9 +91,11 @@ class PointValuesWriter {
 
   public void flush(SegmentWriteState state, Sorter.DocMap sortMap, PointsWriter writer)
       throws IOException {
+    final PagedBytes.Reader bytesReader = bytes.freeze(false);
     PointValues points =
         new MutablePointValues() {
           final int[] ords = new int[numPoints];
+          int[] temp;
 
           {
             for (int i = 0; i < numPoints; ++i) {
@@ -163,14 +170,28 @@ class PointValuesWriter {
           @Override
           public void getValue(int i, BytesRef packedValue) {
             final long offset = (long) packedBytesLength * ords[i];
-            packedValue.length = packedBytesLength;
-            bytes.setRawBytesRef(packedValue, offset);
+            bytesReader.fillSlice(packedValue, offset, packedBytesLength);
           }
 
           @Override
           public byte getByteAt(int i, int k) {
             final long offset = (long) packedBytesLength * ords[i] + k;
-            return bytes.readByte(offset);
+            return bytesReader.getByte(offset);
+          }
+
+          @Override
+          public void save(int i, int j) {
+            if (temp == null) {
+              temp = new int[ords.length];
+            }
+            temp[j] = ords[i];
+          }
+
+          @Override
+          public void restore(int i, int j) {
+            if (temp != null) {
+              System.arraycopy(temp, i, ords, i, j - i);
+            }
           }
         };
 
@@ -290,6 +311,16 @@ class PointValuesWriter {
     @Override
     public void swap(int i, int j) {
       in.swap(i, j);
+    }
+
+    @Override
+    public void save(int i, int j) {
+      in.save(i, j);
+    }
+
+    @Override
+    public void restore(int i, int j) {
+      in.restore(i, j);
     }
   }
 }

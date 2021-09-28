@@ -1448,7 +1448,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     iwc.setMergeScheduler(new SerialMergeScheduler());
     RandomIndexWriter writer = new RandomIndexWriter(random(), directory, iwc);
 
-    for (double p[] : pts) {
+    for (double[] p : pts) {
       Document doc = new Document();
       addPointToDoc("point", doc, (float) p[0], (float) p[1]);
       writer.addDocument(doc);

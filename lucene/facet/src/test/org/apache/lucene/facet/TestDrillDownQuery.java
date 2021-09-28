@@ -17,6 +17,7 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenizer;
@@ -258,49 +259,6 @@ public class TestDrillDownQuery extends FacetTestCase {
     assertEquals(base, rewrite);
   }
 
-  public void testRequireDimensionDrillDown() throws Exception {
-    Directory dir = newDirectory();
-    RandomIndexWriter writer =
-        new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.KEYWORD, false)));
-    Directory taxoDir = newDirectory();
-    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
-    FacetsConfig config = new FacetsConfig();
-
-    config.setRequireDimensionDrillDown("a", true);
-    config.setRequireDimensionDrillDown("b", false);
-
-    Document doc = new Document();
-    doc.add(new FacetField("a", "1"));
-    doc.add(new FacetField("b", "2"));
-    writer.addDocument(config.build(taxoWriter, doc));
-    taxoWriter.close();
-
-    IndexReader reader = writer.getReader();
-    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
-    IndexSearcher searcher = newSearcher(reader);
-
-    DrillDownQuery q = new DrillDownQuery(config);
-    q.add("a", "1");
-    assertEquals(1, searcher.count(q));
-
-    q = new DrillDownQuery(config);
-    q.add("a");
-    assertEquals(1, searcher.count(q));
-
-    q = new DrillDownQuery(config);
-    q.add("b", "2");
-    assertEquals(1, searcher.count(q));
-
-    q = new DrillDownQuery(config);
-    q.add("b");
-    // no hits because we disabled dimension drill down for dimension "b":
-    assertEquals(0, searcher.count(q));
-    IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
-  }
-
   public void testSkipDrillDownTermsIndexing() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer =
@@ -528,5 +486,26 @@ public class TestDrillDownQuery extends FacetTestCase {
     assertEquals(1, searcher.count(q));
 
     IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
+  }
+
+  public void testGetDrillDownQueries() throws Exception {
+    DrillDownQuery q = new DrillDownQuery(config);
+    q.add("a", "1");
+    q.add("b", "1");
+
+    Query[] drillDownQueries = q.getDrillDownQueries();
+    Query[] drillDownQueriesCopy = q.getDrillDownQueries();
+
+    assert Arrays.equals(drillDownQueries, drillDownQueriesCopy);
+
+    q.add("c", "1");
+    q.add("a", "2");
+    q.add("a", "3");
+    Query[] drillDownQueriesModified = q.getDrillDownQueries();
+    Query[] drillDownQueriesModifiedCopy = q.getDrillDownQueries();
+
+    // the cached builtDimQueries object is now stale
+    assert Arrays.equals(drillDownQueriesModified, drillDownQueriesCopy) == false;
+    assert Arrays.equals(drillDownQueriesModified, drillDownQueriesModifiedCopy);
   }
 }

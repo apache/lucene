@@ -39,6 +39,7 @@ import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -157,6 +158,14 @@ public class FacetsConfig {
     return dimConfig;
   }
 
+  /**
+   * Returns true if the dimension for provided name has ever been manually configured. The opposite
+   * means that dimension is still valid and {@link #DEFAULT_DIM_CONFIG} is being used for it.
+   */
+  public boolean isDimConfigured(String dimName) {
+    return fieldTypes.get(dimName) != null;
+  }
+
   /** Pass {@code true} if this dimension is hierarchical (has depth &gt; 1 paths). */
   public synchronized void setHierarchical(String dimName, boolean v) {
     DimConfig dimConfig = fieldTypes.get(dimName);
@@ -201,24 +210,6 @@ public class FacetsConfig {
       fieldTypes.put(dimName, dimConfig);
     }
     dimConfig.indexFieldName = indexFieldName;
-  }
-
-  /**
-   * Specify whether drill down on the dimension is necessary.
-   *
-   * @deprecated Use {@link FacetsConfig#setDrillDownTermsIndexing(String, DrillDownTermsIndexing)}
-   *     instead
-   */
-  @Deprecated
-  public synchronized void setRequireDimensionDrillDown(String dimName, boolean value) {
-    DimConfig dimConfig = fieldTypes.get(dimName);
-    if (dimConfig == null) {
-      dimConfig = new DimConfig();
-      fieldTypes.put(dimName, dimConfig);
-    }
-
-    dimConfig.drillDownTermsIndexing =
-        value ? DrillDownTermsIndexing.ALL : DrillDownTermsIndexing.ALL_PATHS_NO_DIM;
   }
 
   /** Specify drill down terms option on the field / dimension. */
@@ -502,10 +493,8 @@ public class FacetsConfig {
           bytes = ArrayUtil.grow(bytes, upto + 4);
         }
         // big-endian:
-        bytes[upto++] = (byte) (ordinal >> 24);
-        bytes[upto++] = (byte) (ordinal >> 16);
-        bytes[upto++] = (byte) (ordinal >> 8);
-        bytes[upto++] = (byte) ordinal;
+        BitUtil.VH_BE_INT.set(bytes, upto, ordinal);
+        upto += 4;
         if (upto + field.assoc.length > bytes.length) {
           bytes = ArrayUtil.grow(bytes, upto + field.assoc.length);
         }

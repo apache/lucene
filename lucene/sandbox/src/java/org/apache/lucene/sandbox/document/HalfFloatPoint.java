@@ -26,6 +26,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.PointInSetQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -190,12 +191,11 @@ public final class HalfFloatPoint extends Field {
   static void shortToSortableBytes(short value, byte[] result, int offset) {
     // Flip the sign bit, so negative shorts sort before positive shorts correctly:
     value ^= 0x8000;
-    result[offset] = (byte) (value >> 8);
-    result[offset + 1] = (byte) value;
+    BitUtil.VH_BE_SHORT.set(result, offset, value);
   }
 
   static short sortableBytesToShort(byte[] encoded, int offset) {
-    short x = (short) (((encoded[offset] & 0xFF) << 8) | (encoded[offset + 1] & 0xFF));
+    short x = (short) BitUtil.VH_BE_SHORT.get(encoded, offset);
     // Re-flip the sign bit to restore the original value:
     return (short) (x ^ 0x8000);
   }
@@ -297,12 +297,12 @@ public final class HalfFloatPoint extends Field {
   // public helper methods (e.g. for queries)
 
   /** Encode single float dimension */
-  public static void encodeDimension(float value, byte dest[], int offset) {
+  public static void encodeDimension(float value, byte[] dest, int offset) {
     shortToSortableBytes(halfFloatToSortableShort(value), dest, offset);
   }
 
   /** Decode single float dimension */
-  public static float decodeDimension(byte value[], int offset) {
+  public static float decodeDimension(byte[] value, int offset) {
     return sortableShortToHalfFloat(sortableBytesToShort(value, offset));
   }
 

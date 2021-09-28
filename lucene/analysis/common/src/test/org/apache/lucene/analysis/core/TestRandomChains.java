@@ -379,7 +379,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
           put(
               byte[].class,
               random -> {
-                byte bytes[] = new byte[random.nextInt(256)];
+                byte[] bytes = new byte[random.nextInt(256)];
                 random.nextBytes(bytes);
                 return bytes;
               });
@@ -616,7 +616,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               random -> {
                 return Operations.determinize(
                     new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE).toAutomaton(),
-                    Operations.DEFAULT_MAX_DETERMINIZED_STATES);
+                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
               });
           put(
               PatternTypingFilter.PatternTypingRule[].class,
@@ -802,7 +802,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
         final Constructor<? extends Tokenizer> ctor =
             tokenizers.get(random.nextInt(tokenizers.size()));
         final StringBuilder descr = new StringBuilder();
-        final Object args[] = newTokenizerArgs(random, ctor.getParameterTypes());
+        final Object[] args = newTokenizerArgs(random, ctor.getParameterTypes());
         if (broken(ctor, args)) {
           continue;
         }
@@ -823,7 +823,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
         while (true) {
           final Constructor<? extends CharFilter> ctor =
               charfilters.get(random.nextInt(charfilters.size()));
-          final Object args[] = newCharFilterArgs(random, spec.reader, ctor.getParameterTypes());
+          final Object[] args = newCharFilterArgs(random, spec.reader, ctor.getParameterTypes());
           if (broken(ctor, args)) {
             continue;
           }
@@ -860,7 +860,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                 new ConditionalTokenFilter(
                     spec.stream,
                     in -> {
-                      final Object args[] = newFilterArgs(random, in, ctor.getParameterTypes());
+                      final Object[] args = newFilterArgs(random, in, ctor.getParameterTypes());
                       if (broken(ctor, args)) {
                         return in;
                       }
@@ -885,7 +885,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                 };
             break;
           } else {
-            final Object args[] = newFilterArgs(random, spec.stream, ctor.getParameterTypes());
+            final Object[] args = newFilterArgs(random, spec.stream, ctor.getParameterTypes());
             if (broken(ctor, args)) {
               continue;
             }

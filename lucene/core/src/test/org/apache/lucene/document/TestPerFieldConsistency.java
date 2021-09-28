@@ -31,7 +31,8 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
@@ -86,24 +87,21 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     }
   }
 
-  private static Field randomVectorField(Random random, String fieldName) {
-    VectorValues.SimilarityFunction similarityFunction =
-        RandomPicks.randomFrom(random, VectorValues.SimilarityFunction.values());
-    while (similarityFunction == VectorValues.SimilarityFunction.NONE) {
-      similarityFunction = RandomPicks.randomFrom(random, VectorValues.SimilarityFunction.values());
-    }
+  private static Field randomKnnVectorField(Random random, String fieldName) {
+    VectorSimilarityFunction similarityFunction =
+        RandomPicks.randomFrom(random, VectorSimilarityFunction.values());
     float[] values = new float[randomIntBetween(1, 10)];
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();
     }
-    return new VectorField(fieldName, values, similarityFunction);
+    return new KnnVectorField(fieldName, values, similarityFunction);
   }
 
   private static Field[] randomFieldsWithTheSameName(String fieldName) {
     final Field textField = randomIndexedField(random(), fieldName);
     final Field docValuesField = randomDocValuesField(random(), fieldName);
     final Field pointField = randomPointField(random(), fieldName);
-    final Field vectorField = randomVectorField(random(), fieldName);
+    final Field vectorField = randomKnnVectorField(random(), fieldName);
     return new Field[] {textField, docValuesField, pointField, vectorField};
   }
 
@@ -117,7 +115,9 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     }
     IllegalArgumentException exception =
         expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc));
-    assertTrue(exception.getMessage().contains(errorMsg));
+    assertTrue(
+        "'" + errorMsg + "' not found in '" + exception.getMessage() + "'",
+        exception.getMessage().contains(errorMsg));
   }
 
   private static void doTestDocWithExtraSchemaOptionsThrowsError(
@@ -127,12 +127,16 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     doc.add(extra);
     IllegalArgumentException exception =
         expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc));
-    assertTrue(exception.getMessage().contains(errorMsg));
+    assertTrue(
+        "'" + errorMsg + "' not found in '" + exception.getMessage() + "'",
+        exception.getMessage().contains(errorMsg));
   }
 
   public void testDocWithMissingSchemaOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig()); ) {
+        IndexWriter writer =
+            new IndexWriter(
+                dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE)); ) {
       final Field[] fields = randomFieldsWithTheSameName("myfield");
       final Document doc0 = new Document();
       for (Field field : fields) {
@@ -154,6 +158,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       }
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
+        assertEquals(1, reader.leaves().size());
         assertEquals(1, reader.leaves().get(0).reader().numDocs());
         assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedDocs());
       }
@@ -168,6 +173,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.addDocument(doc0); // add document with correct data structures
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
+        assertEquals(2, reader.leaves().size());
         assertEquals(1, reader.leaves().get(1).reader().numDocs());
         assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedDocs());
       }
@@ -176,7 +182,9 @@ public class TestPerFieldConsistency extends LuceneTestCase {
 
   public void testDocWithExtraSchemaOptionsThrowsError() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+        IndexWriter writer =
+            new IndexWriter(
+                dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE)); ) {
       final Field[] fields = randomFieldsWithTheSameName("myfield");
       final Document doc0 = new Document();
       int existingFieldIdx = randomIntBetween(0, fields.length - 1);
@@ -198,6 +206,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       }
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
+        assertEquals(1, reader.leaves().size());
         assertEquals(1, reader.leaves().get(0).reader().numDocs());
         assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedDocs());
       }
@@ -216,6 +225,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.addDocument(doc0); // add document with correct data structures
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
+        assertEquals(2, reader.leaves().size());
         assertEquals(1, reader.leaves().get(1).reader().numDocs());
         assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedDocs());
       }

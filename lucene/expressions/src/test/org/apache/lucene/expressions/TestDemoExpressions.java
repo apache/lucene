@@ -221,13 +221,32 @@ public class TestDemoExpressions extends LuceneTestCase {
     TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
 
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
-    assertEquals(0.4621D, (Double) d.fields[0], 1E-4);
+    assertEquals(0.4621D, (Double) d.fields[0], 1E-1);
 
     d = (FieldDoc) td.scoreDocs[1];
-    assertEquals(1.055D, (Double) d.fields[0], 1E-4);
+    assertEquals(1.055, (Double) d.fields[0], 1E-1);
 
     d = (FieldDoc) td.scoreDocs[2];
-    assertEquals(5.2859D, (Double) d.fields[0], 1E-4);
+    assertEquals(5.2859D, (Double) d.fields[0], 1E-1);
+  }
+
+  public void testHaversinMetersDistanceSort() throws Exception {
+    Expression distance =
+        JavascriptCompiler.compile("haversinMeters(40.7143528,-74.0059731,latitude,longitude)");
+    SimpleBindings bindings = new SimpleBindings();
+    bindings.add("latitude", DoubleValuesSource.fromDoubleField("latitude"));
+    bindings.add("longitude", DoubleValuesSource.fromDoubleField("longitude"));
+    Sort sort = new Sort(distance.getSortField(bindings, false));
+    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
+
+    FieldDoc d = (FieldDoc) td.scoreDocs[0];
+    assertEquals(462.1D, (Double) d.fields[0], 1E-1);
+
+    d = (FieldDoc) td.scoreDocs[1];
+    assertEquals(1055, (Double) d.fields[0], 1E-1);
+
+    d = (FieldDoc) td.scoreDocs[2];
+    assertEquals(5285.9D, (Double) d.fields[0], 1E-1);
   }
 
   public void testStaticExtendedVariableExample() throws Exception {

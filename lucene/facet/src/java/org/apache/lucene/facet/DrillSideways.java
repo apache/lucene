@@ -34,14 +34,12 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiCollector;
 import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
@@ -56,6 +54,15 @@ import org.apache.lucene.util.ThreadInterruptedException;
  *
  * <p>Use one of the static search methods to do the search, and then get the hits and facet results
  * from the returned {@link DrillSidewaysResult}.
+ *
+ * <p>There is both a "standard" and "concurrent" implementation for drill sideways. The concurrent
+ * approach is enabled by providing an {@code ExecutorService} to the ctor. The concurrent
+ * implementation may be a little faster but does duplicate work (which grows linearly with the
+ * number of drill down dimensions specified on the provided {@link DrillDownQuery}). The duplicate
+ * work may impact the overall throughput of a system. The standard approach may be a little slower
+ * but avoids duplicate computations and query processing. Note that both approaches are compatible
+ * with concurrent searching across segments (i.e., if using an {@link IndexSearcher} constructed
+ * with an {@code Executor}).
  *
  * <p><b>NOTE</b>: this allocates one {@link FacetsCollector} for each drill-down, plus one. If your
  * index has high number of facet labels then this will multiply your memory usage.
@@ -76,7 +83,7 @@ public class DrillSideways {
   /** {@link FacetsConfig} passed to constructor. */
   protected final FacetsConfig config;
 
-  // These are only used for multi-threaded search
+  /** (optional) {@link ExecutorService} used for "concurrent" drill sideways if desired. */
   private final ExecutorService executor;
 
   /** Create a new {@code DrillSideways} instance. */
@@ -109,7 +116,7 @@ public class DrillSideways {
    * Create a new {@code DrillSideways} instance, where some dimensions were indexed with {@link
    * SortedSetDocValuesFacetField} and others were indexed with {@link FacetField}.
    *
-   * <p>Use this constructor to use the concurrent implementation and/or the CollectorManager
+   * <p>Use this constructor to use the concurrent implementation
    */
   public DrillSideways(
       IndexSearcher searcher,
@@ -124,16 +131,34 @@ public class DrillSideways {
     this.executor = executor;
   }
 
+  /**
+   * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
+   * if no drill down facet collection is needed.
+   */
+  protected FacetsCollector createDrillDownFacetsCollector() {
+    return new FacetsCollector();
+  }
+
+  /**
+   * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
+   * if no drill down facet collection is needed.
+   */
+  protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
+    return new FacetsCollectorManager();
+  }
+
   /** Subclass can override to customize per-dim Facets impl. */
   protected Facets buildFacetsResult(
       FacetsCollector drillDowns, FacetsCollector[] drillSideways, String[] drillSidewaysDims)
       throws IOException {
 
-    Facets drillDownFacets;
+    Facets drillDownFacets = null;
     Map<String, Facets> drillSidewaysFacets = new HashMap<>();
 
     if (taxoReader != null) {
-      drillDownFacets = new FastTaxonomyFacetCounts(taxoReader, config, drillDowns);
+      if (drillDowns != null) {
+        drillDownFacets = new FastTaxonomyFacetCounts(taxoReader, config, drillDowns);
+      }
       if (drillSideways != null) {
         for (int i = 0; i < drillSideways.length; i++) {
           drillSidewaysFacets.put(
@@ -142,7 +167,9 @@ public class DrillSideways {
         }
       }
     } else {
-      drillDownFacets = new SortedSetDocValuesFacetCounts(state, drillDowns);
+      if (drillDowns != null) {
+        drillDownFacets = new SortedSetDocValuesFacetCounts(state, drillDowns);
+      }
       if (drillSideways != null) {
         for (int i = 0; i < drillSideways.length; i++) {
           drillSidewaysFacets.put(
@@ -160,19 +187,29 @@ public class DrillSideways {
 
   /**
    * Search, collecting hits with a {@link Collector}, and computing drill down and sideways counts.
+   *
+   * <p>Note that "concurrent" drill sideways will not be invoked here, even if an {@link
+   * ExecutorService} was supplied to the ctor, since {@code Collector}s are not thread-safe. If
+   * interested in concurrent drill sideways, please use one of the other static {@code search}
+   * methods.
    */
   public DrillSidewaysResult search(DrillDownQuery query, Collector hitCollector)
       throws IOException {
 
     Map<String, Integer> drillDownDims = query.getDims();
 
-    FacetsCollector drillDownCollector = new FacetsCollector();
-
     if (drillDownDims.isEmpty()) {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
-      searcher.search(query, MultiCollector.wrap(hitCollector, drillDownCollector));
-      return new DrillSidewaysResult(buildFacetsResult(drillDownCollector, null, null), null);
+      FacetsCollector drillDownCollector = createDrillDownFacetsCollector();
+      if (drillDownCollector != null) {
+        // Make sure we still populate a facet collector for the base query if desired:
+        searcher.search(query, MultiCollector.wrap(hitCollector, drillDownCollector));
+      } else {
+        searcher.search(query, hitCollector);
+      }
+      return new DrillSidewaysResult(
+          buildFacetsResult(drillDownCollector, null, null), null, drillDownCollector, null, null);
     }
 
     Query baseQuery = query.getBaseQuery();
@@ -183,37 +220,55 @@ public class DrillSideways {
     }
     Query[] drillDownQueries = query.getDrillDownQueries();
 
-    FacetsCollector[] drillSidewaysCollectors = new FacetsCollector[drillDownDims.size()];
-    for (int i = 0; i < drillSidewaysCollectors.length; i++) {
-      drillSidewaysCollectors[i] = new FacetsCollector();
+    int numDims = drillDownDims.size();
+
+    FacetsCollectorManager drillDownCollectorManager = createDrillDownFacetsCollectorManager();
+
+    FacetsCollectorManager[] drillSidewaysFacetsCollectorManagers =
+        new FacetsCollectorManager[numDims];
+    for (int i = 0; i < numDims; i++) {
+      drillSidewaysFacetsCollectorManagers[i] = new FacetsCollectorManager();
     }
 
     DrillSidewaysQuery dsq =
         new DrillSidewaysQuery(
             baseQuery,
-            drillDownCollector,
-            drillSidewaysCollectors,
+            drillDownCollectorManager,
+            drillSidewaysFacetsCollectorManagers,
             drillDownQueries,
             scoreSubDocsAtOnce());
-    if (hitCollector.scoreMode().needsScores() == false) {
-      // this is a horrible hack in order to make sure IndexSearcher will not
-      // attempt to cache the DrillSidewaysQuery
-      hitCollector =
-          new FilterCollector(hitCollector) {
-            @Override
-            public ScoreMode scoreMode() {
-              return ScoreMode.COMPLETE;
-            }
-          };
-    }
+
     searcher.search(dsq, hitCollector);
 
+    FacetsCollector drillDownCollector;
+    if (drillDownCollectorManager != null) {
+      drillDownCollector = drillDownCollectorManager.reduce(dsq.managedDrillDownCollectors);
+    } else {
+      drillDownCollector = null;
+    }
+
+    FacetsCollector[] drillSidewaysCollectors = new FacetsCollector[numDims];
+    int numSlices = dsq.managedDrillSidewaysCollectors.size();
+
+    for (int dim = 0; dim < numDims; dim++) {
+      List<FacetsCollector> facetsCollectorsForDim = new ArrayList<>(numSlices);
+
+      for (int slice = 0; slice < numSlices; slice++) {
+        facetsCollectorsForDim.add(dsq.managedDrillSidewaysCollectors.get(slice)[dim]);
+      }
+
+      drillSidewaysCollectors[dim] =
+          drillSidewaysFacetsCollectorManagers[dim].reduce(facetsCollectorsForDim);
+    }
+
+    String[] drillSidewaysDims = drillDownDims.keySet().toArray(new String[0]);
+
     return new DrillSidewaysResult(
-        buildFacetsResult(
-            drillDownCollector,
-            drillSidewaysCollectors,
-            drillDownDims.keySet().toArray(new String[drillDownDims.size()])),
-        null);
+        buildFacetsResult(drillDownCollector, drillSidewaysCollectors, drillSidewaysDims),
+        null,
+        drillDownCollector,
+        drillSidewaysCollectors,
+        drillSidewaysDims);
   }
 
   /** Search, sorting by {@link Sort}, and computing drill down and sideways counts. */
@@ -233,16 +288,15 @@ public class DrillSideways {
       if (executor != null) { // We have an executor, let use the multi-threaded version
 
         final CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
-            new CollectorManager<TopFieldCollector, TopFieldDocs>() {
+            new CollectorManager<>() {
 
               @Override
-              public TopFieldCollector newCollector() throws IOException {
+              public TopFieldCollector newCollector() {
                 return TopFieldCollector.create(sort, fTopN, after, Integer.MAX_VALUE);
               }
 
               @Override
-              public TopFieldDocs reduce(Collection<TopFieldCollector> collectors)
-                  throws IOException {
+              public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) {
                 final TopFieldDocs[] topFieldDocs = new TopFieldDocs[collectors.size()];
                 int pos = 0;
                 for (TopFieldCollector collector : collectors)
@@ -250,12 +304,17 @@ public class DrillSideways {
                 return TopDocs.merge(sort, topN, topFieldDocs);
               }
             };
-        ConcurrentDrillSidewaysResult<TopFieldDocs> r = search(query, collectorManager);
+        ConcurrentDrillSidewaysResult<TopFieldDocs> r = searchConcurrently(query, collectorManager);
         TopFieldDocs topDocs = r.collectorResult;
         if (doDocScores) {
           TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
         }
-        return new DrillSidewaysResult(r.facets, topDocs);
+        return new DrillSidewaysResult(
+            r.facets,
+            topDocs,
+            r.drillDownFacetsCollector,
+            r.drillSidewaysFacetsCollector,
+            r.drillSidewaysDims);
 
       } else {
 
@@ -266,7 +325,12 @@ public class DrillSideways {
         if (doDocScores) {
           TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
         }
-        return new DrillSidewaysResult(r.facets, topDocs);
+        return new DrillSidewaysResult(
+            r.facets,
+            topDocs,
+            r.drillDownFacetsCollector,
+            r.drillSidewaysFacetsCollector,
+            r.drillSidewaysDims);
       }
     } else {
       return search(after, query, topN);
@@ -293,12 +357,12 @@ public class DrillSideways {
           new CollectorManager<>() {
 
             @Override
-            public TopScoreDocCollector newCollector() throws IOException {
+            public TopScoreDocCollector newCollector() {
               return TopScoreDocCollector.create(fTopN, after, Integer.MAX_VALUE);
             }
 
             @Override
-            public TopDocs reduce(Collection<TopScoreDocCollector> collectors) throws IOException {
+            public TopDocs reduce(Collection<TopScoreDocCollector> collectors) {
               final TopDocs[] topDocs = new TopDocs[collectors.size()];
               int pos = 0;
               for (TopScoreDocCollector collector : collectors)
@@ -306,15 +370,25 @@ public class DrillSideways {
               return TopDocs.merge(topN, topDocs);
             }
           };
-      ConcurrentDrillSidewaysResult<TopDocs> r = search(query, collectorManager);
-      return new DrillSidewaysResult(r.facets, r.collectorResult);
+      ConcurrentDrillSidewaysResult<TopDocs> r = searchConcurrently(query, collectorManager);
+      return new DrillSidewaysResult(
+          r.facets,
+          r.collectorResult,
+          r.drillDownFacetsCollector,
+          r.drillSidewaysFacetsCollector,
+          r.drillSidewaysDims);
 
     } else {
 
       TopScoreDocCollector hitCollector =
           TopScoreDocCollector.create(topN, after, Integer.MAX_VALUE);
       DrillSidewaysResult r = search(query, hitCollector);
-      return new DrillSidewaysResult(r.facets, hitCollector.topDocs());
+      return new DrillSidewaysResult(
+          r.facets,
+          hitCollector.topDocs(),
+          r.drillDownFacetsCollector,
+          r.drillSidewaysFacetsCollector,
+          r.drillSidewaysDims);
     }
   }
 
@@ -327,7 +401,11 @@ public class DrillSideways {
     return false;
   }
 
-  /** Result of a drill sideways search, including the {@link Facets} and {@link TopDocs}. */
+  /**
+   * Result of a drill sideways search, including the {@link Facets} and {@link TopDocs}. The {@link
+   * FacetsCollector}s for the drill down and drill sideways dimensions are also exposed for
+   * advanced use-cases that need access to them as an alternative to accessing the {@code Facets}.
+   */
   public static class DrillSidewaysResult {
     /** Combined drill down and sideways results. */
     public final Facets facets;
@@ -335,10 +413,41 @@ public class DrillSideways {
     /** Hits. */
     public final TopDocs hits;
 
+    /**
+     * FacetsCollector populated based on hits that match the full DrillDownQuery, treating all
+     * drill down dimensions as required clauses. Useful for advanced use-cases that want to compute
+     * Facets results separate from the provided Facets in this result.
+     */
+    public final FacetsCollector drillDownFacetsCollector;
+
+    /**
+     * FacetsCollectors populated for each drill sideways dimension. Each collector exposes the hits
+     * that match on all DrillDownQuery dimensions, but treating their corresponding sideways
+     * dimension as optional. This array provides a FacetsCollector for each drill down dimension
+     * present in the original DrillDownQuery, and the associated dimension for each FacetsCollector
+     * can be determined using the parallel {@link DrillSidewaysResult#drillSidewaysDims} array.
+     * Useful for advanced use-cases that want to compute Facets results separate from the provided
+     * Facets in this result.
+     */
+    public final FacetsCollector[] drillSidewaysFacetsCollector;
+
+    /**
+     * Dimensions that correspond to to the {@link DrillSidewaysResult#drillSidewaysFacetsCollector}
+     */
+    public final String[] drillSidewaysDims;
+
     /** Sole constructor. */
-    public DrillSidewaysResult(Facets facets, TopDocs hits) {
+    public DrillSidewaysResult(
+        Facets facets,
+        TopDocs hits,
+        FacetsCollector drillDownFacetsCollector,
+        FacetsCollector[] drillSidewaysFacetsCollector,
+        String[] drillSidewaysDims) {
       this.facets = facets;
       this.hits = hits;
+      this.drillDownFacetsCollector = drillDownFacetsCollector;
+      this.drillSidewaysFacetsCollector = drillSidewaysFacetsCollector;
+      this.drillSidewaysDims = drillSidewaysDims;
     }
   }
 
@@ -391,17 +500,127 @@ public class DrillSideways {
   public <R> ConcurrentDrillSidewaysResult<R> search(
       final DrillDownQuery query, final CollectorManager<?, R> hitCollectorManager)
       throws IOException {
+    if (executor != null) {
+      return searchConcurrently(query, hitCollectorManager);
+    } else {
+      return searchSequentially(query, hitCollectorManager);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private <R> ConcurrentDrillSidewaysResult<R> searchSequentially(
+      final DrillDownQuery query, final CollectorManager<?, R> hitCollectorManager)
+      throws IOException {
+
+    Map<String, Integer> drillDownDims = query.getDims();
+
+    if (drillDownDims.isEmpty()) {
+      // There are no drill-down dims, so there is no
+      // drill-sideways to compute:
+      FacetsCollectorManager drillDownCollectorManager = createDrillDownFacetsCollectorManager();
+      FacetsCollector mainFacetsCollector;
+      R collectorResult;
+      if (drillDownCollectorManager != null) {
+        Object[] mainResults =
+            searcher.search(
+                query, new MultiCollectorManager(drillDownCollectorManager, hitCollectorManager));
+        // Extract the results:
+        mainFacetsCollector = (FacetsCollector) mainResults[0];
+        collectorResult = (R) mainResults[1];
+      } else {
+        mainFacetsCollector = null;
+        collectorResult = searcher.search(query, hitCollectorManager);
+      }
+
+      return new ConcurrentDrillSidewaysResult<>(
+          buildFacetsResult(mainFacetsCollector, null, null),
+          null,
+          collectorResult,
+          mainFacetsCollector,
+          null,
+          null);
+    }
+
+    Query baseQuery = query.getBaseQuery();
+    if (baseQuery == null) {
+      // TODO: we could optimize this pure-browse case by
+      // making a custom scorer instead:
+      baseQuery = new MatchAllDocsQuery();
+    }
+    Query[] drillDownQueries = query.getDrillDownQueries();
+
+    int numDims = drillDownDims.size();
+
+    FacetsCollectorManager drillDownCollectorManager = createDrillDownFacetsCollectorManager();
+
+    FacetsCollectorManager[] drillSidewaysFacetsCollectorManagers =
+        new FacetsCollectorManager[numDims];
+    for (int i = 0; i < numDims; i++) {
+      drillSidewaysFacetsCollectorManagers[i] = new FacetsCollectorManager();
+    }
+
+    DrillSidewaysQuery dsq =
+        new DrillSidewaysQuery(
+            baseQuery,
+            drillDownCollectorManager,
+            drillSidewaysFacetsCollectorManagers,
+            drillDownQueries,
+            scoreSubDocsAtOnce());
+
+    R collectorResult = searcher.search(dsq, hitCollectorManager);
+
+    FacetsCollector drillDownCollector;
+    if (drillDownCollectorManager != null) {
+      drillDownCollector = drillDownCollectorManager.reduce(dsq.managedDrillDownCollectors);
+    } else {
+      drillDownCollector = null;
+    }
+
+    FacetsCollector[] drillSidewaysCollectors = new FacetsCollector[numDims];
+    int numSlices = dsq.managedDrillSidewaysCollectors.size();
+
+    for (int dim = 0; dim < numDims; dim++) {
+      List<FacetsCollector> facetsCollectorsForDim = new ArrayList<>(numSlices);
+
+      for (int slice = 0; slice < numSlices; slice++) {
+        facetsCollectorsForDim.add(dsq.managedDrillSidewaysCollectors.get(slice)[dim]);
+      }
+
+      drillSidewaysCollectors[dim] =
+          drillSidewaysFacetsCollectorManagers[dim].reduce(facetsCollectorsForDim);
+    }
+
+    String[] drillSidewaysDims = drillDownDims.keySet().toArray(new String[0]);
+
+    return new ConcurrentDrillSidewaysResult<>(
+        buildFacetsResult(drillDownCollector, drillSidewaysCollectors, drillSidewaysDims),
+        null,
+        collectorResult,
+        drillDownCollector,
+        drillSidewaysCollectors,
+        drillSidewaysDims);
+  }
+
+  @SuppressWarnings("unchecked")
+  private <R> ConcurrentDrillSidewaysResult<R> searchConcurrently(
+      final DrillDownQuery query, final CollectorManager<?, R> hitCollectorManager)
+      throws IOException {
 
     final Map<String, Integer> drillDownDims = query.getDims();
     final List<CallableCollector> callableCollectors = new ArrayList<>(drillDownDims.size() + 1);
 
     // Add the main DrillDownQuery
-    callableCollectors.add(
-        new CallableCollector(
-            -1,
-            searcher,
-            query,
-            new MultiCollectorManager(new FacetsCollectorManager(), hitCollectorManager)));
+    FacetsCollectorManager drillDownFacetsCollectorManager =
+        createDrillDownFacetsCollectorManager();
+    CollectorManager<?, ?> mainCollectorManager;
+    if (drillDownFacetsCollectorManager != null) {
+      // Make sure we populate a facet collector corresponding to the base query if desired:
+      mainCollectorManager =
+          new MultiCollectorManager(drillDownFacetsCollectorManager, hitCollectorManager);
+    } else {
+      mainCollectorManager = hitCollectorManager;
+    }
+    callableCollectors.add(new CallableCollector(-1, searcher, query, mainCollectorManager));
     int i = 0;
     final Query[] filters = query.getDrillDownQueries();
     for (String dim : drillDownDims.keySet())
@@ -418,9 +637,15 @@ public class DrillSideways {
       final List<Future<CallableResult>> futures = executor.invokeAll(callableCollectors);
 
       // Extract the results
-      final Object[] mainResults = (Object[]) futures.get(0).get().result;
-      mainFacetsCollector = (FacetsCollector) mainResults[0];
-      collectorResult = (R) mainResults[1];
+      if (drillDownFacetsCollectorManager != null) {
+        // If we populated a facets collector for the main query, make sure to unpack it properly
+        final Object[] mainResults = (Object[]) futures.get(0).get().result;
+        mainFacetsCollector = (FacetsCollector) mainResults[0];
+        collectorResult = (R) mainResults[1];
+      } else {
+        mainFacetsCollector = null;
+        collectorResult = (R) futures.get(0).get().result;
+      }
       for (i = 1; i < futures.size(); i++) {
         final CallableResult result = futures.get(i).get();
         facetsCollectors[result.pos] = (FacetsCollector) result.result;
@@ -435,14 +660,16 @@ public class DrillSideways {
       throw new RuntimeException(e);
     }
 
+    String[] drillSidewaysDims = drillDownDims.keySet().toArray(new String[0]);
+
     // build the facets and return the result
     return new ConcurrentDrillSidewaysResult<>(
-        buildFacetsResult(
-            mainFacetsCollector,
-            facetsCollectors,
-            drillDownDims.keySet().toArray(new String[drillDownDims.size()])),
+        buildFacetsResult(mainFacetsCollector, facetsCollectors, drillSidewaysDims),
         null,
-        collectorResult);
+        collectorResult,
+        mainFacetsCollector,
+        facetsCollectors,
+        drillSidewaysDims);
   }
 
   /**
@@ -454,8 +681,15 @@ public class DrillSideways {
     public final R collectorResult;
 
     /** Sole constructor. */
-    ConcurrentDrillSidewaysResult(Facets facets, TopDocs hits, R collectorResult) {
-      super(facets, hits);
+    ConcurrentDrillSidewaysResult(
+        Facets facets,
+        TopDocs hits,
+        R collectorResult,
+        FacetsCollector drillDownFacetsCollector,
+        FacetsCollector[] drillSidewaysFacetsCollector,
+        String[] drillSidewaysDims) {
+      super(
+          facets, hits, drillDownFacetsCollector, drillSidewaysFacetsCollector, drillSidewaysDims);
       this.collectorResult = collectorResult;
     }
   }

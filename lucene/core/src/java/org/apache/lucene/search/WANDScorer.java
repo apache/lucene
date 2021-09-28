@@ -220,7 +220,9 @@ final class WANDScorer extends Scorer {
       }
       assert maxScoreSum == leadMaxScore : maxScoreSum + " " + leadMaxScore;
 
-      assert minCompetitiveScore == 0 || tailMaxScore < minCompetitiveScore;
+      assert minCompetitiveScore == 0
+          || tailMaxScore < minCompetitiveScore
+          || tailSize < minShouldMatch;
       assert doc <= upTo;
     }
 
@@ -548,7 +550,7 @@ final class WANDScorer extends Scorer {
 
   /** Insert an entry in 'tail' and evict the least-costly scorer if full. */
   private DisiWrapper insertTailWithOverFlow(DisiWrapper s) {
-    if (tailMaxScore + s.maxScore < minCompetitiveScore) {
+    if (tailMaxScore + s.maxScore < minCompetitiveScore || tailSize + 1 < minShouldMatch) {
       // we have free room for this new entry
       addTail(s);
       tailMaxScore += s.maxScore;

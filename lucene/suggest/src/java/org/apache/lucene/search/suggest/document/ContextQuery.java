@@ -195,7 +195,7 @@ public class ContextQuery extends CompletionQuery implements Accountable {
     Automaton contextsAutomaton =
         Operations.concatenate(toContextAutomaton(contexts, matchAllContexts), prefixAutomaton);
     contextsAutomaton =
-        Operations.determinize(contextsAutomaton, Operations.DEFAULT_MAX_DETERMINIZED_STATES);
+        Operations.determinize(contextsAutomaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
 
     final Map<IntsRef, Float> contextMap = new HashMap<>(contexts.size());
     final TreeSet<Integer> contextLengths = new TreeSet<>();

@@ -23,6 +23,7 @@ import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -71,17 +72,9 @@ public class TaxonomyFacetSumIntAssociations extends IntTaxonomyFacets {
           int end = bytesRef.offset + bytesRef.length;
           int offset = bytesRef.offset;
           while (offset < end) {
-            int ord =
-                ((bytes[offset] & 0xFF) << 24)
-                    | ((bytes[offset + 1] & 0xFF) << 16)
-                    | ((bytes[offset + 2] & 0xFF) << 8)
-                    | (bytes[offset + 3] & 0xFF);
+            int ord = (int) BitUtil.VH_BE_INT.get(bytes, offset);
             offset += 4;
-            int value =
-                ((bytes[offset] & 0xFF) << 24)
-                    | ((bytes[offset + 1] & 0xFF) << 16)
-                    | ((bytes[offset + 2] & 0xFF) << 8)
-                    | (bytes[offset + 3] & 0xFF);
+            int value = (int) BitUtil.VH_BE_INT.get(bytes, offset);
             offset += 4;
             increment(ord, value);
           }

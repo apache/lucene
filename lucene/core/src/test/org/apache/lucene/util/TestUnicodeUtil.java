@@ -102,12 +102,12 @@ public class TestUnicodeUtil extends LuceneTestCase {
     assertcodePointCountThrowsAssertionOn(asByteArray('z', 0xf0, 0xa4, 0xad));
 
     // Check some typical examples (multibyte).
-    assertEquals(0, UnicodeUtil.codePointCount(new BytesRef(asByteArray())));
-    assertEquals(3, UnicodeUtil.codePointCount(new BytesRef(asByteArray('z', 'z', 'z'))));
-    assertEquals(2, UnicodeUtil.codePointCount(new BytesRef(asByteArray('z', 0xc2, 0xa2))));
-    assertEquals(2, UnicodeUtil.codePointCount(new BytesRef(asByteArray('z', 0xe2, 0x82, 0xac))));
+    assertEquals(0, UnicodeUtil.codePointCount(newBytesRef(asByteArray())));
+    assertEquals(3, UnicodeUtil.codePointCount(newBytesRef(asByteArray('z', 'z', 'z'))));
+    assertEquals(2, UnicodeUtil.codePointCount(newBytesRef(asByteArray('z', 0xc2, 0xa2))));
+    assertEquals(2, UnicodeUtil.codePointCount(newBytesRef(asByteArray('z', 0xe2, 0x82, 0xac))));
     assertEquals(
-        2, UnicodeUtil.codePointCount(new BytesRef(asByteArray('z', 0xf0, 0xa4, 0xad, 0xa2))));
+        2, UnicodeUtil.codePointCount(newBytesRef(asByteArray('z', 0xf0, 0xa4, 0xad, 0xa2))));
 
     // And do some random stuff.
     int num = atLeast(50000);
@@ -117,7 +117,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
       final int utf8Len = UnicodeUtil.UTF16toUTF8(s, 0, s.length(), utf8);
       assertEquals(
           s.codePointCount(0, s.length()),
-          UnicodeUtil.codePointCount(new BytesRef(utf8, 0, utf8Len)));
+          UnicodeUtil.codePointCount(newBytesRef(utf8, 0, utf8Len)));
     }
   }
 
@@ -133,7 +133,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          UnicodeUtil.codePointCount(new BytesRef(bytes));
+          UnicodeUtil.codePointCount(newBytesRef(bytes));
         });
   }
 
@@ -145,7 +145,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
       final byte[] utf8 = new byte[UnicodeUtil.maxUTF8Length(s.length())];
       final int utf8Len = UnicodeUtil.UTF16toUTF8(s, 0, s.length(), utf8);
       utf32 = ArrayUtil.grow(utf32, utf8Len);
-      final int utf32Len = UnicodeUtil.UTF8toUTF32(new BytesRef(utf8, 0, utf8Len), utf32);
+      final int utf32Len = UnicodeUtil.UTF8toUTF32(newBytesRef(utf8, 0, utf8Len), utf32);
 
       int[] codePoints = s.codePoints().toArray();
       if (!Arrays.equals(codePoints, 0, codePoints.length, utf32, 0, codePoints.length)) {
@@ -219,7 +219,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
     int num = atLeast(3989);
     for (int i = 0; i < num; i++) {
       String unicode = TestUtil.randomRealisticUnicodeString(random());
-      BytesRef ref = new BytesRef(unicode);
+      BytesRef ref = newBytesRef(unicode);
       CharsRefBuilder cRef = new CharsRefBuilder();
       cRef.copyUTF8Bytes(ref);
       assertEquals(cRef.toString(), unicode);

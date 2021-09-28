@@ -19,10 +19,11 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Random;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -38,23 +39,11 @@ public final class HnswGraphBuilder {
   // expose for testing.
   public static long randSeed = DEFAULT_RAND_SEED;
 
-  /* These "default" hyper-parameter settings are exposed (and non-final) to enable performance
-   * testing since the indexing API doesn't provide any control over them.
-   */
-
-  // default max connections per node
-  public static final int DEFAULT_MAX_CONN = 16;
-  public static String HNSW_MAX_CONN_ATTRIBUTE_KEY = "max_connections";
-
-  // default candidate list size
-  public static final int DEFAULT_BEAM_WIDTH = 16;
-  public static String HNSW_BEAM_WIDTH_ATTRIBUTE_KEY = "beam_width";
-
   private final int maxConn;
   private final int beamWidth;
   private final NeighborArray scratch;
 
-  private final VectorValues.SimilarityFunction similarityFunction;
+  private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
   private final Random random;
   private final BoundsChecker bound;
@@ -65,11 +54,6 @@ public final class HnswGraphBuilder {
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
   private RandomAccessVectorValues buildVectors;
-
-  /** Construct the builder with default configurations */
-  public HnswGraphBuilder(RandomAccessVectorValuesProducer vectors) {
-    this(vectors, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, randSeed);
-  }
 
   /**
    * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense
@@ -84,13 +68,14 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors, int maxConn, int beamWidth, long seed) {
+      RandomAccessVectorValuesProducer vectors,
+      VectorSimilarityFunction similarityFunction,
+      int maxConn,
+      int beamWidth,
+      long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
-    similarityFunction = vectorValues.similarityFunction();
-    if (similarityFunction == VectorValues.SimilarityFunction.NONE) {
-      throw new IllegalStateException("No distance function");
-    }
+    this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
@@ -149,8 +134,10 @@ public final class HnswGraphBuilder {
 
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(float[] value) throws IOException {
+    // We pass 'null' for acceptOrds because there are no deletions while building the graph
     NeighborQueue candidates =
-        HnswGraph.search(value, beamWidth, beamWidth, vectorValues, hnsw, random);
+        HnswGraph.search(
+            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, null, random);
 
     int node = hnsw.addNode();
 
