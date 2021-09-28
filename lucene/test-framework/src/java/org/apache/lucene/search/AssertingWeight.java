@@ -21,6 +21,7 @@ import static org.apache.lucene.util.LuceneTestCase.usually;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.util.Bits;
 
 class AssertingWeight extends FilterWeight {
 
@@ -109,7 +110,41 @@ class AssertingWeight extends FilterWeight {
     if (inScorer == null) {
       return null;
     }
+    if (random.nextBoolean()) {
+      inScorer = new ChunkedBulkScorer(inScorer, random);
+    }
     return AssertingBulkScorer.wrap(
         new Random(random.nextLong()), inScorer, context.reader().maxDoc(), scoreMode);
+  }
+
+  private static class ChunkedBulkScorer extends BulkScorer {
+    private final BulkScorer in;
+    private final Random random;
+
+    ChunkedBulkScorer(BulkScorer in, Random random) {
+      this.in = in;
+      this.random = random;
+    }
+
+    @Override
+    public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+        throws IOException {
+      while (min < max) {
+        final int interval;
+        if (random.nextInt(100) <= 5) {
+          interval = 1 + random.nextInt(10);
+        } else {
+          interval = 1 + random.nextInt(random.nextBoolean() ? 100 : 5000);
+        }
+        final int newMax = Math.toIntExact(Math.min(min + interval, max));
+        min = in.score(collector, acceptDocs, min, newMax);
+      }
+      return min;
+    }
+
+    @Override
+    public long cost() {
+      return in.cost();
+    }
   }
 }
