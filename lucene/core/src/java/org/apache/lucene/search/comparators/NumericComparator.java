@@ -271,11 +271,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public DocIdSetIterator competitiveIterator() {
-      if (enableSkipping == false) {
-        return null;
-      } else {
-        return competitiveIterator;
-      }
+      return enableSkipping ? competitiveIterator : null;
     }
 
     protected abstract boolean isMissingValueCompetitive();

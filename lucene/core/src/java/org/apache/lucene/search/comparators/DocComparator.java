@@ -127,11 +127,7 @@ public class DocComparator extends FieldComparator<Integer> {
 
     @Override
     public DocIdSetIterator competitiveIterator() {
-      if (enableSkipping == false) {
-        return null;
-      } else {
-        return competitiveIterator;
-      }
+      return enableSkipping ? competitiveIterator : null;
     }
 
     @Override
