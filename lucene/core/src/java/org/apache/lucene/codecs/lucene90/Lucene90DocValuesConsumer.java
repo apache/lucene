@@ -164,6 +164,13 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       ++numValues;
     }
 
+    /** Accumulate state from another tracker. */
+    void update(MinMaxTracker other) {
+      min = Math.min(min, other.min);
+      max = Math.max(max, other.max);
+      numValues += other.numValues;
+    }
+
     /** Update the required space. */
     void finish() {
       if (max > min) {
@@ -181,6 +188,13 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
   private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
       throws IOException {
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
+    final long firstValue;
+    if (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      firstValue = values.nextValue();
+    } else {
+      firstValue = 0L;
+    }
+    values = valuesProducer.getSortedNumeric(field);
     int numDocsWithValue = 0;
     MinMaxTracker minMax = new MinMaxTracker();
     MinMaxTracker blockMinMax = new MinMaxTracker();
@@ -196,14 +210,14 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             // wrong results. Since these extreme values are unlikely, we just discard
             // GCD computation for them
             gcd = 1;
-          } else if (minMax.numValues != 0) { // minValue needs to be set first
-            gcd = MathUtil.gcd(gcd, v - minMax.min);
+          } else {
+            gcd = MathUtil.gcd(gcd, v - firstValue);
           }
         }
 
-        minMax.update(v);
         blockMinMax.update(v);
         if (blockMinMax.numValues == NUMERIC_BLOCK_SIZE) {
+          minMax.update(blockMinMax);
           blockMinMax.nextBlock();
         }
 
@@ -215,6 +229,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       numDocsWithValue++;
     }
 
+    minMax.update(blockMinMax);
     minMax.finish();
     blockMinMax.finish();
 

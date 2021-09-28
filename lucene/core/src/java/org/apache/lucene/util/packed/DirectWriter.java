@@ -89,11 +89,15 @@ public final class DirectWriter {
   }
 
   private void flush() throws IOException {
+    if (off == 0) {
+      return;
+    }
+    // Avoid writing bits from values that are outside of the range we need to encode
+    Arrays.fill(nextValues, off, nextValues.length, 0L);
     encode(nextValues, 0, nextBlocks, 0, iterations);
     final int blockCount =
         (int) PackedInts.Format.PACKED.byteCount(PackedInts.VERSION_CURRENT, off, bitsPerValue);
     output.writeBytes(nextBlocks, blockCount);
-    Arrays.fill(nextValues, 0L);
     off = 0;
   }
 
