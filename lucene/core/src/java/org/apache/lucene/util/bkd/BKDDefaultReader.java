@@ -281,16 +281,18 @@ public class BKDDefaultReader implements BKDReader {
                       scratchMaxIndexPackedValue,
                       commonPrefixLengths);
       index.leafBlockFPStack[index.level] = leafBlockFPStack[level];
-      // copy node data
-      index.rightNodePositions[index.level] = rightNodePositions[level];
-      index.splitValuesStack[index.level] = splitValuesStack[level].clone();
-      System.arraycopy(
-              negativeDeltas,
-              level * config.numIndexDims,
-              index.negativeDeltas,
-              level * config.numIndexDims,
-              config.numIndexDims);
-      index.splitDims[level] = splitDims[level];
+      if (isLeafNode() == false) {
+        // copy node data
+        index.rightNodePositions[index.level] = rightNodePositions[level];
+        index.splitValuesStack[index.level] = splitValuesStack[level].clone();
+        System.arraycopy(
+            negativeDeltas,
+            level * config.numIndexDims,
+            index.negativeDeltas,
+            level * config.numIndexDims,
+            config.numIndexDims);
+        index.splitDims[level] = splitDims[level];
+      }
       return index;
     }
 
