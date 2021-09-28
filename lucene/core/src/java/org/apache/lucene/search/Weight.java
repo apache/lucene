@@ -231,10 +231,8 @@ public abstract class Weight implements SegmentCacheable {
         filteredIterator = scorerIterator;
       } else {
         // Wrap CompetitiveIterator and ScorerIterator start with (i.e., calling nextDoc()) the last
-        // visited docID
-        // because ConjunctionDISI might have advanced to it in the previous scoreRange, but we
-        // didn't process
-        // due to the range limit of scoreRange.
+        // visited docID because ConjunctionDISI might have advanced to it in the previous
+        // scoreRange, but we didn't process due to the range limit of scoreRange.
         if (scorerIterator.docID() != -1) {
           scorerIterator = new StartDISIWrapper(scorerIterator);
         }
