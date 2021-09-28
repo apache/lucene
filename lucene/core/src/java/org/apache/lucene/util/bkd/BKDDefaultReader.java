@@ -398,11 +398,11 @@ public class BKDDefaultReader implements BKDReader {
       level--;
       // restore the split dimension
       System.arraycopy(
-              splitDimValueStack[level],
-              0,
-              packedValue,
-              splitDims[level] * config.bytesPerDim,
-              config.bytesPerDim);
+          splitDimValueStack[level],
+          0,
+          packedValue,
+          splitDims[level] * config.bytesPerDim,
+          config.bytesPerDim);
     }
 
     @Override
