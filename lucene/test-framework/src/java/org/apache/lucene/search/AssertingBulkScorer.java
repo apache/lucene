@@ -73,7 +73,7 @@ final class AssertingBulkScorer extends BulkScorer {
   }
 
   @Override
-  public int score(LeafCollector collector, Bits acceptDocs, int min, final int max)
+  public int score(LeafCollector collector, Bits acceptDocs, final int min, final int max)
       throws IOException {
     assert min >= this.max
         : "Scoring backward: min=" + min + " while previous max was max=" + this.max;
@@ -86,15 +86,15 @@ final class AssertingBulkScorer extends BulkScorer {
       if (random.nextBoolean()) {
         upTo = max;
       } else {
-        final int interval;
+        final long interval;
         if (random.nextInt(100) <= 5) {
           interval = 1 + random.nextInt(10);
         } else {
           interval = 1 + random.nextInt(random.nextBoolean() ? 100 : 5000);
         }
-        upTo = Math.toIntExact(Math.min(min + interval, max));
+        upTo = Math.toIntExact(Math.min(next + interval, max));
       }
-      next = in.score(collector, acceptDocs, min, upTo);
+      next = in.score(new AssertingLeafCollector(collector, next, upTo), acceptDocs, next, upTo);
     }
     if (max >= maxDoc || next >= maxDoc) {
       assert next == DocIdSetIterator.NO_MORE_DOCS;

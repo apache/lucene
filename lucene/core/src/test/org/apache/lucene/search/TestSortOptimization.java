@@ -58,7 +58,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
@@ -75,7 +75,7 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(i, ((Long) fieldDoc.fields[0]).intValue());
       }
       assertTrue(collector.isEarlyTerminated());
-      assertTrue(topDocs.totalHits.value < numDocs);
+      assertTrue(topDocs.totalHits.value + " >= " + numDocs, topDocs.totalHits.value < numDocs);
     }
 
     { // paging sort with after
@@ -143,7 +143,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
@@ -182,7 +182,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
@@ -209,6 +209,7 @@ public class TestSortOptimization extends LuceneTestCase {
       TopDocs topDocs = collector.topDocs();
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertTrue(
+          topDocs.totalHits.value + " >= " + numDocs,
           topDocs.totalHits.value
               < numDocs); // assert that some docs were skipped => optimization was run
     }
@@ -234,7 +235,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
@@ -313,7 +314,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     final SortField sortField = new SortField("my_field", SortField.Type.FLOAT);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
@@ -370,7 +371,7 @@ public class TestSortOptimization extends LuceneTestCase {
     int numHits = 0;
     do {
       for (int i = 0; i < numIndices; i++) {
-        IndexSearcher searcher = newSearcher(readers[i]);
+        IndexSearcher searcher = new IndexSearcher(readers[i]);
         final TopFieldCollector collector =
             TopFieldCollector.create(sort, size, after, totalHitsThreshold);
         searcher.search(new MatchAllDocsQuery(), collector);
@@ -414,7 +415,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     final int numHits = 10;
     final int totalHitsThreshold = 10;
     final int[] searchAfters = {3, 10, numDocs - 10};
@@ -509,7 +510,7 @@ public class TestSortOptimization extends LuceneTestCase {
     {
       final TopFieldCollector collector =
           TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      IndexSearcher searcher = newSearcher(reader);
+      IndexSearcher searcher = new IndexSearcher(reader);
       searcher.search(new MatchAllDocsQuery(), collector);
       TopDocs topDocs = collector.topDocs();
       assertEquals(numHits, topDocs.scoreDocs.length);
@@ -568,7 +569,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
 
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     searcher.setQueryCache(null);
     final int numHits = 10;
     final int totalHitsThreshold = 10;
@@ -607,7 +608,7 @@ public class TestSortOptimization extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     writer.close();
 
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
 
     SortField longSortOnIntField = new SortField("intField", SortField.Type.LONG);
     assertThrows(
