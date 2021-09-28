@@ -385,7 +385,7 @@ public class BKDDefaultReader implements BKDReader {
     @Override
     public boolean moveToSibling() throws IOException {
       if (nodeID != nodeRoot && (nodeID & 1) == 0) {
-        pop(true);
+        pop(maxPackedValue);
         pushRight();
         assert nodeExists();
         return true;
@@ -393,25 +393,16 @@ public class BKDDefaultReader implements BKDReader {
       return false;
     }
 
-    private void pop(boolean isLeft) {
+    private void pop(byte[] packedValue) {
       nodeID /= 2;
       level--;
       // restore the split dimension
-      if (isLeft) {
-        System.arraycopy(
-            splitDimValueStack[level],
-            0,
-            maxPackedValue,
-            splitDims[level] * config.bytesPerDim,
-            config.bytesPerDim);
-      } else {
-        System.arraycopy(
-            splitDimValueStack[level],
-            0,
-            minPackedValue,
-            splitDims[level] * config.bytesPerDim,
-            config.bytesPerDim);
-      }
+      System.arraycopy(
+              splitDimValueStack[level],
+              0,
+              packedValue,
+              splitDims[level] * config.bytesPerDim,
+              config.bytesPerDim);
     }
 
     @Override
@@ -419,7 +410,7 @@ public class BKDDefaultReader implements BKDReader {
       if (nodeID == nodeRoot) {
         return false;
       }
-      pop((nodeID & 1) == 0);
+      pop((nodeID & 1) == 0 ? maxPackedValue : minPackedValue);
       return true;
     }
 
