@@ -16,6 +16,13 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.SortField.FIELD_DOC;
+import static org.apache.lucene.search.SortField.FIELD_SCORE;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
@@ -34,14 +41,6 @@ import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.apache.lucene.search.SortField.FIELD_DOC;
-import static org.apache.lucene.search.SortField.FIELD_SCORE;
 
 public class TestSortOptimization extends LuceneTestCase {
 
