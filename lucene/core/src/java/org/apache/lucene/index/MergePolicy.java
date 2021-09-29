@@ -269,7 +269,7 @@ public abstract class MergePolicy {
 
     /**
      * Expert: Sets the {@link SegmentCommitInfo} of the merged segment. Allows sub-classes to e.g.
-     * set diagnostics properties.
+     * {@link SegmentInfo#addDiagnostics(Map) add diagnostic} properties.
      */
     public void setMergeInfo(SegmentCommitInfo info) {
       this.info = info;
