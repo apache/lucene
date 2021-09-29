@@ -516,7 +516,7 @@ public class TestSortOptimization extends LuceneTestCase {
         visitedHits++;
       }
     }
-    assert (visitedHits == numDocs);
+    assertEquals(visitedHits, numDocs);
     IOUtils.close(writer, reader, dir);
   }
 
