@@ -366,7 +366,8 @@ public class TestSortOptimization extends LuceneTestCase {
     int numHits = 0;
     do {
       for (int i = 0; i < numIndices; i++) {
-        IndexSearcher searcher = newSearcher(readers[i], random().nextBoolean(), random().nextBoolean());
+        IndexSearcher searcher =
+            newSearcher(readers[i], random().nextBoolean(), random().nextBoolean());
         final TopFieldCollector collector =
             TopFieldCollector.create(sort, size, after, totalHitsThreshold);
         searcher.search(new MatchAllDocsQuery(), collector);
