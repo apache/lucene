@@ -335,8 +335,8 @@ class NearestNeighbor {
                   cell.index.getMinPackedValue(),
                   cell.index.getMaxPackedValue(),
                   approxBestDistance(
-                      newIndex.getMinPackedValue(),
-                      newIndex.getMaxPackedValue(),
+                      cell.index.getMinPackedValue(),
+                      cell.index.getMaxPackedValue(),
                       pointLat,
                       pointLon)));
         }
