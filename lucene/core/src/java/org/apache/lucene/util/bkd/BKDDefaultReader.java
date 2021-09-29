@@ -265,21 +265,21 @@ public class BKDDefaultReader implements BKDReader {
     @Override
     public BKDReader.IndexTree clone() {
       BKDDefaultReader.IndexTree index =
-              new BKDDefaultReader.IndexTree(
-                      innerNodes.clone(),
-                      leafNodes.clone(),
-                      config,
-                      leafNodeOffset,
-                      version,
-                      nodeID,
-                      level,
-                      minPackedValue,
-                      maxPackedValue,
-                      scratchIterator,
-                      scratchDataPackedValue,
-                      scratchMinIndexPackedValue,
-                      scratchMaxIndexPackedValue,
-                      commonPrefixLengths);
+          new BKDDefaultReader.IndexTree(
+              innerNodes.clone(),
+              leafNodes.clone(),
+              config,
+              leafNodeOffset,
+              version,
+              nodeID,
+              level,
+              minPackedValue,
+              maxPackedValue,
+              scratchIterator,
+              scratchDataPackedValue,
+              scratchMinIndexPackedValue,
+              scratchMaxIndexPackedValue,
+              commonPrefixLengths);
       index.leafBlockFPStack[index.level] = leafBlockFPStack[level];
       if (isLeafNode() == false) {
         // copy node data

@@ -317,23 +317,23 @@ class NearestNeighbor {
 
         cellQueue.offer(
             new Cell(
-                cell.index,
+                newIndex,
                 cell.readerIndex,
-                cell.index.getMinPackedValue(),
-                cell.index.getMaxPackedValue(),
+                newIndex.getMinPackedValue(),
+                newIndex.getMaxPackedValue(),
                 approxBestDistance(
-                    cell.index.getMinPackedValue(),
-                    cell.index.getMaxPackedValue(),
+                    newIndex.getMinPackedValue(),
+                    newIndex.getMaxPackedValue(),
                     pointLat,
                     pointLon)));
 
-        if (newIndex.moveToSibling()) {
+        if (cell.index.moveToSibling()) {
           cellQueue.offer(
               new Cell(
-                  newIndex,
+                  cell.index,
                   cell.readerIndex,
-                  newIndex.getMinPackedValue(),
-                  newIndex.getMaxPackedValue(),
+                  cell.index.getMinPackedValue(),
+                  cell.index.getMaxPackedValue(),
                   approxBestDistance(
                       newIndex.getMinPackedValue(),
                       newIndex.getMaxPackedValue(),
