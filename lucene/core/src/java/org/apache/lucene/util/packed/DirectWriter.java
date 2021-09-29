@@ -18,6 +18,11 @@ package org.apache.lucene.util.packed;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
+import java.lang.invoke.VarHandle.AccessMode;
 import java.util.Arrays;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BitUtil;
@@ -91,28 +96,50 @@ public final class DirectWriter {
     }
     // Avoid writing bits from values that are outside of the range we need to encode
     Arrays.fill(nextValues, off, nextValues.length, 0L);
-    encode(nextValues, off, nextBlocks, bitsPerValue);
+    // stupid try-catch-needed because MethodHandle's Throwable and compiler does not allow to
+    // remove it:
+    try {
+      encode(nextValues, off, nextBlocks, bitsPerValue);
+    } catch (RuntimeException | Error e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new AssertionError(e);
+    }
     final int blockCount =
         (int) PackedInts.Format.PACKED.byteCount(PackedInts.VERSION_CURRENT, off, bitsPerValue);
     output.writeBytes(nextBlocks, blockCount);
     off = 0;
   }
 
-  private static void encode(long[] nextValues, int upTo, byte[] nextBlocks, int bitsPerValue) {
+  private static MethodHandle applyLongCast(VarHandle vh) {
+    return MethodHandles.explicitCastArguments(
+        vh.toMethodHandle(AccessMode.SET),
+        MethodType.methodType(void.class, byte[].class, int.class, long.class));
+  }
+
+  private static final MethodHandle MH_LONG_SETTER = applyLongCast(BitUtil.VH_LE_LONG),
+      MH_INT_SETTER = applyLongCast(BitUtil.VH_LE_INT),
+      MH_SHORT_SETTER = applyLongCast(BitUtil.VH_LE_SHORT),
+      MH_BYTE_SETTER = applyLongCast(MethodHandles.arrayElementVarHandle(byte[].class));
+
+  private static void encode(long[] nextValues, int upTo, byte[] nextBlocks, int bitsPerValue)
+      throws Throwable {
     if ((bitsPerValue & 7) == 0) {
       // bitsPerValue is a multiple of 8: 8, 16, 24, 32, 30, 48, 56, 64
       final int bytesPerValue = bitsPerValue / Byte.SIZE;
+      final MethodHandle setter;
+      if (bitsPerValue > Integer.SIZE) {
+        setter = MH_LONG_SETTER;
+      } else if (bitsPerValue > Short.SIZE) {
+        setter = MH_INT_SETTER;
+      } else if (bitsPerValue > Byte.SIZE) {
+        setter = MH_SHORT_SETTER;
+      } else {
+        setter = MH_BYTE_SETTER;
+      }
       for (int i = 0, o = 0; i < upTo; ++i, o += bytesPerValue) {
         final long l = nextValues[i];
-        if (bitsPerValue > Integer.SIZE) {
-          BitUtil.VH_LE_LONG.set(nextBlocks, o, l);
-        } else if (bitsPerValue > Short.SIZE) {
-          BitUtil.VH_LE_INT.set(nextBlocks, o, (int) l);
-        } else if (bitsPerValue > Byte.SIZE) {
-          BitUtil.VH_LE_SHORT.set(nextBlocks, o, (short) l);
-        } else {
-          nextBlocks[o] = (byte) l;
-        }
+        setter.invokeExact(nextBlocks, o, l);
       }
     } else if (bitsPerValue < 8) {
       // bitsPerValue is 1, 2 or 4
@@ -128,15 +155,13 @@ public final class DirectWriter {
       // bitsPerValue is 12, 20 or 28
       // Write values 2 by 2
       final int numBytesFor2Values = bitsPerValue * 2 / Byte.SIZE;
+      final MethodHandle setter =
+          (bitsPerValue <= Integer.SIZE / 2) ? MH_INT_SETTER : MH_LONG_SETTER;
       for (int i = 0, o = 0; i < upTo; i += 2, o += numBytesFor2Values) {
         final long l1 = nextValues[i];
         final long l2 = nextValues[i + 1];
         final long merged = l1 | (l2 << bitsPerValue);
-        if (bitsPerValue <= Integer.SIZE / 2) {
-          BitUtil.VH_LE_INT.set(nextBlocks, o, (int) merged);
-        } else {
-          BitUtil.VH_LE_LONG.set(nextBlocks, o, merged);
-        }
+        setter.invokeExact(nextBlocks, o, merged);
       }
     }
   }
