@@ -52,6 +52,7 @@ public class AssertingScorable extends FilterScorable {
     while (true) {
       if (in instanceof AssertingScorable) in = ((AssertingScorable) in).in;
       else if (in instanceof AssertingScorer) in = ((AssertingScorer) in).in;
+      else if (in instanceof FilterScorer) in = ((FilterScorer) in).in;
       else return in;
     }
   }

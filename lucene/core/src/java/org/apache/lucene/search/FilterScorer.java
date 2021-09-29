@@ -74,4 +74,9 @@ public abstract class FilterScorer extends Scorer {
   public final TwoPhaseIterator twoPhaseIterator() {
     return in.twoPhaseIterator();
   }
+
+  @Override
+  public void setMinCompetitiveScore(float minScore) throws IOException {
+    in.setMinCompetitiveScore(minScore);
+  }
 }

@@ -36,7 +36,22 @@ class AssertingLeafCollector extends FilterLeafCollector {
   @Override
   public void setScorer(Scorable scorer) throws IOException {
     this.scorer = scorer;
-    super.setScorer(AssertingScorable.wrap(scorer));
+    if (scorer instanceof Scorer) {
+      super.setScorer(
+          new FilterScorer((Scorer) scorer) {
+            @Override
+            public float getMaxScore(int upTo) throws IOException {
+              return in.getMaxScore(upTo);
+            }
+
+            @Override
+            public float score() throws IOException {
+              return AssertingScorable.wrap(scorer).score();
+            }
+          });
+    } else {
+      super.setScorer(AssertingScorable.wrap(scorer));
+    }
   }
 
   @Override

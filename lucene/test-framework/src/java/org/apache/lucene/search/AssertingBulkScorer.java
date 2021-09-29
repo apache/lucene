@@ -80,8 +80,23 @@ final class AssertingBulkScorer extends BulkScorer {
     assert min <= max : "max must be greater than min, got min=" + min + ", and max=" + max;
     this.max = max;
     collector = new AssertingLeafCollector(collector, min, max);
-    final int next = in.score(collector, acceptDocs, min, max);
-    assert next >= max;
+    int next = min;
+    do {
+      final int upTo;
+      if (random.nextBoolean()) {
+        upTo = max;
+      } else {
+        final long interval;
+        if (random.nextInt(100) <= 5) {
+          interval = 1 + random.nextInt(10);
+        } else {
+          interval = 1 + random.nextInt(random.nextBoolean() ? 100 : 5000);
+        }
+        upTo = Math.toIntExact(Math.min(next + interval, max));
+      }
+      next = in.score(collector, acceptDocs, next, upTo);
+    } while (next < max);
+
     if (max >= maxDoc || next >= maxDoc) {
       assert next == DocIdSetIterator.NO_MORE_DOCS;
       return DocIdSetIterator.NO_MORE_DOCS;
