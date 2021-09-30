@@ -228,6 +228,10 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
         slop = width();
         for (IntervalIterator it : proximityQueue) {
           slop -= it.width();
+          // notify iterators
+          if (it instanceof MinimizingAwareIntervalIterator) {
+            ((MinimizingAwareIntervalIterator) it).matchFound();
+          }
         }
         if (proximityQueue.top().end() == end) {
           return start;
@@ -352,10 +356,9 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public int startOffset() throws IOException {
       int start = Integer.MAX_VALUE;
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        start = Math.min(start, cms.startOffset(endPos));
+        start = Math.min(start, cms.startOffset());
       }
       return start;
     }
@@ -363,10 +366,9 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public int endOffset() throws IOException {
       int end = 0;
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        end = Math.max(end, cms.endOffset(endPos));
+        end = Math.max(end, cms.endOffset());
       }
       return end;
     }
@@ -384,10 +386,9 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public MatchesIterator getSubMatches() throws IOException {
       List<MatchesIterator> mis = new ArrayList<>();
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        mis.add(cms.getSubMatches(endPos));
+        mis.add(cms.getSubMatches());
       }
       return MatchesUtils.disjunction(mis);
     }

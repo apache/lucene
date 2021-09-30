@@ -131,6 +131,7 @@ class BlockIntervalsSource extends ConjunctionIntervalsSource {
       }
       start = subIterators.get(0).start();
       end = subIterators.get(subIterators.size() - 1).end();
+      matchFound();
       return start;
     }
 

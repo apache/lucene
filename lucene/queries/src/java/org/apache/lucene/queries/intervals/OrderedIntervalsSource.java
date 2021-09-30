@@ -161,6 +161,7 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
         for (IntervalIterator subIterator : subIterators) {
           slop -= subIterator.width();
         }
+        matchFound();
         lastStart = subIterators.get(subIterators.size() - 1).start();
         i = 1;
         if (subIterators.get(0).nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {

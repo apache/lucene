@@ -18,6 +18,7 @@
 package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -26,16 +27,34 @@ abstract class ConjunctionIntervalIterator extends IntervalIterator {
 
   final DocIdSetIterator approximation;
   final List<IntervalIterator> subIterators;
+  final List<MinimizingAwareIntervalIterator> minimizingAware;
   final float cost;
 
   ConjunctionIntervalIterator(List<IntervalIterator> subIterators) {
     this.approximation = ConjunctionUtils.intersectIterators(subIterators);
     this.subIterators = subIterators;
+
+    List<MinimizingAwareIntervalIterator> minimizingAware = null;
     float costsum = 0;
     for (IntervalIterator it : subIterators) {
       costsum += it.matchCost();
+      if (it instanceof MinimizingAwareIntervalIterator) {
+        if (minimizingAware == null) {
+          minimizingAware = new ArrayList<>(subIterators.size());
+        }
+        minimizingAware.add((MinimizingAwareIntervalIterator) it);
+      }
     }
+    this.minimizingAware = minimizingAware;
     this.cost = costsum;
+  }
+
+  protected final void matchFound() throws IOException {
+    if (minimizingAware != null) {
+      for (MinimizingAwareIntervalIterator sub : minimizingAware) {
+        sub.matchFound();
+      }
+    }
   }
 
   @Override

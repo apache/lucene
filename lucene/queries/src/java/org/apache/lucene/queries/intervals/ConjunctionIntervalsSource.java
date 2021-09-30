@@ -89,9 +89,7 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
     if (it.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
       return null;
     }
-    return isMinimizing
-        ? new MinimizingConjunctionMatchesIterator(it, subs)
-        : new ConjunctionMatchesIterator(it, subs);
+    return new ConjunctionMatchesIterator(it, subs);
   }
 
   private static class ConjunctionMatchesIterator implements IntervalMatchesIterator {

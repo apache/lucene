@@ -169,6 +169,7 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
         for (IntervalIterator it : subIterators) {
           slop -= it.width();
         }
+        matchFound();
         if (queue.top().end() == end) {
           return start;
         }

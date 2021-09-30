@@ -23,9 +23,10 @@ import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ArrayUtil;
 
-class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMatchesIterator {
+class CachingMatchesIterator extends FilterMatchesIterator
+    implements IntervalMatchesIterator, MinimizingAwareIntervalIterator {
 
-  private boolean positioned = false;
+  private boolean matchCached;
   private int[] posAndOffsets = new int[4 * 4];
   private Query[] matchingQueries = new Query[4];
   private int count = 0;
@@ -34,7 +35,9 @@ class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMa
     super(in);
   }
 
-  private void cache() throws IOException {
+  @Override
+  public void matchFound() throws IOException {
+    if (matchCached) return;
     count = 0;
     MatchesIterator mi = in.getSubMatches();
     if (mi == null) {
@@ -58,36 +61,27 @@ class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMa
         count++;
       }
     }
+    matchCached = true;
   }
 
   @Override
   public boolean next() throws IOException {
-    if (positioned == false) {
-      positioned = true;
-    } else {
-      cache();
-    }
+    matchCached = false;
     return in.next();
   }
 
-  int startOffset(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
-      return in.startOffset();
-    }
+  @Override
+  public int startOffset() throws IOException {
     return posAndOffsets[2];
   }
 
-  int endOffset(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
-      return in.endOffset();
-    }
-    return posAndOffsets[count * 4 + 3];
+  @Override
+  public int endOffset() throws IOException {
+    return posAndOffsets[(count - 1) * 4 + 3];
   }
 
-  MatchesIterator getSubMatches(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
-      cache();
-    }
+  @Override
+  public MatchesIterator getSubMatches() throws IOException {
     return new MatchesIterator() {
 
       int upto = -1;

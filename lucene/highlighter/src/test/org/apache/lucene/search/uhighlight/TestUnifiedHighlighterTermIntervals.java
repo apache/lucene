@@ -51,6 +51,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter.HighlightFlag;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.junit.After;
 import org.junit.Before;
@@ -1080,6 +1081,81 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     assertEquals(1, snippets.length);
     assertEquals("Just a test <b>highlighting</b> from postings. ", snippets[0]);
 
+    ir.close();
+  }
+
+  public void testOverlappingWildcardInterval() throws Exception {
+    String text = "Compare Computer Science";
+
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+
+    Field body = new Field("body", text, fieldType);
+    Document document = new Document();
+    document.add(body);
+    iw.addDocument(document);
+    IndexReader ir = iw.getReader();
+    iw.close();
+    IndexSearcher searcher = newSearcher(ir);
+    Query query =
+        new IntervalQuery(
+            "body",
+            Intervals.maxgaps(
+                3,
+                Intervals.ordered(
+                    Intervals.wildcard(new BytesRef("comp*")), Intervals.term("science"))));
+    TopDocs topDocs = searcher.search(query, 10);
+    assertEquals(1, topDocs.totalHits.value);
+    UnifiedHighlighter highlighter =
+        new UnifiedHighlighter(searcher, indexAnalyzer) {
+          @Override
+          protected Set<HighlightFlag> getFlags(String field) {
+            Set<HighlightFlag> flags = super.getFlags(field);
+            flags.add(HighlightFlag.WEIGHT_MATCHES);
+            return flags;
+          }
+        };
+
+    String snippets[] = highlighter.highlight("body", query, topDocs, 5);
+    assertEquals(1, snippets.length);
+    ir.close();
+  }
+
+  public void testRepeatingIntervals() throws Exception {
+    String text = "a a b a b a";
+
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+
+    Field body = new Field("body", text, fieldType);
+    Document document = new Document();
+    document.add(body);
+    iw.addDocument(document);
+    IndexReader ir = iw.getReader();
+    iw.close();
+    IndexSearcher searcher = newSearcher(ir);
+    Query query =
+        new IntervalQuery(
+            "body",
+            Intervals.ordered(
+                Intervals.term("a"),
+                Intervals.term("b"),
+                Intervals.term("a"),
+                Intervals.term("b"),
+                Intervals.term("a")));
+    TopDocs topDocs = searcher.search(query, 10);
+    assertEquals(1, topDocs.totalHits.value);
+    UnifiedHighlighter highlighter =
+        new UnifiedHighlighter(searcher, indexAnalyzer) {
+          @Override
+          protected Set<HighlightFlag> getFlags(String field) {
+            Set<HighlightFlag> flags = super.getFlags(field);
+            flags.add(HighlightFlag.WEIGHT_MATCHES);
+            return flags;
+          }
+        };
+
+    String snippets[] = highlighter.highlight("body", query, topDocs, 5);
+    assertEquals(1, snippets.length);
+    assertEquals("a <b>a</b> <b>b</b> <b>a</b> <b>b</b> <b>a</b>", snippets[0]);
     ir.close();
   }
 }

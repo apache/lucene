@@ -97,97 +97,114 @@ final class IntervalMatches {
   }
 
   static IntervalIterator wrapMatches(IntervalMatchesIterator mi, int doc) {
-    return new IntervalIterator() {
+    return new WrappedMatchesIterator(mi, doc);
+  }
 
-      State state = State.UNPOSITIONED;
+  static final class WrappedMatchesIterator extends IntervalIterator
+      implements MinimizingAwareIntervalIterator {
+    private final IntervalMatchesIterator mi;
+    private final int doc;
+    State state;
 
-      @Override
-      public int start() {
-        if (state == State.NO_MORE_INTERVALS) {
-          return NO_MORE_INTERVALS;
-        }
-        assert state == State.ITERATING;
-        return mi.startPosition();
+    public WrappedMatchesIterator(IntervalMatchesIterator mi, int doc) {
+      this.mi = mi;
+      this.doc = doc;
+      state = State.UNPOSITIONED;
+    }
+
+    @Override
+    public void matchFound() throws IOException {
+      if (mi instanceof MinimizingAwareIntervalIterator) {
+        ((MinimizingAwareIntervalIterator) mi).matchFound();
       }
+    }
 
-      @Override
-      public int end() {
-        if (state == State.NO_MORE_INTERVALS) {
-          return NO_MORE_INTERVALS;
-        }
-        assert state == State.ITERATING;
-        return mi.endPosition();
-      }
-
-      @Override
-      public int gaps() {
-        assert state == State.ITERATING;
-        return mi.gaps();
-      }
-
-      @Override
-      public int width() {
-        assert state == State.ITERATING;
-        return mi.width();
-      }
-
-      @Override
-      public int nextInterval() throws IOException {
-        assert state == State.ITERATING;
-        if (mi.next()) {
-          return mi.startPosition();
-        }
-        state = State.NO_MORE_INTERVALS;
+    @Override
+    public int start() {
+      if (state == State.NO_MORE_INTERVALS) {
         return NO_MORE_INTERVALS;
       }
+      assert state == State.ITERATING;
+      return mi.startPosition();
+    }
 
-      @Override
-      public float matchCost() {
-        return 1;
+    @Override
+    public int end() {
+      if (state == State.NO_MORE_INTERVALS) {
+        return NO_MORE_INTERVALS;
       }
+      assert state == State.ITERATING;
+      return mi.endPosition();
+    }
 
-      @Override
-      public int docID() {
-        switch (state) {
-          case UNPOSITIONED:
-            return -1;
-          case ITERATING:
-          case NO_MORE_INTERVALS:
-            return doc;
-          case EXHAUSTED:
-        }
-        return NO_MORE_DOCS;
+    @Override
+    public int gaps() {
+      assert state == State.ITERATING;
+      return mi.gaps();
+    }
+
+    @Override
+    public int width() {
+      assert state == State.ITERATING;
+      return mi.width();
+    }
+
+    @Override
+    public int nextInterval() throws IOException {
+      assert state == State.ITERATING;
+      if (mi.next()) {
+        return mi.startPosition();
       }
+      state = State.NO_MORE_INTERVALS;
+      return NO_MORE_INTERVALS;
+    }
 
-      @Override
-      public int nextDoc() {
-        switch (state) {
-          case UNPOSITIONED:
-            state = State.ITERATING;
-            return doc;
-          case ITERATING:
-          case NO_MORE_INTERVALS:
-            state = State.EXHAUSTED;
-            break;
-          case EXHAUSTED:
-        }
-        return NO_MORE_DOCS;
+    @Override
+    public float matchCost() {
+      return 1;
+    }
+
+    @Override
+    public int docID() {
+      switch (state) {
+        case UNPOSITIONED:
+          return -1;
+        case ITERATING:
+        case NO_MORE_INTERVALS:
+          return doc;
+        case EXHAUSTED:
       }
+      return NO_MORE_DOCS;
+    }
 
-      @Override
-      public int advance(int target) {
-        if (target == doc) {
+    @Override
+    public int nextDoc() {
+      switch (state) {
+        case UNPOSITIONED:
           state = State.ITERATING;
           return doc;
-        }
-        state = State.EXHAUSTED;
-        return NO_MORE_DOCS;
+        case ITERATING:
+        case NO_MORE_INTERVALS:
+          state = State.EXHAUSTED;
+          break;
+        case EXHAUSTED:
       }
+      return NO_MORE_DOCS;
+    }
 
-      @Override
-      public long cost() {
-        return 1;
+    @Override
+    public int advance(int target) {
+      if (target == doc) {
+        state = State.ITERATING;
+        return doc;
       }
-    };
+      state = State.EXHAUSTED;
+      return NO_MORE_DOCS;
+    }
+
+    @Override
+    public long cost() {
+      return 1;
+    }
   }
 }
