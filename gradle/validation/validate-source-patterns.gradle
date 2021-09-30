@@ -79,6 +79,7 @@ subprojects {
 
       // default excludes.
       exclude 'build/**'
+      exclude '**/.idea/**'
 
       // ignore txt files in source resources and tests.
       exclude 'src/**/*.txt'
@@ -248,7 +249,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
       logger.debug('Scanning source file: {}', f);
 
       def text = f.getText('UTF-8');
-      invalidPatterns.each{ pattern,name ->
+      invalidPatterns.each { pattern, name ->
         if (pattern.matcher(text).find()) {
           reportViolation(f, name);
         }
