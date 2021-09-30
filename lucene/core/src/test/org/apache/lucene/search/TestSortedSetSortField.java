@@ -32,7 +32,8 @@ public class TestSortedSetSortField extends LuceneTestCase {
   public void testEmptyIndex() throws Exception {
     IndexSearcher empty = newSearcher(new MultiReader());
     Query query = new TermQuery(new Term("contents", "foo"));
-    TopDocs td = empty.search(query, 10, new Sort(new SortedSetSortField("sortedset", false)), true);
+    TopDocs td =
+        empty.search(query, 10, new Sort(new SortedSetSortField("sortedset", false)), true);
     assertEquals(0, td.totalHits.value);
 
     // for an empty index, any selector should work

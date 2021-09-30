@@ -20,10 +20,9 @@ import static org.apache.lucene.search.SortField.FIELD_DOC;
 import static org.apache.lucene.search.SortField.FIELD_SCORE;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.LongStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
@@ -41,6 +40,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 
 public class TestSortOptimization extends LuceneTestCase {
@@ -76,7 +76,7 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(i, ((Long) fieldDoc.fields[0]).intValue());
       }
       assertTrue(collector.isEarlyTerminated());
-      assertTrue(topDocs.totalHits.value < numDocs);
+      assertTrue(topDocs.totalHits.value + " >= " + numDocs, topDocs.totalHits.value < numDocs);
     }
 
     { // paging sort with after
@@ -210,6 +210,7 @@ public class TestSortOptimization extends LuceneTestCase {
       TopDocs topDocs = collector.topDocs();
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertTrue(
+          topDocs.totalHits.value + " >= " + numDocs,
           topDocs.totalHits.value
               < numDocs); // assert that some docs were skipped => optimization was run
     }
@@ -221,7 +222,7 @@ public class TestSortOptimization extends LuceneTestCase {
   public void testSortOptimizationEqualValues() throws IOException {
     final Directory dir = newDirectory();
     final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
-    final int numDocs = atLeast(10000);
+    final int numDocs = atLeast(TEST_NIGHTLY ? 50_000 : 10_000);
     for (int i = 1; i <= numDocs; ++i) {
       final Document doc = new Document();
       doc.add(
@@ -256,12 +257,13 @@ public class TestSortOptimization extends LuceneTestCase {
               < numDocs); // assert that some docs were skipped => optimization was run
     }
 
-    { // test that sorting on a single field with equal values and after parameter uses the
-      // optimization
+    { // test that sorting on a single field with equal values and after parameter
+      // doesn't use the optimization
       final int afterValue = 100;
+      final int afterDocID = 10 + random().nextInt(1000);
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
       final Sort sort = new Sort(sortField);
-      FieldDoc after = new FieldDoc(10, Float.NaN, new Integer[] {afterValue});
+      FieldDoc after = new FieldDoc(afterDocID, Float.NaN, new Integer[] {afterValue});
       final TopFieldCollector collector =
           TopFieldCollector.create(sort, numHits, after, totalHitsThreshold);
       searcher.search(new MatchAllDocsQuery(), collector);
@@ -270,10 +272,9 @@ public class TestSortOptimization extends LuceneTestCase {
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
         assertEquals(100, fieldDoc.fields[0]);
+        assertTrue(fieldDoc.doc > afterDocID);
       }
-      assertTrue(
-          topDocs.totalHits.value
-              < numDocs); // assert that some docs were skipped => optimization was run
+      assertEquals(topDocs.totalHits.value, numDocs);
     }
 
     { // test that sorting on main field with equal values + another field for tie breaks doesn't
@@ -371,7 +372,7 @@ public class TestSortOptimization extends LuceneTestCase {
     int numHits = 0;
     do {
       for (int i = 0; i < numIndices; i++) {
-        IndexSearcher searcher = newSearcher(readers[i]);
+        IndexSearcher searcher = new IndexSearcher(readers[i]);
         final TopFieldCollector collector =
             TopFieldCollector.create(sort, size, after, totalHitsThreshold);
         searcher.search(new MatchAllDocsQuery(), collector);
@@ -415,7 +416,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     final int numHits = 10;
     final int totalHitsThreshold = 10;
     final int[] searchAfters = {3, 10, numDocs - 10};
@@ -483,6 +484,42 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
+  public void testDocSortOptimizationWithAfterCollectsAllDocs() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    final int numDocs = atLeast(TEST_NIGHTLY ? 50_000 : 5_000);
+    final boolean multipleSegments = random().nextBoolean();
+    final int numDocsInSegment = numDocs / 10 + random().nextInt(numDocs / 10);
+
+    for (int i = 1; i <= numDocs; ++i) {
+      final Document doc = new Document();
+      writer.addDocument(doc);
+      if (multipleSegments && (i % numDocsInSegment == 0)) {
+        writer.flush();
+      }
+    }
+    writer.flush();
+
+    IndexReader reader = DirectoryReader.open(writer);
+    IndexSearcher searcher = newSearcher(reader);
+    int visitedHits = 0;
+    ScoreDoc after = null;
+    while (visitedHits < numDocs) {
+      int batch = 1 + random().nextInt(500);
+      Query query = new MatchAllDocsQuery();
+      TopDocs topDocs = searcher.searchAfter(after, query, batch, new Sort(FIELD_DOC));
+      int expectedHits = Math.min(numDocs - visitedHits, batch);
+      assertEquals(expectedHits, topDocs.scoreDocs.length);
+      after = topDocs.scoreDocs[expectedHits - 1];
+      for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+        assertEquals(visitedHits, topDocs.scoreDocs[i].doc);
+        visitedHits++;
+      }
+    }
+    assertEquals(visitedHits, numDocs);
+    IOUtils.close(writer, reader, dir);
+  }
+
   public void testDocSortOptimization() throws IOException {
     final Directory dir = newDirectory();
     final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
@@ -510,7 +547,7 @@ public class TestSortOptimization extends LuceneTestCase {
     {
       final TopFieldCollector collector =
           TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      IndexSearcher searcher = newSearcher(reader);
+      IndexSearcher searcher = new IndexSearcher(reader);
       searcher.search(new MatchAllDocsQuery(), collector);
       TopDocs topDocs = collector.topDocs();
       assertEquals(numHits, topDocs.scoreDocs.length);
@@ -569,7 +606,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
 
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
     searcher.setQueryCache(null);
     final int numHits = 10;
     final int totalHitsThreshold = 10;
@@ -608,7 +645,7 @@ public class TestSortOptimization extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     writer.close();
 
-    IndexSearcher searcher = newSearcher(reader);
+    IndexSearcher searcher = new IndexSearcher(reader);
 
     SortField longSortOnIntField = new SortField("intField", SortField.Type.LONG);
     assertThrows(
@@ -662,7 +699,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newSearcher(reader);
     SortField sortField = new SortField("my_field", SortField.Type.LONG);
     TopFieldDocs topDocs =
         searcher.search(new MatchAllDocsQuery(), 1 + random().nextInt(100), new Sort(sortField));
@@ -675,7 +712,21 @@ public class TestSortOptimization extends LuceneTestCase {
   public void testRandomLong() throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
-    List<Long> seqNos = LongStream.range(0, atLeast(10_000)).boxed().collect(Collectors.toList());
+    List<Long> seqNos = new ArrayList<>();
+    int iterations = 10000 + random().nextInt(10000);
+    long seqNoGenerator = random().nextInt(1000);
+    for (long i = 0; i < iterations; i++) {
+      int copies = random().nextInt(100) <= 5 ? 1 : 1 + random().nextInt(5);
+      for (int j = 0; j < copies; j++) {
+        seqNos.add(seqNoGenerator);
+      }
+      seqNos.add(seqNoGenerator);
+      seqNoGenerator++;
+      if (random().nextInt(100) <= 5) {
+        seqNoGenerator += random().nextInt(10);
+      }
+    }
+
     Collections.shuffle(seqNos, random());
     int pendingDocs = 0;
     for (long seqNo : seqNos) {
@@ -693,7 +744,7 @@ public class TestSortOptimization extends LuceneTestCase {
     seqNos.sort(Long::compare);
     IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = newSearcher(reader);
     SortField sortField = new SortField("seq_no", SortField.Type.LONG);
     int visitedHits = 0;
     ScoreDoc after = null;

@@ -22,12 +22,11 @@ import java.util.Arrays;
 /**
  * Encapsulates sort criteria for returned hits.
  *
- * A {@link Sort} can be created with an empty constructor, yielding an object that
- * will instruct searches to return their hits sorted by relevance; or it can be
- * created with one or more {@link SortField}s.
+ * <p>A {@link Sort} can be created with an empty constructor, yielding an object that will instruct
+ * searches to return their hits sorted by relevance; or it can be created with one or more {@link
+ * SortField}s.
  *
  * @see SortField
- *
  * @since lucene 1.4
  */
 public class Sort {
@@ -56,7 +55,7 @@ public class Sort {
 
   /** Sorts by the criteria in the given SortField. */
   public Sort(SortField field) {
-    this.fields = new SortField[]{ field };
+    this.fields = new SortField[] {field};
   }
 
   /**

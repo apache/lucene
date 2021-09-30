@@ -69,7 +69,7 @@ public class SparseFixedBitSet extends BitSet {
     bits = new long[blockCount][];
     ramBytesUsed =
         BASE_RAM_BYTES_USED
-            + RamUsageEstimator.shallowSizeOf(indices)
+            + RamUsageEstimator.sizeOf(indices)
             + RamUsageEstimator.shallowSizeOf(bits);
   }
 

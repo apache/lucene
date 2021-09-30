@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -676,9 +675,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         @Override
         public void setMergeInfo(SegmentCommitInfo info) {
           // Record that this merged segment is current as of this schemaGen:
-          Map<String, String> copy = new HashMap<>(info.info.getDiagnostics());
-          copy.put(SCHEMA_GEN_KEY, Long.toString(schemaGen));
-          info.info.setDiagnostics(copy);
+          info.info.addDiagnostics(Map.of(SCHEMA_GEN_KEY, Long.toString(schemaGen)));
           super.setMergeInfo(info);
         }
       }
