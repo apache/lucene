@@ -55,6 +55,7 @@ def extensions = [
     'py',
     'sh',
     'template',
+    'txt',
     'vm',
     'xml',
     'xsl',
@@ -78,6 +79,9 @@ subprojects {
 
       // default excludes.
       exclude 'build/**'
+
+      // ignore txt files in source resources and tests.
+      exclude 'src/**/*.txt'
     }
   }
 
@@ -88,6 +92,8 @@ subprojects {
 configure(project(':lucene:benchmark')) {
   project.tasks.withType(ValidateSourcePatternsTask) {
     sourceFiles.exclude 'data/**'
+    // Known .txt offenders.
+    sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
   }
 }
 
@@ -100,10 +106,6 @@ configure(rootProject) {
       extensions.each{
         include "**/*.${it}"
       }
-
-      // We do not scan for *.txt by default (broken files in subprojects),
-      // but in root we can do this).
-      include '**/*.txt'
 
       // Don't go into child projects (scanned separately).
       childProjects.keySet().each{
