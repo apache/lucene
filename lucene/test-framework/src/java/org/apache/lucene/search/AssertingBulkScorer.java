@@ -94,7 +94,7 @@ final class AssertingBulkScorer extends BulkScorer {
         }
         upTo = Math.toIntExact(Math.min(next + interval, max));
       }
-      next = in.score(collector, acceptDocs, next, upTo);
+      next = in.score(new AssertingLeafCollector(collector, next, upTo), acceptDocs, next, upTo);
     } while (next < max);
 
     if (max >= maxDoc || next >= maxDoc) {
