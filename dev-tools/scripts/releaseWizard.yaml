@@ -471,7 +471,7 @@ groups:
     - major
     - minor
     links:
-    - https://wiki.apache.org/lucene-java/JenkinsReleaseBuilds
+    - https://cwiki.apache.org/confluence/display/LUCENEJAVA/JenkinsReleaseBuilds
   - !Todo
     id: inform_devs
     title: Inform Devs of the new Release Branch
