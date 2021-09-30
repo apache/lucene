@@ -155,6 +155,8 @@ API Changes
 
 Improvements
 
+* LUCENE-10135: Correct passage selector behavior for long matching snippets (Dawid Weiss).
+
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
 
 * LUCENE-9633: Improve match highlighter behavior for degenerate intervals (on non-existing positions).
