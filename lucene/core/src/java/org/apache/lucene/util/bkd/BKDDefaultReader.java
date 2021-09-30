@@ -164,8 +164,8 @@ public class BKDDefaultReader implements BKDReader {
     private final long[] leafBlockFPStack;
     // holds the address, in the off-heap index, of the right-node of each level:
     private final int[] rightNodePositions;
-    // holds the splitDim for each level:
-    private final int[] splitDims;
+    // holds the splitDim position for each level:
+    private final int[] splitDimsPos;
     // true if the per-dim delta we read for the node at this level is a negative offset vs. the
     // last split on this dim; this is a packed
     // 2D array, i.e. to access array[level][dim] you read from negativeDeltas[level*numDims+dim].
@@ -251,7 +251,7 @@ public class BKDDefaultReader implements BKDReader {
       splitValuesStack[0] = new byte[config.packedIndexBytesLength];
       leafBlockFPStack = new long[treeDepth + 1];
       rightNodePositions = new int[treeDepth + 1];
-      splitDims = new int[treeDepth + 1];
+      splitDimsPos = new int[treeDepth + 1];
       negativeDeltas = new boolean[config.numIndexDims * (treeDepth + 1)];
       // scratch objects, reused between clones so NN search are not creating those objects
       // in every clone.
@@ -291,7 +291,7 @@ public class BKDDefaultReader implements BKDReader {
             index.negativeDeltas,
             level * config.numIndexDims,
             config.numIndexDims);
-        index.splitDims[level] = splitDims[level];
+        index.splitDimsPos[level] = splitDimsPos[level];
       }
       return index;
     }
@@ -316,7 +316,7 @@ public class BKDDefaultReader implements BKDReader {
     }
 
     private void pushLeft() throws IOException {
-      final int splitDimPos = splitDims[level] * config.bytesPerDim;
+      final int splitDimPos = splitDimsPos[level];
       if (splitDimValueStack[level] == null) {
         splitDimValueStack[level] = new byte[config.bytesPerDim];
       }
@@ -333,8 +333,8 @@ public class BKDDefaultReader implements BKDReader {
               >= 0
           : "config.bytesPerDim="
               + config.bytesPerDim
-              + " splitDim="
-              + splitDims[level]
+              + " splitDimPos="
+              + splitDimsPos[level]
               + " config.numIndexDims="
               + config.numIndexDims
               + " config.numDims="
@@ -348,7 +348,7 @@ public class BKDDefaultReader implements BKDReader {
     }
 
     private void pushRight() throws IOException {
-      final int splitDimPos = splitDims[level] * config.bytesPerDim;
+      final int splitDimPos = splitDimsPos[level];
       // we should have already visit the left node
       assert splitDimValueStack[level] != null;
       // same the dimension we are going to change
@@ -364,8 +364,8 @@ public class BKDDefaultReader implements BKDReader {
               <= 0
           : "config.bytesPerDim="
               + config.bytesPerDim
-              + " splitDim="
-              + splitDims[level]
+              + " splitDimPos="
+              + splitDimsPos[level]
               + " config.numIndexDims="
               + config.numIndexDims
               + " config.numDims="
@@ -398,11 +398,7 @@ public class BKDDefaultReader implements BKDReader {
       level--;
       // restore the split dimension
       System.arraycopy(
-          splitDimValueStack[level],
-          0,
-          packedValue,
-          splitDims[level] * config.bytesPerDim,
-          config.bytesPerDim);
+          splitDimValueStack[level], 0, packedValue, splitDimsPos[level], config.bytesPerDim);
     }
 
     @Override
@@ -529,7 +525,9 @@ public class BKDDefaultReader implements BKDReader {
             negativeDeltas,
             level * config.numIndexDims,
             config.numIndexDims);
-        negativeDeltas[level * config.numIndexDims + splitDims[level - 1]] = isLeft;
+        negativeDeltas[
+                level * config.numIndexDims + (splitDimsPos[level - 1] / config.bytesPerDim)] =
+            isLeft;
 
         if (splitValuesStack[level] == null) {
           splitValuesStack[level] = splitValuesStack[level - 1].clone();
@@ -544,24 +542,22 @@ public class BKDDefaultReader implements BKDReader {
 
         // read split dim, prefix, firstDiffByteDelta encoded as int:
         int code = innerNodes.readVInt();
-        splitDims[level] = code % config.numIndexDims;
+        int splitDim = code % config.numIndexDims;
+        splitDimsPos[level] = splitDim * config.bytesPerDim;
         code /= config.numIndexDims;
         int prefix = code % (1 + config.bytesPerDim);
         int suffix = config.bytesPerDim - prefix;
 
         if (suffix > 0) {
           int firstDiffByteDelta = code / (1 + config.bytesPerDim);
-          if (negativeDeltas[level * config.numIndexDims + splitDims[level]]) {
+          if (negativeDeltas[level * config.numIndexDims + splitDim]) {
             firstDiffByteDelta = -firstDiffByteDelta;
           }
-          int oldByte =
-              splitValuesStack[level][splitDims[level] * config.bytesPerDim + prefix] & 0xFF;
-          splitValuesStack[level][splitDims[level] * config.bytesPerDim + prefix] =
+          int oldByte = splitValuesStack[level][splitDimsPos[level] + prefix] & 0xFF;
+          splitValuesStack[level][splitDimsPos[level] + prefix] =
               (byte) (oldByte + firstDiffByteDelta);
           innerNodes.readBytes(
-              splitValuesStack[level],
-              splitDims[level] * config.bytesPerDim + prefix + 1,
-              suffix - 1);
+              splitValuesStack[level], splitDimsPos[level] + prefix + 1, suffix - 1);
         } else {
           // our split value is == last split value in this dim, which can happen when there are
           // many duplicate values
