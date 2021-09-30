@@ -18,7 +18,7 @@
 # Developer Scripts
 
 This folder contains various useful scripts for developers, mostly related to
-releasing new versions of Lucene/Solr and testing those.
+releasing new versions of Lucene and testing those.
 
 Python scripts require Python 3. To install necessary python modules, please run:
 
@@ -163,9 +163,9 @@ and prints a regular expression that will match all of them
 
     usage: reproduceJenkinsFailures.py [-h] [--no-git] [--iters N] URL
     
-    Must be run from a Lucene/Solr git workspace. Downloads the Jenkins
+    Must be run from a Lucene git workspace. Downloads the Jenkins
     log pointed to by the given URL, parses it for Git revision and failed
-    Lucene/Solr tests, checks out the Git revision in the local workspace,
+    Lucene tests, checks out the Git revision in the local workspace,
     groups the failed tests by module, then runs
     'ant test -Dtest.dups=%d -Dtests.class="*.test1[|*.test2[...]]" ...'
     in each module of interest, failing at the end if any of the runs fails.
@@ -185,13 +185,13 @@ and prints a regular expression that will match all of them
     usage: poll-mirrors.py [-h] [-version VERSION] [-path PATH]
                            [-interval INTERVAL] [-details] [-once]
     
-    Periodically checks that all Lucene/Solr mirrors contain either a copy of a
+    Periodically checks that all Lucene mirrors contain either a copy of a
     release or a specified path
     
     optional arguments:
       -h, --help            show this help message and exit
       -version VERSION, -v VERSION
-                            Lucene/Solr version to check
+                            Lucene version to check
       -path PATH, -p PATH   instead of a versioned release, check for
                             some/explicit/path
       -interval INTERVAL, -i INTERVAL
