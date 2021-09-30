@@ -686,7 +686,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   public void testAllVersionsTested() throws Exception {
-    Pattern constantPattern = Pattern.compile("LUCENE_(\\d+)_(\\d{1,2})_(\\d+)(_ALPHA|_BETA)?");
+    Pattern constantPattern = Pattern.compile("LUCENE_(\\d+)_(\\d+)_(\\d+)(_ALPHA|_BETA)?");
     // find the unique versions according to Version.java
     List<String> expectedVersions = new ArrayList<>();
     for (java.lang.reflect.Field field : Version.class.getDeclaredFields()) {

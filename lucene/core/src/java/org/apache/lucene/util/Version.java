@@ -334,8 +334,8 @@ public final class Version {
       default:
         version =
             version
-                .replaceFirst("^LUCENE_(\\d+)_(\\d{1,2})_(\\d+)$", "$1.$2.$3")
-                .replaceFirst("^LUCENE_(\\d+)_(\\d{1,2})$", "$1.$2.0")
+                .replaceFirst("^LUCENE_(\\d+)_(\\d+)_(\\d+)$", "$1.$2.$3")
+                .replaceFirst("^LUCENE_(\\d+)_(\\d+)$", "$1.$2.0")
                 .replaceFirst("^LUCENE_(\\d)(\\d)$", "$1.$2.0");
         try {
           return parse(version);
