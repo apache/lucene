@@ -102,7 +102,7 @@ of the other tools in this folder.
       --push-local PATH  Push the release to the local path
       --sign KEYID       Sign the release with the given gpg key
       --rc-num NUM       Release Candidate number. Default: 1
-      --root PATH        Root of Git working tree for lucene-solr. Default: "."
+      --root PATH        Root of Git working tree for lucene. Default: "."
                          (the current directory)
       --logfile PATH     Specify log file path (default /tmp/release.log)
     
@@ -132,8 +132,7 @@ of the other tools in this folder.
 
     usage: addVersion.py [-h] version
     
-    Add a new version to CHANGES, to Version.java, build.gradle and
-    solrconfig.xml files
+    Add a new version to CHANGES, to Version.java and build.gradle files
     
     positional arguments:
       version
