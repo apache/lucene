@@ -21,10 +21,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import org.apache.lucene.analysis.CannedTokenStream;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -615,6 +619,76 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     w.rollback();
     dir.close();
+  }
+
+  // LUCENE-10118 : Verify the basic log output from MergeThreads
+  public void testMergeThreadMessages() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    Set<Thread> mergeThreadSet = ConcurrentHashMap.newKeySet();
+    ConcurrentMergeScheduler cms =
+        new ConcurrentMergeScheduler() {
+          @Override
+          protected synchronized MergeThread getMergeThread(
+              MergeSource mergeSource, MergePolicy.OneMerge merge) throws IOException {
+            MergeThread newMergeThread = super.getMergeThread(mergeSource, merge);
+            mergeThreadSet.add(newMergeThread);
+            return newMergeThread;
+          }
+        };
+    iwc.setMergeScheduler(cms);
+
+    List<String> messages = new ArrayList<>();
+    iwc.setInfoStream(
+        new InfoStream() {
+          @Override
+          public void close() {}
+
+          @Override
+          public void message(String component, String message) {
+            if (component.equals("MS")) messages.add(message);
+          }
+
+          @Override
+          public boolean isEnabled(String component) {
+            if (component.equals("MS")) return true;
+            return false;
+          }
+        });
+    iwc.setMaxBufferedDocs(2);
+    LogMergePolicy lmp = newLogMergePolicy();
+    lmp.setMergeFactor(2);
+    iwc.setMergePolicy(lmp);
+
+    IndexWriter w = new IndexWriter(dir, iwc);
+    Document doc = new Document();
+    doc.add(new TextField("foo", new CannedTokenStream()));
+    w.addDocument(doc);
+    w.addDocument(new Document());
+    // flush
+    w.addDocument(new Document());
+    w.addDocument(new Document());
+    // flush + merge
+    w.close();
+    dir.close();
+
+    assertTrue(mergeThreadSet.size() > 0);
+    for (Thread t : mergeThreadSet) {
+      t.join();
+    }
+    for (Thread t : mergeThreadSet) {
+      String name = t.getName();
+      List<String> threadMsgs =
+          messages.stream()
+              .filter(line -> line.startsWith("merge thread " + name))
+              .collect(Collectors.toList());
+      assertTrue(threadMsgs.size() >= 3);
+      assertTrue(threadMsgs.get(0).startsWith("merge thread " + name + " start"));
+      assertTrue(
+          threadMsgs.stream()
+              .anyMatch(line -> line.startsWith("merge thread " + name + " merge segment")));
+      assertTrue(threadMsgs.get(threadMsgs.size() - 1).startsWith("merge thread " + name + " end"));
+    }
   }
 
   public void testDynamicDefaults() throws Exception {
