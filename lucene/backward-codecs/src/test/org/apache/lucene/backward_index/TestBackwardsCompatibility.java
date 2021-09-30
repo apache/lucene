@@ -383,6 +383,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.8.0.0",
     "sorted.8.1.0",
     "sorted.8.1.1",
+    "sorted.8.10.0",
     "sorted.8.2.0",
     "sorted.8.3.0",
     "sorted.8.3.1",
@@ -685,7 +686,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   public void testAllVersionsTested() throws Exception {
-    Pattern constantPattern = Pattern.compile("LUCENE_(\\d+)_(\\d+)_(\\d+)(_ALPHA|_BETA)?");
+    Pattern constantPattern = Pattern.compile("LUCENE_(\\d+)_(\\d{1,2})_(\\d+)(_ALPHA|_BETA)?");
     // find the unique versions according to Version.java
     List<String> expectedVersions = new ArrayList<>();
     for (java.lang.reflect.Field field : Version.class.getDeclaredFields()) {

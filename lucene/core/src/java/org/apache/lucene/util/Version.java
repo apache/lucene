@@ -169,6 +169,13 @@ public final class Version {
   @Deprecated public static final Version LUCENE_8_9_0 = new Version(8, 9, 0);
 
   /**
+   * Match settings and bugs in Lucene's 8.10.0 release.
+   * @deprecated (8.11.0) Use latest
+   */
+  @Deprecated
+  public static final Version LUCENE_8_10_0 = new Version(8, 10, 0);
+
+  /**
    * Match settings and bugs in Lucene's 9.0.0 release.
    *
    * <p>Use this to get the latest &amp; greatest settings, bug fixes, etc, for Lucene.
@@ -327,8 +334,8 @@ public final class Version {
       default:
         version =
             version
-                .replaceFirst("^LUCENE_(\\d+)_(\\d+)_(\\d+)$", "$1.$2.$3")
-                .replaceFirst("^LUCENE_(\\d+)_(\\d+)$", "$1.$2.0")
+                .replaceFirst("^LUCENE_(\\d+)_(\\d{1,2})_(\\d+)$", "$1.$2.$3")
+                .replaceFirst("^LUCENE_(\\d+)_(\\d{1,2})$", "$1.$2.0")
                 .replaceFirst("^LUCENE_(\\d)(\\d)$", "$1.$2.0");
         try {
           return parse(version);
