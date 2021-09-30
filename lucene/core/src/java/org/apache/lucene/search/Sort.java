@@ -29,7 +29,7 @@ import java.util.Arrays;
  * @see SortField
  * @since lucene 1.4
  */
-public class Sort {
+public final class Sort {
 
   /**
    * Represents sorting by computed relevance. Using this sort criteria returns the same results as
