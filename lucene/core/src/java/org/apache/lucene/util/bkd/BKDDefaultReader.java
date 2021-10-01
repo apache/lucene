@@ -351,7 +351,7 @@ public class BKDDefaultReader implements BKDReader {
       final int splitDimPos = splitDimsPos[level];
       // we should have already visit the left node
       assert splitDimValueStack[level] != null;
-      // same the dimension we are going to change
+      // save the dimension we are going to change
       System.arraycopy(
           minPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
       assert Arrays.compareUnsigned(
@@ -542,28 +542,27 @@ public class BKDDefaultReader implements BKDReader {
 
         // read split dim, prefix, firstDiffByteDelta encoded as int:
         int code = innerNodes.readVInt();
-        int splitDim = code % config.numIndexDims;
+        final int splitDim = code % config.numIndexDims;
         splitDimsPos[level] = splitDim * config.bytesPerDim;
         code /= config.numIndexDims;
-        int prefix = code % (1 + config.bytesPerDim);
-        int suffix = config.bytesPerDim - prefix;
+        final int prefix = code % (1 + config.bytesPerDim);
+        final int suffix = config.bytesPerDim - prefix;
 
         if (suffix > 0) {
           int firstDiffByteDelta = code / (1 + config.bytesPerDim);
           if (negativeDeltas[level * config.numIndexDims + splitDim]) {
             firstDiffByteDelta = -firstDiffByteDelta;
           }
-          int oldByte = splitValuesStack[level][splitDimsPos[level] + prefix] & 0xFF;
-          splitValuesStack[level][splitDimsPos[level] + prefix] =
-              (byte) (oldByte + firstDiffByteDelta);
-          innerNodes.readBytes(
-              splitValuesStack[level], splitDimsPos[level] + prefix + 1, suffix - 1);
+          final int startPos = splitDimsPos[level] + prefix;
+          final int oldByte = splitValuesStack[level][startPos] & 0xFF;
+          splitValuesStack[level][startPos] = (byte) (oldByte + firstDiffByteDelta);
+          innerNodes.readBytes(splitValuesStack[level], startPos + 1, suffix - 1);
         } else {
           // our split value is == last split value in this dim, which can happen when there are
           // many duplicate values
         }
 
-        int leftNumBytes;
+        final int leftNumBytes;
         if (nodeID * 2 < leafNodeOffset) {
           leftNumBytes = innerNodes.readVInt();
         } else {
