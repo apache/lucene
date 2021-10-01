@@ -392,4 +392,50 @@ public class TestSegmentInfos extends LuceneTestCase {
     dir.close();
     corruptDir.close();
   }
+
+  /** Test addDiagnostics method */
+  public void testAddDiagnostics() throws Throwable {
+    SegmentInfo si;
+    final Directory dir = newDirectory();
+    Codec codec = Codec.getDefault();
+
+    // diagnostics map
+    Map<String, String> diagnostics = Map.of("key1", "value1", "key2", "value2");
+
+    // adds an additional key/value pair
+    si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "TEST",
+            10000,
+            false,
+            codec,
+            diagnostics,
+            StringHelper.randomId(),
+            new HashMap<>(),
+            Sort.INDEXORDER);
+    si.addDiagnostics(Map.of("key3", "value3"));
+    assertEquals(Map.of("key1", "value1", "key2", "value2", "key3", "value3"), si.getDiagnostics());
+
+    // modifies an existing key/value pair
+    si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "TEST",
+            10000,
+            false,
+            codec,
+            diagnostics,
+            StringHelper.randomId(),
+            new HashMap<>(),
+            Sort.INDEXORDER);
+    si.addDiagnostics(Map.of("key2", "foo"));
+    assertEquals(Map.of("key1", "value1", "key2", "foo"), si.getDiagnostics());
+
+    dir.close();
+  }
 }

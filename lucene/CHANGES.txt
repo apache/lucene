@@ -153,7 +153,11 @@ API Changes
 * LUCENE-10115: Add an extension point, BaseQueryParser#getFuzzyDistance, to allow custom
   query parsers to determine the similarity distance for fuzzy queries. (Chris Hegarty)
 
+*  LUCENE-10132: Support addition of diagnostics by custom merge policies (Chris Hegarty)
+
 Improvements
+
+* LUCENE-10135: Correct passage selector behavior for long matching snippets (Dawid Weiss).
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
 
