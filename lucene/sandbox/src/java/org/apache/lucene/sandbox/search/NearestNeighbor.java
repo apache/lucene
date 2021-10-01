@@ -293,6 +293,9 @@ class NearestNeighbor {
     while (cellQueue.size() > 0) {
       Cell cell = cellQueue.poll();
       // System.out.println("  visit " + cell);
+      if (visitor.compare(cell.minPacked, cell.maxPacked) == Relation.CELL_OUTSIDE_QUERY) {
+        continue;
+      }
 
       // TODO: if we replace approxBestDistance with actualBestDistance, we can put an opto here to
       // break once this "best" cell is fully outside of the hitQueue bottom's radius:
@@ -307,12 +310,8 @@ class NearestNeighbor {
       } else {
         // System.out.println("    non-leaf");
         // Non-leaf block: split into two cells and put them back into the queue:
-
-        if (visitor.compare(cell.minPacked, cell.maxPacked) == Relation.CELL_OUTSIDE_QUERY) {
-          continue;
-        }
-
-        // we must clone the index so that we we can recurse left and right "concurrently":
+        
+        // we must clone the index so that we can recurse left and right "concurrently":
         IndexTree newIndex = cell.index.clone();
 
         cellQueue.offer(
@@ -327,6 +326,7 @@ class NearestNeighbor {
                     pointLat,
                     pointLon)));
 
+        // TODO: we are assuming a binary tree
         if (cell.index.moveToSibling()) {
           cellQueue.offer(
               new Cell(
