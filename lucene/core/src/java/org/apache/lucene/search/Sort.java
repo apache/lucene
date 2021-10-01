@@ -53,11 +53,6 @@ public final class Sort {
     this(SortField.FIELD_SCORE);
   }
 
-  /** Sorts by the criteria in the given SortField. */
-  public Sort(SortField field) {
-    this.fields = new SortField[] {field};
-  }
-
   /**
    * Sets the sort to the given criteria in succession: the first SortField is checked first, but if
    * it produces a tie, then the second SortField is used to break the tie, etc. Finally, if there
