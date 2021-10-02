@@ -116,17 +116,48 @@ public class SparseFixedBitSet extends BitSet {
     final int i4096 = i >>> 12;
     final long index = indices[i4096];
     final int i64 = i >>> 6;
+    final long i64bit = 1L << i64;
     // first check the index, if the i64-th bit is not set, then i is not set
     // note: this relies on the fact that shifts are mod 64 in java
-    if ((index & (1L << i64)) == 0) {
+    if ((index & i64bit) == 0) {
       return false;
     }
 
     // if it is set, then we count the number of bits that are set on the right
     // of i64, and that gives us the index of the long that stores the bits we
     // are interested in
-    final long bits = this.bits[i4096][Long.bitCount(index & ((1L << i64) - 1))];
+    final long bits = this.bits[i4096][Long.bitCount(index & (i64bit - 1))];
     return (bits & (1L << i)) != 0;
+  }
+
+  @Override
+  public boolean getAndSet(int i) {
+    assert consistent(i);
+    final int i4096 = i >>> 12;
+    final long index = indices[i4096];
+    final int i64 = i >>> 6;
+    final long i64bit = 1L << i64;
+    if ((index & i64bit) != 0) {
+      // in that case the sub 64-bits block we are interested in already exists,
+      // we just need to set a bit in an existing long: the number of ones on
+      // the right of i64 gives us the index of the long we need to update
+      final int location = Long.bitCount(index & (i64bit - 1));
+      final long bit = 1L << i; // shifts are mod 64 in java
+      boolean v = (bits[i4096][location] & bit) != 0;
+      bits[i4096][location] |= bit;
+      return v;
+    } else if (index == 0) {
+      // if the index is 0, it means that we just found a block of 4096 bits
+      // that has no bit that is set yet. So let's initialize a new block:
+      insertBlock(i4096, i64, i);
+      return false;
+    } else {
+      // in that case we found a block of 4096 bits that has some values, but
+      // the sub-block of 64 bits that we are interested in has no value yet,
+      // so we need to insert a new long
+      insertLong(i4096, i64, i, index);
+      return false;
+    }
   }
 
   private static int oversize(int s) {
@@ -144,11 +175,12 @@ public class SparseFixedBitSet extends BitSet {
     final int i4096 = i >>> 12;
     final long index = indices[i4096];
     final int i64 = i >>> 6;
-    if ((index & (1L << i64)) != 0) {
+    final long i64bit = 1L << i64;
+    if ((index & i64bit) != 0) {
       // in that case the sub 64-bits block we are interested in already exists,
       // we just need to set a bit in an existing long: the number of ones on
       // the right of i64 gives us the index of the long we need to update
-      bits[i4096][Long.bitCount(index & ((1L << i64) - 1))] |= 1L << i; // shifts are mod 64 in java
+      bits[i4096][Long.bitCount(index & (i64bit - 1))] |= 1L << i; // shifts are mod 64 in java
     } else if (index == 0) {
       // if the index is 0, it means that we just found a block of 4096 bits
       // that has no bit that is set yet. So let's initialize a new block:
