@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.SplittableRandom;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -97,7 +97,7 @@ public final class HnswGraph extends KnnGraphValues {
       VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
       Bits acceptOrds,
-      Random random)
+      SplittableRandom random)
       throws IOException {
     int size = graphValues.size();
 

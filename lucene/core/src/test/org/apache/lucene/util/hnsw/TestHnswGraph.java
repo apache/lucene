@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.SplittableRandom;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
@@ -141,7 +142,7 @@ public class TestHnswGraph extends LuceneTestCase {
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             null,
-            random());
+            new SplittableRandom(random().nextLong()));
 
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
@@ -182,7 +183,7 @@ public class TestHnswGraph extends LuceneTestCase {
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             acceptOrds,
-            random());
+            new SplittableRandom(random().nextLong()));
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
@@ -325,7 +326,14 @@ public class TestHnswGraph extends LuceneTestCase {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
           HnswGraph.search(
-              query, topK, 100, vectors, similarityFunction, hnsw, acceptOrds, random());
+              query,
+              topK,
+              100,
+              vectors,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              new SplittableRandom(random().nextLong()));
       NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
