@@ -22,6 +22,7 @@ import java.util.Arrays;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.MathUtil;
 
 /**
@@ -317,6 +318,27 @@ public abstract class MultiLevelSkipListReader implements Closeable {
     public void readBytes(byte[] b, int offset, int len) {
       System.arraycopy(data, pos, b, offset, len);
       pos += len;
+    }
+
+    @Override
+    public short readShort() throws IOException {
+      short value = (short) BitUtil.VH_LE_SHORT.get(pos);
+      pos += Short.BYTES;
+      return value;
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      int value = (int) BitUtil.VH_LE_INT.get(pos);
+      pos += Integer.BYTES;
+      return value;
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      long value = (long) BitUtil.VH_LE_LONG.get(pos);
+      pos += Long.BYTES;
+      return value;
     }
 
     @Override

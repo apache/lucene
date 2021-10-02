@@ -36,6 +36,23 @@ public class OutputStreamDataOutput extends DataOutput implements Closeable {
     os.write(b, offset, length);
   }
 
+  // TODO: we could buffer the output and be more efficient, like OutputStreamIndexOutput?
+
+  @Override
+  public void writeInt(int i) throws IOException {
+    writeIntSlowly(i);
+  }
+
+  @Override
+  public void writeShort(short i) throws IOException {
+    writeShortSlowly(i);
+  }
+
+  @Override
+  public void writeLong(long i) throws IOException {
+    writeLongSlowly(i);
+  }
+
   @Override
   public void close() throws IOException {
     os.close();

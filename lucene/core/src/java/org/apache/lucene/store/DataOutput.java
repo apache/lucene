@@ -67,9 +67,17 @@ public abstract class DataOutput {
    *
    * <p>32-bit unsigned integer written as four bytes, low-order bytes first.
    *
+   * @see #writeIntSlowly(int)
+   * @see BitUtil#VH_LE_INT
+   */
+  public abstract void writeInt(int i) throws IOException;
+
+  /**
+   * Writes an int as four bytes (one-at-a-time).
+   *
    * @see DataInput#readInt()
    */
-  public void writeInt(int i) throws IOException {
+  protected final void writeIntSlowly(int i) throws IOException {
     writeByte((byte) i);
     writeByte((byte) (i >> 8));
     writeByte((byte) (i >> 16));
@@ -79,9 +87,17 @@ public abstract class DataOutput {
   /**
    * Writes a short as two bytes.
    *
+   * @see #writeShortSlowly(short)
+   * @see BitUtil#VH_LE_SHORT
+   */
+  public abstract void writeShort(short i) throws IOException;
+
+  /**
+   * Writes a short as two bytes (one-at-a-time).
+   *
    * @see DataInput#readShort()
    */
-  public void writeShort(short i) throws IOException {
+  protected final void writeShortSlowly(short i) throws IOException {
     writeByte((byte) i);
     writeByte((byte) (i >> 8));
   }
@@ -219,9 +235,17 @@ public abstract class DataOutput {
    *
    * <p>64-bit unsigned integer written as eight bytes, low-order bytes first.
    *
+   * @see #writeLongSlowly(long)
+   * @see BitUtil#VH_LE_LONG
+   */
+  public abstract void writeLong(long i) throws IOException;
+
+  /**
+   * Writes a long as eight bytes (one-at-a-time).
+   *
    * @see DataInput#readLong()
    */
-  public void writeLong(long i) throws IOException {
+  protected final void writeLongSlowly(long i) throws IOException {
     writeInt((int) i);
     writeInt((int) (i >> 32));
   }

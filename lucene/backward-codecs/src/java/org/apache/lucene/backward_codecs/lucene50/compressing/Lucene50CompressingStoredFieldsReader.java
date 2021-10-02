@@ -665,6 +665,23 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
                 bytes.length -= len;
               }
 
+              // TODO: can/should these be more efficient?
+
+              @Override
+              public short readShort() throws IOException {
+                return readShortSlowly();
+              }
+
+              @Override
+              public int readInt() throws IOException {
+                return readIntSlowly();
+              }
+
+              @Override
+              public long readLong() throws IOException {
+                return readLongSlowly();
+              }
+
               @Override
               public void skipBytes(long numBytes) throws IOException {
                 if (numBytes < 0) {

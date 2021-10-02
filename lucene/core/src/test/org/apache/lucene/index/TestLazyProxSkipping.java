@@ -191,6 +191,21 @@ public class TestLazyProxSkipping extends LuceneTestCase {
     }
 
     @Override
+    public short readShort() throws IOException {
+      return input.readShort();
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      return input.readInt();
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      return input.readLong();
+    }
+
+    @Override
     public void close() throws IOException {
       this.input.close();
     }

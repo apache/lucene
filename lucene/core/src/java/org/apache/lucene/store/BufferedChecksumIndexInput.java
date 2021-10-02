@@ -42,6 +42,21 @@ public class BufferedChecksumIndexInput extends ChecksumIndexInput {
   }
 
   @Override
+  public short readShort() throws IOException {
+    return readShortSlowly();
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    return readIntSlowly();
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    return readLongSlowly();
+  }
+
+  @Override
   public void readBytes(byte[] b, int offset, int len) throws IOException {
     main.readBytes(b, offset, len);
     digest.update(b, offset, len);

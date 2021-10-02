@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
+import java.io.IOException;
+
 // TODO: can we use just ByteArrayDataInput...?  need to
 // add a .skipBytes to DataInput.. hmm and .setPosition
 
@@ -37,6 +39,23 @@ final class ForwardBytesReader extends FST.BytesReader {
   public void readBytes(byte[] b, int offset, int len) {
     System.arraycopy(bytes, pos, b, offset, len);
     pos += len;
+  }
+
+  // TODO: can/should these be more efficient?
+
+  @Override
+  public short readShort() throws IOException {
+    return readShortSlowly();
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    return readIntSlowly();
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    return readLongSlowly();
   }
 
   @Override

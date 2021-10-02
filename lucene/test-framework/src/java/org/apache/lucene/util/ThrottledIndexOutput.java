@@ -111,6 +111,23 @@ public class ThrottledIndexOutput extends IndexOutput {
     sleep(getDelay(false));
   }
 
+  // TODO: can/should these be more efficient?
+
+  @Override
+  public void writeInt(int i) throws IOException {
+    writeIntSlowly(i);
+  }
+
+  @Override
+  public void writeShort(short i) throws IOException {
+    writeShortSlowly(i);
+  }
+
+  @Override
+  public void writeLong(long i) throws IOException {
+    writeLongSlowly(i);
+  }
+
   protected long getDelay(boolean closing) {
     if (pendingBytes > 0 && (closing || pendingBytes > minBytesWritten)) {
       long actualBps = (timeElapsed / pendingBytes) * 1000000000l; // nano to sec

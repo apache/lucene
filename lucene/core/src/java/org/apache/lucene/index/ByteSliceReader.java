@@ -74,6 +74,23 @@ final class ByteSliceReader extends DataInput {
     return buffer[upto++];
   }
 
+  // TODO: should/can these be more efficient?
+
+  @Override
+  public short readShort() throws IOException {
+    return readShortSlowly();
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    return readIntSlowly();
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    return readLongSlowly();
+  }
+
   public long writeTo(DataOutput out) throws IOException {
     long size = 0;
     while (true) {

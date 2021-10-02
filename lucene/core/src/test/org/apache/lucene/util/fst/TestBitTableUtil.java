@@ -165,6 +165,21 @@ public class TestBitTableUtil extends LuceneTestCase {
     }
 
     @Override
+    public short readShort() throws IOException {
+      return readShortSlowly();
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      return readIntSlowly();
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      return readLongSlowly();
+    }
+
+    @Override
     public void readBytes(byte[] b, int offset, int len) {
       throw new UnsupportedOperationException();
     }

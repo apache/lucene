@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_MASK;
 
+import java.io.IOException;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ByteBlockPool;
 
@@ -62,6 +63,23 @@ final class ByteSliceWriter extends DataOutput {
     }
     slice[upto++] = b;
     assert upto != slice.length;
+  }
+
+  // TODO: should/could these be more efficient?
+
+  @Override
+  public void writeInt(int i) throws IOException {
+    writeIntSlowly(i);
+  }
+
+  @Override
+  public void writeShort(short i) throws IOException {
+    writeShortSlowly(i);
+  }
+
+  @Override
+  public void writeLong(long i) throws IOException {
+    writeLongSlowly(i);
   }
 
   @Override

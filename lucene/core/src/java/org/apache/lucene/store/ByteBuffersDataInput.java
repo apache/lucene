@@ -103,6 +103,24 @@ public final class ByteBuffersDataInput extends DataInput
     }
   }
 
+  @Override
+  public short readShort() throws IOException {
+    // TODO: use ByteBuffer.getShort
+    return readShortSlowly();
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    // TODO: use ByteBuffer.getInt
+    return readIntSlowly();
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    // TODO: use ByteBuffer.getLong
+    return readLongSlowly();
+  }
+
   /**
    * Reads exactly {@code len} bytes into the given buffer. The buffer must have enough remaining
    * limit.

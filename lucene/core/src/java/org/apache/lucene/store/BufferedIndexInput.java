@@ -137,7 +137,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     if (Short.BYTES <= buffer.remaining()) {
       return buffer.getShort();
     } else {
-      return super.readShort();
+      return readShortSlowly();
     }
   }
 
@@ -146,7 +146,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     if (Integer.BYTES <= buffer.remaining()) {
       return buffer.getInt();
     } else {
-      return super.readInt();
+      return readIntSlowly();
     }
   }
 
@@ -155,7 +155,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     if (Long.BYTES <= buffer.remaining()) {
       return buffer.getLong();
     } else {
-      return super.readLong();
+      return readLongSlowly();
     }
   }
 

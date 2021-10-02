@@ -41,6 +41,23 @@ final class ReverseRandomAccessReader extends FST.BytesReader {
     }
   }
 
+  // TODO: can/should these be more efficient?
+
+  @Override
+  public short readShort() throws IOException {
+    return readShortSlowly();
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    return readIntSlowly();
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    return readLongSlowly();
+  }
+
   @Override
   public void skipBytes(long count) {
     pos -= count;

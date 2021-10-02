@@ -75,9 +75,17 @@ public abstract class DataInput implements Cloneable {
   /**
    * Reads two bytes and returns a short.
    *
+   * @see #readShortSlowly()
+   * @see BitUtil#VH_LE_SHORT
+   */
+  public abstract short readShort() throws IOException;
+
+  /**
+   * Reads two bytes (one-at-a-time) and returns a short.
+   *
    * @see DataOutput#writeByte(byte)
    */
-  public short readShort() throws IOException {
+  protected final short readShortSlowly() throws IOException {
     final byte b1 = readByte();
     final byte b2 = readByte();
     return (short) (((b2 & 0xFF) << 8) | (b1 & 0xFF));
@@ -86,9 +94,17 @@ public abstract class DataInput implements Cloneable {
   /**
    * Reads four bytes and returns an int.
    *
+   * @see #readIntSlowly()
+   * @see BitUtil#VH_LE_INT
+   */
+  public abstract int readInt() throws IOException;
+
+  /**
+   * Reads four bytes (one-at-a-time) and returns an int.
+   *
    * @see DataOutput#writeInt(int)
    */
-  public int readInt() throws IOException {
+  protected final int readIntSlowly() throws IOException {
     final byte b1 = readByte();
     final byte b2 = readByte();
     final byte b3 = readByte();
@@ -148,9 +164,17 @@ public abstract class DataInput implements Cloneable {
   /**
    * Reads eight bytes and returns a long.
    *
+   * @see #readLongSlowly()
+   * @see BitUtil#VH_LE_LONG
+   */
+  public abstract long readLong() throws IOException;
+
+  /**
+   * Reads eight bytes (one-at-a-time) and returns a long.
+   *
    * @see DataOutput#writeLong(long)
    */
-  public long readLong() throws IOException {
+  protected final long readLongSlowly() throws IOException {
     return (readInt() & 0xFFFFFFFFL) | (((long) readInt()) << 32);
   }
 

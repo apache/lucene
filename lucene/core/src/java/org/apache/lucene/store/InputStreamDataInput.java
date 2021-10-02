@@ -34,6 +34,21 @@ public class InputStreamDataInput extends DataInput implements Closeable {
   }
 
   @Override
+  public short readShort() throws IOException {
+    return readShortSlowly();
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    return readIntSlowly();
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    return readLongSlowly();
+  }
+
+  @Override
   public void readBytes(byte[] b, int offset, int len) throws IOException {
     while (len > 0) {
       final int cnt = is.read(b, offset, len);

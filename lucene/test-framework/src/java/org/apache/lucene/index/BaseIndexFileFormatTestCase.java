@@ -811,6 +811,23 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
       }
       in.readBytes(b, offset, len);
     }
+
+    // TODO: can/should these be more efficient?
+
+    @Override
+    public short readShort() throws IOException {
+      return readShortSlowly();
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      return readIntSlowly();
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      return readLongSlowly();
+    }
   }
 
   /** A directory that tracks read bytes. */
@@ -860,6 +877,23 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         public byte readByte() throws IOException {
           set.set(Math.toIntExact(getFilePointer()));
           return in.readByte();
+        }
+
+        // TODO: can/should these be more efficient?
+
+        @Override
+        public short readShort() throws IOException {
+          return readShortSlowly();
+        }
+
+        @Override
+        public int readInt() throws IOException {
+          return readIntSlowly();
+        }
+
+        @Override
+        public long readLong() throws IOException {
+          return readLongSlowly();
         }
 
         @Override

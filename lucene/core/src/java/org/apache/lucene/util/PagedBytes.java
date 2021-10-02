@@ -355,6 +355,23 @@ public final class PagedBytes implements Accountable {
       }
     }
 
+    // TODO: can/should these be more efficient?
+
+    @Override
+    public short readShort() throws IOException {
+      return readShortSlowly();
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      return readIntSlowly();
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      return readLongSlowly();
+    }
+
     @Override
     public void skipBytes(long numBytes) {
       if (numBytes < 0) {
@@ -422,6 +439,22 @@ public final class PagedBytes implements Accountable {
           break;
         }
       }
+    }
+
+    // TODO: can/should these be more efficient?
+    @Override
+    public void writeInt(int i) throws IOException {
+      writeIntSlowly(i);
+    }
+
+    @Override
+    public void writeShort(short i) throws IOException {
+      writeShortSlowly(i);
+    }
+
+    @Override
+    public void writeLong(long i) throws IOException {
+      writeLongSlowly(i);
     }
 
     /** Return the current byte position. */

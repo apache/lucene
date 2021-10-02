@@ -381,6 +381,21 @@ public class TestIndexInput extends LuceneTestCase {
     }
 
     @Override
+    public short readShort() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void close() {
       // no-op
     }

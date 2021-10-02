@@ -308,7 +308,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
       if (currentBlock.remaining() >= Short.BYTES) {
         currentBlock.putShort(v);
       } else {
-        super.writeShort(v);
+        writeShortSlowly(v);
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -321,7 +321,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
       if (currentBlock.remaining() >= Integer.BYTES) {
         currentBlock.putInt(v);
       } else {
-        super.writeInt(v);
+        writeIntSlowly(v);
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -334,7 +334,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
       if (currentBlock.remaining() >= Long.BYTES) {
         currentBlock.putLong(v);
       } else {
-        super.writeLong(v);
+        writeLongSlowly(v);
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);

@@ -113,6 +113,23 @@ class BytesStore extends DataOutput implements Accountable {
     }
   }
 
+  // TODO: can/should these be more efficient?
+
+  @Override
+  public void writeInt(int i) throws IOException {
+    writeIntSlowly(i);
+  }
+
+  @Override
+  public void writeShort(short i) throws IOException {
+    writeShortSlowly(i);
+  }
+
+  @Override
+  public void writeLong(long i) throws IOException {
+    writeLongSlowly(i);
+  }
+
   int getBlockBits() {
     return blockBits;
   }
@@ -417,6 +434,23 @@ class BytesStore extends DataOutput implements Accountable {
         }
       }
 
+      // TODO: can/should these be more efficient?
+
+      @Override
+      public short readShort() throws IOException {
+        return readShortSlowly();
+      }
+
+      @Override
+      public int readInt() throws IOException {
+        return readIntSlowly();
+      }
+
+      @Override
+      public long readLong() throws IOException {
+        return readLongSlowly();
+      }
+
       @Override
       public long getPosition() {
         return ((long) nextBuffer - 1) * blockSize + nextRead;
@@ -472,6 +506,23 @@ class BytesStore extends DataOutput implements Accountable {
         for (int i = 0; i < len; i++) {
           b[offset + i] = readByte();
         }
+      }
+
+      // TODO: can/should these be more efficient?
+
+      @Override
+      public short readShort() throws IOException {
+        return readShortSlowly();
+      }
+
+      @Override
+      public int readInt() throws IOException {
+        return readIntSlowly();
+      }
+
+      @Override
+      public long readLong() throws IOException {
+        return readLongSlowly();
       }
 
       @Override

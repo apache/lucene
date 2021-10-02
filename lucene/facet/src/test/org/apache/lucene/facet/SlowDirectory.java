@@ -113,6 +113,23 @@ public class SlowDirectory extends FilterDirectory {
       ii.readBytes(b, offset, len);
     }
 
+    // TODO: can/should these be more efficient?
+
+    @Override
+    public short readShort() throws IOException {
+      return readShortSlowly();
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      return readIntSlowly();
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      return readLongSlowly();
+    }
+
     // TODO: is it intentional that clone doesnt wrap?
     @Override
     public IndexInput clone() {
@@ -186,6 +203,23 @@ public class SlowDirectory extends FilterDirectory {
       }
       numWrote += length;
       io.writeBytes(b, offset, length);
+    }
+
+    // TODO: can/should these be more efficient?
+
+    @Override
+    public void writeInt(int i) throws IOException {
+      writeIntSlowly(i);
+    }
+
+    @Override
+    public void writeShort(short i) throws IOException {
+      writeShortSlowly(i);
+    }
+
+    @Override
+    public void writeLong(long i) throws IOException {
+      writeLongSlowly(i);
     }
 
     @Override

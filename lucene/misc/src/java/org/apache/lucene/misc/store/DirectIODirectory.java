@@ -253,6 +253,23 @@ public class DirectIODirectory extends FilterDirectory {
       }
     }
 
+    // TODO: can/should these be more efficient?
+
+    @Override
+    public void writeInt(int i) throws IOException {
+      writeIntSlowly(i);
+    }
+
+    @Override
+    public void writeShort(short i) throws IOException {
+      writeShortSlowly(i);
+    }
+
+    @Override
+    public void writeLong(long i) throws IOException {
+      writeLongSlowly(i);
+    }
+
     private void dump() throws IOException {
       final int size = buffer.position();
 
@@ -424,6 +441,23 @@ public class DirectIODirectory extends FilterDirectory {
           break;
         }
       }
+    }
+
+    // TODO: can/should these be more efficient?
+
+    @Override
+    public short readShort() throws IOException {
+      return readShortSlowly();
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      return readIntSlowly();
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      return readLongSlowly();
     }
 
     @Override

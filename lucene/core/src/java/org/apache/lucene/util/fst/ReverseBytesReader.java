@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
+import java.io.IOException;
+
 /** Reads in reverse from a single byte[]. */
 final class ReverseBytesReader extends FST.BytesReader {
   private final byte[] bytes;
@@ -35,6 +37,23 @@ final class ReverseBytesReader extends FST.BytesReader {
     for (int i = 0; i < len; i++) {
       b[offset + i] = bytes[pos--];
     }
+  }
+
+  // TODO: can/should these be more efficient?
+
+  @Override
+  public short readShort() throws IOException {
+    return readShortSlowly();
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    return readIntSlowly();
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    return readLongSlowly();
   }
 
   @Override

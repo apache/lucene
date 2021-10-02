@@ -316,6 +316,21 @@ public class TestCodecUtil extends LuceneTestCase {
           public void writeBytes(byte[] b, int offset, int length) throws IOException {
             output.writeBytes(b, offset, length);
           }
+
+          @Override
+          public void writeInt(int i) throws IOException {
+            writeIntSlowly(i);
+          }
+
+          @Override
+          public void writeShort(short i) throws IOException {
+            writeShortSlowly(i);
+          }
+
+          @Override
+          public void writeLong(long i) throws IOException {
+            writeLongSlowly(i);
+          }
         };
 
     fakeChecksum.set(-1L); // bad

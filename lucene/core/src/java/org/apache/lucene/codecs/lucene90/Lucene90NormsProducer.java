@@ -323,6 +323,11 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       }
 
       @Override
+      public int readInt() throws IOException {
+        throw new UnsupportedOperationException("Unused by IndexedDISI");
+      }
+
+      @Override
       public void seek(long pos) throws IOException {
         offset = pos;
       }

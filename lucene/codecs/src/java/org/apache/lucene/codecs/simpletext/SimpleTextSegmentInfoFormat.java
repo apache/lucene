@@ -345,5 +345,20 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
     public void writeBytes(byte[] b, int offset, int length) {
       bytes.append(b, offset, length);
     }
+
+    @Override
+    public void writeInt(int i) throws IOException {
+      writeIntSlowly(i); // we're simpletext!
+    }
+
+    @Override
+    public void writeShort(short i) throws IOException {
+      writeShortSlowly(i); // we're simpletext!
+    }
+
+    @Override
+    public void writeLong(long i) throws IOException {
+      writeLongSlowly(i); // we're simpletext!
+    }
   }
 }

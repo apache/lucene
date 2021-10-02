@@ -19,7 +19,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 
-/** Corrupts on bit of a file after close */
+/** Corrupts one bit of a file after close */
 public class CorruptingIndexOutput extends IndexOutput {
   protected final IndexOutput out;
   final Directory dir;
@@ -101,8 +101,21 @@ public class CorruptingIndexOutput extends IndexOutput {
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) throws IOException {
-    for (int i = 0; i < length; i++) {
-      writeByte(b[offset + i]);
-    }
+    out.writeBytes(b, offset, length);
+  }
+
+  @Override
+  public void writeInt(int i) throws IOException {
+    out.writeInt(i);
+  }
+
+  @Override
+  public void writeShort(short i) throws IOException {
+    out.writeShort(i);
+  }
+
+  @Override
+  public void writeLong(long i) throws IOException {
+    out.writeLong(i);
   }
 }

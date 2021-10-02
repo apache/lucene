@@ -217,7 +217,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     } catch (
         @SuppressWarnings("unused")
         BufferUnderflowException e) {
-      return super.readShort();
+      return readShortSlowly();
     } catch (
         @SuppressWarnings("unused")
         NullPointerException npe) {
@@ -232,7 +232,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     } catch (
         @SuppressWarnings("unused")
         BufferUnderflowException e) {
-      return super.readInt();
+      return readIntSlowly();
     } catch (
         @SuppressWarnings("unused")
         NullPointerException npe) {
@@ -247,7 +247,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     } catch (
         @SuppressWarnings("unused")
         BufferUnderflowException e) {
-      return super.readLong();
+      return readLongSlowly();
     } catch (
         @SuppressWarnings("unused")
         NullPointerException npe) {

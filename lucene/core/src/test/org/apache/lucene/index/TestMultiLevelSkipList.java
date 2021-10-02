@@ -167,6 +167,24 @@ public class TestMultiLevelSkipList extends LuceneTestCase {
     }
 
     @Override
+    public short readShort() throws IOException {
+      TestMultiLevelSkipList.this.counter += Short.BYTES;
+      return input.readShort();
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      TestMultiLevelSkipList.this.counter += Integer.BYTES;
+      return input.readInt();
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      TestMultiLevelSkipList.this.counter += Long.BYTES;
+      return input.readLong();
+    }
+
+    @Override
     public void close() throws IOException {
       this.input.close();
     }
