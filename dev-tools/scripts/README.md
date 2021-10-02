@@ -62,7 +62,7 @@ the full tests.
       --download-only       Only perform download and sha hash check steps
     
     Example usage:
-    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-solr-6.0.1-RC2-revc7510a0...
+    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-9.0.1-RC2-revc7510a0...
 
 ### releaseWizard.py
 
