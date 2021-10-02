@@ -26,7 +26,7 @@ import re
 # under the given version in the given CHANGES.txt file
 # and prints a regular expression that will match all of them
 #
-# Caveat: In ancient versions (Lucene v1.9 and olde),
+# Caveat: In ancient versions (Lucene v1.9 and older),
 # does not find Bugzilla bugs or JIRAs not mentioned at the beginning of
 # bullets or numbered entries.
 #
