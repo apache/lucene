@@ -131,7 +131,7 @@ public final class HnswGraphBuilder {
   void addGraphNode(int node, float[] value) throws IOException {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
-    int curMaxLevel = hnsw.numOfLevels() - 1;
+    int curMaxLevel = hnsw.numLevels() - 1;
     int[] eps = new int[] {hnsw.entryNode()};
 
     // if a node introduces new levels to the graph, add this new node on new levels

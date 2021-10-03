@@ -52,12 +52,12 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li>For each level
  *       <ul>
  *         <li><b>array[vlong]</b> for each node the offset (delta-encoded relative to the previous
- *             document) of its entry in in the graph data (.vgr) that stores this node's
+ *             document) of its entry in in the graph data (.veg) that stores this node's
  *             connections.
  *       </ul>
  * </ul>
  *
- * <h2>.vgr (graph data) file</h2>
+ * <h2>.veg (graph data) file</h2>
  *
  * <p>Stores graphs connecting the documents for each field organized as a list of nodes' neighbours
  * as following:
@@ -85,7 +85,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
  *   <li><b>[vlong]</b> offset to this field's graph index in the .vex file
  *   <li><b>[vlong]</b> length of this field's graph index data, in bytes
- *   <li><b>[vlong]</b> offset to this field's graph data in the .vgr file
+ *   <li><b>[vlong]</b> offset to this field's graph data in the .veg file
  *   <li><b>[vlong]</b> length of this field's graph data' data, in bytes
  *   <li><b>[int]</b> number of levels in the graph
  *   <li><b>[int]</b> dimension of this field's vectors
@@ -104,7 +104,7 @@ public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String GRAPH_INDEX_EXTENSION = "vex";
-  static final String GRAPH_DATA_EXTENSION = "vgr";
+  static final String GRAPH_DATA_EXTENSION = "veg";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;

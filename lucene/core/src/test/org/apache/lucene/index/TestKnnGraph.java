@@ -252,11 +252,11 @@ public class TestKnnGraph extends LuceneTestCase {
   }
 
   int[][][] copyGraph(KnnGraphValues graphValues) throws IOException {
-    int[][][] graph = new int[graphValues.numOfLevels()][][];
+    int[][][] graph = new int[graphValues.numLevels()][][];
     int size = graphValues.size();
     int[] scratch = new int[maxConn];
 
-    for (int level = 0; level < graphValues.numOfLevels(); level++) {
+    for (int level = 0; level < graphValues.numLevels(); level++) {
       DocIdSetIterator nodesItr = graphValues.getAllNodesOnLevel(level);
       graph[level] = new int[size][];
       for (int node = nodesItr.nextDoc();
@@ -467,7 +467,7 @@ public class TestKnnGraph extends LuceneTestCase {
         // 3. If the number of nodes on the level doesn't exceed maxConn, assert that the graph is
         //   fully connected, i.e. any node is reachable from any other node.
         // 4. If the number of nodes on the level exceeds maxConn, assert that maxConn is respected.
-        for (int level = 0; level < graphValues.numOfLevels(); level++) {
+        for (int level = 0; level < graphValues.numLevels(); level++) {
           int[][] graphOnLevel = new int[graphValues.size()][];
           int countOnLevel = 0;
           boolean foundOrphan = false;

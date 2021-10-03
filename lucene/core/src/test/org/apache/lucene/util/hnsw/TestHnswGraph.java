@@ -123,12 +123,11 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   private void assertGraphEqual(KnnGraphValues g, KnnGraphValues h) throws IOException {
-    assertEquals(
-        "the number of levels in the graphs are different!", g.numOfLevels(), h.numOfLevels());
+    assertEquals("the number of levels in the graphs are different!", g.numLevels(), h.numLevels());
     assertEquals("the number of nodes in the graphs are different!", g.size(), h.size());
 
     // assert equal nodes on each level
-    for (int level = 0; level < g.numOfLevels(); level++) {
+    for (int level = 0; level < g.numLevels(); level++) {
       DocIdSetIterator nodesOnLevel = g.getAllNodesOnLevel(level);
       DocIdSetIterator nodesOnLevel2 = h.getAllNodesOnLevel(level);
       for (int node = nodesOnLevel.nextDoc(), node2 = nodesOnLevel2.nextDoc();
@@ -139,7 +138,7 @@ public class TestHnswGraph extends LuceneTestCase {
     }
 
     // assert equal nodes' neighbours on each level
-    for (int level = 0; level < g.numOfLevels(); level++) {
+    for (int level = 0; level < g.numLevels(); level++) {
       DocIdSetIterator nodesOnLevel = g.getAllNodesOnLevel(level);
       for (int node = nodesOnLevel.nextDoc();
           node != DocIdSetIterator.NO_MORE_DOCS;
@@ -322,12 +321,8 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   private void assertLevel0Neighbors(HnswGraph graph, int node, int... expected) {
-    assertLevelNeighbors(graph, 0, node, expected);
-  }
-
-  private void assertLevelNeighbors(HnswGraph graph, int level, int node, int... expected) {
     Arrays.sort(expected);
-    NeighborArray nn = graph.getNeighbors(level, node);
+    NeighborArray nn = graph.getNeighbors(0, node);
     int[] actual = ArrayUtil.copyOfSubArray(nn.node, 0, nn.size());
     Arrays.sort(actual);
     assertArrayEquals(

@@ -140,11 +140,11 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    int numOfLevels;
+    int numLevels;
     long graphIndexOffset = graphIndex.getFilePointer();
     long graphDataOffset = graphData.getFilePointer();
     if (vectors instanceof RandomAccessVectorValuesProducer) {
-      numOfLevels =
+      numLevels =
           writeGraph(
               (RandomAccessVectorValuesProducer) vectors, fieldInfo.getVectorSimilarityFunction());
     } else {
@@ -162,7 +162,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
         graphIndexLength,
         graphDataOffset,
         graphDataLength,
-        numOfLevels,
+        numLevels,
         count,
         docIds);
   }
@@ -175,7 +175,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       long graphIndexLength,
       long graphDataOffset,
       long graphDataLength,
-      int numOfLevels,
+      int numLevels,
       int size,
       int[] docIds)
       throws IOException {
@@ -187,7 +187,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(graphIndexLength);
     meta.writeVLong(graphDataOffset);
     meta.writeVLong(graphDataLength);
-    meta.writeInt(numOfLevels);
+    meta.writeInt(numLevels);
     meta.writeInt(field.getVectorDimension());
     meta.writeInt(size);
     for (int i = 0; i < size; i++) {
@@ -214,8 +214,8 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
-    graphIndex.writeInt(graph.numOfLevels()); // number of levels
-    for (int level = 0; level < graph.numOfLevels(); level++) {
+    graphIndex.writeInt(graph.numLevels()); // number of levels
+    for (int level = 0; level < graph.numLevels(); level++) {
       DocIdSetIterator nodesOnLevel = graph.getAllNodesOnLevel(level);
       int countOnLevel = (int) nodesOnLevel.cost();
       // write graph nodes on the level into the graphIndex file
@@ -232,7 +232,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     long lastOffset = 0;
     int countOnLevel0 = graph.size();
     long graphDataOffset = graphData.getFilePointer();
-    for (int level = 0; level < graph.numOfLevels(); level++) {
+    for (int level = 0; level < graph.numLevels(); level++) {
       DocIdSetIterator nodesOnLevel = graph.getAllNodesOnLevel(level);
       for (int node = nodesOnLevel.nextDoc();
           node != DocIdSetIterator.NO_MORE_DOCS;
@@ -260,7 +260,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-    return graph.numOfLevels();
+    return graph.numLevels();
   }
 
   @Override

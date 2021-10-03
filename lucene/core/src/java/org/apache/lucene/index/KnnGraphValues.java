@@ -54,7 +54,7 @@ public abstract class KnnGraphValues {
   public abstract int nextNeighbor() throws IOException;
 
   /** Returns the number of levels of the graph */
-  public abstract int numOfLevels() throws IOException;
+  public abstract int numLevels() throws IOException;
 
   /** Returns graph's entry point on the top level * */
   public abstract int entryNode() throws IOException;
@@ -86,7 +86,7 @@ public abstract class KnnGraphValues {
         }
 
         @Override
-        public int numOfLevels() {
+        public int numLevels() {
           return 0;
         }
 

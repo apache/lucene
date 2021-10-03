@@ -217,21 +217,21 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   private void fillGraphNodesAndOffsetsByLevel(FieldEntry entry) throws IOException {
     IndexInput input =
         graphIndex.slice("graph-index", entry.graphIndexOffset, entry.graphIndexLength);
-    int numOfLevels = input.readInt();
-    assert entry.numOfLevels == numOfLevels;
-    int[] numOfNodesByLevel = new int[numOfLevels];
-    List<int[]> nodesByLevel = new ArrayList<>(entry.numOfLevels);
-    List<long[]> ordOffsetsByLevel = new ArrayList<>(entry.numOfLevels);
+    int numLevels = input.readInt();
+    assert entry.numLevels == numLevels;
+    int[] numNodesByLevel = new int[numLevels];
+    List<int[]> nodesByLevel = new ArrayList<>(entry.numLevels);
+    List<long[]> ordOffsetsByLevel = new ArrayList<>(entry.numLevels);
 
     // read nodes by level
-    for (int level = 0; level < numOfLevels; level++) {
-      numOfNodesByLevel[level] = input.readInt();
+    for (int level = 0; level < numLevels; level++) {
+      numNodesByLevel[level] = input.readInt();
       if (level == 0) {
         // we don't store nodes for level 0th, as this level contains all nodes
         nodesByLevel.add(null);
       } else {
-        final int[] nodesOnLevel = new int[numOfNodesByLevel[level]];
-        for (int i = 0; i < numOfNodesByLevel[level]; i++) {
+        final int[] nodesOnLevel = new int[numNodesByLevel[level]];
+        for (int i = 0; i < numNodesByLevel[level]; i++) {
           nodesOnLevel[i] = input.readVInt();
         }
         nodesByLevel.add(nodesOnLevel);
@@ -240,9 +240,9 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     // read offsets by level
     long offset = 0;
-    for (int level = 0; level < numOfLevels; level++) {
-      assert numOfNodesByLevel[level] > 0;
-      long[] ordOffsets = new long[numOfNodesByLevel[level]];
+    for (int level = 0; level < numLevels; level++) {
+      assert numNodesByLevel[level] > 0;
+      long[] ordOffsets = new long[numNodesByLevel[level]];
       for (int i = 0; i < ordOffsets.length; i++) {
         offset += input.readVLong();
         ordOffsets[i] = offset;
@@ -385,7 +385,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     final long graphIndexLength;
     final long graphDataOffset;
     final long graphDataLength;
-    final int numOfLevels;
+    final int numLevels;
     final int dimension;
     final int[] ordToDoc;
     volatile List<int[]> nodesByLevel;
@@ -399,7 +399,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       graphIndexLength = input.readVLong();
       graphDataOffset = input.readVLong();
       graphDataLength = input.readVLong();
-      numOfLevels = input.readInt();
+      numLevels = input.readInt();
       dimension = input.readInt();
       int size = input.readInt();
       ordToDoc = new int[size];
@@ -528,7 +528,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     final IndexInput dataIn;
     final List<int[]> nodesByLevel;
     final List<long[]> ordOffsetsByLevel;
-    final int numOfLevels;
+    final int numLevels;
     final int entryNode;
     final int size;
 
@@ -540,8 +540,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       this.dataIn = dataIn;
       this.nodesByLevel = entry.nodesByLevel;
       this.ordOffsetsByLevel = entry.ordOffsetsByLevel;
-      this.numOfLevels = entry.numOfLevels;
-      this.entryNode = numOfLevels == 1 ? 0 : nodesByLevel.get(numOfLevels - 1)[0];
+      this.numLevels = entry.numLevels;
+      this.entryNode = numLevels == 1 ? 0 : nodesByLevel.get(numLevels - 1)[0];
       this.size = entry.size();
     }
 
@@ -580,8 +580,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public int numOfLevels() throws IOException {
-      return numOfLevels;
+    public int numLevels() throws IOException {
+      return numLevels;
     }
 
     @Override
@@ -593,7 +593,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     public DocIdSetIterator getAllNodesOnLevel(int level) {
       if (level == 0) {
         return new DocIdSetIterator() {
-          int numOfNodes = size();
+          int numNodes = size();
           int idx = -1;
 
           @Override
@@ -604,7 +604,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
           @Override
           public int nextDoc() {
             idx++;
-            if (idx >= numOfNodes) {
+            if (idx >= numNodes) {
               idx = NO_MORE_DOCS;
               return NO_MORE_DOCS;
             }
@@ -613,7 +613,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
           @Override
           public long cost() {
-            return numOfNodes;
+            return numNodes;
           }
 
           @Override

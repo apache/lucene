@@ -59,7 +59,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
 public final class HnswGraph extends KnnGraphValues {
 
   private final int maxConn;
-  private int numOfLevels; // the current the number of levels in the graph
+  private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
 
   // Nodes by level expressed as the level 0's nodes' ordinals.
@@ -79,10 +79,10 @@ public final class HnswGraph extends KnnGraphValues {
 
   HnswGraph(int maxConn, int levelOfFirstNode) {
     this.maxConn = maxConn;
-    this.numOfLevels = levelOfFirstNode + 1;
-    this.graph = new ArrayList<>(numOfLevels);
+    this.numLevels = levelOfFirstNode + 1;
+    this.graph = new ArrayList<>(numLevels);
     this.entryNode = 0;
-    for (int i = 0; i < numOfLevels; i++) {
+    for (int i = 0; i < numLevels; i++) {
       graph.add(new ArrayList<>());
       // Typically with diversity criteria we see nodes not fully occupied;
       // average fanout seems to be about 1/2 maxConn.
@@ -90,9 +90,9 @@ public final class HnswGraph extends KnnGraphValues {
       graph.get(i).add(new NeighborArray(Math.max(32, maxConn / 4)));
     }
 
-    this.nodesByLevel = new ArrayList<>(numOfLevels);
+    this.nodesByLevel = new ArrayList<>(numLevels);
     nodesByLevel.add(null); // we don't need this for 0th level, as it contians all nodes
-    for (int l = 1; l < numOfLevels; l++) {
+    for (int l = 1; l < numLevels; l++) {
       nodesByLevel.add(new int[] {0});
     }
   }
@@ -127,7 +127,7 @@ public final class HnswGraph extends KnnGraphValues {
     NeighborQueue results;
 
     int[] eps = new int[] {graphValues.entryNode()};
-    for (int level = graphValues.numOfLevels() - 1; level >= 1; level--) {
+    for (int level = graphValues.numLevels() - 1; level >= 1; level--) {
       results =
           HnswGraph.searchLevel(
               query, 1, level, eps, vectors, similarityFunction, graphValues, null);
@@ -256,12 +256,12 @@ public final class HnswGraph extends KnnGraphValues {
     if (level > 0) {
       // if the new node introduces a new level, add more levels to the graph,
       // and make this node the graph's new entry point
-      if (level >= numOfLevels) {
-        for (int i = numOfLevels; i <= level; i++) {
+      if (level >= numLevels) {
+        for (int i = numLevels; i <= level; i++) {
           graph.add(new ArrayList<>());
           nodesByLevel.add(new int[] {node});
         }
-        numOfLevels = level + 1;
+        numLevels = level + 1;
         entryNode = node;
       } else {
         // Add this node id to this level's nodes
@@ -300,8 +300,8 @@ public final class HnswGraph extends KnnGraphValues {
    * @return the current number of levels in the graph
    */
   @Override
-  public int numOfLevels() {
-    return numOfLevels;
+  public int numLevels() {
+    return numLevels;
   }
 
   /**
