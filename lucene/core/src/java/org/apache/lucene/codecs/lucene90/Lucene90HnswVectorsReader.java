@@ -21,10 +21,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.codecs.CodecUtil;
@@ -220,21 +218,21 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     int numLevels = input.readInt();
     assert entry.numLevels == numLevels;
     int[] numNodesByLevel = new int[numLevels];
-    List<int[]> nodesByLevel = new ArrayList<>(entry.numLevels);
-    List<long[]> ordOffsetsByLevel = new ArrayList<>(entry.numLevels);
+    int[][] nodesByLevel = new int[numLevels][];
+    long[][] ordOffsetsByLevel = new long[numLevels][];
 
     // read nodes by level
     for (int level = 0; level < numLevels; level++) {
       numNodesByLevel[level] = input.readInt();
       if (level == 0) {
         // we don't store nodes for level 0th, as this level contains all nodes
-        nodesByLevel.add(null);
+        nodesByLevel[0] = null;
       } else {
         final int[] nodesOnLevel = new int[numNodesByLevel[level]];
         for (int i = 0; i < numNodesByLevel[level]; i++) {
           nodesOnLevel[i] = input.readVInt();
         }
-        nodesByLevel.add(nodesOnLevel);
+        nodesByLevel[level] = nodesOnLevel;
       }
     }
 
@@ -247,7 +245,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         offset += input.readVLong();
         ordOffsets[i] = offset;
       }
-      ordOffsetsByLevel.add(ordOffsets);
+      ordOffsetsByLevel[level] = ordOffsets;
     }
     entry.nodesByLevel = nodesByLevel;
     entry.ordOffsetsByLevel = ordOffsetsByLevel;
@@ -388,8 +386,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     final int numLevels;
     final int dimension;
     final int[] ordToDoc;
-    volatile List<int[]> nodesByLevel;
-    volatile List<long[]> ordOffsetsByLevel;
+    volatile int[][] nodesByLevel;
+    volatile long[][] ordOffsetsByLevel;
 
     FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
@@ -526,8 +524,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   private static final class IndexedKnnGraphReader extends KnnGraphValues {
 
     final IndexInput dataIn;
-    final List<int[]> nodesByLevel;
-    final List<long[]> ordOffsetsByLevel;
+    final int[][] nodesByLevel;
+    final long[][] ordOffsetsByLevel;
     final int numLevels;
     final int entryNode;
     final int size;
@@ -541,7 +539,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       this.nodesByLevel = entry.nodesByLevel;
       this.ordOffsetsByLevel = entry.ordOffsetsByLevel;
       this.numLevels = entry.numLevels;
-      this.entryNode = numLevels == 1 ? 0 : nodesByLevel.get(numLevels - 1)[0];
+      this.entryNode = numLevels == 1 ? 0 : nodesByLevel[numLevels - 1][0];
       this.size = entry.size();
     }
 
@@ -549,12 +547,11 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     public void seek(int level, int targetOrd) throws IOException {
       long graphDataOffset;
       if (level == 0) {
-        graphDataOffset = ordOffsetsByLevel.get(0)[targetOrd];
+        graphDataOffset = ordOffsetsByLevel[0][targetOrd];
       } else {
         int targetIndex =
-            Arrays.binarySearch(
-                nodesByLevel.get(level), 0, nodesByLevel.get(level).length, targetOrd);
-        graphDataOffset = ordOffsetsByLevel.get(level)[targetIndex];
+            Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
+        graphDataOffset = ordOffsetsByLevel[level][targetIndex];
       }
 
       // unsafe; no bounds checking
@@ -623,7 +620,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         };
       } else {
         return new DocIdSetIterator() {
-          final int[] nodes = nodesByLevel.get(level);
+          final int[] nodes = nodesByLevel[level];
           int idx = -1;
 
           @Override

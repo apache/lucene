@@ -91,7 +91,7 @@ public final class HnswGraph extends KnnGraphValues {
     }
 
     this.nodesByLevel = new ArrayList<>(numLevels);
-    nodesByLevel.add(null); // we don't need this for 0th level, as it contians all nodes
+    nodesByLevel.add(null); // we don't need this for 0th level, as it contains all nodes
     for (int l = 1; l < numLevels; l++) {
       nodesByLevel.add(new int[] {0});
     }
