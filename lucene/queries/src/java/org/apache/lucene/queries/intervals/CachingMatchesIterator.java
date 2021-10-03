@@ -26,6 +26,7 @@ import org.apache.lucene.util.ArrayUtil;
 class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMatchesIterator {
 
   private boolean positioned = false;
+  private boolean exhausted = false;
   private int[] posAndOffsets = new int[4 * 4];
   private Query[] matchingQueries = new Query[4];
   private int count = 0;
@@ -62,30 +63,35 @@ class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMa
 
   @Override
   public boolean next() throws IOException {
+    assert exhausted == false;
     if (positioned == false) {
       positioned = true;
     } else {
       cache();
     }
-    return in.next();
+    if (in.next()) {
+        return true;
+    }
+    exhausted = true;
+    return false;
   }
 
   int startOffset(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
+    if (exhausted == false && endPosition() <= endPos) {
       return in.startOffset();
     }
     return posAndOffsets[2];
   }
 
   int endOffset(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
+    if (exhausted == false && endPosition() <= endPos) {
       return in.endOffset();
     }
     return posAndOffsets[count * 4 + 3];
   }
 
   MatchesIterator getSubMatches(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
+    if (exhausted == false && endPosition() <= endPos) {
       cache();
     }
     return new MatchesIterator() {
