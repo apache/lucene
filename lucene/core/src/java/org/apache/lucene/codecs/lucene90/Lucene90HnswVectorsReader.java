@@ -92,6 +92,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
               Lucene90HnswVectorsFormat.GRAPH_DATA_EXTENSION,
               Lucene90HnswVectorsFormat.GRAPH_DATA_CODEC_NAME,
               checksumRef);
+      // TODO: should graph data be off-heap?
+      fillGraphNodesAndOffsetsByLevel();
       success = true;
     } finally {
       if (success == false) {
@@ -212,43 +214,41 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     return new FieldEntry(input, similarityFunction);
   }
 
-  private void fillGraphNodesAndOffsetsByLevel(FieldEntry entry) throws IOException {
-    IndexInput input =
-        graphIndex.slice("graph-index", entry.graphIndexOffset, entry.graphIndexLength);
-    int numLevels = input.readInt();
-    assert entry.numLevels == numLevels;
-    int[] numNodesByLevel = new int[numLevels];
-    int[][] nodesByLevel = new int[numLevels][];
-    long[][] ordOffsetsByLevel = new long[numLevels][];
+  private void fillGraphNodesAndOffsetsByLevel() throws IOException {
+    for (FieldEntry entry : fields.values()) {
+      IndexInput input =
+          graphIndex.slice("graph-index", entry.graphIndexOffset, entry.graphIndexLength);
+      int numLevels = input.readInt();
+      assert entry.numLevels == numLevels;
+      int[] numNodesByLevel = new int[numLevels];
 
-    // read nodes by level
-    for (int level = 0; level < numLevels; level++) {
-      numNodesByLevel[level] = input.readInt();
-      if (level == 0) {
-        // we don't store nodes for level 0th, as this level contains all nodes
-        nodesByLevel[0] = null;
-      } else {
-        final int[] nodesOnLevel = new int[numNodesByLevel[level]];
-        for (int i = 0; i < numNodesByLevel[level]; i++) {
-          nodesOnLevel[i] = input.readVInt();
+      // read nodes by level
+      for (int level = 0; level < numLevels; level++) {
+        numNodesByLevel[level] = input.readInt();
+        if (level == 0) {
+          // we don't store nodes for level 0th, as this level contains all nodes
+          entry.nodesByLevel[0] = null;
+        } else {
+          final int[] nodesOnLevel = new int[numNodesByLevel[level]];
+          for (int i = 0; i < numNodesByLevel[level]; i++) {
+            nodesOnLevel[i] = input.readVInt();
+          }
+          entry.nodesByLevel[level] = nodesOnLevel;
         }
-        nodesByLevel[level] = nodesOnLevel;
       }
-    }
 
-    // read offsets by level
-    long offset = 0;
-    for (int level = 0; level < numLevels; level++) {
-      assert numNodesByLevel[level] > 0;
-      long[] ordOffsets = new long[numNodesByLevel[level]];
-      for (int i = 0; i < ordOffsets.length; i++) {
-        offset += input.readVLong();
-        ordOffsets[i] = offset;
+      // read offsets by level
+      long offset = 0;
+      for (int level = 0; level < numLevels; level++) {
+        assert numNodesByLevel[level] > 0;
+        long[] ordOffsets = new long[numNodesByLevel[level]];
+        for (int i = 0; i < ordOffsets.length; i++) {
+          offset += input.readVLong();
+          ordOffsets[i] = offset;
+        }
+        entry.ordOffsetsByLevel[level] = ordOffsets;
       }
-      ordOffsetsByLevel[level] = ordOffsets;
     }
-    entry.nodesByLevel = nodesByLevel;
-    entry.ordOffsetsByLevel = ordOffsetsByLevel;
   }
 
   @Override
@@ -357,13 +357,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
-    if (entry.ordOffsetsByLevel == null) {
-      synchronized (entry) {
-        if (entry.ordOffsetsByLevel == null) {
-          fillGraphNodesAndOffsetsByLevel(entry);
-        }
-      }
-    }
     IndexInput bytesSlice =
         graphData.slice("graph-data", entry.graphDataOffset, entry.graphDataLength);
     return new IndexedKnnGraphReader(entry, bytesSlice);
@@ -386,8 +379,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     final int numLevels;
     final int dimension;
     final int[] ordToDoc;
-    volatile int[][] nodesByLevel;
-    volatile long[][] ordOffsetsByLevel;
+    final int[][] nodesByLevel;
+    final long[][] ordOffsetsByLevel;
 
     FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
@@ -405,6 +398,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         int doc = input.readVInt();
         ordToDoc[i] = doc;
       }
+      nodesByLevel = new int[numLevels][];
+      ordOffsetsByLevel = new long[numLevels][];
     }
 
     int size() {
