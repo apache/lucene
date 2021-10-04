@@ -58,73 +58,61 @@ public final class BKDPointValues extends PointValues {
     }
   }
 
-  /** Fast path: this is called when the query box fully encompasses all cells under this node. */
-  private void addAll(IntersectVisitor visitor, BKDReader.IndexTree index, boolean grown)
-      throws IOException {
-    // System.out.println("R: addAll nodeID=" + nodeID);
-
-    if (grown == false) {
-      final long maxPointCount = index.size();
-      if (maxPointCount
-          <= Integer.MAX_VALUE) { // could be >MAX_VALUE if there are more than 2B points in total
-        visitor.grow((int) maxPointCount);
-        grown = true;
-      }
-    }
-    if (index.moveToChild()) {
-      do {
-        addAll(visitor, index, grown);
-      } while (index.moveToSibling());
-      index.moveToParent();
-    } else {
-      assert grown;
-      // TODO: we can assert that the first value here in fact matches what the index claimed?
-      index.visitDocIDs(visitor);
-    }
-  }
-
   private void intersect(IntersectVisitor visitor, BKDReader.IndexTree index) throws IOException {
     Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
-    if (r == Relation.CELL_OUTSIDE_QUERY) {
-      // This cell is fully outside of the query shape: stop recursing
-    } else if (r == Relation.CELL_INSIDE_QUERY) {
-      // This cell is fully inside of the query shape: recursively add all points in this cell
-      // without filtering
-      addAll(visitor, index, false);
-      // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
-      // through and do full filtering:
-    } else if (index.moveToChild()) {
-      do {
-        intersect(visitor, index);
-      } while (index.moveToSibling());
-      index.moveToParent();
-    } else {
-      // TODO: we can assert that the first value here in fact matches what the index claimed?
-      // Leaf node; scan and filter all points in this block:
-      index.visitDocValues(visitor);
+    switch (r) {
+      case CELL_OUTSIDE_QUERY:
+        // This cell is fully outside the query shape: stop recursing
+        break;
+      case CELL_INSIDE_QUERY:
+        // This cell is fully inside the query shape: recursively add all points in this cell
+        // without filtering
+        index.visitDocIDs(visitor);
+        break;
+      case CELL_CROSSES_QUERY:
+        // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
+        // through and do full filtering:
+        if (index.moveToChild()) {
+          do {
+            intersect(visitor, index);
+          } while (index.moveToSibling());
+          index.moveToParent();
+        } else {
+          // TODO: we can assert that the first value here in fact matches what the index claimed?
+          // Leaf node; scan and filter all points in this block:
+          index.visitDocValues(visitor);
+        }
+        break;
+      default:
+        throw new IllegalArgumentException("Unreachable code");
     }
   }
 
   private long estimatePointCount(IntersectVisitor visitor, BKDReader.IndexTree index)
       throws IOException {
-
     Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
-
-    if (r == Relation.CELL_OUTSIDE_QUERY) {
-      // This cell is fully outside of the query shape: stop recursing
-      return 0L;
-    } else if (r == Relation.CELL_INSIDE_QUERY) {
-      return index.size();
-    } else if (index.moveToChild()) {
-      long cost = 0;
-      do {
-        cost += estimatePointCount(visitor, index);
-      } while (index.moveToSibling());
-      index.moveToParent();
-      return cost;
-    } else {
-      // Assume half the points matched
-      return (in.getConfig().maxPointsInLeafNode + 1) / 2;
+    switch (r) {
+      case CELL_OUTSIDE_QUERY:
+        // This cell is fully outside the query shape: no points added
+        return 0L;
+      case CELL_INSIDE_QUERY:
+        // This cell is fully inside the query shape: add all points
+        return index.size();
+      case CELL_CROSSES_QUERY:
+        // The cell crosses the shape boundary: keep recursing
+        if (index.moveToChild()) {
+          long cost = 0;
+          do {
+            cost += estimatePointCount(visitor, index);
+          } while (index.moveToSibling());
+          index.moveToParent();
+          return cost;
+        } else {
+          // Assume half the points matched
+          return (in.getConfig().maxPointsInLeafNode + 1) / 2;
+        }
+      default:
+        throw new IllegalArgumentException("Unreachable code");
     }
   }
 

@@ -46,13 +46,14 @@ import org.apache.lucene.util.TestUtil;
 
 public class TestBKD extends LuceneTestCase {
 
-  protected BKDReader getBKDIndexInput(IndexInput in) throws IOException {
+  protected BKDReader getBKDReader(IndexInput in) throws IOException {
     return new BKDDefaultReader(in, in, in);
   }
 
   public void testBasicInts1D() throws Exception {
+    final BKDConfig config = new BKDConfig(1, 1, 4, 2);
     try (Directory dir = getDirectory(100)) {
-      BKDWriter w = new BKDWriter(100, dir, "tmp", new BKDConfig(1, 1, 4, 2), 1.0f, 100);
+      BKDWriter w = new BKDWriter(100, dir, "tmp", config, 1.0f, 100);
       byte[] scratch = new byte[4];
       for (int docID = 0; docID < 100; docID++) {
         NumericUtils.intToSortableBytes(docID, scratch, 0);
@@ -68,63 +69,19 @@ public class TestBKD extends LuceneTestCase {
 
       try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
         in.seek(indexFP);
-        PointValues r = new BKDPointValues(getBKDIndexInput(in));
+        PointValues r = new BKDPointValues(getBKDReader(in));
 
         // Simple 1D range query:
-        final int queryMin = 42;
-        final int queryMax = 87;
+        final byte[][] queryMin = new byte[1][4];
+        NumericUtils.intToSortableBytes(42, queryMin[0], 0);
+        final byte[][] queryMax = new byte[1][4];
+        NumericUtils.intToSortableBytes(87, queryMax[0], 0);
 
         final BitSet hits = new BitSet();
-        r.intersect(
-            new IntersectVisitor() {
-              @Override
-              public void visit(int docID) {
-                hits.set(docID);
-                if (VERBOSE) {
-                  System.out.println("visit docID=" + docID);
-                }
-              }
-
-              @Override
-              public void visit(int docID, byte[] packedValue) {
-                int x = NumericUtils.sortableBytesToInt(packedValue, 0);
-                if (VERBOSE) {
-                  System.out.println("visit docID=" + docID + " x=" + x);
-                }
-                if (x >= queryMin && x <= queryMax) {
-                  hits.set(docID);
-                }
-              }
-
-              @Override
-              public Relation compare(byte[] minPacked, byte[] maxPacked) {
-                int min = NumericUtils.sortableBytesToInt(minPacked, 0);
-                int max = NumericUtils.sortableBytesToInt(maxPacked, 0);
-                assert max >= min;
-                if (VERBOSE) {
-                  System.out.println(
-                      "compare: min="
-                          + min
-                          + " max="
-                          + max
-                          + " vs queryMin="
-                          + queryMin
-                          + " queryMax="
-                          + queryMax);
-                }
-
-                if (max < queryMin || min > queryMax) {
-                  return Relation.CELL_OUTSIDE_QUERY;
-                } else if (min >= queryMin && max <= queryMax) {
-                  return Relation.CELL_INSIDE_QUERY;
-                } else {
-                  return Relation.CELL_CROSSES_QUERY;
-                }
-              }
-            });
+        r.intersect(getIntersectVisitor(hits, queryMin, queryMax, config));
 
         for (int docID = 0; docID < 100; docID++) {
-          boolean expected = docID >= queryMin && docID <= queryMax;
+          boolean expected = docID >= 42 && docID <= 87;
           boolean actual = hits.get(docID);
           assertEquals("docID=" + docID, expected, actual);
         }
@@ -139,14 +96,8 @@ public class TestBKD extends LuceneTestCase {
       int numIndexDims = TestUtil.nextInt(random(), 1, numDims);
       int maxPointsInLeafNode = TestUtil.nextInt(random(), 50, 100);
       float maxMB = (float) 3.0 + (3 * random().nextFloat());
-      BKDWriter w =
-          new BKDWriter(
-              numDocs,
-              dir,
-              "tmp",
-              new BKDConfig(numDims, numIndexDims, 4, maxPointsInLeafNode),
-              maxMB,
-              numDocs);
+      BKDConfig config = new BKDConfig(numDims, numIndexDims, 4, maxPointsInLeafNode);
+      BKDWriter w = new BKDWriter(numDocs, dir, "tmp", config, maxMB, numDocs);
 
       if (VERBOSE) {
         System.out.println(
@@ -189,7 +140,7 @@ public class TestBKD extends LuceneTestCase {
 
       try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
         in.seek(indexFP);
-        PointValues r = new BKDPointValues(getBKDIndexInput(in));
+        PointValues r = new BKDPointValues(getBKDReader(in));
 
         byte[] minPackedValue = r.getMinPackedValue();
         byte[] maxPackedValue = r.getMaxPackedValue();
@@ -208,7 +159,9 @@ public class TestBKD extends LuceneTestCase {
 
           // Random N dims rect query:
           int[] queryMin = new int[numDims];
+          byte[][] queryMinBytes = new byte[numDims][4];
           int[] queryMax = new int[numDims];
+          byte[][] queryMaxBytes = new byte[numDims][4];
           for (int dim = 0; dim < numIndexDims; dim++) {
             queryMin[dim] = random().nextInt();
             queryMax[dim] = random().nextInt();
@@ -217,54 +170,12 @@ public class TestBKD extends LuceneTestCase {
               queryMin[dim] = queryMax[dim];
               queryMax[dim] = x;
             }
+            NumericUtils.intToSortableBytes(queryMin[dim], queryMinBytes[dim], 0);
+            NumericUtils.intToSortableBytes(queryMax[dim], queryMaxBytes[dim], 0);
           }
 
           final BitSet hits = new BitSet();
-          r.intersect(
-              new IntersectVisitor() {
-                @Override
-                public void visit(int docID) {
-                  hits.set(docID);
-                  // System.out.println("visit docID=" + docID);
-                }
-
-                @Override
-                public void visit(int docID, byte[] packedValue) {
-                  // System.out.println("visit check docID=" + docID);
-                  for (int dim = 0; dim < numIndexDims; dim++) {
-                    int x = NumericUtils.sortableBytesToInt(packedValue, dim * Integer.BYTES);
-                    if (x < queryMin[dim] || x > queryMax[dim]) {
-                      // System.out.println("  no");
-                      return;
-                    }
-                  }
-
-                  // System.out.println("  yes");
-                  hits.set(docID);
-                }
-
-                @Override
-                public Relation compare(byte[] minPacked, byte[] maxPacked) {
-                  boolean crosses = false;
-                  for (int dim = 0; dim < numIndexDims; dim++) {
-                    int min = NumericUtils.sortableBytesToInt(minPacked, dim * Integer.BYTES);
-                    int max = NumericUtils.sortableBytesToInt(maxPacked, dim * Integer.BYTES);
-                    assert max >= min;
-
-                    if (max < queryMin[dim] || min > queryMax[dim]) {
-                      return Relation.CELL_OUTSIDE_QUERY;
-                    } else if (min < queryMin[dim] || max > queryMax[dim]) {
-                      crosses = true;
-                    }
-                  }
-
-                  if (crosses) {
-                    return Relation.CELL_CROSSES_QUERY;
-                  } else {
-                    return Relation.CELL_INSIDE_QUERY;
-                  }
-                }
-              });
+          r.intersect(getIntersectVisitor(hits, queryMinBytes, queryMaxBytes, config));
 
           for (int docID = 0; docID < numDocs; docID++) {
             int[] docValues = docs[docID];
@@ -293,14 +204,8 @@ public class TestBKD extends LuceneTestCase {
       int numDims = TestUtil.nextInt(random(), 1, 5);
       int maxPointsInLeafNode = TestUtil.nextInt(random(), 50, 100);
       float maxMB = (float) 3.0 + (3 * random().nextFloat());
-      BKDWriter w =
-          new BKDWriter(
-              numDocs,
-              dir,
-              "tmp",
-              new BKDConfig(numDims, numDims, numBytesPerDim, maxPointsInLeafNode),
-              maxMB,
-              numDocs);
+      BKDConfig config = new BKDConfig(numDims, numDims, numBytesPerDim, maxPointsInLeafNode);
+      BKDWriter w = new BKDWriter(numDocs, dir, "tmp", config, maxMB, numDocs);
       BigInteger[][] docs = new BigInteger[numDocs][];
 
       byte[] scratch = new byte[numBytesPerDim * numDims];
@@ -330,7 +235,7 @@ public class TestBKD extends LuceneTestCase {
 
       try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
         in.seek(indexFP);
-        BKDPointValues r = new BKDPointValues(getBKDIndexInput(in));
+        BKDPointValues r = new BKDPointValues(getBKDReader(in));
 
         int iters = atLeast(100);
         for (int iter = 0; iter < iters; iter++) {
@@ -340,7 +245,9 @@ public class TestBKD extends LuceneTestCase {
 
           // Random N dims rect query:
           BigInteger[] queryMin = new BigInteger[numDims];
+          byte[][] queryMinBytes = new byte[numDims][numBytesPerDim];
           BigInteger[] queryMax = new BigInteger[numDims];
+          byte[][] queryMaxBytes = new byte[numDims][numBytesPerDim];
           for (int dim = 0; dim < numDims; dim++) {
             queryMin[dim] = randomBigInt(numBytesPerDim);
             queryMax[dim] = randomBigInt(numBytesPerDim);
@@ -349,61 +256,14 @@ public class TestBKD extends LuceneTestCase {
               queryMin[dim] = queryMax[dim];
               queryMax[dim] = x;
             }
+            NumericUtils.bigIntToSortableBytes(
+                queryMin[dim], numBytesPerDim, queryMinBytes[dim], 0);
+            NumericUtils.bigIntToSortableBytes(
+                queryMax[dim], numBytesPerDim, queryMaxBytes[dim], 0);
           }
 
           final BitSet hits = new BitSet();
-          r.intersect(
-              new IntersectVisitor() {
-                @Override
-                public void visit(int docID) {
-                  hits.set(docID);
-                  // System.out.println("visit docID=" + docID);
-                }
-
-                @Override
-                public void visit(int docID, byte[] packedValue) {
-                  // System.out.println("visit check docID=" + docID);
-                  for (int dim = 0; dim < numDims; dim++) {
-                    BigInteger x =
-                        NumericUtils.sortableBytesToBigInt(
-                            packedValue, dim * numBytesPerDim, numBytesPerDim);
-                    if (x.compareTo(queryMin[dim]) < 0 || x.compareTo(queryMax[dim]) > 0) {
-                      // System.out.println("  no");
-                      return;
-                    }
-                  }
-
-                  // System.out.println("  yes");
-                  hits.set(docID);
-                }
-
-                @Override
-                public Relation compare(byte[] minPacked, byte[] maxPacked) {
-                  boolean crosses = false;
-                  for (int dim = 0; dim < numDims; dim++) {
-                    BigInteger min =
-                        NumericUtils.sortableBytesToBigInt(
-                            minPacked, dim * numBytesPerDim, numBytesPerDim);
-                    BigInteger max =
-                        NumericUtils.sortableBytesToBigInt(
-                            maxPacked, dim * numBytesPerDim, numBytesPerDim);
-                    assert max.compareTo(min) >= 0;
-
-                    if (max.compareTo(queryMin[dim]) < 0 || min.compareTo(queryMax[dim]) > 0) {
-                      return Relation.CELL_OUTSIDE_QUERY;
-                    } else if (min.compareTo(queryMin[dim]) < 0
-                        || max.compareTo(queryMax[dim]) > 0) {
-                      crosses = true;
-                    }
-                  }
-
-                  if (crosses) {
-                    return Relation.CELL_CROSSES_QUERY;
-                  } else {
-                    return Relation.CELL_INSIDE_QUERY;
-                  }
-                }
-              });
+          r.intersect(getIntersectVisitor(hits, queryMinBytes, queryMaxBytes, config));
 
           for (int docID = 0; docID < numDocs; docID++) {
             BigInteger[] docValues = docs[docID];
@@ -932,7 +792,7 @@ public class TestBKD extends LuceneTestCase {
         List<BKDPointValues> readers = new ArrayList<>();
         for (long fp : toMerge) {
           in.seek(fp);
-          readers.add(new BKDPointValues(getBKDIndexInput(in)));
+          readers.add(new BKDPointValues(getBKDReader(in)));
         }
         out = dir.createOutput("bkd2", IOContext.DEFAULT);
         Runnable finalizer = w.merge(out, out, out, docMaps, readers);
@@ -950,7 +810,8 @@ public class TestBKD extends LuceneTestCase {
       }
 
       in.seek(indexFP);
-      PointValues r = new BKDPointValues(getBKDIndexInput(in));
+      BKDReader bkdReader = getBKDReader(in);
+      PointValues r = new BKDPointValues(bkdReader);
 
       int iters = atLeast(100);
       for (int iter = 0; iter < iters; iter++) {
@@ -974,115 +835,6 @@ public class TestBKD extends LuceneTestCase {
             queryMax[dim] = x;
           }
         }
-
-        final BitSet hits = new BitSet();
-        r.intersect(
-            new IntersectVisitor() {
-              @Override
-              public void visit(int docID) {
-                hits.set(docID);
-                // System.out.println("visit docID=" + docID);
-              }
-
-              @Override
-              public void visit(int docID, byte[] packedValue) {
-                // System.out.println("visit check docID=" + docID);
-                for (int dim = 0; dim < numIndexDims; dim++) {
-                  if (Arrays.compareUnsigned(
-                              packedValue,
-                              dim * numBytesPerDim,
-                              dim * numBytesPerDim + numBytesPerDim,
-                              queryMin[dim],
-                              0,
-                              numBytesPerDim)
-                          < 0
-                      || Arrays.compareUnsigned(
-                              packedValue,
-                              dim * numBytesPerDim,
-                              dim * numBytesPerDim + numBytesPerDim,
-                              queryMax[dim],
-                              0,
-                              numBytesPerDim)
-                          > 0) {
-                    // System.out.println("  no");
-                    return;
-                  }
-                }
-
-                // System.out.println("  yes");
-                hits.set(docID);
-              }
-
-              @Override
-              public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
-                if (random().nextBoolean()) {
-                  // check the default method is correct
-                  IntersectVisitor.super.visit(iterator, packedValue);
-                } else {
-                  assertEquals(iterator.docID(), -1);
-                  int cost = Math.toIntExact(iterator.cost());
-                  int numberOfPoints = 0;
-                  int docID;
-                  while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    assertEquals(iterator.docID(), docID);
-                    visit(docID, packedValue);
-                    numberOfPoints++;
-                  }
-                  assertEquals(cost, numberOfPoints);
-                  assertEquals(iterator.docID(), DocIdSetIterator.NO_MORE_DOCS);
-                  assertEquals(iterator.nextDoc(), DocIdSetIterator.NO_MORE_DOCS);
-                  assertEquals(iterator.docID(), DocIdSetIterator.NO_MORE_DOCS);
-                }
-              }
-
-              @Override
-              public Relation compare(byte[] minPacked, byte[] maxPacked) {
-                boolean crosses = false;
-                for (int dim = 0; dim < numIndexDims; dim++) {
-                  if (Arrays.compareUnsigned(
-                              maxPacked,
-                              dim * numBytesPerDim,
-                              dim * numBytesPerDim + numBytesPerDim,
-                              queryMin[dim],
-                              0,
-                              numBytesPerDim)
-                          < 0
-                      || Arrays.compareUnsigned(
-                              minPacked,
-                              dim * numBytesPerDim,
-                              dim * numBytesPerDim + numBytesPerDim,
-                              queryMax[dim],
-                              0,
-                              numBytesPerDim)
-                          > 0) {
-                    return Relation.CELL_OUTSIDE_QUERY;
-                  } else if (Arrays.compareUnsigned(
-                              minPacked,
-                              dim * numBytesPerDim,
-                              dim * numBytesPerDim + numBytesPerDim,
-                              queryMin[dim],
-                              0,
-                              numBytesPerDim)
-                          < 0
-                      || Arrays.compareUnsigned(
-                              maxPacked,
-                              dim * numBytesPerDim,
-                              dim * numBytesPerDim + numBytesPerDim,
-                              queryMax[dim],
-                              0,
-                              numBytesPerDim)
-                          > 0) {
-                    crosses = true;
-                  }
-                }
-
-                if (crosses) {
-                  return Relation.CELL_CROSSES_QUERY;
-                } else {
-                  return Relation.CELL_INSIDE_QUERY;
-                }
-              }
-            });
 
         BitSet expected = new BitSet();
         for (int ord = 0; ord < numValues; ord++) {
@@ -1108,10 +860,17 @@ public class TestBKD extends LuceneTestCase {
           }
         }
 
-        int limit = Math.max(expected.length(), hits.length());
-        for (int docID = 0; docID < limit; docID++) {
-          assertEquals("docID=" + docID, expected.get(docID), hits.get(docID));
-        }
+        BKDConfig config =
+            new BKDConfig(numDataDims, numIndexDims, numBytesPerDim, maxPointsInLeafNode);
+        final BitSet hits = new BitSet();
+        r.intersect(getIntersectVisitor(hits, queryMin, queryMax, config));
+        assertHits(hits, expected);
+
+        hits.clear();
+        bkdReader
+            .getIndexTree()
+            .visitDocValues(getIntersectVisitor(hits, queryMin, queryMax, config));
+        assertHits(hits, expected);
       }
       in.close();
       dir.deleteFile("bkd");
@@ -1125,6 +884,123 @@ public class TestBKD extends LuceneTestCase {
         IOUtils.deleteFilesIgnoringExceptions(dir, "bkd", "bkd2");
       }
     }
+  }
+
+  private void assertHits(BitSet hits, BitSet expected) {
+    int limit = Math.max(expected.length(), hits.length());
+    for (int docID = 0; docID < limit; docID++) {
+      assertEquals("docID=" + docID, expected.get(docID), hits.get(docID));
+    }
+  }
+
+  private IntersectVisitor getIntersectVisitor(
+      BitSet hits, byte[][] queryMin, byte[][] queryMax, BKDConfig config) {
+    return new IntersectVisitor() {
+      @Override
+      public void visit(int docID) {
+        hits.set(docID);
+        // System.out.println("visit docID=" + docID);
+      }
+
+      @Override
+      public void visit(int docID, byte[] packedValue) {
+        // System.out.println("visit check docID=" + docID);
+        for (int dim = 0; dim < config.numIndexDims; dim++) {
+          if (Arrays.compareUnsigned(
+                      packedValue,
+                      dim * config.bytesPerDim,
+                      dim * config.bytesPerDim + config.bytesPerDim,
+                      queryMin[dim],
+                      0,
+                      config.bytesPerDim)
+                  < 0
+              || Arrays.compareUnsigned(
+                      packedValue,
+                      dim * config.bytesPerDim,
+                      dim * config.bytesPerDim + config.bytesPerDim,
+                      queryMax[dim],
+                      0,
+                      config.bytesPerDim)
+                  > 0) {
+            // System.out.println("  no");
+            return;
+          }
+        }
+
+        // System.out.println("  yes");
+        hits.set(docID);
+      }
+
+      @Override
+      public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+        if (random().nextBoolean()) {
+          // check the default method is correct
+          IntersectVisitor.super.visit(iterator, packedValue);
+        } else {
+          assertEquals(iterator.docID(), -1);
+          int cost = Math.toIntExact(iterator.cost());
+          int numberOfPoints = 0;
+          int docID;
+          while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            assertEquals(iterator.docID(), docID);
+            visit(docID, packedValue);
+            numberOfPoints++;
+          }
+          assertEquals(cost, numberOfPoints);
+          assertEquals(iterator.docID(), DocIdSetIterator.NO_MORE_DOCS);
+          assertEquals(iterator.nextDoc(), DocIdSetIterator.NO_MORE_DOCS);
+          assertEquals(iterator.docID(), DocIdSetIterator.NO_MORE_DOCS);
+        }
+      }
+
+      @Override
+      public Relation compare(byte[] minPacked, byte[] maxPacked) {
+        boolean crosses = false;
+        for (int dim = 0; dim < config.numIndexDims; dim++) {
+          if (Arrays.compareUnsigned(
+                      maxPacked,
+                      dim * config.bytesPerDim,
+                      dim * config.bytesPerDim + config.bytesPerDim,
+                      queryMin[dim],
+                      0,
+                      config.bytesPerDim)
+                  < 0
+              || Arrays.compareUnsigned(
+                      minPacked,
+                      dim * config.bytesPerDim,
+                      dim * config.bytesPerDim + config.bytesPerDim,
+                      queryMax[dim],
+                      0,
+                      config.bytesPerDim)
+                  > 0) {
+            return Relation.CELL_OUTSIDE_QUERY;
+          } else if (Arrays.compareUnsigned(
+                      minPacked,
+                      dim * config.bytesPerDim,
+                      dim * config.bytesPerDim + config.bytesPerDim,
+                      queryMin[dim],
+                      0,
+                      config.bytesPerDim)
+                  < 0
+              || Arrays.compareUnsigned(
+                      maxPacked,
+                      dim * config.bytesPerDim,
+                      dim * config.bytesPerDim + config.bytesPerDim,
+                      queryMax[dim],
+                      0,
+                      config.bytesPerDim)
+                  > 0) {
+            crosses = true;
+          }
+        }
+
+        if (crosses) {
+          return Relation.CELL_CROSSES_QUERY;
+        } else {
+          return Relation.CELL_INSIDE_QUERY;
+        }
+      }
+    };
   }
 
   private BigInteger randomBigInt(int numBytes) {
@@ -1287,7 +1163,7 @@ public class TestBKD extends LuceneTestCase {
 
       IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
       in.seek(fp);
-      PointValues r = new BKDPointValues(getBKDIndexInput(in));
+      PointValues r = new BKDPointValues(getBKDReader(in));
       r.intersect(
           new IntersectVisitor() {
             int lastDocID = -1;
@@ -1354,7 +1230,7 @@ public class TestBKD extends LuceneTestCase {
 
     IndexInput pointsIn = dir.openInput("bkd", IOContext.DEFAULT);
     pointsIn.seek(indexFP);
-    PointValues points = new BKDPointValues(getBKDIndexInput(pointsIn));
+    PointValues points = new BKDPointValues(getBKDReader(pointsIn));
 
     points.intersect(
         new IntersectVisitor() {
@@ -1415,7 +1291,7 @@ public class TestBKD extends LuceneTestCase {
 
       IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
       in.seek(fp);
-      PointValues r = new BKDPointValues(getBKDIndexInput(in));
+      PointValues r = new BKDPointValues(getBKDReader(in));
       int[] count = new int[1];
       r.intersect(
           new IntersectVisitor() {
@@ -1482,7 +1358,7 @@ public class TestBKD extends LuceneTestCase {
 
     IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
     in.seek(fp);
-    PointValues r = new BKDPointValues(getBKDIndexInput(in));
+    PointValues r = new BKDPointValues(getBKDReader(in));
     int[] count = new int[1];
     r.intersect(
         new IntersectVisitor() {
@@ -1551,7 +1427,7 @@ public class TestBKD extends LuceneTestCase {
 
     IndexInput pointsIn = dir.openInput("bkd", IOContext.DEFAULT);
     pointsIn.seek(indexFP);
-    PointValues points = new BKDPointValues(getBKDIndexInput(pointsIn));
+    PointValues points = new BKDPointValues(getBKDReader(pointsIn));
 
     // If all points match, then the point count is numLeaves * maxPointsInLeafNode
     int numLeaves = numValues / maxPointsInLeafNode;

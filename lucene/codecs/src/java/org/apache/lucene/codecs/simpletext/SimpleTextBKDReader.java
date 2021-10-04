@@ -305,36 +305,68 @@ final class SimpleTextBKDReader implements BKDReader {
 
     @Override
     public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
-      BytesRefBuilder scratch = new BytesRefBuilder();
-      in.seek(leafBlockFPs[nodeID - leafNodeOffset]);
-      readLine(in, scratch);
-      int count = parseInt(scratch, BLOCK_COUNT);
-      visitor.grow(count);
-      for (int i = 0; i < count; i++) {
+      long maxPointCount = size();
+      while (maxPointCount > Integer.MAX_VALUE) {
+        // could be >MAX_VALUE if there are more than 2B points in total
+        visitor.grow(Integer.MAX_VALUE);
+        maxPointCount -= Integer.MAX_VALUE;
+      }
+      visitor.grow((int) maxPointCount);
+
+      addAll(visitor);
+    }
+
+    private void addAll(PointValues.IntersectVisitor visitor) throws IOException {
+      if (isLeafNode()) {
+        // Leaf node
+        BytesRefBuilder scratch = new BytesRefBuilder();
+        in.seek(leafBlockFPs[nodeID - leafNodeOffset]);
         readLine(in, scratch);
-        visitor.visit(parseInt(scratch, BLOCK_DOC_ID));
+        int count = parseInt(scratch, BLOCK_COUNT);
+        visitor.grow(count);
+        for (int i = 0; i < count; i++) {
+          readLine(in, scratch);
+          visitor.visit(parseInt(scratch, BLOCK_DOC_ID));
+        }
+      } else {
+        pushLeft();
+        addAll(visitor);
+        pop(true);
+        pushRight();
+        addAll(visitor);
+        pop(false);
       }
     }
 
     @Override
     public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
-      int leafID = nodeID - leafNodeOffset;
+      if (isLeafNode()) {
+        // Leaf node
+        int leafID = nodeID - leafNodeOffset;
 
-      // Leaf node; scan and filter all points in this block:
-      int count = readDocIDs(in, leafBlockFPs[leafID], scratchDocIDs);
+        // Leaf node; scan and filter all points in this block:
+        int count = readDocIDs(in, leafBlockFPs[leafID], scratchDocIDs);
 
-      // Again, this time reading values and checking with the visitor
-      visitor.grow(count);
-      // NOTE: we don't do prefix coding, so we ignore commonPrefixLengths
-      assert scratchPackedValue.length == config.packedBytesLength;
-      BytesRefBuilder scratch = new BytesRefBuilder();
-      for (int i = 0; i < count; i++) {
-        readLine(in, scratch);
-        assert startsWith(scratch, BLOCK_VALUE);
-        BytesRef br = SimpleTextUtil.fromBytesRefString(stripPrefix(scratch, BLOCK_VALUE));
-        assert br.length == config.packedBytesLength;
-        System.arraycopy(br.bytes, br.offset, scratchPackedValue, 0, config.packedBytesLength);
-        visitor.visit(scratchDocIDs[i], scratchPackedValue);
+        // Again, this time reading values and checking with the visitor
+        visitor.grow(count);
+        // NOTE: we don't do prefix coding, so we ignore commonPrefixLengths
+        assert scratchPackedValue.length == config.packedBytesLength;
+        BytesRefBuilder scratch = new BytesRefBuilder();
+        for (int i = 0; i < count; i++) {
+          readLine(in, scratch);
+          assert startsWith(scratch, BLOCK_VALUE);
+          BytesRef br = SimpleTextUtil.fromBytesRefString(stripPrefix(scratch, BLOCK_VALUE));
+          assert br.length == config.packedBytesLength;
+          System.arraycopy(br.bytes, br.offset, scratchPackedValue, 0, config.packedBytesLength);
+          visitor.visit(scratchDocIDs[i], scratchPackedValue);
+        }
+      } else {
+        pushLeft();
+        visitDocValues(visitor);
+        pop(true);
+        pushRight();
+        visitDocValues(visitor);
+        pop(false);
       }
     }
 

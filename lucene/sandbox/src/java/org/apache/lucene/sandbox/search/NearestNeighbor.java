@@ -310,7 +310,7 @@ class NearestNeighbor {
       } else {
         // System.out.println("    non-leaf");
         // Non-leaf block: split into two cells and put them back into the queue:
-        
+
         // we must clone the index so that we can recurse left and right "concurrently":
         IndexTree newIndex = cell.index.clone();
 

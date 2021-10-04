@@ -78,10 +78,10 @@ public interface BKDReader {
     /** Return the number of points below the current node. */
     long size();
 
-    /** Visit the docs of the current node. Only valid if moveToChild() is false. */
+    /** Visit all the docs below the current node. */
     void visitDocIDs(IntersectVisitor visitor) throws IOException;
 
-    /** Visit the values of the current node. Only valid if moveToChild() is false. */
+    /** Visit all the docs and values below the current node. */
     void visitDocValues(IntersectVisitor visitor) throws IOException;
   }
 }
