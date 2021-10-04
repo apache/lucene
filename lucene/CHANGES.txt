@@ -439,6 +439,9 @@ Bug Fixes
 * LUCENE-10126: Sort optimization with a chunked bulk scorer
   can wrongly skip documents (Nhat Nguyen, Mayya Sharipova)
 
+* LUCENE-10134: ConcurrentSortedSetDocValuesFacetCounts shouldn't share liveDocs Bits across threads.
+  (Ankur Goel)
+
 Build
 ---------------------
 
