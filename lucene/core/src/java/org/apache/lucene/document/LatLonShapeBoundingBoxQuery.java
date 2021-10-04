@@ -24,7 +24,6 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitudeCeil;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitudeCeil;
 
-import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.lucene.document.ShapeField.QueryRelation;
@@ -32,6 +31,7 @@ import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.NumericUtils;
 
 /**
@@ -310,7 +310,7 @@ final class LatLonShapeBoundingBoxQuery extends SpatialQuery {
      * static utility method to compare a bbox with a range of triangles (just the bbox of the
      * triangle collection)
      */
-    private static Relation compareBBoxToRangeBBox(
+    private Relation compareBBoxToRangeBBox(
         final byte[] bbox,
         int minXOffset,
         int minYOffset,
@@ -324,17 +324,10 @@ final class LatLonShapeBoundingBoxQuery extends SpatialQuery {
         return Relation.CELL_OUTSIDE_QUERY;
       }
 
-      if (Arrays.compareUnsigned(
-                  minTriangle, minXOffset, minXOffset + BYTES, bbox, BYTES, 2 * BYTES)
-              >= 0
-          && Arrays.compareUnsigned(
-                  maxTriangle, maxXOffset, maxXOffset + BYTES, bbox, 3 * BYTES, 4 * BYTES)
-              <= 0
-          && Arrays.compareUnsigned(minTriangle, minYOffset, minYOffset + BYTES, bbox, 0, BYTES)
-              >= 0
-          && Arrays.compareUnsigned(
-                  maxTriangle, maxYOffset, maxYOffset + BYTES, bbox, 2 * BYTES, 3 * BYTES)
-              <= 0) {
+      if (ArrayUtil.compareUnsigned4(minTriangle, minXOffset, bbox, BYTES) >= 0
+          && ArrayUtil.compareUnsigned4(maxTriangle, maxXOffset, bbox, 3 * BYTES) <= 0
+          && ArrayUtil.compareUnsigned4(minTriangle, minYOffset, bbox, 0) >= 0
+          && ArrayUtil.compareUnsigned4(maxTriangle, maxYOffset, bbox, 2 * BYTES) <= 0) {
         return Relation.CELL_INSIDE_QUERY;
       }
 
@@ -345,7 +338,7 @@ final class LatLonShapeBoundingBoxQuery extends SpatialQuery {
      * static utility method to compare a bbox with a range of triangles (just the bbox of the
      * triangle collection) for intersection
      */
-    private static Relation intersectBBoxWithRangeBBox(
+    private Relation intersectBBoxWithRangeBBox(
         final byte[] bbox,
         int minXOffset,
         int minYOffset,
@@ -359,47 +352,26 @@ final class LatLonShapeBoundingBoxQuery extends SpatialQuery {
         return Relation.CELL_OUTSIDE_QUERY;
       }
 
-      if (Arrays.compareUnsigned(
-                  minTriangle, minXOffset, minXOffset + BYTES, bbox, BYTES, 2 * BYTES)
-              >= 0
-          && Arrays.compareUnsigned(minTriangle, minYOffset, minYOffset + BYTES, bbox, 0, BYTES)
-              >= 0) {
-        if (Arrays.compareUnsigned(
-                    maxTriangle, minXOffset, minXOffset + BYTES, bbox, 3 * BYTES, 4 * BYTES)
-                <= 0
-            && Arrays.compareUnsigned(
-                    maxTriangle, maxYOffset, maxYOffset + BYTES, bbox, 2 * BYTES, 3 * BYTES)
-                <= 0) {
+      if (ArrayUtil.compareUnsigned4(minTriangle, minXOffset, bbox, BYTES) >= 0
+          && ArrayUtil.compareUnsigned4(minTriangle, minYOffset, bbox, 0) >= 0) {
+        if (ArrayUtil.compareUnsigned4(maxTriangle, minXOffset, bbox, 3 * BYTES) <= 0
+            && ArrayUtil.compareUnsigned4(maxTriangle, maxYOffset, bbox, 2 * BYTES) <= 0) {
           return Relation.CELL_INSIDE_QUERY;
         }
-        if (Arrays.compareUnsigned(
-                    maxTriangle, maxXOffset, maxXOffset + BYTES, bbox, 3 * BYTES, 4 * BYTES)
-                <= 0
-            && Arrays.compareUnsigned(
-                    maxTriangle, minYOffset, minYOffset + BYTES, bbox, 2 * BYTES, 3 * BYTES)
-                <= 0) {
+        if (ArrayUtil.compareUnsigned4(maxTriangle, maxXOffset, bbox, 3 * BYTES) <= 0
+            && ArrayUtil.compareUnsigned4(maxTriangle, minYOffset, bbox, 2 * BYTES) <= 0) {
           return Relation.CELL_INSIDE_QUERY;
         }
       }
 
-      if (Arrays.compareUnsigned(
-                  maxTriangle, maxXOffset, maxXOffset + BYTES, bbox, 3 * BYTES, 4 * BYTES)
-              <= 0
-          && Arrays.compareUnsigned(
-                  maxTriangle, maxYOffset, maxYOffset + BYTES, bbox, 2 * BYTES, 3 * BYTES)
-              <= 0) {
-        if (Arrays.compareUnsigned(
-                    minTriangle, minXOffset, minXOffset + BYTES, bbox, BYTES, 2 * BYTES)
-                >= 0
-            && Arrays.compareUnsigned(minTriangle, maxYOffset, maxYOffset + BYTES, bbox, 0, BYTES)
-                >= 0) {
+      if (ArrayUtil.compareUnsigned4(maxTriangle, maxXOffset, bbox, 3 * BYTES) <= 0
+          && ArrayUtil.compareUnsigned4(maxTriangle, maxYOffset, bbox, 2 * BYTES) <= 0) {
+        if (ArrayUtil.compareUnsigned4(minTriangle, minXOffset, bbox, BYTES) >= 0
+            && ArrayUtil.compareUnsigned4(minTriangle, maxYOffset, bbox, 0) >= 0) {
           return Relation.CELL_INSIDE_QUERY;
         }
-        if (Arrays.compareUnsigned(
-                    minTriangle, maxXOffset, maxXOffset + BYTES, bbox, BYTES, 2 * BYTES)
-                >= 0
-            && Arrays.compareUnsigned(minTriangle, minYOffset, minYOffset + BYTES, bbox, 0, BYTES)
-                >= 0) {
+        if (ArrayUtil.compareUnsigned4(minTriangle, maxXOffset, bbox, BYTES) >= 0
+            && ArrayUtil.compareUnsigned4(minTriangle, minYOffset, bbox, 0) >= 0) {
           return Relation.CELL_INSIDE_QUERY;
         }
       }
@@ -408,7 +380,7 @@ final class LatLonShapeBoundingBoxQuery extends SpatialQuery {
     }
 
     /** static utility method to check a bbox is disjoint with a range of triangles */
-    private static boolean disjoint(
+    private boolean disjoint(
         final byte[] bbox,
         int minXOffset,
         int minYOffset,
@@ -416,17 +388,10 @@ final class LatLonShapeBoundingBoxQuery extends SpatialQuery {
         int maxXOffset,
         int maxYOffset,
         byte[] maxTriangle) {
-      return Arrays.compareUnsigned(
-                  minTriangle, minXOffset, minXOffset + BYTES, bbox, 3 * BYTES, 4 * BYTES)
-              > 0
-          || Arrays.compareUnsigned(
-                  maxTriangle, maxXOffset, maxXOffset + BYTES, bbox, BYTES, 2 * BYTES)
-              < 0
-          || Arrays.compareUnsigned(
-                  minTriangle, minYOffset, minYOffset + BYTES, bbox, 2 * BYTES, 3 * BYTES)
-              > 0
-          || Arrays.compareUnsigned(maxTriangle, maxYOffset, maxYOffset + BYTES, bbox, 0, BYTES)
-              < 0;
+      return ArrayUtil.compareUnsigned4(minTriangle, minXOffset, bbox, 3 * BYTES) > 0
+          || ArrayUtil.compareUnsigned4(maxTriangle, maxXOffset, bbox, BYTES) < 0
+          || ArrayUtil.compareUnsigned4(minTriangle, minYOffset, bbox, 2 * BYTES) > 0
+          || ArrayUtil.compareUnsigned4(maxTriangle, maxYOffset, bbox, 0) < 0;
     }
 
     /** Checks if the rectangle contains the provided point */

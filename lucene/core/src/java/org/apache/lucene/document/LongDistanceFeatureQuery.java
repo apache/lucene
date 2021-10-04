@@ -17,7 +17,6 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -35,6 +34,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocIdSetBuilder;
 
 final class LongDistanceFeatureQuery extends Query {
@@ -411,13 +411,11 @@ final class LongDistanceFeatureQuery extends Query {
                 // Already visited or skipped
                 return;
               }
-              if (Arrays.compareUnsigned(packedValue, 0, Long.BYTES, minValueAsBytes, 0, Long.BYTES)
-                  < 0) {
+              if (ArrayUtil.compareUnsigned8(packedValue, 0, minValueAsBytes, 0) < 0) {
                 // Doc's value is too low, in this dimension
                 return;
               }
-              if (Arrays.compareUnsigned(packedValue, 0, Long.BYTES, maxValueAsBytes, 0, Long.BYTES)
-                  > 0) {
+              if (ArrayUtil.compareUnsigned8(packedValue, 0, maxValueAsBytes, 0) > 0) {
                 // Doc's value is too high, in this dimension
                 return;
               }
@@ -428,21 +426,13 @@ final class LongDistanceFeatureQuery extends Query {
 
             @Override
             public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              if (Arrays.compareUnsigned(
-                          minPackedValue, 0, Long.BYTES, maxValueAsBytes, 0, Long.BYTES)
-                      > 0
-                  || Arrays.compareUnsigned(
-                          maxPackedValue, 0, Long.BYTES, minValueAsBytes, 0, Long.BYTES)
-                      < 0) {
+              if (ArrayUtil.compareUnsigned8(minPackedValue, 0, maxValueAsBytes, 0) > 0
+                  || ArrayUtil.compareUnsigned8(maxPackedValue, 0, minValueAsBytes, 0) < 0) {
                 return Relation.CELL_OUTSIDE_QUERY;
               }
 
-              if (Arrays.compareUnsigned(
-                          minPackedValue, 0, Long.BYTES, minValueAsBytes, 0, Long.BYTES)
-                      < 0
-                  || Arrays.compareUnsigned(
-                          maxPackedValue, 0, Long.BYTES, maxValueAsBytes, 0, Long.BYTES)
-                      > 0) {
+              if (ArrayUtil.compareUnsigned8(minPackedValue, 0, minValueAsBytes, 0) < 0
+                  || ArrayUtil.compareUnsigned8(maxPackedValue, 0, maxValueAsBytes, 0) > 0) {
                 return Relation.CELL_CROSSES_QUERY;
               }
 

@@ -36,6 +36,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
@@ -92,6 +93,8 @@ public class BKDWriter implements Closeable {
   /** BKD tree configuration */
   protected final BKDConfig config;
 
+  private final ByteArrayComparator comparator;
+
   final TrackingDirectoryWrapper tempDir;
   final String tempFileNamePrefix;
   final double maxMBSortInHeap;
@@ -142,6 +145,7 @@ public class BKDWriter implements Closeable {
     this.maxDoc = maxDoc;
 
     this.config = config;
+    this.comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
 
     docsSeen = new FixedBitSet(maxDoc);
 
@@ -217,23 +221,9 @@ public class BKDWriter implements Closeable {
     } else {
       for (int dim = 0; dim < config.numIndexDims; dim++) {
         int offset = dim * config.bytesPerDim;
-        if (Arrays.compareUnsigned(
-                packedValue,
-                offset,
-                offset + config.bytesPerDim,
-                minPackedValue,
-                offset,
-                offset + config.bytesPerDim)
-            < 0) {
+        if (comparator.compare(packedValue, offset, minPackedValue, offset) < 0) {
           System.arraycopy(packedValue, offset, minPackedValue, offset, config.bytesPerDim);
-        } else if (Arrays.compareUnsigned(
-                packedValue,
-                offset,
-                offset + config.bytesPerDim,
-                maxPackedValue,
-                offset,
-                offset + config.bytesPerDim)
-            > 0) {
+        } else if (comparator.compare(packedValue, offset, maxPackedValue, offset) > 0) {
           System.arraycopy(packedValue, offset, maxPackedValue, offset, config.bytesPerDim);
         }
       }
@@ -345,11 +335,11 @@ public class BKDWriter implements Closeable {
   }
 
   private static class BKDMergeQueue extends PriorityQueue<MergeReader> {
-    private final int bytesPerDim;
+    private final ByteArrayComparator comparator;
 
     public BKDMergeQueue(int bytesPerDim, int maxSize) {
       super(maxSize);
-      this.bytesPerDim = bytesPerDim;
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
     @Override
@@ -357,13 +347,7 @@ public class BKDWriter implements Closeable {
       assert a != b;
 
       int cmp =
-          Arrays.compareUnsigned(
-              a.state.scratchDataPackedValue,
-              0,
-              bytesPerDim,
-              b.state.scratchDataPackedValue,
-              0,
-              bytesPerDim);
+          comparator.compare(a.state.scratchDataPackedValue, 0, b.state.scratchDataPackedValue, 0);
       if (cmp < 0) {
         return true;
       } else if (cmp > 0) {
@@ -436,14 +420,8 @@ public class BKDWriter implements Closeable {
       values.getValue(i, scratch);
       for (int dim = 0; dim < config.numIndexDims; dim++) {
         final int startOffset = dim * config.bytesPerDim;
-        final int endOffset = startOffset + config.bytesPerDim;
-        if (Arrays.compareUnsigned(
-                scratch.bytes,
-                scratch.offset + startOffset,
-                scratch.offset + endOffset,
-                minPackedValue,
-                startOffset,
-                endOffset)
+        if (comparator.compare(
+                scratch.bytes, scratch.offset + startOffset, minPackedValue, startOffset)
             < 0) {
           System.arraycopy(
               scratch.bytes,
@@ -451,13 +429,8 @@ public class BKDWriter implements Closeable {
               minPackedValue,
               startOffset,
               config.bytesPerDim);
-        } else if (Arrays.compareUnsigned(
-                scratch.bytes,
-                scratch.offset + startOffset,
-                scratch.offset + endOffset,
-                maxPackedValue,
-                startOffset,
-                endOffset)
+        } else if (comparator.compare(
+                scratch.bytes, scratch.offset + startOffset, maxPackedValue, startOffset)
             > 0) {
           System.arraycopy(
               scratch.bytes,
@@ -1439,24 +1412,12 @@ public class BKDWriter implements Closeable {
     BytesRef first = packedValues.apply(0);
     min.copyBytes(first.bytes, first.offset + offset, length);
     max.copyBytes(first.bytes, first.offset + offset, length);
+    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(length);
     for (int i = 1; i < count; ++i) {
       BytesRef candidate = packedValues.apply(i);
-      if (Arrays.compareUnsigned(
-              min.bytes(),
-              0,
-              length,
-              candidate.bytes,
-              candidate.offset + offset,
-              candidate.offset + offset + length)
-          > 0) {
+      if (comparator.compare(min.bytes(), 0, candidate.bytes, candidate.offset + offset) > 0) {
         min.copyBytes(candidate.bytes, candidate.offset + offset, length);
-      } else if (Arrays.compareUnsigned(
-              max.bytes(),
-              0,
-              length,
-              candidate.bytes,
-              candidate.offset + offset,
-              candidate.offset + offset + length)
+      } else if (comparator.compare(max.bytes(), 0, candidate.bytes, candidate.offset + offset)
           < 0) {
         max.copyBytes(candidate.bytes, candidate.offset + offset, length);
       }
@@ -1565,14 +1526,7 @@ public class BKDWriter implements Closeable {
     for (int dim = 0; dim < config.numIndexDims; ++dim) {
       final int offset = dim * config.bytesPerDim;
       if (parentSplits[dim] < maxNumSplits / 2
-          && Arrays.compareUnsigned(
-                  minPackedValue,
-                  offset,
-                  offset + config.bytesPerDim,
-                  maxPackedValue,
-                  offset,
-                  offset + config.bytesPerDim)
-              != 0) {
+          && comparator.compare(minPackedValue, offset, maxPackedValue, offset) != 0) {
         return dim;
       }
     }
@@ -1581,10 +1535,7 @@ public class BKDWriter implements Closeable {
     int splitDim = -1;
     for (int dim = 0; dim < config.numIndexDims; dim++) {
       NumericUtils.subtract(config.bytesPerDim, dim, maxPackedValue, minPackedValue, scratchDiff);
-      if (splitDim == -1
-          || Arrays.compareUnsigned(
-                  scratchDiff, 0, config.bytesPerDim, scratch1, 0, config.bytesPerDim)
-              > 0) {
+      if (splitDim == -1 || comparator.compare(scratchDiff, 0, scratch1, 0) > 0) {
         System.arraycopy(scratchDiff, 0, scratch1, 0, config.bytesPerDim);
         splitDim = dim;
       }
@@ -1878,14 +1829,8 @@ public class BKDWriter implements Closeable {
         value = reader.pointValue().packedValue();
         for (int dim = 0; dim < config.numIndexDims; dim++) {
           final int startOffset = dim * config.bytesPerDim;
-          final int endOffset = startOffset + config.bytesPerDim;
-          if (Arrays.compareUnsigned(
-                  value.bytes,
-                  value.offset + startOffset,
-                  value.offset + endOffset,
-                  minPackedValue,
-                  startOffset,
-                  endOffset)
+          if (comparator.compare(
+                  value.bytes, value.offset + startOffset, minPackedValue, startOffset)
               < 0) {
             System.arraycopy(
                 value.bytes,
@@ -1893,13 +1838,8 @@ public class BKDWriter implements Closeable {
                 minPackedValue,
                 startOffset,
                 config.bytesPerDim);
-          } else if (Arrays.compareUnsigned(
-                  value.bytes,
-                  value.offset + startOffset,
-                  value.offset + endOffset,
-                  maxPackedValue,
-                  startOffset,
-                  endOffset)
+          } else if (comparator.compare(
+                  value.bytes, value.offset + startOffset, maxPackedValue, startOffset)
               > 0) {
             System.arraycopy(
                 value.bytes,
