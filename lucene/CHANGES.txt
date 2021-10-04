@@ -157,6 +157,9 @@ API Changes
 
 Improvements
 
+* LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator
+  that is Closeable. (Dawid Weiss).
+
 * LUCENE-10135: Correct passage selector behavior for long matching snippets (Dawid Weiss).
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)

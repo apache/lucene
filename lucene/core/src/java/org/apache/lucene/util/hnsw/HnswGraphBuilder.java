@@ -20,7 +20,7 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Random;
+import java.util.SplittableRandom;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -45,7 +45,7 @@ public final class HnswGraphBuilder {
 
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
-  private final Random random;
+  private final SplittableRandom random;
   private final BoundsChecker bound;
   final HnswGraph hnsw;
 
@@ -86,7 +86,7 @@ public final class HnswGraphBuilder {
     this.beamWidth = beamWidth;
     this.hnsw = new HnswGraph(maxConn);
     bound = BoundsChecker.create(similarityFunction.reversed);
-    random = new Random(seed);
+    random = new SplittableRandom(seed);
     scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
 
