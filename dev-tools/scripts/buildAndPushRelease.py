@@ -117,9 +117,7 @@ def prepare(root, version, gpgKeyID, gpgPassword):
   print('  prepare-release')
   cmd = './gradlew -Dversion.release=%s clean assembleDist' % version
   if gpgKeyID is not None:
-    # TODO sign
-    # cmd += ' -Psigning.keyId=%s publishSignedPublicationToMavenLocal' % gpgKeyID
-    pass
+    cmd += ' -Psigning.gnupg.keyName=%s signDist' % gpgKeyID
   cmd += ' mavenToLocalFolder'
 
   if gpgPassword is not None:
