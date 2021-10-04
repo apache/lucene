@@ -678,19 +678,20 @@ public final class ArrayUtil {
       // Used by IntPoint, FloatPoint, LatLonPoint, LatLonShape
       return ArrayUtil::compareUnsigned4;
     } else {
-      return (a, ai, b, bI) -> Arrays.compareUnsigned(a, ai, ai + numBytes, b, bI, bI + numBytes);
+      return (a, aOffset, b, bOffset) ->
+          Arrays.compareUnsigned(a, aOffset, aOffset + numBytes, b, bOffset, bOffset + numBytes);
     }
   }
 
   /** Compare exactly 8 unsigned bytes from the provided arrays. */
-  public static int compareUnsigned8(byte[] a, int aI, byte[] b, int bI) {
+  public static int compareUnsigned8(byte[] a, int aOffset, byte[] b, int bOffset) {
     return Long.compareUnsigned(
-        (long) BitUtil.VH_BE_LONG.get(a, aI), (long) BitUtil.VH_BE_LONG.get(b, bI));
+        (long) BitUtil.VH_BE_LONG.get(a, aOffset), (long) BitUtil.VH_BE_LONG.get(b, bOffset));
   }
 
   /** Compare exactly 4 unsigned bytes from the provided arrays. */
-  public static int compareUnsigned4(byte[] a, int aI, byte[] b, int bI) {
+  public static int compareUnsigned4(byte[] a, int aOffset, byte[] b, int bOffset) {
     return Integer.compareUnsigned(
-        (int) BitUtil.VH_BE_INT.get(a, aI), (int) BitUtil.VH_BE_INT.get(b, bI));
+        (int) BitUtil.VH_BE_INT.get(a, aOffset), (int) BitUtil.VH_BE_INT.get(b, bOffset));
   }
 }
