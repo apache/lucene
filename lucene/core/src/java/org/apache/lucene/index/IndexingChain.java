@@ -1342,12 +1342,6 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    private void assertSame(String label, int expected, int given) {
-      if (expected != given) {
-        raiseNotSame(label, expected, given);
-      }
-    }
-
     private void assertSame(String label, long expected, long given) {
       if (expected != given) {
         raiseNotSame(label, expected, given);
