@@ -17,6 +17,12 @@
 
 # Apache Lucene Migration Guide
 
+## Directory API is now little endian (LUCENE-9047)
+
+DataOutput's writeShort, writeInt, and writeLong methods now encode with
+LE byte order. If you have custom subclasses of DataInput/DataOutput, you
+will need to adjust them from BE byte order to LE byte order.
+
 ## NativeUnixDirectory removed and replaced by DirectIODirectory (LUCENE-8982)
 
 Java 11 supports to use Direct IO without native wrappers from Java code.
