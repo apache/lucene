@@ -213,7 +213,7 @@ task assembleSourceDist() {
         checksum(sourceTarFile)
     }
 }
-
+tasks.findByName("assembleDist").dependsOn(assembleSourceDist)
 
 
 // NOTE: we don't use the convinence DSL of the 'signing' extension to define our 'Sign' tasks because
