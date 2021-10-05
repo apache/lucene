@@ -23,6 +23,8 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.MathUtil;
 
@@ -324,13 +326,8 @@ public class BKDDefaultReader implements BKDReader {
       // save the dimension we are going to change
       System.arraycopy(
           maxPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
-      assert Arrays.compareUnsigned(
-                  maxPackedValue,
-                  splitDimPos,
-                  splitDimPos + config.bytesPerDim,
-                  splitValuesStack[level],
-                  splitDimPos,
-                  splitDimPos + config.bytesPerDim)
+      assert ArrayUtil.getUnsignedComparator(config.bytesPerDim)
+                  .compare(maxPackedValue, splitDimPos, splitValuesStack[level], splitDimPos)
               >= 0
           : "config.bytesPerDim="
               + config.bytesPerDim
@@ -353,18 +350,13 @@ public class BKDDefaultReader implements BKDReader {
 
     private void pushBoundsRight() {
       final int splitDimPos = splitDimsPos[level];
-      // we should have already visit the left node
+      // we should have already visited the left node
       assert splitDimValueStack[level] != null;
       // save the dimension we are going to change
       System.arraycopy(
           minPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
-      assert Arrays.compareUnsigned(
-                  minPackedValue,
-                  splitDimPos,
-                  splitDimPos + config.bytesPerDim,
-                  splitValuesStack[level],
-                  splitDimPos,
-                  splitDimPos + config.bytesPerDim)
+      assert ArrayUtil.getUnsignedComparator(config.bytesPerDim)
+                  .compare(minPackedValue, splitDimPos, splitValuesStack[level], splitDimPos)
               <= 0
           : "config.bytesPerDim="
               + config.bytesPerDim
