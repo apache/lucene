@@ -59,7 +59,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
 public final class HnswGraph extends KnnGraphValues {
 
   private final int maxConn;
-  private int curMaxLevel; // the current max graph level
+  private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
 
   // Nodes by level expressed as the level 0's nodes' ordinals.
@@ -79,10 +79,10 @@ public final class HnswGraph extends KnnGraphValues {
 
   HnswGraph(int maxConn, int levelOfFirstNode) {
     this.maxConn = maxConn;
-    this.curMaxLevel = levelOfFirstNode;
-    this.graph = new ArrayList<>(curMaxLevel + 1);
+    this.numLevels = levelOfFirstNode + 1;
+    this.graph = new ArrayList<>(numLevels);
     this.entryNode = 0;
-    for (int i = 0; i <= curMaxLevel; i++) {
+    for (int i = 0; i < numLevels; i++) {
       graph.add(new ArrayList<>());
       // Typically with diversity criteria we see nodes not fully occupied;
       // average fanout seems to be about 1/2 maxConn.
@@ -90,9 +90,9 @@ public final class HnswGraph extends KnnGraphValues {
       graph.get(i).add(new NeighborArray(Math.max(32, maxConn / 4)));
     }
 
-    this.nodesByLevel = new ArrayList<>(curMaxLevel + 1);
-    nodesByLevel.add(null); // we don't need this for 0th level, as it contians all nodes
-    for (int l = 1; l <= curMaxLevel; l++) {
+    this.nodesByLevel = new ArrayList<>(numLevels);
+    nodesByLevel.add(null); // we don't need this for 0th level, as it contains all nodes
+    for (int l = 1; l < numLevels; l++) {
       nodesByLevel.add(new int[] {0});
     }
   }
@@ -121,35 +121,25 @@ public final class HnswGraph extends KnnGraphValues {
       Bits acceptOrds,
       Random random)
       throws IOException {
+
     int size = graphValues.size();
-    int boundedNumSeed = Math.min(numSeed, 2 * size);
+    int boundedNumSeed = Math.max(topK, Math.min(numSeed, 2 * size));
     NeighborQueue results;
 
-    if (graphValues.maxLevel() == 0) {
-      // search in NSW; generate a number of entry points randomly
-      final int[] eps = new int[boundedNumSeed];
-      for (int i = 0; i < boundedNumSeed; i++) {
-        eps[i] = random.nextInt(size);
-      }
-      return searchLevel(query, topK, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
-    } else {
-      // search in hierarchical NSW
-      int[] eps = new int[] {graphValues.entryNode()};
-      for (int level = graphValues.maxLevel(); level >= 1; level--) {
-        results =
-            HnswGraph.searchLevel(
-                query, 1, level, eps, vectors, similarityFunction, graphValues, null);
-        eps[0] = results.pop();
-      }
-      boundedNumSeed = Math.max(topK, boundedNumSeed);
+    int[] eps = new int[] {graphValues.entryNode()};
+    for (int level = graphValues.numLevels() - 1; level >= 1; level--) {
       results =
           HnswGraph.searchLevel(
-              query, boundedNumSeed, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
-      while (results.size() > topK) {
-        results.pop();
-      }
-      return results;
+              query, 1, level, eps, vectors, similarityFunction, graphValues, null);
+      eps[0] = results.pop();
     }
+    results =
+        HnswGraph.searchLevel(
+            query, boundedNumSeed, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
+    while (results.size() > topK) {
+      results.pop();
+    }
+    return results;
   }
 
   /**
@@ -266,12 +256,12 @@ public final class HnswGraph extends KnnGraphValues {
     if (level > 0) {
       // if the new node introduces a new level, add more levels to the graph,
       // and make this node the graph's new entry point
-      if (level > curMaxLevel) {
-        for (int i = curMaxLevel + 1; i <= level; i++) {
+      if (level >= numLevels) {
+        for (int i = numLevels; i <= level; i++) {
           graph.add(new ArrayList<>());
           nodesByLevel.add(new int[] {node});
         }
-        curMaxLevel = level;
+        numLevels = level + 1;
         entryNode = node;
       } else {
         // Add this node id to this level's nodes
@@ -305,13 +295,13 @@ public final class HnswGraph extends KnnGraphValues {
   }
 
   /**
-   * Returns the current top level of the graph
+   * Returns the current number of levels in the graph
    *
-   * @return current maximum level of the graph
+   * @return the current number of levels in the graph
    */
   @Override
-  public int maxLevel() {
-    return curMaxLevel;
+  public int numLevels() {
+    return numLevels;
   }
 
   /**
@@ -325,13 +315,7 @@ public final class HnswGraph extends KnnGraphValues {
     return entryNode;
   }
 
-  /**
-   * Get all nodes on a given level as node 0th ordinals
-   *
-   * @param level level for which to get all nodes
-   * @return an iterator over nodes where {@code nextDoc} returns a next node
-   */
-  // TODO: return a more suitable iterator over nodes than DocIdSetIterator
+  @Override
   public DocIdSetIterator getAllNodesOnLevel(int level) {
     return new DocIdSetIterator() {
       int[] nodes = level == 0 ? null : nodesByLevel.get(level);
@@ -354,12 +338,12 @@ public final class HnswGraph extends KnnGraphValues {
       }
 
       @Override
-      public int advance(int target) {
-        throw new UnsupportedOperationException("Not supported");
+      public long cost() {
+        return size;
       }
 
       @Override
-      public long cost() {
+      public int advance(int target) {
         throw new UnsupportedOperationException("Not supported");
       }
     };
