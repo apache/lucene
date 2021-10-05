@@ -292,6 +292,9 @@ Improvements
 * LUCENE-10125: Optimize primitive writes in OutputStreamIndexOutput.
   (Uwe Schindler, Robert Muir, Adrien Grand)
 
+* LUCENE-10143: Delegate primitive writes in RateLimitedIndexOutput.
+  (Uwe Schindler, Robert Muir, Adrien Grand)
+
 Bug fixes
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
