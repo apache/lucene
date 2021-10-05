@@ -247,13 +247,13 @@ public class BKDDefaultReader implements BKDReader {
       this.maxPackedValue = maxPackedValue.clone();
       // stack arrays that keep information at different levels
       int treeDepth = getTreeDepth(numLeaves);
-      splitDimValueStack = new byte[treeDepth + 1][];
-      splitValuesStack = new byte[treeDepth + 1][];
+      splitDimValueStack = new byte[treeDepth][];
+      splitValuesStack = new byte[treeDepth][];
       splitValuesStack[0] = new byte[config.packedIndexBytesLength];
       leafBlockFPStack = new long[treeDepth + 1];
-      rightNodePositions = new int[treeDepth + 1];
-      splitDimsPos = new int[treeDepth + 1];
-      negativeDeltas = new boolean[config.numIndexDims * (treeDepth + 1)];
+      rightNodePositions = new int[treeDepth];
+      splitDimsPos = new int[treeDepth];
+      negativeDeltas = new boolean[config.numIndexDims * treeDepth];
       // scratch objects, reused between clones so NN search are not creating those objects
       // in every clone.
       this.scratchIterator = scratchIterator;
