@@ -207,9 +207,6 @@ task assembleSourceDist() {
                     "HEAD"
             ]
         }
-    }
-
-    doLast {
         checksum(sourceTarFile)
     }
 }
