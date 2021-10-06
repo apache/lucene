@@ -164,6 +164,42 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
+  public short readShort() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Short.BYTES <= blockMask) {
+      short v = blocks[blockIndex(pos)].getShort(blockOffset);
+      pos += Short.BYTES;
+      return v;
+    } else {
+      return super.readShort();
+    }
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Integer.BYTES <= blockMask) {
+      int v = blocks[blockIndex(pos)].getInt(blockOffset);
+      pos += Integer.BYTES;
+      return v;
+    } else {
+      return super.readInt();
+    }
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Long.BYTES <= blockMask) {
+      long v = blocks[blockIndex(pos)].getLong(blockOffset);
+      pos += Long.BYTES;
+      return v;
+    } else {
+      return super.readLong();
+    }
+  }
+
+  @Override
   public byte readByte(long pos) {
     pos += offset;
     return blocks[blockIndex(pos)].get(blockOffset(pos));
