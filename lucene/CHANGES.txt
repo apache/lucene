@@ -155,7 +155,7 @@ API Changes
 
 * LUCENE-10132: Support addition of diagnostics by custom merge policies (Chris Hegarty)
 
-* LUCENE-9325: Sort is now final, and the `setSort()` method has been removed
+* LUCENE-9325: Sort is now final, and the `setSort()` method has been removed (Alan Woodward)
 
 Improvements
 
