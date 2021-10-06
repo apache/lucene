@@ -277,3 +277,22 @@ task signDist {
   description = 'GPG Signs the main distributions'
   dependsOn signDistTar, signDistZip, signSourceDistTar
 }
+
+// Collect changes rendered to HTML.
+
+configurations {
+    changesHtml
+}
+
+dependencies {
+    changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
+}
+
+task syncChanges(type: Sync) {
+    from(configurations.changesHtml, {
+        into "/"
+    })
+
+    into file("${buildDir}/distributions/changes")
+}
+assembleDist.dependsOn syncChanges
