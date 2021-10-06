@@ -22,7 +22,8 @@ allprojects {
         def checksum = {
             outputs.files.each { File file ->
                 String sha512 = new DigestUtils(DigestUtils.sha512Digest).digestAsHex(file).trim()
-                new File(file.parent, file.name + ".sha512").write(sha512 + "  *" + file.name, "UTF-8")
+                // The asterisk signals a binary file, see https://www.gnu.org/software/coreutils/manual/coreutils.html#md5sum-invocation
+                new File(file.parent, file.name + ".sha512").write(sha512 + " *" + file.name, "UTF-8")
             }
         }
 
