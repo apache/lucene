@@ -17,7 +17,6 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
@@ -76,15 +75,11 @@ public class BKDDefaultReader implements BKDReader {
 
     metaIn.readBytes(minPackedValue, 0, config.packedIndexBytesLength);
     metaIn.readBytes(maxPackedValue, 0, config.packedIndexBytesLength);
-
+    final ArrayUtil.ByteArrayComparator comparator =
+        ArrayUtil.getUnsignedComparator(config.bytesPerDim);
     for (int dim = 0; dim < config.numIndexDims; dim++) {
-      if (Arrays.compareUnsigned(
-              minPackedValue,
-              dim * config.bytesPerDim,
-              dim * config.bytesPerDim + config.bytesPerDim,
-              maxPackedValue,
-              dim * config.bytesPerDim,
-              dim * config.bytesPerDim + config.bytesPerDim)
+      if (comparator.compare(
+              minPackedValue, dim * config.bytesPerDim, maxPackedValue, dim * config.bytesPerDim)
           > 0) {
         throw new CorruptIndexException(
             "minPackedValue "
