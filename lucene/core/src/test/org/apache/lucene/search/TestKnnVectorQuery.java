@@ -33,8 +33,10 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 
 /** TestKnnVectorQuery tests KnnVectorQuery. */
 public class TestKnnVectorQuery extends LuceneTestCase {
@@ -164,12 +166,13 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
-  public void testScore() throws IOException {
+  public void testScoreEuclidean() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 0; j < 5; j++) {
           Document doc = new Document();
-          doc.add(new KnnVectorField("field", new float[] {j, j}));
+          doc.add(
+              new KnnVectorField("field", new float[] {j, j}, VectorSimilarityFunction.EUCLIDEAN));
           w.addDocument(doc);
         }
       }
@@ -198,6 +201,64 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         assertEquals(1 / 6f, scorer.score(), 0);
         assertEquals(3, it.advance(3));
         assertEquals(1 / 2f, scorer.score(), 0);
+        assertEquals(NO_MORE_DOCS, it.advance(4));
+        expectThrows(ArrayIndexOutOfBoundsException.class, () -> scorer.score());
+      }
+    }
+  }
+
+  public void testScoreDotProduct() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 1; j <= 5; j++) {
+          Document doc = new Document();
+          doc.add(
+              new KnnVectorField(
+                  "field",
+                  VectorUtil.l2normalize(new float[] {j, j * j}),
+                  VectorSimilarityFunction.DOT_PRODUCT));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(1, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query =
+            new KnnVectorQuery("field", VectorUtil.l2normalize(new float[] {2, 3}), 3);
+        Query rewritten = query.rewrite(reader);
+        Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+        Scorer scorer = weight.scorer(reader.leaves().get(0));
+
+        // prior to advancing, score is 0
+        assertEquals(-1, scorer.docID());
+        expectThrows(ArrayIndexOutOfBoundsException.class, () -> scorer.score());
+
+        // test getMaxScore
+        assertEquals(0, scorer.getMaxScore(-1), 0);
+        /* maxAtZero = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)) = 0.5, then
+         * normalized by (1 + x) /2.
+         */
+        float maxAtZero = 0.99029f;
+        assertEquals(maxAtZero, scorer.getMaxScore(0), 0.001);
+
+        /* max at 2 is actually the score for doc 1 which is the highest (since doc 1 vector (2, 4)
+         * is the closest to (2, 3)). This is ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
+         * normalized by (1 + x) /2
+         */
+        float expected =
+            (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
+        assertEquals(expected, scorer.getMaxScore(2), 0);
+        assertEquals(expected, scorer.getMaxScore(Integer.MAX_VALUE), 0);
+
+        DocIdSetIterator it = scorer.iterator();
+        assertEquals(3, it.cost());
+        assertEquals(0, it.nextDoc());
+        // doc 0 has (1, 1)
+        assertEquals(maxAtZero, scorer.score(), 0.0001);
+        assertEquals(1, it.advance(1));
+        assertEquals(expected, scorer.score(), 0);
+        assertEquals(2, it.nextDoc());
+        // since topK was 3
         assertEquals(NO_MORE_DOCS, it.advance(4));
         expectThrows(ArrayIndexOutOfBoundsException.class, () -> scorer.score());
       }
