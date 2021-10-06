@@ -22,7 +22,7 @@ allprojects {
         def checksum = {
             outputs.files.each { File file ->
                 String sha512 = new DigestUtils(DigestUtils.sha512Digest).digestAsHex(file).trim()
-                new File(file.parent, file.name + ".sha512").write(sha512 + "  " + file.name, "UTF-8")
+                new File(file.parent, file.name + ".sha512").write(sha512 + "  *" + file.name, "UTF-8")
             }
         }
 
