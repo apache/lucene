@@ -58,6 +58,7 @@ configure(rootProject) {
     ]
 
     apacheNexusSnapshots = "https://repository.apache.org/content/repositories/snapshots"
+    apacheNexusReleases = "https://repository.apache.org/service/local/staging/deploy/maven2"
   }
 }
 
@@ -70,6 +71,20 @@ configure(subprojects.findAll { it.path in rootProject.published }) { prj ->
       maven {
         name = "ApacheSnapshots"
         url = apacheNexusSnapshots
+
+        credentials {
+          def nexusUserName = rootProject.propertyOrDefault('asfNexusUsername', null)
+          def nexusPwd = rootProject.propertyOrDefault('asfNexusPassword', null)
+          if (nexusUserName && nexusPwd) {
+            username nexusUserName
+            password nexusPwd
+          }
+        }
+      }
+
+      maven {
+        name = "ApacheReleases"
+        url = apacheNexusReleases
 
         credentials {
           def nexusUserName = rootProject.propertyOrDefault('asfNexusUsername', null)
