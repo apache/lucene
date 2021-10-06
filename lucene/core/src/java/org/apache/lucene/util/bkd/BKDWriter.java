@@ -37,6 +37,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.ArrayUtil.ByteArrayPredicate;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
@@ -94,6 +95,8 @@ public class BKDWriter implements Closeable {
   protected final BKDConfig config;
 
   private final ByteArrayComparator comparator;
+  private final ByteArrayPredicate equalsPredicate;
+  private final ByteArrayComparator commonPrefixComparator;
 
   final TrackingDirectoryWrapper tempDir;
   final String tempFileNamePrefix;
@@ -146,6 +149,8 @@ public class BKDWriter implements Closeable {
 
     this.config = config;
     this.comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
+    this.equalsPredicate = ArrayUtil.getEqualsPredicate(config.bytesPerDim);
+    this.commonPrefixComparator = ArrayUtil.getPrefixLengthComparator(config.bytesPerDim);
 
     docsSeen = new FixedBitSet(maxDoc);
 
@@ -668,14 +673,8 @@ public class BKDWriter implements Closeable {
           config, valueCount + leafCount, 0, lastPackedValue, packedValue, 0, docID, lastDocID);
 
       if (leafCount == 0
-          || Arrays.mismatch(
-                  leafValues,
-                  (leafCount - 1) * config.bytesPerDim,
-                  leafCount * config.bytesPerDim,
-                  packedValue,
-                  0,
-                  config.bytesPerDim)
-              != -1) {
+          || equalsPredicate.test(leafValues, (leafCount - 1) * config.bytesPerDim, packedValue, 0)
+              == false) {
         leafCardinality++;
       }
       System.arraycopy(
@@ -780,15 +779,9 @@ public class BKDWriter implements Closeable {
       checkMaxLeafNodeCount(leafBlockFPs.size());
 
       // Find per-dim common prefix:
-      int offset = (leafCount - 1) * config.packedBytesLength;
-      int prefix =
-          Arrays.mismatch(
-              leafValues, 0, config.bytesPerDim, leafValues, offset, offset + config.bytesPerDim);
-      if (prefix == -1) {
-        prefix = config.bytesPerDim;
-      }
-
-      commonPrefixLengths[0] = prefix;
+      commonPrefixLengths[0] =
+          commonPrefixComparator.compare(
+              leafValues, 0, leafValues, (leafCount - 1) * config.packedBytesLength);
 
       writeLeafBlockDocs(dataOut, leafDocs, 0, leafCount);
       writeCommonPrefixes(dataOut, commonPrefixLengths, leafValues);
@@ -1097,16 +1090,8 @@ public class BKDWriter implements Closeable {
 
       // find common prefix with last split value in this dim:
       int prefix =
-          Arrays.mismatch(
-              splitValue.bytes,
-              address,
-              address + config.bytesPerDim,
-              lastSplitValues,
-              splitDim * config.bytesPerDim,
-              splitDim * config.bytesPerDim + config.bytesPerDim);
-      if (prefix == -1) {
-        prefix = config.bytesPerDim;
-      }
+          commonPrefixComparator.compare(
+              splitValue.bytes, address, lastSplitValues, splitDim * config.bytesPerDim);
 
       // System.out.println("writeNodeData nodeID=" + nodeID + " splitDim=" + splitDim + " numDims="
       // + numDims + " config.bytesPerDim=" + config.bytesPerDim + " prefix=" + prefix);
@@ -1327,11 +1312,8 @@ public class BKDWriter implements Closeable {
     for (int i = 1; i < count; i++) {
       value = packedValues.apply(i);
       for (int dim = 0; dim < config.numDims; dim++) {
-        final int start = dim * config.bytesPerDim + commonPrefixLengths[dim];
-        final int end = dim * config.bytesPerDim + config.bytesPerDim;
-        if (Arrays.mismatch(
-                value.bytes, value.offset + start, value.offset + end, scratch1, start, end)
-            != -1) {
+        final int start = dim * config.bytesPerDim;
+        if (equalsPredicate.test(value.bytes, value.offset + start, scratch1, start) == false) {
           out.writeVInt(cardinality);
           for (int j = 0; j < config.numDims; j++) {
             out.writeBytes(
@@ -1594,16 +1576,13 @@ public class BKDWriter implements Closeable {
           final int offset = dim * config.bytesPerDim;
           int dimensionPrefixLength = commonPrefixLengths[dim];
           commonPrefixLengths[dim] =
-              Arrays.mismatch(
-                  scratchBytesRef1.bytes,
-                  scratchBytesRef1.offset + offset,
-                  scratchBytesRef1.offset + offset + dimensionPrefixLength,
-                  scratchBytesRef2.bytes,
-                  scratchBytesRef2.offset + offset,
-                  scratchBytesRef2.offset + offset + dimensionPrefixLength);
-          if (commonPrefixLengths[dim] == -1) {
-            commonPrefixLengths[dim] = dimensionPrefixLength;
-          }
+              Math.min(
+                  dimensionPrefixLength,
+                  commonPrefixComparator.compare(
+                      scratchBytesRef1.bytes,
+                      scratchBytesRef1.offset + offset,
+                      scratchBytesRef2.bytes,
+                      scratchBytesRef2.offset + offset));
         }
       }
 
@@ -1652,16 +1631,13 @@ public class BKDWriter implements Closeable {
       for (int i = from + 1; i < to; ++i) {
         reader.getValue(i, collector);
         for (int dim = 0; dim < config.numDims; dim++) {
-          final int start = dim * config.bytesPerDim + commonPrefixLengths[dim];
-          final int end = dim * config.bytesPerDim + config.bytesPerDim;
-          if (Arrays.mismatch(
+          final int start = dim * config.bytesPerDim;
+          if (equalsPredicate.test(
                   collector.bytes,
                   collector.offset + start,
-                  collector.offset + end,
                   comparator.bytes,
-                  comparator.offset + start,
-                  comparator.offset + end)
-              != -1) {
+                  comparator.offset + start)
+              == false) {
             leafCardinality++;
             BytesRef scratch = collector;
             collector = comparator;
@@ -1727,17 +1703,12 @@ public class BKDWriter implements Closeable {
       // How many points will be in the left tree:
       final int mid = from + numLeftLeafNodes * config.maxPointsInLeafNode;
 
-      int commonPrefixLen =
-          Arrays.mismatch(
+      final int commonPrefixLen =
+          commonPrefixComparator.compare(
               minPackedValue,
               splitDim * config.bytesPerDim,
-              splitDim * config.bytesPerDim + config.bytesPerDim,
               maxPackedValue,
-              splitDim * config.bytesPerDim,
-              splitDim * config.bytesPerDim + config.bytesPerDim);
-      if (commonPrefixLen == -1) {
-        commonPrefixLen = config.bytesPerDim;
-      }
+              splitDim * config.bytesPerDim);
 
       MutablePointsReaderUtils.partition(
           config,
@@ -1998,17 +1969,12 @@ public class BKDWriter implements Closeable {
 
       BKDRadixSelector.PathSlice[] slices = new BKDRadixSelector.PathSlice[2];
 
-      int commonPrefixLen =
-          Arrays.mismatch(
+      final int commonPrefixLen =
+          commonPrefixComparator.compare(
               minPackedValue,
               splitDim * config.bytesPerDim,
-              splitDim * config.bytesPerDim + config.bytesPerDim,
               maxPackedValue,
-              splitDim * config.bytesPerDim,
-              splitDim * config.bytesPerDim + config.bytesPerDim);
-      if (commonPrefixLen == -1) {
-        commonPrefixLen = config.bytesPerDim;
-      }
+              splitDim * config.bytesPerDim);
 
       byte[] splitValue =
           radixSelector.select(
@@ -2091,17 +2057,14 @@ public class BKDWriter implements Closeable {
       packedValue = value.packedValue();
       for (int dim = 0; dim < config.numDims; dim++) {
         if (commonPrefixLengths[dim] != 0) {
-          int j =
-              Arrays.mismatch(
-                  commonPrefix,
-                  dim * config.bytesPerDim,
-                  dim * config.bytesPerDim + commonPrefixLengths[dim],
-                  packedValue.bytes,
-                  packedValue.offset + dim * config.bytesPerDim,
-                  packedValue.offset + dim * config.bytesPerDim + commonPrefixLengths[dim]);
-          if (j != -1) {
-            commonPrefixLengths[dim] = j;
-          }
+          commonPrefixLengths[dim] =
+              Math.min(
+                  commonPrefixLengths[dim],
+                  commonPrefixComparator.compare(
+                      commonPrefix,
+                      dim * config.bytesPerDim,
+                      packedValue.bytes,
+                      packedValue.offset + dim * config.bytesPerDim));
         }
       }
     }

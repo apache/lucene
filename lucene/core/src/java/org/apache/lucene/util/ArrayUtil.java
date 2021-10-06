@@ -694,4 +694,81 @@ public final class ArrayUtil {
     return Integer.compareUnsigned(
         (int) BitUtil.VH_BE_INT.get(a, aOffset), (int) BitUtil.VH_BE_INT.get(b, bOffset));
   }
+
+  /**
+   * Return a comparator that computes the common prefix length across the next {@code numBytes} of
+   * the provided arrays.
+   */
+  public static ByteArrayComparator getPrefixLengthComparator(int numBytes) {
+    if (numBytes == Long.BYTES) {
+      // Used by LongPoint, DoublePoint
+      return ArrayUtil::commonPrefixLength8;
+    } else if (numBytes == Integer.BYTES) {
+      // Used by IntPoint, FloatPoint, LatLonPoint, LatLonShape
+      return ArrayUtil::commonPrefixLength4;
+    } else {
+      return (a, aOffset, b, bOffset) -> commonPrefixLengthN(a, aOffset, b, bOffset, numBytes);
+    }
+  }
+
+  /** Return the length of the common prefix across the next 8 bytes of both provided arrays. */
+  public static int commonPrefixLength8(byte[] a, int aOffset, byte[] b, int bOffset) {
+    long aLong = (long) BitUtil.VH_LE_LONG.get(a, aOffset);
+    long bLong = (long) BitUtil.VH_LE_LONG.get(b, bOffset);
+    final int commonPrefixInBits = Long.numberOfLeadingZeros(Long.reverseBytes(aLong ^ bLong));
+    return commonPrefixInBits >>> 3;
+  }
+
+  /** Return the length of the common prefix across the next 4 bytes of both provided arrays. */
+  public static int commonPrefixLength4(byte[] a, int aOffset, byte[] b, int bOffset) {
+    int aInt = (int) BitUtil.VH_LE_INT.get(a, aOffset);
+    int bInt = (int) BitUtil.VH_LE_INT.get(b, bOffset);
+    final int commonPrefixInBits = Integer.numberOfLeadingZeros(Integer.reverseBytes(aInt ^ bInt));
+    return commonPrefixInBits >>> 3;
+  }
+
+  static int commonPrefixLengthN(byte[] a, int aOffset, byte[] b, int bOffset, int numBytes) {
+    int cmp = Arrays.mismatch(a, aOffset, aOffset + numBytes, b, bOffset, bOffset + numBytes);
+    if (cmp == -1) {
+      return numBytes;
+    } else {
+      return cmp;
+    }
+  }
+
+  /** Predicate for a fixed number of bytes. */
+  @FunctionalInterface
+  public static interface ByteArrayPredicate {
+
+    /** Test bytes starting from the given offsets. */
+    boolean test(byte[] a, int aOffset, byte[] b, int bOffset);
+  }
+
+  /** Return a predicate that tells whether the next {@code numBytes} bytes are equal. */
+  public static ByteArrayPredicate getEqualsPredicate(int numBytes) {
+    if (numBytes == Long.BYTES) {
+      // Used by LongPoint, DoublePoint
+      return ArrayUtil::equals8;
+    } else if (numBytes == Integer.BYTES) {
+      // Used by IntPoint, FloatPoint, LatLonPoint, LatLonShape
+      return ArrayUtil::equals4;
+    } else {
+      return (a, aOffset, b, bOffset) ->
+          Arrays.equals(a, aOffset, aOffset + numBytes, b, bOffset, bOffset + numBytes);
+    }
+  }
+
+  /** Check whether the next 8 bytes are exactly the same in the provided arrays. */
+  public static boolean equals8(byte[] a, int aOffset, byte[] b, int bOffset) {
+    long aLong = (long) BitUtil.VH_LE_LONG.get(a, aOffset);
+    long bLong = (long) BitUtil.VH_LE_LONG.get(b, bOffset);
+    return aLong == bLong;
+  }
+
+  /** Check whether the next 4 bytes are exactly the same in the provided arrays. */
+  public static boolean equals4(byte[] a, int aOffset, byte[] b, int bOffset) {
+    int aInt = (int) BitUtil.VH_LE_INT.get(a, aOffset);
+    int bInt = (int) BitUtil.VH_LE_INT.get(b, bOffset);
+    return aInt == bInt;
+  }
 }

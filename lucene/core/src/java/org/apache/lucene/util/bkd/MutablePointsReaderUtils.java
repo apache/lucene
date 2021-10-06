@@ -18,6 +18,8 @@ package org.apache.lucene.util.bkd;
 
 import java.util.Arrays;
 import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntroSorter;
@@ -94,8 +96,8 @@ public final class MutablePointsReaderUtils {
       BytesRef scratch1,
       BytesRef scratch2) {
 
-    final int start = sortedDim * config.bytesPerDim + commonPrefixLengths[sortedDim];
-    final int dimEnd = sortedDim * config.bytesPerDim + config.bytesPerDim;
+    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
+    final int start = sortedDim * config.bytesPerDim;
     // No need for a fancy radix sort here, this is called on the leaves only so
     // there are not many values to sort
     new IntroSorter() {
@@ -118,13 +120,8 @@ public final class MutablePointsReaderUtils {
       protected int comparePivot(int j) {
         reader.getValue(j, scratch2);
         int cmp =
-            Arrays.compareUnsigned(
-                pivot.bytes,
-                pivot.offset + start,
-                pivot.offset + dimEnd,
-                scratch2.bytes,
-                scratch2.offset + start,
-                scratch2.offset + dimEnd);
+            comparator.compare(
+                pivot.bytes, pivot.offset + start, scratch2.bytes, scratch2.offset + start);
         if (cmp == 0) {
           cmp =
               Arrays.compareUnsigned(
@@ -158,11 +155,12 @@ public final class MutablePointsReaderUtils {
       int mid,
       BytesRef scratch1,
       BytesRef scratch2) {
-    final int dimOffset = splitDim * config.bytesPerDim + commonPrefixLen;
+    final int dimOffset = splitDim * config.bytesPerDim;
     final int dimCmpBytes = config.bytesPerDim - commonPrefixLen;
     final int dataCmpBytes =
         (config.numDims - config.numIndexDims) * config.bytesPerDim + dimCmpBytes;
     final int bitsPerDocId = PackedInts.bitsRequired(maxDoc - 1);
+    final ByteArrayComparator dimComparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
     new RadixSelector(dataCmpBytes + (bitsPerDocId + 7) / 8) {
 
       @Override
@@ -193,13 +191,11 @@ public final class MutablePointsReaderUtils {
             if (k < dimCmpBytes) {
               reader.getValue(j, scratch2);
               int cmp =
-                  Arrays.compareUnsigned(
+                  dimComparator.compare(
                       pivot.bytes,
-                      pivot.offset + dimOffset + k,
-                      pivot.offset + dimOffset + dimCmpBytes,
+                      pivot.offset + dimOffset,
                       scratch2.bytes,
-                      scratch2.offset + dimOffset + k,
-                      scratch2.offset + dimOffset + dimCmpBytes);
+                      scratch2.offset + dimOffset);
               if (cmp != 0) {
                 return cmp;
               }
