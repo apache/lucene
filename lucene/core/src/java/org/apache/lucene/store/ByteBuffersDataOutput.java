@@ -137,6 +137,14 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     this.blockReuse = Objects.requireNonNull(blockReuse, "Block reuse must not be null.");
   }
 
+  // for testing with smaller-than-normally allowed block sizes
+  ByteBuffersDataOutput(int minBitsPerBlock, int maxBitsPerBlock) {
+    this.blockBits = minBitsPerBlock;
+    this.maxBitsPerBlock = maxBitsPerBlock;
+    this.blockAllocate = ALLOCATE_BB_ON_HEAP;
+    this.blockReuse = NO_REUSE;
+  }
+
   @Override
   public void writeByte(byte b) {
     if (!currentBlock.hasRemaining()) {
