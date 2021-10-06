@@ -295,7 +295,7 @@ Improvements
 * LUCENE-10143: Delegate primitive writes in RateLimitedIndexOutput.
   (Uwe Schindler, Robert Muir, Adrien Grand)
 
-* LUCENE-10145, LUCENE-10153: Faster writes and flushes of points by leveraging
+* LUCENE-10145, LUCENE-10153: Faster flushes and merges of points by leveraging
   VarHandles. (Adrien Grand)
 
 Bug fixes
