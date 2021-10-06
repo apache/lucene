@@ -676,7 +676,7 @@ final class IndexingChain implements Accountable {
                 false,
                 s.indexOptions,
                 s.docValuesType,
-                s.dvGen,
+                -1,
                 s.attributes,
                 s.pointDimensionCount,
                 s.pointIndexDimensionCount,
@@ -816,7 +816,7 @@ final class IndexingChain implements Accountable {
       verifyUnIndexedFieldType(fieldName, fieldType);
     }
     if (fieldType.docValuesType() != DocValuesType.NONE) {
-      schema.setDocValues(fieldType.docValuesType(), -1);
+      schema.setDocValues(fieldType.docValuesType());
     }
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
@@ -1321,7 +1321,6 @@ final class IndexingChain implements Accountable {
     private boolean omitNorms = false;
     private boolean storeTermVector = false;
     private IndexOptions indexOptions = IndexOptions.NONE;
-    private long dvGen = -1;
     private DocValuesType docValuesType = DocValuesType.NONE;
     private int pointDimensionCount = 0;
     private int pointIndexDimensionCount = 0;
@@ -1342,7 +1341,7 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    private void assertSame(String label, long expected, long given) {
+    private void assertSame(String label, int expected, int given) {
       if (expected != given) {
         raiseNotSame(label, expected, given);
       }
@@ -1387,13 +1386,11 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setDocValues(DocValuesType newDocValuesType, long newDvGen) {
+    void setDocValues(DocValuesType newDocValuesType) {
       if (docValuesType == DocValuesType.NONE) {
         this.docValuesType = newDocValuesType;
-        this.dvGen = newDvGen;
       } else {
         assertSame("doc values type", docValuesType, newDocValuesType);
-        assertSame("doc values generation", dvGen, newDvGen);
       }
     }
 
@@ -1424,7 +1421,6 @@ final class IndexingChain implements Accountable {
       omitNorms = false;
       storeTermVector = false;
       indexOptions = IndexOptions.NONE;
-      dvGen = -1;
       docValuesType = DocValuesType.NONE;
       pointDimensionCount = 0;
       pointIndexDimensionCount = 0;
@@ -1438,7 +1434,6 @@ final class IndexingChain implements Accountable {
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
       assertSame("store term vector", fi.hasVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
-      assertSame("doc values generation", fi.getDocValuesGen(), dvGen);
       assertSame(
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
