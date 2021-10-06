@@ -296,3 +296,36 @@ task syncChanges(type: Sync) {
     into file("${buildDir}/distributions/changes")
 }
 assembleDist.dependsOn syncChanges
+
+// Collect signed JARs (publications).
+
+def mavenDistDir = file("${buildDir}/distributions/maven")
+task collectSignedMavenArtifacts() {
+    doLast {
+        logger.lifecycle "Local maven artifacts (poms, jars) created at: ${mavenLocalDir}"
+    }
+}
+
+task wipeMavenDist(type: Delete) {
+    delete mavenDistDir
+}
+
+configure(rootProject.subprojects.findAll { it.path in rootProject.published }) {
+    plugins.withType(PublishingPlugin) {
+        publishing {
+            repositories {
+                maven {
+                    name = 'dist'
+                    url = mavenDistDir
+                }
+            }
+        }
+
+        tasks.matching { it.name == "publishJarsPublicationToDistRepository" }.all { task ->
+            // Clean local repo prior to republishing artifacts.
+            task.dependsOn wipeMavenDist
+            collectSignedMavenArtifacts.dependsOn task
+        }
+    }
+}
+assembleDist.dependsOn collectSignedMavenArtifacts
