@@ -37,6 +37,8 @@ public class TestMultiByteBuffersDirectory extends BaseChunkedDirectoryTestCase 
           return new ByteBuffersDataOutput(bitsPerBlock, bitsPerBlock);
         };
     return new ByteBuffersDirectory(
-        new SingleInstanceLockFactory(), outputSupplier, ByteBuffersDirectory.OUTPUT_AS_ONE_BUFFER);
+        new SingleInstanceLockFactory(),
+        outputSupplier,
+        ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS);
   }
 }
