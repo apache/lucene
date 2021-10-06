@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import org.apache.lucene.util.BitUtil; // javadocs
 
 /**
  * Random Access Index API. Unlike {@link IndexInput}, this has no concept of file position, all
@@ -31,21 +32,24 @@ public interface RandomAccessInput {
    */
   public byte readByte(long pos) throws IOException;
   /**
-   * Reads a short at the given position in the file
+   * Reads a short (LE byte order) at the given position in the file
    *
    * @see DataInput#readShort
+   * @see BitUtil#VH_LE_SHORT
    */
   public short readShort(long pos) throws IOException;
   /**
-   * Reads an integer at the given position in the file
+   * Reads an integer (LE byte order) at the given position in the file
    *
    * @see DataInput#readInt
+   * @see BitUtil#VH_LE_INT
    */
   public int readInt(long pos) throws IOException;
   /**
-   * Reads a long at the given position in the file
+   * Reads a long (LE byte order) at the given position in the file
    *
    * @see DataInput#readLong
+   * @see BitUtil#VH_LE_LONG
    */
   public long readLong(long pos) throws IOException;
 }

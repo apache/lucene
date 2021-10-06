@@ -157,6 +157,9 @@ API Changes
 
 Improvements
 
+* LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator
+  that is Closeable. (Dawid Weiss).
+
 * LUCENE-10135: Correct passage selector behavior for long matching snippets (Dawid Weiss).
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
@@ -287,6 +290,9 @@ Improvements
   (Tim Brooks, Uwe Schindler, Robert Muir, Adrien Grand)
 
 * LUCENE-10125: Optimize primitive writes in OutputStreamIndexOutput.
+  (Uwe Schindler, Robert Muir, Adrien Grand)
+
+* LUCENE-10143: Delegate primitive writes in RateLimitedIndexOutput.
   (Uwe Schindler, Robert Muir, Adrien Grand)
 
 Bug fixes
@@ -433,6 +439,12 @@ Bug Fixes
 
 * LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
 
+* LUCENE-10126: Sort optimization with a chunked bulk scorer
+  can wrongly skip documents (Nhat Nguyen, Mayya Sharipova)
+
+* LUCENE-10134: ConcurrentSortedSetDocValuesFacetCounts shouldn't share liveDocs Bits across threads.
+  (Ankur Goel)
+
 Build
 ---------------------
 
@@ -561,6 +573,12 @@ Bug Fixes
 
 * LUCENE-10081: KoreanTokenizer should check the max backtrace gap on whitespaces.
   (Jim Ferenczi)
+
+* LUCENE-10106: Sort optimization can wrongly skip the first document of
+  each segment (Nhat Nguyen)
+
+* LUCENE-10119: Sort optimization with search_after can wrongly skip documents
+  whose values are equal to the last value of the previous page (Nhat Nguyen)
 
 Other
 ---------------------

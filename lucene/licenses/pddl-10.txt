@@ -1,4 +1,4 @@
-﻿Public Domain Dedication and License (PDDL)
+Public Domain Dedication and License (PDDL)
 
 
 Preamble
