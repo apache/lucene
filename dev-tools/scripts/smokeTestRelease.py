@@ -39,7 +39,9 @@ from collections import defaultdict
 from collections import namedtuple
 import scriptutil
 
-# This tool expects to find /lucene off the base URL.  You
+import checkJavadocLinks
+
+# This tool expects to find /lucene and /solr off the base URL.  You
 # must have a working gpg, tar, unzip in your path.  This has been
 # tested on Linux and on Cygwin under Windows 7.
 
@@ -621,12 +623,17 @@ def verifyUnpacked(java, project, artifact, unpackPath, gitRevision, version, te
 
     print('    generate javadocs w/ Java 11...')
     java.run_java11('ant javadocs', '%s/javadocs.log' % unpackPath)
+    checkBrokenLinks('%s/build/docs' % unpackPath)
 
     if java.run_java12:
       print("    run tests w/ Java 12 and testArgs='%s'..." % testArgs)
       java.run_java12('ant clean test %s' % testArgs, '%s/test.log' % unpackPath)
       java.run_java12('ant jar', '%s/compile.log' % unpackPath)
       testDemo(java.run_java12, isSrc, version, '12')
+
+      #print('    generate javadocs w/ Java 12...')
+      #java.run_java12('ant javadocs', '%s/javadocs.log' % unpackPath)
+      #checkBrokenLinks('%s/build/docs' % unpackPath)
 
   else:
 
@@ -653,6 +660,12 @@ def testNotice(unpackPath):
 
 """ + luceneNotice + """---
 """
+
+
+def checkBrokenLinks(path):
+  # also validate html/check for broken links
+  if checkJavadocLinks.checkAll(path):
+    raise RuntimeError('broken javadocs links found!')
 
 
 def testDemo(run_java, isSrc, version, jdk):
