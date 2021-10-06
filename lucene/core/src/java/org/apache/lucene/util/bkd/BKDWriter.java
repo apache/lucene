@@ -37,13 +37,13 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
-import org.apache.lucene.util.ArrayUtil.ByteArrayPredicate;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.bkd.BKDUtil.ByteArrayPredicate;
 
 // TODO
 //   - allow variable length byte[] (across docs and dims), but this is quite a bit more hairy
@@ -149,8 +149,8 @@ public class BKDWriter implements Closeable {
 
     this.config = config;
     this.comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
-    this.equalsPredicate = ArrayUtil.getEqualsPredicate(config.bytesPerDim);
-    this.commonPrefixComparator = ArrayUtil.getPrefixLengthComparator(config.bytesPerDim);
+    this.equalsPredicate = BKDUtil.getEqualsPredicate(config.bytesPerDim);
+    this.commonPrefixComparator = BKDUtil.getPrefixLengthComparator(config.bytesPerDim);
 
     docsSeen = new FixedBitSet(maxDoc);
 
