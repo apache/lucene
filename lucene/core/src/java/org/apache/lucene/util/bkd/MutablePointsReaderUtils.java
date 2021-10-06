@@ -155,21 +155,23 @@ public final class MutablePointsReaderUtils {
       int mid,
       BytesRef scratch1,
       BytesRef scratch2) {
-    final int dimOffset = splitDim * config.bytesPerDim;
+    final int dimOffset = splitDim * config.bytesPerDim + commonPrefixLen;
     final int dimCmpBytes = config.bytesPerDim - commonPrefixLen;
     final int dataCmpBytes =
         (config.numDims - config.numIndexDims) * config.bytesPerDim + dimCmpBytes;
     final int bitsPerDocId = PackedInts.bitsRequired(maxDoc - 1);
-    final ByteArrayComparator dimComparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
     new RadixSelector(dataCmpBytes + (bitsPerDocId + 7) / 8) {
 
       @Override
       protected Selector getFallbackSelector(int k) {
+        final int dimStart = splitDim * config.bytesPerDim;
         final int dataStart =
             (k < dimCmpBytes)
                 ? config.packedIndexBytesLength
                 : config.packedIndexBytesLength + k - dimCmpBytes;
         final int dataEnd = config.numDims * config.bytesPerDim;
+        final ByteArrayComparator dimComparator =
+            ArrayUtil.getUnsignedComparator(config.bytesPerDim);
         return new IntroSelector() {
 
           final BytesRef pivot = scratch1;
@@ -192,10 +194,9 @@ public final class MutablePointsReaderUtils {
               reader.getValue(j, scratch2);
               int cmp =
                   dimComparator.compare(
-                      pivot.bytes,
-                      pivot.offset + dimOffset,
-                      scratch2.bytes,
-                      scratch2.offset + dimOffset);
+                      pivot.bytes, pivot.offset + dimStart,
+                      scratch2.bytes, scratch2.offset + dimStart);
+
               if (cmp != 0) {
                 return cmp;
               }
