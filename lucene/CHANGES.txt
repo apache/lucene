@@ -157,6 +157,9 @@ API Changes
 
 * LUCENE-9325: Sort is now final, and the `setSort()` method has been removed (Alan Woodward)
 
+* LUCENE-9431: The UnifiedHighlighter's WEIGHT_MATCHES flag is now set by default, provided its
+  requirements are met.  It can be disabled via over-riding getFlags (Animesh Pandey, David Smiley)
+
 Improvements
 
 * LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator

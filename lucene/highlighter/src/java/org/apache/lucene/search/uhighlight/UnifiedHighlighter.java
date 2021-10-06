@@ -86,7 +86,7 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  *   <li>{@link #getFormatter(String)}: Customize how snippets are formatted.
  * </ul>
  *
- * <p>This is thread-safe.
+ * <p>This is thread-safe, notwithstanding the setters.
  *
  * @lucene.experimental
  */
@@ -823,6 +823,7 @@ public class UnifiedHighlighter {
     return filteredTerms.toArray(new BytesRef[filteredTerms.size()]);
   }
 
+  /** Customize the highlighting flags to use by field. */
   protected Set<HighlightFlag> getFlags(String field) {
     Set<HighlightFlag> highlightFlags = EnumSet.noneOf(HighlightFlag.class);
     if (shouldHandleMultiTermQuery(field)) {
@@ -833,6 +834,11 @@ public class UnifiedHighlighter {
     }
     if (shouldPreferPassageRelevancyOverSpeed(field)) {
       highlightFlags.add(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED);
+    }
+    if (highlightFlags.contains(HighlightFlag.MULTI_TERM_QUERY)
+        && highlightFlags.contains(HighlightFlag.PHRASES)
+        && !highlightFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)) {
+      highlightFlags.add(HighlightFlag.WEIGHT_MATCHES);
     }
     return highlightFlags;
   }
@@ -1168,9 +1174,12 @@ public class UnifiedHighlighter {
 
     /**
      * Internally use the {@link Weight#matches(LeafReaderContext, int)} API for highlighting. It's
-     * more accurate to the query, though might not calculate passage relevancy as well. Use of this
-     * flag requires {@link #MULTI_TERM_QUERY} and {@link #PHRASES}. {@link
-     * #PASSAGE_RELEVANCY_OVER_SPEED} will be ignored. False by default.
+     * more accurate to the query, and the snippets can be a little different for phrases because
+     * the whole phrase is marked up instead of each word. The passage relevancy calculation can be
+     * different (maybe worse?) and it's slower when highlighting many fields. Use of this flag
+     * requires {@link #MULTI_TERM_QUERY} and {@link #PHRASES}. {@link
+     * #PASSAGE_RELEVANCY_OVER_SPEED} will be ignored. True by default, so long as the requirements
+     * are met.
      */
     WEIGHT_MATCHES
 
