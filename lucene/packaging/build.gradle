@@ -15,8 +15,10 @@
  * limitations under the License.
  */
 
-// This project puts together a "distribution", assembling dependencies from
-// various other projects.
+import org.apache.commons.codec.digest.DigestUtils
+
+// This project puts together a "distribution", assembling bits and pieces
+// into a binary, source and maven artifacts.
 
 plugins {
     id 'distribution'
@@ -37,6 +39,13 @@ def includeInBinaries = project(":lucene").subprojects.findAll {subproject ->
         // Exclude native module, which requires manual copying and enabling
         ":lucene:misc:native"
     ])
+}
+
+// Generate an sha512 checksum for the given file.
+def checksum = { file ->
+    String sha512 = new DigestUtils(DigestUtils.sha512Digest).digestAsHex(file).trim()
+    // The asterisk signals a binary file, see https://www.gnu.org/software/coreutils/manual/coreutils.html#md5sum-invocation
+    new File(file.parent, file.name + ".sha512").write(sha512 + " *" + file.name, "UTF-8")
 }
 
 // Create a configuration to each subproject and add dependency.
@@ -77,8 +86,6 @@ dependencies {
 
 distributions {
     // The "main" distribution is the binary distribution.
-    // We should also add 'source' distribution at some point
-    // (we can't do it now as the build itself is tangled with Solr).
     main {
         distributionBaseName = 'lucene'
 
@@ -131,6 +138,25 @@ distributions {
     }
 }
 
+distZip {
+    doLast {
+        outputs.files.files.each checksum
+    }
+}
+
+distTar {
+    compression = Compression.GZIP
+    doLast {
+        outputs.files.files.each checksum
+    }
+}
+
+installDist {
+    doLast {
+        logger.lifecycle "Distribution assembled under: ${destinationDir}"
+    }
+}
+
 // Add common packaging artifacts.
 configure(project(":lucene").subprojects) {
     plugins.withType(JavaPlugin) {
@@ -174,26 +200,16 @@ configurations {
   luceneTgz
   luceneZip
 }
+
 artifacts {
   luceneTgz(distTar)
   luceneZip(distZip)
 }
 
 // Source distribution using git export
-def sourceTarFile = file("build/distributions/lucene-${version}-src.tgz")
-import org.apache.commons.codec.digest.DigestUtils
-
 task assembleSourceDist() {
-    def target = sourceTarFile
-
-    outputs.files target
-
-    // TODO: This is copied from distribution.gradle - reuse?
-    def checksum = { file ->
-        String sha512 = new DigestUtils(DigestUtils.sha512Digest).digestAsHex(file).trim()
-        // The asterisk signals a binary file, see https://www.gnu.org/software/coreutils/manual/coreutils.html#md5sum-invocation
-        new File(file.parent, file.name + ".sha512").write(sha512 + " *" + file.name, "UTF-8")
-    }
+    def sourceTarFile = file("${buildDir}/distributions/lucene-${version}-src.tgz")
+    outputs.file sourceTarFile
 
     doFirst {
         quietExec {
@@ -204,13 +220,15 @@ task assembleSourceDist() {
                     "archive",
                     "--format", "tgz",
                     "--prefix", "lucene-${version}/",
-                    "--output", target,
+                    "--output", sourceTarFile,
                     "HEAD"
             ]
         }
+
         checksum(sourceTarFile)
     }
 }
+
 assembleDist.dependsOn assembleSourceDist
 
 // NOTE: we don't use the convinence DSL of the 'signing' extension to define our 'Sign' tasks because
@@ -222,6 +240,7 @@ assembleDist.dependsOn assembleSourceDist
 signing {
   useGpgCmd() // so gpg-agent can be used
 }
+
 task failUnlessGpgKeyProperty {
   // placeholder that can be depended on by any task needing GPG key which will 'fail fast' if it's not set.
   def propName = 'signing.gnupg.keyName'
@@ -237,18 +256,22 @@ task failUnlessGpgKeyProperty {
     }
   }
 }
+
 task signDistTar(type: Sign) {
   dependsOn failUnlessGpgKeyProperty
   sign configurations.luceneTgz
 }
+
 task signDistZip(type: Sign) {
   dependsOn failUnlessGpgKeyProperty
   sign configurations.luceneZip
 }
+
 task signSourceDistTar(type: Sign) {
     dependsOn failUnlessGpgKeyProperty, assembleSourceDist
-    sign sourceTarFile
+    sign assembleSourceDist.outputs.files.singleFile
 }
+
 task signDist {
   group = 'Distribution'
   description = 'GPG Signs the main distributions'

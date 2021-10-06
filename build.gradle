@@ -122,7 +122,6 @@ apply from: file('gradle/java/jar-manifest.gradle')
 
 // Publishing and releasing
 apply from: file('gradle/publishing/defaults-maven.gradle')
-apply from: file('gradle/publishing/distribution.gradle')
 
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')
