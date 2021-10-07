@@ -46,6 +46,9 @@ APP_BASE_NAME=`basename "$0"`
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
+# Uncomment the next line to add more JVM options. E.g. proxy settings.
+# JAVA_OPTS="-DproxySet=true -Dhttps.proxyHost=<host> -Dhttps.proxyPort=<port>"
+
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD="maximum"
 
@@ -114,9 +117,15 @@ DEFAULT_JVM_OPTS="$DEFAULT_JVM_OPTS \"-Djava.io.tmpdir=$GRADLE_TEMPDIR\""
 if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
     APP_HOME=`cygpath --path --mixed "$APP_HOME"`
 fi
+
+# Make sure JAVA_OPTS is defined and has a valid value.
+if [ ! -n "$JAVA_OPTS" ] ; then
+    JAVA_OPTS=''
+fi
+
 GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
-if ! "$JAVACMD" --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR" ; then
-    echo "\nSomething went wrong. Make sure you're using Java 11 or later."
+if ! "$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR" ; then
+    echo "\nSomething went wrong. Make sure you're using Java 11 or later. If you are behind proxy, use JAVA_OPTS to set it."
     exit $?
 fi
 

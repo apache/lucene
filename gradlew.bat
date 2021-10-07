@@ -32,6 +32,9 @@ set APP_HOME=%DIRNAME%
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
+@rem Uncomment the next line to add more JVM options. E.g. proxy settings.
+@rem set JAVA_OPTS="-DproxySet=true -Dhttps.proxyHost=<host> -Dhttps.proxyPort=<port>"
+
 @rem LUCENE-9471: workaround for gradle leaving junk temp. files behind.
 SET GRADLE_TEMPDIR=%DIRNAME%\.gradle\tmp
 IF NOT EXIST "%GRADLE_TEMPDIR%" MKDIR "%GRADLE_TEMPDIR%"
@@ -83,9 +86,13 @@ set CMD_LINE_ARGS=%*
 
 :execute
 
+@rem Make sure JAVA_OPTS is defined and has a valid value.
+if not defined JAVA_OPTS set "JAVA_OPTS= "
+
+@rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
-"%JAVA_EXE%" --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+"%JAVA_EXE%" %JAVA_OPTS% --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
 IF %ERRORLEVEL% NEQ 0 goto fail
 
 @rem Setup the command line
