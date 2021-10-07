@@ -35,6 +35,11 @@ import org.apache.lucene.util.DocIdSetBuilder;
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
  * functionality – an iterator that can skip over non-competitive documents.
+ *
+ * <p>Parameter {@code field} provided in the constructor is used as a field name in the default
+ * implementations of the methods {@code getNumericDocValues} and {@code getPointValues} to retrieve
+ * doc values and points. You can pass a dummy value for a field name (e.g. when sorting by script),
+ * but in this case you must override both of these methods.
  */
 public abstract class NumericComparator<T extends Number> extends FieldComparator<T> {
   protected final T missingValue;
@@ -134,9 +139,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      * Retrieves the NumericDocValues for the field in this segment
      *
      * <p>If you override this method, you must also override {@link
-     * #getPointValues(LeafReaderContext, String)} This class uses sort optimization that
-     * substitutes an iterator over doc_values with one over points, so it relies on the assumption
-     * that points and doc values record the same information.
+     * #getPointValues(LeafReaderContext, String)} This class uses sort optimization that leverages
+     * points to filter out non-competitive matches, which relies on the assumption that points and
+     * doc values record the same information.
      *
      * @param context – reader context
      * @param field - field name
@@ -153,10 +158,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      *
      * <p>If you override this method, you must also override {@link
      * #getNumericDocValues(LeafReaderContext, String)} This class uses sort optimization that
-     * substitutes an iterator over doc_values with one over points, so it relies on the assumption
-     * that points and doc values record the same information. You can return {@code null} even if
-     * not points implementation is available, in this case sort optimization with points will be
-     * disabled.
+     * leverages points to filter out non-competitive matches, which relies on the assumption that
+     * points and doc values record the same information. Return {@code null} even if no points
+     * implementation is available, in this case sort optimization with points will be disabled.
      *
      * @param context – reader context
      * @param field - field name
