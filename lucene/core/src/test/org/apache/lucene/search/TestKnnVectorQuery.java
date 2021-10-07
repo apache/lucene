@@ -238,7 +238,8 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         /* maxAtZero = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
          * normalized by (1 + x) /2.
          */
-        float maxAtZero = (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
+        float maxAtZero =
+            (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
         assertEquals(maxAtZero, scorer.getMaxScore(0), 0.001);
 
         /* max at 2 is actually the score for doc 1 which is the highest (since doc 1 vector (2, 4)
@@ -270,17 +271,14 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
-          doc.add(
-                  new KnnVectorField(
-                          "field", new float[] {j, j * j}, COSINE));
+          doc.add(new KnnVectorField("field", new float[] {j, j * j}, COSINE));
           w.addDocument(doc);
         }
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         assertEquals(1, reader.leaves().size());
         IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query =
-                new KnnVectorQuery("field", new float[] {2, 3}, 3);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
         Query rewritten = query.rewrite(reader);
         Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
@@ -294,7 +292,8 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         /* maxAtZero = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
          * normalized by (1 + x) /2.
          */
-        float maxAtZero = (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
+        float maxAtZero =
+            (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
         assertEquals(maxAtZero, scorer.getMaxScore(0), 0.001);
 
         /* max at 2 is actually the score for doc 1 which is the highest (since doc 1 vector (2, 4)
@@ -302,7 +301,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
          * normalized by (1 + x) /2
          */
         float expected =
-                (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
+            (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
         assertEquals(expected, scorer.getMaxScore(2), 0);
         assertEquals(expected, scorer.getMaxScore(Integer.MAX_VALUE), 0);
 

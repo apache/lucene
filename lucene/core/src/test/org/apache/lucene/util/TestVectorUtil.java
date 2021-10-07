@@ -72,7 +72,8 @@ public class TestVectorUtil extends LuceneTestCase {
   }
 
   public void testBasicCosine() {
-    assertEquals(0.11952f, VectorUtil.cosine(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), DELTA);
+    assertEquals(
+        0.11952f, VectorUtil.cosine(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), DELTA);
   }
 
   public void testSelfCosine() {

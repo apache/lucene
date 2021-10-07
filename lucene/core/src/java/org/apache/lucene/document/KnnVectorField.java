@@ -74,8 +74,8 @@ public class KnnVectorField extends Field {
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some strategies (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to be unit-length,
-   * which can be enforced using {@link VectorUtil#l2normalize(float[])}.
+   * some strategies (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to be
+   * unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
    *
    * @param name field name
    * @param vector value

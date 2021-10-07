@@ -103,7 +103,7 @@ public final class VectorUtil {
   public static float cosine(float[] v1, float[] v2) {
     if (v1.length != v2.length) {
       throw new IllegalArgumentException(
-              "vector dimensions differ: " + v1.length + "!=" + v2.length);
+          "vector dimensions differ: " + v1.length + "!=" + v2.length);
     }
 
     float sum = 0.0f;
