@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.TestVectorUtil.randomVector;
 
@@ -186,7 +187,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
         // prior to advancing, score is 0
         assertEquals(-1, scorer.docID());
-        expectThrows(ArrayIndexOutOfBoundsException.class, () -> scorer.score());
+        expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
 
         // test getMaxScore
         assertEquals(0, scorer.getMaxScore(-1), 0);
@@ -202,7 +203,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         assertEquals(3, it.advance(3));
         assertEquals(1 / 2f, scorer.score(), 0);
         assertEquals(NO_MORE_DOCS, it.advance(4));
-        expectThrows(ArrayIndexOutOfBoundsException.class, () -> scorer.score());
+        expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
       }
     }
   }
@@ -214,9 +215,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
           Document doc = new Document();
           doc.add(
               new KnnVectorField(
-                  "field",
-                  VectorUtil.l2normalize(new float[] {j, j * j}),
-                  VectorSimilarityFunction.DOT_PRODUCT));
+                  "field", VectorUtil.l2normalize(new float[] {j, j * j}), DOT_PRODUCT));
           w.addDocument(doc);
         }
       }
@@ -229,9 +228,9 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
 
-        // prior to advancing, score is 0
+        // prior to advancing, score is undefined
         assertEquals(-1, scorer.docID());
-        expectThrows(ArrayIndexOutOfBoundsException.class, () -> scorer.score());
+        expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
 
         // test getMaxScore
         assertEquals(0, scorer.getMaxScore(-1), 0);
@@ -260,7 +259,36 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         assertEquals(2, it.nextDoc());
         // since topK was 3
         assertEquals(NO_MORE_DOCS, it.advance(4));
-        expectThrows(ArrayIndexOutOfBoundsException.class, () -> scorer.score());
+        expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
+      }
+    }
+  }
+
+  public void testScoreNegativeDotProduct() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        Document doc = new Document();
+        doc.add(new KnnVectorField("field", new float[] {-1, 0}, DOT_PRODUCT));
+        w.addDocument(doc);
+        doc = new Document();
+        doc.add(new KnnVectorField("field", new float[] {1, 0}, DOT_PRODUCT));
+        w.addDocument(doc);
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(1, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {1, 0}, 2);
+        Query rewritten = query.rewrite(reader);
+        Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+        Scorer scorer = weight.scorer(reader.leaves().get(0));
+
+        // scores are normalized to lie in [0, 1]
+        DocIdSetIterator it = scorer.iterator();
+        assertEquals(2, it.cost());
+        assertEquals(0, it.nextDoc());
+        assertEquals(0, scorer.score(), 0);
+        assertEquals(1, it.advance(1));
+        assertEquals(1, scorer.score(), 0);
       }
     }
   }
