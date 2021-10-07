@@ -150,6 +150,8 @@ API Changes
 
 Improvements
 
+* LUCENE-10103: Make QueryCache respect Accountable queries. (Haoyu Zhai)
+
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
 
 * LUCENE-9633: Improve match highlighter behavior for degenerate intervals (on non-existing positions).
