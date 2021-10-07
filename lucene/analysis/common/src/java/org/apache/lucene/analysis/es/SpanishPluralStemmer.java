@@ -57,7 +57,6 @@ public class SpanishPluralStemmer {
   }
 
   public int stem(char s[], int len) {
-    try {
       if (len < 4) return len;// plural have at least 4 letters (ases,eses,etc.)
       if (invariant(s, len)) return len;
       if (special(s, len)) return len - 2;
@@ -112,14 +111,6 @@ public class SpanishPluralStemmer {
           }
           break;
       }
-    } catch (Exception ex) {
-      // default set should always be present as it is part of the
-      // distribution (JAR)
-      for (int i = 0; i < len; i++) System.out.print(s[i]);
-      System.out.println();
-      ex.printStackTrace();
-    }
-
     return len;
   }
 
