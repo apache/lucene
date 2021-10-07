@@ -142,6 +142,7 @@ public class BKDDefaultReader implements BKDReader {
         config,
         numLeaves,
         version,
+        pointCount,
         minPackedValue,
         maxPackedValue);
   }
@@ -180,6 +181,10 @@ public class BKDDefaultReader implements BKDReader {
     private final int leafNodeOffset;
     // version of the index
     private final int version;
+    // last node might not be fully populated
+    private final int lastLeafNodePointCount;
+    // right most leaf node ID
+    private final int rightMostLeafNode;
     // helper objects for reading doc values
     private final byte[] scratchDataPackedValue,
         scratchMinIndexPackedValue,
@@ -193,6 +198,7 @@ public class BKDDefaultReader implements BKDReader {
         BKDConfig config,
         int numLeaves,
         int version,
+        long pointCount,
         byte[] minPackedValue,
         byte[] maxPackedValue)
         throws IOException {
@@ -202,6 +208,7 @@ public class BKDDefaultReader implements BKDReader {
           config,
           numLeaves,
           version,
+          Math.toIntExact(pointCount % config.maxPointsInLeafNode),
           1,
           1,
           minPackedValue,
@@ -221,6 +228,7 @@ public class BKDDefaultReader implements BKDReader {
         BKDConfig config,
         int numLeaves,
         int version,
+        int lastLeafNodePointCount,
         int nodeID,
         int level,
         byte[] minPackedValue,
@@ -249,6 +257,9 @@ public class BKDDefaultReader implements BKDReader {
       rightNodePositions = new int[treeDepth];
       splitDimsPos = new int[treeDepth];
       negativeDeltas = new boolean[config.numIndexDims * treeDepth];
+      // information about the unbalance of the tree so we can report the exact size below a node
+      rightMostLeafNode = (1 << treeDepth - 1) - 1;
+      this.lastLeafNodePointCount = lastLeafNodePointCount;
       // scratch objects, reused between clones so NN search are not creating those objects
       // in every clone.
       this.scratchIterator = scratchIterator;
@@ -267,6 +278,7 @@ public class BKDDefaultReader implements BKDReader {
               config,
               leafNodeOffset,
               version,
+              lastLeafNodePointCount,
               nodeID,
               level,
               minPackedValue,
@@ -451,7 +463,9 @@ public class BKDDefaultReader implements BKDReader {
         numLeaves = rightMostLeafNode - leftMostLeafNode + 1 + leafNodeOffset;
       }
       assert numLeaves == getNumLeavesSlow(nodeID) : numLeaves + " " + getNumLeavesSlow(nodeID);
-      return (long) numLeaves * config.maxPointsInLeafNode;
+      return rightMostLeafNode == this.rightMostLeafNode
+          ? (long) (numLeaves - 1) * config.maxPointsInLeafNode + lastLeafNodePointCount
+          : (long) numLeaves * config.maxPointsInLeafNode;
     }
 
     @Override

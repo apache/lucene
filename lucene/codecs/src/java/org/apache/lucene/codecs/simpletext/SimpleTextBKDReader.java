@@ -288,7 +288,27 @@ final class SimpleTextBKDReader implements BKDReader {
 
     @Override
     public long size() {
-      return (long) getNumLeavesSlow(nodeID) * config.maxPointsInLeafNode;
+      int leftMostLeafNode = nodeID;
+      while (leftMostLeafNode < leafNodeOffset) {
+        leftMostLeafNode = leftMostLeafNode * 2;
+      }
+      int rightMostLeafNode = nodeID;
+      while (rightMostLeafNode < leafNodeOffset) {
+        rightMostLeafNode = rightMostLeafNode * 2 + 1;
+      }
+      final int numLeaves;
+      if (rightMostLeafNode >= leftMostLeafNode) {
+        // both are on the same level
+        numLeaves = rightMostLeafNode - leftMostLeafNode + 1;
+      } else {
+        // left is one level deeper than right
+        numLeaves = rightMostLeafNode - leftMostLeafNode + 1 + leafNodeOffset;
+      }
+      assert numLeaves == getNumLeavesSlow(nodeID) : numLeaves + " " + getNumLeavesSlow(nodeID);
+      return rightMostLeafNode == (1 << getTreeDepth(leafNodeOffset) - 1) - 1
+          ? (long) (numLeaves - 1) * config.maxPointsInLeafNode
+              + (pointCount % config.maxPointsInLeafNode)
+          : (long) numLeaves * config.maxPointsInLeafNode;
     }
 
     private int getNumLeavesSlow(int node) {

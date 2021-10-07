@@ -871,6 +871,7 @@ public class TestBKD extends LuceneTestCase {
             .getIndexTree()
             .visitDocValues(getIntersectVisitor(hits, queryMin, queryMax, config));
         assertHits(hits, expected);
+        assertSize(bkdReader.getIndexTree());
       }
       in.close();
       dir.deleteFile("bkd");
@@ -883,6 +884,35 @@ public class TestBKD extends LuceneTestCase {
         IOUtils.closeWhileHandlingException(w, in, out);
         IOUtils.deleteFilesIgnoringExceptions(dir, "bkd", "bkd2");
       }
+    }
+  }
+
+  private void assertSize(BKDReader.IndexTree tree) throws IOException {
+    final BKDReader.IndexTree clone = tree.clone();
+    assertEquals(clone.size(), tree.size());
+    final long[] size = new long[] {0};
+    clone.visitDocIDs(
+            new IntersectVisitor() {
+              @Override
+              public void visit(int docID) {
+                size[0]++;
+              }
+
+              @Override
+              public void visit(int docID, byte[] packedValue) {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                throw new UnsupportedOperationException();
+              }
+            });
+    assertEquals(size[0], tree.size());
+    if (tree.moveToChild()) {
+      do {
+        assertSize(tree);
+      } while (tree.moveToSibling());
     }
   }
 
