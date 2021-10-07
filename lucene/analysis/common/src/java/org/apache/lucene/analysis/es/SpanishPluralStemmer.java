@@ -122,14 +122,6 @@ public class SpanishPluralStemmer {
     return res;
   }
 
-  private boolean isAio(char c) {
-    boolean res = false;
-    if (c == 'a' || c == 'i' || c == 'o') {
-      res = true;
-    }
-    return res;
-  }
-
   private boolean invariant(char[] s, int len) {
     return invariants.contains(s, 0, len);
   }
