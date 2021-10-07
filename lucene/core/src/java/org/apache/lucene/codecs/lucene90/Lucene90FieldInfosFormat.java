@@ -103,7 +103,7 @@ import org.apache.lucene.store.IndexOutput;
  *       <ul>
  *         <li>0: EUCLIDEAN distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
  *         <li>1: DOT_PRODUCT similarity. ({@link VectorSimilarityFunction#DOT_PRODUCT})
- *         <li>1: COSINE similarity. ({@link VectorSimilarityFunction#COSINE})
+ *         <li>2: COSINE similarity. ({@link VectorSimilarityFunction#COSINE})
  *       </ul>
  * </ul>
  *

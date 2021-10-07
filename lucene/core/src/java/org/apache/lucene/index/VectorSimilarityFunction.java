@@ -38,7 +38,11 @@ public enum VectorSimilarityFunction {
     }
   },
 
-  /** Dot product */
+  /**
+   * Dot product. NOTE: this similarity is intended as an optimized way to perform cosine similarity.
+   * In order to use it, all vectors must be of unit length, including both document and query vectors.
+   * Using dot product with vectors that are not unit length can result in errors or poor search results.
+   */
   DOT_PRODUCT {
     @Override
     public float compare(float[] v1, float[] v2) {
