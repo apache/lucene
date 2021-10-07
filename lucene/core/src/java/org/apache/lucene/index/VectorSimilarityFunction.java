@@ -16,8 +16,7 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.VectorUtil.dotProduct;
-import static org.apache.lucene.util.VectorUtil.squareDistance;
+import static org.apache.lucene.util.VectorUtil.*;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
@@ -44,6 +43,19 @@ public enum VectorSimilarityFunction {
     @Override
     public float compare(float[] v1, float[] v2) {
       return dotProduct(v1, v2);
+    }
+
+    @Override
+    public float convertToScore(float similarity) {
+      return (1 + similarity) / 2;
+    }
+  },
+
+  /** Cosine similarity */
+  COSINE {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      return cosine(v1, v2);
     }
 
     @Override

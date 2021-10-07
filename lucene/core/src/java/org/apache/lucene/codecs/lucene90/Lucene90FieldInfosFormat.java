@@ -99,11 +99,11 @@ import org.apache.lucene.store.IndexOutput;
  *   <li>PointDimensionCount, PointNumBytes: these are non-zero only if the field is indexed as
  *       points, e.g. using {@link org.apache.lucene.document.LongPoint}
  *   <li>VectorDimension: it is non-zero if the field is indexed as vectors.
- *   <li>VectorDistFunction: a byte containing distance function used for similarity calculation.
+ *   <li>VectorSimilarityFunction: a byte containing distance function used for similarity calculation.
  *       <ul>
- *         <li>0: no distance function is defined for this field.
- *         <li>1: EUCLIDEAN_HNSW distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
- *         <li>2: DOT_PRODUCT_HNSW score. ({@link VectorSimilarityFunction#DOT_PRODUCT})
+ *         <li>0: EUCLIDEAN distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
+ *         <li>1: DOT_PRODUCT similarity. ({@link VectorSimilarityFunction#DOT_PRODUCT})
+ *         <li>1: COSINE similarity. ({@link VectorSimilarityFunction#COSINE})
  *       </ul>
  * </ul>
  *
