@@ -92,7 +92,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);
-      this.pointValues = canSkipDocuments ? context.reader().getPointValues(field) : null;
+      this.pointValues = canSkipDocuments ? getPointValues(context, field) : null;
       if (pointValues != null) {
         FieldInfo info = context.reader().getFieldInfos().fieldInfo(field);
         if (info == null || info.getPointDimensionCount() == 0) {
@@ -130,10 +130,43 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
     }
 
-    /** Retrieves the NumericDocValues for the field in this segment */
+    /**
+     * Retrieves the NumericDocValues for the field in this segment
+     *
+     * <p>If you override this method, you must also override {@link
+     * #getPointValues(LeafReaderContext, String)} This class uses sort optimization that
+     * substitutes an iterator over doc_values with one over points, so it relies on the assumption
+     * that points and doc values record the same information.
+     *
+     * @param context – reader context
+     * @param field - field name
+     * @return numeric doc values for the field in this segment.
+     * @throws IOException If there is a low-level I/O error
+     */
     protected NumericDocValues getNumericDocValues(LeafReaderContext context, String field)
         throws IOException {
       return DocValues.getNumeric(context.reader(), field);
+    }
+
+    /**
+     * Retrieves point values for the field in this segment
+     *
+     * <p>If you override this method, you must also override {@link
+     * #getNumericDocValues(LeafReaderContext, String)} This class uses sort optimization that
+     * substitutes an iterator over doc_values with one over points, so it relies on the assumption
+     * that points and doc values record the same information. You can return {@code null} even if
+     * not points implementation is available, in this case sort optimization with points will be
+     * disabled.
+     *
+     * @param context – reader context
+     * @param field - field name
+     * @return point values for the field in this segment if they are available or {@code null} if
+     *     sort optimization with points should be disabled.
+     * @throws IOException If there is a low-level I/O error
+     */
+    protected PointValues getPointValues(LeafReaderContext context, String field)
+        throws IOException {
+      return context.reader().getPointValues(field);
     }
 
     @Override
