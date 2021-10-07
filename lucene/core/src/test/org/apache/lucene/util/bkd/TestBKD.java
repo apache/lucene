@@ -892,22 +892,22 @@ public class TestBKD extends LuceneTestCase {
     assertEquals(clone.size(), tree.size());
     final long[] size = new long[] {0};
     clone.visitDocIDs(
-            new IntersectVisitor() {
-              @Override
-              public void visit(int docID) {
-                size[0]++;
-              }
+        new IntersectVisitor() {
+          @Override
+          public void visit(int docID) {
+            size[0]++;
+          }
 
-              @Override
-              public void visit(int docID, byte[] packedValue) {
-                throw new UnsupportedOperationException();
-              }
+          @Override
+          public void visit(int docID, byte[] packedValue) {
+            throw new UnsupportedOperationException();
+          }
 
-              @Override
-              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                throw new UnsupportedOperationException();
-              }
-            });
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            throw new UnsupportedOperationException();
+          }
+        });
     assertEquals(size[0], tree.size());
     if (tree.moveToChild()) {
       do {
