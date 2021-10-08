@@ -153,7 +153,9 @@ API Changes
 * LUCENE-10115: Add an extension point, BaseQueryParser#getFuzzyDistance, to allow custom
   query parsers to determine the similarity distance for fuzzy queries. (Chris Hegarty)
 
-*  LUCENE-10132: Support addition of diagnostics by custom merge policies (Chris Hegarty)
+* LUCENE-10132: Support addition of diagnostics by custom merge policies (Chris Hegarty)
+
+* LUCENE-9325: Sort is now final, and the `setSort()` method has been removed (Alan Woodward)
 
 Improvements
 
@@ -295,6 +297,9 @@ Improvements
 * LUCENE-10143: Delegate primitive writes in RateLimitedIndexOutput.
   (Uwe Schindler, Robert Muir, Adrien Grand)
 
+* LUCENE-10145, LUCENE-10153: Faster flushes and merges of points by leveraging
+  VarHandles. (Adrien Grand)
+
 Bug fixes
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
@@ -353,6 +358,8 @@ Changes in Backwards Compatibility Policy
   a best effort basis. (Simon Willnauer)
 
 Other
+
+* LUCENE-10136: allow 'var' declarations in source code (Dawid Weiss)
 
 * LUCENE-9570, LUCENE-9564: Apply google java format and enforce it on source Java files.
   Review diffs and correct automatic formatting oddities. (Erick Erickson,

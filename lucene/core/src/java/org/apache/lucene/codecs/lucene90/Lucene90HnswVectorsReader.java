@@ -66,7 +66,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   Lucene90HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
 
-    int versionMeta = readMetadata(state, Lucene90HnswVectorsFormat.META_EXTENSION);
+    int versionMeta = readMetadata(state);
     long[] checksumRef = new long[1];
     boolean success = false;
     try {
@@ -93,9 +93,10 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     checksumSeed = checksumRef[0];
   }
 
-  private int readMetadata(SegmentReadState state, String fileExtension) throws IOException {
+  private int readMetadata(SegmentReadState state) throws IOException {
     String metaFileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
       Throwable priorE = null;
@@ -255,14 +256,10 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
             random);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    boolean reversed = fieldEntry.similarityFunction.reversed;
     while (results.size() > 0) {
       int node = results.topNode();
-      float score = results.topScore();
+      float score = fieldEntry.similarityFunction.convertToScore(results.topScore());
       results.pop();
-      if (reversed) {
-        score = 1 / (1 + score);
-      }
       scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
     }
     // always return >= the case where we can assert == is only when there are fewer than topK
@@ -358,7 +355,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  private class OffHeapVectorValues extends VectorValues
+  private static class OffHeapVectorValues extends VectorValues
       implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
 
     final FieldEntry fieldEntry;

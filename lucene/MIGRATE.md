@@ -438,3 +438,8 @@ They can now be found in the o.a.l.queries.spans package.
 
 SpanBoostQuery was a no-op unless used at the top level of a SpanQuery nested
 structure. Use a standard BoostQuery here instead.
+
+## Sort is immutable (LUCENE-9325)
+
+Rather than using `setSort()` to change sort values, you should instead create
+a new Sort instance with the new values.
