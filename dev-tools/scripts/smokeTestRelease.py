@@ -1132,8 +1132,9 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
 def main():
   c = parse_config()
 
-  scriptVersion = scriptutil.find_current_version()
-  if not c.version.startswith(scriptVersion + '.') and c.version != scriptVersion:
+  # Pick <major>.<minor> part of version and require script to be from same branch
+  scriptVersion = re.search(r'((\d+).(\d+)).(\d+)', scriptutil.find_current_version()).group(1).strip()
+  if not c.version.startswith(scriptVersion + '.'):
     raise RuntimeError('smokeTestRelease.py for %s.X is incompatible with a %s release.' % (scriptVersion, c.version))
 
   print('NOTE: output encoding is %s' % sys.stdout.encoding)
