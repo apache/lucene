@@ -41,7 +41,7 @@ import scriptutil
 
 import checkJavadocLinks
 
-# This tool expects to find /lucene and /solr off the base URL.  You
+# This tool expects to find /lucene off the base URL.  You
 # must have a working gpg, tar, unzip in your path.  This has been
 # tested on Linux and on Cygwin under Windows 7.
 
@@ -693,6 +693,29 @@ def removeTrailingZeros(version):
   return re.sub(r'(\.0)*$', '', version)
 
 
+def checkMaven(baseURL, tmpDir, gitRevision, version, isSigned, keysFile):
+  print('    download artifacts')
+  artifacts = {'lucene': []}
+  for project in ('lucene'):
+    artifactsURL = '%s/%s/maven/org/apache/%s/' % (baseURL, project, project)
+    targetDir = '%s/maven/org/apache/%s' % (tmpDir, project)
+    if not os.path.exists(targetDir):
+      os.makedirs(targetDir)
+    crawl(artifacts[project], artifactsURL, targetDir)
+  print()
+  verifyPOMperBinaryArtifact(artifacts, version)
+  verifyMavenDigests(artifacts)
+  checkJavadocAndSourceArtifacts(artifacts, version)
+  verifyDeployedPOMsCoordinates(artifacts, version)
+  if isSigned:
+    verifyMavenSigs(baseURL, tmpDir, artifacts, keysFile)
+
+  distFiles = getBinaryDistFilesForMavenChecks(tmpDir, version, baseURL)
+  checkIdenticalMavenArtifacts(distFiles, artifacts, version)
+
+  checkAllJARs('%s/maven/org/apache/lucene' % tmpDir, 'lucene', gitRevision, version, tmpDir, baseURL)
+
+
 def getBinaryDistFilesForMavenChecks(tmpDir, version, baseURL):
   # TODO: refactor distribution unpacking so that it only happens once per distribution per smoker run
   distFiles = defaultdict()
@@ -763,6 +786,7 @@ def checkIdenticalMavenArtifacts(distFiles, artifacts, version):
           if not identical:
             raise RuntimeError('Maven artifact %s is not identical to %s in %s binary distribution'
                               % (artifact, distFilenames[artifactFilename], project))
+
 
 def verifyMavenDigests(artifacts):
   print("    verify Maven artifacts' md5/sha1 digests...")
@@ -890,28 +914,6 @@ def verifyDeployedPOMsCoordinates(artifacts, version):
       if artifact not in artifacts[project]:
         raise RuntimeError('Missing corresponding .%s artifact for POM %s' % (packaging, POM))
 
-def verifyArtifactPerPOMtemplate(POMtemplates, artifacts, tmpDir, version):
-  print('    verify that there is an artifact for each POM template...')
-  namespace = '{http://maven.apache.org/POM/4.0.0}'
-  xpathPlugin = '{0}build/{0}plugins/{0}plugin'.format(namespace)
-  xpathSkipConfiguration = '{0}configuration/{0}skip'.format(namespace)
-  for project in ('lucene'):
-    for POMtemplate in POMtemplates[project]:
-      treeRoot = ET.parse(POMtemplate).getroot()
-      skipDeploy = False
-      for plugin in treeRoot.findall(xpathPlugin):
-        artifactId = plugin.find('%sartifactId' % namespace).text.strip()
-        if artifactId == 'maven-deploy-plugin':
-          skip = plugin.find(xpathSkipConfiguration)
-          if skip is not None: skipDeploy = (skip.text.strip().lower() == 'true')
-      if not skipDeploy:
-        groupId, artifactId, packaging, POMversion = getPOMcoordinate(treeRoot)
-        # Ignore POMversion, since its value will not have been interpolated
-        artifact = '%s/maven/%s/%s/%s/%s-%s.%s' \
-                 % (tmpDir, groupId.replace('.', '/'), artifactId,
-                    version, artifactId, version, packaging)
-        if artifact not in artifacts['lucene']:
-          raise RuntimeError('Missing artifact %s' % artifact)
 
 def crawl(downloadedFiles, urlString, targetDir, exclusions=set()):
   for text, subURL in getDirEntries(urlString):
@@ -1184,6 +1186,9 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
     for artifact in ('lucene-%s.tgz' % version, 'lucene-%s.zip' % version):
       unpackAndVerify(java, 'lucene', tmpDir, artifact, gitRevision, version, testArgs, baseURL)
     unpackAndVerify(java, 'lucene', tmpDir, 'lucene-%s-src.tgz' % version, gitRevision, version, testArgs, baseURL)
+    print()
+    print('Test Maven artifacts...')
+    checkMaven(baseURL, tmpDir, gitRevision, version, isSigned, keysFile)
   else:
     print("\nLucene test done (--download-only specified)")
 
