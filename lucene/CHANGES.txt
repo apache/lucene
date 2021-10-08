@@ -359,6 +359,8 @@ Changes in Backwards Compatibility Policy
 
 Other
 
+* LUCENE-10136: allow 'var' declarations in source code (Dawid Weiss)
+
 * LUCENE-9570, LUCENE-9564: Apply google java format and enforce it on source Java files.
   Review diffs and correct automatic formatting oddities. (Erick Erickson,
   Bruno Roustant, Dawid Weiss)
