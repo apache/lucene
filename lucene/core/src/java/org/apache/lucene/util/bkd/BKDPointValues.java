@@ -109,7 +109,7 @@ public final class BKDPointValues extends PointValues {
           return cost;
         } else {
           // Assume half the points matched
-          return (in.getConfig().maxPointsInLeafNode + 1) / 2;
+          return (index.size() + 1) / 2;
         }
       default:
         throw new IllegalArgumentException("Unreachable code");

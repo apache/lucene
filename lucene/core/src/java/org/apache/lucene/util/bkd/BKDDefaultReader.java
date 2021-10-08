@@ -259,7 +259,8 @@ public class BKDDefaultReader implements BKDReader {
       negativeDeltas = new boolean[config.numIndexDims * treeDepth];
       // information about the unbalance of the tree so we can report the exact size below a node
       rightMostLeafNode = (1 << treeDepth - 1) - 1;
-      this.lastLeafNodePointCount = lastLeafNodePointCount;
+      this.lastLeafNodePointCount =
+          lastLeafNodePointCount == 0 ? config.maxPointsInLeafNode : lastLeafNodePointCount;
       // scratch objects, reused between clones so NN search are not creating those objects
       // in every clone.
       this.scratchIterator = scratchIterator;
