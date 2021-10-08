@@ -113,6 +113,7 @@ final class SimpleTextBKDReader implements BKDReader {
     int nodeID;
     int level;
     final int rootNode;
+    final int lastLeafNodeCount;
     // holds the min / max value of the current node.
     private final byte[] minPackedValue, maxPackedValue;
     // holds the previous value of the split dimension
@@ -131,6 +132,9 @@ final class SimpleTextBKDReader implements BKDReader {
       int treeDepth = getTreeDepth(leafNodeOffset);
       splitDimValueStack = new byte[treeDepth + 1][];
       splitDims = new int[treeDepth + 1];
+      int lastLeafNodeCount = Math.toIntExact(pointCount % config.maxPointsInLeafNode);
+      this.lastLeafNodeCount =
+          lastLeafNodeCount == 0 ? config.maxPointsInLeafNode : lastLeafNodeCount;
     }
 
     private int getTreeDepth(int numLeaves) {
@@ -306,8 +310,7 @@ final class SimpleTextBKDReader implements BKDReader {
       }
       assert numLeaves == getNumLeavesSlow(nodeID) : numLeaves + " " + getNumLeavesSlow(nodeID);
       return rightMostLeafNode == (1 << getTreeDepth(leafNodeOffset) - 1) - 1
-          ? (long) (numLeaves - 1) * config.maxPointsInLeafNode
-              + (pointCount % config.maxPointsInLeafNode)
+          ? (long) (numLeaves - 1) * config.maxPointsInLeafNode + lastLeafNodeCount
           : (long) numLeaves * config.maxPointsInLeafNode;
     }
 
