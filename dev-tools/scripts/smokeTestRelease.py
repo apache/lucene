@@ -635,6 +635,9 @@ def verifyUnpacked(java, project, artifact, unpackPath, gitRevision, version, te
       #java.run_java12('ant javadocs', '%s/javadocs.log' % unpackPath)
       #checkBrokenLinks('%s/build/docs' % unpackPath)
 
+    print('  confirm all releases have coverage in TestBackwardsCompatibility')
+    confirmAllReleasesAreTestedForBackCompat(version, unpackPath)
+
   else:
 
     checkAllJARs(os.getcwd(), project, gitRevision, version, tmpDir, baseURL)
@@ -644,22 +647,6 @@ def verifyUnpacked(java, project, artifact, unpackPath, gitRevision, version, te
       testDemo(java.run_java12, isSrc, version, '12')
 
   testChangesText('.', version, project)
-
-  if isSrc:
-    print('  confirm all releases have coverage in TestBackwardsCompatibility')
-    confirmAllReleasesAreTestedForBackCompat(version, unpackPath)
-    
-
-def testNotice(unpackPath):
-  luceneNotice = open('%s/lucene/NOTICE.txt' % unpackPath, encoding='UTF-8').read()
-
-  expected = """
-=========================================================================
-==  Apache Lucene Notice                                               ==
-=========================================================================
-
-""" + luceneNotice + """---
-"""
 
 
 def checkBrokenLinks(path):
