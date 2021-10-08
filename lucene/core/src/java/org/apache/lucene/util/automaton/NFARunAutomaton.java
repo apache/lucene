@@ -24,8 +24,8 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.hppc.BitMixer;
 
 /**
- * A RunAutomaton that does not require DFA, it will determinize and memorize the generated DFA
- * state along with the run
+ * A RunAutomaton that does not require DFA. It will lazily determinize on-demand, memorizing the
+ * generated DFA states that has been explored
  *
  * <p>implemented based on: https://swtch.com/~rsc/regexp/regexp1.html
  */

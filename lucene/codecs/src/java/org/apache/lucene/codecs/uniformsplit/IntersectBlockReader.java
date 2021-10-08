@@ -391,7 +391,7 @@ public class IntersectBlockReader extends BlockReader {
 
     /** Records the given state has been visited. */
     private void setVisited(int state) {
-      if (!finite) {
+      if (finite == false) {
         if (state >= visited.length) {
           visited = ArrayUtil.grow(visited, state + 1);
         }

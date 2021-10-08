@@ -93,21 +93,21 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
 
     Set<String> vocab = new HashSet<>();
-    Set<String> perLoopReuse = new HashSet<>();
+    Set<String> perDocVocab = new HashSet<>();
     for (int i = 0; i < docNum; i++) {
-      perLoopReuse.clear();
+      perDocVocab.clear();
       int termNum = random().nextInt(20) + 30;
-      while (perLoopReuse.size() < termNum) {
+      while (perDocVocab.size() < termNum) {
         String randomString;
         while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0)
           ;
-        perLoopReuse.add(randomString);
+        perDocVocab.add(randomString);
         vocab.add(randomString);
       }
       Document document = new Document();
       document.add(
           newTextField(
-              FIELD, perLoopReuse.stream().reduce("", (s1, s2) -> s1 + " " + s2), Field.Store.NO));
+              FIELD, perDocVocab.stream().reduce("", (s1, s2) -> s1 + " " + s2), Field.Store.NO));
       writer.addDocument(document);
     }
     writer.commit();
@@ -125,18 +125,20 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     ArrayList<String> vocabList = new ArrayList<>(vocab);
     ArrayList<String> foreignVocabList = new ArrayList<>(foreignVocab);
 
+    Set<String> perQueryVocab = new HashSet<>();
+
     for (int i = 0; i < automatonNum; i++) {
-      perLoopReuse.clear();
+      perQueryVocab.clear();
       int termNum = random().nextInt(40) + 30;
-      while (perLoopReuse.size() < termNum) {
+      while (perQueryVocab.size() < termNum) {
         if (random().nextBoolean()) {
-          perLoopReuse.add(vocabList.get(random().nextInt(vocabList.size())));
+          perQueryVocab.add(vocabList.get(random().nextInt(vocabList.size())));
         } else {
-          perLoopReuse.add(foreignVocabList.get(random().nextInt(foreignVocabList.size())));
+          perQueryVocab.add(foreignVocabList.get(random().nextInt(foreignVocabList.size())));
         }
       }
       Automaton a = null;
-      for (String term : perLoopReuse) {
+      for (String term : perQueryVocab) {
         if (a == null) {
           a = Automata.makeString(term);
         } else {

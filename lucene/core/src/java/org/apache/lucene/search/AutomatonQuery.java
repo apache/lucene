@@ -75,7 +75,8 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    * @param term Term containing field and possibly some pattern structure. The term text is
    *     ignored.
    * @param automaton Automaton to run, terms that are accepted are considered a match.
-   * @param runnableType NFA or DFA
+   * @param runnableType NFA or DFA. See {@link org.apache.lucene.util.automaton.ByteRunnable.TYPE}
+   *     for difference between NFA and DFA. Also note that NFA has uncertain performance impact
    */
   public AutomatonQuery(final Term term, Automaton automaton, ByteRunnable.TYPE runnableType) {
     this(term, automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false, runnableType);
@@ -123,7 +124,8 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    *     Higher numbers require more space but can process more complex automata.
    * @param isBinary if true, this automaton is already binary and will not go through the
    *     UTF32ToUTF8 conversion
-   * @param runnableType NFA or DFA
+   * @param runnableType NFA or DFA. See {@link org.apache.lucene.util.automaton.ByteRunnable.TYPE}
+   *     for difference between NFA and DFA. Also note * that NFA has uncertain performance impact
    */
   public AutomatonQuery(
       final Term term,

@@ -21,9 +21,17 @@ public interface ByteRunnable {
 
   /** NFA or DFA */
   enum TYPE {
-    /** use NFARunAutomaton */
+    /**
+     * Determinize the automaton lazily on-demand as terms are intersected. This option saves the
+     * up-front determinize cost, and can handle some RegExps that DFA cannot, but intersection will
+     * be a bit slower
+     */
     NFA,
-    /** use ByteRunAutomaton */
+    /**
+     * Fully determinize the automaton up-front for fast term intersection. Some RegExps may fail to
+     * determinize, throwing TooComplexToDeterminizeException. But if they do not, intersection is
+     * fast.
+     */
     DFA
   }
 
