@@ -20,6 +20,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.BitUtil;
 
 /**
  * Class for writing packed integers to be directly read from Directory. Integers can be read
@@ -53,25 +54,21 @@ public final class DirectWriter {
   int off;
   final byte[] nextBlocks;
   final long[] nextValues;
-  final BulkOperation encoder;
-  final int iterations;
-  final int byteOffset;
-  final int bitsUsedOffset;
-  final int byteValueCount;
 
   DirectWriter(DataOutput output, long numValues, int bitsPerValue) {
     this.output = output;
     this.numValues = numValues;
     this.bitsPerValue = bitsPerValue;
-    encoder = BulkOperation.of(PackedInts.Format.PACKED, bitsPerValue);
-    this.byteOffset = 8 - bitsPerValue;
-    this.bitsUsedOffset = bitsPerValue - 8;
-    this.byteValueCount = encoder.byteValueCount();
-    iterations =
-        encoder.computeIterations(
-            (int) Math.min(numValues, Integer.MAX_VALUE), PackedInts.DEFAULT_BUFFER_SIZE);
-    nextBlocks = new byte[iterations * encoder.byteBlockCount()];
-    nextValues = new long[iterations * encoder.byteValueCount()];
+
+    final int memoryBudgetInBits = Math.multiplyExact(Byte.SIZE, PackedInts.DEFAULT_BUFFER_SIZE);
+    // For every value we need 64 bits for the value and bitsPerValue for the encoded value
+    int bufferSize = memoryBudgetInBits / (Long.SIZE + bitsPerValue);
+    assert bufferSize > 0;
+    // Round to the next multiple of 64
+    bufferSize = Math.toIntExact(bufferSize + 63) & 0xFFFFFFC0;
+    nextValues = new long[bufferSize];
+    // add 7 bytes in the end so that any value could be written as a long
+    nextBlocks = new byte[bufferSize * bitsPerValue / Byte.SIZE + Long.BYTES - 1];
   }
 
   /** Adds a value to this writer */
@@ -89,39 +86,59 @@ public final class DirectWriter {
   }
 
   private void flush() throws IOException {
-    encode(nextValues, 0, nextBlocks, 0, iterations);
+    if (off == 0) {
+      return;
+    }
+    // Avoid writing bits from values that are outside of the range we need to encode
+    Arrays.fill(nextValues, off, nextValues.length, 0L);
+    encode(nextValues, off, nextBlocks, bitsPerValue);
     final int blockCount =
         (int) PackedInts.Format.PACKED.byteCount(PackedInts.VERSION_CURRENT, off, bitsPerValue);
     output.writeBytes(nextBlocks, blockCount);
-    Arrays.fill(nextValues, 0L);
     off = 0;
   }
 
-  public void encode(
-      long[] values, int valuesOffset, byte[] blocks, int blocksOffset, int iterations) {
-    int nextBlock = 0;
-    int bitsUsed = 0;
-    for (int i = 0; i < byteValueCount * iterations; ++i) {
-      final long v = values[valuesOffset++];
-      assert PackedInts.unsignedBitsRequired(v) <= bitsPerValue;
-      if (bitsUsed < byteOffset) {
-        // just buffer
-        nextBlock |= v << bitsUsed;
-        bitsUsed += bitsPerValue;
-      } else {
-        // flush as many blocks as possible
-        blocks[blocksOffset++] = (byte) (nextBlock | (v << bitsUsed));
-        int bits = 8 - bitsUsed;
-        while (bits <= bitsUsedOffset) {
-          blocks[blocksOffset++] = (byte) (v >> bits);
-          bits += 8;
+  private static void encode(long[] nextValues, int upTo, byte[] nextBlocks, int bitsPerValue) {
+    if ((bitsPerValue & 7) == 0) {
+      // bitsPerValue is a multiple of 8: 8, 16, 24, 32, 30, 48, 56, 64
+      final int bytesPerValue = bitsPerValue / Byte.SIZE;
+      for (int i = 0, o = 0; i < upTo; ++i, o += bytesPerValue) {
+        final long l = nextValues[i];
+        if (bitsPerValue > Integer.SIZE) {
+          BitUtil.VH_LE_LONG.set(nextBlocks, o, l);
+        } else if (bitsPerValue > Short.SIZE) {
+          BitUtil.VH_LE_INT.set(nextBlocks, o, (int) l);
+        } else if (bitsPerValue > Byte.SIZE) {
+          BitUtil.VH_LE_SHORT.set(nextBlocks, o, (short) l);
+        } else {
+          nextBlocks[o] = (byte) l;
         }
-        // then buffer
-        bitsUsed = bitsPerValue - bits;
-        nextBlock = (int) ((v >>> bits) & ((1L << bitsUsed) - 1));
+      }
+    } else if (bitsPerValue < 8) {
+      // bitsPerValue is 1, 2 or 4
+      final int valuesPerLong = Long.SIZE / bitsPerValue;
+      for (int i = 0, o = 0; i < upTo; i += valuesPerLong, o += Long.BYTES) {
+        long v = 0;
+        for (int j = 0; j < valuesPerLong; ++j) {
+          v |= nextValues[i + j] << (bitsPerValue * j);
+        }
+        BitUtil.VH_LE_LONG.set(nextBlocks, o, v);
+      }
+    } else {
+      // bitsPerValue is 12, 20 or 28
+      // Write values 2 by 2
+      final int numBytesFor2Values = bitsPerValue * 2 / Byte.SIZE;
+      for (int i = 0, o = 0; i < upTo; i += 2, o += numBytesFor2Values) {
+        final long l1 = nextValues[i];
+        final long l2 = nextValues[i + 1];
+        final long merged = l1 | (l2 << bitsPerValue);
+        if (bitsPerValue <= Integer.SIZE / 2) {
+          BitUtil.VH_LE_INT.set(nextBlocks, o, (int) merged);
+        } else {
+          BitUtil.VH_LE_LONG.set(nextBlocks, o, merged);
+        }
       }
     }
-    assert bitsUsed == 0;
   }
 
   /** finishes writing */

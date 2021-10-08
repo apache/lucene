@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -63,10 +64,10 @@ public final class LZ4 {
   }
 
   private static int readInt(byte[] buf, int i) {
-    return ((buf[i] & 0xFF) << 24)
-        | ((buf[i + 1] & 0xFF) << 16)
-        | ((buf[i + 2] & 0xFF) << 8)
-        | (buf[i + 3] & 0xFF);
+    // we hardcode LITTLE ENDIAN here as this is most performant on most platforms.
+    // According to LZ4's alogrithm the endianness does not matter at all, but we
+    // want to prevent indexes to differ just because of platform endianness!
+    return (int) BitUtil.VH_LE_INT.get(buf, i);
   }
 
   private static int commonBytes(byte[] b, int o1, int o2, int limit) {

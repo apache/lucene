@@ -57,6 +57,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -116,7 +117,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
   static SynonymMap buildSynonymMap(String[][] synonyms) throws IOException {
     SynonymMap.Builder builder = new SynonymMap.Builder();
     for (String[] pair : synonyms) {
-      assertThat(pair.length, Matchers.equalTo(2));
+      MatcherAssert.assertThat(pair.length, Matchers.equalTo(2));
       builder.add(new CharsRef(pair[0]), new CharsRef(pair[1]), true);
     }
     return builder.build();

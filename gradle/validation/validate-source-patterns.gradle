@@ -55,6 +55,7 @@ def extensions = [
     'py',
     'sh',
     'template',
+    'txt',
     'vm',
     'xml',
     'xsl',
@@ -78,6 +79,10 @@ subprojects {
 
       // default excludes.
       exclude 'build/**'
+      exclude '**/.idea/**'
+
+      // ignore txt files in source resources and tests.
+      exclude 'src/**/*.txt'
     }
   }
 
@@ -88,6 +93,8 @@ subprojects {
 configure(project(':lucene:benchmark')) {
   project.tasks.withType(ValidateSourcePatternsTask) {
     sourceFiles.exclude 'data/**'
+    // Known .txt offenders.
+    sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
   }
 }
 
@@ -100,10 +107,6 @@ configure(rootProject) {
       extensions.each{
         include "**/*.${it}"
       }
-
-      // We do not scan for *.txt by default (broken files in subprojects),
-      // but in root we can do this).
-      include '**/*.txt'
 
       // Don't go into child projects (scanned separately).
       childProjects.keySet().each{
@@ -170,17 +173,11 @@ class ValidateSourcePatternsTask extends DefaultTask {
     def javaCommentPattern = ~$/(?sm)^\Q/*\E(.*?)\Q*/\E/$;
     def xmlCommentPattern = ~$/(?sm)\Q<!--\E(.*?)\Q-->\E/$;
     def lineSplitter = ~$/[\r\n]+/$;
-    def singleLineSplitter = ~$/\r?\n/$;
     def licenseMatcher = Defaults.createDefaultMatcher();
     def validLoggerPattern = ~$/(?s)\b(private\s|static\s|final\s){3}+\s*Logger\s+\p{javaJavaIdentifierStart}+\s+=\s+\QLoggerFactory.getLogger(MethodHandles.lookup().lookupClass());\E/$;
     def validLoggerNamePattern = ~$/(?s)\b(private\s|static\s|final\s){3}+\s*Logger\s+log+\s+=\s+\QLoggerFactory.getLogger(MethodHandles.lookup().lookupClass());\E/$;
     def packagePattern = ~$/(?m)^\s*package\s+org\.apache.*;/$;
     def xmlTagPattern = ~$/(?m)\s*<[a-zA-Z].*/$;
-    def sourceHeaderPattern = ~$/\[source\b.*/$;
-    def blockBoundaryPattern = ~$/----\s*/$;
-    def blockTitlePattern = ~$/\..*/$;
-    def unescapedSymbolPattern = ~$/(?<=[^\\]|^)([-=]>|<[-=])/$; // SOLR-10883
-    def extendsLuceneTestCasePattern = ~$/public.*?class.*?extends.*?LuceneTestCase[^\n]*?\n/$;
     def validSPINameJavadocTag = ~$/(?s)\s*\*\s*@lucene\.spi\s+\{@value #NAME\}/$;
 
     def isLicense = { matcher, ratDocument ->
@@ -211,33 +208,6 @@ class ValidateSourcePatternsTask extends DefaultTask {
       }
     }
 
-    def checkForUnescapedSymbolSubstitutions = { f, text ->
-      def inCodeBlock = false;
-      def underSourceHeader = false;
-      def lineNumber = 0;
-      singleLineSplitter.split(text).each {
-        ++lineNumber;
-        if (underSourceHeader) { // This line is either a single source line, or the boundary of a code block
-          inCodeBlock = blockBoundaryPattern.matcher(it).matches();
-          if ( ! blockTitlePattern.matcher(it).matches()) {
-            underSourceHeader = false;
-          }
-        } else {
-          if (inCodeBlock) {
-            inCodeBlock = ! blockBoundaryPattern.matcher(it).matches();
-          } else {
-            underSourceHeader = sourceHeaderPattern.matcher(it).lookingAt();
-            if ( ! underSourceHeader) {
-              def unescapedSymbolMatcher = unescapedSymbolPattern.matcher(it);
-              if (unescapedSymbolMatcher.find()) {
-                reportViolation(f, 'Unescaped symbol "' + unescapedSymbolMatcher.group(1) + '" on line #' + lineNumber);
-              }
-            }
-          }
-        }
-      }
-    }
-
     ProgressLogger progress = progressLoggerFactory.newOperation(this.class)
     progress.start(this.name, this.name)
 
@@ -246,7 +216,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
       logger.debug('Scanning source file: {}', f);
 
       def text = f.getText('UTF-8');
-      invalidPatterns.each{ pattern,name ->
+      invalidPatterns.each { pattern, name ->
         if (pattern.matcher(text).find()) {
           reportViolation(f, name);
         }
@@ -291,9 +261,6 @@ class ValidateSourcePatternsTask extends DefaultTask {
       }
       if (f.name.endsWith('.xml')) {
         checkLicenseHeaderPrecedes(f, '<tag>', xmlTagPattern, xmlCommentPattern, text, ratDocument);
-      }
-      if (f.name.endsWith('.adoc')) {
-        checkForUnescapedSymbolSubstitutions(f, text);
       }
     }
     progress.completed()
