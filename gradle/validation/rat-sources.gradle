@@ -62,6 +62,7 @@ allprojects {
             exclude "src/**/*.zip"
             exclude "src/**/*.properties"
             exclude "src/**/*.utf8"
+            exclude "src/**/*.tasks"
 
             // Conditionally apply module-specific patterns. We do it here instead
             // of reconfiguring each project because the provider can be made lazy
@@ -72,11 +73,13 @@ allprojects {
                     include "gradlew.bat"
                     exclude ".gradle"
                     exclude ".idea"
+                    exclude ".run"
                     exclude ".muse"
                     exclude ".git"
 
                     // Exclude github stuff (templates, workflows).
                     exclude ".github"
+
 
                     // The root project also includes patterns for the boostrap (buildSrc) and composite
                     // projects. Include their sources in the scan.

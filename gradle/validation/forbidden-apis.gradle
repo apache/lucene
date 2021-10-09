@@ -126,10 +126,22 @@ allprojects { prj ->
       task.inputs.dir(file(resources))
     }
 
+    // Disable checks on JMH generated files.
+    if (prj.path in [
+            ":lucene:jmh"
+    ]) {
+      forbiddenApisMain.exclude("**/build/**")
+      forbiddenApisMain.bundledSignatures -= [
+              'jdk-reflection'
+      ]
+
+    }
+
     // Disable sysout signatures for these projects.
     if (prj.path in [
         ":lucene:demo",
         ":lucene:benchmark",
+        ":lucene:jmh",
         ":lucene:test-framework"
     ]) {
       forbiddenApisMain.bundledSignatures -= [

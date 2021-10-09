@@ -1,0 +1,3 @@
+JMH is GPL licensed and part of the OpenJDK project. It is only used for developer benchmarks during development.
+
+* DO NOT DISTRIBUTE! *

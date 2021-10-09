@@ -1,5 +1,6 @@
 com.carrotsearch.randomizedtesting:*=2.7.6
 com.carrotsearch:hppc=0.9.0
+com.eaio.uuid:uuid=3.2
 com.github.ben-manes.caffeine:caffeine=2.8.4
 com.google.errorprone:*=2.4.0
 com.google.guava:guava=25.1-jre
@@ -23,8 +24,10 @@ org.apache.opennlp:opennlp-tools=1.9.1
 org.carrot2:morfologik-*=2.1.5
 org.eclipse.jetty:*=9.4.41.v20210516
 org.hamcrest:*=2.2
+org.hdrhistogram:HdrHistogram=2.1.12
 org.locationtech.jts:jts-core=1.15.0
 org.locationtech.spatial4j:*=0.7
+org.openjdk.jmh:*=1.32
 org.ow2.asm:*=7.2
 ua.net.nlp:morfologik-ukrainian-search=4.9.1
 xerces:xercesImpl=2.12.0
