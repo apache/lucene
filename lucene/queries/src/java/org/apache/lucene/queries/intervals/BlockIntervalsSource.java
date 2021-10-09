@@ -47,11 +47,11 @@ class BlockIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   private BlockIntervalsSource(List<IntervalsSource> sources) {
-    super(flatten(sources), true);
+    super(flatten(sources), false);
   }
 
   @Override
-  protected IntervalIterator combine(List<IntervalIterator> iterators) {
+  protected IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch) {
     return new BlockIntervalIterator(iterators);
   }
 

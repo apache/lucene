@@ -59,15 +59,16 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
       }
       subIntervals.add(it);
     }
-    return combine(subIntervals);
+    return combine(subIntervals, () -> {});
   }
 
-  protected abstract IntervalIterator combine(List<IntervalIterator> iterators);
+  protected abstract IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch);
 
   @Override
   public final IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
       throws IOException {
     List<IntervalMatchesIterator> subs = new ArrayList<>();
+    List<CachingMatchesIterator> cachingSubs = new ArrayList<>();
     for (IntervalsSource source : subSources) {
       IntervalMatchesIterator mi = source.matches(field, ctx, doc);
       if (mi == null) {
@@ -75,23 +76,30 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
       }
       if (isMinimizing) {
         mi = new CachingMatchesIterator(mi);
+        cachingSubs.add((CachingMatchesIterator)mi);
       }
       subs.add(mi);
     }
+    MatchCallback onMatch = isMinimizing ?
+        () -> {
+          for (CachingMatchesIterator it : cachingSubs) {
+            it.cache();
+          }
+        } :
+        () -> {};
     IntervalIterator it =
         combine(
             subs.stream()
                 .map(m -> IntervalMatches.wrapMatches(m, doc))
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList()),
+            onMatch);
     if (it.advance(doc) != doc) {
       return null;
     }
     if (it.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
       return null;
     }
-    return isMinimizing
-        ? new MinimizingConjunctionMatchesIterator(it, subs)
-        : new ConjunctionMatchesIterator(it, subs);
+    return new ConjunctionMatchesIterator(it, subs);
   }
 
   private static class ConjunctionMatchesIterator implements IntervalMatchesIterator {

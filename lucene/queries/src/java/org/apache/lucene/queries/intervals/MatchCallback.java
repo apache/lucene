@@ -19,28 +19,7 @@ package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
 
-import org.apache.lucene.search.MatchesTestBase;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.util.BytesRef;
+public interface MatchCallback {
 
-public class TestWildcardMatches extends MatchesTestBase {
-
-    @Override
-    protected String[] getDocuments() {
-        return new String[]{
-                "compare computer science"
-        };
-    }
-
-    public void testWildcards() throws IOException {
-        Query q = new IntervalQuery(FIELD_WITH_OFFSETS,
-                Intervals.ordered(
-                        Intervals.wildcard(new BytesRef("comp*")),
-                        Intervals.term("science"))
-        );
-
-        checkMatches(q, FIELD_WITH_OFFSETS, new int[][]{
-                { 0, 1, 2, 8, 24 }
-        });
-    }
+  void onMatch() throws IOException;
 }

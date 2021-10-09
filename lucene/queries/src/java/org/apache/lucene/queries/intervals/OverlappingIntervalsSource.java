@@ -35,7 +35,7 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   @Override
-  protected IntervalIterator combine(List<IntervalIterator> iterators) {
+  protected IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch) {
     assert iterators.size() == 2;
     IntervalIterator a = iterators.get(0);
     IntervalIterator b = iterators.get(1);

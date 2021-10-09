@@ -59,25 +59,32 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     if (iterators.size() < minShouldMatch) {
       return null;
     }
-    return new MinimumShouldMatchIntervalIterator(iterators, minShouldMatch);
+    return new MinimumShouldMatchIntervalIterator(iterators, minShouldMatch, () -> {});
   }
 
   @Override
   public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
       throws IOException {
     Map<IntervalIterator, CachingMatchesIterator> lookup = new IdentityHashMap<>();
+    List<CachingMatchesIterator> cachingIterators = new ArrayList<>();
     for (IntervalsSource source : sources) {
       IntervalMatchesIterator mi = source.matches(field, ctx, doc);
       if (mi != null) {
         CachingMatchesIterator cmi = new CachingMatchesIterator(mi);
         lookup.put(IntervalMatches.wrapMatches(cmi, doc), cmi);
+        cachingIterators.add(cmi);
       }
     }
     if (lookup.size() < minShouldMatch) {
       return null;
     }
+    MatchCallback onMatch = () -> {
+      for (CachingMatchesIterator cmi : cachingIterators) {
+        cmi.cache();
+      }
+    };
     MinimumShouldMatchIntervalIterator it =
-        new MinimumShouldMatchIntervalIterator(lookup.keySet(), minShouldMatch);
+        new MinimumShouldMatchIntervalIterator(lookup.keySet(), minShouldMatch, onMatch);
     if (it.advance(doc) != doc) {
       return null;
     }
@@ -159,11 +166,15 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     private final float matchCost;
     private final int minShouldMatch;
     private final Collection<IntervalIterator> currentIterators = new ArrayList<>();
+    private final MatchCallback onMatch;
 
     private int start, end, queueEnd, slop;
     private IntervalIterator lead;
 
-    MinimumShouldMatchIntervalIterator(Collection<IntervalIterator> subs, int minShouldMatch) {
+    MinimumShouldMatchIntervalIterator(
+        Collection<IntervalIterator> subs,
+        int minShouldMatch,
+        MatchCallback onMatch) {
       this.disiQueue = new DisiPriorityQueue(subs.size());
       float mc = 0;
       for (IntervalIterator it : subs) {
@@ -173,6 +184,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
       this.approximation = new DisjunctionDISIApproximation(disiQueue);
       this.matchCost = mc;
       this.minShouldMatch = minShouldMatch;
+      this.onMatch = onMatch;
 
       this.proximityQueue =
           new PriorityQueue<IntervalIterator>(minShouldMatch) {
@@ -223,6 +235,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
         return start = end = IntervalIterator.NO_MORE_INTERVALS;
       // then, minimize it
       do {
+        onMatch.onMatch();
         start = proximityQueue.top().start();
         end = queueEnd;
         slop = width();
@@ -355,7 +368,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
       int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        start = Math.min(start, cms.startOffset(endPos));
+        start = Math.min(start, cms.startOffset());
       }
       return start;
     }
@@ -366,7 +379,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
       int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        end = Math.max(end, cms.endOffset(endPos));
+        end = Math.max(end, cms.endOffset());
       }
       return end;
     }
@@ -384,10 +397,10 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public MatchesIterator getSubMatches() throws IOException {
       List<MatchesIterator> mis = new ArrayList<>();
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        mis.add(cms.getSubMatches(endPos));
+        MatchesIterator mi = cms.getSubMatches();
+        mis.add(mi == null ? cms : mi);
       }
       return MatchesUtils.disjunction(mis);
     }
