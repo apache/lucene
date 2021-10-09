@@ -62,7 +62,8 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
     return combine(subIntervals, () -> {});
   }
 
-  protected abstract IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch);
+  protected abstract IntervalIterator combine(
+      List<IntervalIterator> iterators, MatchCallback onMatch);
 
   @Override
   public final IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
@@ -76,17 +77,18 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
       }
       if (isMinimizing) {
         mi = new CachingMatchesIterator(mi);
-        cachingSubs.add((CachingMatchesIterator)mi);
+        cachingSubs.add((CachingMatchesIterator) mi);
       }
       subs.add(mi);
     }
-    MatchCallback onMatch = isMinimizing ?
-        () -> {
-          for (CachingMatchesIterator it : cachingSubs) {
-            it.cache();
-          }
-        } :
-        () -> {};
+    MatchCallback onMatch =
+        isMinimizing
+            ? () -> {
+              for (CachingMatchesIterator it : cachingSubs) {
+                it.cache();
+              }
+            }
+            : () -> {};
     IntervalIterator it =
         combine(
             subs.stream()

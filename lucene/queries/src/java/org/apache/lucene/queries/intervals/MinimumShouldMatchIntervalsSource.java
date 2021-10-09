@@ -78,11 +78,12 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     if (lookup.size() < minShouldMatch) {
       return null;
     }
-    MatchCallback onMatch = () -> {
-      for (CachingMatchesIterator cmi : cachingIterators) {
-        cmi.cache();
-      }
-    };
+    MatchCallback onMatch =
+        () -> {
+          for (CachingMatchesIterator cmi : cachingIterators) {
+            cmi.cache();
+          }
+        };
     MinimumShouldMatchIntervalIterator it =
         new MinimumShouldMatchIntervalIterator(lookup.keySet(), minShouldMatch, onMatch);
     if (it.advance(doc) != doc) {
@@ -172,9 +173,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     private IntervalIterator lead;
 
     MinimumShouldMatchIntervalIterator(
-        Collection<IntervalIterator> subs,
-        int minShouldMatch,
-        MatchCallback onMatch) {
+        Collection<IntervalIterator> subs, int minShouldMatch, MatchCallback onMatch) {
       this.disiQueue = new DisiPriorityQueue(subs.size());
       float mc = 0;
       for (IntervalIterator it : subs) {
@@ -365,7 +364,6 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public int startOffset() throws IOException {
       int start = Integer.MAX_VALUE;
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
         start = Math.min(start, cms.startOffset());
@@ -376,7 +374,6 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public int endOffset() throws IOException {
       int end = 0;
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
         end = Math.max(end, cms.endOffset());

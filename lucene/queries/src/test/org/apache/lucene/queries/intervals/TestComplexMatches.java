@@ -18,7 +18,6 @@
 package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
-
 import org.apache.lucene.search.MatchesTestBase;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
@@ -27,46 +26,44 @@ public class TestComplexMatches extends MatchesTestBase {
 
   @Override
   protected String[] getDocuments() {
-    return new String[]{
-        "compare computer science",
-        "a b a b a"
-    };
+    return new String[] {"compare computer science", "a b a b a"};
   }
 
   public void testWildcards() throws IOException {
-    Query q = new IntervalQuery(FIELD_WITH_OFFSETS,
-        Intervals.ordered(
-            Intervals.wildcard(new BytesRef("comp*")),
-            Intervals.term("science"))
-    );
+    Query q =
+        new IntervalQuery(
+            FIELD_WITH_OFFSETS,
+            Intervals.ordered(
+                Intervals.wildcard(new BytesRef("comp*")), Intervals.term("science")));
 
-    checkMatches(q, FIELD_WITH_OFFSETS, new int[][]{
-        {0, 1, 2, 8, 24}
-    });
+    checkMatches(q, FIELD_WITH_OFFSETS, new int[][] {{0, 1, 2, 8, 24}});
   }
 
   public void testRepeatedIterators() throws IOException {
-    Query q = new IntervalQuery(FIELD_WITH_OFFSETS,
-        Intervals.ordered(
-            Intervals.term("a"),
-            Intervals.term("b"),
-            Intervals.term("a"),
-            Intervals.term("b"),
-            Intervals.term("a")
-        )
-    );
+    Query q =
+        new IntervalQuery(
+            FIELD_WITH_OFFSETS,
+            Intervals.ordered(
+                Intervals.term("a"),
+                Intervals.term("b"),
+                Intervals.term("a"),
+                Intervals.term("b"),
+                Intervals.term("a")));
 
-    checkTermMatches(q, FIELD_WITH_OFFSETS, new TermMatch[][][]{
-        {},
-        {
+    checkTermMatches(
+        q,
+        FIELD_WITH_OFFSETS,
+        new TermMatch[][][] {
+          {},
+          {
             {
-                new TermMatch(0, 0, 1),
-                new TermMatch(1, 2, 3),
-                new TermMatch(2, 4, 5),
-                new TermMatch(3, 6, 7),
-                new TermMatch(4, 8, 9)
+              new TermMatch(0, 0, 1),
+              new TermMatch(1, 2, 3),
+              new TermMatch(2, 4, 5),
+              new TermMatch(3, 6, 7),
+              new TermMatch(4, 8, 9)
             }
-        }
-    });
+          }
+        });
   }
 }

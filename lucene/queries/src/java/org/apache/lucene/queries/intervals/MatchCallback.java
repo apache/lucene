@@ -19,7 +19,12 @@ package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
 
-public interface MatchCallback {
+/**
+ * Internal interface used to signal to caching iterators when their parent has found a match and
+ * has started minimization
+ */
+interface MatchCallback {
 
+  /** Called when the parent iterator has found a match */
   void onMatch() throws IOException;
 }
