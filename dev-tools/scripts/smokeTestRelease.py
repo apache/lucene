@@ -153,15 +153,13 @@ def checkJARMetaData(desc, jarFile, gitRevision, version):
     for verify in (
       'Specification-Vendor: The Apache Software Foundation',
       'Implementation-Vendor: The Apache Software Foundation',
-      # Make sure 1.8 compiler was used to build release bits:
+      'Specification-Title: Lucene Search Engine:',
+      'Implementation-Title: org.apache.lucene',
       'X-Compile-Source-JDK: 11',
-      # Make sure 1.8, 1.9 or 1.10 ant was used to build release bits: (this will match 1.8.x, 1.9.x, 1.10.x)
-      ('Ant-Version: Apache Ant 1.8', 'Ant-Version: Apache Ant 1.9', 'Ant-Version: Apache Ant 1.10'),
-      # Make sure .class files are 1.8 format:
       'X-Compile-Target-JDK: 11',
       'Specification-Version: %s' % version,
-      # Make sure the release was compiled with 1.8:
-      'Created-By: 11'):
+      'X-Build-JDK: 11.',
+      'Extension-Name: org.apache.lucene'):
       if type(verify) is not tuple:
         verify = (verify,)
       for x in verify:
@@ -979,7 +977,7 @@ def parse_config():
                       help='Only perform download and sha hash check steps')
   parser.add_argument('url', help='Url pointing to release to test')
   parser.add_argument('test_args', nargs=argparse.REMAINDER,
-                      help='Arguments to pass to ant for testing, e.g. -Dwhat=ever.')
+                      help='Arguments to pass to gradle for testing, e.g. -Dwhat=ever.')
   c = parser.parse_args()
 
   if c.version is not None:
