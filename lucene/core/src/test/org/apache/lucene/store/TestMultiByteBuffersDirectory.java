@@ -26,15 +26,20 @@ public class TestMultiByteBuffersDirectory extends BaseChunkedDirectoryTestCase 
 
   @Override
   protected Directory getDirectory(Path path, int maxChunkSize) throws IOException {
-    // round down huge values (above 20) to keep RAM usage low (especially in nightly)
+    // round down huge values (above 20) to keep RAM usage low in tests (especially in nightly)
     int bitsPerBlock =
         Math.min(
             20,
             Math.max(
-                1, Integer.numberOfTrailingZeros(BitUtil.nextHighestPowerOfTwo(maxChunkSize))));
+                ByteBuffersDataOutput.LIMIT_MIN_BITS_PER_BLOCK,
+                Integer.numberOfTrailingZeros(BitUtil.nextHighestPowerOfTwo(maxChunkSize))));
     Supplier<ByteBuffersDataOutput> outputSupplier =
         () -> {
-          return new ByteBuffersDataOutput(bitsPerBlock, bitsPerBlock);
+          return new ByteBuffersDataOutput(
+              bitsPerBlock,
+              bitsPerBlock,
+              ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP,
+              ByteBuffersDataOutput.NO_REUSE);
         };
     return new ByteBuffersDirectory(
         new SingleInstanceLockFactory(),
