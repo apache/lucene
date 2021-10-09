@@ -194,6 +194,12 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readLongs(long[] dst, int offset, int length) throws IOException {
+    ensureOpen();
+    in.readLongs(dst, offset, length);
+  }
+
+  @Override
   public IndexInput clone() {
     ensureOpen();
     ByteBuffersIndexInput cloned =
