@@ -36,7 +36,7 @@ else
   gradleCmd="${gradlew_dir}/gradlew"
   $gradleCmd -q -p ../../ jar
   echo "gradle build done"
-  classpath=$($gradleCmd -q echoCp)
+  classpath=$($gradleCmd -q --console plain echoCp)
 fi
 
 # shellcheck disable=SC2145

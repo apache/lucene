@@ -56,8 +56,10 @@
 ```shell
 # fire away!
 
-$ ./jmh.sh blah blah
+$ ./jmh.sh FuzzyQuery -prof gc
 ```
+
+![start](https://user-images.githubusercontent.com/448788/136673057-f1f8d296-f96a-4e34-a6b0-d2190dc054ee.gif)
 
 ---
 
