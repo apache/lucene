@@ -369,11 +369,7 @@ def checkChangesContent(s, version, name, project, isHTML):
     raise RuntimeError('saw "not yet released" in %s' % name)
 
   if not isHTML:
-    if project == 'lucene':
-      sub = 'Lucene %s' % version
-    else:
-      sub = version
-      
+    sub = 'Lucene %s' % version
     if s.find(sub) == -1:
       # benchmark never seems to include release info:
       if name.find('/benchmark/') == -1:
@@ -611,24 +607,26 @@ def verifyUnpacked(java, project, artifact, unpackPath, gitRevision, version, te
         print('      %s' % line.strip())
       raise RuntimeError('source release has WARs...')
 
-    # Can't run documentation-lint in lucene src, because dev-tools is missing
-    validateCmd = 'ant validate' if project == 'lucene' else 'ant validate documentation-lint';
+    # TODO: test below gradle commands
+    # Can't run documentation-lint in lucene src, because dev-tools is missing TODO: No longer true
+    validateCmd = 'gradlew check -x test'
     print('    run "%s"' % validateCmd)
     java.run_java11(validateCmd, '%s/validate.log' % unpackPath)
 
     print("    run tests w/ Java 11 and testArgs='%s'..." % testArgs)
-    java.run_java11('ant clean test %s' % testArgs, '%s/test.log' % unpackPath)
-    java.run_java11('ant jar', '%s/compile.log' % unpackPath)
+    java.run_java11('gradlew clean test %s' % testArgs, '%s/test.log' % unpackPath)
+    java.run_java11('gradlew assemble', '%s/compile.log' % unpackPath)
     testDemo(java.run_java11, isSrc, version, '11')
 
     print('    generate javadocs w/ Java 11...')
-    java.run_java11('ant javadocs', '%s/javadocs.log' % unpackPath)
+    # NOCOMMIT: Assembly of javadoc into a dist folder depends on LUCENE-9488 https://github.com/apache/lucene/pull/359
+    java.run_java11('gradlew javadoc', '%s/javadocs.log' % unpackPath)
     checkBrokenLinks('%s/build/docs' % unpackPath)
 
     if java.run_java12:
       print("    run tests w/ Java 12 and testArgs='%s'..." % testArgs)
-      java.run_java12('ant clean test %s' % testArgs, '%s/test.log' % unpackPath)
-      java.run_java12('ant jar', '%s/compile.log' % unpackPath)
+      java.run_java12('gradlew clean test %s' % testArgs, '%s/test.log' % unpackPath)
+      java.run_java12('gradlew assemble', '%s/compile.log' % unpackPath)
       testDemo(java.run_java12, isSrc, version, '12')
 
       #print('    generate javadocs w/ Java 12...')
