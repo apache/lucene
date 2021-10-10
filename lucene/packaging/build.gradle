@@ -22,9 +22,8 @@ ext {
   releaseDir = file("${buildDir}/release")
 }
 
-//
+
 // Set up a dependency on changes rendered to HTML.
-//
 configurations {
   changesHtml
 }
@@ -33,9 +32,36 @@ dependencies {
   changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
 }
 
-//
+
+// Prepare the "source" distribution artifact.
+task assembleSourceTgz() {
+  // Make sure no unstaged/ dirty files are present.
+  dependsOn ":checkWorkingCopyClean"
+
+  ext {
+    destination = file("${buildDir}/distributions/lucene-${version}-src.tgz")
+  }
+
+  outputs.file destination
+
+  doFirst {
+    quietExec {
+      executable = project.externalTool("git")
+      workingDir = project.rootDir
+
+      args += [
+          "archive",
+          "--format", "tgz",
+          "--prefix", "lucene-${version}/",
+          "--output", destination,
+          "HEAD"
+      ]
+    }
+  }
+}
+
+
 // Assemble everything needed in the release folder structure.
-//
 task assembleRelease(type: Sync) {
   from(configurations.changesHtml, {
     into "changes"
@@ -43,6 +69,9 @@ task assembleRelease(type: Sync) {
 
   from(tasks.mavenToBuild, {
     into "maven"
+  })
+
+  from(tasks.assembleSourceTgz, {
   })
 
   into releaseDir
