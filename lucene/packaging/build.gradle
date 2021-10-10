@@ -14,3 +14,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// This project puts together the Lucene "distribution", assembling bits and pieces
+// from across the project structure into release artifacts.
+
+ext {
+  releaseDir = file("${buildDir}/release")
+}
+
+//
+// Set up a dependency on changes rendered to HTML.
+//
+configurations {
+  changesHtml
+}
+
+dependencies {
+  changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
+}
+
+//
+// Assemble everything needed in the release folder structure.
+//
+task assembleRelease(type: Sync) {
+  from(configurations.changesHtml, {
+    into "changes"
+  })
+
+  from(tasks.mavenToBuild, {
+    into "maven"
+  })
+
+  into releaseDir
+}
+
+// Hook into convention tasks.
+assemble.dependsOn assembleRelease

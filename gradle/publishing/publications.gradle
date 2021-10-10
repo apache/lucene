@@ -35,7 +35,7 @@ configure(rootProject) {
           // Exclude packaging & documentation.
           ":lucene:packaging",
           ":lucene:documentation",
-          // Exclude the parent container project of analysis modules (no artifacts).
+          // Exclude the parent container project for analysis modules (no artifacts).
           ":lucene:analysis",
           // Exclude the native module.
           ":lucene:misc:native"
@@ -55,3 +55,6 @@ apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-nexus-snaps
 
 // Configure artifact push to apache nexus (releases repository).
 apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-nexus-releases.gradle")
+
+// Configure artifact push to a local build folder (required to collect artifacts for the release).
+apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradle")
