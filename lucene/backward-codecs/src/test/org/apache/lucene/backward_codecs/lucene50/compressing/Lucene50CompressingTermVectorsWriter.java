@@ -42,7 +42,6 @@ import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -701,7 +700,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   @Override
-  public void finish(FieldInfos fis, int numDocs) throws IOException {
+  public void finish(int numDocs) throws IOException {
     if (!pendingDocs.isEmpty()) {
       numDirtyChunks++; // incomplete: we had to force this flush
       numDirtyDocs += pendingDocs.size();

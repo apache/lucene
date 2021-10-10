@@ -149,7 +149,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
     IndexReader reader = w.getReader();
     w.close();
 
-    String terms[] = {
+    String[] terms = {
       "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "hundred"
     };
 

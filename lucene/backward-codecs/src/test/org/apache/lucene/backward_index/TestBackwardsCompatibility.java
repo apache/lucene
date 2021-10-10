@@ -124,6 +124,7 @@ import org.junit.BeforeClass;
 */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
 // machines occasionally
+@SuppressWarnings("deprecation")
 public class TestBackwardsCompatibility extends LuceneTestCase {
 
   // Backcompat index generation, described below, is mostly automated in:
@@ -369,7 +370,11 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.8.1-cfs",
     "8.8.1-nocfs",
     "8.8.2-cfs",
-    "8.8.2-nocfs"
+    "8.8.2-nocfs",
+    "8.9.0-cfs",
+    "8.9.0-nocfs",
+    "8.10.0-cfs",
+    "8.10.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -380,6 +385,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.8.0.0",
     "sorted.8.1.0",
     "sorted.8.1.1",
+    "sorted.8.10.0",
     "sorted.8.2.0",
     "sorted.8.3.0",
     "sorted.8.3.1",
@@ -395,7 +401,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.8.7.0",
     "sorted.8.8.0",
     "sorted.8.8.1",
-    "sorted.8.8.2"
+    "sorted.8.8.2",
+    "sorted.8.9.0"
   };
 
   public static String[] getOldSortedNames() {
@@ -1068,7 +1075,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     // QueryParser parser = new QueryParser("contents", new MockAnalyzer(random));
     // Query query = parser.parse("handle:1");
     IndexCommit indexCommit = DirectoryReader.listCommits(dir).get(0);
-    IndexReader reader = DirectoryReader.open(indexCommit, minIndexMajorVersion);
+    IndexReader reader = DirectoryReader.open(indexCommit, minIndexMajorVersion, null);
     IndexSearcher searcher = newSearcher(reader);
 
     TestUtil.checkIndex(dir);
@@ -1138,7 +1145,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(i, dvByte.nextDoc());
       assertEquals(id, dvByte.longValue());
 
-      byte bytes[] =
+      byte[] bytes =
           new byte[] {(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
       BytesRef expectedRef = new BytesRef(bytes);
 
@@ -1422,7 +1429,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     // add docvalues fields
     doc.add(new NumericDocValuesField("dvByte", (byte) id));
-    byte bytes[] =
+    byte[] bytes =
         new byte[] {(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
     BytesRef ref = new BytesRef(bytes);
     doc.add(new BinaryDocValuesField("dvBytesDerefFixed", ref));
@@ -2073,13 +2080,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       IndexFormatTooOldException ex =
           expectThrows(
               IndexFormatTooOldException.class,
-              () -> StandardDirectoryReader.open(commit, Version.LATEST.major));
+              () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
       assertTrue(
           ex.getMessage()
               .contains(
                   "only supports reading from version " + Version.LATEST.major + " upwards."));
       // now open with allowed min version
-      StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR).close();
+      StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null).close();
     }
   }
 
@@ -2089,7 +2096,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
       try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
         IndexCommit commit = DirectoryReader.listCommits(dir).get(0);
-        StandardDirectoryReader.open(commit, MIN_BINARY_SUPPORTED_MAJOR).close();
+        StandardDirectoryReader.open(commit, MIN_BINARY_SUPPORTED_MAJOR, null).close();
       }
     }
   }

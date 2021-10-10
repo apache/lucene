@@ -1359,7 +1359,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public TopDocs searchNearestVectors(String field, float[] target, int k, int fanout) {
+    public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs) {
       return null;
     }
 

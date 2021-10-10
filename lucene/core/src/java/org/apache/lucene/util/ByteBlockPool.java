@@ -343,7 +343,7 @@ public final class ByteBlockPool implements Accountable {
    *
    * <p>Note: this method allows to copy across block boundaries.
    */
-  public void readBytes(final long offset, final byte bytes[], int bytesOffset, int bytesLength) {
+  public void readBytes(final long offset, final byte[] bytes, int bytesOffset, int bytesLength) {
     int bytesLeft = bytesLength;
     int bufferIndex = (int) (offset >> BYTE_BLOCK_SHIFT);
     int pos = (int) (offset & BYTE_BLOCK_MASK);
@@ -375,14 +375,6 @@ public final class ByteBlockPool implements Accountable {
       ref.offset = 0;
       readBytes(offset, ref.bytes, 0, ref.length);
     }
-  }
-
-  /** Read a single byte at the given {@code offset}. */
-  public byte readByte(long offset) {
-    int bufferIndex = (int) (offset >> BYTE_BLOCK_SHIFT);
-    int pos = (int) (offset & BYTE_BLOCK_MASK);
-    byte[] buffer = buffers[bufferIndex];
-    return buffer[pos];
   }
 
   @Override

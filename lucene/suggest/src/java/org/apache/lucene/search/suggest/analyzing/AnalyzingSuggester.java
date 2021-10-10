@@ -408,7 +408,7 @@ public class AnalyzingSuggester extends Lookup {
     String tempSortedFileName = null;
 
     count = 0;
-    byte buffer[] = new byte[8];
+    byte[] buffer = new byte[8];
     try {
       ByteArrayDataOutput output = new ByteArrayDataOutput(buffer);
 

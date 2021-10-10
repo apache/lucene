@@ -128,7 +128,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
 
   /** this is basically the WFST test ported to KeywordAnalyzer. so it acts the same */
   public void testKeyword() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("foo", 50),
           new Input("bar", 10),
@@ -207,7 +207,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
 
   /** basic "standardanalyzer" test with stopword removal */
   public void testStandard() throws Exception {
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("the ghost of christmas past", 50),
         };
@@ -301,7 +301,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
             new CannedTokenStream(
                 token("wifi", 1, 1), token("hotspot", 0, 2), token("network", 1, 1)));
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("wifi network is slow", 50), new Input("wi fi network is fast", 10),
         };
@@ -348,7 +348,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
             new CannedTokenStream(token("ba", 1, 1), token("xd", 1, 1)),
             new CannedTokenStream(token("ab", 1, 1), token("ba", 0, 1), token("x", 1, 1)));
 
-    Input keys[] =
+    Input[] keys =
         new Input[] {
           new Input("ab xc", 50), new Input("ba xd", 50),
         };
@@ -1207,7 +1207,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
     IntsRef targetPoints;
     IntsRef otherPoints;
     int n;
-    int d[][]; // cost array
+    int[][] d; // cost array
 
     // NOTE: if we cared, we could 3*m space instead of m*n space, similar to
     // what LevenshteinDistance does, except cycling thru a ring of three

@@ -31,6 +31,7 @@ import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.NumericUtils;
 
 /**
@@ -89,27 +90,13 @@ final class LatLonPointQuery extends SpatialQuery {
     NumericUtils.intToSortableBytes(encodeLongitude(component2D.getMaxX()), maxLon, 0);
 
     return new SpatialVisitor() {
+
       @Override
       protected Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
-        if (Arrays.compareUnsigned(minPackedValue, 0, Integer.BYTES, maxLat, 0, Integer.BYTES) > 0
-            || Arrays.compareUnsigned(maxPackedValue, 0, Integer.BYTES, minLat, 0, Integer.BYTES)
-                < 0
-            || Arrays.compareUnsigned(
-                    minPackedValue,
-                    Integer.BYTES,
-                    Integer.BYTES + Integer.BYTES,
-                    maxLon,
-                    0,
-                    Integer.BYTES)
-                > 0
-            || Arrays.compareUnsigned(
-                    maxPackedValue,
-                    Integer.BYTES,
-                    Integer.BYTES + Integer.BYTES,
-                    minLon,
-                    0,
-                    Integer.BYTES)
-                < 0) {
+        if (ArrayUtil.compareUnsigned4(minPackedValue, 0, maxLat, 0) > 0
+            || ArrayUtil.compareUnsigned4(maxPackedValue, 0, minLat, 0) < 0
+            || ArrayUtil.compareUnsigned4(minPackedValue, Integer.BYTES, maxLon, 0) > 0
+            || ArrayUtil.compareUnsigned4(maxPackedValue, Integer.BYTES, minLon, 0) < 0) {
           // outside of global bounding box range
           return Relation.CELL_OUTSIDE_QUERY;
         }

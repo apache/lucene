@@ -61,12 +61,12 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 public class RussianLightStemmer {
 
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     len = removeCase(s, len);
     return normalize(s, len);
   }
 
-  private int normalize(char s[], int len) {
+  private int normalize(char[] s, int len) {
     if (len > 3)
       switch (s[len - 1]) {
         case 'ь':
@@ -78,7 +78,7 @@ public class RussianLightStemmer {
     return len;
   }
 
-  private int removeCase(char s[], int len) {
+  private int removeCase(char[] s, int len) {
     if (len > 6 && (endsWith(s, len, "иями") || endsWith(s, len, "оями"))) return len - 4;
 
     if (len > 5

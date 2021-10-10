@@ -123,7 +123,7 @@ public class TestFieldScoreQuery extends FunctionTestSetup {
     IndexSearcher s = newSearcher(r);
     TopDocs td = s.search(functionQuery, 1000);
     assertEquals("All docs should be matched!", N_DOCS, td.totalHits.value);
-    ScoreDoc sd[] = td.scoreDocs;
+    ScoreDoc[] sd = td.scoreDocs;
     for (ScoreDoc aSd : sd) {
       float score = aSd.score;
       log(s.explain(functionQuery, aSd.doc));

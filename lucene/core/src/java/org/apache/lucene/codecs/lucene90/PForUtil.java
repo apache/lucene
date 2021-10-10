@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.LongHeap;
 import org.apache.lucene.util.packed.PackedInts;
 
 /** Utility class to encode sequences of 128 small positive integers. */
@@ -59,24 +60,30 @@ final class PForUtil {
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, DataOutput out) throws IOException {
     // Determine the top MAX_EXCEPTIONS + 1 values
-    final long[] top = new long[MAX_EXCEPTIONS + 1];
-    Arrays.fill(top, -1L);
-    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
-      if (longs[i] > top[0]) {
-        top[0] = longs[i];
-        Arrays.sort(
-            top); // For only a small number of entries we just sort on every iteration instead of
-        // maintaining a PQ
+    final LongHeap top = LongHeap.create(LongHeap.Order.MIN, MAX_EXCEPTIONS + 1);
+    for (int i = 0; i <= MAX_EXCEPTIONS; ++i) {
+      top.push(longs[i]);
+    }
+    long topValue = top.top();
+    for (int i = MAX_EXCEPTIONS + 1; i < ForUtil.BLOCK_SIZE; ++i) {
+      if (longs[i] > topValue) {
+        topValue = top.updateTop(longs[i]);
       }
     }
 
-    final int maxBitsRequired = PackedInts.bitsRequired(top[MAX_EXCEPTIONS]);
+    long max = 0L;
+    for (int i = 1; i <= top.size(); ++i) {
+      max = Math.max(max, top.get(i));
+    }
+
+    final int maxBitsRequired = PackedInts.bitsRequired(max);
     // We store the patch on a byte, so we can't decrease the number of bits required by more than 8
-    final int patchedBitsRequired = Math.max(PackedInts.bitsRequired(top[0]), maxBitsRequired - 8);
+    final int patchedBitsRequired =
+        Math.max(PackedInts.bitsRequired(topValue), maxBitsRequired - 8);
     int numExceptions = 0;
     final long maxUnpatchedValue = (1L << patchedBitsRequired) - 1;
-    for (int i = 1; i < 8; ++i) {
-      if (top[i] > maxUnpatchedValue) {
+    for (int i = 2; i <= top.size(); ++i) {
+      if (top.get(i) > maxUnpatchedValue) {
         numExceptions++;
       }
     }

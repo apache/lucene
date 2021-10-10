@@ -26,6 +26,11 @@ import org.apache.lucene.index.LeafReaderContext;
  * A {@link Collector} which allows running a search with several {@link Collector}s. It offers a
  * static {@link #wrap} method which accepts a list of collectors and wraps them with {@link
  * MultiCollector}, while filtering out the <code>null</code> null ones.
+ *
+ * <p><b>NOTE:</b>When mixing collectors that want to skip low-scoring hits ({@link
+ * ScoreMode#TOP_SCORES}) with ones that require to see all hits, such as mixing {@link
+ * TopScoreDocCollector} and {@link TotalHitCountCollector}, it should be faster to run the query
+ * twice, once for each collector, rather than using this wrapper on a single search.
  */
 public class MultiCollector implements Collector {
 
@@ -112,6 +117,7 @@ public class MultiCollector implements Collector {
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
     final List<LeafCollector> leafCollectors = new ArrayList<>(collectors.length);
+    ScoreMode leafScoreMode = null;
     for (Collector collector : collectors) {
       final LeafCollector leafCollector;
       try {
@@ -122,17 +128,30 @@ public class MultiCollector implements Collector {
         // this leaf collector does not need this segment
         continue;
       }
+      if (leafScoreMode == null) {
+        leafScoreMode = collector.scoreMode();
+      } else if (leafScoreMode != collector.scoreMode()) {
+        leafScoreMode = ScoreMode.COMPLETE;
+      }
       leafCollectors.add(leafCollector);
     }
-    switch (leafCollectors.size()) {
-      case 0:
-        throw new CollectionTerminatedException();
-      case 1:
+    if (leafCollectors.isEmpty()) {
+      throw new CollectionTerminatedException();
+    } else {
+      // Wraps single leaf collector that wants to skip low-scoring hits (ScoreMode.TOP_SCORES)
+      // but the global score mode doesn't allow it.
+      if (leafCollectors.size() == 1
+          && (scoreMode() == ScoreMode.TOP_SCORES || leafScoreMode != ScoreMode.TOP_SCORES)) {
         return leafCollectors.get(0);
-      default:
-        return new MultiLeafCollector(
-            leafCollectors, cacheScores, scoreMode() == ScoreMode.TOP_SCORES);
+      }
+      return new MultiLeafCollector(
+          leafCollectors, cacheScores, scoreMode() == ScoreMode.TOP_SCORES);
     }
+  }
+
+  /** Provides access to the wrapped {@code Collector}s for advanced use-cases */
+  Collector[] getCollectors() {
+    return collectors;
   }
 
   private static class MultiLeafCollector implements LeafCollector {
@@ -153,7 +172,7 @@ public class MultiCollector implements Collector {
     @Override
     public void setScorer(Scorable scorer) throws IOException {
       if (cacheScores) {
-        scorer = new ScoreCachingWrappingScorer(scorer);
+        scorer = ScoreCachingWrappingScorer.wrap(scorer);
       }
       if (skipNonCompetitiveScores) {
         for (int i = 0; i < collectors.length; ++i) {

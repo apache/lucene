@@ -77,11 +77,11 @@ class CrankyTermVectorsFormat extends TermVectorsFormat {
     }
 
     @Override
-    public void finish(FieldInfos fis, int numDocs) throws IOException {
+    public void finish(int numDocs) throws IOException {
       if (random.nextInt(100) == 0) {
         throw new IOException("Fake IOException from TermVectorsWriter.finish()");
       }
-      delegate.finish(fis, numDocs);
+      delegate.finish(numDocs);
     }
 
     @Override

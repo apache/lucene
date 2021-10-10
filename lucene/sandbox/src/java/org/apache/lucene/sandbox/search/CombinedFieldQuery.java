@@ -24,8 +24,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -79,6 +82,9 @@ import org.apache.lucene.util.SmallFloat;
  * be encoded using {@link SmallFloat#intToByte4}. These requirements hold for all similarities that
  * compute norms the same way as {@link SimilarityBase#computeNorm}, which includes {@link
  * BM25Similarity} and {@link DFRSimilarity}. Per-field similarities are not supported.
+ *
+ * <p>The query also requires that either all fields or no fields have norms enabled. Having only
+ * some fields with norms enabled can result in errors.
  *
  * <p>The scoring is based on BM25F's simple formula described in:
  * http://www.staff.city.ac.uk/~sb317/papers/foundations_bm25_review.pdf. This query implements the
@@ -147,14 +153,27 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       this.field = field;
       this.weight = weight;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      FieldAndWeight that = (FieldAndWeight) o;
+      return Float.compare(that.weight, weight) == 0 && Objects.equals(field, that.field);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(field, weight);
+    }
   }
 
   // sorted map for fields.
   private final TreeMap<String, FieldAndWeight> fieldAndWeights;
   // array of terms, sorted.
-  private final BytesRef terms[];
+  private final BytesRef[] terms;
   // array of terms per field, sorted
-  private final Term fieldTerms[];
+  private final Term[] fieldTerms;
 
   private final long ramBytesUsed;
 
@@ -212,13 +231,20 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   }
 
   @Override
-  public int hashCode() {
-    return 31 * classHash() + Arrays.hashCode(terms);
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (sameClassAs(o) == false) return false;
+    CombinedFieldQuery that = (CombinedFieldQuery) o;
+    return Objects.equals(fieldAndWeights, that.fieldAndWeights)
+        && Arrays.equals(terms, that.terms);
   }
 
   @Override
-  public boolean equals(Object other) {
-    return sameClassAs(other) && Arrays.equals(terms, ((CombinedFieldQuery) other).terms);
+  public int hashCode() {
+    int result = classHash();
+    result = 31 * result + Objects.hash(fieldAndWeights);
+    result = 31 * result + Arrays.hashCode(terms);
+    return result;
   }
 
   @Override
@@ -228,8 +254,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
-    // optimize zero and single field cases
-    if (terms.length == 0) {
+    if (terms.length == 0 || fieldAndWeights.isEmpty()) {
       return new BooleanQuery.Builder().build();
     }
     return this;
@@ -257,6 +282,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+    validateConsistentNorms(searcher.getIndexReader());
     if (scoreMode.needsScores()) {
       return new CombinedFieldWeight(this, searcher, scoreMode, boost);
     } else {
@@ -266,9 +292,32 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     }
   }
 
+  private void validateConsistentNorms(IndexReader reader) {
+    boolean allFieldsHaveNorms = true;
+    boolean noFieldsHaveNorms = true;
+
+    for (LeafReaderContext context : reader.leaves()) {
+      FieldInfos fieldInfos = context.reader().getFieldInfos();
+      for (String field : fieldAndWeights.keySet()) {
+        FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
+        if (fieldInfo != null) {
+          allFieldsHaveNorms &= fieldInfo.hasNorms();
+          noFieldsHaveNorms &= fieldInfo.omitsNorms();
+        }
+      }
+    }
+
+    if (allFieldsHaveNorms == false && noFieldsHaveNorms == false) {
+      throw new IllegalArgumentException(
+          getClass().getSimpleName()
+              + " requires norms to be consistent across fields: some fields cannot "
+              + " have norms enabled, while others have norms disabled");
+    }
+  }
+
   class CombinedFieldWeight extends Weight {
     private final IndexSearcher searcher;
-    private final TermStates termStates[];
+    private final TermStates[] termStates;
     private final Similarity.SimScorer simWeight;
 
     CombinedFieldWeight(Query query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
@@ -333,14 +382,9 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       if (scorer != null) {
         int newDoc = scorer.iterator().advance(doc);
         if (newDoc == doc) {
-          final float freq;
-          if (scorer instanceof CombinedFieldScorer) {
-            freq = ((CombinedFieldScorer) scorer).freq();
-          } else {
-            assert scorer instanceof TermScorer;
-            freq = ((TermScorer) scorer).freq();
-          }
-          final MultiNormsLeafSimScorer docScorer =
+          assert scorer instanceof CombinedFieldScorer;
+          float freq = ((CombinedFieldScorer) scorer).freq();
+          MultiNormsLeafSimScorer docScorer =
               new MultiNormsLeafSimScorer(
                   simWeight, context.reader(), fieldAndWeights.values(), true);
           Explanation freqExplanation = Explanation.match(freq, "termFreq=" + freq);
@@ -373,13 +417,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         return null;
       }
 
-      // we must optimize this case (term not in segment), disjunctions require >= 2 subs
-      if (iterators.size() == 1) {
-        final LeafSimScorer scoringSimScorer =
-            new LeafSimScorer(simWeight, context.reader(), fields.get(0).field, true);
-        return new TermScorer(this, iterators.get(0), scoringSimScorer);
-      }
-      final MultiNormsLeafSimScorer scoringSimScorer =
+      MultiNormsLeafSimScorer scoringSimScorer =
           new MultiNormsLeafSimScorer(simWeight, context.reader(), fields, true);
       LeafSimScorer nonScoringSimScorer =
           new LeafSimScorer(simWeight, context.reader(), "pseudo_field", false);

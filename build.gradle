@@ -20,12 +20,12 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   id "base"
-  id "com.palantir.consistent-versions" version "1.28.0"
+  id "com.palantir.consistent-versions" version "2.0.0"
   id "org.owasp.dependencycheck" version "5.3.0"
-  id 'de.thetaphi.forbiddenapis' version '3.1' apply false
+  id 'de.thetaphi.forbiddenapis' version '3.2' apply false
   id "de.undercouch.download" version "4.1.1" apply false
   id "net.ltgt.errorprone" version "1.2.1" apply false
-  id 'com.diffplug.spotless' version "5.8.2" apply false
+  id 'com.diffplug.spotless' version "5.14.3" apply false
 }
 
 apply from: file('gradle/globals.gradle')
@@ -70,6 +70,10 @@ ext {
     }
     return m[0][1] as int
   }
+
+  // Minimum Java version required to compile and run Lucene.
+  minJavaVersion = JavaVersion.VERSION_11
+
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
 
@@ -78,8 +82,6 @@ ext {
   buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp)
   buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp)
   buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp)
-
-  minJavaVersion = JavaVersion.VERSION_11
 
   // Allow definiting external tool locations using system props.
   externalTool = { name ->
@@ -152,6 +154,7 @@ apply from: file('gradle/generation/nori.gradle')
 apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
 apply from: file('gradle/generation/forUtil.gradle')
+apply from: file('gradle/generation/antlr.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
 

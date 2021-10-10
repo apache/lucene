@@ -41,7 +41,7 @@ import org.apache.lucene.util.LuceneTestCase;
 public class TestComplexPhraseQuery extends LuceneTestCase {
   Directory rd;
   Analyzer analyzer;
-  DocData docsContent[] = {
+  DocData[] docsContent = {
     new DocData("john smith", "1", "developer"),
     new DocData("johathon smith", "2", "developer"),
     new DocData("john percival smith", "3", "designer"),

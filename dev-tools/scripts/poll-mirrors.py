@@ -102,9 +102,9 @@ def check_mirror(url):
     return url
 
 
-desc = 'Periodically checks that all Lucene/Solr mirrors contain either a copy of a release or a specified path'
+desc = 'Periodically checks that all Lucene mirrors contain either a copy of a release or a specified path'
 parser = argparse.ArgumentParser(description=desc)
-parser.add_argument('-version', '-v', help='Lucene/Solr version to check')
+parser.add_argument('-version', '-v', help='Lucene version to check')
 parser.add_argument('-path', '-p', help='instead of a versioned release, check for some/explicit/path')
 parser.add_argument('-interval', '-i', help='seconds to wait before re-querying mirrors', type=int, default=300)
 parser.add_argument('-details', '-d', help='print missing mirror URLs', action='store_true', default=False)

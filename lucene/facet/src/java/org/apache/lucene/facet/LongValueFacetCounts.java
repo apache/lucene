@@ -17,7 +17,7 @@
 
 package org.apache.lucene.facet;
 
-import com.carrotsearch.hppc.LongIntScatterMap;
+import com.carrotsearch.hppc.LongIntHashMap;
 import com.carrotsearch.hppc.cursors.LongIntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,6 +34,7 @@ import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.PriorityQueue;
 
@@ -52,7 +53,7 @@ public class LongValueFacetCounts extends Facets {
   private final int[] counts = new int[1024];
 
   /** Used for all values that are >= 1K. */
-  private final LongIntScatterMap hashCounts = new LongIntScatterMap();
+  private final LongIntHashMap hashCounts = new LongIntHashMap();
 
   /** Field being counted. */
   private final String field;
@@ -162,8 +163,14 @@ public class LongValueFacetCounts extends Facets {
           if (limit > 0) {
             totCount++;
           }
+          long previousValue = 0;
           for (int i = 0; i < limit; i++) {
-            increment(multiValues.nextValue());
+            long value = multiValues.nextValue();
+            // do not increment the count for duplicate values
+            if (i == 0 || value != previousValue) {
+              increment(value);
+              previousValue = value;
+            }
           }
         }
       }
@@ -195,21 +202,36 @@ public class LongValueFacetCounts extends Facets {
       SortedNumericDocValues multiValues = DocValues.getSortedNumeric(context.reader(), field);
       NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
 
+      Bits liveDocs = context.reader().getLiveDocs();
+
+      DocIdSetIterator valuesIt = singleValues != null ? singleValues : multiValues;
+      valuesIt = (liveDocs != null) ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
+
       if (singleValues != null) {
 
-        while (singleValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        for (int doc = valuesIt.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = valuesIt.nextDoc()) {
           totCount++;
           increment(singleValues.longValue());
         }
       } else {
 
-        while (multiValues.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        for (int doc = valuesIt.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = valuesIt.nextDoc()) {
           int limit = multiValues.docValueCount();
           if (limit > 0) {
             totCount++;
           }
+          long previousValue = 0;
           for (int i = 0; i < limit; i++) {
-            increment(multiValues.nextValue());
+            long value = multiValues.nextValue();
+            // do not increment the count for duplicate values
+            if (i == 0 || value != previousValue) {
+              increment(value);
+              previousValue = value;
+            }
           }
         }
       }

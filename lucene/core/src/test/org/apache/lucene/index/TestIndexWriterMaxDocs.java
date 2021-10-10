@@ -325,7 +325,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
 
     DirectoryReader ir = DirectoryReader.open(dir);
     DirectoryReader ir2 = DirectoryReader.open(dir2);
-    IndexReader subReaders[] = new IndexReader[copies + 1];
+    IndexReader[] subReaders = new IndexReader[copies + 1];
     Arrays.fill(subReaders, ir);
     subReaders[subReaders.length - 1] = ir2;
 
@@ -364,7 +364,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
 
     DirectoryReader ir = DirectoryReader.open(dir);
     DirectoryReader ir2 = DirectoryReader.open(dir2);
-    IndexReader subReaders[] = new IndexReader[copies + 1];
+    IndexReader[] subReaders = new IndexReader[copies + 1];
     Arrays.fill(subReaders, ir);
     subReaders[subReaders.length - 1] = ir2;
 
@@ -400,7 +400,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     w = new IndexWriter(dir2, new IndexWriterConfig(null));
     w.commit(); // don't confuse checkindex
     dir2.setMaxSizeInBytes(dir2.sizeInBytes() + 65536); // 64KB
-    Directory dirs[] = new Directory[1 + (IndexWriter.MAX_DOCS / 100000)];
+    Directory[] dirs = new Directory[1 + (IndexWriter.MAX_DOCS / 100000)];
     for (int i = 0; i < dirs.length; i++) {
       // bypass iw check for duplicate dirs
       dirs[i] = new FilterDirectory(dir) {};
@@ -453,7 +453,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     IndexReader r = DirectoryReader.open(dir);
     CodecReader segReader = (CodecReader) r.leaves().get(0).reader();
 
-    CodecReader readers[] = new CodecReader[1 + (IndexWriter.MAX_DOCS / 100000)];
+    CodecReader[] readers = new CodecReader[1 + (IndexWriter.MAX_DOCS / 100000)];
     for (int i = 0; i < readers.length; i++) {
       readers[i] = segReader;
     }

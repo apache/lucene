@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.BufferedInputStream;
@@ -49,14 +50,14 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.VectorFormat;
 import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.codecs.blockterms.LuceneFixedGap;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -303,7 +304,7 @@ public final class TestUtil {
 
   public static CheckIndex.Status checkIndex(Directory dir, boolean doSlowChecks)
       throws IOException {
-    return checkIndex(dir, doSlowChecks, false, null);
+    return checkIndex(dir, doSlowChecks, false, true, null);
   }
 
   /**
@@ -311,7 +312,11 @@ public final class TestUtil {
    * moving on to other fields/segments to look for any other corruption.
    */
   public static CheckIndex.Status checkIndex(
-      Directory dir, boolean doSlowChecks, boolean failFast, ByteArrayOutputStream output)
+      Directory dir,
+      boolean doSlowChecks,
+      boolean failFast,
+      boolean concurrent,
+      ByteArrayOutputStream output)
       throws IOException {
     if (output == null) {
       output = new ByteArrayOutputStream(1024);
@@ -323,6 +328,11 @@ public final class TestUtil {
       checker.setDoSlowChecks(doSlowChecks);
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
+      if (concurrent) {
+        checker.setThreadCount(RandomizedTest.randomIntBetween(2, 5));
+      } else {
+        checker.setThreadCount(1);
+      }
       CheckIndex.Status indexStatus = checker.checkIndex(null);
 
       if (indexStatus == null || indexStatus.clean == false) {
@@ -1297,10 +1307,11 @@ public final class TestUtil {
   }
 
   /**
-   * Returns the actual default vector format (e.g. LuceneMNVectorFormat for this version of Lucene.
+   * Returns the actual default vector format (e.g. LuceneMNKnnVectorsFormat for this version of
+   * Lucene.
    */
-  public static VectorFormat getDefaultVectorFormat() {
-    return new Lucene90HnswVectorFormat();
+  public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
+    return new Lucene90HnswVectorsFormat();
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {

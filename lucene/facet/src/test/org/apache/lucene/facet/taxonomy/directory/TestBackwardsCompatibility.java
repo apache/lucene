@@ -49,13 +49,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   //
   // Then move the zip file to your trunk checkout and use it in your test cases
 
-  public static final String oldTaxonomyIndexName = "taxonomy.8.6.3-cfs";
+  public static final String oldTaxonomyIndexName = "taxonomy.8.10.0-cfs";
 
-  // LUCENE-9334 requires consistency of field data structures between documents.
-  // Old taxonomy index had $full_path$ field indexed only with postings,
-  // It is not allowed to add the same field $full_path$ indexed with BinaryDocValues
-  // for a new segment, that this test is trying to do.
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9334")
   public void testCreateNewTaxonomy() throws IOException {
     createNewTaxonomyIndex(oldTaxonomyIndexName);
   }
@@ -68,8 +63,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     DirectoryTaxonomyWriter writer = new DirectoryTaxonomyWriter(dir);
 
-    FacetLabel cp_b = new FacetLabel("b");
-    writer.addCategory(cp_b);
+    FacetLabel cp_c = new FacetLabel("c");
+    writer.addCategory(cp_c);
     writer.getInternalIndexWriter().forceMerge(1);
     writer.commit();
 
@@ -80,10 +75,37 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     // Just asserting ord1 != TaxonomyReader.INVALID_ORDINAL is not enough to check compatibility
     assertNotNull(reader.getPath(ord1));
 
-    int ord2 = reader.getOrdinal(cp_b);
+    int ord2 = reader.getOrdinal(new FacetLabel("b"));
     assert ord2 != TaxonomyReader.INVALID_ORDINAL;
+    // Just asserting ord2 != TaxonomyReader.INVALID_ORDINAL is not enough to check compatibility
     assertNotNull(reader.getPath(ord2));
 
+    int ord3 = reader.getOrdinal(cp_c);
+    assert ord3 != TaxonomyReader.INVALID_ORDINAL;
+    assertNotNull(reader.getPath(ord3));
+
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  // Opens up a pre-existing index and tries to run getBulkPath on it
+  public void testGetBulkPathOnOlderCodec() throws Exception {
+    Path indexDir = createTempDir(oldTaxonomyIndexName);
+    TestUtil.unzip(getDataInputStream(oldTaxonomyIndexName + ".zip"), indexDir);
+    Directory dir = newFSDirectory(indexDir);
+
+    DirectoryTaxonomyWriter writer = new DirectoryTaxonomyWriter(dir);
+    DirectoryTaxonomyReader reader = new DirectoryTaxonomyReader(writer);
+
+    FacetLabel[] facetLabels = {
+      new FacetLabel("a"), new FacetLabel("b"),
+    };
+    int[] ordinals =
+        new int[] {reader.getOrdinal(facetLabels[0]), reader.getOrdinal(facetLabels[1])};
+    // The zip file already contains a category "a" and a category "b" stored with the older
+    // StoredFields codec
+    assertArrayEquals(facetLabels, reader.getBulkPath(ordinals));
     reader.close();
     writer.close();
     dir.close();
@@ -103,6 +125,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     TaxonomyWriter writer = new DirectoryTaxonomyWriter(dir);
 
     writer.addCategory(new FacetLabel("a"));
+    writer.addCategory(new FacetLabel("b"));
     writer.commit();
     writer.close();
     dir.close();

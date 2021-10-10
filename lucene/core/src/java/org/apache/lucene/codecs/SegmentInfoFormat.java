@@ -41,7 +41,7 @@ public abstract class SegmentInfoFormat {
    * @throws IOException If an I/O error occurs
    */
   public abstract SegmentInfo read(
-      Directory directory, String segmentName, byte segmentID[], IOContext context)
+      Directory directory, String segmentName, byte[] segmentID, IOContext context)
       throws IOException;
 
   /**

@@ -1,5 +1,5 @@
 com.carrotsearch.randomizedtesting:*=2.7.6
-com.carrotsearch:hppc=0.8.2
+com.carrotsearch:hppc=0.9.0
 com.github.ben-manes.caffeine:caffeine=2.8.4
 com.google.errorprone:*=2.4.0
 com.google.guava:guava=25.1-jre
@@ -14,7 +14,7 @@ io.sgr:s2-geometry-library-java=1.0.0
 javax.servlet:javax.servlet-api=3.1.0
 junit:junit=4.13.1
 net.sourceforge.nekohtml:nekohtml=1.9.17
-org.antlr:antlr4-runtime=4.5.1-1
+org.antlr:antlr4*=4.5.1-1
 org.apache.commons:commons-compress=1.19
 org.apache.httpcomponents:httpclient=4.5.13
 org.apache.httpcomponents:httpcore=4.4.13

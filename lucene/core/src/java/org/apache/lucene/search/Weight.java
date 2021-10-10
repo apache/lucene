@@ -175,6 +175,27 @@ public abstract class Weight implements SegmentCacheable {
   }
 
   /**
+   * Counts the number of live documents that match a given {@link Weight#parentQuery} in a leaf.
+   *
+   * <p>The default implementation returns -1 for every query. This indicates that the count could
+   * not be computed in O(1) time.
+   *
+   * <p>Specific query classes should override it to provide other accurate O(1) implementations
+   * (that actually return the count). Look at {@link MatchAllDocsQuery#createWeight(IndexSearcher,
+   * ScoreMode, float)} for an example
+   *
+   * <p>We use this property of the function to to count hits in {@link IndexSearcher#count(Query)}.
+   *
+   * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
+   *     count.
+   * @return integer count of the number of matches
+   * @throws IOException if there is a low-level I/O error
+   */
+  public int count(LeafReaderContext context) throws IOException {
+    return -1;
+  }
+
+  /**
    * Just wraps a Scorer and performs top scoring using it.
    *
    * @lucene.internal
@@ -204,18 +225,23 @@ public abstract class Weight implements SegmentCacheable {
         throws IOException {
       collector.setScorer(scorer);
       DocIdSetIterator scorerIterator = twoPhase == null ? iterator : twoPhase.approximation();
-      DocIdSetIterator collectorIterator = collector.competitiveIterator();
+      DocIdSetIterator competitiveIterator = collector.competitiveIterator();
       DocIdSetIterator filteredIterator;
-      if (collectorIterator == null) {
+      if (competitiveIterator == null) {
         filteredIterator = scorerIterator;
       } else {
+        // Wrap CompetitiveIterator and ScorerIterator start with (i.e., calling nextDoc()) the last
+        // visited docID because ConjunctionDISI might have advanced to it in the previous
+        // scoreRange, but we didn't process due to the range limit of scoreRange.
         if (scorerIterator.docID() != -1) {
-          // Wrap ScorerIterator to start from -1 for conjunction
           scorerIterator = new StartDISIWrapper(scorerIterator);
+        }
+        if (competitiveIterator.docID() != -1) {
+          competitiveIterator = new StartDISIWrapper(competitiveIterator);
         }
         // filter scorerIterator to keep only competitive docs as defined by collector
         filteredIterator =
-            ConjunctionUtils.intersectIterators(Arrays.asList(scorerIterator, collectorIterator));
+            ConjunctionUtils.intersectIterators(Arrays.asList(scorerIterator, competitiveIterator));
       }
       if (filteredIterator.docID() == -1 && min == 0 && max == DocIdSetIterator.NO_MORE_DOCS) {
         scoreAll(collector, filteredIterator, twoPhase, acceptDocs);
@@ -293,15 +319,15 @@ public abstract class Weight implements SegmentCacheable {
     }
   }
 
-  /** Wraps an internal docIdSetIterator for it to start with docID = -1 */
-  protected static class StartDISIWrapper extends DocIdSetIterator {
+  /** Wraps an internal docIdSetIterator for it to start with the last visited docID */
+  private static class StartDISIWrapper extends DocIdSetIterator {
     private final DocIdSetIterator in;
-    private final int min;
+    private final int startDocID;
     private int docID = -1;
 
-    public StartDISIWrapper(DocIdSetIterator in) {
+    StartDISIWrapper(DocIdSetIterator in) {
       this.in = in;
-      this.min = in.docID();
+      this.startDocID = in.docID();
     }
 
     @Override
@@ -316,8 +342,8 @@ public abstract class Weight implements SegmentCacheable {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target <= min) {
-        return docID = min;
+      if (target <= startDocID) {
+        return docID = startDocID;
       }
       return docID = in.advance(target);
     }

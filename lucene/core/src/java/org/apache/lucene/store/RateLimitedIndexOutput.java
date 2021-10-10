@@ -73,6 +73,27 @@ public final class RateLimitedIndexOutput extends IndexOutput {
     delegate.writeBytes(b, offset, length);
   }
 
+  @Override
+  public void writeInt(int i) throws IOException {
+    bytesSinceLastPause += Integer.BYTES;
+    checkRate();
+    delegate.writeInt(i);
+  }
+
+  @Override
+  public void writeShort(short i) throws IOException {
+    bytesSinceLastPause += Short.BYTES;
+    checkRate();
+    delegate.writeShort(i);
+  }
+
+  @Override
+  public void writeLong(long i) throws IOException {
+    bytesSinceLastPause += Long.BYTES;
+    checkRate();
+    delegate.writeLong(i);
+  }
+
   private void checkRate() throws IOException {
     if (bytesSinceLastPause > currentMinPauseCheckBytes) {
       rateLimiter.pause(bytesSinceLastPause);

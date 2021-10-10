@@ -26,6 +26,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
@@ -121,28 +122,16 @@ public abstract class PointRangeQuery extends Query {
 
     return new ConstantScoreWeight(this, boost) {
 
+      private final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+
       private boolean matches(byte[] packedValue) {
         for (int dim = 0; dim < numDims; dim++) {
           int offset = dim * bytesPerDim;
-          if (Arrays.compareUnsigned(
-                  packedValue,
-                  offset,
-                  offset + bytesPerDim,
-                  lowerPoint,
-                  offset,
-                  offset + bytesPerDim)
-              < 0) {
+          if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
             // Doc's value is too low, in this dimension
             return false;
           }
-          if (Arrays.compareUnsigned(
-                  packedValue,
-                  offset,
-                  offset + bytesPerDim,
-                  upperPoint,
-                  offset,
-                  offset + bytesPerDim)
-              > 0) {
+          if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
             // Doc's value is too high, in this dimension
             return false;
           }
@@ -157,42 +146,14 @@ public abstract class PointRangeQuery extends Query {
         for (int dim = 0; dim < numDims; dim++) {
           int offset = dim * bytesPerDim;
 
-          if (Arrays.compareUnsigned(
-                      minPackedValue,
-                      offset,
-                      offset + bytesPerDim,
-                      upperPoint,
-                      offset,
-                      offset + bytesPerDim)
-                  > 0
-              || Arrays.compareUnsigned(
-                      maxPackedValue,
-                      offset,
-                      offset + bytesPerDim,
-                      lowerPoint,
-                      offset,
-                      offset + bytesPerDim)
-                  < 0) {
+          if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
+              || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
             return Relation.CELL_OUTSIDE_QUERY;
           }
 
           crosses |=
-              Arrays.compareUnsigned(
-                          minPackedValue,
-                          offset,
-                          offset + bytesPerDim,
-                          lowerPoint,
-                          offset,
-                          offset + bytesPerDim)
-                      < 0
-                  || Arrays.compareUnsigned(
-                          maxPackedValue,
-                          offset,
-                          offset + bytesPerDim,
-                          upperPoint,
-                          offset,
-                          offset + bytesPerDim)
-                      > 0;
+              comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
+                  || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
         }
 
         if (crosses) {
@@ -322,22 +283,8 @@ public abstract class PointRangeQuery extends Query {
           allDocsMatch = true;
           for (int i = 0; i < numDims; ++i) {
             int offset = i * bytesPerDim;
-            if (Arrays.compareUnsigned(
-                        lowerPoint,
-                        offset,
-                        offset + bytesPerDim,
-                        fieldPackedLower,
-                        offset,
-                        offset + bytesPerDim)
-                    > 0
-                || Arrays.compareUnsigned(
-                        upperPoint,
-                        offset,
-                        offset + bytesPerDim,
-                        fieldPackedUpper,
-                        offset,
-                        offset + bytesPerDim)
-                    < 0) {
+            if (comparator.compare(lowerPoint, offset, fieldPackedLower, offset) > 0
+                || comparator.compare(upperPoint, offset, fieldPackedUpper, offset) < 0) {
               allDocsMatch = false;
               break;
             }

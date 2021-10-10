@@ -22,11 +22,11 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import org.apache.lucene.codecs.VectorReader;
+import java.util.SplittableRandom;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
@@ -47,10 +47,6 @@ import org.apache.lucene.util.SparseFixedBitSet;
  *       searching the graph for each newly inserted node.
  *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the later paper; it controls
  *       how many of the <code>efConst</code> neighbors are connected to the new node
- *   <li><code>fanout</code> the fanout parameter of {@link VectorReader#search(String, float[],
- *       int, int)} is used to control the values of <code>numSeed</code> and <code>topK</code> that
- *       are passed to this API. Thus <code>fanout</code> is like a combination of <code>ef</code>
- *       (search beam width) from the 2016 paper and <code>m</code> from the 2014 paper.
  * </ul>
  *
  * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
@@ -88,6 +84,8 @@ public final class HnswGraph extends KnnGraphValues {
    * @param vectors vector values
    * @param graphValues the graph values. May represent the entire graph, or a level in a
    *     hierarchical graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
    * @param random a source of randomness, used for generating entry points to the graph
    * @return a priority queue holding the closest neighbors found
    */
@@ -96,14 +94,17 @@ public final class HnswGraph extends KnnGraphValues {
       int topK,
       int numSeed,
       RandomAccessVectorValues vectors,
+      VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
-      Random random)
+      Bits acceptOrds,
+      SplittableRandom random)
       throws IOException {
-    VectorValues.SimilarityFunction similarityFunction = vectors.similarityFunction();
     int size = graphValues.size();
 
     // MIN heap, holding the top results
     NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
+    // MAX heap, from which to pull the candidate nodes
+    NeighborQueue candidates = new NeighborQueue(numSeed, !similarityFunction.reversed);
 
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
     SparseFixedBitSet visited = new SparseFixedBitSet(size);
@@ -111,15 +112,15 @@ public final class HnswGraph extends KnnGraphValues {
     int boundedNumSeed = Math.min(numSeed, 2 * size);
     for (int i = 0; i < boundedNumSeed; i++) {
       int entryPoint = random.nextInt(size);
-      if (visited.get(entryPoint) == false) {
-        visited.set(entryPoint);
+      if (visited.getAndSet(entryPoint) == false) {
         // explore the topK starting points of some random numSeed probes
-        results.add(entryPoint, similarityFunction.compare(query, vectors.vectorValue(entryPoint)));
+        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
+        candidates.add(entryPoint, score);
+        if (acceptOrds == null || acceptOrds.get(entryPoint)) {
+          results.add(entryPoint, score);
+        }
       }
     }
-
-    // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = results.copy(!similarityFunction.reversed);
 
     // Set the bound to the worst current result and below reject any newly-generated candidates
     // failing
@@ -139,14 +140,17 @@ public final class HnswGraph extends KnnGraphValues {
       int friendOrd;
       while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.get(friendOrd)) {
+        if (visited.getAndSet(friendOrd)) {
           continue;
         }
-        visited.set(friendOrd);
+
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.insertWithOverflow(friendOrd, score)) {
+        if (results.size() < numSeed || bound.check(score) == false) {
           candidates.add(friendOrd, score);
-          bound.set(results.topScore());
+          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+            results.insertWithOverflow(friendOrd, score);
+            bound.set(results.topScore());
+          }
         }
       }
     }

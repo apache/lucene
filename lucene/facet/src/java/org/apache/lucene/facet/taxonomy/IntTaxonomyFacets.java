@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
-import com.carrotsearch.hppc.IntIntScatterMap;
+import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.Map;
@@ -34,7 +34,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
   /** Per-ordinal value. */
   private final int[] values;
 
-  private final IntIntScatterMap sparseValues;
+  private final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
   protected IntTaxonomyFacets(
@@ -43,7 +43,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     super(indexFieldName, taxoReader, config);
 
     if (useHashTable(fc, taxoReader)) {
-      sparseValues = new IntIntScatterMap();
+      sparseValues = new IntIntHashMap();
       values = null;
     } else {
       sparseValues = null;
@@ -237,10 +237,18 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
 
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
+    int[] ordinals = new int[labelValues.length];
+    int[] values = new int[labelValues.length];
+
     for (int i = labelValues.length - 1; i >= 0; i--) {
       TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
-      FacetLabel child = taxoReader.getPath(ordAndValue.ord);
-      labelValues[i] = new LabelAndValue(child.components[cp.length], ordAndValue.value);
+      ordinals[i] = ordAndValue.ord;
+      values[i] = ordAndValue.value;
+    }
+
+    FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
+    for (int i = 0; i < labelValues.length; i++) {
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], values[i]);
     }
 
     return new FacetResult(dim, path, totValue, labelValues, childCount);

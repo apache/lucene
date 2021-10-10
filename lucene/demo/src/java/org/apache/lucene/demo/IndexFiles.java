@@ -30,17 +30,24 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.demo.knn.DemoEmbeddings;
+import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * Index all text files under a directory.
@@ -48,29 +55,54 @@ import org.apache.lucene.store.FSDirectory;
  * <p>This is a command-line application demonstrating simple Lucene indexing. Run it with no
  * command-line arguments for usage information.
  */
-public class IndexFiles {
+public class IndexFiles implements AutoCloseable {
+  static final String KNN_DICT = "knn-dict";
 
-  private IndexFiles() {}
+  // Calculates embedding vectors for KnnVector search
+  private final DemoEmbeddings demoEmbeddings;
+  private final KnnVectorDict vectorDict;
+
+  private IndexFiles(KnnVectorDict vectorDict) throws IOException {
+    if (vectorDict != null) {
+      this.vectorDict = vectorDict;
+      demoEmbeddings = new DemoEmbeddings(vectorDict);
+    } else {
+      this.vectorDict = null;
+      demoEmbeddings = null;
+    }
+  }
 
   /** Index all text files under a directory. */
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     String usage =
         "java org.apache.lucene.demo.IndexFiles"
-            + " [-index INDEX_PATH] [-docs DOCS_PATH] [-update]\n\n"
+            + " [-index INDEX_PATH] [-docs DOCS_PATH] [-update] [-knn_dict DICT_PATH]\n\n"
             + "This indexes the documents in DOCS_PATH, creating a Lucene index"
-            + "in INDEX_PATH that can be searched with SearchFiles";
+            + "in INDEX_PATH that can be searched with SearchFiles\n"
+            + "IF DICT_PATH contains a KnnVector dictionary, the index will also support KnnVector search";
     String indexPath = "index";
     String docsPath = null;
+    String vectorDictSource = null;
     boolean create = true;
     for (int i = 0; i < args.length; i++) {
-      if ("-index".equals(args[i])) {
-        indexPath = args[i + 1];
-        i++;
-      } else if ("-docs".equals(args[i])) {
-        docsPath = args[i + 1];
-        i++;
-      } else if ("-update".equals(args[i])) {
-        create = false;
+      switch (args[i]) {
+        case "-index":
+          indexPath = args[++i];
+          break;
+        case "-docs":
+          docsPath = args[++i];
+          break;
+        case "-knn_dict":
+          vectorDictSource = args[++i];
+          break;
+        case "-update":
+          create = false;
+          break;
+        case "-create":
+          create = true;
+          break;
+        default:
+          throw new IllegalArgumentException("unknown parameter " + args[i]);
       }
     }
 
@@ -112,22 +144,42 @@ public class IndexFiles {
       //
       // iwc.setRAMBufferSizeMB(256.0);
 
-      IndexWriter writer = new IndexWriter(dir, iwc);
-      indexDocs(writer, docDir);
+      KnnVectorDict vectorDictInstance = null;
+      long vectorDictSize = 0;
+      if (vectorDictSource != null) {
+        KnnVectorDict.build(Paths.get(vectorDictSource), dir, KNN_DICT);
+        vectorDictInstance = new KnnVectorDict(dir, KNN_DICT);
+        vectorDictSize = vectorDictInstance.ramBytesUsed();
+      }
 
-      // NOTE: if you want to maximize search performance,
-      // you can optionally call forceMerge here.  This can be
-      // a terribly costly operation, so generally it's only
-      // worth it when your index is relatively static (ie
-      // you're done adding documents to it):
-      //
-      // writer.forceMerge(1);
+      try (IndexWriter writer = new IndexWriter(dir, iwc);
+          IndexFiles indexFiles = new IndexFiles(vectorDictInstance)) {
+        indexFiles.indexDocs(writer, docDir);
 
-      writer.close();
+        // NOTE: if you want to maximize search performance,
+        // you can optionally call forceMerge here.  This can be
+        // a terribly costly operation, so generally it's only
+        // worth it when your index is relatively static (ie
+        // you're done adding documents to it):
+        //
+        // writer.forceMerge(1);
+      } finally {
+        IOUtils.close(vectorDictInstance);
+      }
 
       Date end = new Date();
-      System.out.println(end.getTime() - start.getTime() + " total milliseconds");
-
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        System.out.println(
+            "Indexed "
+                + reader.numDocs()
+                + " documents in "
+                + (end.getTime() - start.getTime())
+                + " milliseconds");
+        if (reader.numDocs() > 100 && vectorDictSize < 1_000_000) {
+          throw new RuntimeException(
+              "Are you (ab)using the toy vector dictionary? See the package javadocs to understand why you got this exception.");
+        }
+      }
     } catch (IOException e) {
       System.out.println(" caught a " + e.getClass() + "\n with message: " + e.getMessage());
     }
@@ -147,19 +199,19 @@ public class IndexFiles {
    * @param path The file to index, or the directory to recurse into to find files to index
    * @throws IOException If there is a low-level I/O error
    */
-  static void indexDocs(final IndexWriter writer, Path path) throws IOException {
+  void indexDocs(final IndexWriter writer, Path path) throws IOException {
     if (Files.isDirectory(path)) {
       Files.walkFileTree(
           path,
-          new SimpleFileVisitor<Path>() {
+          new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               try {
                 indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
               } catch (
                   @SuppressWarnings("unused")
                   IOException ignore) {
+                ignore.printStackTrace(System.err);
                 // don't index files that can't be read.
               }
               return FileVisitResult.CONTINUE;
@@ -171,7 +223,7 @@ public class IndexFiles {
   }
 
   /** Indexes a single document */
-  static void indexDoc(IndexWriter writer, Path file, long lastModified) throws IOException {
+  void indexDoc(IndexWriter writer, Path file, long lastModified) throws IOException {
     try (InputStream stream = Files.newInputStream(file)) {
       // make a new, empty document
       Document doc = new Document();
@@ -201,6 +253,16 @@ public class IndexFiles {
               "contents",
               new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
 
+      if (demoEmbeddings != null) {
+        try (InputStream in = Files.newInputStream(file)) {
+          float[] vector =
+              demoEmbeddings.computeEmbedding(
+                  new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
+          doc.add(
+              new KnnVectorField("contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
+        }
+      }
+
       if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
         // New index, so we just add the document (no old document can be there):
         System.out.println("adding " + file);
@@ -213,5 +275,10 @@ public class IndexFiles {
         writer.updateDocument(new Term("path", file.toString()), doc);
       }
     }
+  }
+
+  @Override
+  public void close() throws IOException {
+    IOUtils.close(vectorDict);
   }
 }

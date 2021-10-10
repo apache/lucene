@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util.bkd;
 
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -85,10 +86,7 @@ public final class HeapPointReader implements PointReader {
     @Override
     public int docID() {
       int position = packedValueDocID.offset + packedValueLength;
-      return ((packedValueDocID.bytes[position] & 0xFF) << 24)
-          | ((packedValueDocID.bytes[++position] & 0xFF) << 16)
-          | ((packedValueDocID.bytes[++position] & 0xFF) << 8)
-          | (packedValueDocID.bytes[++position] & 0xFF);
+      return (int) BitUtil.VH_BE_INT.get(packedValueDocID.bytes, position);
     }
 
     @Override

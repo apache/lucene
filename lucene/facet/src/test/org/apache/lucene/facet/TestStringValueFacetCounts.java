@@ -25,10 +25,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
@@ -70,6 +73,38 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     writer.close();
 
     checkFacetResult(expectedCounts, expectedTotalDocCount, searcher, 10, 2, 1, 0);
+
+    IOUtils.close(searcher.getIndexReader(), dir);
+  }
+
+  // See: LUCENE-10070
+  public void testCountAll() throws Exception {
+
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new SortedSetDocValuesField("field", new BytesRef("foo")));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(new SortedSetDocValuesField("field", new BytesRef("foo")));
+    writer.addDocument(doc);
+
+    writer.deleteDocuments(new Term("id", "0"));
+
+    IndexSearcher searcher = newSearcher(writer.getReader());
+    writer.close();
+
+    StringDocValuesReaderState state =
+        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+
+    StringValueFacetCounts facets = new StringValueFacetCounts(state);
+    assertEquals(
+        "dim=field path=[] value=1 childCount=1\n  foo (1)",
+        facets.getTopChildren(10, "field").toString().trim());
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -131,6 +166,40 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
     Map<String, Integer> expectedCounts = Map.of("foo", 2, "bar", 1, "baz", 2);
     int expectedTotalDocCount = 3;
+
+    IndexSearcher searcher = newSearcher(writer.getReader());
+    writer.close();
+
+    checkFacetResult(expectedCounts, expectedTotalDocCount, searcher, 10, 2, 1, 0);
+
+    IOUtils.close(searcher.getIndexReader(), dir);
+  }
+
+  public void testSparseMultiSegmentCase() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Map<String, Integer> expectedCounts = new HashMap<>();
+
+    // Create two segments, each with only one doc that has a large number of SSDV field values.
+    // This ensures "sparse" counting will occur in StringValueFacetCounts (i.e., small number
+    // of hits relative to the field cardinality):
+    Document doc = new Document();
+    for (int i = 0; i < 100; i++) {
+      doc.add(new SortedSetDocValuesField("field", new BytesRef("foo_" + i)));
+      expectedCounts.put("foo_" + i, 1);
+    }
+    writer.addDocument(doc);
+    writer.commit();
+
+    doc = new Document();
+    for (int i = 0; i < 100; i++) {
+      doc.add(new SortedSetDocValuesField("field", new BytesRef("bar_" + i)));
+      expectedCounts.put("bar_" + i, 1);
+    }
+    writer.addDocument(doc);
+
+    int expectedTotalDocCount = 2;
 
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
@@ -202,51 +271,62 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
   public void testRandom() throws Exception {
 
-    Directory dir = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    int fullIterations = LuceneTestCase.TEST_NIGHTLY ? 20 : 3;
+    for (int iter = 0; iter < fullIterations; iter++) {
+      Directory dir = newDirectory();
+      RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
-    // Build up test data
-    String[] tokens = getRandomTokens(50); // 50 random values to pick from
-    int numDocs = atLeast(1000);
-    int expectedTotalDocCount = 0;
-    Map<String, Integer> expected = new HashMap<>();
-    for (int i = 0; i < numDocs; i++) {
-      Document doc = new Document();
-      int valCount = random().nextInt(5); // each doc can have up to 5 values
-      Set<String> docVals = new HashSet<>();
-      for (int j = 0; j < valCount; j++) {
-        int tokenIdx = random().nextInt(tokens.length);
-        String val = tokens[tokenIdx];
-        // values should only be counted once per document
-        if (docVals.contains(val) == false) {
-          expected.put(val, expected.getOrDefault(val, 0) + 1);
+      // Build up test data
+      String[] tokens = getRandomTokens(50); // 50 random values to pick from
+      int numDocs = atLeast(1000);
+      int expectedTotalDocCount = 0;
+      Map<String, Integer> expected = new HashMap<>();
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        // Sometimes we restrict docs to be single-valued, but most of the time they can have up to
+        // 5:
+        int maxValuesPerDoc;
+        if (random().nextInt(10) < 8) {
+          maxValuesPerDoc = 5;
+        } else {
+          maxValuesPerDoc = 1;
         }
-        docVals.add(val);
-        doc.add(new SortedSetDocValuesField("field", new BytesRef(val)));
+        int valCount = random().nextInt(maxValuesPerDoc);
+        Set<String> docVals = new HashSet<>();
+        for (int j = 0; j < valCount; j++) {
+          int tokenIdx = random().nextInt(tokens.length);
+          String val = tokens[tokenIdx];
+          // values should only be counted once per document
+          if (docVals.contains(val) == false) {
+            expected.put(val, expected.getOrDefault(val, 0) + 1);
+          }
+          docVals.add(val);
+          doc.add(new SortedSetDocValuesField("field", new BytesRef(val)));
+        }
+        // only docs with at least one value in the field should be counted in the total
+        if (docVals.isEmpty() == false) {
+          expectedTotalDocCount++;
+        }
+        writer.addDocument(doc);
+        if (random().nextInt(10) == 0) {
+          writer.commit(); // sometimes commit
+        }
       }
-      // only docs with at least one value in the field should be counted in the total
-      if (docVals.isEmpty() == false) {
-        expectedTotalDocCount++;
+
+      IndexSearcher searcher = newSearcher(writer.getReader());
+      writer.close();
+
+      // run iterations with random values of topN
+      int iterations = LuceneTestCase.TEST_NIGHTLY ? 10_000 : 50;
+      int[] topNs = new int[iterations];
+      for (int i = 0; i < iterations; i++) {
+        topNs[i] = atLeast(1);
       }
-      writer.addDocument(doc);
-      if (random().nextInt(10) == 0) {
-        writer.commit(); // sometimes commit
-      }
+
+      checkFacetResult(expected, expectedTotalDocCount, searcher, topNs);
+
+      IOUtils.close(searcher.getIndexReader(), dir);
     }
-
-    IndexSearcher searcher = newSearcher(writer.getReader());
-    writer.close();
-
-    // run iterations with random values of topN
-    int iterations = LuceneTestCase.TEST_NIGHTLY ? 10_000 : 50;
-    int[] topNs = new int[iterations];
-    for (int i = 0; i < iterations; i++) {
-      topNs[i] = atLeast(1);
-    }
-
-    checkFacetResult(expected, expectedTotalDocCount, searcher, topNs);
-
-    IOUtils.close(searcher.getIndexReader(), dir);
   }
 
   private void checkFacetResult(

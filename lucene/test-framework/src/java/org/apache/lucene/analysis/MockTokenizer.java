@@ -161,7 +161,7 @@ public class MockTokenizer extends Tokenizer {
       if (cp < 0) {
         break;
       } else if (isTokenChar(cp)) {
-        char chars[] = new char[2];
+        char[] chars = new char[2];
         int endOffset;
         do {
           int len = Character.toChars(normalize(cp), chars, 0);
@@ -259,21 +259,21 @@ public class MockTokenizer extends Tokenizer {
       case 0:
         {
           // read(char[])
-          char c[] = new char[1];
+          char[] c = new char[1];
           int ret = input.read(c);
           return ret < 0 ? ret : c[0];
         }
       case 1:
         {
           // read(char[], int, int)
-          char c[] = new char[2];
+          char[] c = new char[2];
           int ret = input.read(c, 1, 1);
           return ret < 0 ? ret : c[1];
         }
       case 2:
         {
           // read(CharBuffer)
-          char c[] = new char[1];
+          char[] c = new char[1];
           CharBuffer cb = CharBuffer.wrap(c);
           int ret = input.read(cb);
           return ret < 0 ? ret : c[0];

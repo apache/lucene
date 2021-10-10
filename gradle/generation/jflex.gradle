@@ -222,7 +222,7 @@ class JFlexTask extends DefaultTask {
   @InputFile
   File skeleton
 
-  @Optional
+  @Internal
   String heapSize
 
   @OutputFile

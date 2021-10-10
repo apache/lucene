@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.simpletext;
 import java.io.IOException;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.store.Directory;
@@ -152,7 +151,7 @@ public class SimpleTextStoredFieldsWriter extends StoredFieldsWriter {
   }
 
   @Override
-  public void finish(FieldInfos fis, int numDocs) throws IOException {
+  public void finish(int numDocs) throws IOException {
     if (numDocsWritten != numDocs) {
       throw new RuntimeException(
           "mergeFields produced an invalid result: docCount is "

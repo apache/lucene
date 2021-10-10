@@ -243,7 +243,7 @@ public class MMapDirectory extends FSDirectory {
     // we always allocate one more segments, the last one may be a 0 byte one
     final int nrSegments = (int) (length >>> chunkSizePower) + 1;
 
-    final MemorySegment segments[] = new MemorySegment[nrSegments];
+    final MemorySegment[] segments = new MemorySegment[nrSegments];
 
     boolean success = false;
     try {

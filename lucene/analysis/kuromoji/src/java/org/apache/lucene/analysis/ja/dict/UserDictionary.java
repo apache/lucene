@@ -38,10 +38,10 @@ public final class UserDictionary implements Dictionary {
   private final TokenInfoFST fst;
 
   // holds wordid, length, length... indexed by phrase ID
-  private final int segmentations[][];
+  private final int[][] segmentations;
 
   // holds readings and POS, indexed by wordid
-  private final String data[];
+  private final String[] data;
 
   private static final int CUSTOM_DICTIONARY_WORD_ID_OFFSET = 100000000;
 
@@ -239,7 +239,7 @@ public final class UserDictionary implements Dictionary {
   }
 
   @Override
-  public String getReading(int wordId, char surface[], int off, int len) {
+  public String getReading(int wordId, char[] surface, int off, int len) {
     return getFeature(wordId, 0);
   }
 
@@ -249,12 +249,12 @@ public final class UserDictionary implements Dictionary {
   }
 
   @Override
-  public String getBaseForm(int wordId, char surface[], int off, int len) {
+  public String getBaseForm(int wordId, char[] surface, int off, int len) {
     return null; // TODO: add support?
   }
 
   @Override
-  public String getPronunciation(int wordId, char surface[], int off, int len) {
+  public String getPronunciation(int wordId, char[] surface, int off, int len) {
     return null; // TODO: add support?
   }
 
