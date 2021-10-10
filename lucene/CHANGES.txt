@@ -157,6 +157,10 @@ API Changes
 
 * LUCENE-9325: Sort is now final, and the `setSort()` method has been removed (Alan Woodward)
 
+* LUCENE-10158: Add a new interface Unwrappable to the utils package to allow code to
+  unwrap wrappers/delegators that are added by Lucene's testing framework. This will allow
+  testing new MMapDirectory implementation based on JDK Project Panama. (Uwe Schindler)
+
 Improvements
 
 * LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator
