@@ -16,31 +16,33 @@
  */
 
 
-// Configure artifact push to apache nexus (snapshots repository, CI job)
+// Configure artifact push to apache nexus (releases repository).
 
 configure(rootProject) {
   ext {
-    apacheNexusSnapshotsRepository = "https://repository.apache.org/content/repositories/snapshots"
+    apacheNexusReleasesRepository = "https://repository.apache.org/service/local/staging/deploy/maven2"
   }
 
-  // These access credentials are typically passed by the CI job.
+  // These access credentials must be passed by the release manager
+  // (either on command-line, via the environment or via ~/.gradle.properties).
   def asfNexusUsername = propertyOrEnvOrDefault('asfNexusUsername', "ASF_NEXUS_USERNAME", null)
   def asfNexusPassword = propertyOrEnvOrDefault('asfNexusPassword', "ASF_NEXUS_PASSWORD", null)
 
-  task mavenToApacheSnapshots() {
+  task mavenToApacheReleases() {
     group "Publishing"
-    description "Publish Lucene Maven artifacts to Apache Snapshots repository: ${apacheNexusSnapshotsRepository}"
+    description "Publish Lucene Maven artifacts to Apache Releases repository: ${apacheNexusReleasesRepository}"
 
     dependsOn rootProject.ext.mavenProjects.collect {
-      it.tasks.matching { it.name == "publishJarsPublicationToApacheSnapshotsRepository" }
+      it.tasks.matching { it.name == "publishSignedJarsPublicationToApacheReleasesRepository" }
     }
   }
 
-  task checkSnapshotsRepositoryPushPreconditions() {
+  task checkReleasesRepositoryPushPreconditions() {
     doFirst {
-      // Make sure we're pushing a snapshot version.
-      if (!snapshotBuild) {
-        throw new GradleException("ASF snapshots repository will not accept a non-snapshot version: ${rootProject.version}")
+      // Make sure we're pushing a release version. The release repository
+      // does not accept snapshots and returns cryptic errors upon trying.
+      if (snapshotBuild) {
+        throw new GradleException("ASF releases repository will not accept a snapshot version: ${rootProject.version}")
       }
 
       // Make sure access credentials have been passed.
@@ -53,16 +55,17 @@ configure(rootProject) {
 
   configure(rootProject.ext.mavenProjects) { Project project ->
     // Make sure any actual publication task is preceded by precondition checks.
-    tasks.matching { it.name ==~ /publish.+ToApacheSnapshotsRepository/ }.all {
-      dependsOn rootProject.tasks.checkSnapshotsRepositoryPushPreconditions
+    tasks.matching { it.name ==~ /publish.+ToApacheReleasesRepository/ }.all {
+      dependsOn rootProject.tasks.checkReleasesRepositoryPushPreconditions
     }
 
+    // Configure the release repository.
     plugins.withType(PublishingPlugin) {
       publishing {
         repositories {
           maven {
-            name = "ApacheSnapshots"
-            url = apacheNexusSnapshotsRepository
+            name = "ApacheReleases"
+            url = apacheNexusReleasesRepository
 
             credentials {
               username asfNexusUsername
