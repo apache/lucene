@@ -32,6 +32,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.util.BitUtil;
 
 /**
  * This is a stupid yet functional transaction log: it never fsync's, never prunes, it's
@@ -91,10 +92,7 @@ class SimpleTransLog implements Closeable {
     byte[] bytes = buffer.toArrayCopy();
     buffer.reset();
 
-    intBuffer[0] = (byte) (len >> 24);
-    intBuffer[1] = (byte) (len >> 16);
-    intBuffer[2] = (byte) (len >> 8);
-    intBuffer[3] = (byte) len;
+    BitUtil.VH_BE_INT.set(intBuffer, 0, len);
     intByteBuffer.limit(4);
     intByteBuffer.position(0);
 
@@ -140,11 +138,7 @@ class SimpleTransLog implements Closeable {
         intByteBuffer.limit(4);
         readBytesFromChannel(pos, intByteBuffer);
         pos += 4;
-        int len =
-            ((intBuffer[0] & 0xff) << 24)
-                | (intBuffer[1] & 0xff) << 16
-                | (intBuffer[2] & 0xff) << 8
-                | (intBuffer[3] & 0xff);
+        int len = (int) BitUtil.VH_BE_INT.get(intBuffer, 0);
 
         byte[] bytes = new byte[len];
         readBytesFromChannel(pos, ByteBuffer.wrap(bytes));

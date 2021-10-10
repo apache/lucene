@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
@@ -57,6 +58,17 @@ public class TestPassageSelector extends LuceneTestCase {
   }
 
   @Test
+  public void checkOddOverlaps() {
+    checkPassages(
+        "foo >bar >baz<<> abc< xyz",
+        "foo bar baz abc xyz",
+        300,
+        100,
+        new OffsetRange(4, 11),
+        new OffsetRange(8, 15));
+  }
+
+  @Test
   public void oneMarker() {
     checkPassages(">0<123456789a", "0123456789a", 300, 1, new OffsetRange(0, 1));
     checkPassages("0123456789>a<", "0123456789a", 300, 1, new OffsetRange(10, 11));
@@ -87,7 +99,27 @@ public class TestPassageSelector extends LuceneTestCase {
   @Test
   public void highlightLargerThanWindow() {
     String value = "0123456789a";
-    checkPassages("0123...", value, 4, 1, new OffsetRange(0, value.length()));
+    checkPassages(">0123<...", value, 4, 1, new OffsetRange(0, value.length()));
+    checkPassages("...>123456<...", value, 6, 1, new OffsetRange(1, value.length()));
+  }
+
+  @Test
+  public void highlightLargerThanWindowWithSubranges() {
+    String value = "0123456789a";
+    checkPassages(
+        "0>12<|>456789<...",
+        value,
+        6,
+        2,
+        new OffsetRange[] {new OffsetRange(1, value.length())},
+        new OffsetRange[] {new OffsetRange(0, 3), new OffsetRange(4, value.length())});
+    checkPassages(
+        ">01<...|>45<...",
+        value,
+        2,
+        2,
+        new OffsetRange[] {new OffsetRange(0, value.length())},
+        new OffsetRange[] {new OffsetRange(0, 3), new OffsetRange(4, value.length())});
   }
 
   @Test
@@ -107,6 +139,11 @@ public class TestPassageSelector extends LuceneTestCase {
   @Test
   public void markersOutsideValue() {
     checkPassages("0123456789a", "0123456789a", 300, 1, new OffsetRange(100, 200));
+  }
+
+  @Test
+  public void largeWindow() {
+    checkPassages("01234>567<89a", "0123456789a", Integer.MAX_VALUE, 1, new OffsetRange(5, 8));
   }
 
   @Test
@@ -161,6 +198,14 @@ public class TestPassageSelector extends LuceneTestCase {
         2,
         ranges(),
         ranges(new OffsetRange(0, 5), new OffsetRange(5, 10)));
+  }
+
+  @Test
+  public void whitespaceBoundaries() {
+    PassageSelector selector =
+        new PassageSelector(PassageSelector.DEFAULT_SCORER, new BreakIteratorShrinkingAdjuster());
+    checkPassages(
+        "...>  value  <...", "x          value          y", 9, 1, selector, new OffsetRange(9, 18));
   }
 
   @Test
@@ -278,19 +323,42 @@ public class TestPassageSelector extends LuceneTestCase {
       // Just make sure there are no exceptions.
       List<Passage> passages =
           selector.pickBest(value, highlights, charWindow, maxPassages, permittedRanges);
-      formatter.format(value, passages, permittedRanges);
+
+      // Make sure no empty ranges are returned.
+      passages.forEach(
+          p -> {
+            assertNotEquals(p.from, p.to);
+            p.markers.forEach(
+                r -> {
+                  assertNotEquals(p.from, p.to);
+                });
+          });
+
+      List<String> format = formatter.format(value, passages, permittedRanges);
+      MatcherAssert.assertThat(format, Matchers.not(Matchers.hasItem("><")));
     }
   }
 
   private void checkPassages(
       String expected, String value, int charWindow, int maxPassages, OffsetRange... highlights) {
+    checkPassages(expected, value, charWindow, maxPassages, new PassageSelector(), highlights);
+  }
+
+  private void checkPassages(
+      String expected,
+      String value,
+      int charWindow,
+      int maxPassages,
+      PassageSelector selector,
+      OffsetRange... highlights) {
     checkPassages(
         expected,
         value,
         charWindow,
         maxPassages,
         highlights,
-        ranges(new OffsetRange(0, value.length())));
+        ranges(new OffsetRange(0, value.length())),
+        selector);
   }
 
   private void checkPassages(
@@ -300,13 +368,25 @@ public class TestPassageSelector extends LuceneTestCase {
       int maxPassages,
       OffsetRange[] highlights,
       OffsetRange[] ranges) {
-    String result = getPassages(value, charWindow, maxPassages, highlights, ranges);
+    checkPassages(
+        expected, value, charWindow, maxPassages, highlights, ranges, new PassageSelector());
+  }
+
+  private void checkPassages(
+      String expected,
+      String value,
+      int charWindow,
+      int maxPassages,
+      OffsetRange[] highlights,
+      OffsetRange[] ranges,
+      PassageSelector selector) {
+    String result = getPassages(value, charWindow, maxPassages, highlights, ranges, selector);
     if (!Objects.equals(result, expected)) {
       System.out.println("Value:  " + value);
       System.out.println("Result: " + result);
       System.out.println("Expect: " + expected);
     }
-    assertThat(result, Matchers.equalTo(expected));
+    MatcherAssert.assertThat(result, Matchers.equalTo(expected));
   }
 
   protected String getPassages(
@@ -314,9 +394,9 @@ public class TestPassageSelector extends LuceneTestCase {
       int charWindow,
       int maxPassages,
       OffsetRange[] highlights,
-      OffsetRange[] ranges) {
+      OffsetRange[] ranges,
+      PassageSelector selector) {
     PassageFormatter passageFormatter = new PassageFormatter("...", ">", "<");
-    PassageSelector selector = new PassageSelector();
     List<OffsetRange> rangeList = Arrays.asList(ranges);
     List<OffsetRange> hlist = Arrays.asList(highlights);
     List<Passage> passages = selector.pickBest(value, hlist, charWindow, maxPassages, rangeList);

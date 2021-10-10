@@ -124,7 +124,7 @@ def find_branch_type():
   else:
     raise Exception('git status missing branch name')
 
-  if branchName == b'master':
+  if branchName == b'main':
     return BranchType.unstable
   if re.match(r'branch_(\d+)x', branchName.decode('UTF-8')):
     return BranchType.stable

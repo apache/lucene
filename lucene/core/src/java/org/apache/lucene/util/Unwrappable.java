@@ -27,7 +27,7 @@ public interface Unwrappable<T> {
   /** Unwraps this instance */
   T unwrap();
 
-  /** Unwraps all {@code Unwrapable}s around the given object. */
+  /** Unwraps all {@code Unwrappable}s around the given object. */
   @SuppressWarnings("unchecked")
   public static <T> T unwrapAll(T o) {
     while (o instanceof Unwrappable) {

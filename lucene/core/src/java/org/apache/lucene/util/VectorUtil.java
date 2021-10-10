@@ -115,9 +115,12 @@ public final class VectorUtil {
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm. IllegalArgumentException is
    * thrown for zero vectors.
+   *
+   * @return the input array after normalization
    */
-  public static void l2normalize(float[] v) {
+  public static float[] l2normalize(float[] v) {
     l2normalize(v, true);
+    return v;
   }
 
   /**
@@ -125,9 +128,10 @@ public final class VectorUtil {
    *
    * @param v the vector to normalize
    * @param throwOnZero whether to throw an exception when <code>v</code> has all zeros
+   * @return the input array after normalization
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
-  public static void l2normalize(float[] v, boolean throwOnZero) {
+  public static float[] l2normalize(float[] v, boolean throwOnZero) {
     double squareSum = 0.0f;
     int dim = v.length;
     for (float x : v) {
@@ -137,13 +141,14 @@ public final class VectorUtil {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
-        return;
+        return v;
       }
     }
     double length = Math.sqrt(squareSum);
     for (int i = 0; i < dim; i++) {
       v[i] /= length;
     }
+    return v;
   }
 
   /**

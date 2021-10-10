@@ -15,6 +15,13 @@
  * limitations under the License.
  */
 
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
 rootProject.name = "lucene-root"
 
 includeBuild("dev-tools/missing-doclet")

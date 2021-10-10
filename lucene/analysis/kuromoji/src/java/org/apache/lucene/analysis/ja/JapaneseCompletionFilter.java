@@ -65,6 +65,8 @@ public final class JapaneseCompletionFilter extends TokenFilter {
 
   private final CompletionTokenGenerator tokenGenerator;
 
+  private boolean inputStreamConsumed = false;
+
   /** Completion mode */
   public enum Mode {
     /** Simple romanization. Expected to be used when indexing. */
@@ -88,6 +90,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
   public void reset() throws IOException {
     super.reset();
     tokenGenerator.reset();
+    inputStreamConsumed = false;
   }
 
   @Override
@@ -111,7 +114,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
 
   private void mayIncrementToken() throws IOException {
     while (!tokenGenerator.hasNext()) {
-      if (input.incrementToken()) {
+      if (!inputStreamConsumed && input.incrementToken()) {
         String surface = termAttr.toString();
         String reading = readingAttr.getReading();
         int startOffset = offsetAtt.startOffset();
@@ -122,6 +125,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
         }
         tokenGenerator.addToken(surface, reading, startOffset, endOffset);
       } else {
+        inputStreamConsumed = true;
         if (tokenGenerator.hasPendingToken()) {
           // a pending token remains.
           tokenGenerator.finish();

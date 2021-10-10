@@ -810,23 +810,38 @@ public abstract class QueryParserBase extends QueryBuilder
     return q;
   }
 
-  Query handleBareFuzzy(String qfield, Token fuzzySlop, String termImage) throws ParseException {
-    Query q;
-    float fms = fuzzyMinSim;
+  /**
+   * Determines the similarity distance for the given fuzzy token and term string.
+   *
+   * <p>The default implementation uses the string image of the {@code fuzzyToken} in an attempt to
+   * parse it to a primitive float value. Otherwise, the {@linkplain #getFuzzyMinSim() minimal
+   * similarity} distance is returned. Subclasses can override this method to return a similarity
+   * distance, say based on the {@code termStr}, if the {@code fuzzyToken} does not specify a
+   * distance.
+   *
+   * @param fuzzyToken The Fuzzy token
+   * @param termStr The Term string
+   * @return The similarity distance
+   */
+  protected float getFuzzyDistance(Token fuzzyToken, String termStr) {
     try {
-      fms = Float.parseFloat(fuzzySlop.image.substring(1));
+      return Float.parseFloat(fuzzyToken.image.substring(1));
     } catch (
         @SuppressWarnings("unused")
         Exception ignored) {
     }
+    return fuzzyMinSim;
+  }
+
+  Query handleBareFuzzy(String qfield, Token fuzzySlop, String termImage) throws ParseException {
+    float fms = getFuzzyDistance(fuzzySlop, termImage);
     if (fms < 0.0f) {
       throw new ParseException(
           "Minimum similarity for a FuzzyQuery has to be between 0.0f and 1.0f !");
     } else if (fms >= 1.0f && fms != (int) fms) {
       throw new ParseException("Fractional edit distances are not allowed!");
     }
-    q = getFuzzyQuery(qfield, termImage, fms);
-    return q;
+    return getFuzzyQuery(qfield, termImage, fms);
   }
 
   // extracted from the .jj grammar

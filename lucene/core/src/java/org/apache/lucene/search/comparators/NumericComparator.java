@@ -18,7 +18,6 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
@@ -29,6 +28,8 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.DocIdSetBuilder;
 
 /**
@@ -40,6 +41,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   protected final String field;
   protected final boolean reverse;
   private final int bytesCount; // how many bytes are used to encode this number
+  private final ByteArrayComparator bytesComparator;
 
   protected boolean topValueSet;
   protected boolean singleSort; // singleSort is true, if sort is based on a single sort field.
@@ -55,6 +57,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     // skipping functionality is only relevant for primary sort
     this.canSkipDocuments = (sortPos == 0);
     this.bytesCount = bytesCount;
+    this.bytesComparator = ArrayUtil.getUnsignedComparator(bytesCount);
   }
 
   @Override
@@ -209,17 +212,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                 return; // already visited or skipped
               }
               if (maxValueAsBytes != null) {
-                int cmp =
-                    Arrays.compareUnsigned(
-                        packedValue, 0, bytesCount, maxValueAsBytes, 0, bytesCount);
+                int cmp = bytesComparator.compare(packedValue, 0, maxValueAsBytes, 0);
                 // if doc's value is too high or for single sort even equal, it is not competitive
                 // and the doc can be skipped
                 if (cmp > 0 || (singleSort && cmp == 0)) return;
               }
               if (minValueAsBytes != null) {
-                int cmp =
-                    Arrays.compareUnsigned(
-                        packedValue, 0, bytesCount, minValueAsBytes, 0, bytesCount);
+                int cmp = bytesComparator.compare(packedValue, 0, minValueAsBytes, 0);
                 // if doc's value is too low or for single sort even equal, it is not competitive
                 // and the doc can be skipped
                 if (cmp < 0 || (singleSort && cmp == 0)) return;
@@ -230,27 +229,19 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             @Override
             public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               if (maxValueAsBytes != null) {
-                int cmp =
-                    Arrays.compareUnsigned(
-                        minPackedValue, 0, bytesCount, maxValueAsBytes, 0, bytesCount);
+                int cmp = bytesComparator.compare(minPackedValue, 0, maxValueAsBytes, 0);
                 if (cmp > 0 || (singleSort && cmp == 0))
                   return PointValues.Relation.CELL_OUTSIDE_QUERY;
               }
               if (minValueAsBytes != null) {
-                int cmp =
-                    Arrays.compareUnsigned(
-                        maxPackedValue, 0, bytesCount, minValueAsBytes, 0, bytesCount);
+                int cmp = bytesComparator.compare(maxPackedValue, 0, minValueAsBytes, 0);
                 if (cmp < 0 || (singleSort && cmp == 0))
                   return PointValues.Relation.CELL_OUTSIDE_QUERY;
               }
               if ((maxValueAsBytes != null
-                      && Arrays.compareUnsigned(
-                              maxPackedValue, 0, bytesCount, maxValueAsBytes, 0, bytesCount)
-                          > 0)
+                      && bytesComparator.compare(maxPackedValue, 0, maxValueAsBytes, 0) > 0)
                   || (minValueAsBytes != null
-                      && Arrays.compareUnsigned(
-                              minPackedValue, 0, bytesCount, minValueAsBytes, 0, bytesCount)
-                          < 0)) {
+                      && bytesComparator.compare(minPackedValue, 0, minValueAsBytes, 0) < 0)) {
                 return PointValues.Relation.CELL_CROSSES_QUERY;
               }
               return PointValues.Relation.CELL_INSIDE_QUERY;
@@ -273,7 +264,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     public DocIdSetIterator competitiveIterator() {
       if (enableSkipping == false) return null;
       return new DocIdSetIterator() {
-        private int docID = -1;
+        private int docID = competitiveIterator.docID();
 
         @Override
         public int nextDoc() throws IOException {
