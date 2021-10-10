@@ -1,0 +1,25 @@
+Publishing artifacts
+====================
+
+
+Maven
+-----
+
+To publish Lucene Maven artifacts to a local ~/.m2 repository, run:
+
+gradlew mavenToLocal
+
+To publish Lucene Maven artifacts to Apache Snapshots repository
+(CI job, typically!), run:
+
+gradlew mavenToApacheSnapshots -PasfNexusUsername= -PasfNexusPassword=
+
+It is a good idea to avoid passing passwords on command line. CI jobs have
+these properties saved in ~/.gradle/gradle.properties - this way they
+are read automatically.
+
+
+Release artifacts
+-----------------
+
+TODO: write me.

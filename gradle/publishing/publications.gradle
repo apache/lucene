@@ -1,0 +1,87 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * This script configures aspects related to all project publications,
+ * this includes:
+ *
+ * - configuring maven artifacts,
+ * - setting up target maven repositories for publications to end up on,
+ * - configuring binary and source release artifacts,
+ * - other concerns related to publishing artifacts (signing, checksums).
+ */
+
+//
+// An explicit list of projects to publish as Maven artifacts.
+//
+configure(rootProject) {
+  ext {
+    mavenProjects = project(":lucene").subprojects.findAll {subproject ->
+      return !(subproject.path in [
+          // Exclude packaging & documentation.
+          ":lucene:packaging",
+          ":lucene:documentation",
+          // Exclude the parent container project of analysis modules (no artifacts).
+          ":lucene:analysis",
+          // Exclude the native module.
+          ":lucene:misc:native"
+      ])
+    }
+  }
+}
+
+// Configure projects for publishing Maven artifacts and set up metadata.
+apply from: buildscript.sourceFile.toPath().resolveSibling("publications-maven.gradle")
+
+// Configure on-demand maven publishing into ~/.m2 for developers' convenience.
+apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-local-m2.gradle")
+
+// Configure artifact push to apache nexus (snapshots repository, CI job).
+apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-nexus-snapshots.gradle")
+
+/*
+
+On demand installation (for Solr or other tool development):
+  - maven: artifact push to ~/.m2 (local deployment)
+
+Nightly snapshots:
+  - maven: artifact push to apache nexus (snapshots repository, CI job)
+
+On release:
+  - binary artifacts (zip, tgz)
+  - source artifacts (zip, tgz)
+  - html-rendered changes
+  - maven: local artifact assembly (for review/ smoke testing)
+  - maven: (optional?) artifact push to apache nexus (release repository)
+  - separate stand-alone Luke distribution?
+
+Artifact checksumming:
+  - maven plugin handles maven artifacts
+  - custom checksums needed for source/binary artifacts
+
+Artifact signing:
+  - only needed for releases (?)
+  - only applies to source/binary artifacts + maven artifacts.
+  - agent vs. property-passwords option
+
+Open questions
+  - do we really need the lib/ folders in the binary distribution?
+    - alternative: plain text file with a list of dependencies
+    - manifest entry (classpath?)
+  - the required presence of 'git' for the source release
+    (everything should compile)
+ */

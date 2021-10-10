@@ -14,3 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
+// Configure on-demand maven publishing into ~/.m2 for developers' convenience.
+
+configure(rootProject) {
+  task mavenToLocal() {
+    group "Publishing"
+    description "Publish Lucene Maven artifacts to ~/.m2 repository."
+
+    dependsOn rootProject.ext.mavenProjects.collect {
+      it.tasks.matching { it.name == "publishJarsPublicationToMavenLocal" }
+    }
+  }
+}
