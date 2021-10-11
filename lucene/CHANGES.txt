@@ -157,6 +157,10 @@ API Changes
 
 * LUCENE-9325: Sort is now final, and the `setSort()` method has been removed (Alan Woodward)
 
+* LUCENE-10158: Add a new interface Unwrappable to the utils package to allow code to
+  unwrap wrappers/delegators that are added by Lucene's testing framework. This will allow
+  testing new MMapDirectory implementation based on JDK Project Panama. (Uwe Schindler)
+
 Improvements
 
 * LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator
@@ -359,6 +363,8 @@ Changes in Backwards Compatibility Policy
 
 Other
 
+* LUCENE-10136: allow 'var' declarations in source code (Dawid Weiss)
+
 * LUCENE-9570, LUCENE-9564: Apply google java format and enforce it on source Java files.
   Review diffs and correct automatic formatting oddities. (Erick Erickson,
   Bruno Roustant, Dawid Weiss)
@@ -433,9 +439,6 @@ Optimizations
 Bug Fixes
 ---------------------
 
-* LUCENE-10110: MultiCollector now handles single leaf collector that wants to skip low-scoring hits
- but the combined score mode doesn't allow it. (Jim Ferenczi)
-
 * LUCENE-10111: Missing calculating the bytes used of DocsWithFieldSet in NormValuesWriter.
   (Lu Xugang)
 
@@ -443,9 +446,6 @@ Bug Fixes
   (Lu Xugang)
 
 * LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
-
-* LUCENE-10126: Sort optimization with a chunked bulk scorer
-  can wrongly skip documents (Nhat Nguyen, Mayya Sharipova)
 
 * LUCENE-10134: ConcurrentSortedSetDocValuesFacetCounts shouldn't share liveDocs Bits across threads.
   (Ankur Goel)
@@ -459,6 +459,20 @@ Other
 ---------------------
 
 * LUCENE-10098: Add docs/links to GermanAnalyzer describing how to decompound nouns. (Robert Muir)
+
+======================= Lucene 8.10.1 =======================
+
+Bug Fixes
+---------------------
+
+* LUCENE-10110: MultiCollector now handles single leaf collector that wants to skip low-scoring hits
+ but the combined score mode doesn't allow it. (Jim Ferenczi)
+
+* LUCENE-10119: Sort optimization with search_after can wrongly skip documents
+  whose values are equal to the last value of the previous page (Nhat Nguyen)
+
+* LUCENE-10126: Sort optimization with a chunked bulk scorer
+  can wrongly skip documents (Nhat Nguyen, Mayya Sharipova)
 
 ======================= Lucene 8.10.0 =======================
 
@@ -581,9 +595,6 @@ Bug Fixes
 
 * LUCENE-10106: Sort optimization can wrongly skip the first document of
   each segment (Nhat Nguyen)
-
-* LUCENE-10119: Sort optimization with search_after can wrongly skip documents
-  whose values are equal to the last value of the previous page (Nhat Nguyen)
 
 Other
 ---------------------

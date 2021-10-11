@@ -1965,7 +1965,7 @@ public class TestIndexWriter extends LuceneTestCase {
     Map<String, String> data = new HashMap<>();
     Iterable<Map.Entry<String, String>> iter = writer.getLiveCommitData();
     if (iter != null) {
-      for (Map.Entry<String, String> ent : iter) {
+      for (var ent : iter) {
         data.put(ent.getKey(), ent.getValue());
       }
     }
