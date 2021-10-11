@@ -28,3 +28,12 @@ task signReleaseArchives(type: Sign) {
   dependsOn tasks.assembleSourceTgz
   sign tasks.assembleSourceTgz.destination
 }
+
+
+// Optionally, switch to using GPG command (or agent). This entails some additional
+// oddities so add some extra sanity checks.
+if (propertyOrDefault("useGpg", null) != null) {
+  signing {
+    useGpgCmd()
+  }
+}

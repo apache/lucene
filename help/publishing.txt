@@ -39,3 +39,32 @@ lucene/distribution/build/release
 
 The "-Psign" switch is optional. If you don't want to have the artifacts signed,
 omit it.
+
+
+Artifact signing
+----------------
+
+If signing the distribution artifacts (or maven artifacts), make yourself familiar with
+how to pass the required signatory credentials via ~/.gradle/gradle.properties or command-line
+options:
+
+https://docs.gradle.org/current/userguide/signing_plugin.html#sec:signatory_credentials
+
+From command-line, this would look something like this:
+
+gradlew assembleRelease -Psign -Psigning.keyId=... -Psigning.password=... -Psigning.secretKeyRingFile=...
+
+The keyId is the last 8 digits of your key (gpg -k will print your keys). Gradle documentation has more options
+of secure passing of private key information and passwords.
+
+You can use an external GPG command (or GPG agent) but this changes the options used and requires a
+restriction on parallel workers:
+
+For gpg2:
+gradlew assembleRelease -Psign -PuseGpg --max-workers 1 -Psigning.gnupg.keyName=...
+
+For gpg:
+gradlew assembleRelease -Psign -PuseGpg --max-workers 1 -Psigning.gnupg.keyName=... -Psigning.gnupg.useLegacyGpg=true
+
+The keyName is the last 8 digits of your key (gpg -k will print your keys). Also, see help/gpgSigning.txt for
+more information about the possible quirks of using an external GPG agent.

@@ -1,22 +1,7 @@
 GPG Signing
 ===========
 
-GPG Signing of distribution files (typically by a release manager) is done with the 'signDist' command.
-
-The only required configuration property Gradle needs is the 'signing.gnupg.keyName' (aka: the fingerprint) of
-the key you wish to use:
-
-./gradlew signDist -Psigning.gnupg.keyName=YOUR_KEY_FINGERPRINT
-
-By default when you run this command, Gradle will delegate to the `gpg2` command for managing the signing of each file, which (should)
-in turn use the `gpg-agent` to prompt you for your secret key only as needed using a dialog box specific to your operating system and/or
-`gpg-agent` preferences.
-
-You may wish to put the `signing.gnupg.keyName` in your `~/.gradle/gradle.properties` so it is set automatically any time you use gradle
-
-
-Additional Configuration
-------------------------
+Additional information on signing release artifacts with gpg (read publishing.txt first).
 
 The following additional properties -- specified either on the command line via `-P...` or in your `~/.gradle/gradle.properties` may be
 useful/necessary in your system:
