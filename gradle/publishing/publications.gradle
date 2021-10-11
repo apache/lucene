@@ -55,6 +55,3 @@ apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-nexus-snaps
 
 // Configure artifact push to apache nexus (releases repository).
 apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-nexus-releases.gradle")
-
-// Configure artifact push to a local build folder (required to collect artifacts for the release).
-apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradle")

@@ -36,12 +36,13 @@ dependencies {
 // Prepare the "source" distribution artifact.
 task assembleSourceTgz() {
   // Make sure no unstaged/ dirty files are present.
-  dependsOn ":checkWorkingCopyClean"
+  dependsOn ":gitStatus", ":checkWorkingCopyClean"
 
   ext {
-    destination = file("${buildDir}/distributions/lucene-${version}-src.tgz")
+    destination = file("${buildDir}/packages/lucene-${version}-src.tgz")
   }
 
+  inputs.property("git-revision", { -> rootProject.ext.gitRev } )
   outputs.file destination
 
   doFirst {
@@ -59,6 +60,10 @@ task assembleSourceTgz() {
     }
   }
 }
+
+
+// Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
+apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradle")
 
 
 // Assemble everything needed in the release folder structure.

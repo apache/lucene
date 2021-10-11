@@ -23,13 +23,13 @@
 //
 
 configure(project(":lucene:packaging")) {
-  def buildRepository = file("${buildDir}/maven-artifacts")
+  def mavenRepositoryDir = file("${buildDir}/maven-artifacts")
 
   task mavenToBuild() {
     group "Publishing"
-    description "Publish Lucene Maven artifacts to a local folder: ${buildRepository}"
+    description "Publish Lucene Maven artifacts to a local folder: ${mavenRepositoryDir}"
 
-    outputs.dir(buildRepository)
+    outputs.dir(mavenRepositoryDir)
 
     dependsOn rootProject.ext.mavenProjects.collect {
       it.tasks.matching { it.name == "publishJarsPublicationToBuildRepository" }
@@ -37,7 +37,7 @@ configure(project(":lucene:packaging")) {
   }
 
   def cleanBuildTask = task cleanMavenBuildRepository(type: Delete) {
-    delete buildRepository
+    delete mavenRepositoryDir
   }
 
   configure(rootProject.ext.mavenProjects) { Project project ->
@@ -52,7 +52,7 @@ configure(project(":lucene:packaging")) {
         repositories {
           maven {
             name = "Build"
-            url = buildRepository
+            url = mavenRepositoryDir
           }
         }
       }
