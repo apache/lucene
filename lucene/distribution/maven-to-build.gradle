@@ -22,7 +22,7 @@
 // artifacts.
 //
 
-configure(project(":lucene:packaging")) {
+configure(project(":lucene:distribution")) {
   def mavenRepositoryDir = file("${buildDir}/maven-artifacts")
 
   task mavenToBuild() {

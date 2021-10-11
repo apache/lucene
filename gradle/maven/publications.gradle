@@ -32,8 +32,8 @@ configure(rootProject) {
   ext {
     mavenProjects = project(":lucene").subprojects.findAll {subproject ->
       return !(subproject.path in [
-          // Exclude packaging & documentation.
-          ":lucene:packaging",
+          // Exclude distribution assembly & documentation.
+          ":lucene:distribution",
           ":lucene:documentation",
           // Exclude the parent container project for analysis modules (no artifacts).
           ":lucene:analysis",

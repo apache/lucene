@@ -19,7 +19,7 @@
 // Configure Lucene's binary release. This is a bit convoluted so is placed
 // in a separate script.
 
-configure(project(":lucene:packaging")) {
+configure(project(":lucene:distribution")) {
   apply plugin: 'distribution'
 
   def packageBaseName = "${buildDir}/packages/lucene-${version}"
@@ -72,7 +72,7 @@ configure(project(":lucene:packaging")) {
 
   // Distribution package (zip/tgz) content is the same so use the same closure to configure both tasks.
   Closure<Void> distributionContent = { AbstractCopyTask task ->
-    // Manually correct posix permissions (matters when packaging on Windows).
+    // Manually correct posix permissions (matters when assembling archives on Windows).
     filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
       copy.setMode(0755)
     }
