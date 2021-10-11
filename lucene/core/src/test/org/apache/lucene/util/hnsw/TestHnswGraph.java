@@ -530,7 +530,6 @@ public class TestHnswGraph extends LuceneTestCase {
     }
   }
 
-
   /**
    * Generate a random bitset where before startIndex all bits are set, and after startIndex each
    * entry has a 2/3 probability of being set.
