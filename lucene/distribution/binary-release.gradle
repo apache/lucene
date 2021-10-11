@@ -20,8 +20,6 @@
 // in a separate script.
 
 configure(project(":lucene:distribution")) {
-  apply plugin: 'distribution'
-
   def packageBaseName = "${buildDir}/packages/lucene-${version}"
 
   // All the maven-published projects are part of the binary distribution.
@@ -98,6 +96,8 @@ configure(project(":lucene:distribution")) {
 
   // Assemble distribution archives
   task assembleBinaryZip(type: Zip) {
+    description "Assemble binary Lucene artifact as a .zip file."
+
     archiveFileName = packageBaseName + ".zip"
     destinationDirectory = file(archiveFileName).parentFile
 
@@ -106,6 +106,8 @@ configure(project(":lucene:distribution")) {
   }
 
   task assembleBinaryTgz(type: Tar) {
+    description "Assemble binary Lucene artifact as a .tgz file."
+
     archiveFileName = packageBaseName + ".tgz"
     destinationDirectory = file(archiveFileName).parentFile
 

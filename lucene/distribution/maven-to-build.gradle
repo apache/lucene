@@ -26,9 +26,6 @@ configure(project(":lucene:distribution")) {
   def mavenRepositoryDir = file("${buildDir}/maven-artifacts")
 
   task mavenToBuild() {
-    group "Publishing"
-    description "Publish Lucene Maven artifacts to a local folder: ${mavenRepositoryDir}"
-
     outputs.dir(mavenRepositoryDir)
 
     dependsOn rootProject.ext.mavenProjects.collect {

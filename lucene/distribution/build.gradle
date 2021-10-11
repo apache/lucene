@@ -36,6 +36,8 @@ dependencies {
 
 // Prepare the "source" distribution artifact. We use raw git export, no additional complexity needed.
 task assembleSourceTgz() {
+  description "Assemble source Lucene artifact as a .tgz file."
+
   // Make sure no unstaged/ dirty files are present.
   dependsOn ":gitStatus", ":checkWorkingCopyClean"
 
@@ -74,6 +76,8 @@ apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradl
 
 // Assemble everything needed in the release folder structure.
 task assembleRelease(type: Sync) {
+  description "Assemble all Lucene artifacts for a release."
+
   from(configurations.changesHtml, {
     into "changes"
   })
@@ -93,6 +97,18 @@ task assembleRelease(type: Sync) {
 
   into releaseDir
 }
+
+
+// Add the description and task group to some of the tasks.
+tasks.matching {it.name in [
+    "assembleSourceTgz",
+    "assembleBinaryZip",
+    "assembleBinaryTgz",
+    "assembleRelease",
+]}.all {
+  group "publishing"
+}
+
 
 // Hook into convention tasks.
 assemble.dependsOn assembleRelease
