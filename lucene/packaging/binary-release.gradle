@@ -1,0 +1,141 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+// Configure Lucene's binary release. This is a bit convoluted so is placed
+// in a separate script.
+
+configure(project(":lucene:packaging")) {
+  apply plugin: 'distribution'
+
+  def packageBaseName = "${buildDir}/packages/lucene-${version}"
+
+  // All the maven-published projects are part of the binary distribution.
+  def includeInBinaries = rootProject.ext.mavenProjects
+
+  // Legacy binary distribution contains Lucene artifacts (JARs) and their dependencies
+  // under 'lib/'. We have to go through some hoops to split the artifact from all of its
+  // transitive dependencies and separate their output location.
+  //
+  // We create a separate configuration for project and its dependencies.
+  def moduleArtifactConfigurations = []
+
+  for (Project includedProject : includeInBinaries) {
+    def binaryArtifactsConfiguration = configurations.create("dep-binary" + includedProject.path.replace(':', '-'))
+    def transitiveDependenciesConfiguration = configurations.create("dep-full" + includedProject.path.replace(':', '-'))
+
+    moduleArtifactConfigurations += [
+        "module": includedProject,
+        "binaryArtifactsConfiguration": binaryArtifactsConfiguration,
+        "transitiveDependenciesConfiguration": transitiveDependenciesConfiguration
+    ]
+
+    dependencies { DependencyHandler handler ->
+      // Module binary artifacts
+      handler.add(binaryArtifactsConfiguration.name, project(path: includedProject.path, configuration: "binaryArtifacts"))
+
+      // All transitive project dependencies from the runtime configuration.
+      handler.add(transitiveDependenciesConfiguration.name, project(path: includedProject.path, configuration: "runtimeElements"), {
+        // Exclude cross-module dependencies
+        exclude group: "org.apache.lucene"
+        // Exclude the following from all projects, if they appear.
+        exclude group: "commons-logging"
+        exclude group: "org.slf4j"
+      })
+    }
+  }
+
+
+  // Prepare site documentation dependency for inclusion.
+  configurations {
+    docs
+  }
+
+  dependencies {
+    docs project(path: ':lucene:documentation', configuration: 'site')
+  }
+
+
+  // Distribution package (zip/tgz) content is the same so use the same closure to configure both tasks.
+  Closure<Void> distributionContent = { AbstractCopyTask task ->
+    // Manually correct posix permissions (matters when packaging on Windows).
+    filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
+      copy.setMode(0755)
+    }
+
+    // Cherry-picked root-level files.
+    from(project(':lucene').projectDir, {
+      include "CHANGES.txt"
+      include "JRE_VERSION_MIGRATION.md"
+      include "LICENSE.txt"
+      include "MIGRATE.md"
+      include "NOTICE.txt"
+      include "README.md"
+      include "SYSTEM_REQUIREMENTS.md"
+
+      include "licenses/*"
+    })
+
+    // Analysis container is not a submodule but include its readme file.
+    from(project(':lucene:analysis').projectDir) {
+      include "README.txt"
+      into 'analysis'
+    }
+
+    // The documentation.
+    from(configurations.docs, {
+      into 'docs'
+    })
+
+    // Each module's artifacts and their dependencies.
+    moduleArtifactConfigurations.each {
+      def toPath = it.module.path.replaceFirst("^:lucene:", "").replace(':', '/')
+
+      task.from(it.binaryArtifactsConfiguration, {
+        into toPath
+      })
+
+      task.from(it.transitiveDependenciesConfiguration, {
+        into "${toPath}/lib"
+        // Manually exclude the project's main artifact. Don't know if there is any better way to do this.
+        exclude "lucene-*"
+      })
+    }
+  }
+
+  // Assemble distribution archives
+  task assembleBinaryZip(type: Zip) {
+    archiveFileName = packageBaseName + ".zip"
+    destinationDirectory = file(archiveFileName).parentFile
+
+    metadataCharset = "UTF-8"
+    reproducibleFileOrder = true
+  }
+
+  task assembleBinaryTgz(type: Tar) {
+    archiveFileName = packageBaseName + ".tgz"
+    destinationDirectory = file(archiveFileName).parentFile
+
+    reproducibleFileOrder = true
+    compression = Compression.GZIP
+  }
+
+  // Apply the content configuration.
+  [tasks.assembleBinaryZip, tasks.assembleBinaryTgz].each { Task task ->
+    task.configure distributionContent
+  }
+}

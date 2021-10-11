@@ -23,7 +23,8 @@ ext {
 }
 
 
-// Set up a dependency on changes rendered to HTML.
+// Prepare the HTML-rendered "changes" distribution artifact.
+// Just set up a dependency on the documentation-produced artifact.
 configurations {
   changesHtml
 }
@@ -33,7 +34,7 @@ dependencies {
 }
 
 
-// Prepare the "source" distribution artifact.
+// Prepare the "source" distribution artifact. We use raw git export, no additional complexity needed.
 task assembleSourceTgz() {
   // Make sure no unstaged/ dirty files are present.
   dependsOn ":gitStatus", ":checkWorkingCopyClean"
@@ -62,6 +63,11 @@ task assembleSourceTgz() {
 }
 
 
+// Prepare the "binary" distribution artifact.
+apply from: buildscript.sourceFile.toPath().resolveSibling("binary-artifacts.gradle")
+apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
+
+
 // Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
 apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradle")
 
@@ -77,6 +83,12 @@ task assembleRelease(type: Sync) {
   })
 
   from(tasks.assembleSourceTgz, {
+  })
+
+  from(tasks.assembleBinaryZip, {
+  })
+
+  from(tasks.assembleBinaryTgz, {
   })
 
   into releaseDir
