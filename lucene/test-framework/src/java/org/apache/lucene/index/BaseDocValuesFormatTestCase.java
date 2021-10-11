@@ -116,7 +116,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -151,7 +152,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -188,7 +190,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -227,7 +230,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -282,7 +286,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     for (int i = 0; i < numDocs; i++) {
@@ -319,7 +324,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -359,7 +365,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -404,7 +411,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -452,7 +460,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     NumericDocValues dv = ireader.leaves().get(0).reader().getNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -484,7 +493,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     NumericDocValues dv = ireader.leaves().get(0).reader().getNumericDocValues("dv");
     for (int i = 0; i < 2; i++) {
@@ -520,7 +530,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     NumericDocValues dv = ireader.leaves().get(0).reader().getNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -549,7 +560,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     NumericDocValues dv = ireader.leaves().get(0).reader().getNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -577,7 +589,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -619,7 +632,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     for (int i = 0; i < 2; i++) {
@@ -682,7 +696,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
 
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
@@ -723,7 +738,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     SortedDocValues dv = ireader.leaves().get(0).reader().getSortedDocValues("dv");
     BytesRef scratch = newBytesRef();
@@ -758,7 +774,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     SortedDocValues dv = ireader.leaves().get(0).reader().getSortedDocValues("dv");
     assertEquals(2, dv.getValueCount());
@@ -797,7 +814,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     SortedDocValues dv = ireader.leaves().get(0).reader().getSortedDocValues("dv");
     assertEquals(2, dv.getValueCount()); // 2 ords
@@ -866,7 +884,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -891,7 +910,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     SortedDocValues dv = ireader.leaves().get(0).reader().getSortedDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -1007,7 +1027,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     SortedDocValues dv = ireader.leaves().get(0).reader().getSortedDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -1038,7 +1059,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -1066,7 +1088,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -1092,7 +1115,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     SortedDocValues dv = DocValues.getSorted(ireader.leaves().get(0).reader(), "dv");
     assertEquals(0, dv.nextDoc());
@@ -1114,7 +1138,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -1137,7 +1162,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.close();
 
     // Now search the index:
-    IndexReader ireader = DirectoryReader.open(directory); // read-only=true
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     assert ireader.leaves().size() == 1;
     SortedDocValues dv = DocValues.getSorted(ireader.leaves().get(0).reader(), "dv");
     byte[] mybytes = new byte[20];
@@ -1169,7 +1195,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     writer.close();
 
-    DirectoryReader reader = DirectoryReader.open(dir);
+    DirectoryReader reader = maybeWrapWithMergingReader(DirectoryReader.open(dir));
     assertEquals(1, reader.leaves().size());
 
     IndexSearcher searcher = new IndexSearcher(reader);
@@ -1323,7 +1349,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
   // Asserts equality of stored value vs. DocValue by iterating DocValues one at a time
   protected void assertDVIterate(Directory dir) throws IOException {
-    DirectoryReader ir = DirectoryReader.open(dir);
+    DirectoryReader ir = maybeWrapWithMergingReader(DirectoryReader.open(dir));
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
@@ -1390,7 +1416,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // compare
-    DirectoryReader ir = DirectoryReader.open(dir);
+    DirectoryReader ir = maybeWrapWithMergingReader(DirectoryReader.open(dir));
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
@@ -2463,7 +2489,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iw.forceMerge(1);
     iw.close();
 
-    IndexReader ir = DirectoryReader.open(directory);
+    IndexReader ir = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assertEquals(1, ir.leaves().size());
     LeafReader ar = ir.leaves().get(0).reader();
     NumericDocValues dv = ar.getNumericDocValues("dv1");
@@ -2490,7 +2516,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iw.forceMerge(1);
     iw.close();
 
-    IndexReader ir = DirectoryReader.open(directory);
+    IndexReader ir = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assertEquals(1, ir.leaves().size());
     LeafReader ar = ir.leaves().get(0).reader();
     NumericDocValues dv = ar.getNumericDocValues("dv1");
@@ -2521,7 +2547,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iw.forceMerge(1);
     iw.close();
 
-    IndexReader ir = DirectoryReader.open(directory);
+    IndexReader ir = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assertEquals(1, ir.leaves().size());
     LeafReader ar = ir.leaves().get(0).reader();
     NumericDocValues dv = ar.getNumericDocValues("dv1");
@@ -2548,7 +2574,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iw.forceMerge(1);
     iw.close();
 
-    IndexReader ir = DirectoryReader.open(directory);
+    IndexReader ir = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assertEquals(1, ir.leaves().size());
     LeafReader ar = ir.leaves().get(0).reader();
     BinaryDocValues dv = ar.getBinaryDocValues("dv1");
@@ -2575,7 +2601,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iw.forceMerge(1);
     iw.close();
 
-    IndexReader ir = DirectoryReader.open(directory);
+    IndexReader ir = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assertEquals(1, ir.leaves().size());
     LeafReader ar = ir.leaves().get(0).reader();
     BinaryDocValues dv = ar.getBinaryDocValues("dv1");
@@ -2606,7 +2632,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iw.forceMerge(1);
     iw.close();
 
-    IndexReader ir = DirectoryReader.open(directory);
+    IndexReader ir = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assertEquals(1, ir.leaves().size());
     LeafReader ar = ir.leaves().get(0).reader();
     BinaryDocValues dv = ar.getBinaryDocValues("dv1");
@@ -2666,7 +2692,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // compare
-    final DirectoryReader ir = DirectoryReader.open(dir);
+    final DirectoryReader ir = maybeWrapWithMergingReader(DirectoryReader.open(dir));
     int numThreads = TestUtil.nextInt(random(), 2, 7);
     Thread[] threads = new Thread[numThreads];
     final CountDownLatch startingGun = new CountDownLatch(1);
@@ -2782,7 +2808,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // compare
-    final DirectoryReader ir = DirectoryReader.open(dir);
+    final DirectoryReader ir = maybeWrapWithMergingReader(DirectoryReader.open(dir));
     int numThreads = TestUtil.nextInt(random(), 2, 7);
     Thread[] threads = new Thread[numThreads];
     final CountDownLatch startingGun = new CountDownLatch(1);
@@ -2906,7 +2932,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     // now check with threads
     for (int i = 0; i < 10; i++) {
-      final DirectoryReader r = DirectoryReader.open(dir);
+      final DirectoryReader r = maybeWrapWithMergingReader(DirectoryReader.open(dir));
       final CountDownLatch startingGun = new CountDownLatch(1);
       Thread[] threads = new Thread[TestUtil.nextInt(random(), 4, 10)];
       for (int tid = 0; tid < threads.length; tid++) {
@@ -2987,7 +3013,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // Now search the index:
-    IndexReader reader = DirectoryReader.open(directory);
+    IndexReader reader = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assert reader.leaves().size() == 1;
     SortedNumericDocValues dv = reader.leaves().get(0).reader().getSortedNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -3008,7 +3034,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // Now search the index:
-    IndexReader reader = DirectoryReader.open(directory);
+    IndexReader reader = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assert reader.leaves().size() == 1;
     SortedNumericDocValues dv = reader.leaves().get(0).reader().getSortedNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -3058,7 +3084,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // Now search the index:
-    IndexReader reader = DirectoryReader.open(directory);
+    IndexReader reader = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assert reader.leaves().size() == 1;
     SortedNumericDocValues dv = reader.leaves().get(0).reader().getSortedNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -3080,7 +3106,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // Now search the index:
-    IndexReader reader = DirectoryReader.open(directory);
+    IndexReader reader = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assert reader.leaves().size() == 1;
     SortedNumericDocValues dv = reader.leaves().get(0).reader().getSortedNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -3103,7 +3129,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // Now search the index:
-    IndexReader reader = DirectoryReader.open(directory);
+    IndexReader reader = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assert reader.leaves().size() == 1;
     SortedNumericDocValues dv = reader.leaves().get(0).reader().getSortedNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());
@@ -3132,7 +3158,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     writer.close();
 
     // Now search the index:
-    IndexReader reader = DirectoryReader.open(directory);
+    IndexReader reader = maybeWrapWithMergingReader(DirectoryReader.open(directory));
     assert reader.leaves().size() == 1;
     SortedNumericDocValues dv = reader.leaves().get(0).reader().getSortedNumericDocValues("dv");
     assertEquals(0, dv.nextDoc());

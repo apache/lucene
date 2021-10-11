@@ -78,7 +78,7 @@ public class TestDirectPacked extends LuceneTestCase {
   public void testRandom() throws Exception {
     Directory dir = newDirectory();
     for (int bpv = 1; bpv <= 64; bpv++) {
-      doTestBpv(dir, bpv, 0);
+      doTestBpv(dir, bpv, 0, false);
     }
     dir.close();
   }
@@ -87,12 +87,30 @@ public class TestDirectPacked extends LuceneTestCase {
     Directory dir = newDirectory();
     final int offset = TestUtil.nextInt(random(), 1, 100);
     for (int bpv = 1; bpv <= 64; bpv++) {
-      doTestBpv(dir, bpv, offset);
+      doTestBpv(dir, bpv, offset, false);
     }
     dir.close();
   }
 
-  private void doTestBpv(Directory directory, int bpv, long offset) throws Exception {
+  public void testRandomMerge() throws Exception {
+    Directory dir = newDirectory();
+    for (int bpv = 1; bpv <= 64; bpv++) {
+      doTestBpv(dir, bpv, 0, true);
+    }
+    dir.close();
+  }
+
+  public void testRandomMergeWithOffset() throws Exception {
+    Directory dir = newDirectory();
+    final int offset = TestUtil.nextInt(random(), 1, 100);
+    for (int bpv = 1; bpv <= 64; bpv++) {
+      doTestBpv(dir, bpv, offset, true);
+    }
+    dir.close();
+  }
+
+  private void doTestBpv(Directory directory, int bpv, long offset, boolean merge)
+      throws Exception {
     MyRandom random = new MyRandom(random().nextLong());
     int numIters = TEST_NIGHTLY ? 100 : 10;
     for (int i = 0; i < numIters; i++) {
@@ -110,9 +128,16 @@ public class TestDirectPacked extends LuceneTestCase {
       writer.finish();
       output.close();
       IndexInput input = directory.openInput(name, IOContext.DEFAULT);
-      LongValues reader =
-          DirectReader.getInstance(
-              input.randomAccessSlice(0, input.length()), bitsRequired, offset);
+      LongValues reader;
+      if (merge) {
+        reader =
+            DirectReader.getMergeInstance(
+                input.randomAccessSlice(0, input.length()), bitsRequired, offset, original.length);
+      } else {
+        reader =
+            DirectReader.getInstance(
+                input.randomAccessSlice(0, input.length()), bitsRequired, offset);
+      }
       for (int j = 0; j < original.length; j++) {
         assertEquals("bpv=" + bpv, original[j], reader.get(j));
       }
