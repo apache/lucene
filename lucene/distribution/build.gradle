@@ -106,7 +106,7 @@ tasks.matching {it.name in [
     "assembleBinaryTgz",
     "assembleRelease",
 ]}.all {
-  group "publishing"
+  group "distribution"
 }
 
 
