@@ -65,7 +65,7 @@ task assembleRelease(type: Sync) {
   from tasks.assembleBinaryZip
   from tasks.assembleBinaryTgz
 
-  // Sign the artifacts conditionally.
+  // Conditionally, attach signatures of all the release archives.
   if (propertyOrDefault("sign", null) != null) {
     from tasks.signReleaseArchives
   }
