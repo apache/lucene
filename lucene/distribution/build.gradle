@@ -37,7 +37,7 @@ apply from: buildscript.sourceFile.toPath().resolveSibling("binary-artifacts.gra
 apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
 
 // Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
-apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradle")
+apply from: buildscript.sourceFile.toPath().resolveSibling("collect-maven-artifacts.gradle")
 
 // Configure artifact signing.
 apply from: buildscript.sourceFile.toPath().resolveSibling("artifact-signing.gradle")
