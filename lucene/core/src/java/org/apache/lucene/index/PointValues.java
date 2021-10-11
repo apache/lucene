@@ -248,15 +248,9 @@ public abstract class PointValues implements PointValuesReader {
     void visit(int docID, byte[] packedValue) throws IOException;
 
     /**
-     * Called for non-leaf cells to test how the cell relates to the query, to determine how to
-     * further recurse down the tree.
-     */
-    Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
-
-    /**
-     * Similar to {@link #visit(int, byte[])} but in this case the packedValue can have more than
-     * one docID associated to it. The provided iterator should not escape the scope of this method
-     * so that implementations of PointValues are free to reuse it,
+     * Similar to {@link IntersectVisitor#visit(int, byte[])} but in this case the packedValue can
+     * have more than one docID associated to it. The provided iterator should not escape the scope
+     * of this method so that implementations of PointValues are free to reuse it,
      */
     default void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
       int docID;
@@ -264,6 +258,12 @@ public abstract class PointValues implements PointValuesReader {
         visit(docID, packedValue);
       }
     }
+
+    /**
+     * Called for non-leaf cells to test how the cell relates to the query, to determine how to
+     * further recurse down the tree.
+     */
+    Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
 
     /** Notifies the caller that this many documents are about to be visited */
     default void grow(int count) {}
