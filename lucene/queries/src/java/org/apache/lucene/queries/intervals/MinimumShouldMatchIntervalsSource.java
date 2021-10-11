@@ -66,26 +66,21 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
   public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
       throws IOException {
     Map<IntervalIterator, CachingMatchesIterator> lookup = new IdentityHashMap<>();
-    List<CachingMatchesIterator> cachingIterators = new ArrayList<>();
     for (IntervalsSource source : sources) {
       IntervalMatchesIterator mi = source.matches(field, ctx, doc);
       if (mi != null) {
         CachingMatchesIterator cmi = new CachingMatchesIterator(mi);
         lookup.put(IntervalMatches.wrapMatches(cmi, doc), cmi);
-        cachingIterators.add(cmi);
       }
     }
     if (lookup.size() < minShouldMatch) {
       return null;
     }
-    MatchCallback onMatch =
-        () -> {
-          for (CachingMatchesIterator cmi : cachingIterators) {
-            cmi.cache();
-          }
-        };
     MinimumShouldMatchIntervalIterator it =
-        new MinimumShouldMatchIntervalIterator(lookup.keySet(), minShouldMatch, onMatch);
+        new MinimumShouldMatchIntervalIterator(
+            lookup.keySet(),
+            minShouldMatch,
+            MinimizingConjunctionIntervalsSource.cacheIterators(lookup.values()));
     if (it.advance(doc) != doc) {
       return null;
     }
@@ -167,13 +162,15 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     private final float matchCost;
     private final int minShouldMatch;
     private final Collection<IntervalIterator> currentIterators = new ArrayList<>();
-    private final MatchCallback onMatch;
+    private final MinimizingConjunctionIntervalsSource.MatchCallback onMatch;
 
     private int start, end, queueEnd, slop;
     private IntervalIterator lead;
 
     MinimumShouldMatchIntervalIterator(
-        Collection<IntervalIterator> subs, int minShouldMatch, MatchCallback onMatch) {
+        Collection<IntervalIterator> subs,
+        int minShouldMatch,
+        MinimizingConjunctionIntervalsSource.MatchCallback onMatch) {
       this.disiQueue = new DisiPriorityQueue(subs.size());
       float mc = 0;
       for (IntervalIterator it : subs) {

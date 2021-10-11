@@ -19,6 +19,7 @@ package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
@@ -62,18 +63,12 @@ abstract class MinimizingConjunctionIntervalsSource extends IntervalsSource {
       }
       subs.add(new CachingMatchesIterator(mi));
     }
-    MatchCallback onMatch =
-        () -> {
-          for (CachingMatchesIterator it : subs) {
-            it.cache();
-          }
-        };
     IntervalIterator it =
         combine(
             subs.stream()
                 .map(m -> IntervalMatches.wrapMatches(m, doc))
                 .collect(Collectors.toList()),
-            onMatch);
+            cacheIterators(subs));
     if (it.advance(doc) != doc) {
       return null;
     }
@@ -90,5 +85,21 @@ abstract class MinimizingConjunctionIntervalsSource extends IntervalsSource {
     for (IntervalsSource source : subSources) {
       source.visit(field, v);
     }
+  }
+
+  interface MatchCallback {
+
+    /** Called when the parent iterator has found a match */
+    void onMatch() throws IOException;
+
+    MatchCallback NO_OP = () -> {};
+  }
+
+  static MatchCallback cacheIterators(Collection<CachingMatchesIterator> its) {
+    return () -> {
+      for (CachingMatchesIterator it : its) {
+        it.cache();
+      }
+    };
   }
 }
