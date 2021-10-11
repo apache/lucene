@@ -22,9 +22,17 @@ ext {
   releaseDir = file("${buildDir}/release")
 }
 
+// Prepare the "source" distribution artifact.
+apply from: buildscript.sourceFile.toPath().resolveSibling("source-release.gradle")
 
-// Prepare the HTML-rendered "changes" distribution artifact.
-// Just set up a dependency on the documentation-produced artifact.
+// Prepare the "binary" distribution artifact.
+apply from: buildscript.sourceFile.toPath().resolveSibling("binary-artifacts.gradle")
+apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
+
+// Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
+apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradle")
+
+// Set up the HTML-rendered "changes" distribution artifact by linking to documentation's output.
 configurations {
   changesHtml
 }
@@ -32,46 +40,6 @@ configurations {
 dependencies {
   changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
 }
-
-
-// Prepare the "source" distribution artifact. We use raw git export, no additional complexity needed.
-task assembleSourceTgz() {
-  description "Assemble source Lucene artifact as a .tgz file."
-
-  // Make sure no unstaged/ dirty files are present.
-  dependsOn ":gitStatus", ":checkWorkingCopyClean"
-
-  ext {
-    destination = file("${buildDir}/packages/lucene-${version}-src.tgz")
-  }
-
-  inputs.property("git-revision", { -> rootProject.ext.gitRev } )
-  outputs.file destination
-
-  doFirst {
-    quietExec {
-      executable = project.externalTool("git")
-      workingDir = project.rootDir
-
-      args += [
-          "archive",
-          "--format", "tgz",
-          "--prefix", "lucene-${version}/",
-          "--output", destination,
-          "HEAD"
-      ]
-    }
-  }
-}
-
-
-// Prepare the "binary" distribution artifact.
-apply from: buildscript.sourceFile.toPath().resolveSibling("binary-artifacts.gradle")
-apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
-
-
-// Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
-apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradle")
 
 
 // Assemble everything needed in the release folder structure.
@@ -108,7 +76,3 @@ tasks.matching {it.name in [
 ]}.all {
   group "distribution"
 }
-
-
-// Hook into convention tasks.
-assemble.dependsOn assembleRelease
