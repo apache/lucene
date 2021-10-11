@@ -111,7 +111,7 @@ public class TestBKD extends LuceneTestCase {
                 }
 
                 if (max < queryMin || min > queryMax) {
-                  return PointValues.Relation.CELL_OUTSIDE_QUERY;
+                  return Relation.CELL_OUTSIDE_QUERY;
                 } else if (min >= queryMin && max <= queryMax) {
                   return Relation.CELL_INSIDE_QUERY;
                 } else {
@@ -249,16 +249,16 @@ public class TestBKD extends LuceneTestCase {
                     assert max >= min;
 
                     if (max < queryMin[dim] || min > queryMax[dim]) {
-                      return PointValues.Relation.CELL_OUTSIDE_QUERY;
+                      return Relation.CELL_OUTSIDE_QUERY;
                     } else if (min < queryMin[dim] || max > queryMax[dim]) {
                       crosses = true;
                     }
                   }
 
                   if (crosses) {
-                    return PointValues.Relation.CELL_CROSSES_QUERY;
+                    return Relation.CELL_CROSSES_QUERY;
                   } else {
-                    return PointValues.Relation.CELL_INSIDE_QUERY;
+                    return Relation.CELL_INSIDE_QUERY;
                   }
                 }
               });
@@ -387,7 +387,7 @@ public class TestBKD extends LuceneTestCase {
                     assert max.compareTo(min) >= 0;
 
                     if (max.compareTo(queryMin[dim]) < 0 || min.compareTo(queryMax[dim]) > 0) {
-                      return PointValues.Relation.CELL_OUTSIDE_QUERY;
+                      return Relation.CELL_OUTSIDE_QUERY;
                     } else if (min.compareTo(queryMin[dim]) < 0
                         || max.compareTo(queryMax[dim]) > 0) {
                       crosses = true;
@@ -395,9 +395,9 @@ public class TestBKD extends LuceneTestCase {
                   }
 
                   if (crosses) {
-                    return PointValues.Relation.CELL_CROSSES_QUERY;
+                    return Relation.CELL_CROSSES_QUERY;
                   } else {
-                    return PointValues.Relation.CELL_INSIDE_QUERY;
+                    return Relation.CELL_INSIDE_QUERY;
                   }
                 }
               });
@@ -1054,7 +1054,7 @@ public class TestBKD extends LuceneTestCase {
                               0,
                               numBytesPerDim)
                           > 0) {
-                    return PointValues.Relation.CELL_OUTSIDE_QUERY;
+                    return Relation.CELL_OUTSIDE_QUERY;
                   } else if (Arrays.compareUnsigned(
                               minPacked,
                               dim * numBytesPerDim,
@@ -1076,9 +1076,9 @@ public class TestBKD extends LuceneTestCase {
                 }
 
                 if (crosses) {
-                  return PointValues.Relation.CELL_CROSSES_QUERY;
+                  return Relation.CELL_CROSSES_QUERY;
                 } else {
-                  return PointValues.Relation.CELL_INSIDE_QUERY;
+                  return Relation.CELL_INSIDE_QUERY;
                 }
               }
             });
@@ -1310,7 +1310,7 @@ public class TestBKD extends LuceneTestCase {
 
             @Override
             public Relation compare(byte[] minPacked, byte[] maxPacked) {
-              return PointValues.Relation.CELL_CROSSES_QUERY;
+              return Relation.CELL_CROSSES_QUERY;
             }
           });
       in.close();
@@ -1392,7 +1392,7 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-            return PointValues.Relation.CELL_CROSSES_QUERY;
+            return Relation.CELL_CROSSES_QUERY;
           }
         });
 
@@ -1438,9 +1438,9 @@ public class TestBKD extends LuceneTestCase {
             @Override
             public Relation compare(byte[] minPacked, byte[] maxPacked) {
               if (random().nextInt(7) == 1) {
-                return PointValues.Relation.CELL_CROSSES_QUERY;
+                return Relation.CELL_CROSSES_QUERY;
               } else {
-                return PointValues.Relation.CELL_INSIDE_QUERY;
+                return Relation.CELL_INSIDE_QUERY;
               }
             }
           });
@@ -1508,9 +1508,9 @@ public class TestBKD extends LuceneTestCase {
             assert minPacked.length == numIndexDims * bytesPerDim;
             assert maxPacked.length == numIndexDims * bytesPerDim;
             if (random().nextInt(7) == 1) {
-              return PointValues.Relation.CELL_CROSSES_QUERY;
+              return Relation.CELL_CROSSES_QUERY;
             } else {
-              return PointValues.Relation.CELL_INSIDE_QUERY;
+              return Relation.CELL_INSIDE_QUERY;
             }
           }
         });
@@ -1575,7 +1575,7 @@ public class TestBKD extends LuceneTestCase {
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                return PointValues.Relation.CELL_INSIDE_QUERY;
+                return Relation.CELL_INSIDE_QUERY;
               }
             }));
 
@@ -1592,7 +1592,7 @@ public class TestBKD extends LuceneTestCase {
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                return PointValues.Relation.CELL_OUTSIDE_QUERY;
+                return Relation.CELL_OUTSIDE_QUERY;
               }
             }));
 
@@ -1615,9 +1615,9 @@ public class TestBKD extends LuceneTestCase {
                     || Arrays.compareUnsigned(
                             uniquePointValue, 0, numBytesPerDim, minPackedValue, 0, numBytesPerDim)
                         < 0) {
-                  return PointValues.Relation.CELL_OUTSIDE_QUERY;
+                  return Relation.CELL_OUTSIDE_QUERY;
                 }
-                return PointValues.Relation.CELL_CROSSES_QUERY;
+                return Relation.CELL_CROSSES_QUERY;
               }
             });
     assertTrue(
