@@ -37,7 +37,7 @@ public final class DecimalDigitFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
-      char buffer[] = termAtt.buffer();
+      char[] buffer = termAtt.buffer();
       int length = termAtt.length();
 
       for (int i = 0; i < length; i++) {

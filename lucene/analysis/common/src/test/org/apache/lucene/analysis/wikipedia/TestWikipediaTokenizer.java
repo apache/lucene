@@ -413,7 +413,7 @@ public class TestWikipediaTokenizer extends BaseTokenStreamTestCase {
     // now check the flags, TODO: add way to check flags from BaseTokenStreamTestCase?
     tf = new WikipediaTokenizer(newAttributeFactory(), WikipediaTokenizer.BOTH, untoks);
     tf.setReader(new StringReader(test));
-    int expectedFlags[] =
+    int[] expectedFlags =
         new int[] {
           UNTOKENIZED_TOKEN_FLAG,
           0,

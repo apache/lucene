@@ -264,7 +264,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
 
   private static class ScorerSummarizingCollector implements Collector {
     private final List<String> summaries = new ArrayList<>();
-    private int numHits[] = new int[1];
+    private int[] numHits = new int[1];
 
     public int getNumHits() {
       return numHits[0];

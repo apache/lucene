@@ -53,7 +53,7 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
       out.close();
       IndexInput in = dir.openInput("test", IOContext.DEFAULT);
       IndexInput clone = in.clone();
-      final byte accum[] = new byte[32 * 1024 * 1024];
+      final byte[] accum = new byte[32 * 1024 * 1024];
       final CountDownLatch shotgun = new CountDownLatch(1);
       Thread t1 =
           new Thread(

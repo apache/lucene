@@ -42,6 +42,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
@@ -83,12 +84,12 @@ final class LatLonPointDistanceQuery extends Query {
     Rectangle box = Rectangle.fromPointDistance(latitude, longitude, radiusMeters);
     // create bounding box(es) for the distance range
     // these are pre-encoded with LatLonPoint's encoding
-    final byte minLat[] = new byte[Integer.BYTES];
-    final byte maxLat[] = new byte[Integer.BYTES];
-    final byte minLon[] = new byte[Integer.BYTES];
-    final byte maxLon[] = new byte[Integer.BYTES];
+    final byte[] minLat = new byte[Integer.BYTES];
+    final byte[] maxLat = new byte[Integer.BYTES];
+    final byte[] minLon = new byte[Integer.BYTES];
+    final byte[] maxLon = new byte[Integer.BYTES];
     // second set of longitude ranges to check (for cross-dateline case)
-    final byte minLon2[] = new byte[Integer.BYTES];
+    final byte[] minLon2 = new byte[Integer.BYTES];
 
     NumericUtils.intToSortableBytes(encodeLatitude(box.minLat), minLat, 0);
     NumericUtils.intToSortableBytes(encodeLatitude(box.maxLat), maxLat, 0);
@@ -187,37 +188,15 @@ final class LatLonPointDistanceQuery extends Query {
 
       private boolean matches(byte[] packedValue) {
         // bounding box check
-        if (Arrays.compareUnsigned(packedValue, 0, Integer.BYTES, maxLat, 0, Integer.BYTES) > 0
-            || Arrays.compareUnsigned(packedValue, 0, Integer.BYTES, minLat, 0, Integer.BYTES)
-                < 0) {
+        if (ArrayUtil.compareUnsigned4(packedValue, 0, maxLat, 0) > 0
+            || ArrayUtil.compareUnsigned4(packedValue, 0, minLat, 0) < 0) {
           // latitude out of bounding box range
           return false;
         }
 
-        if ((Arrays.compareUnsigned(
-                        packedValue,
-                        Integer.BYTES,
-                        Integer.BYTES + Integer.BYTES,
-                        maxLon,
-                        0,
-                        Integer.BYTES)
-                    > 0
-                || Arrays.compareUnsigned(
-                        packedValue,
-                        Integer.BYTES,
-                        Integer.BYTES + Integer.BYTES,
-                        minLon,
-                        0,
-                        Integer.BYTES)
-                    < 0)
-            && Arrays.compareUnsigned(
-                    packedValue,
-                    Integer.BYTES,
-                    Integer.BYTES + Integer.BYTES,
-                    minLon2,
-                    0,
-                    Integer.BYTES)
-                < 0) {
+        if ((ArrayUtil.compareUnsigned4(packedValue, Integer.BYTES, maxLon, 0) > 0
+                || ArrayUtil.compareUnsigned4(packedValue, Integer.BYTES, minLon, 0) < 0)
+            && ArrayUtil.compareUnsigned4(packedValue, Integer.BYTES, minLon2, 0) < 0) {
           // longitude out of bounding box range
           return false;
         }
@@ -245,30 +224,9 @@ final class LatLonPointDistanceQuery extends Query {
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        if ((Arrays.compareUnsigned(
-                        minPackedValue,
-                        Integer.BYTES,
-                        Integer.BYTES + Integer.BYTES,
-                        maxLon,
-                        0,
-                        Integer.BYTES)
-                    > 0
-                || Arrays.compareUnsigned(
-                        maxPackedValue,
-                        Integer.BYTES,
-                        Integer.BYTES + Integer.BYTES,
-                        minLon,
-                        0,
-                        Integer.BYTES)
-                    < 0)
-            && Arrays.compareUnsigned(
-                    maxPackedValue,
-                    Integer.BYTES,
-                    Integer.BYTES + Integer.BYTES,
-                    minLon2,
-                    0,
-                    Integer.BYTES)
-                < 0) {
+        if ((ArrayUtil.compareUnsigned4(minPackedValue, Integer.BYTES, maxLon, 0) > 0
+                || ArrayUtil.compareUnsigned4(maxPackedValue, Integer.BYTES, minLon, 0) < 0)
+            && ArrayUtil.compareUnsigned4(maxPackedValue, Integer.BYTES, minLon2, 0) < 0) {
           // longitude out of bounding box range
           return Relation.CELL_OUTSIDE_QUERY;
         }

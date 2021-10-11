@@ -14,20 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
 
-import java.io.IOException;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-
-/** Index API to access TermVectors */
-public abstract class TermVectors {
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  protected TermVectors() {}
-
-  /**
-   * Returns term vectors for this document, or null if term vectors were not indexed. If offsets
-   * are available they are in an {@link OffsetAttribute} available from the {@link
-   * org.apache.lucene.index.PostingsEnum}.
-   */
-  public abstract Fields get(int doc) throws IOException;
-}
+/** Analyzer for Tamil. */
+package org.apache.lucene.analysis.ta;

@@ -139,7 +139,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
             return DocValues.singleton(valuesProducer.getNumeric(field));
           }
-        });
+        },
+        false);
   }
 
   private static class MinMaxTracker {
@@ -163,6 +164,13 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       ++numValues;
     }
 
+    /** Accumulate state from another tracker. */
+    void update(MinMaxTracker other) {
+      min = Math.min(min, other.min);
+      max = Math.max(max, other.max);
+      numValues += other.numValues;
+    }
+
     /** Update the required space. */
     void finish() {
       if (max > min) {
@@ -177,13 +185,21 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
-  private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer) throws IOException {
+  private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
+      throws IOException {
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
+    final long firstValue;
+    if (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      firstValue = values.nextValue();
+    } else {
+      firstValue = 0L;
+    }
+    values = valuesProducer.getSortedNumeric(field);
     int numDocsWithValue = 0;
     MinMaxTracker minMax = new MinMaxTracker();
     MinMaxTracker blockMinMax = new MinMaxTracker();
     long gcd = 0;
-    Set<Long> uniqueValues = new HashSet<>();
+    Set<Long> uniqueValues = ords ? null : new HashSet<>();
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       for (int i = 0, count = values.docValueCount(); i < count; ++i) {
         long v = values.nextValue();
@@ -194,14 +210,14 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             // wrong results. Since these extreme values are unlikely, we just discard
             // GCD computation for them
             gcd = 1;
-          } else if (minMax.numValues != 0) { // minValue needs to be set first
-            gcd = MathUtil.gcd(gcd, v - minMax.min);
+          } else {
+            gcd = MathUtil.gcd(gcd, v - firstValue);
           }
         }
 
-        minMax.update(v);
         blockMinMax.update(v);
         if (blockMinMax.numValues == NUMERIC_BLOCK_SIZE) {
+          minMax.update(blockMinMax);
           blockMinMax.nextBlock();
         }
 
@@ -213,8 +229,20 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       numDocsWithValue++;
     }
 
+    minMax.update(blockMinMax);
     minMax.finish();
     blockMinMax.finish();
+
+    if (ords && minMax.numValues > 0) {
+      if (minMax.min != 0) {
+        throw new IllegalStateException(
+            "The min value for ordinals should always be 0, got " + minMax.min);
+      }
+      if (minMax.max != 0 && gcd != 1) {
+        throw new IllegalStateException(
+            "GCD compression should never be used on ordinals, found gcd=" + gcd);
+      }
+    }
 
     final long numValues = minMax.numValues;
     long min = minMax.min;
@@ -508,7 +536,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
                 };
             return DocValues.singleton(sortedOrds);
           }
-        });
+        },
+        true);
     addTermsDict(DocValues.singleton(valuesProducer.getSorted(field)));
   }
 
@@ -669,7 +698,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private void doAddSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
-    long[] stats = writeValues(field, valuesProducer);
+    long[] stats = writeValues(field, valuesProducer, false);
     int numDocsWithField = Math.toIntExact(stats[0]);
     long numValues = stats[1];
     assert numValues >= numDocsWithField;
@@ -697,25 +726,29 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
+  private static boolean isSingleValued(SortedSetDocValues values) throws IOException {
+    if (DocValues.unwrapSingleton(values) != null) {
+      return true;
+    }
+
+    assert values.docID() == -1;
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      final long firstOrd = values.nextOrd();
+      assert firstOrd != SortedSetDocValues.NO_MORE_ORDS;
+      if (values.nextOrd() != SortedSetDocValues.NO_MORE_ORDS) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public void addSortedSetField(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeByte(Lucene90DocValuesFormat.SORTED_SET);
 
-    SortedSetDocValues values = valuesProducer.getSortedSet(field);
-    int numDocsWithField = 0;
-    long numOrds = 0;
-    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      numDocsWithField++;
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
-        numOrds++;
-      }
-    }
-
-    if (numDocsWithField == numOrds) {
+    if (isSingleValued(valuesProducer.getSortedSet(field))) {
       meta.writeByte((byte) 0); // multiValued (0 = singleValued)
       doAddSortedField(
           field,
@@ -790,6 +823,6 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           }
         });
 
-    addTermsDict(values);
+    addTermsDict(valuesProducer.getSortedSet(field));
   }
 }

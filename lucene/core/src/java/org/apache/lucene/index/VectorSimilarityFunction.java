@@ -16,8 +16,7 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.VectorUtil.dotProduct;
-import static org.apache.lucene.util.VectorUtil.squareDistance;
+import static org.apache.lucene.util.VectorUtil.*;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
@@ -32,13 +31,41 @@ public enum VectorSimilarityFunction {
     public float compare(float[] v1, float[] v2) {
       return squareDistance(v1, v2);
     }
+
+    @Override
+    public float convertToScore(float similarity) {
+      return 1 / (1 + similarity);
+    }
   },
 
-  /** Dot product */
+  /**
+   * Dot product. NOTE: this similarity is intended as an optimized way to perform cosine
+   * similarity. In order to use it, all vectors must be of unit length, including both document and
+   * query vectors. Using dot product with vectors that are not unit length can result in errors or
+   * poor search results.
+   */
   DOT_PRODUCT {
     @Override
     public float compare(float[] v1, float[] v2) {
       return dotProduct(v1, v2);
+    }
+
+    @Override
+    public float convertToScore(float similarity) {
+      return (1 + similarity) / 2;
+    }
+  },
+
+  /** Cosine similarity */
+  COSINE {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      return cosine(v1, v2);
+    }
+
+    @Override
+    public float convertToScore(float similarity) {
+      return (1 + similarity) / 2;
     }
   };
 
@@ -65,4 +92,13 @@ public enum VectorSimilarityFunction {
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(float[] v1, float[] v2);
+
+  /**
+   * Converts similarity scores used (may be negative, reversed, etc) into document scores, which
+   * must be positive, with higher scores representing better matches.
+   *
+   * @param similarity the raw internal score as returned by {@link #compare(float[], float[])}.
+   * @return normalizedSimilarity
+   */
+  public abstract float convertToScore(float similarity);
 }

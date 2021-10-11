@@ -431,4 +431,54 @@ public class TestArrayUtil extends LuceneTestCase {
     assertEquals(0, copyOfSubArray(objectArray, 1, 1).length);
     expectThrows(IndexOutOfBoundsException.class, () -> copyOfSubArray(objectArray, 2, 5));
   }
+
+  public void testCompareUnsigned4() {
+    int aOffset = TestUtil.nextInt(random(), 0, 3);
+    byte[] a = new byte[Integer.BYTES + aOffset];
+    int bOffset = TestUtil.nextInt(random(), 0, 3);
+    byte[] b = new byte[Integer.BYTES + bOffset];
+
+    for (int i = 0; i < Integer.BYTES; ++i) {
+      a[aOffset + i] = (byte) random().nextInt(1 << 8);
+      do {
+        b[bOffset + i] = (byte) random().nextInt(1 << 8);
+      } while (b[bOffset + i] == a[aOffset + i]);
+    }
+
+    for (int i = 0; i < Integer.BYTES; ++i) {
+      int expected =
+          Arrays.compareUnsigned(
+              a, aOffset, aOffset + Integer.BYTES, b, bOffset, bOffset + Integer.BYTES);
+      int actual = ArrayUtil.compareUnsigned4(a, aOffset, b, bOffset);
+      assertEquals(Integer.signum(expected), Integer.signum(actual));
+      b[bOffset + i] = a[aOffset + i];
+    }
+
+    assertEquals(0, ArrayUtil.compareUnsigned4(a, aOffset, b, bOffset));
+  }
+
+  public void testCompareUnsigned8() {
+    int aOffset = TestUtil.nextInt(random(), 0, 7);
+    byte[] a = new byte[Long.BYTES + aOffset];
+    int bOffset = TestUtil.nextInt(random(), 0, 7);
+    byte[] b = new byte[Long.BYTES + bOffset];
+
+    for (int i = 0; i < Long.BYTES; ++i) {
+      a[aOffset + i] = (byte) random().nextInt(1 << 8);
+      do {
+        b[bOffset + i] = (byte) random().nextInt(1 << 8);
+      } while (b[bOffset + i] == a[aOffset + i]);
+    }
+
+    for (int i = 0; i < Long.BYTES; ++i) {
+      int expected =
+          Arrays.compareUnsigned(
+              a, aOffset, aOffset + Long.BYTES, b, bOffset, bOffset + Long.BYTES);
+      int actual = ArrayUtil.compareUnsigned8(a, aOffset, b, bOffset);
+      assertEquals(Integer.signum(expected), Integer.signum(actual));
+      b[bOffset + i] = a[aOffset + i];
+    }
+
+    assertEquals(0, ArrayUtil.compareUnsigned8(a, aOffset, b, bOffset));
+  }
 }

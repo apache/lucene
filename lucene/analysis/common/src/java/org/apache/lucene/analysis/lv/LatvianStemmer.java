@@ -34,7 +34,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 public class LatvianStemmer {
   /** Stem a latvian word. returns the new adjusted length. */
-  public int stem(char s[], int len) {
+  public int stem(char[] s, int len) {
     int numVowels = numVowels(s, len);
 
     for (int i = 0; i < affixes.length; i++) {
@@ -48,7 +48,7 @@ public class LatvianStemmer {
     return len;
   }
 
-  static final Affix affixes[] = {
+  static final Affix[] affixes = {
     new Affix("ajiem", 3, false), new Affix("ajai", 3, false),
     new Affix("ajam", 2, false), new Affix("ajām", 2, false),
     new Affix("ajos", 2, false), new Affix("ajās", 2, false),
@@ -71,7 +71,7 @@ public class LatvianStemmer {
   };
 
   static class Affix {
-    char affix[]; // suffix
+    char[] affix; // suffix
     int vc; // vowel count of the suffix
     boolean palatalizes; // true if we should fire palatalization rules.
 
@@ -92,7 +92,7 @@ public class LatvianStemmer {
    *   <li>z -&gt; ž
    * </ul>
    */
-  private int unpalatalize(char s[], int len) {
+  private int unpalatalize(char[] s, int len) {
     // we check the character removed: if it's -u then
     // it's 2,5, or 6 gen pl., and these two can only apply then.
     if (s[len] == 'u') {
@@ -160,7 +160,7 @@ public class LatvianStemmer {
    * Count the vowels in the string, we always require at least one in the remaining stem to accept
    * it.
    */
-  private int numVowels(char s[], int len) {
+  private int numVowels(char[] s, int len) {
     int n = 0;
     for (int i = 0; i < len; i++) {
       switch (s[i]) {

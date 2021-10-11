@@ -112,7 +112,7 @@ public class TestPhoneticFilter extends BaseTokenStreamTestCase {
 
   /** blast some random strings through the analyzer */
   public void testRandomStrings() throws IOException {
-    Encoder encoders[] =
+    Encoder[] encoders =
         new Encoder[] {
           new Metaphone(),
           new DoubleMetaphone(),
@@ -149,7 +149,7 @@ public class TestPhoneticFilter extends BaseTokenStreamTestCase {
   }
 
   public void testEmptyTerm() throws IOException {
-    Encoder encoders[] =
+    Encoder[] encoders =
         new Encoder[] {
           new Metaphone(),
           new DoubleMetaphone(),

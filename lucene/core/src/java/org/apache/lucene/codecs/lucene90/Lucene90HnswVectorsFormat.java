@@ -110,7 +110,7 @@ public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
   static final int VERSION_CURRENT = VERSION_START;
 
   public static final int DEFAULT_MAX_CONN = 16;
-  public static final int DEFAULT_BEAM_WIDTH = 16;
+  public static final int DEFAULT_BEAM_WIDTH = 100;
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to

@@ -117,9 +117,7 @@ def prepare(root, version, gpgKeyID, gpgPassword):
   print('  prepare-release')
   cmd = './gradlew -Dversion.release=%s clean assembleDist' % version
   if gpgKeyID is not None:
-    # TODO sign
-    # cmd += ' -Psigning.keyId=%s publishSignedPublicationToMavenLocal' % gpgKeyID
-    pass
+    cmd += ' -Psigning.gnupg.keyName=%s signDist' % gpgKeyID
   cmd += ' mavenToLocalFolder'
 
   if gpgPassword is not None:
@@ -135,9 +133,9 @@ reVersion1 = re.compile(r'\>(\d+)\.(\d+)\.(\d+)(-alpha|-beta)?/\<', re.IGNORECAS
 reVersion2 = re.compile(r'-(\d+)\.(\d+)\.(\d+)(-alpha|-beta)?\.zip<', re.IGNORECASE)
 reDoapRevision = re.compile(r'(\d+)\.(\d+)(?:\.(\d+))?(-alpha|-beta)?', re.IGNORECASE)
 def checkDOAPfiles(version):
-  # In Lucene and Solr DOAP files, verify presence of all releases less than the one being produced.
+  # In Lucene DOAP file, verify presence of all releases less than the one being produced.
   errorMessages = []
-  for product in 'lucene', 'solr':
+  for product in ['lucene']:
     url = 'https://archive.apache.org/dist/lucene/%s' % ('java' if product == 'lucene' else product)
     distpage = load(url)
     releases = set()
@@ -186,9 +184,8 @@ def pushLocal(version, root, rev, rcNum, localDir):
   print('Push local [%s]...' % localDir)
   os.makedirs(localDir)
 
-  dir = 'lucene-solr-%s-RC%d-rev%s' % (version, rcNum, rev)
+  dir = 'lucene-%s-RC%d-rev%s' % (version, rcNum, rev)
   os.makedirs('%s/%s/lucene' % (localDir, dir))
-  os.makedirs('%s/%s/solr' % (localDir, dir))
   print('  Lucene')
   lucene_dist_dir = '%s/lucene/packaging/build/distributions' % root
   os.chdir(lucene_dist_dir)
@@ -201,21 +198,9 @@ def pushLocal(version, root, rev, rcNum, localDir):
   print('    unzip...')
   run('tar xjf "%s/lucene.tar.bz2"' % lucene_dist_dir)
   os.remove('%s/lucene.tar.bz2' % lucene_dist_dir)
-
-  print('  Solr')
-  solr_dist_dir = '%s/solr/packaging/build/distributions' % root
-  os.chdir(solr_dist_dir)
-  print('    zip...')
-  if os.path.exists('solr.tar.bz2'):
-    os.remove('solr.tar.bz2')
-  run('tar cjf solr.tar.bz2 *')
-  print('    unzip...')
-  os.chdir('%s/%s/solr' % (localDir, dir))
-  run('tar xjf "%s/solr.tar.bz2"' % solr_dist_dir)
-  os.remove('%s/solr.tar.bz2' % solr_dist_dir)
+  os.chdir('..')
 
   print('  chmod...')
-  os.chdir('..')
   run('chmod -R a+rX-w .')
 
   print('  done!')
@@ -243,7 +228,7 @@ def parse_config():
   parser.add_argument('--rc-num', metavar='NUM', type=int, default=1,
                       help='Release Candidate number.  Default: 1')
   parser.add_argument('--root', metavar='PATH', default='.',
-                      help='Root of Git working tree for lucene-solr.  Default: "." (the current directory)')
+                      help='Root of Git working tree for lucene.  Default: "." (the current directory)')
   parser.add_argument('--logfile', metavar='PATH',
                       help='Specify log file path (default /tmp/release.log)')
   config = parser.parse_args()
@@ -261,8 +246,8 @@ def parse_config():
   cwd = os.getcwd()
   os.chdir(config.root)
   config.root = os.getcwd() # Absolutize root dir
-  if os.system('git rev-parse') or 3 != len([d for d in ('dev-tools','lucene','solr') if os.path.isdir(d)]):
-    parser.error('Root path "%s" is not a valid lucene-solr checkout' % config.root)
+  if os.system('git rev-parse') or 2 != len([d for d in ('dev-tools','lucene') if os.path.isdir(d)]):
+    parser.error('Root path "%s" is not a valid lucene checkout' % config.root)
   os.chdir(cwd)
   global LOG
   if config.logfile:

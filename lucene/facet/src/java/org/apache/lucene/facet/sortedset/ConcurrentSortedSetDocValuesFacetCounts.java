@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import org.apache.lucene.facet.FacetResult;
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
@@ -49,6 +50,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
@@ -162,6 +164,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
     public CountOneSegment(
         LeafReader leafReader, MatchingDocs hits, OrdinalMap ordinalMap, int segOrd) {
+      assert leafReader != null;
       this.leafReader = leafReader;
       this.hits = hits;
       this.ordinalMap = ordinalMap;
@@ -193,7 +196,11 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
       DocIdSetIterator it;
       if (hits == null) {
         // count all
-        it = valuesIt;
+        // Initializing liveDocs bits in the constructor leads to a situation where liveDocs bits
+        // get initialized in the calling thread but get used in a different thread leading to an
+        // AssertionError. See LUCENE-10134
+        final Bits liveDocs = leafReader.getLiveDocs();
+        it = (liveDocs != null) ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
       } else {
         it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
       }

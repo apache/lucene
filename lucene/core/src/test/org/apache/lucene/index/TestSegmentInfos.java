@@ -64,7 +64,7 @@ public class TestSegmentInfos extends LuceneTestCase {
   public void testVersionsOneSegment() throws IOException {
     BaseDirectoryWrapper dir = newDirectory();
     dir.setCheckIndexOnClose(false);
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     Codec codec = Codec.getDefault();
 
     SegmentInfos sis = new SegmentInfos(Version.LATEST.major);
@@ -98,7 +98,7 @@ public class TestSegmentInfos extends LuceneTestCase {
   public void testVersionsTwoSegments() throws IOException {
     BaseDirectoryWrapper dir = newDirectory();
     dir.setCheckIndexOnClose(false);
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     Codec codec = Codec.getDefault();
 
     SegmentInfos sis = new SegmentInfos(Version.LATEST.major);
@@ -266,7 +266,7 @@ public class TestSegmentInfos extends LuceneTestCase {
   public void testIDChangesOnAdvance() throws IOException {
     try (BaseDirectoryWrapper dir = newDirectory()) {
       dir.setCheckIndexOnClose(false);
-      byte id[] = StringHelper.randomId();
+      byte[] id = StringHelper.randomId();
       SegmentInfo info =
           new SegmentInfo(
               dir,
@@ -309,7 +309,7 @@ public class TestSegmentInfos extends LuceneTestCase {
   public void testBitFlippedTriggersCorruptIndexException() throws IOException {
     BaseDirectoryWrapper dir = newDirectory();
     dir.setCheckIndexOnClose(false);
-    byte id[] = StringHelper.randomId();
+    byte[] id = StringHelper.randomId();
     Codec codec = Codec.getDefault();
 
     SegmentInfos sis = new SegmentInfos(Version.LATEST.major);
@@ -391,5 +391,51 @@ public class TestSegmentInfos extends LuceneTestCase {
         () -> SegmentInfos.readLatestCommit(corruptDir));
     dir.close();
     corruptDir.close();
+  }
+
+  /** Test addDiagnostics method */
+  public void testAddDiagnostics() throws Throwable {
+    SegmentInfo si;
+    final Directory dir = newDirectory();
+    Codec codec = Codec.getDefault();
+
+    // diagnostics map
+    Map<String, String> diagnostics = Map.of("key1", "value1", "key2", "value2");
+
+    // adds an additional key/value pair
+    si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "TEST",
+            10000,
+            false,
+            codec,
+            diagnostics,
+            StringHelper.randomId(),
+            new HashMap<>(),
+            Sort.INDEXORDER);
+    si.addDiagnostics(Map.of("key3", "value3"));
+    assertEquals(Map.of("key1", "value1", "key2", "value2", "key3", "value3"), si.getDiagnostics());
+
+    // modifies an existing key/value pair
+    si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "TEST",
+            10000,
+            false,
+            codec,
+            diagnostics,
+            StringHelper.randomId(),
+            new HashMap<>(),
+            Sort.INDEXORDER);
+    si.addDiagnostics(Map.of("key2", "foo"));
+    assertEquals(Map.of("key1", "value1", "key2", "foo"), si.getDiagnostics());
+
+    dir.close();
   }
 }

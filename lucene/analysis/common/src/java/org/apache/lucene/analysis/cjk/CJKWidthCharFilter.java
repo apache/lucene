@@ -39,7 +39,7 @@ public class CJKWidthCharFilter extends BaseCharFilter {
    * as a fallback when they cannot properly combine with a preceding
    * character into a composed form.
    */
-  private static final char KANA_NORM[] =
+  private static final char[] KANA_NORM =
       new char[] {
         0x30fb, 0x30f2, 0x30a1, 0x30a3, 0x30a5, 0x30a7, 0x30a9, 0x30e3, 0x30e5,
         0x30e7, 0x30c3, 0x30fc, 0x30a2, 0x30a4, 0x30a6, 0x30a8, 0x30aa, 0x30ab,
@@ -51,7 +51,7 @@ public class CJKWidthCharFilter extends BaseCharFilter {
       };
 
   /* kana combining diffs: 0x30A6-0x30FD */
-  private static final byte KANA_COMBINE_VOICED[] =
+  private static final byte[] KANA_COMBINE_VOICED =
       new byte[] {
         78, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
         0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1,
@@ -59,7 +59,7 @@ public class CJKWidthCharFilter extends BaseCharFilter {
         0, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
       };
 
-  private static final byte KANA_COMBINE_SEMI_VOICED[] =
+  private static final byte[] KANA_COMBINE_SEMI_VOICED =
       new byte[] {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 0, 2,

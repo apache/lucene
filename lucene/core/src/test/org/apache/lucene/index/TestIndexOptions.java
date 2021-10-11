@@ -52,7 +52,12 @@ public class TestIndexOptions extends LuceneTestCase {
               IllegalArgumentException.class,
               () -> w.addDocument(Collections.singleton(new Field("foo", "bar", ft2))));
       assertEquals(
-          "Inconsistency of field data structures across documents for field [foo] of doc [1].",
+          "Inconsistency of field data structures across documents for field [foo] of doc [1]."
+              + " index options: expected '"
+              + from
+              + "', but it has '"
+              + to
+              + "'.",
           e.getMessage());
     }
     w.close();

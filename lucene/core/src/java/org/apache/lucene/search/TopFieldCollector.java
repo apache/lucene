@@ -434,7 +434,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       HitsThresholdChecker hitsThresholdChecker,
       MaxScoreAccumulator minScoreAcc) {
 
-    if (sort.fields.length == 0) {
+    if (sort.getSort().length == 0) {
       throw new IllegalArgumentException("Sort must contain at least one field");
     }
 
@@ -447,9 +447,16 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       throw new IllegalArgumentException("hitsThresholdChecker should not be null");
     }
 
-    FieldValueHitQueue<Entry> queue = FieldValueHitQueue.create(sort.fields, numHits);
+    FieldValueHitQueue<Entry> queue = FieldValueHitQueue.create(sort.getSort(), numHits);
 
     if (after == null) {
+      // inform a comparator that sort is based on this single field
+      // to enable some optimizations for skipping over non-competitive documents
+      // We can't set single sort when the `after` parameter is non-null as it's
+      // an implicit sort over the document id.
+      if (queue.comparators.length == 1) {
+        queue.comparators[0].setSingleSort();
+      }
       return new SimpleFieldCollector(sort, queue, numHits, hitsThresholdChecker, minScoreAcc);
     } else {
       if (after.fields == null) {

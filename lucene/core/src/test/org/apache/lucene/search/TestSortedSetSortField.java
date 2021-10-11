@@ -24,7 +24,6 @@ import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 
 /** Simple tests for SortedSetSortField, indexing the sortedset up front */
@@ -33,16 +32,13 @@ public class TestSortedSetSortField extends LuceneTestCase {
   public void testEmptyIndex() throws Exception {
     IndexSearcher empty = newSearcher(new MultiReader());
     Query query = new TermQuery(new Term("contents", "foo"));
-
-    Sort sort = new Sort();
-    sort.setSort(new SortedSetSortField("sortedset", false));
-    TopDocs td = empty.search(query, 10, sort, true);
+    TopDocs td =
+        empty.search(query, 10, new Sort(new SortedSetSortField("sortedset", false)), true);
     assertEquals(0, td.totalHits.value);
 
     // for an empty index, any selector should work
     for (SortedSetSelector.Type v : SortedSetSelector.Type.values()) {
-      sort.setSort(new SortedSetSortField("sortedset", false, v));
-      td = empty.search(query, 10, sort, true);
+      td = empty.search(query, 10, new Sort(new SortedSetSortField("sortedset", false, v)), true);
       assertEquals(0, td.totalHits.value);
     }
   }
@@ -68,12 +64,12 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("baz")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("baz")));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("foo")));
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("bar")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("foo")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("bar")));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
@@ -96,12 +92,12 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("foo")));
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("bar")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("foo")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("bar")));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("baz")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("baz")));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
 
@@ -125,12 +121,12 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("baz")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("baz")));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("foo")));
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("bar")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("foo")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("bar")));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
@@ -160,12 +156,12 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("baz")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("baz")));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("foo")));
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("bar")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("foo")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("bar")));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
@@ -195,11 +191,11 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("baz")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("baz")));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedSetDocValuesField("value", new BytesRef("bar")));
+    doc.add(new SortedSetDocValuesField("value", newBytesRef("bar")));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();

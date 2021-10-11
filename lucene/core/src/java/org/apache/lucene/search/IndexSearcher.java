@@ -402,49 +402,57 @@ public class IndexSearcher {
     return similarity;
   }
 
+  private static class ShortcutHitCountCollector implements Collector {
+    private final Weight weight;
+    private final TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
+    private int weightCount;
+
+    ShortcutHitCountCollector(Weight weight) {
+      this.weight = weight;
+    }
+
+    @Override
+    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      int count = weight.count(context);
+      // check if the number of hits can be computed in constant time
+      if (count == -1) {
+        // use a TotalHitCountCollector to calculate the number of hits in the usual way
+        return totalHitCountCollector.getLeafCollector(context);
+      } else {
+        weightCount += count;
+        throw new CollectionTerminatedException();
+      }
+    }
+
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE_NO_SCORES;
+    }
+  }
+
   /** Count how many documents match the given query. */
   public int count(Query query) throws IOException {
     query = rewrite(query);
-    while (true) {
-      // remove wrappers that don't matter for counts
-      if (query instanceof ConstantScoreQuery) {
-        query = ((ConstantScoreQuery) query).getQuery();
-      } else {
-        break;
-      }
-    }
+    final Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
 
-    // some counts can be computed in constant time
-    if (query instanceof MatchAllDocsQuery) {
-      return reader.numDocs();
-    } else if (query instanceof TermQuery && reader.hasDeletions() == false) {
-      Term term = ((TermQuery) query).getTerm();
-      int count = 0;
-      for (LeafReaderContext leaf : reader.leaves()) {
-        count += leaf.reader().docFreq(term);
-      }
-      return count;
-    }
-
-    // general case: create a collector and count matches
-    final CollectorManager<TotalHitCountCollector, Integer> collectorManager =
-        new CollectorManager<TotalHitCountCollector, Integer>() {
-
+    final CollectorManager<ShortcutHitCountCollector, Integer> shortcutCollectorManager =
+        new CollectorManager<ShortcutHitCountCollector, Integer>() {
           @Override
-          public TotalHitCountCollector newCollector() throws IOException {
-            return new TotalHitCountCollector();
+          public ShortcutHitCountCollector newCollector() throws IOException {
+            return new ShortcutHitCountCollector(weight);
           }
 
           @Override
-          public Integer reduce(Collection<TotalHitCountCollector> collectors) throws IOException {
-            int total = 0;
-            for (TotalHitCountCollector collector : collectors) {
-              total += collector.getTotalHits();
+          public Integer reduce(Collection<ShortcutHitCountCollector> collectors)
+              throws IOException {
+            int totalHitCount = 0;
+            for (ShortcutHitCountCollector c : collectors) {
+              totalHitCount += c.weightCount + c.totalHitCountCollector.getTotalHits();
             }
-            return total;
+            return totalHitCount;
           }
         };
-    return search(query, collectorManager);
+    return search(weight, shortcutCollectorManager, new ShortcutHitCountCollector(weight));
   }
 
   /**
@@ -659,29 +667,29 @@ public class IndexSearcher {
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
+    final C firstCollector = collectorManager.newCollector();
+    query = rewrite(query);
+    final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
+    return search(weight, collectorManager, firstCollector);
+  }
+
+  private <C extends Collector, T> T search(
+      Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     if (executor == null || leafSlices.length <= 1) {
-      final C collector = collectorManager.newCollector();
-      search(query, collector);
-      return collectorManager.reduce(Collections.singletonList(collector));
+      search(leafContexts, weight, firstCollector);
+      return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
       final List<C> collectors = new ArrayList<>(leafSlices.length);
-      ScoreMode scoreMode = null;
-      for (int i = 0; i < leafSlices.length; ++i) {
+      collectors.add(firstCollector);
+      final ScoreMode scoreMode = firstCollector.scoreMode();
+      for (int i = 1; i < leafSlices.length; ++i) {
         final C collector = collectorManager.newCollector();
         collectors.add(collector);
-        if (scoreMode == null) {
-          scoreMode = collector.scoreMode();
-        } else if (scoreMode != collector.scoreMode()) {
+        if (scoreMode != collector.scoreMode()) {
           throw new IllegalStateException(
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      if (scoreMode == null) {
-        // no segments
-        scoreMode = ScoreMode.COMPLETE;
-      }
-      query = rewrite(query);
-      final Weight weight = createWeight(query, scoreMode, 1);
       final List<FutureTask<C>> listTasks = new ArrayList<>();
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;

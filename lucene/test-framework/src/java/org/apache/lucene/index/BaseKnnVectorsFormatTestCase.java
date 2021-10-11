@@ -31,6 +31,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Bits;
@@ -99,7 +100,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
-          "Inconsistency of field data structures across documents for field [f] of doc [1].";
+          "Inconsistency of field data structures across documents for field [f] of doc [1]."
+              + " vector dimension: expected '4', but it has '3'.";
       assertEquals(errMsg, expected.getMessage());
     }
 
@@ -135,7 +137,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
-          "Inconsistency of field data structures across documents for field [f] of doc [1].";
+          "Inconsistency of field data structures across documents for field [f] of doc [1]."
+              + " vector similarity function: expected 'DOT_PRODUCT', but it has 'EUCLIDEAN'.";
       assertEquals(errMsg, expected.getMessage());
     }
 
@@ -839,6 +842,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             continue;
           }
           int docId;
+          int numLiveDocsWithVectors = 0;
           while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
             float[] v = vectorValues.vectorValue();
             assertEquals(dimension, v.length);
@@ -850,11 +854,30 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   id2value[id],
                   v,
                   0);
+              numLiveDocsWithVectors++;
             } else {
               if (id2value[id] != null) {
                 assertFalse(Arrays.equals(id2value[id], v));
               }
             }
+          }
+
+          if (numLiveDocsWithVectors == 0) {
+            continue;
+          }
+
+          // assert that searchNearestVectors returns the expected number of documents,
+          // in descending score order
+          int size = ctx.reader().getVectorValues(fieldName).size();
+          int k = random().nextInt(size / 2 + 1) + 1;
+          if (k > numLiveDocsWithVectors) {
+            k = numLiveDocsWithVectors;
+          }
+          TopDocs results =
+              ctx.reader().searchNearestVectors(fieldName, randomVector(dimension), k, liveDocs);
+          assertEquals(Math.min(k, size), results.scoreDocs.length);
+          for (int i = 0; i < k - 1; i++) {
+            assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
           }
         }
       }
@@ -916,7 +939,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       }
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, output);
+      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
       assertEquals(1, status.segmentInfos.size());
       CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
       // total 3 vector values were indexed:
@@ -934,7 +957,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     // enumerators
     assertEquals(0, VectorSimilarityFunction.EUCLIDEAN.ordinal());
     assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
-    assertEquals(2, VectorSimilarityFunction.values().length);
+    assertEquals(2, VectorSimilarityFunction.COSINE.ordinal());
+    assertEquals(3, VectorSimilarityFunction.values().length);
   }
 
   public void testAdvance() throws Exception {

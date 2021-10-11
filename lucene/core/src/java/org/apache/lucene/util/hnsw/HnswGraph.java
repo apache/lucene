@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
+import java.util.SplittableRandom;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -119,7 +119,7 @@ public final class HnswGraph extends KnnGraphValues {
       VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
       Bits acceptOrds,
-      Random random)
+      SplittableRandom random)
       throws IOException {
 
     int size = graphValues.size();
@@ -175,10 +175,8 @@ public final class HnswGraph extends KnnGraphValues {
     NeighborQueue candidates = new NeighborQueue(queueSize, !similarityFunction.reversed);
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
     SparseFixedBitSet visited = new SparseFixedBitSet(size);
-
     for (int ep : eps) {
-      if (visited.get(ep) == false) {
-        visited.set(ep);
+      if (visited.getAndSet(ep) == false) {
         float score = similarityFunction.compare(query, vectors.vectorValue(ep));
         candidates.add(ep, score);
         if (acceptOrds == null || acceptOrds.get(ep)) {
@@ -204,10 +202,9 @@ public final class HnswGraph extends KnnGraphValues {
       int friendOrd;
       while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.get(friendOrd)) {
+        if (visited.getAndSet(friendOrd)) {
           continue;
         }
-        visited.set(friendOrd);
 
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         if (results.size() < topK || bound.check(score) == false) {

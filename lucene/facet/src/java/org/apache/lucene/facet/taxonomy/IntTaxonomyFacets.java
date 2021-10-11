@@ -237,10 +237,18 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
 
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
+    int[] ordinals = new int[labelValues.length];
+    int[] values = new int[labelValues.length];
+
     for (int i = labelValues.length - 1; i >= 0; i--) {
       TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
-      FacetLabel child = taxoReader.getPath(ordAndValue.ord);
-      labelValues[i] = new LabelAndValue(child.components[cp.length], ordAndValue.value);
+      ordinals[i] = ordAndValue.ord;
+      values[i] = ordAndValue.value;
+    }
+
+    FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
+    for (int i = 0; i < labelValues.length; i++) {
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], values[i]);
     }
 
     return new FacetResult(dim, path, totValue, labelValues, childCount);

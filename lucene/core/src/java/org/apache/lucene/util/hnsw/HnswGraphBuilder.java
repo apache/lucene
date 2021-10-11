@@ -22,7 +22,7 @@ import static java.lang.Math.log;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Random;
+import java.util.SplittableRandom;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -48,7 +48,7 @@ public final class HnswGraphBuilder {
 
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
-  private final Random random;
+  private final SplittableRandom random;
   private final BoundsChecker bound;
   final HnswGraph hnsw;
 
@@ -89,7 +89,7 @@ public final class HnswGraphBuilder {
     this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
     this.ml = 1 / Math.log(1.0 * maxConn);
-    this.random = new Random(seed);
+    this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
     this.hnsw = new HnswGraph(maxConn, levelOfFirstNode);
     bound = BoundsChecker.create(similarityFunction.reversed);
@@ -288,11 +288,11 @@ public final class HnswGraphBuilder {
     return -1;
   }
 
-  private static int getRandomGraphLevel(double ml, Random random) {
-    float randFloat;
+  private static int getRandomGraphLevel(double ml, SplittableRandom random) {
+    double randDouble;
     do {
-      randFloat = random.nextFloat(); // avoid 0 value, as log(0) is undefined
-    } while (randFloat == 0.0f);
-    return ((int) (-log(randFloat) * ml));
+      randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
+    } while (randDouble == 0.0);
+    return ((int) (-log(randDouble) * ml));
   }
 }

@@ -372,7 +372,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.8.2-cfs",
     "8.8.2-nocfs",
     "8.9.0-cfs",
-    "8.9.0-nocfs"
+    "8.9.0-nocfs",
+    "8.10.0-cfs",
+    "8.10.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -383,6 +385,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.8.0.0",
     "sorted.8.1.0",
     "sorted.8.1.1",
+    "sorted.8.10.0",
     "sorted.8.2.0",
     "sorted.8.3.0",
     "sorted.8.3.1",
@@ -1142,7 +1145,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(i, dvByte.nextDoc());
       assertEquals(id, dvByte.longValue());
 
-      byte bytes[] =
+      byte[] bytes =
           new byte[] {(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
       BytesRef expectedRef = new BytesRef(bytes);
 
@@ -1426,7 +1429,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     // add docvalues fields
     doc.add(new NumericDocValuesField("dvByte", (byte) id));
-    byte bytes[] =
+    byte[] bytes =
         new byte[] {(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
     BytesRef ref = new BytesRef(bytes);
     doc.add(new BinaryDocValuesField("dvBytesDerefFixed", ref));

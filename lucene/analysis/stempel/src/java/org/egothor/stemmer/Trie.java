@@ -126,7 +126,7 @@ public class Trie {
    * @return The all value
    */
   public CharSequence[] getAll(CharSequence key) {
-    int res[] = new int[key.length()];
+    int[] res = new int[key.length()];
     int resc = 0;
     Row now = getRow(root);
     int w;
@@ -175,7 +175,7 @@ public class Trie {
     if (resc < 1) {
       return null;
     }
-    CharSequence R[] = new CharSequence[resc];
+    CharSequence[] R = new CharSequence[resc];
     for (int j = 0; j < resc; j++) {
       R[j] = cmds.get(res[j]);
     }

@@ -39,7 +39,7 @@ final class MultiSorter {
 
     // TODO: optimize if only 1 reader is incoming, though that's a rare case
 
-    SortField fields[] = sort.getSort();
+    SortField[] fields = sort.getSort();
     final IndexSorter.ComparableProvider[][] comparables =
         new IndexSorter.ComparableProvider[fields.length][];
     final int[] reverseMuls = new int[fields.length];

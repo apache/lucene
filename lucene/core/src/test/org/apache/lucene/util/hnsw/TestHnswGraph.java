@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.SplittableRandom;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
@@ -166,25 +167,29 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraph.search(
             new float[] {1, 0},
             10,
-            5,
+            10,
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             null,
-            random());
+            new SplittableRandom(random().nextLong()));
+
+    int[] nodes = nn.nodes();
+    assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
-    for (int node : nn.nodes()) {
+    for (int node : nodes) {
       sum += node;
     }
     // We expect to get approximately 100% recall;
     // the lowest docIds are closest to zero; sum(0,9) = 45
     assertTrue("sum(result docs)=" + sum, sum < 75);
+
     for (int i = 0; i < nDoc; i++) {
       NeighborArray neighbors = hnsw.getNeighbors(0, i);
-      int[] nodes = neighbors.node;
+      int[] nnodes = neighbors.node;
       for (int j = 0; j < neighbors.size(); j++) {
         // all neighbors should be valid node ids.
-        assertTrue(nodes[j] < nDoc);
+        assertTrue(nnodes[j] < nDoc);
       }
     }
   }
@@ -193,24 +198,26 @@ public class TestHnswGraph extends LuceneTestCase {
     int nDoc = 100;
     int maxConn = 16;
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
-    // the first 10 docs must not be deleted to ensure the expected recall
-    Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
             vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
     HnswGraph hnsw = builder.build(vectors);
+    // the first 10 docs must not be deleted to ensure the expected recall
+    Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
         HnswGraph.search(
             new float[] {1, 0},
             10,
-            5,
+            10,
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             acceptOrds,
-            random());
+            new SplittableRandom(random().nextLong()));
+    int[] nodes = nn.nodes();
+    assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
-    for (int node : nn.nodes()) {
+    for (int node : nodes) {
       assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
       sum += node;
     }
@@ -350,7 +357,14 @@ public class TestHnswGraph extends LuceneTestCase {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
           HnswGraph.search(
-              query, topK, 100, vectors, similarityFunction, hnsw, acceptOrds, random());
+              query,
+              topK,
+              100,
+              vectors,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              new SplittableRandom(random().nextLong()));
       NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
@@ -516,7 +530,11 @@ public class TestHnswGraph extends LuceneTestCase {
     }
   }
 
-  /** Generate a random bitset where each entry has a 2/3 probability of being set. */
+
+  /**
+   * Generate a random bitset where before startIndex all bits are set, and after startIndex each
+   * entry has a 2/3 probability of being set.
+   */
   private static Bits createRandomAcceptOrds(int startIndex, int length) {
     FixedBitSet bits = new FixedBitSet(length);
     // all bits are set before startIndex
