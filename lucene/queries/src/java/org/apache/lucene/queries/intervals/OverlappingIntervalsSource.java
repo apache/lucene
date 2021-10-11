@@ -29,13 +29,13 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
   private final IntervalsSource reference;
 
   OverlappingIntervalsSource(IntervalsSource source, IntervalsSource reference) {
-    super(Arrays.asList(source, reference), false);
+    super(Arrays.asList(source, reference));
     this.source = source;
     this.reference = reference;
   }
 
   @Override
-  protected IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch) {
+  protected IntervalIterator combine(List<IntervalIterator> iterators) {
     assert iterators.size() == 2;
     IntervalIterator a = iterators.get(0);
     IntervalIterator b = iterators.get(1);

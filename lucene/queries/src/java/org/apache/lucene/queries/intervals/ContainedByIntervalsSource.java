@@ -33,13 +33,13 @@ class ContainedByIntervalsSource extends ConjunctionIntervalsSource {
   private final IntervalsSource big;
 
   private ContainedByIntervalsSource(IntervalsSource small, IntervalsSource big) {
-    super(Arrays.asList(small, big), false);
+    super(Arrays.asList(small, big));
     this.small = small;
     this.big = big;
   }
 
   @Override
-  protected IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch) {
+  protected IntervalIterator combine(List<IntervalIterator> iterators) {
     assert iterators.size() == 2;
     IntervalIterator a = iterators.get(0);
     IntervalIterator b = iterators.get(1);

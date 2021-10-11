@@ -27,7 +27,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.PriorityQueue;
 
-class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
+class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   static IntervalsSource build(List<IntervalsSource> sources) {
     if (sources.size() == 1) {
@@ -68,7 +68,7 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   private UnorderedIntervalsSource(List<IntervalsSource> sources) {
-    super(sources, true);
+    super(sources);
   }
 
   @Override

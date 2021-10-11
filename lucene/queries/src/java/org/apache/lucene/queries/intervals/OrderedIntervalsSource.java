@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-class OrderedIntervalsSource extends ConjunctionIntervalsSource {
+class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   static IntervalsSource build(List<IntervalsSource> sources) {
     if (sources.size() == 1) {
@@ -69,7 +69,7 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   private OrderedIntervalsSource(List<IntervalsSource> sources) {
-    super(sources, true);
+    super(sources);
   }
 
   @Override

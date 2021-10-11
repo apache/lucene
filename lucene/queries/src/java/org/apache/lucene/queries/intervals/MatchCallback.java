@@ -27,4 +27,7 @@ interface MatchCallback {
 
   /** Called when the parent iterator has found a match */
   void onMatch() throws IOException;
+
+  /** No-op callback, used for normal iteration when caching matches are not required */
+  MatchCallback NO_OP = () -> {};
 }

@@ -26,13 +26,61 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 
-abstract class ConjunctionIntervalsSource extends IntervalsSource {
+abstract class MinimizingConjunctionIntervalsSource extends IntervalsSource {
 
   protected final List<IntervalsSource> subSources;
 
-  protected ConjunctionIntervalsSource(List<IntervalsSource> subSources) {
+  protected MinimizingConjunctionIntervalsSource(List<IntervalsSource> subSources) {
     assert subSources.size() > 1;
     this.subSources = subSources;
+  }
+
+  protected abstract IntervalIterator combine(
+      List<IntervalIterator> iterators, MatchCallback onMatch);
+
+  @Override
+  public IntervalIterator intervals(String field, LeafReaderContext ctx) throws IOException {
+    List<IntervalIterator> subIntervals = new ArrayList<>();
+    for (IntervalsSource source : subSources) {
+      IntervalIterator it = source.intervals(field, ctx);
+      if (it == null) {
+        return null;
+      }
+      subIntervals.add(it);
+    }
+    return combine(subIntervals, MatchCallback.NO_OP);
+  }
+
+  @Override
+  public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
+      throws IOException {
+    List<CachingMatchesIterator> subs = new ArrayList<>();
+    for (IntervalsSource source : subSources) {
+      IntervalMatchesIterator mi = source.matches(field, ctx, doc);
+      if (mi == null) {
+        return null;
+      }
+      subs.add(new CachingMatchesIterator(mi));
+    }
+    MatchCallback onMatch =
+        () -> {
+          for (CachingMatchesIterator it : subs) {
+            it.cache();
+          }
+        };
+    IntervalIterator it =
+        combine(
+            subs.stream()
+                .map(m -> IntervalMatches.wrapMatches(m, doc))
+                .collect(Collectors.toList()),
+            onMatch);
+    if (it.advance(doc) != doc) {
+      return null;
+    }
+    if (it.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+      return null;
+    }
+    return new ConjunctionMatchesIterator(it, subs);
   }
 
   @Override
@@ -42,45 +90,5 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
     for (IntervalsSource source : subSources) {
       source.visit(field, v);
     }
-  }
-
-  @Override
-  public final IntervalIterator intervals(String field, LeafReaderContext ctx) throws IOException {
-    List<IntervalIterator> subIntervals = new ArrayList<>();
-    for (IntervalsSource source : subSources) {
-      IntervalIterator it = source.intervals(field, ctx);
-      if (it == null) {
-        return null;
-      }
-      subIntervals.add(it);
-    }
-    return combine(subIntervals);
-  }
-
-  protected abstract IntervalIterator combine(List<IntervalIterator> iterators);
-
-  @Override
-  public final IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
-      throws IOException {
-    List<IntervalMatchesIterator> subs = new ArrayList<>();
-    for (IntervalsSource source : subSources) {
-      IntervalMatchesIterator mi = source.matches(field, ctx, doc);
-      if (mi == null) {
-        return null;
-      }
-      subs.add(mi);
-    }
-    IntervalIterator it =
-        combine(
-            subs.stream()
-                .map(m -> IntervalMatches.wrapMatches(m, doc))
-                .collect(Collectors.toList()));
-    if (it.advance(doc) != doc) {
-      return null;
-    }
-    if (it.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
-      return null;
-    }
-    return new ConjunctionMatchesIterator(it, subs);
   }
 }
