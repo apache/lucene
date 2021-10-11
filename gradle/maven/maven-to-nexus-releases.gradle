@@ -29,7 +29,7 @@ configure(rootProject) {
   def asfNexusPassword = propertyOrEnvOrDefault('asfNexusPassword', "ASF_NEXUS_PASSWORD", null)
 
   task mavenToApacheReleases() {
-    group "Publishing"
+    group "Distribution"
     description "Publish Lucene Maven artifacts to Apache Releases repository: ${apacheNexusReleasesRepository}"
 
     dependsOn rootProject.ext.mavenProjects.collect {
