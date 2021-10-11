@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValuesReader;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
@@ -56,7 +57,7 @@ class CrankyPointsFormat extends PointsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, PointsReader values) throws IOException {
+    public void writeField(FieldInfo fieldInfo, PointValuesReader values) throws IOException {
       if (random.nextInt(100) == 0) {
         throw new IOException("Fake IOException");
       }

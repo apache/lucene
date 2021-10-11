@@ -23,12 +23,13 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Random;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointValuesReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.index.PointValuesReader;
 import org.apache.lucene.mockfile.ExtrasFS;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.CorruptingIndexOutput;
@@ -110,7 +111,7 @@ public class TestBKD extends LuceneTestCase {
                 }
 
                 if (max < queryMin || min > queryMax) {
-                  return Relation.CELL_OUTSIDE_QUERY;
+                  return PointValues.Relation.CELL_OUTSIDE_QUERY;
                 } else if (min >= queryMin && max <= queryMax) {
                   return Relation.CELL_INSIDE_QUERY;
                 } else {
@@ -248,16 +249,16 @@ public class TestBKD extends LuceneTestCase {
                     assert max >= min;
 
                     if (max < queryMin[dim] || min > queryMax[dim]) {
-                      return Relation.CELL_OUTSIDE_QUERY;
+                      return PointValues.Relation.CELL_OUTSIDE_QUERY;
                     } else if (min < queryMin[dim] || max > queryMax[dim]) {
                       crosses = true;
                     }
                   }
 
                   if (crosses) {
-                    return Relation.CELL_CROSSES_QUERY;
+                    return PointValues.Relation.CELL_CROSSES_QUERY;
                   } else {
-                    return Relation.CELL_INSIDE_QUERY;
+                    return PointValues.Relation.CELL_INSIDE_QUERY;
                   }
                 }
               });
@@ -386,7 +387,7 @@ public class TestBKD extends LuceneTestCase {
                     assert max.compareTo(min) >= 0;
 
                     if (max.compareTo(queryMin[dim]) < 0 || min.compareTo(queryMax[dim]) > 0) {
-                      return Relation.CELL_OUTSIDE_QUERY;
+                      return PointValues.Relation.CELL_OUTSIDE_QUERY;
                     } else if (min.compareTo(queryMin[dim]) < 0
                         || max.compareTo(queryMax[dim]) > 0) {
                       crosses = true;
@@ -394,9 +395,9 @@ public class TestBKD extends LuceneTestCase {
                   }
 
                   if (crosses) {
-                    return Relation.CELL_CROSSES_QUERY;
+                    return PointValues.Relation.CELL_CROSSES_QUERY;
                   } else {
-                    return Relation.CELL_INSIDE_QUERY;
+                    return PointValues.Relation.CELL_INSIDE_QUERY;
                   }
                 }
               });
@@ -948,6 +949,8 @@ public class TestBKD extends LuceneTestCase {
       in.seek(indexFP);
       BKDReader r = new BKDReader(in, in, in);
 
+      assertPointValuesReader(r);
+
       int iters = atLeast(100);
       for (int iter = 0; iter < iters; iter++) {
         if (VERBOSE) {
@@ -1051,7 +1054,7 @@ public class TestBKD extends LuceneTestCase {
                               0,
                               numBytesPerDim)
                           > 0) {
-                    return Relation.CELL_OUTSIDE_QUERY;
+                    return PointValues.Relation.CELL_OUTSIDE_QUERY;
                   } else if (Arrays.compareUnsigned(
                               minPacked,
                               dim * numBytesPerDim,
@@ -1073,9 +1076,9 @@ public class TestBKD extends LuceneTestCase {
                 }
 
                 if (crosses) {
-                  return Relation.CELL_CROSSES_QUERY;
+                  return PointValues.Relation.CELL_CROSSES_QUERY;
                 } else {
-                  return Relation.CELL_INSIDE_QUERY;
+                  return PointValues.Relation.CELL_INSIDE_QUERY;
                 }
               }
             });
@@ -1121,6 +1124,12 @@ public class TestBKD extends LuceneTestCase {
         IOUtils.deleteFilesIgnoringExceptions(dir, "bkd", "bkd2");
       }
     }
+  }
+
+  private void assertPointValuesReader(PointValuesReader reader) throws IOException {
+    final long[] count = new long[] {0};
+    reader.visitDocValues((docID, packedValue) -> count[0]++);
+    assertEquals(reader.size(), count[0]);
   }
 
   private BigInteger randomBigInt(int numBytes) {
@@ -1301,7 +1310,7 @@ public class TestBKD extends LuceneTestCase {
 
             @Override
             public Relation compare(byte[] minPacked, byte[] maxPacked) {
-              return Relation.CELL_CROSSES_QUERY;
+              return PointValues.Relation.CELL_CROSSES_QUERY;
             }
           });
       in.close();
@@ -1383,7 +1392,7 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-            return Relation.CELL_CROSSES_QUERY;
+            return PointValues.Relation.CELL_CROSSES_QUERY;
           }
         });
 
@@ -1429,9 +1438,9 @@ public class TestBKD extends LuceneTestCase {
             @Override
             public Relation compare(byte[] minPacked, byte[] maxPacked) {
               if (random().nextInt(7) == 1) {
-                return Relation.CELL_CROSSES_QUERY;
+                return PointValues.Relation.CELL_CROSSES_QUERY;
               } else {
-                return Relation.CELL_INSIDE_QUERY;
+                return PointValues.Relation.CELL_INSIDE_QUERY;
               }
             }
           });
@@ -1499,9 +1508,9 @@ public class TestBKD extends LuceneTestCase {
             assert minPacked.length == numIndexDims * bytesPerDim;
             assert maxPacked.length == numIndexDims * bytesPerDim;
             if (random().nextInt(7) == 1) {
-              return Relation.CELL_CROSSES_QUERY;
+              return PointValues.Relation.CELL_CROSSES_QUERY;
             } else {
-              return Relation.CELL_INSIDE_QUERY;
+              return PointValues.Relation.CELL_INSIDE_QUERY;
             }
           }
         });
@@ -1566,7 +1575,7 @@ public class TestBKD extends LuceneTestCase {
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                return Relation.CELL_INSIDE_QUERY;
+                return PointValues.Relation.CELL_INSIDE_QUERY;
               }
             }));
 
@@ -1583,7 +1592,7 @@ public class TestBKD extends LuceneTestCase {
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                return Relation.CELL_OUTSIDE_QUERY;
+                return PointValues.Relation.CELL_OUTSIDE_QUERY;
               }
             }));
 
@@ -1606,9 +1615,9 @@ public class TestBKD extends LuceneTestCase {
                     || Arrays.compareUnsigned(
                             uniquePointValue, 0, numBytesPerDim, minPackedValue, 0, numBytesPerDim)
                         < 0) {
-                  return Relation.CELL_OUTSIDE_QUERY;
+                  return PointValues.Relation.CELL_OUTSIDE_QUERY;
                 }
-                return Relation.CELL_CROSSES_QUERY;
+                return PointValues.Relation.CELL_CROSSES_QUERY;
               }
             });
     assertTrue(
@@ -1629,53 +1638,18 @@ public class TestBKD extends LuceneTestCase {
     final byte[] pointValue = new byte[numBytesPerDim];
     random().nextBytes(pointValue);
 
-    MutablePointValues reader =
-        new MutablePointValues() {
+    MutablePointValuesReader reader =
+        new MutablePointValuesReader() {
 
           @Override
-          public void intersect(IntersectVisitor visitor) throws IOException {
+          public void visitDocValues(DocValueVisitor visitor) throws IOException {
             for (int i = 0; i < numPointsAdded; i++) {
               visitor.visit(0, pointValue);
             }
           }
 
           @Override
-          public long estimatePointCount(IntersectVisitor visitor) {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public byte[] getMinPackedValue() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public byte[] getMaxPackedValue() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getNumDimensions() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getNumIndexDimensions() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getBytesPerDimension() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
           public long size() {
-            return numPointsAdded;
-          }
-
-          @Override
-          public int getDocCount() {
             return numPointsAdded;
           }
 
@@ -1779,8 +1753,8 @@ public class TestBKD extends LuceneTestCase {
     for (int i = 0; i < numValues + 1; i++) {
       random().nextBytes(pointValue[i]);
     }
-    MutablePointValues val =
-        new MutablePointValues() {
+    MutablePointValuesReader val =
+        new MutablePointValuesReader() {
           @Override
           public void getValue(int i, BytesRef packedValue) {
             packedValue.bytes = pointValue[i];
@@ -1806,49 +1780,14 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public void intersect(IntersectVisitor visitor) throws IOException {
+          public void visitDocValues(DocValueVisitor visitor) throws IOException {
             for (int i = 0; i < size(); i++) {
               visitor.visit(i, pointValue[i]);
             }
           }
 
           @Override
-          public long estimatePointCount(IntersectVisitor visitor) {
-            return 11;
-          }
-
-          @Override
-          public byte[] getMinPackedValue() {
-            return new byte[numBytesPerDim];
-          }
-
-          @Override
-          public byte[] getMaxPackedValue() {
-            return new byte[numBytesPerDim];
-          }
-
-          @Override
-          public int getNumDimensions() {
-            return 1;
-          }
-
-          @Override
-          public int getNumIndexDimensions() {
-            return 1;
-          }
-
-          @Override
-          public int getBytesPerDimension() {
-            return numBytesPerDim;
-          }
-
-          @Override
           public long size() {
-            return 11;
-          }
-
-          @Override
-          public int getDocCount() {
             return 11;
           }
 

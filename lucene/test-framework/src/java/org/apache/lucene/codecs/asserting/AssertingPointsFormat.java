@@ -24,6 +24,7 @@ import org.apache.lucene.index.AssertingLeafReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValuesReader;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.TestUtil;
@@ -114,7 +115,7 @@ public final class AssertingPointsFormat extends PointsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, PointsReader values) throws IOException {
+    public void writeField(FieldInfo fieldInfo, PointValuesReader values) throws IOException {
       if (fieldInfo.getPointDimensionCount() == 0) {
         throw new IllegalArgumentException(
             "writing field=\"" + fieldInfo.name + "\" but pointDimensionalCount is 0");

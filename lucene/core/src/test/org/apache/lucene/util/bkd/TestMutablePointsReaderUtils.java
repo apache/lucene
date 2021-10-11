@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.util.bkd;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointValuesReader;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
@@ -303,7 +302,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     }
   }
 
-  private static class DummyPointsReader extends MutablePointValues {
+  private static class DummyPointsReader extends MutablePointValuesReader {
 
     private final Point[] points;
 
@@ -337,47 +336,12 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public byte[] getMinPackedValue() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public byte[] getMaxPackedValue() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getNumDimensions() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getNumIndexDimensions() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getBytesPerDimension() throws IOException {
+    public void visitDocValues(DocValueVisitor visitor) {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public long size() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getDocCount() {
       throw new UnsupportedOperationException();
     }
 

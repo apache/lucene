@@ -24,7 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntFunction;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointValuesReader;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
@@ -387,8 +387,8 @@ public class BKDWriter implements Closeable {
   }
 
   /**
-   * Write a field from a {@link MutablePointValues}. This way of writing points is faster than
-   * regular writes with {@link BKDWriter#add} since there is opportunity for reordering points
+   * Write a field from a {@link MutablePointValuesReader}. This way of writing points is faster
+   * than regular writes with {@link BKDWriter#add} since there is opportunity for reordering points
    * before writing them to disk. This method does not use transient disk in order to reorder
    * points.
    */
@@ -397,7 +397,7 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues reader)
+      MutablePointValuesReader reader)
       throws IOException {
     if (config.numDims == 1) {
       return writeField1Dim(metaOut, indexOut, dataOut, fieldName, reader);
@@ -407,7 +407,7 @@ public class BKDWriter implements Closeable {
   }
 
   private void computePackedValueBounds(
-      MutablePointValues values,
+      MutablePointValuesReader values,
       int from,
       int to,
       byte[] minPackedValue,
@@ -455,7 +455,7 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues values)
+      MutablePointValuesReader values)
       throws IOException {
     if (pointCount != 0) {
       throw new IllegalStateException("cannot mix add and writeField");
@@ -549,31 +549,14 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues reader)
+      MutablePointValuesReader reader)
       throws IOException {
     MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
 
     final OneDimensionBKDWriter oneDimWriter =
         new OneDimensionBKDWriter(metaOut, indexOut, dataOut);
 
-    reader.intersect(
-        new IntersectVisitor() {
-
-          @Override
-          public void visit(int docID, byte[] packedValue) throws IOException {
-            oneDimWriter.add(packedValue, docID);
-          }
-
-          @Override
-          public void visit(int docID) {
-            throw new IllegalStateException();
-          }
-
-          @Override
-          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-            return Relation.CELL_CROSSES_QUERY;
-          }
-        });
+    reader.visitDocValues((docID, packedValue) -> oneDimWriter.add(packedValue, docID));
 
     return oneDimWriter.finish();
   }
@@ -1549,7 +1532,7 @@ public class BKDWriter implements Closeable {
   private void build(
       int leavesOffset,
       int numLeaves,
-      MutablePointValues reader,
+      MutablePointValuesReader reader,
       int from,
       int to,
       IndexOutput out,

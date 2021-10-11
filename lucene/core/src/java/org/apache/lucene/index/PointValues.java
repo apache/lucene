@@ -99,7 +99,7 @@ import org.apache.lucene.util.bkd.BKDConfig;
  *
  * @lucene.experimental
  */
-public abstract class PointValues {
+public abstract class PointValues implements PointValuesReader {
 
   /** Maximum number of bytes for each dimension */
   public static final int MAX_NUM_BYTES = 16;
@@ -232,7 +232,7 @@ public abstract class PointValues {
    *
    * @lucene.experimental
    */
-  public interface IntersectVisitor {
+  public interface IntersectVisitor extends DocValueVisitor {
     /**
      * Called for all documents in a leaf cell that's fully contained by the query. The consumer
      * should blindly accept the docID.
@@ -244,12 +244,19 @@ public abstract class PointValues {
      * scrutinize the packedValue to decide whether to accept it. In the 1D case, values are visited
      * in increasing order, and in the case of ties, in increasing docID order.
      */
+    @Override
     void visit(int docID, byte[] packedValue) throws IOException;
 
     /**
-     * Similar to {@link IntersectVisitor#visit(int, byte[])} but in this case the packedValue can
-     * have more than one docID associated to it. The provided iterator should not escape the scope
-     * of this method so that implementations of PointValues are free to reuse it,
+     * Called for non-leaf cells to test how the cell relates to the query, to determine how to
+     * further recurse down the tree.
+     */
+    Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
+
+    /**
+     * Similar to {@link #visit(int, byte[])} but in this case the packedValue can have more than
+     * one docID associated to it. The provided iterator should not escape the scope of this method
+     * so that implementations of PointValues are free to reuse it,
      */
     default void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
       int docID;
@@ -258,15 +265,8 @@ public abstract class PointValues {
       }
     }
 
-    /**
-     * Called for non-leaf cells to test how the cell relates to the query, to determine how to
-     * further recurse down the tree.
-     */
-    Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
-
     /** Notifies the caller that this many documents are about to be visited */
     default void grow(int count) {}
-    ;
   }
 
   /**
@@ -280,6 +280,30 @@ public abstract class PointValues {
    * IntersectVisitor}. This should run many times faster than {@link #intersect(IntersectVisitor)}.
    */
   public abstract long estimatePointCount(IntersectVisitor visitor);
+
+  @Override
+  public final void visitDocValues(DocValueVisitor visitor) throws IOException {
+    intersect(
+        new IntersectVisitor() {
+          @Override
+          public void visit(int docID) {
+            // Should never be called because our compare method never returns
+            // Relation.CELL_INSIDE_QUERY
+            throw new IllegalStateException();
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) throws IOException {
+            visitor.visit(docID, packedValue);
+          }
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            // Forces this segment's PointsReader to always visit all docs + values:
+            return Relation.CELL_CROSSES_QUERY;
+          }
+        });
+  }
 
   /**
    * Estimate the number of documents that would be matched by {@link #intersect} with the given
@@ -330,9 +354,6 @@ public abstract class PointValues {
 
   /** Returns the number of bytes per dimension */
   public abstract int getBytesPerDimension() throws IOException;
-
-  /** Returns the total number of indexed points across all documents. */
-  public abstract long size();
 
   /** Returns the total number of documents that have indexed at least one point. */
   public abstract int getDocCount();

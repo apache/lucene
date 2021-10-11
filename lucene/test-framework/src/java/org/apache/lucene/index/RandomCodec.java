@@ -45,7 +45,6 @@ import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
 import org.apache.lucene.codecs.memory.DirectPostingsFormat;
 import org.apache.lucene.codecs.memory.FSTPostingsFormat;
 import org.apache.lucene.codecs.mockrandom.MockRandomPostingsFormat;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -104,10 +103,8 @@ public class RandomCodec extends AssertingCodec {
 
             return new Lucene90PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap) {
               @Override
-              public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
-
-                PointValues values = reader.getValues(fieldInfo.name);
-
+              public void writeField(FieldInfo fieldInfo, PointValuesReader values)
+                  throws IOException {
                 BKDConfig config =
                     new BKDConfig(
                         fieldInfo.getPointDimensionCount(),
@@ -124,24 +121,7 @@ public class RandomCodec extends AssertingCodec {
                         maxMBSortInHeap,
                         values.size(),
                         bkdSplitRandomSeed ^ fieldInfo.name.hashCode())) {
-                  values.intersect(
-                      new IntersectVisitor() {
-                        @Override
-                        public void visit(int docID) {
-                          throw new IllegalStateException();
-                        }
-
-                        @Override
-                        public void visit(int docID, byte[] packedValue) throws IOException {
-                          writer.add(packedValue, docID);
-                        }
-
-                        @Override
-                        public PointValues.Relation compare(
-                            byte[] minPackedValue, byte[] maxPackedValue) {
-                          return PointValues.Relation.CELL_CROSSES_QUERY;
-                        }
-                      });
+                  values.visitDocValues((docID, packedValue) -> writer.add(packedValue, docID));
 
                   // We could have 0 points on merge since all docs with dimensional fields may be
                   // deleted:

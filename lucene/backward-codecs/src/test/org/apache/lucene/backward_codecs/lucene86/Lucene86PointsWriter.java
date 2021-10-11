@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointValuesReader;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
@@ -29,8 +29,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.index.PointValuesReader;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
@@ -123,10 +122,7 @@ public class Lucene86PointsWriter extends PointsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
-
-    PointValues values = reader.getValues(fieldInfo.name);
-
+  public void writeField(FieldInfo fieldInfo, PointValuesReader values) throws IOException {
     BKDConfig config =
         new BKDConfig(
             fieldInfo.getPointDimensionCount(),
@@ -143,10 +139,10 @@ public class Lucene86PointsWriter extends PointsWriter {
             maxMBSortInHeap,
             values.size())) {
 
-      if (values instanceof MutablePointValues) {
+      if (values instanceof MutablePointValuesReader) {
         Runnable finalizer =
             writer.writeField(
-                metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointValues) values);
+                metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointValuesReader) values);
         if (finalizer != null) {
           metaOut.writeInt(fieldInfo.number);
           finalizer.run();
@@ -154,23 +150,7 @@ public class Lucene86PointsWriter extends PointsWriter {
         return;
       }
 
-      values.intersect(
-          new IntersectVisitor() {
-            @Override
-            public void visit(int docID) {
-              throw new IllegalStateException();
-            }
-
-            @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
-              writer.add(packedValue, docID);
-            }
-
-            @Override
-            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              return Relation.CELL_CROSSES_QUERY;
-            }
-          });
+      values.visitDocValues((docID, packedValue) -> writer.add(packedValue, docID));
 
       // We could have 0 points on merge since all docs with dimensional fields may be deleted:
       Runnable finalizer = writer.finish(metaOut, indexOut, dataOut);

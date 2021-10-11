@@ -19,13 +19,10 @@ package org.apache.lucene.codecs.simpletext;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.index.PointValuesReader;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
@@ -71,10 +68,7 @@ class SimpleTextPointsWriter extends PointsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
-
-    PointValues values = reader.getValues(fieldInfo.name);
-
+  public void writeField(FieldInfo fieldInfo, PointValuesReader values) throws IOException {
     BKDConfig config =
         new BKDConfig(
             fieldInfo.getPointDimensionCount(),
@@ -92,23 +86,7 @@ class SimpleTextPointsWriter extends PointsWriter {
             SimpleTextBKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
             values.size())) {
 
-      values.intersect(
-          new IntersectVisitor() {
-            @Override
-            public void visit(int docID) {
-              throw new IllegalStateException();
-            }
-
-            @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
-              writer.add(packedValue, docID);
-            }
-
-            @Override
-            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              return Relation.CELL_CROSSES_QUERY;
-            }
-          });
+      values.visitDocValues((docID, packedValue) -> writer.add(packedValue, docID));
 
       // We could have 0 points on merge since all docs with points may be deleted:
       if (writer.getPointCount() > 0) {
