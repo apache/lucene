@@ -345,6 +345,9 @@ Bug fixes
 * LUCENE-10114: Remove unused byte order mark in Lucene90PostingsWriter. This
   was initially introduced by accident in Lucene 8.4. (Uwe Schindler)
 
+* LUCENE-10140: Fix cases where minimizing interval iterators could return 
+  incorrect matches (Nikolay Khitrin, Alan Woodward)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
