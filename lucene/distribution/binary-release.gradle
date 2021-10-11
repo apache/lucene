@@ -30,33 +30,18 @@ configure(project(":lucene:distribution")) {
   // Legacy binary distribution contains Lucene artifacts (JARs) and their dependencies
   // under 'lib/'. We have to go through some hoops to split the artifact from all of its
   // transitive dependencies and separate their output location.
-  //
-  // We create a separate configuration for project and its dependencies.
   def moduleArtifactConfigurations = []
-
-  for (Project includedProject : includeInBinaries) {
-    def binaryArtifactsConfiguration = configurations.create("dep-binary" + includedProject.path.replace(':', '-'))
-    def transitiveDependenciesConfiguration = configurations.create("dep-full" + includedProject.path.replace(':', '-'))
-
-    moduleArtifactConfigurations += [
-        "module": includedProject,
-        "binaryArtifactsConfiguration": binaryArtifactsConfiguration,
-        "transitiveDependenciesConfiguration": transitiveDependenciesConfiguration
-    ]
+  for (Project module : includeInBinaries) {
+    def binaryArtifactsConfiguration = configurations.create("binary-artifacts" + module.path.replace(':', '-'))
 
     dependencies { DependencyHandler handler ->
-      // Module binary artifacts
-      handler.add(binaryArtifactsConfiguration.name, project(path: includedProject.path, configuration: "binaryArtifacts"))
-
-      // All transitive project dependencies from the runtime configuration.
-      handler.add(transitiveDependenciesConfiguration.name, project(path: includedProject.path, configuration: "runtimeElements"), {
-        // Exclude cross-module dependencies
-        exclude group: "org.apache.lucene"
-        // Exclude the following from all projects, if they appear.
-        exclude group: "commons-logging"
-        exclude group: "org.slf4j"
-      })
+      handler.add(binaryArtifactsConfiguration.name, project(path: module.path, configuration: "binaryArtifacts"))
     }
+
+    moduleArtifactConfigurations += [
+        "module": module,
+        "binaryArtifactsConfiguration": binaryArtifactsConfiguration
+    ]
   }
 
 
@@ -101,18 +86,12 @@ configure(project(":lucene:distribution")) {
       into 'docs'
     })
 
-    // Each module's artifacts and their dependencies.
+    // Each module's binary artifacts and their dependencies.
     moduleArtifactConfigurations.each {
       def toPath = it.module.path.replaceFirst("^:lucene:", "").replace(':', '/')
 
       task.from(it.binaryArtifactsConfiguration, {
         into toPath
-      })
-
-      task.from(it.transitiveDependenciesConfiguration, {
-        into "${toPath}/lib"
-        // Manually exclude the project's main artifact. Don't know if there is any better way to do this.
-        exclude "lucene-*"
       })
     }
   }
