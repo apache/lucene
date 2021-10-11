@@ -15,8 +15,11 @@
  * limitations under the License.
  */
 
+import org.gradle.crypto.checksum.Checksum
+
 plugins {
   id 'signing'
+  id 'org.gradle.crypto.checksum' version '1.1.0'
 }
 
 // This project puts together the Lucene "distribution", assembling bits and pieces
@@ -39,6 +42,7 @@ apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradl
 // Configure artifact signing.
 apply from: buildscript.sourceFile.toPath().resolveSibling("artifact-signing.gradle")
 
+
 // Set up the HTML-rendered "changes" distribution artifact by linking to documentation's output.
 configurations {
   changesHtml
@@ -46,6 +50,24 @@ configurations {
 
 dependencies {
   changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
+}
+
+
+// Compute checksums for release archives.
+task computeChecksums(type: Checksum) {
+  algorithm = Checksum.Algorithm.SHA512
+
+  files = objects.fileCollection()
+  [
+      tasks.assembleSourceTgz,
+      tasks.assembleBinaryZip,
+      tasks.assembleBinaryTgz,
+  ].each { dep ->
+    dependsOn dep
+    files += dep.outputs.files
+  }
+
+  outputDir = file("${buildDir}/checksums")
 }
 
 
@@ -65,6 +87,8 @@ task assembleRelease(type: Sync) {
   from tasks.assembleBinaryZip
   from tasks.assembleBinaryTgz
 
+  from tasks.computeChecksums
+
   // Conditionally, attach signatures of all the release archives.
   if (propertyOrDefault("sign", null) != null) {
     from tasks.signReleaseArchives
@@ -74,7 +98,8 @@ task assembleRelease(type: Sync) {
 }
 
 
-// Add the description and task group to some of the tasks.
+// Add the description and task group to some of the tasks that make
+// sense at the user-level help.
 tasks.matching {it.name in [
     "assembleSourceTgz",
     "assembleBinaryZip",
