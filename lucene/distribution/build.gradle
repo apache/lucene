@@ -15,6 +15,10 @@
  * limitations under the License.
  */
 
+plugins {
+  id 'signing'
+}
+
 // This project puts together the Lucene "distribution", assembling bits and pieces
 // from across the project structure into release artifacts.
 
@@ -31,6 +35,9 @@ apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradl
 
 // Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
 apply from: buildscript.sourceFile.toPath().resolveSibling("maven-to-build.gradle")
+
+// Configure artifact signing.
+apply from: buildscript.sourceFile.toPath().resolveSibling("artifact-signing.gradle")
 
 // Set up the HTML-rendered "changes" distribution artifact by linking to documentation's output.
 configurations {
@@ -54,14 +61,14 @@ task assembleRelease(type: Sync) {
     into "maven"
   })
 
-  from(tasks.assembleSourceTgz, {
-  })
+  from tasks.assembleSourceTgz
+  from tasks.assembleBinaryZip
+  from tasks.assembleBinaryTgz
 
-  from(tasks.assembleBinaryZip, {
-  })
-
-  from(tasks.assembleBinaryTgz, {
-  })
+  // Sign the artifacts conditionally.
+  if (propertyOrDefault("sign", null) != null) {
+    from tasks.signReleaseArchives
+  }
 
   into releaseDir
 }

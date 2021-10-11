@@ -29,11 +29,13 @@ Apache Releases repository will not accept snapshots.
 Release (distribution) artifacts
 --------------------------------
 
-Run:
+To collect all release artifacts, and optionally sign them, run:
 
-gradlew assembleRelease
+gradlew assembleRelease -Psign
 
 All distribution artifacts will be placed under:
 
 lucene/distribution/build/release
 
+The "-Psign" switch is optional. If you don't want to have the artifacts signed,
+omit it.
