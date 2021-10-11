@@ -36,4 +36,8 @@ if (propertyOrDefault("useGpg", null) != null) {
   signing {
     useGpgCmd()
   }
+
+  if (gradle.startParameter.maxWorkerCount != 1) {
+    throw new GradleException("When using GPG for signing, specify --max-workers 1 to ensure sequential GPG calls.")
+  }
 }
