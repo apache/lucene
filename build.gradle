@@ -120,8 +120,8 @@ apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/testing/alternative-jdk-support.gradle')
 apply from: file('gradle/java/jar-manifest.gradle')
 
-// Publishing and releases.
-apply from: file('gradle/publishing/publications.gradle')
+// Maven artifact publishing.
+apply from: file('gradle/maven/publications.gradle')
 
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')
