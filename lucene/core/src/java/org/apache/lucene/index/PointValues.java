@@ -282,7 +282,7 @@ public abstract class PointValues implements PointValuesReader {
   public abstract long estimatePointCount(IntersectVisitor visitor);
 
   @Override
-  public final void visitDocValues(DocValueVisitor visitor) throws IOException {
+  public void visitDocValues(DocValueVisitor visitor) throws IOException {
     intersect(
         new IntersectVisitor() {
           @Override
