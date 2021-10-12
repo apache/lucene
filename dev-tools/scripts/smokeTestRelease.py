@@ -67,7 +67,6 @@ def unshortenURL(url):
 #   - check license/notice exist
 #   - check no "extra" files
 #   - make sure jars exist inside bin release
-#   - run "ant test"
 #   - make sure docs exist
 #   - use java5 for lucene/modules
 
@@ -432,13 +431,12 @@ def unix2win(matchobj):
 
 
 def cygwinifyPaths(command):
-  # The problem: Native Windows applications running under Cygwin
-  # (e.g. Ant, which isn't available as a Cygwin package) can't
+  # The problem: Native Windows applications running under Cygwin can't
   # handle Cygwin's Unix-style paths.  However, environment variable
   # values are automatically converted, so only paths outside of
   # environment variable values should be converted to Windows paths.
   # Assumption: all paths will be absolute.
-  if '; ant ' in command: command = reUnixPath.sub(unix2win, command)
+  if '; gradlew ' in command: command = reUnixPath.sub(unix2win, command)
   return command
 
 
@@ -1037,7 +1035,8 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
   os.chdir(unpackPath)
 
   print('    run TestBackwardsCompatibility..')
-  command = 'ant test -Dtestcase=TestBackwardsCompatibility -Dtests.verbose=true'
+  command = 'gradlew test -p lucene/backward-codecs --tests TestBackwardsCompatibility --max-workers=1 ' \
+            '-Dtests.verbose=true '
   p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   stdout, stderr = p.communicate()
   if p.returncode != 0:
