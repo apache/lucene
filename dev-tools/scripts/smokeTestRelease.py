@@ -858,14 +858,12 @@ def verifyMavenSigs(tmpDir, artifacts, keysFile):
 
 
 def print_warnings_in_file(file):
-  f = open(file)
-  for line in f.readlines():
-    if line.lower().find('warning') != -1 \
-        and line.find('WARNING: This key is not certified with a trusted signature') == -1 \
-            and line.find('WARNING: using insecure memory') == -1:
-      print('      GPG: %s' % line.strip())
-  f.close()
-
+  with open(file) as f:
+    for line in f.readlines():
+      if line.lower().find('warning') != -1 \
+          and line.find('WARNING: This key is not certified with a trusted signature') == -1 \
+              and line.find('WARNING: using insecure memory') == -1:
+        print('      GPG: %s' % line.strip())
 
 
 def verifyPOMperBinaryArtifact(artifacts, version):
