@@ -5,6 +5,10 @@ on:
     branches:
     - '*'
 
+  push:
+    branches:
+    - main_test
+
 jobs:
   test:
     name: gradle precommit w/ Java 11
