@@ -76,11 +76,11 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    * @param term Term containing field and possibly some pattern structure. The term text is
    *     ignored.
    * @param automaton Automaton to run, terms that are accepted are considered a match.
-   * @param runnableType NFA or DFA. See {@link RunAutomatonMode} for difference between NFA and
+   * @param runAutomatonMode NFA or DFA. See {@link RunAutomatonMode} for difference between NFA and
    *     DFA. Also note that NFA has uncertain performance impact
    */
-  public AutomatonQuery(final Term term, Automaton automaton, RunAutomatonMode runnableType) {
-    this(term, automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false, runnableType);
+  public AutomatonQuery(final Term term, Automaton automaton, RunAutomatonMode runAutomatonMode) {
+    this(term, automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false, runAutomatonMode);
   }
 
   /**
@@ -127,7 +127,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    *     Higher numbers require more space but can process more complex automata.
    * @param isBinary if true, this automaton is already binary and will not go through the
    *     UTF32ToUTF8 conversion
-   * @param runnableType NFA or DFA. See {@link RunAutomatonMode} for difference between NFA and
+   * @param runAutomatonMode NFA or DFA. See {@link RunAutomatonMode} for difference between NFA and
    *     DFA. Also note that NFA has uncertain performance impact
    */
   public AutomatonQuery(
@@ -135,14 +135,15 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
       Automaton automaton,
       int determinizeWorkLimit,
       boolean isBinary,
-      RunAutomatonMode runnableType) {
+      RunAutomatonMode runAutomatonMode) {
     super(term.field());
     this.term = term;
     this.automaton = automaton;
     this.automatonIsBinary = isBinary;
     // TODO: we could take isFinite too, to save a bit of CPU in CompiledAutomaton ctor?:
     this.compiled =
-        new CompiledAutomaton(automaton, null, true, determinizeWorkLimit, isBinary, runnableType);
+        new CompiledAutomaton(
+            automaton, null, true, determinizeWorkLimit, isBinary, runAutomatonMode);
 
     this.ramBytesUsed =
         BASE_RAM_BYTES + term.ramBytesUsed() + automaton.ramBytesUsed() + compiled.ramBytesUsed();

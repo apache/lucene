@@ -145,17 +145,17 @@ public class CompiledAutomaton implements Accountable {
 
   /**
    * Similar to {@link #CompiledAutomaton(Automaton, Boolean, boolean)} but allow using NFA version
-   * by specify the runnableType parameter
+   * by specify the runAutomatonMode parameter
    */
   public CompiledAutomaton(
-      Automaton automaton, Boolean finite, boolean simplify, RunAutomatonMode runnableType) {
+      Automaton automaton, Boolean finite, boolean simplify, RunAutomatonMode runAutomatonMode) {
     this(
         automaton,
         finite,
         simplify,
         Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
         false,
-        runnableType);
+        runAutomatonMode);
   }
 
   /**
@@ -187,15 +187,15 @@ public class CompiledAutomaton implements Accountable {
       boolean simplify,
       int determinizeWorkLimit,
       boolean isBinary,
-      RunAutomatonMode byteRunnableType) {
+      RunAutomatonMode runAutomatonMode) {
     if (automaton.getNumStates() == 0) {
       automaton = new Automaton();
       automaton.createState();
     }
 
-    if (simplify) {
-      // to determine whether we could simplify we need to determinize the automaton first
-      assert byteRunnableType == RunAutomatonMode.DFA;
+    // to determine whether we could simplify we need to determinize the automaton, so we
+    // need to make sure RunAutomatonMode is DFA
+    if (simplify && runAutomatonMode == RunAutomatonMode.DFA) {
 
       // Test whether the automaton is a "simple" form and
       // if so, don't create a runAutomaton.  Note that on a
@@ -294,7 +294,7 @@ public class CompiledAutomaton implements Accountable {
       }
     }
 
-    if (automaton.isDeterministic() == false && byteRunnableType == RunAutomatonMode.NFA) {
+    if (automaton.isDeterministic() == false && runAutomatonMode == RunAutomatonMode.NFA) {
       this.automaton = null;
       this.runAutomaton = null;
       this.sinkState = -1;
