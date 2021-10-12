@@ -37,10 +37,10 @@ jobs:
           ${{ runner.os }}-gradle-
 
     - name: Initialize gradle settings
-      run: ./gradlew localSettings --max-workers 3
+      run: ./gradlew localSettings --max-workers 4
 
     - name: Run gradle check (without tests)
-      run: ./gradlew check -x test -Ptask.times=true --max-workers 3
+      run: ./gradlew check -x test -Ptask.times=true --max-workers 4
 
     - uses: gradle/wrapper-validation-action@v1
 
@@ -71,12 +71,12 @@ jobs:
           ${{ runner.os }}-gradle-
 
     - name: Initialize gradle settings
-      run: ./gradlew localSettings --max-workers 3
+      run: ./gradlew localSettings --max-workers 4
 
     - name: Echo settings
       run: cat gradle.properties
 
     - name: Run gradle tests
-      run: ./gradlew test -Ptask.times=true --max-workers 3
+      run: ./gradlew test -Ptask.times=true --max-workers 4
 
     - uses: gradle/wrapper-validation-action@v1
