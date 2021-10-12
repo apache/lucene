@@ -24,12 +24,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.lucene.geo.Rectangle;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValues.IndexTree;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SloppyMath;
-import org.apache.lucene.util.bkd.BKDPointValues;
-import org.apache.lucene.util.bkd.BKDReader.IndexTree;
 
 /**
  * KNN search on top of 2D lat/lon indexed points.
@@ -242,7 +242,7 @@ class NearestNeighbor {
   public static NearestHit[] nearest(
       double pointLat,
       double pointLon,
-      List<BKDPointValues> readers,
+      List<PointValues> readers,
       List<Bits> liveDocs,
       List<Integer> docBases,
       final int n)
@@ -276,7 +276,7 @@ class NearestNeighbor {
 
     // Add root cell for each reader into the queue:
     for (int i = 0; i < readers.size(); i++) {
-      BKDPointValues reader = readers.get(i);
+      PointValues reader = readers.get(i);
       byte[] minPackedValue = reader.getMinPackedValue();
       byte[] maxPackedValue = reader.getMaxPackedValue();
       IndexTree indexTree = reader.getIndexTree();

@@ -1091,6 +1091,13 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public IndexTree getIndexTree() throws IOException {
+      // TODO: assert that there are no illegal calls when navigating the tree?
+      assertThread("Points", creationThread);
+      return in.getIndexTree();
+    }
+
+    @Override
     public void intersect(IntersectVisitor visitor) throws IOException {
       assertThread("Points", creationThread);
       in.intersect(
@@ -1135,6 +1142,12 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public int getBytesPerDimension() throws IOException {
+      assertThread("Points", creationThread);
+      return in.getBytesPerDimension();
+    }
+
+    @Override
+    public int getMaxPointsPerLeafNode() throws IOException {
       assertThread("Points", creationThread);
       return in.getBytesPerDimension();
     }

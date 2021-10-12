@@ -30,14 +30,13 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.bkd.BKDDefaultReader;
-import org.apache.lucene.util.bkd.BKDPointValues;
+import org.apache.lucene.util.bkd.BKDReader;
 
 /** Reads point values previously written with Lucene86PointsWriter */
 public class Lucene86PointsReader extends PointsReader {
   final IndexInput indexIn, dataIn;
   final SegmentReadState readState;
-  final Map<Integer, BKDPointValues> readers = new HashMap<>();
+  final Map<Integer, PointValues> readers = new HashMap<>();
 
   /** Sole constructor */
   public Lucene86PointsReader(SegmentReadState readState) throws IOException {
@@ -102,8 +101,7 @@ public class Lucene86PointsReader extends PointsReader {
             } else if (fieldNumber < 0) {
               throw new CorruptIndexException("Illegal field number: " + fieldNumber, metaIn);
             }
-            BKDPointValues reader =
-                new BKDPointValues(new BKDDefaultReader(metaIn, indexIn, dataIn));
+            PointValues reader = new BKDReader(metaIn, indexIn, dataIn);
             readers.put(fieldNumber, reader);
           }
           indexLength = metaIn.readLong();
@@ -127,7 +125,7 @@ public class Lucene86PointsReader extends PointsReader {
   }
 
   /**
-   * Returns the underlying {@link BKDPointValues}.
+   * Returns the underlying {@link PointValues}.
    *
    * @lucene.internal
    */

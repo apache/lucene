@@ -26,6 +26,7 @@ import java.util.function.IntFunction;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.MutablePointValues;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -239,8 +240,8 @@ public class BKDWriter implements Closeable {
   }
 
   private static class MergeReader {
-    private final BKDReader.IndexTree indexTree;
-    private final BKDConfig config;
+    private final PointValues.IndexTree indexTree;
+    private final int packedBytesLength;
     private final MergeState.DocMap docMap;
     private final MergeIntersectsVisitor mergeIntersectsVisitor;
     /** Which doc in this block we are up to */
@@ -250,15 +251,17 @@ public class BKDWriter implements Closeable {
     /** Current packed value */
     public final byte[] packedValue;
 
-    public MergeReader(BKDPointValues bkd, MergeState.DocMap docMap) throws IOException {
-      this.config = bkd.in.getConfig();
-      this.indexTree = bkd.in.getIndexTree();
-      this.mergeIntersectsVisitor = new MergeIntersectsVisitor(config);
+    public MergeReader(PointValues pointValues, MergeState.DocMap docMap) throws IOException {
+      this.packedBytesLength = pointValues.getBytesPerDimension() * pointValues.getNumDimensions();
+      this.indexTree = pointValues.getIndexTree();
+      this.mergeIntersectsVisitor =
+          new MergeIntersectsVisitor(
+              packedBytesLength, Math.toIntExact(pointValues.getMaxPointsPerLeafNode()));
       // move to first child of the tree and collect docs
       while (indexTree.moveToChild()) {}
       indexTree.visitDocValues(mergeIntersectsVisitor);
       this.docMap = docMap;
-      this.packedValue = new byte[config.packedBytesLength];
+      this.packedValue = new byte[packedBytesLength];
     }
 
     public boolean next() throws IOException {
@@ -288,10 +291,10 @@ public class BKDWriter implements Closeable {
           docID = mappedDocID;
           System.arraycopy(
               mergeIntersectsVisitor.packedValues,
-              index * config.packedBytesLength,
+              index * packedBytesLength,
               packedValue,
               0,
-              config.packedBytesLength);
+              packedBytesLength);
           return true;
         }
       }
@@ -317,12 +320,12 @@ public class BKDWriter implements Closeable {
     int docsInBlock = 0;
     final byte[] packedValues;
     final int[] docIDs;
-    private final BKDConfig config;
+    private final int packedBytesLength;
 
-    MergeIntersectsVisitor(BKDConfig config) {
-      this.docIDs = new int[config.maxPointsInLeafNode];
-      this.packedValues = new byte[config.maxPointsInLeafNode * config.packedBytesLength];
-      this.config = config;
+    MergeIntersectsVisitor(int packedBytesLength, int maxPointsInLeafNode) {
+      this.docIDs = new int[maxPointsInLeafNode];
+      this.packedValues = new byte[maxPointsInLeafNode * packedBytesLength];
+      this.packedBytesLength = packedBytesLength;
     }
 
     void reset() {
@@ -337,11 +340,7 @@ public class BKDWriter implements Closeable {
     @Override
     public void visit(int docID, byte[] packedValue) {
       System.arraycopy(
-          packedValue,
-          0,
-          packedValues,
-          docsInBlock * config.packedBytesLength,
-          config.packedBytesLength);
+          packedValue, 0, packedValues, docsInBlock * packedBytesLength, packedBytesLength);
       docIDs[docsInBlock++] = docID;
     }
 
@@ -602,7 +601,7 @@ public class BKDWriter implements Closeable {
   }
 
   /**
-   * More efficient bulk-add for incoming {@link BKDPointValues}s. This does a merge sort of the
+   * More efficient bulk-add for incoming {@link PointValues}s. This does a merge sort of the
    * already sorted values and currently only works when numDims==1. This returns -1 if all
    * documents containing dimensional values were deleted.
    */
@@ -611,21 +610,24 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       List<MergeState.DocMap> docMaps,
-      List<BKDPointValues> readers)
+      List<PointValues> readers)
       throws IOException {
     assert docMaps == null || readers.size() == docMaps.size();
 
     BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim, readers.size());
 
     for (int i = 0; i < readers.size(); i++) {
-      BKDPointValues bkd = readers.get(i);
+      PointValues pointValues = readers.get(i);
+      assert pointValues.getNumDimensions() == config.numDims
+          && pointValues.getBytesPerDimension() == config.bytesPerDim
+          && pointValues.getNumIndexDimensions() == config.numIndexDims;
       MergeState.DocMap docMap;
       if (docMaps == null) {
         docMap = null;
       } else {
         docMap = docMaps.get(i);
       }
-      MergeReader reader = new MergeReader(bkd, docMap);
+      MergeReader reader = new MergeReader(pointValues, docMap);
       if (reader.next()) {
         queue.add(reader);
       }

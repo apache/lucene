@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import org.apache.lucene.document.BinaryPoint;
@@ -227,8 +228,56 @@ public abstract class PointValues {
     CELL_CROSSES_QUERY
   };
 
+  /** Create a new {@link IndexTree} to navigate the index */
+  public abstract IndexTree getIndexTree() throws IOException;
+
   /**
-   * We recurse the BKD tree, using a provided instance of this to guide the recursion.
+   * Basic operations to read the KD-tree.
+   *
+   * @lucene.experimental
+   */
+  public interface IndexTree extends Cloneable {
+
+    /** Clone, the current node becomes the root of the new tree. */
+    IndexTree clone();
+
+    /**
+     * Move to the first child node and return {@code true} upon success. Returns {@code false} for
+     * leaf nodes and {@code true} otherwise. Should not be called if the current node has already
+     * called this method.
+     */
+    boolean moveToChild() throws IOException;
+
+    /**
+     * Move to the next sibling node and return {@code true} upon success. Returns {@code false} if
+     * the current node has no more siblings.
+     */
+    boolean moveToSibling() throws IOException;
+
+    /**
+     * Move to the parent node and return {@code true} upon success. Returns {@code false} for the
+     * root node and {@code true} otherwise.
+     */
+    boolean moveToParent() throws IOException;
+
+    /** Return the minimum packed value of the current node. */
+    byte[] getMinPackedValue();
+
+    /** Return the maximum packed value of the current node. */
+    byte[] getMaxPackedValue();
+
+    /** Return the number of points below the current node. */
+    long size();
+
+    /** Visit all the docs below the current node. */
+    void visitDocIDs(IntersectVisitor visitor) throws IOException;
+
+    /** Visit all the docs and values below the current node. */
+    void visitDocValues(IntersectVisitor visitor) throws IOException;
+  }
+
+  /**
+   * We recurse the {@link IndexTree}, using a provided instance of this to guide the recursion.
    *
    * @lucene.experimental
    */
@@ -273,13 +322,83 @@ public abstract class PointValues {
    * Finds all documents and points matching the provided visitor. This method does not enforce live
    * documents, so it's up to the caller to test whether each document is deleted, if necessary.
    */
-  public abstract void intersect(IntersectVisitor visitor) throws IOException;
+  public void intersect(IntersectVisitor visitor) throws IOException {
+    final IndexTree indexTree = getIndexTree();
+    intersect(visitor, indexTree);
+    assert indexTree.moveToParent() == false;
+  }
+
+  private void intersect(IntersectVisitor visitor, IndexTree index) throws IOException {
+    Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
+    switch (r) {
+      case CELL_OUTSIDE_QUERY:
+        // This cell is fully outside the query shape: stop recursing
+        break;
+      case CELL_INSIDE_QUERY:
+        // This cell is fully inside the query shape: recursively add all points in this cell
+        // without filtering
+        index.visitDocIDs(visitor);
+        break;
+      case CELL_CROSSES_QUERY:
+        // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
+        // through and do full filtering:
+        if (index.moveToChild()) {
+          do {
+            intersect(visitor, index);
+          } while (index.moveToSibling());
+          index.moveToParent();
+        } else {
+          // TODO: we can assert that the first value here in fact matches what the index claimed?
+          // Leaf node; scan and filter all points in this block:
+          index.visitDocValues(visitor);
+        }
+        break;
+      default:
+        throw new IllegalArgumentException("Unreachable code");
+    }
+  }
 
   /**
    * Estimate the number of points that would be visited by {@link #intersect} with the given {@link
    * IntersectVisitor}. This should run many times faster than {@link #intersect(IntersectVisitor)}.
    */
-  public abstract long estimatePointCount(IntersectVisitor visitor);
+  public long estimatePointCount(IntersectVisitor visitor) {
+    try {
+      final IndexTree indexTree = getIndexTree();
+      final long count = estimatePointCount(visitor, indexTree);
+      assert indexTree.moveToParent() == false;
+      return count;
+    } catch (IOException ioe) {
+      throw new UncheckedIOException(ioe);
+    }
+  }
+
+  private long estimatePointCount(IntersectVisitor visitor, IndexTree index) throws IOException {
+    Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
+    switch (r) {
+      case CELL_OUTSIDE_QUERY:
+        // This cell is fully outside the query shape: no points added
+        return 0L;
+      case CELL_INSIDE_QUERY:
+        // This cell is fully inside the query shape: add all points
+        return index.size();
+      case CELL_CROSSES_QUERY:
+        // The cell crosses the shape boundary: keep recursing
+        if (index.moveToChild()) {
+          long cost = 0;
+          do {
+            cost += estimatePointCount(visitor, index);
+          } while (index.moveToSibling());
+          index.moveToParent();
+          return cost;
+        } else {
+          // Assume half the points matched
+          return (index.size() + 1) / 2;
+        }
+      default:
+        throw new IllegalArgumentException("Unreachable code");
+    }
+  }
 
   /**
    * Estimate the number of documents that would be matched by {@link #intersect} with the given
@@ -330,6 +449,9 @@ public abstract class PointValues {
 
   /** Returns the number of bytes per dimension */
   public abstract int getBytesPerDimension() throws IOException;
+
+  /** Returns the maximum number of points per leaf node */
+  public abstract int getMaxPointsPerLeafNode() throws IOException;
 
   /** Returns the total number of indexed points across all documents. */
   public abstract long size();

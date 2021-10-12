@@ -51,8 +51,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.bkd.BKDPointValues;
-import org.apache.lucene.util.bkd.BKDReader;
 
 class SimpleTextPointsReader extends PointsReader {
 
@@ -219,8 +217,7 @@ class SimpleTextPointsReader extends PointsReader {
     if (fieldInfo.getPointDimensionCount() == 0) {
       throw new IllegalArgumentException("field=\"" + fieldName + "\" did not index points");
     }
-    BKDReader reader = readers.get(fieldName);
-    return reader != null ? new BKDPointValues(reader) : null;
+    return readers.get(fieldName);
   }
 
   @Override

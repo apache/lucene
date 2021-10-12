@@ -46,8 +46,8 @@ import org.apache.lucene.util.TestUtil;
 
 public class TestBKD extends LuceneTestCase {
 
-  protected BKDReader getBKDReader(IndexInput in) throws IOException {
-    return new BKDDefaultReader(in, in, in);
+  protected PointValues getPointValues(IndexInput in) throws IOException {
+    return new BKDReader(in, in, in);
   }
 
   public void testBasicInts1D() throws Exception {
@@ -69,7 +69,7 @@ public class TestBKD extends LuceneTestCase {
 
       try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
         in.seek(indexFP);
-        PointValues r = new BKDPointValues(getBKDReader(in));
+        PointValues r = getPointValues(in);
 
         // Simple 1D range query:
         final byte[][] queryMin = new byte[1][4];
@@ -140,7 +140,7 @@ public class TestBKD extends LuceneTestCase {
 
       try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
         in.seek(indexFP);
-        PointValues r = new BKDPointValues(getBKDReader(in));
+        PointValues r = getPointValues(in);
 
         byte[] minPackedValue = r.getMinPackedValue();
         byte[] maxPackedValue = r.getMaxPackedValue();
@@ -235,7 +235,7 @@ public class TestBKD extends LuceneTestCase {
 
       try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
         in.seek(indexFP);
-        BKDPointValues r = new BKDPointValues(getBKDReader(in));
+        PointValues pointValues = getPointValues(in);
 
         int iters = atLeast(100);
         for (int iter = 0; iter < iters; iter++) {
@@ -263,7 +263,7 @@ public class TestBKD extends LuceneTestCase {
           }
 
           final BitSet hits = new BitSet();
-          r.intersect(getIntersectVisitor(hits, queryMinBytes, queryMaxBytes, config));
+          pointValues.intersect(getIntersectVisitor(hits, queryMinBytes, queryMaxBytes, config));
 
           for (int docID = 0; docID < numDocs; docID++) {
             BigInteger[] docValues = docs[docID];
@@ -789,10 +789,10 @@ public class TestBKD extends LuceneTestCase {
                 new BKDConfig(numDataDims, numIndexDims, numBytesPerDim, maxPointsInLeafNode),
                 maxMB,
                 docValues.length);
-        List<BKDPointValues> readers = new ArrayList<>();
+        List<PointValues> readers = new ArrayList<>();
         for (long fp : toMerge) {
           in.seek(fp);
-          readers.add(new BKDPointValues(getBKDReader(in)));
+          readers.add(getPointValues(in));
         }
         out = dir.createOutput("bkd2", IOContext.DEFAULT);
         Runnable finalizer = w.merge(out, out, out, docMaps, readers);
@@ -810,8 +810,7 @@ public class TestBKD extends LuceneTestCase {
       }
 
       in.seek(indexFP);
-      BKDReader bkdReader = getBKDReader(in);
-      PointValues r = new BKDPointValues(bkdReader);
+      PointValues pointValues = getPointValues(in);
 
       int iters = atLeast(100);
       for (int iter = 0; iter < iters; iter++) {
@@ -863,15 +862,15 @@ public class TestBKD extends LuceneTestCase {
         BKDConfig config =
             new BKDConfig(numDataDims, numIndexDims, numBytesPerDim, maxPointsInLeafNode);
         final BitSet hits = new BitSet();
-        r.intersect(getIntersectVisitor(hits, queryMin, queryMax, config));
+        pointValues.intersect(getIntersectVisitor(hits, queryMin, queryMax, config));
         assertHits(hits, expected);
 
         hits.clear();
-        bkdReader
+        pointValues
             .getIndexTree()
             .visitDocValues(getIntersectVisitor(hits, queryMin, queryMax, config));
         assertHits(hits, expected);
-        assertSize(bkdReader.getIndexTree());
+        assertSize(pointValues.getIndexTree());
       }
       in.close();
       dir.deleteFile("bkd");
@@ -887,8 +886,8 @@ public class TestBKD extends LuceneTestCase {
     }
   }
 
-  private void assertSize(BKDReader.IndexTree tree) throws IOException {
-    final BKDReader.IndexTree clone = tree.clone();
+  private void assertSize(PointValues.IndexTree tree) throws IOException {
+    final PointValues.IndexTree clone = tree.clone();
     assertEquals(clone.size(), tree.size());
     final long[] size = new long[] {0};
     clone.visitDocIDs(
@@ -1193,7 +1192,7 @@ public class TestBKD extends LuceneTestCase {
 
       IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
       in.seek(fp);
-      PointValues r = new BKDPointValues(getBKDReader(in));
+      PointValues r = getPointValues(in);
       r.intersect(
           new IntersectVisitor() {
             int lastDocID = -1;
@@ -1260,7 +1259,7 @@ public class TestBKD extends LuceneTestCase {
 
     IndexInput pointsIn = dir.openInput("bkd", IOContext.DEFAULT);
     pointsIn.seek(indexFP);
-    PointValues points = new BKDPointValues(getBKDReader(pointsIn));
+    PointValues points = getPointValues(pointsIn);
 
     points.intersect(
         new IntersectVisitor() {
@@ -1321,7 +1320,7 @@ public class TestBKD extends LuceneTestCase {
 
       IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
       in.seek(fp);
-      PointValues r = new BKDPointValues(getBKDReader(in));
+      PointValues r = getPointValues(in);
       int[] count = new int[1];
       r.intersect(
           new IntersectVisitor() {
@@ -1388,7 +1387,7 @@ public class TestBKD extends LuceneTestCase {
 
     IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
     in.seek(fp);
-    PointValues r = new BKDPointValues(getBKDReader(in));
+    PointValues r = getPointValues(in);
     int[] count = new int[1];
     r.intersect(
         new IntersectVisitor() {
@@ -1457,7 +1456,7 @@ public class TestBKD extends LuceneTestCase {
 
     IndexInput pointsIn = dir.openInput("bkd", IOContext.DEFAULT);
     pointsIn.seek(indexFP);
-    PointValues points = new BKDPointValues(getBKDReader(pointsIn));
+    PointValues points = getPointValues(pointsIn);
 
     // If all points match, then the point count is numValues
     assertEquals(
@@ -1544,6 +1543,11 @@ public class TestBKD extends LuceneTestCase {
         new MutablePointValues() {
 
           @Override
+          public IndexTree getIndexTree() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
           public void intersect(IntersectVisitor visitor) throws IOException {
             for (int i = 0; i < numPointsAdded; i++) {
               visitor.visit(0, pointValue);
@@ -1578,6 +1582,11 @@ public class TestBKD extends LuceneTestCase {
           @Override
           public int getBytesPerDimension() {
             throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public int getMaxPointsPerLeafNode() {
+            return numPointsAdded;
           }
 
           @Override
@@ -1717,6 +1726,11 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
+          public IndexTree getIndexTree() throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
           public void intersect(IntersectVisitor visitor) throws IOException {
             for (int i = 0; i < size(); i++) {
               visitor.visit(i, pointValue[i]);
@@ -1751,6 +1765,11 @@ public class TestBKD extends LuceneTestCase {
           @Override
           public int getBytesPerDimension() {
             return numBytesPerDim;
+          }
+
+          @Override
+          public int getMaxPointsPerLeafNode() throws IOException {
+            return 11;
           }
 
           @Override

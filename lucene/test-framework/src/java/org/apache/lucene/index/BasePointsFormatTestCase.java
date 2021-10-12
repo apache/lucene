@@ -1219,6 +1219,11 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
   private PointValues getPointValues(long size, int docCount, long estimatedPointCount) {
     return new PointValues() {
       @Override
+      public IndexTree getIndexTree() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
       public void intersect(IntersectVisitor visitor) {
         throw new UnsupportedOperationException();
       }
@@ -1250,6 +1255,11 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
 
       @Override
       public int getBytesPerDimension() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int getMaxPointsPerLeafNode() {
         throw new UnsupportedOperationException();
       }
 

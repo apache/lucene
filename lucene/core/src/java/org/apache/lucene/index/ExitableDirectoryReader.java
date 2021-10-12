@@ -373,6 +373,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
+    public IndexTree getIndexTree() throws IOException {
+      checkAndThrow();
+      return in.getIndexTree();
+    }
+
+    @Override
     public void intersect(IntersectVisitor visitor) throws IOException {
       checkAndThrow();
       in.intersect(new ExitableIntersectVisitor(visitor, queryTimeout));
@@ -412,6 +418,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     public int getBytesPerDimension() throws IOException {
       checkAndThrow();
       return in.getBytesPerDimension();
+    }
+
+    @Override
+    public int getMaxPointsPerLeafNode() throws IOException {
+      checkAndThrow();
+      return in.getMaxPointsPerLeafNode();
     }
 
     @Override

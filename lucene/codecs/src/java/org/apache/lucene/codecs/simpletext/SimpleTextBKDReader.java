@@ -30,11 +30,10 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.bkd.BKDConfig;
-import org.apache.lucene.util.bkd.BKDDefaultReader;
 import org.apache.lucene.util.bkd.BKDReader;
 
-/** Forked from {@link BKDDefaultReader} and simplified/specialized for SimpleText's usage */
-final class SimpleTextBKDReader implements BKDReader {
+/** Forked from {@link BKDReader} and simplified/specialized for SimpleText's usage */
+final class SimpleTextBKDReader extends PointValues {
   // Packed array of byte[] holding all split values in the full binary tree:
   private final byte[] splitPackedValues;
   final long[] leafBlockFPs;
@@ -77,36 +76,11 @@ final class SimpleTextBKDReader implements BKDReader {
   }
 
   @Override
-  public BKDConfig getConfig() {
-    return config;
-  }
-
-  @Override
-  public byte[] getMinPackedValue() {
-    return minPackedValue.clone();
-  }
-
-  @Override
-  public byte[] getMaxPackedValue() {
-    return maxPackedValue.clone();
-  }
-
-  @Override
-  public long getPointCount() {
-    return pointCount;
-  }
-
-  @Override
-  public int getDocCount() {
-    return docCount;
-  }
-
-  @Override
   public IndexTree getIndexTree() {
-    return new IndexTree(1, 1, minPackedValue, maxPackedValue);
+    return new SimpleTextIndexTree(1, 1, minPackedValue, maxPackedValue);
   }
 
-  private class IndexTree implements BKDReader.IndexTree {
+  private class SimpleTextIndexTree implements IndexTree {
 
     final int[] scratchDocIDs;
     final byte[] scratchPackedValue;
@@ -121,7 +95,8 @@ final class SimpleTextBKDReader implements BKDReader {
     // holds the splitDim for each level:
     private final int[] splitDims;
 
-    private IndexTree(int nodeID, int level, byte[] minPackedValue, byte[] maxPackedValue) {
+    private SimpleTextIndexTree(
+        int nodeID, int level, byte[] minPackedValue, byte[] maxPackedValue) {
       this.scratchDocIDs = new int[config.maxPointsInLeafNode];
       this.scratchPackedValue = new byte[config.packedBytesLength];
       this.nodeID = nodeID;
@@ -148,8 +123,9 @@ final class SimpleTextBKDReader implements BKDReader {
     }
 
     @Override
-    public BKDReader.IndexTree clone() {
-      IndexTree index = new IndexTree(nodeID, level, minPackedValue, maxPackedValue);
+    public IndexTree clone() {
+      SimpleTextIndexTree index =
+          new SimpleTextIndexTree(nodeID, level, minPackedValue, maxPackedValue);
       if (isLeafNode() == false) {
         // copy node data
         index.splitDims[level] = splitDims[level];
@@ -328,35 +304,33 @@ final class SimpleTextBKDReader implements BKDReader {
 
     @Override
     public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
-      long maxPointCount = size();
-      while (maxPointCount > Integer.MAX_VALUE) {
-        // could be >MAX_VALUE if there are more than 2B points in total
-        visitor.grow(Integer.MAX_VALUE);
-        maxPointCount -= Integer.MAX_VALUE;
-      }
-      visitor.grow((int) maxPointCount);
-
-      addAll(visitor);
+      addAll(visitor, false);
     }
 
-    private void addAll(PointValues.IntersectVisitor visitor) throws IOException {
+    public void addAll(PointValues.IntersectVisitor visitor, boolean grown) throws IOException {
+      if (grown == false) {
+        final long size = size();
+        if (size <= Integer.MAX_VALUE) {
+          visitor.grow((int) size);
+          grown = true;
+        }
+      }
       if (isLeafNode()) {
         // Leaf node
         BytesRefBuilder scratch = new BytesRefBuilder();
         in.seek(leafBlockFPs[nodeID - leafNodeOffset]);
         readLine(in, scratch);
         int count = parseInt(scratch, BLOCK_COUNT);
-        visitor.grow(count);
         for (int i = 0; i < count; i++) {
           readLine(in, scratch);
           visitor.visit(parseInt(scratch, BLOCK_DOC_ID));
         }
       } else {
         pushLeft();
-        addAll(visitor);
+        addAll(visitor, grown);
         pop(true);
         pushRight();
-        addAll(visitor);
+        addAll(visitor, grown);
         pop(false);
       }
     }
@@ -426,5 +400,45 @@ final class SimpleTextBKDReader implements BKDReader {
     private void readLine(IndexInput in, BytesRefBuilder scratch) throws IOException {
       SimpleTextUtil.readLine(in, scratch);
     }
+  }
+
+  @Override
+  public byte[] getMinPackedValue() {
+    return minPackedValue.clone();
+  }
+
+  @Override
+  public byte[] getMaxPackedValue() {
+    return maxPackedValue.clone();
+  }
+
+  @Override
+  public int getNumDimensions() throws IOException {
+    return config.numDims;
+  }
+
+  @Override
+  public int getNumIndexDimensions() throws IOException {
+    return config.numIndexDims;
+  }
+
+  @Override
+  public int getBytesPerDimension() throws IOException {
+    return config.bytesPerDim;
+  }
+
+  @Override
+  public int getMaxPointsPerLeafNode() {
+    return config.maxPointsInLeafNode;
+  }
+
+  @Override
+  public long size() {
+    return pointCount;
+  }
+
+  @Override
+  public int getDocCount() {
+    return docCount;
   }
 }

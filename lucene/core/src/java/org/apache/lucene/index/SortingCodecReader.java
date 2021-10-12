@@ -82,29 +82,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
-      in.intersect(
-          new IntersectVisitor() {
-            @Override
-            public void visit(int docID) throws IOException {
-              visitor.visit(docMap.oldToNew(docID));
-            }
-
-            @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
-              visitor.visit(docMap.oldToNew(docID), packedValue);
-            }
-
-            @Override
-            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              return visitor.compare(minPackedValue, maxPackedValue);
-            }
-          });
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      return in.estimatePointCount(visitor);
+    public IndexTree getIndexTree() throws IOException {
+      return new SortingIndexTree(in.getIndexTree(), docMap);
     }
 
     @Override
@@ -133,6 +112,11 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
+    public int getMaxPointsPerLeafNode() throws IOException {
+      return in.getMaxPointsPerLeafNode();
+    }
+
+    @Override
     public long size() {
       return in.size();
     }
@@ -140,6 +124,96 @@ public final class SortingCodecReader extends FilterCodecReader {
     @Override
     public int getDocCount() {
       return in.getDocCount();
+    }
+  }
+
+  private static class SortingIndexTree implements PointValues.IndexTree {
+
+    private final PointValues.IndexTree indexTree;
+    private final Sorter.DocMap docMap;
+    private final SortingIntersectVisitor sortingIntersectVisitor;
+
+    SortingIndexTree(PointValues.IndexTree indexTree, Sorter.DocMap docMap) {
+      this.indexTree = indexTree;
+      this.docMap = docMap;
+      this.sortingIntersectVisitor = new SortingIntersectVisitor(docMap);
+    }
+
+    @Override
+    public PointValues.IndexTree clone() {
+      return new SortingIndexTree(indexTree.clone(), docMap);
+    }
+
+    @Override
+    public boolean moveToChild() throws IOException {
+      return indexTree.moveToChild();
+    }
+
+    @Override
+    public boolean moveToSibling() throws IOException {
+      return indexTree.moveToSibling();
+    }
+
+    @Override
+    public boolean moveToParent() throws IOException {
+      return indexTree.moveToParent();
+    }
+
+    @Override
+    public byte[] getMinPackedValue() {
+      return indexTree.getMinPackedValue();
+    }
+
+    @Override
+    public byte[] getMaxPackedValue() {
+      return indexTree.getMaxPackedValue();
+    }
+
+    @Override
+    public long size() {
+      return indexTree.size();
+    }
+
+    @Override
+    public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
+      sortingIntersectVisitor.setIntersectVisitor(visitor);
+      indexTree.visitDocIDs(sortingIntersectVisitor);
+    }
+
+    @Override
+    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+      sortingIntersectVisitor.setIntersectVisitor(visitor);
+      indexTree.visitDocValues(sortingIntersectVisitor);
+    }
+  }
+
+  private static class SortingIntersectVisitor implements PointValues.IntersectVisitor {
+
+    private final Sorter.DocMap docMap;
+
+    private PointValues.IntersectVisitor visitor;
+
+    SortingIntersectVisitor(Sorter.DocMap docMap) {
+      this.docMap = docMap;
+    }
+
+    private void setIntersectVisitor(PointValues.IntersectVisitor visitor) {
+      this.visitor = visitor;
+    }
+
+    @Override
+    public void visit(int docID) throws IOException {
+      visitor.visit(docMap.oldToNew(docID));
+    }
+
+    @Override
+    public void visit(int docID, byte[] packedValue) throws IOException {
+      visitor.visit(docMap.oldToNew(docID), packedValue);
+    }
+
+    @Override
+    public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+      return visitor.compare(minPackedValue, maxPackedValue);
     }
   }
 

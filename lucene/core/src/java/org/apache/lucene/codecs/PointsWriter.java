@@ -73,6 +73,11 @@ public abstract class PointsWriter implements Closeable {
             return new PointValues() {
 
               @Override
+              public IndexTree getIndexTree() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
               public void intersect(IntersectVisitor mergedVisitor) throws IOException {
                 for (int i = 0; i < mergeState.pointsReaders.length; i++) {
                   PointsReader pointsReader = mergeState.pointsReaders[i];
@@ -150,6 +155,11 @@ public abstract class PointsWriter implements Closeable {
 
               @Override
               public int getBytesPerDimension() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getMaxPointsPerLeafNode() {
                 throw new UnsupportedOperationException();
               }
 

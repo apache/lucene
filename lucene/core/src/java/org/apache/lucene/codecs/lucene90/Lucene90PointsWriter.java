@@ -34,7 +34,6 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDConfig;
-import org.apache.lucene.util.bkd.BKDPointValues;
 import org.apache.lucene.util.bkd.BKDWriter;
 
 /** Writes dimensional values */
@@ -234,7 +233,7 @@ public class Lucene90PointsWriter extends PointsWriter {
                   config,
                   maxMBSortInHeap,
                   totMaxSize)) {
-            List<BKDPointValues> bkdPointValues = new ArrayList<>();
+            List<PointValues> pointValues = new ArrayList<>();
             List<MergeState.DocMap> docMaps = new ArrayList<>();
             for (int i = 0; i < mergeState.pointsReaders.length; i++) {
               PointsReader reader = mergeState.pointsReaders[i];
@@ -253,16 +252,16 @@ public class Lucene90PointsWriter extends PointsWriter {
                 FieldInfos readerFieldInfos = mergeState.fieldInfos[i];
                 FieldInfo readerFieldInfo = readerFieldInfos.fieldInfo(fieldInfo.name);
                 if (readerFieldInfo != null && readerFieldInfo.getPointDimensionCount() > 0) {
-                  BKDPointValues aBKDPointValues = reader90.readers.get(readerFieldInfo.number);
-                  if (aBKDPointValues != null) {
-                    bkdPointValues.add(aBKDPointValues);
+                  PointValues aPointValues = reader90.readers.get(readerFieldInfo.number);
+                  if (aPointValues != null) {
+                    pointValues.add(aPointValues);
                     docMaps.add(mergeState.docMaps[i]);
                   }
                 }
               }
             }
 
-            Runnable finalizer = writer.merge(metaOut, indexOut, dataOut, docMaps, bkdPointValues);
+            Runnable finalizer = writer.merge(metaOut, indexOut, dataOut, docMaps, pointValues);
             if (finalizer != null) {
               metaOut.writeInt(fieldInfo.number);
               finalizer.run();

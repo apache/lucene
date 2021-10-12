@@ -123,6 +123,14 @@ class CrankyPointsFormat extends PointsFormat {
       return new PointValues() {
 
         @Override
+        public IndexTree getIndexTree() throws IOException {
+          if (random.nextInt(100) == 0) {
+            throw new IOException("Fake IOException");
+          }
+          return delegate.getIndexTree();
+        }
+
+        @Override
         public void intersect(IntersectVisitor visitor) throws IOException {
           if (random.nextInt(100) == 0) {
             throw new IOException("Fake IOException");
@@ -176,6 +184,14 @@ class CrankyPointsFormat extends PointsFormat {
             throw new IOException("Fake IOException");
           }
           return delegate.getBytesPerDimension();
+        }
+
+        @Override
+        public int getMaxPointsPerLeafNode() throws IOException {
+          if (random.nextInt(100) == 0) {
+            throw new IOException("Fake IOException");
+          }
+          return delegate.getMaxPointsPerLeafNode();
         }
 
         @Override

@@ -104,6 +104,11 @@ class PointValuesWriter {
           }
 
           @Override
+          public IndexTree getIndexTree() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
           public void intersect(IntersectVisitor visitor) throws IOException {
             final BytesRef scratch = new BytesRef();
             final byte[] packedValue = new byte[packedBytesLength];
@@ -142,6 +147,11 @@ class PointValuesWriter {
 
           @Override
           public int getBytesPerDimension() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public int getMaxPointsPerLeafNode() {
             throw new UnsupportedOperationException();
           }
 
@@ -233,6 +243,11 @@ class PointValuesWriter {
     }
 
     @Override
+    public IndexTree getIndexTree() throws IOException {
+      return in.getIndexTree();
+    }
+
+    @Override
     public void intersect(IntersectVisitor visitor) throws IOException {
       in.intersect(
           new IntersectVisitor() {
@@ -251,11 +266,6 @@ class PointValuesWriter {
               return visitor.compare(minPackedValue, maxPackedValue);
             }
           });
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      return in.estimatePointCount(visitor);
     }
 
     @Override
@@ -281,6 +291,11 @@ class PointValuesWriter {
     @Override
     public int getBytesPerDimension() throws IOException {
       return in.getBytesPerDimension();
+    }
+
+    @Override
+    public int getMaxPointsPerLeafNode() throws IOException {
+      return in.getMaxPointsPerLeafNode();
     }
 
     @Override

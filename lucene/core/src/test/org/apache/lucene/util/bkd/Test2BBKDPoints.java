@@ -73,7 +73,7 @@ public class Test2BBKDPoints extends LuceneTestCase {
 
     IndexInput in = dir.openInput("1d.bkd", IOContext.DEFAULT);
     in.seek(indexFP);
-    PointValues r = new BKDPointValues(new BKDDefaultReader(in, in, in));
+    PointValues r = new BKDReader(in, in, in);
     CheckIndex.VerifyPointsVisitor visitor = new CheckIndex.VerifyPointsVisitor("1d", numDocs, r);
     r.intersect(visitor);
     assertEquals(r.size(), visitor.getPointCountSeen());
@@ -122,7 +122,7 @@ public class Test2BBKDPoints extends LuceneTestCase {
 
     IndexInput in = dir.openInput("2d.bkd", IOContext.DEFAULT);
     in.seek(indexFP);
-    PointValues r = new BKDPointValues(new BKDDefaultReader(in, in, in));
+    PointValues r = new BKDReader(in, in, in);
     CheckIndex.VerifyPointsVisitor visitor = new CheckIndex.VerifyPointsVisitor("2d", numDocs, r);
     r.intersect(visitor);
     assertEquals(r.size(), visitor.getPointCountSeen());

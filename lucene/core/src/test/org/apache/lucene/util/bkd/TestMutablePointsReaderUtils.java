@@ -337,12 +337,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
+    public IndexTree getIndexTree() throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -368,6 +363,11 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
 
     @Override
     public int getBytesPerDimension() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int getMaxPointsPerLeafNode() throws IOException {
       throw new UnsupportedOperationException();
     }
 
