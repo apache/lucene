@@ -617,10 +617,9 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     java.run_java11('gradlew assemble', '%s/compile.log' % unpackPath)
     testDemo(java.run_java11, isSrc, version, '11')
 
-    print('    generate javadocs w/ Java 11...')
-    # NOCOMMIT: Assembly of javadoc into a dist folder depends on LUCENE-9488 https://github.com/apache/lucene/pull/359
-    java.run_java11('gradlew javadoc', '%s/javadocs.log' % unpackPath)
+    #print('    generate javadocs w/ Java 11...')
     # TODO: Do we need to check broken javadoc links in smoketester, or is that done in build now?
+    #java.run_java11('gradlew javadoc', '%s/javadocs.log' % unpackPath)
     # checkBrokenLinks('%s/build/docs' % unpackPath)
 
     if java.run_java12:
