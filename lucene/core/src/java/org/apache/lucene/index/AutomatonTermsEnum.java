@@ -83,6 +83,7 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
     }
     this.finite = compiled.finite;
     if (compiled.nfaRunAutomaton != null) {
+      // run directly on NFA if nfaRunAutomaton is not null
       this.runAutomaton = compiled.nfaRunAutomaton;
       this.automaton = compiled.nfaRunAutomaton;
     } else {

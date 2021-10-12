@@ -107,6 +107,7 @@ public class IntersectBlockReader extends BlockReader {
       throws IOException {
     super(dictionaryBrowserSupplier, blockInput, postingsReader, fieldMetadata, blockDecoder);
     if (compiled.nfaRunAutomaton != null) {
+      // run directly on NFA if nfaRunAutomaton is not null
       this.runAutomaton = compiled.nfaRunAutomaton;
       this.automaton = compiled.nfaRunAutomaton;
     } else {

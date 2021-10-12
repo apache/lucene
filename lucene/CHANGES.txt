@@ -96,6 +96,8 @@ Other
 New Features
 ---------------------
 
+* LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Haoyu Zhai)
+
 * LUCENE-9322, LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
 * LUCENE-9004, LUCENE-10040: Approximate nearest vector search via NSW graphs (Mike Sokolov, Tomoko Uchida et al.)

@@ -65,6 +65,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
     // }
     this.fr = fr;
     if (compiled.nfaRunAutomaton != null) {
+      // run directly on NFA if nfaRunAutomaton is not null
       this.runAutomaton = compiled.nfaRunAutomaton;
       this.automaton = compiled.nfaRunAutomaton;
     } else {

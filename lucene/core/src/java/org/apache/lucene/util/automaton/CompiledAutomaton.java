@@ -78,7 +78,10 @@ public class CompiledAutomaton implements Accountable {
    */
   public final Automaton automaton;
 
-  /** Matcher directly run on a NFA, it will determinize the state on need and caches it */
+  /**
+   * Matcher directly run on a NFA, it will determinize the state on need and caches it, note that
+   * this field and {@link #runAutomaton} will not be non-null at the same time
+   */
   public final NFARunAutomaton nfaRunAutomaton;
 
   /**
@@ -137,7 +140,7 @@ public class CompiledAutomaton implements Accountable {
    * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
    */
   public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify) {
-    this(automaton, finite, simplify, ByteRunnable.TYPE.DFA);
+    this(automaton, finite, simplify, RunAutomatonMode.DFA);
   }
 
   /**
@@ -145,7 +148,7 @@ public class CompiledAutomaton implements Accountable {
    * by specify the runnableType parameter
    */
   public CompiledAutomaton(
-      Automaton automaton, Boolean finite, boolean simplify, ByteRunnable.TYPE runnableType) {
+      Automaton automaton, Boolean finite, boolean simplify, RunAutomatonMode runnableType) {
     this(
         automaton,
         finite,
@@ -157,7 +160,7 @@ public class CompiledAutomaton implements Accountable {
 
   /**
    * A DFA version ctor, see {@link #CompiledAutomaton(Automaton, Boolean, boolean, int, boolean,
-   * ByteRunnable.TYPE)}
+   * RunAutomatonMode)}
    */
   public CompiledAutomaton(
       Automaton automaton,
@@ -165,7 +168,7 @@ public class CompiledAutomaton implements Accountable {
       boolean simplify,
       int determinizeWorkLimit,
       boolean isBinary) {
-    this(automaton, finite, simplify, determinizeWorkLimit, isBinary, ByteRunnable.TYPE.DFA);
+    this(automaton, finite, simplify, determinizeWorkLimit, isBinary, RunAutomatonMode.DFA);
   }
 
   /**
@@ -184,7 +187,7 @@ public class CompiledAutomaton implements Accountable {
       boolean simplify,
       int determinizeWorkLimit,
       boolean isBinary,
-      ByteRunnable.TYPE byteRunnableType) {
+      RunAutomatonMode byteRunnableType) {
     if (automaton.getNumStates() == 0) {
       automaton = new Automaton();
       automaton.createState();
@@ -192,7 +195,7 @@ public class CompiledAutomaton implements Accountable {
 
     if (simplify) {
       // to determine whether we could simplify we need to determinize the automaton first
-      assert byteRunnableType == ByteRunnable.TYPE.DFA;
+      assert byteRunnableType == RunAutomatonMode.DFA;
 
       // Test whether the automaton is a "simple" form and
       // if so, don't create a runAutomaton.  Note that on a
@@ -291,7 +294,7 @@ public class CompiledAutomaton implements Accountable {
       }
     }
 
-    if (automaton.isDeterministic() == false && byteRunnableType == ByteRunnable.TYPE.NFA) {
+    if (automaton.isDeterministic() == false && byteRunnableType == RunAutomatonMode.NFA) {
       this.automaton = null;
       this.runAutomaton = null;
       this.sinkState = -1;

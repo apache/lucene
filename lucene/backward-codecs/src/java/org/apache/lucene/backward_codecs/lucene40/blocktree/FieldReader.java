@@ -188,6 +188,7 @@ public final class FieldReader extends Terms {
       throw new IllegalArgumentException("please use CompiledAutomaton.getTermsEnum instead");
     }
     if (compiled.nfaRunAutomaton != null) {
+      // run directly on NFA if nfaRunAutomaton is not null
       return new IntersectTermsEnum(
           this,
           compiled.nfaRunAutomaton,
