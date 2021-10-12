@@ -10,13 +10,16 @@ on:
     - main_test
 
 jobs:
+  # This runs all validation checks without tests.
   checks:
-    name: gradle check -x test w/ Java 11
-
-    runs-on: ubuntu-latest
+    name: gradle check -x test (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
+        # Operating systems to run on.
+        os: [ubuntu-latest]
+        # Test JVMs.
         java: [ '11' ]
 
     steps:
@@ -49,16 +52,17 @@ jobs:
 
     - uses: gradle/wrapper-validation-action@v1
 
+  # This runs all tests without any other validation checks.
   tests:
-    name: gradle test (Java 11)
-
+    name: gradle test (JDK ${{ matrix.java }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
+        # Operating systems to run on.
         # windows-latest: fairly slow to build and results in odd errors (see LUCENE-10167)
         os: [ubuntu-latest, macos-latest]
-        # Test on just Java 11 for the time being.
+        # Test JVMs.
         java: [ '11' ]
 
     steps:
