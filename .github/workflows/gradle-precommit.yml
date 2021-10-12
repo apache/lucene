@@ -1,4 +1,4 @@
-name: Gradle Precommit
+name: Gradle Precommit Checks
 
 on: 
   pull_request:
@@ -37,15 +37,15 @@ jobs:
           ${{ runner.os }}-gradle-
 
     - name: Initialize gradle settings
-      run: ./gradlew localSettings --max-workers 4
+      run: ./gradlew localSettings --max-workers 2
 
     - name: Run gradle check (without tests)
-      run: ./gradlew check -x test -Ptask.times=true --max-workers 4
+      run: ./gradlew check -x test -Ptask.times=true --max-workers 2
 
     - uses: gradle/wrapper-validation-action@v1
 
   tests_linux:
-    name: gradle test w/ Java 11
+    name: gradle test w/ Java 11 (Linux)
 
     runs-on: ubuntu-latest
 
@@ -71,12 +71,43 @@ jobs:
           ${{ runner.os }}-gradle-
 
     - name: Initialize gradle settings
-      run: ./gradlew localSettings --max-workers 4
+      run: ./gradlew localSettings --max-workers 2
 
     - name: Echo settings
       run: cat gradle.properties
 
     - name: Run gradle tests
-      run: ./gradlew test -Ptask.times=true --max-workers 4
+      run: ./gradlew test -Ptask.times=true --max-workers 2
+
+    - uses: gradle/wrapper-validation-action@v1
+
+  tests_windows:
+    name: gradle test w/ Java 11 (Windows)
+
+    runs-on: windows-latest
+
+    steps:
+    # Setup
+    - uses: actions/checkout@v2
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-precommit-
+          ${{ runner.os }}-gradle-
+
+    - name: Initialize gradle settings
+      run: gradlew localSettings --max-workers 2
+
+    - name: Run gradle tests
+      run: gradlew test -Ptask.times=true --max-workers 2
 
     - uses: gradle/wrapper-validation-action@v1
