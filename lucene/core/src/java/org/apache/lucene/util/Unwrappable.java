@@ -14,28 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
 
-apply plugin: 'java-library'
+/**
+ * An object with this interface is a wrapper around another object (e.g., a filter with a
+ * delegate). The method {@link #unwrap()} can be called to get the wrapped object
+ *
+ * @lucene.internal
+ */
+public interface Unwrappable<T> {
 
-description = 'Lucene index files replication utility'
+  /** Unwraps this instance */
+  T unwrap();
 
-dependencies {
-  api project(':lucene:core')
-
-  implementation project(':lucene:facet')
-
-  implementation('org.apache.httpcomponents:httpclient', {
-    exclude group: "commons-codec", module: "commons-codec"
-  })
-
-  implementation 'javax.servlet:javax.servlet-api'
-
-  testImplementation 'org.eclipse.jetty:jetty-server'
-  testImplementation('org.eclipse.jetty:jetty-servlet', {
-    exclude group: "org.eclipse.jetty", module: "jetty-security"
-  })
-  testImplementation 'org.eclipse.jetty:jetty-continuation'
-
-  testImplementation project(':lucene:test-framework')
+  /** Unwraps all {@code Unwrappable}s around the given object. */
+  @SuppressWarnings("unchecked")
+  public static <T> T unwrapAll(T o) {
+    while (o instanceof Unwrappable) {
+      o = ((Unwrappable<T>) o).unwrap();
+    }
+    return o;
+  }
 }
-
