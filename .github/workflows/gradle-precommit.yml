@@ -51,7 +51,9 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # - windows-latest: fairly slow to build and results in odd errors (see LUCENE-10167)
+        # - macos-latest: works fine but is a tad slower than Linux.
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v2
