@@ -43,6 +43,7 @@ def run(command):
     print(msg)
     raise RuntimeError(msg)
 
+
 def runAndSendGPGPassword(command, password):
   p = subprocess.Popen(command, shell=True, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
   f = open(LOG, 'ab')
@@ -92,7 +93,8 @@ def getGitRev():
   print('  git clone is clean')
   return os.popen('git rev-parse HEAD').read().strip()
 
-def prepare(root, version, gpgKeyID, gpgPassword):
+
+def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=False):
   print()
   print('Prepare release...')
   if os.path.exists(LOG):
@@ -110,18 +112,29 @@ def prepare(root, version, gpgKeyID, gpgPassword):
   checkDOAPfiles(version)
 
   print('  ./gradlew -Dtests.badapples=false clean check')
-  run('./gradlew -Dtests.badapples=false clean check')
+  #run('./gradlew -Dtests.badapples=false clean check')
 
   open('rev.txt', mode='wb').write(rev.encode('UTF-8'))
   
   print('  prepare-release')
-  cmd = './gradlew -Dversion.release=%s clean assembleDist' % version
-  if gpgKeyID is not None:
-    cmd += ' -Psigning.gnupg.keyName=%s signDist' % gpgKeyID
-  cmd += ' mavenToLocalFolder'
+  cmd = './gradlew clean assembleRelease mavenToLocal' \
+        ' -Dversion.release=%s ' % version
+  if gpg_key_id is not None:
+    cmd += ' -Psign'
+    if sign_gradle:
+      cmd += ' -Psigning.keyId="%s"' % gpg_key_id
+      if gpg_home is not None:
+        cmd += ' -Psigning.secretKeyRingFile="%s"' % os.path.join(gpg_home, 'secring.gpg')
+    else:
+      cmd += ' -PuseGpg --signing.gnupg.keyName="%s"' % gpg_key_id
+      if gpg_home is not None:
+        cmd += ' -Psigning.gnupg.homeDir="%s"' % gpg_home
+    # Gpg password can optionally fall back to gradle.properties signing.keyId and signing.secretKeyRingFile
+    if gpg_password is not None:
+      cmd += ' -Psigning.password="%s"' % gpg_password
 
-  if gpgPassword is not None:
-    runAndSendGPGPassword(cmd, gpgPassword)
+  if gpg_password is not None:
+    runAndSendGPGPassword(cmd, gpg_password)
   else:
     run(cmd)
   
@@ -206,8 +219,10 @@ def pushLocal(version, root, rev, rcNum, localDir):
   print('  done!')
   return 'file://%s/%s' % (os.path.abspath(localDir), dir)
 
+
 def read_version(path):
   return scriptutil.find_current_version()
+
 
 def parse_config():
   epilogue = textwrap.dedent('''
@@ -225,6 +240,16 @@ def parse_config():
                       help='Push the release to the local path')
   parser.add_argument('--sign', metavar='KEYID',
                       help='Sign the release with the given gpg key')
+  parser.add_argument('--sign-method-gradle', dest='sign_method_gradle', default=False, action='store_true',
+                      help='Use Gradle built-in GPG signing instead of gpg command for signing artifacts. '
+                      ' This may require --gpg-secring argument if your keychain cannot be resolved automatically.')
+  parser.add_argument('--gpg-pass-noprompt', dest='gpg_pass_noprompt', default=False, action='store_true',
+                      help='Do not prompt for gpg passphrase. For the default gnupg method, this means your gpg-agent'
+                      ' needs a non-TTY pin-entry program. For gradle signing method, passphrase must be provided'
+                      ' in gradle.properties or by env.var/sysprop. See ./gradlew helpPublishing for more info')
+  parser.add_argument('--gpg-home', metavar='PATH',
+                      help='Path to gpg home containing your secring.gpg'
+                      ' Optional, will use $HOME/.gnupg/secring.gpg by default')
   parser.add_argument('--rc-num', metavar='NUM', type=int, default=1,
                       help='Release Candidate number.  Default: 1')
   parser.add_argument('--root', metavar='PATH', default='.',
@@ -243,6 +268,10 @@ def parse_config():
     parser.error('Root path "%s" is not a directory' % config.root)
   if config.local_keys is not None and not os.path.exists(config.local_keys):
     parser.error('Local KEYS file "%s" not found' % config.local_keys)
+  if config.gpg_home and not os.path.exists(os.path.join(config.gpg_home, 'secring.gpg')):
+    parser.error('Specified gpg home %s does not exist or does not contain a secring.gpg' % config.gpg_home)
+  if config.gpg_pass_noprompt:
+    print("Will not prompt for gpg password. Make sure your signing setup supports this.")
   cwd = os.getcwd()
   os.chdir(config.root)
   config.root = os.getcwd() # Absolutize root dir
@@ -298,23 +327,57 @@ def check_key_in_keys(gpgKeyID, local_keys):
       exit(2)
 
 
+def resolve_gpghome():
+  for p in [
+    # Linux, macos
+    os.path.join(os.path.expanduser("~"), '.gnupg'),
+    # Windows 10
+    os.path.expandvars(r'%APPDATA%\GnuPG')
+    # TODO: Should we support Cygwin?
+  ]:
+    if os.path.exists(os.path.join(p, 'secring.gpg')):
+      return p
+  return None
+
+
 def main():
   check_cmdline_tools()
 
   c = parse_config()
+  gpg_home = None
 
   if c.sign:
     sys.stdout.flush()
     c.key_id = c.sign
     check_key_in_keys(c.key_id, c.local_keys)
-    import getpass
-    c.key_password = getpass.getpass('Enter GPG keystore password: ')
+    if c.gpg_home is not None:
+      print("Using custom gpg-home")
+      gpg_home = c.gpg_home
+    if c.sign_method_gradle:
+      print("Signing method is gradle-plugin")
+      if gpg_home is None:
+        resolved_gpg_home = resolve_gpghome()
+        if resolved_gpg_home is not None:
+          print("Resolved gpg home to %s" % resolved_gpg_home)
+          gpg_home = resolved_gpg_home
+        else:
+          print("WARN: Could not locate your gpg secret keyring, and --gpg-home not specified.")
+          print("      Falling back to location configured in gradle.properties.")
+          print("      See 'gradlew helpPublishing' for details.")
+          gpg_home = None
+    else:
+      print("Signing method is gpg tool")
+    if c.gpg_pass_noprompt:
+      c.key_password = None
+    else:
+      import getpass
+      c.key_password = getpass.getpass('Enter GPG keystore password: ')
   else:
     c.key_id = None
     c.key_password = None
-  
+
   if c.prepare:
-    rev = prepare(c.root, c.version, c.key_id, c.key_password)
+    rev = prepare(c.root, c.version, c.key_id, c.key_password, gpg_home=gpg_home, sign_gradle=c.sign_method_gradle)
   else:
     os.chdir(c.root)
     rev = open('rev.txt', encoding='UTF-8').read()
