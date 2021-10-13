@@ -187,14 +187,6 @@ class CrankyPointsFormat extends PointsFormat {
         }
 
         @Override
-        public int getMaxPointsPerLeafNode() throws IOException {
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
-          return delegate.getMaxPointsPerLeafNode();
-        }
-
-        @Override
         public long size() {
           return delegate.size();
         }

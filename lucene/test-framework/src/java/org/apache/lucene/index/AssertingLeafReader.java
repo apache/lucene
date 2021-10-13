@@ -1146,12 +1146,6 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public int getMaxPointsPerLeafNode() throws IOException {
-      assertThread("Points", creationThread);
-      return in.getBytesPerDimension();
-    }
-
-    @Override
     public long size() {
       assertThread("Points", creationThread);
       return in.size();

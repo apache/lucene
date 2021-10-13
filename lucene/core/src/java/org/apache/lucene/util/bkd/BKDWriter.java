@@ -254,9 +254,7 @@ public class BKDWriter implements Closeable {
     public MergeReader(PointValues pointValues, MergeState.DocMap docMap) throws IOException {
       this.packedBytesLength = pointValues.getBytesPerDimension() * pointValues.getNumDimensions();
       this.indexTree = pointValues.getIndexTree();
-      this.mergeIntersectsVisitor =
-          new MergeIntersectsVisitor(
-              packedBytesLength, Math.toIntExact(pointValues.getMaxPointsPerLeafNode()));
+      this.mergeIntersectsVisitor = new MergeIntersectsVisitor(packedBytesLength);
       // move to first child of the tree and collect docs
       while (indexTree.moveToChild()) {}
       indexTree.visitDocValues(mergeIntersectsVisitor);
@@ -318,18 +316,26 @@ public class BKDWriter implements Closeable {
   private static class MergeIntersectsVisitor implements IntersectVisitor {
 
     int docsInBlock = 0;
-    final byte[] packedValues;
-    final int[] docIDs;
+    byte[] packedValues;
+    int[] docIDs;
     private final int packedBytesLength;
 
-    MergeIntersectsVisitor(int packedBytesLength, int maxPointsInLeafNode) {
-      this.docIDs = new int[maxPointsInLeafNode];
-      this.packedValues = new byte[maxPointsInLeafNode * packedBytesLength];
+    MergeIntersectsVisitor(int packedBytesLength) {
+      this.docIDs = new int[0];
+      this.packedValues = new byte[0];
       this.packedBytesLength = packedBytesLength;
     }
 
     void reset() {
       docsInBlock = 0;
+    }
+
+    @Override
+    public void grow(int count) {
+      if (docIDs.length - docsInBlock < count) {
+        docIDs = ArrayUtil.growExact(docIDs, count + docsInBlock);
+        packedValues = ArrayUtil.growExact(packedValues, (count + docsInBlock) * packedBytesLength);
+      }
     }
 
     @Override

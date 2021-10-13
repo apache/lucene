@@ -1259,11 +1259,6 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       }
 
       @Override
-      public int getMaxPointsPerLeafNode() {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
       public long size() {
         return size;
       }

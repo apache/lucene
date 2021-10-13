@@ -367,11 +367,6 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     }
 
     @Override
-    public int getMaxPointsPerLeafNode() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public long size() {
       throw new UnsupportedOperationException();
     }

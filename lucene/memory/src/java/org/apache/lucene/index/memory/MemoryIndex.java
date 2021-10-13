@@ -1755,11 +1755,6 @@ public class MemoryIndex {
       }
 
       @Override
-      public int getMaxPointsPerLeafNode() {
-        return info.pointValuesCount;
-      }
-
-      @Override
       public long size() {
         return info.pointValuesCount;
       }

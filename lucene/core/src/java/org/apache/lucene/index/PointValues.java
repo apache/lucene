@@ -450,9 +450,6 @@ public abstract class PointValues {
   /** Returns the number of bytes per dimension */
   public abstract int getBytesPerDimension() throws IOException;
 
-  /** Returns the maximum number of points per leaf node */
-  public abstract int getMaxPointsPerLeafNode() throws IOException;
-
   /** Returns the total number of indexed points across all documents. */
   public abstract long size();
 

@@ -338,11 +338,6 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public int getMaxPointsPerLeafNode() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public long size() {
       return numPoints;
     }

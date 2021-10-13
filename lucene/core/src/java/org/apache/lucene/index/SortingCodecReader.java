@@ -112,11 +112,6 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public int getMaxPointsPerLeafNode() throws IOException {
-      return in.getMaxPointsPerLeafNode();
-    }
-
-    @Override
     public long size() {
       return in.size();
     }

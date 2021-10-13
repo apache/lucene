@@ -151,11 +151,6 @@ class PointValuesWriter {
           }
 
           @Override
-          public int getMaxPointsPerLeafNode() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
           public long size() {
             return numPoints;
           }
@@ -291,11 +286,6 @@ class PointValuesWriter {
     @Override
     public int getBytesPerDimension() throws IOException {
       return in.getBytesPerDimension();
-    }
-
-    @Override
-    public int getMaxPointsPerLeafNode() throws IOException {
-      return in.getMaxPointsPerLeafNode();
     }
 
     @Override

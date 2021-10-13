@@ -422,12 +422,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public int getMaxPointsPerLeafNode() throws IOException {
-      checkAndThrow();
-      return in.getMaxPointsPerLeafNode();
-    }
-
-    @Override
     public long size() {
       checkAndThrow();
       return in.size();

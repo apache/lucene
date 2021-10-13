@@ -159,11 +159,6 @@ public abstract class PointsWriter implements Closeable {
               }
 
               @Override
-              public int getMaxPointsPerLeafNode() {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
               public long size() {
                 return finalMaxPointCount;
               }

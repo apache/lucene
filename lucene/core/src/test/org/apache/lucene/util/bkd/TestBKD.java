@@ -1586,11 +1586,6 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public int getMaxPointsPerLeafNode() {
-            return numPointsAdded;
-          }
-
-          @Override
           public long size() {
             return numPointsAdded;
           }
@@ -1766,11 +1761,6 @@ public class TestBKD extends LuceneTestCase {
           @Override
           public int getBytesPerDimension() {
             return numBytesPerDim;
-          }
-
-          @Override
-          public int getMaxPointsPerLeafNode() throws IOException {
-            return 11;
           }
 
           @Override

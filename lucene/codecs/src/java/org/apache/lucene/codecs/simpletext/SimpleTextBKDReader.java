@@ -428,11 +428,6 @@ final class SimpleTextBKDReader extends PointValues {
   }
 
   @Override
-  public int getMaxPointsPerLeafNode() {
-    return config.maxPointsInLeafNode;
-  }
-
-  @Override
   public long size() {
     return pointCount;
   }
