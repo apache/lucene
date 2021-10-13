@@ -23,6 +23,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.classification.utils.NearestFuzzyQuery;
 import org.apache.lucene.index.IndexReader;
@@ -93,11 +95,7 @@ public class KNearestFuzzyClassifier implements Classifier<BytesRef> {
     this.classFieldName = classFieldName;
     this.analyzer = analyzer;
     this.indexSearcher = new IndexSearcher(indexReader);
-    if (similarity != null) {
-      this.indexSearcher.setSimilarity(similarity);
-    } else {
-      this.indexSearcher.setSimilarity(new BM25Similarity());
-    }
+    this.indexSearcher.setSimilarity(Objects.requireNonNullElseGet(similarity, BM25Similarity::new));
     this.query = query;
     this.k = k;
   }
@@ -166,7 +164,7 @@ public class KNearestFuzzyClassifier implements Classifier<BytesRef> {
       if (storableField != null) {
         BytesRef cl = new BytesRef(storableField.stringValue());
         // update count
-        classCounts.merge(cl, 1, (a, b) -> a + b);
+        classCounts.merge(cl, 1, Integer::sum);
         // update boost, the boost is based on the best score
         Double totalBoost = classBoosts.get(cl);
         double singleBoost = scoreDoc.score / maxScore;
