@@ -92,6 +92,9 @@ configure(project(":lucene:distribution")) {
         into toPath
       })
     }
+
+    // Internal archive folder for all files.
+    into "lucene-${rootProject.version}/"
   }
 
   // Assemble distribution archives
