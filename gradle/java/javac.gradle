@@ -84,3 +84,13 @@ allprojects {
     }
   }
 }
+
+
+configure(project(":lucene:jmh")) {
+  plugins.withType(JavaPlugin) {
+    tasks.named('compileJava').configure {
+      options.compilerArgs -= [ "-Werror", "-proc:none" ]
+      options.compilerArgs += "-Xlint:none"
+    }
+  }
+}

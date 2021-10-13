@@ -14,106 +14,108 @@
     See the License for the specific language governing permissions and
     limitations under the License.
  -->
+![Lucene Logo](https://lucene.apache.org/theme/images/lucene/lucene_logo_green_300.png?v=0e493d7a) 
 
-# Apache Lucene
+---
 
-![Lucene Logo](https://lucene.apache.org/theme/images/lucene/lucene_logo_green_300.png?v=0e493d7a)
+# JMH module for Lucene
 
-Apache Lucene is a high-performance, full featured text search engine library
-written in Java.
+> ### Benchmark Lucene with JMH
+> #### _profile, approximate luceneutil, compare and introspect_
 
-[![Build Status](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/badge/icon?subject=Lucene)](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/)
 
-## Online Documentation
+[![badge](https://img.shields.io/badge/lucene-JMH-blue?style=for-the-badge&logo=appveyor)]()
 
-This README file only contains basic setup instructions.  For more
-comprehensive documentation, visit:
+- GameGenie 1990 benchmark power...
 
-- Latest Releases: <https://lucene.apache.org/core/documentation.html>
-- Nightly: <https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/javadoc/>
-- Build System Documentation: [help/](./help/)
+***Combining Natures ...***
 
-## Building with Gradle
 
-### Basic steps:
-  
-  0. Install OpenJDK 11 (or greater up until version 15)
-  1. Download Lucene from Apache and unpack it (or clone the git repository).
-  2. Run gradle launcher script (`gradlew`).
 
-### Step 0) Set up your development environment (OpenJDK 11 or greater)
+[![Gradle Precommit](https://github.com/OSSfoundry/jmh-lucene/actions/workflows/gradle-precommit.yml/badge.svg)](https://github.com/OSSfoundry/jmh-lucene/actions/workflows/gradle-precommit.yml) [![JMH Paramaterized](https://github.com/mettallan/jmh-lucene/actions/workflows/jmh.yml/badge.svg)](https://github.com/mettallan/jmh-lucene/actions/workflows/jmh.yml) ![Docs Status](https://img.shields.io/badge/cool--factor-100%25-blue)
 
-We'll assume that you know how to get and set up the JDK - if you
-don't, then we suggest starting at https://jdk.java.net/ and learning
-more about Java, before returning to this README. Lucene runs with
-Java 11 or later. 
 
-Lucene uses [Gradle](https://gradle.org/) for build control. Gradle is itself Java-based
-and may be incompatible with newer Java versions; you can still build and test 
-Lucene with these Java releases, see help/tests.txt for more information.
 
-NOTE: Lucene changed from Ant to Gradle as of release 9.0. Prior releases
-still use Ant.
+> **Enables**
 
-### Step 1) Checkout/Download Lucene source code
+- `luceneutil` benchmark approximation
+- `JMH` micro-benchmarks & introspection
+- `Data generation` churning & hand lending
 
-You can clone the source code from GitHub:
+> **The Players**
 
-  https://github.com/apache/lucene
-  
-or get Lucene source archives for a particular release from:
+- Lucene <a href="http://recordit.co/" target="_blank">**Apache Lucene**</a>.
+- JMH <a href="https://github.com/chjj/ttystudio" target="_blank">**OpenJDK JMH**</a>.
+- luceneutil <a href="https://github.com/chjj/ttystudio" target="_blank">**luceneutil**</a>.
 
-  https://lucene.apache.org/core/downloads.html
 
-Download either a zip or a tarred/gzipped version of the archive, and
-uncompress it into a directory of your choice.
+---
 
-### Step 2) Run Gradle
+## Example
 
-Run "./gradlew help", this will show the main tasks that can be executed to 
-show help sub-topics.
+```shell
+# fire away!
 
-If you want to build Lucene, type:
-
-```
-./gradlew assemble
+$ ./jmh.sh FuzzyQuery -prof gc
 ```
 
-NOTE: DO NOT use `gradle` command that is already installed on your machine (unless you know what you'll do).
-The "gradle wrapper" (gradlew) does the job - downloads the correct version of it, setups necessary configurations.
+![start](https://user-images.githubusercontent.com/448788/136673057-f1f8d296-f96a-4e34-a6b0-d2190dc054ee.gif)
 
-The first time you run Gradle, it will create a file "gradle.properties" that
-contains machine-specific settings. Normally you can use this file as-is, but it
-can be modified if necessary.
+---
 
-`./gradlew check` will assemble Lucene and run all validation
-  tasks (including unit tests).
+### Clone
 
-`./gradlew help` will print a list of help guides that help understand how
-  the build and typical workflow works.
+- Clone this repo to your local machine using `git clone https://github.com/OSSfoundry/jmh-lucene.git`
 
-If you want to build the documentation, type:
+### Header
 
+- TBD:
+
+> first
+
+```shell
+$ ./jmh.sh blah blah
+$ ./jmh.sh blah blah
 ```
-./gradlew documentation
+
+> and now
+
+```shell
+$ ./jmh.sh blah blah
+$ ./jmh.sh blah blah
 ```
 
-### Gradle build and IDE support
+---
 
-- *IntelliJ* - IntelliJ idea can import the project out of the box.
-- *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
-- *Netbeans* - Not tested.
+## Documentation
 
-## Contributing
+![Docs Status](https://img.shields.io/badge/in--progress-10%25-blue)
 
-Bug fixes, improvements and new features are always welcome!
-Please review the [Contributing to Lucene
-Guide](https://cwiki.apache.org/confluence/display/lucene/HowToContribute) for information on
-contributing.
+* JMH Module [README](lucene/jmh/README.md)
 
-## Discussion and Support
+  * Writing Benchmarks [writing-benchmarks.md](lucene/jmh/docs/writing-benchmarks.md)
 
-- [Users Mailing List](https://lucene.apache.org/core/discussion.html#java-user-list-java-userluceneapacheorg)
-- [Developers Mailing List](https://lucene.apache.org/core/discussion.html#developer-lists)
-- [Issue Tracker](https://issues.apache.org/jira/browse/LUCENE)
-- IRC: `#lucene` and `#lucene-dev` on freenode.net
+  * Random Data Gen [random-data-gen.md](lucene/jmh/docs/random-data-gen.md)
+
+## Tests
+
+TBD
+
+
+---
+
+## FAQ
+
+- **How do I do *specifically* so and so?**
+    - No problem! Just do this.
+
+
+
+---
+
+## License
+
+[![License](http://img.shields.io/:license-Apache2.0-blue.svg?style=flat-square)](http://badges.mit-license.org)
+
+- **[APACHE 2.0 license](https://opensource.org/licenses/Apache-2.0)**
+- OSS Delicious

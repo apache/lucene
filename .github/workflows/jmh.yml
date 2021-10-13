@@ -1,0 +1,69 @@
+# This is a basic workflow that is manually triggered
+
+name: JMH Paramaterized
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+    # Inputs the workflow accepts.
+    inputs:
+      jmh.cmd:
+        # Friendly description to be shown in the UI instead of 'name'
+        description: 'JMH CMD'
+        # Default value if no value is explicitly provided
+        default: './jmh.sh FuzzyQuery2 -rff json'
+        # Input has to be provided for the workflow to run
+        required: true
+      
+
+jobs:
+  test:
+    name: gradle precommit w/ Java 11
+
+    runs-on: ubuntu-latest
+
+    steps:
+    # Setup
+    - uses: actions/checkout@v2
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-precommit-
+          ${{ runner.os }}-gradle-
+    - name: Initialize gradle settings
+      run: ./gradlew localSettings
+
+    - name: Run JMH
+      working-directory: lucene/jmh
+      run: ./jmh.sh org.apache.lucene.jmh.benchmarks.search.FuzzyQuery2.* -i 1 -w 1 -r 1 -wi 1 -jvmArgs=-Dfile.encoding=UTF8 -rf json
+      
+      
+    - name: Deploy
+      uses: exuanbo/actions-deploy-gist@v1
+      with:
+        token: ${{ secrets.TOKEN }}
+        gist_id: a25f71683a6035b143888534c3d1577e
+        gist_file_name: ${{ github.sha }}-${{ github.run_number }}.json
+        file_path: ./lucene/jmh/jmh-result.json
+  
+    - uses: actions/upload-artifact@v2
+      with:
+        name: jmh-result.json
+        path: ./lucene/jmh
+    - uses: actions/checkout@v2
+    
+
+
