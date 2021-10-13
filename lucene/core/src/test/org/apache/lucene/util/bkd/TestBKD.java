@@ -812,6 +812,8 @@ public class TestBKD extends LuceneTestCase {
       in.seek(indexFP);
       PointValues pointValues = getPointValues(in);
 
+      assertSize(pointValues.getIndexTree());
+
       int iters = atLeast(100);
       for (int iter = 0; iter < iters; iter++) {
         if (VERBOSE) {
@@ -870,7 +872,6 @@ public class TestBKD extends LuceneTestCase {
             .getIndexTree()
             .visitDocValues(getIntersectVisitor(hits, queryMin, queryMax, config));
         assertHits(hits, expected);
-        assertSize(pointValues.getIndexTree());
       }
       in.close();
       dir.deleteFile("bkd");
