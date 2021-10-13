@@ -124,10 +124,65 @@ class CrankyPointsFormat extends PointsFormat {
 
         @Override
         public IndexTree getIndexTree() throws IOException {
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
-          return delegate.getIndexTree();
+          IndexTree indexTree = delegate.getIndexTree();
+          return new IndexTree() {
+            @Override
+            public IndexTree clone() {
+              return indexTree.clone();
+            }
+
+            @Override
+            public boolean moveToChild() throws IOException {
+              return indexTree.moveToChild();
+            }
+
+            @Override
+            public boolean moveToSibling() throws IOException {
+              return indexTree.moveToSibling();
+            }
+
+            @Override
+            public boolean moveToParent() throws IOException {
+              return indexTree.moveToParent();
+            }
+
+            @Override
+            public byte[] getMinPackedValue() {
+              return indexTree.getMinPackedValue();
+            }
+
+            @Override
+            public byte[] getMaxPackedValue() {
+              return indexTree.getMaxPackedValue();
+            }
+
+            @Override
+            public long size() {
+              return indexTree.size();
+            }
+
+            @Override
+            public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+              if (random.nextInt(100) == 0) {
+                throw new IOException("Fake IOException");
+              }
+              indexTree.visitDocIDs(visitor);
+              if (random.nextInt(100) == 0) {
+                throw new IOException("Fake IOException");
+              }
+            }
+
+            @Override
+            public void visitDocValues(IntersectVisitor visitor) throws IOException {
+              if (random.nextInt(100) == 0) {
+                throw new IOException("Fake IOException");
+              }
+              indexTree.visitDocValues(visitor);
+              if (random.nextInt(100) == 0) {
+                throw new IOException("Fake IOException");
+              }
+            }
+          };
         }
 
         @Override
