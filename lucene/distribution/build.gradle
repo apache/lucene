@@ -15,11 +15,10 @@
  * limitations under the License.
  */
 
-import org.gradle.crypto.checksum.Checksum
+import org.apache.lucene.gradle.Checksum
 
 plugins {
   id 'signing'
-  id 'org.gradle.crypto.checksum' version '1.1.0'
 }
 
 // This project puts together the Lucene "distribution", assembling bits and pieces
