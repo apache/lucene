@@ -74,63 +74,100 @@ public abstract class PointsWriter implements Closeable {
 
               @Override
               public IndexTree getIndexTree() {
-                throw new UnsupportedOperationException();
-              }
+                return new IndexTree() {
 
-              @Override
-              public void intersect(IntersectVisitor mergedVisitor) throws IOException {
-                for (int i = 0; i < mergeState.pointsReaders.length; i++) {
-                  PointsReader pointsReader = mergeState.pointsReaders[i];
-                  if (pointsReader == null) {
-                    // This segment has no points
-                    continue;
-                  }
-                  FieldInfo readerFieldInfo = mergeState.fieldInfos[i].fieldInfo(fieldName);
-                  if (readerFieldInfo == null) {
-                    // This segment never saw this field
-                    continue;
+                  @Override
+                  public IndexTree clone() {
+                    throw new UnsupportedOperationException();
                   }
 
-                  if (readerFieldInfo.getPointDimensionCount() == 0) {
-                    // This segment saw this field, but the field did not index points in it:
-                    continue;
+                  @Override
+                  public boolean moveToChild() {
+                    return false;
                   }
 
-                  PointValues values = pointsReader.getValues(fieldName);
-                  if (values == null) {
-                    continue;
+                  @Override
+                  public boolean moveToSibling() {
+                    return false;
                   }
-                  MergeState.DocMap docMap = mergeState.docMaps[i];
-                  values.intersect(
-                      new IntersectVisitor() {
-                        @Override
-                        public void visit(int docID) {
-                          // Should never be called because our compare method never returns
-                          // Relation.CELL_INSIDE_QUERY
-                          throw new IllegalStateException();
-                        }
 
-                        @Override
-                        public void visit(int docID, byte[] packedValue) throws IOException {
-                          int newDocID = docMap.get(docID);
-                          if (newDocID != -1) {
-                            // Not deleted:
-                            mergedVisitor.visit(newDocID, packedValue);
-                          }
-                        }
+                  @Override
+                  public boolean moveToParent() {
+                    return false;
+                  }
 
-                        @Override
-                        public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                          // Forces this segment's PointsReader to always visit all docs + values:
-                          return Relation.CELL_CROSSES_QUERY;
-                        }
-                      });
-                }
-              }
+                  @Override
+                  public byte[] getMinPackedValue() {
+                    return new byte[0];
+                  }
 
-              @Override
-              public long estimatePointCount(IntersectVisitor visitor) {
-                throw new UnsupportedOperationException();
+                  @Override
+                  public byte[] getMaxPackedValue() {
+                    return new byte[0];
+                  }
+
+                  @Override
+                  public long size() {
+                    return finalMaxPointCount;
+                  }
+
+                  @Override
+                  public void visitDocIDs(IntersectVisitor visitor) {
+                    throw new UnsupportedOperationException();
+                  }
+
+                  @Override
+                  public void visitDocValues(IntersectVisitor mergedVisitor) throws IOException {
+                    for (int i = 0; i < mergeState.pointsReaders.length; i++) {
+                      PointsReader pointsReader = mergeState.pointsReaders[i];
+                      if (pointsReader == null) {
+                        // This segment has no points
+                        continue;
+                      }
+                      FieldInfo readerFieldInfo = mergeState.fieldInfos[i].fieldInfo(fieldName);
+                      if (readerFieldInfo == null) {
+                        // This segment never saw this field
+                        continue;
+                      }
+
+                      if (readerFieldInfo.getPointDimensionCount() == 0) {
+                        // This segment saw this field, but the field did not index points in it:
+                        continue;
+                      }
+
+                      PointValues values = pointsReader.getValues(fieldName);
+                      if (values == null) {
+                        continue;
+                      }
+                      MergeState.DocMap docMap = mergeState.docMaps[i];
+                      values.intersect(
+                          new IntersectVisitor() {
+                            @Override
+                            public void visit(int docID) {
+                              // Should never be called because our compare method never returns
+                              // Relation.CELL_INSIDE_QUERY
+                              throw new IllegalStateException();
+                            }
+
+                            @Override
+                            public void visit(int docID, byte[] packedValue) throws IOException {
+                              int newDocID = docMap.get(docID);
+                              if (newDocID != -1) {
+                                // Not deleted:
+                                mergedVisitor.visit(newDocID, packedValue);
+                              }
+                            }
+
+                            @Override
+                            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                              // Forces this segment's PointsReader to always visit all docs +
+                              // values:
+                              return Relation.CELL_CROSSES_QUERY;
+                            }
+                          });
+                    }
+                  }
+                };
               }
 
               @Override

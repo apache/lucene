@@ -1093,26 +1093,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public IndexTree getIndexTree() throws IOException {
       assertThread("Points", creationThread);
-      return new AssertingIndexTree(in.getIndexTree());
-    }
-
-    @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
-      assertThread("Points", creationThread);
-      in.intersect(
-          new AssertingIntersectVisitor(
-              in.getNumDimensions(),
-              in.getNumIndexDimensions(),
-              in.getBytesPerDimension(),
-              visitor));
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      assertThread("Points", creationThread);
-      long cost = in.estimatePointCount(visitor);
-      assert cost >= 0;
-      return cost;
+      return new AssertingIndexTree(in, in.getIndexTree());
     }
 
     @Override
@@ -1161,17 +1142,19 @@ public class AssertingLeafReader extends FilterLeafReader {
   /** Validates that we don't call moveToChild() or clone() after having called moveToParent() */
   static class AssertingIndexTree implements PointValues.IndexTree {
 
+    final PointValues pointValues;
     final PointValues.IndexTree in;
     private boolean moveToParent;
 
-    AssertingIndexTree(PointValues.IndexTree in) {
+    AssertingIndexTree(PointValues pointValues, PointValues.IndexTree in) {
+      this.pointValues = pointValues;
       this.in = in;
     }
 
     @Override
     public PointValues.IndexTree clone() {
       assert moveToParent == false : "calling clone() after calling moveToParent()";
-      return new AssertingIndexTree(in.clone());
+      return new AssertingIndexTree(pointValues, in.clone());
     }
 
     @Override
@@ -1211,12 +1194,22 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public void visitDocIDs(IntersectVisitor visitor) throws IOException {
-      in.visitDocIDs(visitor);
+      in.visitDocIDs(
+          new AssertingIntersectVisitor(
+              pointValues.getNumDimensions(),
+              pointValues.getNumIndexDimensions(),
+              pointValues.getBytesPerDimension(),
+              visitor));
     }
 
     @Override
     public void visitDocValues(IntersectVisitor visitor) throws IOException {
-      in.visitDocValues(visitor);
+      in.visitDocValues(
+          new AssertingIntersectVisitor(
+              pointValues.getNumDimensions(),
+              pointValues.getNumIndexDimensions(),
+              pointValues.getBytesPerDimension(),
+              visitor));
     }
   }
 
@@ -1257,7 +1250,7 @@ public class AssertingLeafReader extends FilterLeafReader {
 
       // This method, not filtering each hit, should only be invoked when the cell is inside the
       // query shape:
-      assert lastCompareResult == Relation.CELL_INSIDE_QUERY;
+      assert lastCompareResult == null || lastCompareResult == Relation.CELL_INSIDE_QUERY;
       in.visit(docID);
     }
 
@@ -1267,28 +1260,32 @@ public class AssertingLeafReader extends FilterLeafReader {
 
       // This method, to filter each doc's value, should only be invoked when the cell crosses the
       // query shape:
-      assert lastCompareResult == PointValues.Relation.CELL_CROSSES_QUERY;
+      assert lastCompareResult == null
+          || lastCompareResult == PointValues.Relation.CELL_CROSSES_QUERY;
 
-      // This doc's packed value should be contained in the last cell passed to compare:
-      for (int dim = 0; dim < numIndexDims; dim++) {
-        assert Arrays.compareUnsigned(
-                    lastMinPackedValue,
-                    dim * bytesPerDim,
-                    dim * bytesPerDim + bytesPerDim,
-                    packedValue,
-                    dim * bytesPerDim,
-                    dim * bytesPerDim + bytesPerDim)
-                <= 0
-            : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
-        assert Arrays.compareUnsigned(
-                    lastMaxPackedValue,
-                    dim * bytesPerDim,
-                    dim * bytesPerDim + bytesPerDim,
-                    packedValue,
-                    dim * bytesPerDim,
-                    dim * bytesPerDim + bytesPerDim)
-                >= 0
-            : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
+      if (lastCompareResult != null) {
+        // This doc's packed value should be contained in the last cell passed to compare:
+        for (int dim = 0; dim < numIndexDims; dim++) {
+          assert Arrays.compareUnsigned(
+                      lastMinPackedValue,
+                      dim * bytesPerDim,
+                      dim * bytesPerDim + bytesPerDim,
+                      packedValue,
+                      dim * bytesPerDim,
+                      dim * bytesPerDim + bytesPerDim)
+                  <= 0
+              : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
+          assert Arrays.compareUnsigned(
+                      lastMaxPackedValue,
+                      dim * bytesPerDim,
+                      dim * bytesPerDim + bytesPerDim,
+                      packedValue,
+                      dim * bytesPerDim,
+                      dim * bytesPerDim + bytesPerDim)
+                  >= 0
+              : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
+        }
+        lastCompareResult = null;
       }
 
       // TODO: we should assert that this "matches" whatever relation the last call to compare had

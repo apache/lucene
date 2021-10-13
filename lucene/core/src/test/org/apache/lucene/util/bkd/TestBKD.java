@@ -1545,19 +1545,54 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public IndexTree getIndexTree() {
-            throw new UnsupportedOperationException();
-          }
+            return new IndexTree() {
+              @Override
+              public IndexTree clone() {
+                throw new UnsupportedOperationException();
+              }
 
-          @Override
-          public void intersect(IntersectVisitor visitor) throws IOException {
-            for (int i = 0; i < numPointsAdded; i++) {
-              visitor.visit(0, pointValue);
-            }
-          }
+              @Override
+              public boolean moveToChild() throws IOException {
+                return false;
+              }
 
-          @Override
-          public long estimatePointCount(IntersectVisitor visitor) {
-            throw new UnsupportedOperationException();
+              @Override
+              public boolean moveToSibling() throws IOException {
+                return false;
+              }
+
+              @Override
+              public boolean moveToParent() throws IOException {
+                return false;
+              }
+
+              @Override
+              public byte[] getMinPackedValue() {
+                return new byte[0];
+              }
+
+              @Override
+              public byte[] getMaxPackedValue() {
+                return new byte[0];
+              }
+
+              @Override
+              public long size() {
+                return numPointsAdded;
+              }
+
+              @Override
+              public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public void visitDocValues(IntersectVisitor visitor) throws IOException {
+                for (int i = 0; i < numPointsAdded; i++) {
+                  visitor.visit(0, pointValue);
+                }
+              }
+            };
           }
 
           @Override
@@ -1723,19 +1758,54 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public IndexTree getIndexTree() throws IOException {
-            throw new UnsupportedOperationException();
-          }
+            return new IndexTree() {
+              @Override
+              public IndexTree clone() {
+                throw new UnsupportedOperationException();
+              }
 
-          @Override
-          public void intersect(IntersectVisitor visitor) throws IOException {
-            for (int i = 0; i < size(); i++) {
-              visitor.visit(i, pointValue[i]);
-            }
-          }
+              @Override
+              public boolean moveToChild() throws IOException {
+                return false;
+              }
 
-          @Override
-          public long estimatePointCount(IntersectVisitor visitor) {
-            return 11;
+              @Override
+              public boolean moveToSibling() throws IOException {
+                return false;
+              }
+
+              @Override
+              public boolean moveToParent() throws IOException {
+                return false;
+              }
+
+              @Override
+              public byte[] getMinPackedValue() {
+                return new byte[0];
+              }
+
+              @Override
+              public byte[] getMaxPackedValue() {
+                return new byte[0];
+              }
+
+              @Override
+              public long size() {
+                return 11;
+              }
+
+              @Override
+              public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public void visitDocValues(IntersectVisitor visitor) throws IOException {
+                for (int i = 0; i < size(); i++) {
+                  visitor.visit(i, pointValue[i]);
+                }
+              }
+            };
           }
 
           @Override

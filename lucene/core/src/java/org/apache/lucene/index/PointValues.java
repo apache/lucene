@@ -322,7 +322,7 @@ public abstract class PointValues {
    * Finds all documents and points matching the provided visitor. This method does not enforce live
    * documents, so it's up to the caller to test whether each document is deleted, if necessary.
    */
-  public void intersect(IntersectVisitor visitor) throws IOException {
+  public final void intersect(IntersectVisitor visitor) throws IOException {
     final IndexTree indexTree = getIndexTree();
     intersect(visitor, indexTree);
     assert indexTree.moveToParent() == false;
@@ -362,7 +362,7 @@ public abstract class PointValues {
    * Estimate the number of points that would be visited by {@link #intersect} with the given {@link
    * IntersectVisitor}. This should run many times faster than {@link #intersect(IntersectVisitor)}.
    */
-  public long estimatePointCount(IntersectVisitor visitor) {
+  public final long estimatePointCount(IntersectVisitor visitor) {
     try {
       final IndexTree indexTree = getIndexTree();
       final long count = estimatePointCount(visitor, indexTree);
@@ -407,7 +407,7 @@ public abstract class PointValues {
    *
    * @see DocIdSetIterator#cost
    */
-  public long estimateDocCount(IntersectVisitor visitor) {
+  public final long estimateDocCount(IntersectVisitor visitor) {
     long estimatedPointCount = estimatePointCount(visitor);
     int docCount = getDocCount();
     double size = size();
