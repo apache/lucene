@@ -1092,9 +1092,8 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public IndexTree getIndexTree() throws IOException {
-      // TODO: assert that there are no illegal calls when navigating the tree?
       assertThread("Points", creationThread);
-      return in.getIndexTree();
+      return new AssertingIndexTree(in.getIndexTree());
     }
 
     @Override
@@ -1162,6 +1161,68 @@ public class AssertingLeafReader extends FilterLeafReader {
     public int getDocCount() {
       assertThread("Points", creationThread);
       return in.getDocCount();
+    }
+  }
+
+  /** Validates that we don't call moveToChild() or clone() after having called moveToParent() */
+  static class AssertingIndexTree implements PointValues.IndexTree {
+
+    final PointValues.IndexTree in;
+    private boolean moveToParent;
+
+    AssertingIndexTree(PointValues.IndexTree in) {
+      this.in = in;
+    }
+
+    @Override
+    public PointValues.IndexTree clone() {
+      assert moveToParent == false : "calling clone() after calling moveToParent()";
+      return new AssertingIndexTree(in.clone());
+    }
+
+    @Override
+    public boolean moveToChild() throws IOException {
+      assert moveToParent == false : "calling moveToChild() after calling moveToParent()";
+      return in.moveToChild();
+    }
+
+    @Override
+    public boolean moveToSibling() throws IOException {
+      moveToParent = false;
+      return in.moveToSibling();
+    }
+
+    @Override
+    public boolean moveToParent() throws IOException {
+      moveToParent = true;
+      return in.moveToParent();
+    }
+
+    @Override
+    public byte[] getMinPackedValue() {
+      return in.getMinPackedValue();
+    }
+
+    @Override
+    public byte[] getMaxPackedValue() {
+      return in.getMaxPackedValue();
+    }
+
+    @Override
+    public long size() {
+      final long size = in.size();
+      assert size > 0;
+      return size;
+    }
+
+    @Override
+    public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+      in.visitDocIDs(visitor);
+    }
+
+    @Override
+    public void visitDocValues(IntersectVisitor visitor) throws IOException {
+      in.visitDocValues(visitor);
     }
   }
 

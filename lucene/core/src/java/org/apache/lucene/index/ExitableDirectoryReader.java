@@ -375,6 +375,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     @Override
     public IndexTree getIndexTree() throws IOException {
       checkAndThrow();
+      // TODO: consider having an ExitableIndexTree.
       return in.getIndexTree();
     }
 
