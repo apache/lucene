@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
@@ -104,7 +103,8 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
     this.mlt.setAnalyzer(analyzer);
     this.mlt.setFieldNames(textFieldNames);
     this.indexSearcher = new IndexSearcher(indexReader);
-    this.indexSearcher.setSimilarity(Objects.requireNonNullElseGet(similarity, BM25Similarity::new));
+    this.indexSearcher.setSimilarity(
+        Objects.requireNonNullElseGet(similarity, BM25Similarity::new));
     if (minDocsFreq > 0) {
       mlt.setMinDocFreq(minDocsFreq);
     }

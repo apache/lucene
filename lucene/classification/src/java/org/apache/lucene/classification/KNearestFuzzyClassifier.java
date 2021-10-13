@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.classification.utils.NearestFuzzyQuery;
 import org.apache.lucene.index.IndexReader;
@@ -95,7 +94,8 @@ public class KNearestFuzzyClassifier implements Classifier<BytesRef> {
     this.classFieldName = classFieldName;
     this.analyzer = analyzer;
     this.indexSearcher = new IndexSearcher(indexReader);
-    this.indexSearcher.setSimilarity(Objects.requireNonNullElseGet(similarity, BM25Similarity::new));
+    this.indexSearcher.setSimilarity(
+        Objects.requireNonNullElseGet(similarity, BM25Similarity::new));
     this.query = query;
     this.k = k;
   }
