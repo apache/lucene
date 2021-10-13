@@ -52,7 +52,7 @@ The snowball stopword lists in
   analysis/common/src/resources/org/apache/lucene/analysis/snowball
 were developed by Martin Porter and Richard Boulton.
 The full snowball package is available from
-  http://snowball.tartarus.org/
+  https://snowballstem.org/
 
 The KStem stemmer in
   analysis/common/src/org/apache/lucene/analysis/en
