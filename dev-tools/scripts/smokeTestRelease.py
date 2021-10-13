@@ -296,15 +296,15 @@ def checkSigs(urlString, version, tmpDir, isSigned, keysFile):
       sigFile = '%s/%s.asc' % (tmpDir, artifact)
       artifactFile = '%s/%s' % (tmpDir, artifact)
       logFile = '%s/lucene.%s.gpg.verify.log' % (tmpDir, artifact)
-      run('gpg --homedir %s --verify %s %s' % (gpgHomeDir, sigFile, artifactFile),
+      run('gpg --homedir %s --display-charset utf-8 --verify %s %s' % (gpgHomeDir, sigFile, artifactFile),
           logFile)
       # Forward any GPG warnings, except the expected one (since it's a clean world)
-      f = open(logFile)
-      for line in f.readlines():
-        if line.lower().find('warning') != -1 \
-        and line.find('WARNING: This key is not certified with a trusted signature') == -1:
-          print('      GPG: %s' % line.strip())
-      f.close()
+      with open(logFile) as f:
+        print("File: %s" % logFile)
+        for line in f.readlines():
+          if line.lower().find('warning') != -1 \
+            and line.find('WARNING: This key is not certified with a trusted signature') == -1:
+              print('      GPG: %s' % line.strip())
 
       # Test trust (this is done with the real users config)
       run('gpg --import %s' % (keysFile),
@@ -313,11 +313,10 @@ def checkSigs(urlString, version, tmpDir, isSigned, keysFile):
       logFile = '%s/lucene.%s.gpg.trust.log' % (tmpDir, artifact)
       run('gpg --verify %s %s' % (sigFile, artifactFile), logFile)
       # Forward any GPG warnings:
-      f = open(logFile)
-      for line in f.readlines():
-        if line.lower().find('warning') != -1:
-          print('      GPG: %s' % line.strip())
-      f.close()
+      with open(logFile) as f:
+        for line in f.readlines():
+          if line.lower().find('warning') != -1:
+            print('      GPG: %s' % line.strip())
 
 
 def testChanges(version, changesURLString):
