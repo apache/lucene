@@ -175,7 +175,9 @@ public class IndexFiles implements AutoCloseable {
                 + " documents in "
                 + (end.getTime() - start.getTime())
                 + " milliseconds");
-        if (reader.numDocs() > 100 && vectorDictSize < 1_000_000 && System.getProperty("smoketester") == null) {
+        if (reader.numDocs() > 100
+            && vectorDictSize < 1_000_000
+            && System.getProperty("smoketester") == null) {
           throw new RuntimeException(
               "Are you (ab)using the toy vector dictionary? See the package javadocs to understand why you got this exception.");
         }
