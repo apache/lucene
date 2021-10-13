@@ -547,15 +547,17 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   isSrc = artifact.find('-src') != -1
 
   l = os.listdir(unpackPath)
-  textFiles = ['LICENSE', 'NOTICE', 'README']
-  textFiles.extend(('JRE_VERSION_MIGRATION', 'CHANGES', 'MIGRATE', 'SYSTEM_REQUIREMENTS'))
+  textFiles = ['LICENSE', 'NOTICE', 'README', 'JRE_VERSION_MIGRATION', 'CHANGES', 'MIGRATE', 'SYSTEM_REQUIREMENTS']
   if isSrc:
     textFiles.append('BUILD')
 
   for fileName in textFiles:
+    print("Checking textfile %s" % fileName)
     fileNameTxt = fileName + '.txt'
     fileNameMd = fileName + '.md'
-    if fileNameTxt in l:
+    if fileName in l:
+      l.remove(fileName)
+    elif fileNameTxt in l:
       l.remove(fileNameTxt)
     elif fileNameMd in l:
       l.remove(fileNameMd)
