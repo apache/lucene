@@ -78,12 +78,20 @@ subprojects {
     }
   }
 
+  ext {
+    // initialize jarInfos
+    jarInfos = []
+  }
+
   // Collects dependency JAR information for a project and saves it in
   // project.ext.jarInfos. Each dependency has a map of attributes
   // which make it easier to process it later on (name, hash, origin module,
   // see the code below for details).
   task collectJarInfos() {
     dependsOn configurations.jarValidation
+
+    def jarInfosFileName = "$buildDir/tmp/jarInfos.txt"
+    outputs.file(jarInfosFileName)
 
     doFirst {
       // When gradle resolves a configuration it applies exclude rules from inherited configurations
@@ -137,6 +145,7 @@ subprojects {
 
       project.ext.jarInfos = infos.sort {a, b -> "${a.module}".compareTo("${b.module}")}
       // jarInfos.each { info -> println "${info.module}" }
+      file(jarInfosFileName).text = project.ext.jarInfos
     }
   }
 
