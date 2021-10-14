@@ -77,48 +77,58 @@ def load(urlString, encoding="utf-8"):
     content = urllib.request.urlopen(urlString).read().decode(encoding)
   return content
 
-def getGitRev():
-  status = os.popen('git status').read().strip()
-  if 'nothing to commit, working directory clean' not in status and 'nothing to commit, working tree clean' not in status:
-    raise RuntimeError('git clone is dirty:\n\n%s' % status)
-  branch = os.popen('git rev-parse --abbrev-ref HEAD').read().strip()
-  command = 'git log origin/%s..' % branch
-  p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  stdout, stderr = p.communicate()
-  if len(stdout.strip()) > 0:
-    raise RuntimeError('There are unpushed commits - "%s" output is:\n\n%s' % (command, stdout.decode('utf-8')))
-  if len(stderr.strip()) > 0:
-    raise RuntimeError('Command "%s" failed:\n\n%s' % (command, stderr.decode('utf-8')))
+def getGitRev(dev_mode=False):
+  if not dev_mode:
+    status = os.popen('git status').read().strip()
+    if 'nothing to commit, working directory clean' not in status and 'nothing to commit, working tree clean' not in status:
+      raise RuntimeError('git clone is dirty:\n\n%s' % status)
+    branch = os.popen('git rev-parse --abbrev-ref HEAD').read().strip()
+    command = 'git log origin/%s..' % branch
+    p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    if len(stdout.strip()) > 0:
+      raise RuntimeError('There are unpushed commits - "%s" output is:\n\n%s' % (command, stdout.decode('utf-8')))
+    if len(stderr.strip()) > 0:
+      raise RuntimeError('Command "%s" failed:\n\n%s' % (command, stderr.decode('utf-8')))
 
-  print('  git clone is clean')
+    print('  git clone is clean')
+  else:
+    print('Ignoring dirty git clone due to dev-mode')
   return os.popen('git rev-parse HEAD').read().strip()
 
 
-def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=False):
+def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=False, dev_mode=False):
   print()
   print('Prepare release...')
   if os.path.exists(LOG):
     os.remove(LOG)
 
-  os.chdir(root)
-  print('  git pull...')
-  run('git pull')
+  if not dev_mode:
+    os.chdir(root)
+    print('  git pull...')
+    run('git pull')
+  else:
+    print('  Development mode, not running git pull')
 
-  rev = getGitRev()
+  rev = getGitRev(dev_mode=dev_mode)
   print('  git rev: %s' % rev)
   log('\nGIT rev: %s\n' % rev)
+  open('rev.txt', mode='wb').write(rev.encode('UTF-8'))
 
   print('  Check DOAP files')
   checkDOAPfiles(version)
 
-  print('  ./gradlew -Dtests.badapples=false clean check')
-  #run('./gradlew -Dtests.badapples=false clean check')
+  if not dev_mode:
+    print('  ./gradlew -Dtests.badapples=false clean check')
+    run('./gradlew -Dtests.badapples=false clean check')
+  else:
+    print('  skipping precommit check due to dev-mode')
 
-  open('rev.txt', mode='wb').write(rev.encode('UTF-8'))
-  
   print('  prepare-release')
   cmd = './gradlew clean assembleRelease mavenToLocal' \
-        ' -Dversion.release=%s ' % version
+        ' -Dversion.release=%s' % version
+  if dev_mode:
+    cmd += ' -Pvalidation.git.failOnModified=false'
   if gpg_key_id is not None:
     cmd += ' -Psign'
     if sign_gradle:
@@ -200,7 +210,7 @@ def pushLocal(version, root, rev, rcNum, localDir):
   dir = 'lucene-%s-RC%d-rev%s' % (version, rcNum, rev)
   os.makedirs('%s/%s/lucene' % (localDir, dir))
   print('  Lucene')
-  lucene_dist_dir = '%s/lucene/packaging/build/distributions' % root
+  lucene_dist_dir = '%s/lucene/distribution/build/release' % root
   os.chdir(lucene_dist_dir)
   print('    zip...')
   if os.path.exists('lucene.tar.bz2'):
@@ -256,6 +266,8 @@ def parse_config():
                       help='Root of Git working tree for lucene.  Default: "." (the current directory)')
   parser.add_argument('--logfile', metavar='PATH',
                       help='Specify log file path (default /tmp/release.log)')
+  parser.add_argument('--dev-mode', default=False, action='store_true',
+                      help='Enable development mode, which disables some strict checks')
   config = parser.parse_args()
 
   if not config.prepare and config.sign:
@@ -272,6 +284,8 @@ def parse_config():
     parser.error('Specified gpg home %s does not exist or does not contain a secring.gpg' % config.gpg_home)
   if config.gpg_pass_noprompt:
     print("Will not prompt for gpg password. Make sure your signing setup supports this.")
+  if config.dev_mode:
+    print("Enabling development mode")
   cwd = os.getcwd()
   os.chdir(config.root)
   config.root = os.getcwd() # Absolutize root dir
@@ -351,10 +365,10 @@ def main():
     c.key_id = c.sign
     check_key_in_keys(c.key_id, c.local_keys)
     if c.gpg_home is not None:
-      print("Using custom gpg-home")
+      print("Using custom gpg-home: %s" % c.gpg_home)
       gpg_home = c.gpg_home
     if c.sign_method_gradle:
-      print("Signing method is gradle-plugin")
+      print("Signing method is gradle java-plugin")
       if gpg_home is None:
         resolved_gpg_home = resolve_gpghome()
         if resolved_gpg_home is not None:
@@ -377,7 +391,8 @@ def main():
     c.key_password = None
 
   if c.prepare:
-    rev = prepare(c.root, c.version, c.key_id, c.key_password, gpg_home=gpg_home, sign_gradle=c.sign_method_gradle)
+    rev = prepare(c.root, c.version, c.key_id, c.key_password,
+                  gpg_home=gpg_home, sign_gradle=c.sign_method_gradle, dev_mode=c.dev_mode)
   else:
     os.chdir(c.root)
     rev = open('rev.txt', encoding='UTF-8').read()
