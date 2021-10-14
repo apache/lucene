@@ -56,7 +56,7 @@ class CrankyPointsFormat extends PointsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, PointValues.PointTree values) throws IOException {
+    public void writeField(FieldInfo fieldInfo, PointsReader values) throws IOException {
       if (random.nextInt(100) == 0) {
         throw new IOException("Fake IOException");
       }

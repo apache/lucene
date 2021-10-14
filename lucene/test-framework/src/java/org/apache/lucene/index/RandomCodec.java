@@ -104,8 +104,9 @@ public class RandomCodec extends AssertingCodec {
 
             return new Lucene90PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap) {
               @Override
-              public void writeField(FieldInfo fieldInfo, PointValues.PointTree values)
-                  throws IOException {
+              public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
+
+                PointValues.PointTree values = reader.getValues(fieldInfo.name).getPointTree();
 
                 BKDConfig config =
                     new BKDConfig(

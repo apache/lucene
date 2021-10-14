@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.MutablePointTree;
+import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -165,7 +166,65 @@ class PointValuesWriter {
     } else {
       values = new MutableSortingPointValues(points, sortMap);
     }
-    writer.writeField(fieldInfo, values);
+    PointsReader reader =
+        new PointsReader() {
+          @Override
+          public PointValues getValues(String fieldName) {
+            if (fieldName.equals(fieldInfo.name) == false) {
+              throw new IllegalArgumentException("fieldName must be the same");
+            }
+            return new PointValues() {
+              @Override
+              public PointTree getPointTree() throws IOException {
+                return values;
+              }
+
+              @Override
+              public byte[] getMinPackedValue() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public byte[] getMaxPackedValue() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getNumDimensions() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getNumIndexDimensions() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getBytesPerDimension() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public long size() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getDocCount() {
+                throw new UnsupportedOperationException();
+              }
+            };
+          }
+
+          @Override
+          public void checkIntegrity() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void close() {}
+        };
+    writer.writeField(fieldInfo, reader);
   }
 
   static final class MutableSortingPointValues extends MutablePointTree {

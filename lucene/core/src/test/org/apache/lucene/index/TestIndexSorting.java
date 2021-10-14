@@ -114,8 +114,7 @@ public class TestIndexSorting extends LuceneTestCase {
             }
 
             @Override
-            public void writeField(FieldInfo fieldInfo, PointValues.PointTree values)
-                throws IOException {
+            public void writeField(FieldInfo fieldInfo, PointsReader values) throws IOException {
               writer.writeField(fieldInfo, values);
             }
 

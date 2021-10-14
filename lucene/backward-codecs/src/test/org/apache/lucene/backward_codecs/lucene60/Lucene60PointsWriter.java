@@ -96,7 +96,9 @@ public class Lucene60PointsWriter extends PointsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, PointValues.PointTree values) throws IOException {
+  public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
+
+    PointValues.PointTree values = reader.getValues(fieldInfo.name).getPointTree();
 
     BKDConfig config =
         new BKDConfig(
