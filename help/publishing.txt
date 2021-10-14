@@ -116,7 +116,7 @@ or `pinentry-tty`, etc...).
 `tty` based `pinentry` implementations do not work when Gradle's signing plugin is attempting to invoke `gpg` -- among other problems:
 Gradle is multi-threaded and we sign multiple artifacts by default.  Even if you use "--max-workers 1" to force single-threaded execution,
 the signing plugin invokes gpg with `--batch --no-tty`, making it impossible for gpg (or a tty based pinentry) to prompt you for your passphrase
-in the same terminal where you run Cradle.
+in the same terminal where you run Gradle.
 
 Developers are encouraged to configure a *non* `tty` based `pinentry` (ex: `pinentry-gnome`, `pinentry-x11`, `pinentry-qt`, `pinentry-mac`,
 `pinentry-wsl-ps1`, etc...) either globally in your operating system, or personally in your `~/.gnupg/gpg-agent.conf`, or in a new
