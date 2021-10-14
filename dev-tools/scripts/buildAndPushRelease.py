@@ -126,7 +126,7 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
       if gpg_home is not None:
         cmd += ' -Psigning.secretKeyRingFile="%s"' % os.path.join(gpg_home, 'secring.gpg')
     else:
-      cmd += ' -PuseGpg --signing.gnupg.keyName="%s"' % gpg_key_id
+      cmd += ' -PuseGpg -Psigning.gnupg.keyName="%s"' % gpg_key_id
       if gpg_home is not None:
         cmd += ' -Psigning.gnupg.homeDir="%s"' % gpg_home
     # Gpg password can optionally fall back to gradle.properties signing.keyId and signing.secretKeyRingFile
