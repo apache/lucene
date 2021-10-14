@@ -104,9 +104,8 @@ public class RandomCodec extends AssertingCodec {
 
             return new Lucene90PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap) {
               @Override
-              public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
-
-                PointValues values = reader.getValues(fieldInfo.name);
+              public void writeField(FieldInfo fieldInfo, PointValues.PointTree values)
+                  throws IOException {
 
                 BKDConfig config =
                     new BKDConfig(
@@ -124,7 +123,7 @@ public class RandomCodec extends AssertingCodec {
                         maxMBSortInHeap,
                         values.size(),
                         bkdSplitRandomSeed ^ fieldInfo.name.hashCode())) {
-                  values.intersect(
+                  values.visitDocValues(
                       new IntersectVisitor() {
                         @Override
                         public void visit(int docID) {

@@ -348,7 +348,8 @@ public abstract class PointValues {
           } while (pointTree.moveToSibling());
           pointTree.moveToParent();
         } else {
-          // TODO: we can assert that the first value here in fact matches what the pointTree claimed?
+          // TODO: we can assert that the first value here in fact matches what the pointTree
+          // claimed?
           // Leaf node; scan and filter all points in this block:
           pointTree.visitDocValues(visitor);
         }
@@ -373,7 +374,8 @@ public abstract class PointValues {
     }
   }
 
-  private long estimatePointCount(IntersectVisitor visitor, PointTree pointTree) throws IOException {
+  private long estimatePointCount(IntersectVisitor visitor, PointTree pointTree)
+      throws IOException {
     Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
     switch (r) {
       case CELL_OUTSIDE_QUERY:

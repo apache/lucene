@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Random;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
@@ -1540,95 +1540,8 @@ public class TestBKD extends LuceneTestCase {
     final byte[] pointValue = new byte[numBytesPerDim];
     random().nextBytes(pointValue);
 
-    MutablePointValues reader =
-        new MutablePointValues() {
-
-          @Override
-          public PointTree getPointTree() {
-            return new PointTree() {
-              @Override
-              public PointTree clone() {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public boolean moveToChild() throws IOException {
-                return false;
-              }
-
-              @Override
-              public boolean moveToSibling() throws IOException {
-                return false;
-              }
-
-              @Override
-              public boolean moveToParent() throws IOException {
-                return false;
-              }
-
-              @Override
-              public byte[] getMinPackedValue() {
-                return new byte[0];
-              }
-
-              @Override
-              public byte[] getMaxPackedValue() {
-                return new byte[0];
-              }
-
-              @Override
-              public long size() {
-                return numPointsAdded;
-              }
-
-              @Override
-              public void visitDocIDs(IntersectVisitor visitor) throws IOException {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public void visitDocValues(IntersectVisitor visitor) throws IOException {
-                for (int i = 0; i < numPointsAdded; i++) {
-                  visitor.visit(0, pointValue);
-                }
-              }
-            };
-          }
-
-          @Override
-          public byte[] getMinPackedValue() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public byte[] getMaxPackedValue() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getNumDimensions() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getNumIndexDimensions() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getBytesPerDimension() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public long size() {
-            return numPointsAdded;
-          }
-
-          @Override
-          public int getDocCount() {
-            return numPointsAdded;
-          }
+    MutablePointTree reader =
+        new MutablePointTree() {
 
           @Override
           public void swap(int i, int j) {
@@ -1660,6 +1573,18 @@ public class TestBKD extends LuceneTestCase {
           @Override
           public void restore(int i, int j) {
             throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public long size() {
+            return numPointsAdded;
+          }
+
+          @Override
+          public void visitDocValues(IntersectVisitor visitor) throws IOException {
+            for (int i = 0; i < numPointsAdded; i++) {
+              visitor.visit(0, pointValue);
+            }
           }
         };
 
@@ -1730,8 +1655,8 @@ public class TestBKD extends LuceneTestCase {
     for (int i = 0; i < numValues + 1; i++) {
       random().nextBytes(pointValue[i]);
     }
-    MutablePointValues val =
-        new MutablePointValues() {
+    MutablePointTree val =
+        new MutablePointTree() {
           @Override
           public void getValue(int i, BytesRef packedValue) {
             packedValue.bytes = pointValue[i];
@@ -1757,80 +1682,13 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public PointTree getPointTree() throws IOException {
-            return new PointTree() {
-              @Override
-              public PointTree clone() {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public boolean moveToChild() throws IOException {
-                return false;
-              }
-
-              @Override
-              public boolean moveToSibling() throws IOException {
-                return false;
-              }
-
-              @Override
-              public boolean moveToParent() throws IOException {
-                return false;
-              }
-
-              @Override
-              public byte[] getMinPackedValue() {
-                return new byte[0];
-              }
-
-              @Override
-              public byte[] getMaxPackedValue() {
-                return new byte[0];
-              }
-
-              @Override
-              public long size() {
-                return 11;
-              }
-
-              @Override
-              public void visitDocIDs(IntersectVisitor visitor) throws IOException {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public void visitDocValues(IntersectVisitor visitor) throws IOException {
-                for (int i = 0; i < size(); i++) {
-                  visitor.visit(i, pointValue[i]);
-                }
-              }
-            };
+          public void save(int i, int j) {
+            throw new UnsupportedOperationException();
           }
 
           @Override
-          public byte[] getMinPackedValue() {
-            return new byte[numBytesPerDim];
-          }
-
-          @Override
-          public byte[] getMaxPackedValue() {
-            return new byte[numBytesPerDim];
-          }
-
-          @Override
-          public int getNumDimensions() {
-            return 1;
-          }
-
-          @Override
-          public int getNumIndexDimensions() {
-            return 1;
-          }
-
-          @Override
-          public int getBytesPerDimension() {
-            return numBytesPerDim;
+          public void restore(int i, int j) {
+            throw new UnsupportedOperationException();
           }
 
           @Override
@@ -1839,18 +1697,10 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public int getDocCount() {
-            return 11;
-          }
-
-          @Override
-          public void save(int i, int j) {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void restore(int i, int j) {
-            throw new UnsupportedOperationException();
+          public void visitDocValues(IntersectVisitor visitor) throws IOException {
+            for (int i = 0; i < size(); i++) {
+              visitor.visit(i, pointValue[i]);
+            }
           }
         };
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {

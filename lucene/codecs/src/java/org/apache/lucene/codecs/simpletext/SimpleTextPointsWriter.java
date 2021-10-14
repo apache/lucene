@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.simpletext;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -71,9 +70,7 @@ class SimpleTextPointsWriter extends PointsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
-
-    PointValues values = reader.getValues(fieldInfo.name);
+  public void writeField(FieldInfo fieldInfo, PointValues.PointTree values) throws IOException {
 
     BKDConfig config =
         new BKDConfig(
@@ -92,7 +89,7 @@ class SimpleTextPointsWriter extends PointsWriter {
             SimpleTextBKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
             values.size())) {
 
-      values.intersect(
+      values.visitDocValues(
           new IntersectVisitor() {
             @Override
             public void visit(int docID) {

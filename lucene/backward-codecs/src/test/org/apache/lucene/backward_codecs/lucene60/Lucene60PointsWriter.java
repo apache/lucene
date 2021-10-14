@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
@@ -96,9 +96,7 @@ public class Lucene60PointsWriter extends PointsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
-
-    PointValues values = reader.getValues(fieldInfo.name);
+  public void writeField(FieldInfo fieldInfo, PointValues.PointTree values) throws IOException {
 
     BKDConfig config =
         new BKDConfig(
@@ -116,10 +114,9 @@ public class Lucene60PointsWriter extends PointsWriter {
             maxMBSortInHeap,
             values.size())) {
 
-      if (values instanceof MutablePointValues) {
+      if (values instanceof MutablePointTree) {
         Runnable finalizer =
-            writer.writeField(
-                dataOut, dataOut, dataOut, fieldInfo.name, (MutablePointValues) values);
+            writer.writeField(dataOut, dataOut, dataOut, fieldInfo.name, (MutablePointTree) values);
         if (finalizer != null) {
           indexFPs.put(fieldInfo.name, dataOut.getFilePointer());
           finalizer.run();
@@ -127,7 +124,7 @@ public class Lucene60PointsWriter extends PointsWriter {
         return;
       }
 
-      values.intersect(
+      values.visitDocValues(
           new IntersectVisitor() {
             @Override
             public void visit(int docID) {

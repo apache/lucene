@@ -432,7 +432,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     private int calls;
 
     private ExitablePointTree(
-            PointValues pointValues, PointValues.PointTree in, QueryTimeout queryTimeout) {
+        PointValues pointValues, PointValues.PointTree in, QueryTimeout queryTimeout) {
       this.pointValues = pointValues;
       this.in = in;
       this.queryTimeout = queryTimeout;

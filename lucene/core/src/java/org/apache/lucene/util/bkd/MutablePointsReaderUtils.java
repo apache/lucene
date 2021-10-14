@@ -17,7 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.util.Arrays;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
@@ -37,9 +37,8 @@ public final class MutablePointsReaderUtils {
 
   MutablePointsReaderUtils() {}
 
-  /** Sort the given {@link MutablePointValues} based on its packed value then doc ID. */
-  public static void sort(
-      BKDConfig config, int maxDoc, MutablePointValues reader, int from, int to) {
+  /** Sort the given {@link MutablePointTree} based on its packed value then doc ID. */
+  public static void sort(BKDConfig config, int maxDoc, MutablePointTree reader, int from, int to) {
 
     boolean sortedByDocID = true;
     int prevDoc = 0;
@@ -90,7 +89,7 @@ public final class MutablePointsReaderUtils {
       BKDConfig config,
       int sortedDim,
       int[] commonPrefixLengths,
-      MutablePointValues reader,
+      MutablePointTree reader,
       int from,
       int to,
       BytesRef scratch1,
@@ -149,7 +148,7 @@ public final class MutablePointsReaderUtils {
       int maxDoc,
       int splitDim,
       int commonPrefixLen,
-      MutablePointValues reader,
+      MutablePointTree reader,
       int from,
       int to,
       int mid,
