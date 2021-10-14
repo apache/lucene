@@ -123,42 +123,42 @@ class CrankyPointsFormat extends PointsFormat {
       return new PointValues() {
 
         @Override
-        public IndexTree getIndexTree() throws IOException {
-          IndexTree indexTree = delegate.getIndexTree();
-          return new IndexTree() {
+        public PointTree getPointTree() throws IOException {
+          PointTree pointTree = delegate.getPointTree();
+          return new PointTree() {
             @Override
-            public IndexTree clone() {
-              return indexTree.clone();
+            public PointTree clone() {
+              return pointTree.clone();
             }
 
             @Override
             public boolean moveToChild() throws IOException {
-              return indexTree.moveToChild();
+              return pointTree.moveToChild();
             }
 
             @Override
             public boolean moveToSibling() throws IOException {
-              return indexTree.moveToSibling();
+              return pointTree.moveToSibling();
             }
 
             @Override
             public boolean moveToParent() throws IOException {
-              return indexTree.moveToParent();
+              return pointTree.moveToParent();
             }
 
             @Override
             public byte[] getMinPackedValue() {
-              return indexTree.getMinPackedValue();
+              return pointTree.getMinPackedValue();
             }
 
             @Override
             public byte[] getMaxPackedValue() {
-              return indexTree.getMaxPackedValue();
+              return pointTree.getMaxPackedValue();
             }
 
             @Override
             public long size() {
-              return indexTree.size();
+              return pointTree.size();
             }
 
             @Override
@@ -166,7 +166,7 @@ class CrankyPointsFormat extends PointsFormat {
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
-              indexTree.visitDocIDs(visitor);
+              pointTree.visitDocIDs(visitor);
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
@@ -177,7 +177,7 @@ class CrankyPointsFormat extends PointsFormat {
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
-              indexTree.visitDocValues(visitor);
+              pointTree.visitDocValues(visitor);
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }

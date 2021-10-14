@@ -240,7 +240,7 @@ public class BKDWriter implements Closeable {
   }
 
   private static class MergeReader {
-    private final PointValues.IndexTree indexTree;
+    private final PointValues.PointTree pointTree;
     private final int packedBytesLength;
     private final MergeState.DocMap docMap;
     private final MergeIntersectsVisitor mergeIntersectsVisitor;
@@ -253,11 +253,11 @@ public class BKDWriter implements Closeable {
 
     public MergeReader(PointValues pointValues, MergeState.DocMap docMap) throws IOException {
       this.packedBytesLength = pointValues.getBytesPerDimension() * pointValues.getNumDimensions();
-      this.indexTree = pointValues.getIndexTree();
+      this.pointTree = pointValues.getPointTree();
       this.mergeIntersectsVisitor = new MergeIntersectsVisitor(packedBytesLength);
       // move to first child of the tree and collect docs
-      while (indexTree.moveToChild()) {}
-      indexTree.visitDocValues(mergeIntersectsVisitor);
+      while (pointTree.moveToChild()) {}
+      pointTree.visitDocValues(mergeIntersectsVisitor);
       this.docMap = docMap;
       this.packedValue = new byte[packedBytesLength];
     }
@@ -299,16 +299,16 @@ public class BKDWriter implements Closeable {
     }
 
     private boolean collectNextLeaf() throws IOException {
-      assert indexTree.moveToChild() == false;
+      assert pointTree.moveToChild() == false;
       mergeIntersectsVisitor.reset();
       do {
-        if (indexTree.moveToSibling()) {
+        if (pointTree.moveToSibling()) {
           // move to first child of this node and collect docs
-          while (indexTree.moveToChild()) {}
-          indexTree.visitDocValues(mergeIntersectsVisitor);
+          while (pointTree.moveToChild()) {}
+          pointTree.visitDocValues(mergeIntersectsVisitor);
           return true;
         }
-      } while (indexTree.moveToParent());
+      } while (pointTree.moveToParent());
       return false;
     }
   }

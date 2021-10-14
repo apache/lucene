@@ -76,11 +76,11 @@ final class SimpleTextBKDReader extends PointValues {
   }
 
   @Override
-  public IndexTree getIndexTree() {
-    return new SimpleTextIndexTree(1, 1, minPackedValue, maxPackedValue);
+  public PointTree getPointTree() {
+    return new SimpleTextPointTree(1, 1, minPackedValue, maxPackedValue);
   }
 
-  private class SimpleTextIndexTree implements IndexTree {
+  private class SimpleTextPointTree implements PointTree {
 
     final int[] scratchDocIDs;
     final byte[] scratchPackedValue;
@@ -95,7 +95,7 @@ final class SimpleTextBKDReader extends PointValues {
     // holds the splitDim for each level:
     private final int[] splitDims;
 
-    private SimpleTextIndexTree(
+    private SimpleTextPointTree(
         int nodeID, int level, byte[] minPackedValue, byte[] maxPackedValue) {
       this.scratchDocIDs = new int[config.maxPointsInLeafNode];
       this.scratchPackedValue = new byte[config.packedBytesLength];
@@ -123,9 +123,9 @@ final class SimpleTextBKDReader extends PointValues {
     }
 
     @Override
-    public IndexTree clone() {
-      SimpleTextIndexTree index =
-          new SimpleTextIndexTree(nodeID, level, minPackedValue, maxPackedValue);
+    public PointTree clone() {
+      SimpleTextPointTree index =
+          new SimpleTextPointTree(nodeID, level, minPackedValue, maxPackedValue);
       if (isLeafNode() == false) {
         // copy node data
         index.splitDims[level] = splitDims[level];

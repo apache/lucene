@@ -1091,9 +1091,9 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public IndexTree getIndexTree() throws IOException {
+    public PointTree getPointTree() throws IOException {
       assertThread("Points", creationThread);
-      return new AssertingIndexTree(in, in.getIndexTree());
+      return new AssertingPointTree(in, in.getPointTree());
     }
 
     @Override
@@ -1140,21 +1140,21 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   /** Validates that we don't call moveToChild() or clone() after having called moveToParent() */
-  static class AssertingIndexTree implements PointValues.IndexTree {
+  static class AssertingPointTree implements PointValues.PointTree {
 
     final PointValues pointValues;
-    final PointValues.IndexTree in;
+    final PointValues.PointTree in;
     private boolean moveToParent;
 
-    AssertingIndexTree(PointValues pointValues, PointValues.IndexTree in) {
+    AssertingPointTree(PointValues pointValues, PointValues.PointTree in) {
       this.pointValues = pointValues;
       this.in = in;
     }
 
     @Override
-    public PointValues.IndexTree clone() {
+    public PointValues.PointTree clone() {
       assert moveToParent == false : "calling clone() after calling moveToParent()";
-      return new AssertingIndexTree(pointValues, in.clone());
+      return new AssertingPointTree(pointValues, in.clone());
     }
 
     @Override

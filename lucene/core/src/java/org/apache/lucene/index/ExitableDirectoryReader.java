@@ -373,9 +373,9 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public IndexTree getIndexTree() throws IOException {
+    public PointTree getPointTree() throws IOException {
       checkAndThrow();
-      return new ExitableIndexTree(in, in.getIndexTree(), queryTimeout);
+      return new ExitablePointTree(in, in.getPointTree(), queryTimeout);
     }
 
     @Override
@@ -421,18 +421,18 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
   }
 
-  private static class ExitableIndexTree implements PointValues.IndexTree {
+  private static class ExitablePointTree implements PointValues.PointTree {
 
     private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 10;
 
     private final PointValues pointValues;
-    private final PointValues.IndexTree in;
+    private final PointValues.PointTree in;
     private final ExitableIntersectVisitor exitableIntersectVisitor;
     private final QueryTimeout queryTimeout;
     private int calls;
 
-    private ExitableIndexTree(
-        PointValues pointValues, PointValues.IndexTree in, QueryTimeout queryTimeout) {
+    private ExitablePointTree(
+            PointValues pointValues, PointValues.PointTree in, QueryTimeout queryTimeout) {
       this.pointValues = pointValues;
       this.in = in;
       this.queryTimeout = queryTimeout;
@@ -463,9 +463,9 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public PointValues.IndexTree clone() {
+    public PointValues.PointTree clone() {
       checkAndThrow();
-      return new ExitableIndexTree(pointValues, in.clone(), queryTimeout);
+      return new ExitablePointTree(pointValues, in.clone(), queryTimeout);
     }
 
     @Override

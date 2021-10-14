@@ -24,7 +24,7 @@ import java.util.PriorityQueue;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IndexTree;
+import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
@@ -43,12 +43,12 @@ public class FloatPointNearestNeighbor {
     final int readerIndex;
     final byte[] minPacked;
     final byte[] maxPacked;
-    final IndexTree index;
+    final PointTree index;
     /** The closest possible distance^2 of all points in this cell */
     final double distanceSquared;
 
     Cell(
-        IndexTree index,
+        PointTree index,
         int readerIndex,
         byte[] minPacked,
         byte[] maxPacked,
@@ -204,7 +204,7 @@ public class FloatPointNearestNeighbor {
       PointValues reader = readers.get(i);
       byte[] minPackedValue = reader.getMinPackedValue();
       byte[] maxPackedValue = reader.getMaxPackedValue();
-      IndexTree indexTree = reader.getIndexTree();
+      PointTree indexTree = reader.getPointTree();
 
       cellQueue.offer(
           new Cell(
@@ -236,7 +236,7 @@ public class FloatPointNearestNeighbor {
       } else {
 
         // we must clone the index so that we we can recurse left and right "concurrently":
-        IndexTree newIndex = cell.index.clone();
+        PointTree newIndex = cell.index.clone();
 
         double distanceLeft =
             pointToRectangleDistanceSquared(

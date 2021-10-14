@@ -104,10 +104,10 @@ class PointValuesWriter {
           }
 
           @Override
-          public IndexTree getIndexTree() {
-            return new IndexTree() {
+          public PointTree getPointTree() {
+            return new PointTree() {
               @Override
-              public IndexTree clone() {
+              public PointTree clone() {
                 throw new UnsupportedOperationException();
               }
 
@@ -274,42 +274,42 @@ class PointValuesWriter {
     }
 
     @Override
-    public IndexTree getIndexTree() throws IOException {
-      IndexTree indexTree = in.getIndexTree();
-      return new IndexTree() {
+    public PointTree getPointTree() throws IOException {
+      PointTree pointTree = in.getPointTree();
+      return new PointTree() {
         @Override
-        public IndexTree clone() {
-          return indexTree.clone();
+        public PointTree clone() {
+          return pointTree.clone();
         }
 
         @Override
         public boolean moveToChild() throws IOException {
-          return indexTree.moveToChild();
+          return pointTree.moveToChild();
         }
 
         @Override
         public boolean moveToSibling() throws IOException {
-          return indexTree.moveToSibling();
+          return pointTree.moveToSibling();
         }
 
         @Override
         public boolean moveToParent() throws IOException {
-          return indexTree.moveToParent();
+          return pointTree.moveToParent();
         }
 
         @Override
         public byte[] getMinPackedValue() {
-          return indexTree.getMinPackedValue();
+          return pointTree.getMinPackedValue();
         }
 
         @Override
         public byte[] getMaxPackedValue() {
-          return indexTree.getMaxPackedValue();
+          return pointTree.getMaxPackedValue();
         }
 
         @Override
         public long size() {
-          return indexTree.size();
+          return pointTree.size();
         }
 
         @Override
@@ -319,7 +319,7 @@ class PointValuesWriter {
 
         @Override
         public void visitDocValues(IntersectVisitor visitor) throws IOException {
-          indexTree.visitDocValues(
+          pointTree.visitDocValues(
               new IntersectVisitor() {
                 @Override
                 public void visit(int docID) throws IOException {

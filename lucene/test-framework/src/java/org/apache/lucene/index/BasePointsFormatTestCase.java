@@ -1245,11 +1245,11 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
   private PointValues getPointValues(long size, int docCount, long estimatedPointCount) {
     return new PointValues() {
       @Override
-      public IndexTree getIndexTree() {
-        return new IndexTree() {
+      public PointTree getPointTree() {
+        return new PointTree() {
 
           @Override
-          public IndexTree clone() {
+          public PointTree clone() {
             throw new UnsupportedOperationException();
           }
 

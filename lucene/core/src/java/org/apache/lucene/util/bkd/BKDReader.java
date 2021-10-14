@@ -108,8 +108,8 @@ public class BKDReader extends PointValues {
   }
 
   @Override
-  public IndexTree getIndexTree() throws IOException {
-    return new BKDIndexTree(
+  public PointTree getPointTree() throws IOException {
+    return new BKDPointTree(
         packedIndex.clone(),
         this.in.clone(),
         config,
@@ -120,7 +120,7 @@ public class BKDReader extends PointValues {
         maxPackedValue);
   }
 
-  private static class BKDIndexTree implements IndexTree {
+  private static class BKDPointTree implements PointTree {
     private int nodeID;
     // during clone, the node root can be different to 1
     private final int nodeRoot;
@@ -165,7 +165,7 @@ public class BKDReader extends PointValues {
     private final int[] commonPrefixLengths;
     private final BKDReaderDocIDSetIterator scratchIterator;
 
-    private BKDIndexTree(
+    private BKDPointTree(
         IndexInput innerNodes,
         IndexInput leafNodes,
         BKDConfig config,
@@ -195,7 +195,7 @@ public class BKDReader extends PointValues {
       readNodeData(false);
     }
 
-    private BKDIndexTree(
+    private BKDPointTree(
         IndexInput innerNodes,
         IndexInput leafNodes,
         BKDConfig config,
@@ -244,9 +244,9 @@ public class BKDReader extends PointValues {
     }
 
     @Override
-    public IndexTree clone() {
-      BKDIndexTree index =
-          new BKDIndexTree(
+    public PointTree clone() {
+      BKDPointTree index =
+          new BKDPointTree(
               innerNodes.clone(),
               leafNodes.clone(),
               config,

@@ -812,7 +812,7 @@ public class TestBKD extends LuceneTestCase {
       in.seek(indexFP);
       PointValues pointValues = getPointValues(in);
 
-      assertSize(pointValues.getIndexTree());
+      assertSize(pointValues.getPointTree());
 
       int iters = atLeast(100);
       for (int iter = 0; iter < iters; iter++) {
@@ -869,7 +869,7 @@ public class TestBKD extends LuceneTestCase {
 
         hits.clear();
         pointValues
-            .getIndexTree()
+            .getPointTree()
             .visitDocValues(getIntersectVisitor(hits, queryMin, queryMax, config));
         assertHits(hits, expected);
       }
@@ -887,8 +887,8 @@ public class TestBKD extends LuceneTestCase {
     }
   }
 
-  private void assertSize(PointValues.IndexTree tree) throws IOException {
-    final PointValues.IndexTree clone = tree.clone();
+  private void assertSize(PointValues.PointTree tree) throws IOException {
+    final PointValues.PointTree clone = tree.clone();
     assertEquals(clone.size(), tree.size());
     final long[] size = new long[] {0};
     clone.visitDocIDs(
@@ -1544,10 +1544,10 @@ public class TestBKD extends LuceneTestCase {
         new MutablePointValues() {
 
           @Override
-          public IndexTree getIndexTree() {
-            return new IndexTree() {
+          public PointTree getPointTree() {
+            return new PointTree() {
               @Override
-              public IndexTree clone() {
+              public PointTree clone() {
                 throw new UnsupportedOperationException();
               }
 
@@ -1757,10 +1757,10 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public IndexTree getIndexTree() throws IOException {
-            return new IndexTree() {
+          public PointTree getPointTree() throws IOException {
+            return new PointTree() {
               @Override
-              public IndexTree clone() {
+              public PointTree clone() {
                 throw new UnsupportedOperationException();
               }
 

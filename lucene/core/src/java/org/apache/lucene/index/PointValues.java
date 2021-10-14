@@ -228,18 +228,18 @@ public abstract class PointValues {
     CELL_CROSSES_QUERY
   };
 
-  /** Create a new {@link IndexTree} to navigate the index */
-  public abstract IndexTree getIndexTree() throws IOException;
+  /** Create a new {@link PointTree} to navigate the index */
+  public abstract PointTree getPointTree() throws IOException;
 
   /**
    * Basic operations to read the KD-tree.
    *
    * @lucene.experimental
    */
-  public interface IndexTree extends Cloneable {
+  public interface PointTree extends Cloneable {
 
     /** Clone, the current node becomes the root of the new tree. */
-    IndexTree clone();
+    PointTree clone();
 
     /**
      * Move to the first child node and return {@code true} upon success. Returns {@code false} for
@@ -277,7 +277,7 @@ public abstract class PointValues {
   }
 
   /**
-   * We recurse the {@link IndexTree}, using a provided instance of this to guide the recursion.
+   * We recurse the {@link PointTree}, using a provided instance of this to guide the recursion.
    *
    * @lucene.experimental
    */
@@ -323,13 +323,13 @@ public abstract class PointValues {
    * documents, so it's up to the caller to test whether each document is deleted, if necessary.
    */
   public final void intersect(IntersectVisitor visitor) throws IOException {
-    final IndexTree indexTree = getIndexTree();
-    intersect(visitor, indexTree);
-    assert indexTree.moveToParent() == false;
+    final PointTree pointTree = getPointTree();
+    intersect(visitor, pointTree);
+    assert pointTree.moveToParent() == false;
   }
 
-  private void intersect(IntersectVisitor visitor, IndexTree index) throws IOException {
-    Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
+  private void intersect(IntersectVisitor visitor, PointTree pointTree) throws IOException {
+    Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
     switch (r) {
       case CELL_OUTSIDE_QUERY:
         // This cell is fully outside the query shape: stop recursing
@@ -337,20 +337,20 @@ public abstract class PointValues {
       case CELL_INSIDE_QUERY:
         // This cell is fully inside the query shape: recursively add all points in this cell
         // without filtering
-        index.visitDocIDs(visitor);
+        pointTree.visitDocIDs(visitor);
         break;
       case CELL_CROSSES_QUERY:
         // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
         // through and do full filtering:
-        if (index.moveToChild()) {
+        if (pointTree.moveToChild()) {
           do {
-            intersect(visitor, index);
-          } while (index.moveToSibling());
-          index.moveToParent();
+            intersect(visitor, pointTree);
+          } while (pointTree.moveToSibling());
+          pointTree.moveToParent();
         } else {
-          // TODO: we can assert that the first value here in fact matches what the index claimed?
+          // TODO: we can assert that the first value here in fact matches what the pointTree claimed?
           // Leaf node; scan and filter all points in this block:
-          index.visitDocValues(visitor);
+          pointTree.visitDocValues(visitor);
         }
         break;
       default:
@@ -364,36 +364,36 @@ public abstract class PointValues {
    */
   public final long estimatePointCount(IntersectVisitor visitor) {
     try {
-      final IndexTree indexTree = getIndexTree();
-      final long count = estimatePointCount(visitor, indexTree);
-      assert indexTree.moveToParent() == false;
+      final PointTree pointTree = getPointTree();
+      final long count = estimatePointCount(visitor, pointTree);
+      assert pointTree.moveToParent() == false;
       return count;
     } catch (IOException ioe) {
       throw new UncheckedIOException(ioe);
     }
   }
 
-  private long estimatePointCount(IntersectVisitor visitor, IndexTree index) throws IOException {
-    Relation r = visitor.compare(index.getMinPackedValue(), index.getMaxPackedValue());
+  private long estimatePointCount(IntersectVisitor visitor, PointTree pointTree) throws IOException {
+    Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
     switch (r) {
       case CELL_OUTSIDE_QUERY:
         // This cell is fully outside the query shape: no points added
         return 0L;
       case CELL_INSIDE_QUERY:
         // This cell is fully inside the query shape: add all points
-        return index.size();
+        return pointTree.size();
       case CELL_CROSSES_QUERY:
         // The cell crosses the shape boundary: keep recursing
-        if (index.moveToChild()) {
+        if (pointTree.moveToChild()) {
           long cost = 0;
           do {
-            cost += estimatePointCount(visitor, index);
-          } while (index.moveToSibling());
-          index.moveToParent();
+            cost += estimatePointCount(visitor, pointTree);
+          } while (pointTree.moveToSibling());
+          pointTree.moveToParent();
           return cost;
         } else {
           // Assume half the points matched
-          return (index.size() + 1) / 2;
+          return (pointTree.size() + 1) / 2;
         }
       default:
         throw new IllegalArgumentException("Unreachable code");

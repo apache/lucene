@@ -337,7 +337,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     }
 
     @Override
-    public IndexTree getIndexTree() throws IOException {
+    public PointTree getPointTree() throws IOException {
       throw new UnsupportedOperationException();
     }
 

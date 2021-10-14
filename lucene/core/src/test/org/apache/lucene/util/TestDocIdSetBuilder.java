@@ -308,7 +308,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public IndexTree getIndexTree() {
+    public PointTree getPointTree() {
       throw new UnsupportedOperationException();
     }
 

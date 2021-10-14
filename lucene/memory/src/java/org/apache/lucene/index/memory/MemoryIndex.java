@@ -1672,10 +1672,10 @@ public class MemoryIndex {
       }
 
       @Override
-      public IndexTree getIndexTree() {
-        return new IndexTree() {
+      public PointTree getPointTree() {
+        return new PointTree() {
           @Override
-          public IndexTree clone() {
+          public PointTree clone() {
             return this;
           }
 

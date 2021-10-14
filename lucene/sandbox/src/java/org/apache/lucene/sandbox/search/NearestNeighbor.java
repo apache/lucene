@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IndexTree;
+import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.Bits;
@@ -42,7 +42,7 @@ class NearestNeighbor {
     final int readerIndex;
     final byte[] minPacked;
     final byte[] maxPacked;
-    final IndexTree index;
+    final PointTree index;
 
     /**
      * The closest distance from a point in this cell to the query point, computed as a sort key
@@ -52,7 +52,7 @@ class NearestNeighbor {
     final double distanceSortKey;
 
     public Cell(
-        IndexTree index,
+        PointTree index,
         int readerIndex,
         byte[] minPacked,
         byte[] maxPacked,
@@ -279,7 +279,7 @@ class NearestNeighbor {
       PointValues reader = readers.get(i);
       byte[] minPackedValue = reader.getMinPackedValue();
       byte[] maxPackedValue = reader.getMaxPackedValue();
-      IndexTree indexTree = reader.getIndexTree();
+      PointTree indexTree = reader.getPointTree();
 
       cellQueue.offer(
           new Cell(
@@ -312,7 +312,7 @@ class NearestNeighbor {
         // Non-leaf block: split into two cells and put them back into the queue:
 
         // we must clone the index so that we can recurse left and right "concurrently":
-        IndexTree newIndex = cell.index.clone();
+        PointTree newIndex = cell.index.clone();
 
         cellQueue.offer(
             new Cell(

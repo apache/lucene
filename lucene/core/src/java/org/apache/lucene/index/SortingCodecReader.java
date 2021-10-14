@@ -82,8 +82,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public IndexTree getIndexTree() throws IOException {
-      return new SortingIndexTree(in.getIndexTree(), docMap);
+    public PointTree getPointTree() throws IOException {
+      return new SortingPointTree(in.getPointTree(), docMap);
     }
 
     @Override
@@ -122,21 +122,21 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  private static class SortingIndexTree implements PointValues.IndexTree {
+  private static class SortingPointTree implements PointValues.PointTree {
 
-    private final PointValues.IndexTree indexTree;
+    private final PointValues.PointTree indexTree;
     private final Sorter.DocMap docMap;
     private final SortingIntersectVisitor sortingIntersectVisitor;
 
-    SortingIndexTree(PointValues.IndexTree indexTree, Sorter.DocMap docMap) {
+    SortingPointTree(PointValues.PointTree indexTree, Sorter.DocMap docMap) {
       this.indexTree = indexTree;
       this.docMap = docMap;
       this.sortingIntersectVisitor = new SortingIntersectVisitor(docMap);
     }
 
     @Override
-    public PointValues.IndexTree clone() {
-      return new SortingIndexTree(indexTree.clone(), docMap);
+    public PointValues.PointTree clone() {
+      return new SortingPointTree(indexTree.clone(), docMap);
     }
 
     @Override

@@ -73,11 +73,11 @@ public abstract class PointsWriter implements Closeable {
             return new PointValues() {
 
               @Override
-              public IndexTree getIndexTree() {
-                return new IndexTree() {
+              public PointTree getPointTree() {
+                return new PointTree() {
 
                   @Override
-                  public IndexTree clone() {
+                  public PointTree clone() {
                     throw new UnsupportedOperationException();
                   }
 
