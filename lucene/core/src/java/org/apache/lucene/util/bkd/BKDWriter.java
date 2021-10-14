@@ -333,8 +333,8 @@ public class BKDWriter implements Closeable {
     @Override
     public void grow(int count) {
       if (docIDs.length - docsInBlock < count) {
-        docIDs = ArrayUtil.growExact(docIDs, count + docsInBlock);
-        packedValues = ArrayUtil.growExact(packedValues, (count + docsInBlock) * packedBytesLength);
+        docIDs = ArrayUtil.grow(docIDs, count + docsInBlock);
+        packedValues = ArrayUtil.grow(packedValues, (count + docsInBlock) * packedBytesLength);
       }
     }
 
