@@ -16,19 +16,9 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseCompressingDocValuesFormatTestCase;
-import org.apache.lucene.util.TestUtil;
-
 /** Tests Lucene90DocValuesFormat's merge instance. */
 public class TestLucene90DocValuesFormatMergeInstance
-    extends BaseCompressingDocValuesFormatTestCase {
-  private final Codec codec = TestUtil.getDefaultCodec();
-
-  @Override
-  protected Codec getCodec() {
-    return codec;
-  }
+    extends TestLucene90DocValuesFormat {
 
   @Override
   protected boolean shouldTestMergeInstance() {
