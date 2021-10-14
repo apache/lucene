@@ -17,8 +17,7 @@
 package org.apache.lucene.codecs.lucene90;
 
 /** Tests Lucene90DocValuesFormat's merge instance. */
-public class TestLucene90DocValuesFormatMergeInstance
-    extends TestLucene90DocValuesFormat {
+public class TestLucene90DocValuesFormatMergeInstance extends TestLucene90DocValuesFormat {
 
   @Override
   protected boolean shouldTestMergeInstance() {
