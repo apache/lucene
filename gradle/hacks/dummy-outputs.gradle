@@ -30,7 +30,6 @@ def setupDummyOutputs = { Task task ->
 
 allprojects {
   tasks.matching {
-    it.name.startsWith("ecjLint") ||
     it.name in [
         "gradlewScriptsTweaked",
         "validateSourcePatterns"

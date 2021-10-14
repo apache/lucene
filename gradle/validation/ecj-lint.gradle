@@ -29,6 +29,57 @@ configure(rootProject) {
 
 def resources = scriptResources(buildscript)
 
+class EcjLintArgumentProvider implements CommandLineArgumentProvider {
+
+    @Input
+    String targetCompatibility
+
+    @InputFiles
+    @Classpath
+    FileCollection classpath
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    @IgnoreEmptyDirectories
+    Set<File> srcDirs
+
+    @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
+    File ecjPrefs
+
+    @Internal
+    String ecjLintOutput
+
+    @Override
+    Iterable<String> asArguments() {
+        def arguments = Arrays.asList(
+            "-d",
+            "none",
+            "--release",
+            targetCompatibility,
+            "-encoding",
+            "UTF-8",
+            "-proc:none",
+            "-nowarn",
+            "-enableJavadoc",
+            "-properties",
+            ecjPrefs.absolutePath,
+            "-log",
+            ecjLintOutput
+        ).toList()
+
+        if(!classpath.isEmpty()){
+            arguments.add("-classpath")
+            arguments.add(classpath.asPath)
+        }
+
+        arguments.add(srcDirs.first().toString())
+
+        return arguments
+    }
+
+}
+
 allprojects {
   plugins.withType(JavaPlugin) {
     // Create a [sourceSetName]EcjLint task for each source set
@@ -45,30 +96,27 @@ allprojects {
         dependsOn sourceSet.compileClasspath
 
         // The inputs are all source files from the sourceSet.
-        inputs.files sourceSet.allSource.asFileTree
+        inputs.files(sourceSet.allSource.asFileTree)
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+            .withPropertyName('sources')
+
+        // enable cache
+        def ecjLintOutput =  "${project.buildDir}/ecjlint-output.txt"
+        task.outputs.cacheIf { true }
+        task.outputs.file(file(ecjLintOutput))
 
         // We create a task for all source sets but ignore those
         // that don't have any Java source directories.
         enabled = !srcDirs.isEmpty()
 
         classpath = rootProject.configurations.ecjDeps
-        main = "org.eclipse.jdt.internal.compiler.batch.Main"
+        mainClass = "org.eclipse.jdt.internal.compiler.batch.Main"
 
         // Don't emit any .class files.
         // Hack around "-d none" still emitting package-info.class
         // by running in a temporary directory.
         def tmpDst = getTemporaryDir()
         workingDir tmpDst
-
-        args += [ "-d", "none" ]
-
-        // Compilation environment.
-        args += [ "--release", project.java.targetCompatibility ]
-        args += [ "-encoding", "UTF-8"]
-        args += [ "-proc:none" ]
-        args += [ "-nowarn" ]
-        args += [ "-enableJavadoc" ]
-        args += [ "-properties", file("${resources}/ecj.javadocs.prefs").absolutePath ]
 
         doFirst {
           tmpDst.mkdirs()
@@ -77,15 +125,20 @@ allprojects {
           // configuration at evaluation time). Filter out non-existing entries
           // (output folders for non-existing input source dirs like resources).
           def cpath = sourceSet.compileClasspath.filter { p -> p.exists() }
-          if (!cpath.isEmpty()) {
-            args += ["-classpath", cpath.asPath]
-          }
 
           // Add source location(s). Ideally we'd provide a set of files as in:
           // args += sourceSet.java.files
           // but this exceeds max allowed command line size. So we pass source
-          // directories instead:
-          args += srcDirs
+          // directories instead: srcDirs
+          argumentProviders.add(
+            new EcjLintArgumentProvider(
+              srcDirs: srcDirs,
+              ecjPrefs: file(project.rootDir.path + "/gradle/validation/ecj-lint/ecj.javadocs.prefs"),
+              targetCompatibility: project.java.targetCompatibility,
+              classpath: cpath,
+              ecjLintOutput: ecjLintOutput
+            )
+          )
         }
       })
     }
