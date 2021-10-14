@@ -76,6 +76,9 @@ org.gradle.java.installations.auto-download=false
 org.gradle.java.installations.fromEnv=JDK11,JDK12,JDK13,JDK14,JDK15,JDK16,JDK17
 org.gradle.java.installations.paths=(custom paths)
 
+# enable build cache
+org.gradle.caching=true
+
 """, "UTF-8")
 
         logger.log(LogLevel.WARN, "\nIMPORTANT. This is the first time you ran the build. " +
