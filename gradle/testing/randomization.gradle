@@ -106,6 +106,32 @@ allprojects {
   }
 }
 
+/**
+ * Inject location sensitive props through a provider to benefit from cache
+ * when locally cloning repo from 2 different locations
+ */
+class RandomizationEnvironmentProvider implements CommandLineArgumentProvider {
+
+    @Internal
+    String commonDir
+
+    @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
+    File securityPolicyFile
+
+    @Internal
+    String testWorkDir
+
+    @Override
+    Iterable<String> asArguments() {
+        return [
+            "-Dcommon.dir=" + commonDir,
+            "-Djava.security.policy=" + securityPolicyFile.path,
+            "-Dtests.workDir=" + testWorkDir
+        ]
+    }
+}
+
 // Resolve test option values after all evaluation is complete.
 allprojects {
   plugins.withType(JavaPlugin) {
@@ -149,6 +175,10 @@ allprojects {
       tasks.withType(Test) { task ->
         // TODO: we could remove some options that are only relevant to the build environment
         // and not the test JVM itself.
+
+        // remove tests.workDir from the map as RandomizationEnvironmentProvider will provision it
+        testOptionsResolved.remove('tests.workDir')
+
         systemProperties testOptionsResolved
 
         if (Boolean.parseBoolean(testOptionsResolved['tests.asserts'])) {
@@ -164,15 +194,22 @@ allprojects {
         // Enable security manager, if requested. We could move the selection of security manager and security policy
         // to each project's build/ configuration but it seems compact enough to keep it here for now.
         if (Boolean.parseBoolean(testOptionsResolved["tests.useSecurityManager"])) {
+          def policyFile
           if (project.path == ":lucene:replicator") {
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/replicator-tests.policy")
+            policyFile = file("${resources}/policies/replicator-tests.policy")
           } else if (project.path.startsWith(":lucene")) {
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")
+            policyFile = file("${resources}/policies/tests.policy")
           }
 
-          systemProperty 'common.dir', commonDir
+          systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
+
+          jvmArgumentProviders.add(
+            new RandomizationEnvironmentProvider(
+                commonDir: commonDir.path,
+                securityPolicyFile: policyFile,
+                testWorkDir: "${buildDir}/tmp/tests-tmp"
+            )
+          )
 
           def gradleUserHome = project.gradle.getGradleUserHomeDir()
           systemProperty 'gradle.lib.dir', Paths.get(project.class.location.toURI()).parent.toAbsolutePath().toString().replace('\\', '/')
