@@ -34,7 +34,7 @@ public class SpanishPluralStemmer {
 
   private final static List<String> invariantsList =
           Arrays.asList("abrebotellas","abrecartas","abrelatas","afueras","albatros","albricias","aledaños"
-                  ,"alicates","analisis","andurriales","añicos","añicos","bilis","boletus","brindis","cactus","canutas",
+                  ,"alicates","analisis","andurriales","antitesis","añicos","aries","bilis","boletus","brindis","cactus","canutas",
                   "caries","cascanueces","cascarrabias","ciempies","cifosis","cortaplumas","corpus","cosmos","cosquillas",
                   "creces","crisis","cuatrocientas","cuatrocientos","cuelgacapas","cuentacuentos",
                   "cuentapasos","cumpleaños","doscientas","doscientos","dosis","enseres","entonces",
@@ -82,10 +82,18 @@ public class SpanishPluralStemmer {
                   == 'e') { // abades, comerciales, faxes,  relojes,
             return len - 2;
           }
-          if ((s[len - 3] == 'y' || s[len - 3] == 'i' || s[len - 3] == 'u')
-                  && s[len - 2] == 'e') { // bambues, maniquies, leyes --> for maniquies and bambúes
-            return len - 2;
-          }
+        if ((s[len - 3] == 'y' || s[len - 3] == 'u') && s[len - 2] == 'e') { // bambues,leyes
+          return len - 2;
+        }
+        if ((s[len - 3] == 'i'
+                && (s[len - 4] == 'u'
+                    || s[len - 4] == 'l'
+                    || s[len - 4] == 'r'
+                    || s[len - 4] == 't'
+                    || s[len - 4] == 'n'))
+            && s[len - 2] == 'e') { // jabalies,israelies, maniquies
+          return len - 2;
+        }
           if ((s[len - 3] == 's' && s[len - 2] == 'e')) { // reses
             return len - 2;
           }
@@ -93,7 +101,7 @@ public class SpanishPluralStemmer {
             s[len - 2] = 'y';
             return len - 1;
           }
-          if (!isVowel(s[len - 3]) && s[len - 2] == 'i') { // brandis
+          if (s[len - 3] == 'd' && s[len - 2] == 'i') { // brandis
             s[len - 2] = 'y';
             return len - 1;
           }
