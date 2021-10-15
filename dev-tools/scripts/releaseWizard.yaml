@@ -934,11 +934,16 @@ groups:
     - https://repository.apache.org/index.html
   - !Todo
     id: check_distribution_directory
-    title: Check that the release has appeared in ASF Distribution Directory
+    depends: publish_maven
+    title: Check that artifacts are available
+    function: check_artifacts_available
     description: |
-      Go to https://dlcdn.apache.org/lucene/java/ and refresh until version {{ release_version }} exists.
-    links:
-    - https://dlcdn.apache.org/lucene/java/
+      The task will attempt to fetch https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc
+      to validate ASF repo, and https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.pom.asc
+      to validate Maven repo.
+
+      If the check fails, please re-run the task, until it succeeds.
+
 - !TodoGroup
   id: website
   title: Update the website
