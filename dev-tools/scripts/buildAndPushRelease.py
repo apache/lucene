@@ -35,7 +35,7 @@ def log(msg):
   f = open(LOG, mode='ab')
   f.write(msg.encode('utf-8'))
   f.close()
-  
+
 def run(command):
   log('\n\n%s: RUN: %s\n' % (datetime.datetime.now(), command))
   if os.system('%s >> %s 2>&1' % (command, LOG)):
@@ -93,7 +93,7 @@ def getGitRev(dev_mode=False):
 
     print('  git clone is clean')
   else:
-    print('Ignoring dirty git clone due to dev-mode')
+    print('  Ignoring dirty git clone due to dev-mode')
   return os.popen('git rev-parse HEAD').read().strip()
 
 
@@ -125,29 +125,32 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
     print('  skipping precommit check due to dev-mode')
 
   print('  prepare-release')
-  cmd = './gradlew clean assembleRelease mavenToLocal' \
+  cmd = './gradlew clean assembleRelease' \
         ' -Dversion.release=%s' % version
   if dev_mode:
     cmd += ' -Pvalidation.git.failOnModified=false'
   if gpg_key_id is not None:
     cmd += ' -Psign'
     if sign_gradle:
+      print("  Signing method is gradle java-plugin")
       cmd += ' -Psigning.keyId="%s"' % gpg_key_id
       if gpg_home is not None:
         cmd += ' -Psigning.secretKeyRingFile="%s"' % os.path.join(gpg_home, 'secring.gpg')
+      if gpg_password is not None:
+        # Pass gpg passphrase as env.var to gradle rather than as plaintext argument
+        os.environ['ORG_GRADLE_PROJECT_signingPassword'] = gpg_password
     else:
+      print("  Signing method is gpg tool")
       cmd += ' -PuseGpg -Psigning.gnupg.keyName="%s"' % gpg_key_id
       if gpg_home is not None:
         cmd += ' -Psigning.gnupg.homeDir="%s"' % gpg_home
-    # Gpg password can optionally fall back to gradle.properties signing.keyId and signing.secretKeyRingFile
-    if gpg_password is not None:
-      cmd += ' -Psigning.password="%s"' % gpg_password
 
+  print("  Running: %s" % cmd)
   if gpg_password is not None:
     runAndSendGPGPassword(cmd, gpg_password)
   else:
     run(cmd)
-  
+
   print('  done!')
   print()
   return rev
@@ -202,6 +205,7 @@ def normalizeVersion(tup):
   while len(tup) < 3:
     tup = tup + ('0',)
   return '.'.join(tup) + suffix
+
 
 def pushLocal(version, root, rev, rcNum, localDir):
   print('Push local [%s]...' % localDir)
@@ -282,8 +286,6 @@ def parse_config():
     parser.error('Local KEYS file "%s" not found' % config.local_keys)
   if config.gpg_home and not os.path.exists(os.path.join(config.gpg_home, 'secring.gpg')):
     parser.error('Specified gpg home %s does not exist or does not contain a secring.gpg' % config.gpg_home)
-  if config.gpg_pass_noprompt:
-    print("Will not prompt for gpg password. Make sure your signing setup supports this.")
   if config.dev_mode:
     print("Enabling development mode")
   cwd = os.getcwd()
@@ -295,6 +297,7 @@ def parse_config():
   global LOG
   if config.logfile:
     LOG = config.logfile
+  print("Logfile is: %s" % LOG)
 
   config.version = read_version(config.root)
   print('Building version: %s' % config.version)
@@ -368,7 +371,6 @@ def main():
       print("Using custom gpg-home: %s" % c.gpg_home)
       gpg_home = c.gpg_home
     if c.sign_method_gradle:
-      print("Signing method is gradle java-plugin")
       if gpg_home is None:
         resolved_gpg_home = resolve_gpghome()
         if resolved_gpg_home is not None:
@@ -379,9 +381,8 @@ def main():
           print("      Falling back to location configured in gradle.properties.")
           print("      See 'gradlew helpPublishing' for details.")
           gpg_home = None
-    else:
-      print("Signing method is gpg tool")
     if c.gpg_pass_noprompt:
+      print("Will not prompt for gpg password. Make sure your signing setup supports this.")
       c.key_password = None
     else:
       import getpass
