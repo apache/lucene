@@ -30,6 +30,7 @@ import xml.etree.ElementTree as ET
 import scriptutil
 
 LOG = '/tmp/release.log'
+dev_mode = False
 
 def log(msg):
   f = open(LOG, mode='ab')
@@ -77,7 +78,7 @@ def load(urlString, encoding="utf-8"):
     content = urllib.request.urlopen(urlString).read().decode(encoding)
   return content
 
-def getGitRev(dev_mode=False):
+def getGitRev():
   if not dev_mode:
     status = os.popen('git status').read().strip()
     if 'nothing to commit, working directory clean' not in status and 'nothing to commit, working tree clean' not in status:
@@ -97,7 +98,7 @@ def getGitRev(dev_mode=False):
   return os.popen('git rev-parse HEAD').read().strip()
 
 
-def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=False, dev_mode=False):
+def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=False):
   print()
   print('Prepare release...')
   if os.path.exists(LOG):
@@ -110,7 +111,7 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
   else:
     print('  Development mode, not running git pull')
 
-  rev = getGitRev(dev_mode=dev_mode)
+  rev = getGitRev()
   print('  git rev: %s' % rev)
   log('\nGIT rev: %s\n' % rev)
   with open('rev.txt', mode='wb') as f:
@@ -287,8 +288,10 @@ def parse_config():
     parser.error('Local KEYS file "%s" not found' % config.local_keys)
   if config.gpg_home and not os.path.exists(os.path.join(config.gpg_home, 'secring.gpg')):
     parser.error('Specified gpg home %s does not exist or does not contain a secring.gpg' % config.gpg_home)
+  global dev_mode
   if config.dev_mode:
-    print("Enabling development mode")
+    print("Enabling development mode - DO NOT USE FOR ACTUAL RELEASE!")
+    dev_mode = True
   cwd = os.getcwd()
   os.chdir(config.root)
   config.root = os.getcwd() # Absolutize root dir
@@ -393,8 +396,7 @@ def main():
     c.key_password = None
 
   if c.prepare:
-    rev = prepare(c.root, c.version, c.key_id, c.key_password,
-                  gpg_home=gpg_home, sign_gradle=c.sign_method_gradle, dev_mode=c.dev_mode)
+    rev = prepare(c.root, c.version, c.key_id, c.key_password, gpg_home=gpg_home, sign_gradle=c.sign_method_gradle)
   else:
     os.chdir(c.root)
     rev = open('rev.txt', encoding='UTF-8').read()
