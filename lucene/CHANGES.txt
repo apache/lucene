@@ -159,6 +159,10 @@ API Changes
 
 Improvements
 
+* LUCENE-10129: RamUsageEstimator overloads the shallowSizeOf method for primitive arrays
+  to avoid falling back on shallowSizeOf(Object), which could lead to performance traps.
+  (Robert Muir, Uwe Schindler, Stefan Vodita)
+
 * LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator
   that is Closeable. (Dawid Weiss).
 
