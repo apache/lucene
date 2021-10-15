@@ -163,6 +163,10 @@ API Changes
 
 Improvements
 
+* LUCENE-10129: RamUsageEstimator overloads the shallowSizeOf method for primitive arrays
+  to avoid falling back on shallowSizeOf(Object), which could lead to performance traps.
+  (Robert Muir, Uwe Schindler, Stefan Vodita)
+
 * LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator
   that is Closeable. (Dawid Weiss).
 
@@ -304,6 +308,8 @@ Improvements
 * LUCENE-10145, LUCENE-10153: Faster flushes and merges of points by leveraging
   VarHandles. (Adrien Grand)
 
+* LUCENE-10103: Make QueryCache respect Accountable queries. (Haoyu Zhai)
+
 Bug fixes
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
@@ -348,6 +354,9 @@ Bug fixes
 
 * LUCENE-10114: Remove unused byte order mark in Lucene90PostingsWriter. This
   was initially introduced by accident in Lucene 8.4. (Uwe Schindler)
+
+* LUCENE-10140: Fix cases where minimizing interval iterators could return 
+  incorrect matches (Nikolay Khitrin, Alan Woodward)
 
 Changes in Backwards Compatibility Policy
 
