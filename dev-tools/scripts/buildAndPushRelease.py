@@ -113,7 +113,8 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
   rev = getGitRev(dev_mode=dev_mode)
   print('  git rev: %s' % rev)
   log('\nGIT rev: %s\n' % rev)
-  open('rev.txt', mode='wb').write(rev.encode('UTF-8'))
+  with open('rev.txt', mode='wb') as f:
+      f.write(rev.encode('UTF-8'))
 
   print('  Check DOAP files')
   checkDOAPfiles(version)
