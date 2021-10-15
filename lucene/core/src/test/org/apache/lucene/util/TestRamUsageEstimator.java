@@ -65,41 +65,49 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     {
       byte[] array = new byte[rnd.nextInt(1024)];
       assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
     }
 
     {
       boolean[] array = new boolean[rnd.nextInt(1024)];
       assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
     }
 
     {
       char[] array = new char[rnd.nextInt(1024)];
       assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
     }
 
     {
       short[] array = new short[rnd.nextInt(1024)];
       assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
     }
 
     {
       int[] array = new int[rnd.nextInt(1024)];
       assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
     }
 
     {
       float[] array = new float[rnd.nextInt(1024)];
       assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
     }
 
     {
       long[] array = new long[rnd.nextInt(1024)];
       assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
     }
 
     {
       double[] array = new double[rnd.nextInt(1024)];
       assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
     }
   }
 
