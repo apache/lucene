@@ -163,6 +163,10 @@ API Changes
 
 Improvements
 
+* LUCENE-10182: TestRamUsageEstimator used RamUsageTester.sizeOf throughout, making some of the
+  tests trivial. Now, it compares results from RamUsageEstimator with those from RamUsageTester.
+  (Uwe Schindler, Stefan Vodita)
+
 * LUCENE-10129: RamUsageEstimator overloads the shallowSizeOf method for primitive arrays
   to avoid falling back on shallowSizeOf(Object), which could lead to performance traps.
   (Robert Muir, Uwe Schindler, Stefan Vodita)
