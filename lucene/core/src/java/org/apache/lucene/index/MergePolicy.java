@@ -447,7 +447,7 @@ public abstract class MergePolicy {
       merges.add(merge);
     }
 
-    // nocommit: deprecate me (dir is never used!  and is sometimes difficult to provide!)
+    // TODO: deprecate me (dir is never used!  and is sometimes difficult to provide!)
     /** Returns a description of the merges in this specification. */
     public String segString(Directory dir) {
       StringBuilder b = new StringBuilder();

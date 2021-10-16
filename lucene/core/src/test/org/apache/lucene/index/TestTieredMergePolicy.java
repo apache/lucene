@@ -442,7 +442,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       }
 
       // we allow up to 50% "violation" of the configured maxMergedSegmentSizeMb (why? TMP itself is on only adding 25% fudge factor):
-      // nocommit drop this fudge factor back down to 25% -- TooMuchFudgeException!
+      // TODO: drop this fudge factor back down to 25% -- TooMuchFudgeException!
       long limitBytes = (long) (1024 * 1024 * Math.max(maxMBPerSegment, maxMergedSegmentSizeMB) * 1.5);
       assertTrue(
           "mergeTotalSizeInBytes=" + mergeTotalSizeInBytes + " limitBytes=" + limitBytes + " maxMergedSegmentSizeMb=" + maxMergedSegmentSizeMB,
@@ -487,7 +487,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     assertMaxMergedSize(specification, maxMergedSegmentSizeMB, indexTotalSizeMB, maxSegmentCountAfterForceMerge);
 
     // verify we achieved exactly the max segment count post-force-merge (which is a bit odd -- the API only ensures <= segments, not ==)
-    // nocommit change this to a <= equality like the last assert below?
+    // TODO: change this to a <= equality like the last assert below?
     assertEquals(maxSegmentCountAfterForceMerge, postMergesSegmentCount(infos.size(), specification));
 
     // now create many segments index, containing 0.1 MB sized segments
