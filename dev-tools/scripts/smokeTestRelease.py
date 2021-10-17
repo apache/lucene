@@ -637,7 +637,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
 
     testDemo(java.run_java11, isSrc, version, '11')
     if java.run_java17:
-      testDemo(java.run_java17, isSrc, version, '12')
+      testDemo(java.run_java17, isSrc, version, '17')
 
   testChangesText('.', version)
 
@@ -927,7 +927,7 @@ def make_java_config(parser, java17_home):
   run_java11 = _make_runner(java11_home, '11')
   run_java17 = None
   if java17_home is not None:
-    run_java17 = _make_runner(java17_home, '12')
+    run_java17 = _make_runner(java17_home, '17')
 
   jc = namedtuple('JavaConfig', 'run_java11 java11_home run_java17 java17_home')
   return jc(run_java11, java11_home, run_java17, java17_home)
