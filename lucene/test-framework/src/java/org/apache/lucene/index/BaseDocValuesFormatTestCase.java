@@ -3504,12 +3504,18 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
    * Tests where a DVField uses a high number of packed bits to store its ords. See:
    * https://issues.apache.org/jira/browse/LUCENE-10159
    */
-  @Nightly
   public void testHighPackedBitsPerOrdsForSortedSetDV() throws Exception {
+    final Supplier<BytesRef> randomByteRef =
+        () -> {
+          byte[] bytes = new byte[3];
+          random().nextBytes(bytes);
+          return new BytesRef(bytes);
+        };
+
     String field = "sorted_set_dv";
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
-    iwc.setRAMBufferSizeMB(16 + random().nextInt(128));
+    iwc.setRAMBufferSizeMB(8);
     IndexWriter writer = new IndexWriter(dir, iwc);
 
     // Starts with some docs with low ords
@@ -3517,30 +3523,30 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     for (int i = 0; i < startDocs; i++) {
       Document doc = new Document();
       if (random().nextInt(100) <= 90) {
-        int numOrds = 1 + random().nextInt(3);
+        int numOrds = 1 + random().nextInt(2);
         for (int ord = 0; ord < numOrds; ord++) {
-          doc.add(new SortedSetDocValuesField(field, TestUtil.randomBinaryTerm(random())));
+          doc.add(new SortedSetDocValuesField(field, randomByteRef.get()));
         }
       }
       writer.addDocument(doc);
     }
 
     // Many docs with some of them have very ords
-    int numDocs = 50_000 + random().nextInt(10_000);
+    int numDocs = 40_000 + random().nextInt(10_000);
     for (int i = 1; i < numDocs; i++) {
       Document doc = new Document();
       final int numOrds;
       if (random().nextInt(100) <= 5) {
-        numOrds = 1500 + random().nextInt(1000);
+        numOrds = 1200 + random().nextInt(1000);
       } else {
         if (random().nextBoolean()) {
-          numOrds = random().nextInt(10);
+          numOrds = random().nextInt(20);
         } else {
           numOrds = 0;
         }
       }
       for (int ord = 0; ord < numOrds; ord++) {
-        doc.add(new SortedSetDocValuesField(field, TestUtil.randomBinaryTerm(random())));
+        doc.add(new SortedSetDocValuesField(field, randomByteRef.get()));
       }
       writer.addDocument(doc);
     }
@@ -3550,9 +3556,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     for (int i = 0; i < endDocs; i++) {
       Document doc = new Document();
       if (random().nextInt(100) <= 90) {
-        int numOrds = 1 + random().nextInt(3);
+        int numOrds = 1 + random().nextInt(2);
         for (int ord = 0; ord < numOrds; ord++) {
-          doc.add(new SortedSetDocValuesField(field, TestUtil.randomBinaryTerm(random())));
+          doc.add(new SortedSetDocValuesField(field, randomByteRef.get()));
         }
       }
       writer.addDocument(doc);
