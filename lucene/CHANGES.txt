@@ -378,7 +378,7 @@ Changes in Backwards Compatibility Policy
 Build
 ---------------------
 
-* LUCENE-10163: Move LICENSE and NOTICE files to top level (janhoy)
+* LUCENE-10163: Move LICENSE and NOTICE files to top level to satisfy src artifact requirements (janhoy)
 
 Other
 ---------------------
