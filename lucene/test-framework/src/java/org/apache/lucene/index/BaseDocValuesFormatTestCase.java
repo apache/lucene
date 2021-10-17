@@ -3525,7 +3525,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
-    iwc.setRAMBufferSizeMB(256);
+    if (TEST_NIGHTLY) {
+      iwc.setRAMBufferSizeMB(256);
+    } else {
+      iwc.setRAMBufferSizeMB(32);
+    }
     IndexWriter writer = new IndexWriter(dir, iwc);
 
     int addedOrds = 0;
