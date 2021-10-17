@@ -3504,6 +3504,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
    * Tests where a DVField uses a high number of packed bits to store its ords. See:
    * https://issues.apache.org/jira/browse/LUCENE-10159
    */
+  @Nightly
   public void testHighPackedBitsPerOrdsForSortedSetDV() throws Exception {
     final Supplier<BytesRef> randomByteRef =
         () -> {
@@ -3515,7 +3516,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     String field = "sorted_set_dv";
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
-    iwc.setRAMBufferSizeMB(8);
+    iwc.setRAMBufferSizeMB(8 + random().nextInt(64));
     IndexWriter writer = new IndexWriter(dir, iwc);
 
     // Starts with some docs with low ords
