@@ -38,8 +38,6 @@ import zipfile
 from collections import namedtuple
 import scriptutil
 
-# import checkJavadocLinks
-
 # This tool expects to find /lucene off the base URL.  You
 # must have a working gpg, tar, unzip in your path.  This has been
 # tested on Linux and on Cygwin under Windows 7.
@@ -59,16 +57,8 @@ def unshortenURL(url):
   return url
 
 # TODO
-#   + verify KEYS contains key that signed the release
-#   + make sure changes HTML looks ok
-#   - verify license/notice of all dep jars
-#   - check maven
-#   - check JAR manifest version
-#   - check license/notice exist
-#   - check no "extra" files
 #   - make sure jars exist inside bin release
 #   - make sure docs exist
-#   - use java5 for lucene/modules
 
 reHREF = re.compile('<a href="(.*?)">(.*?)</a>')
 
@@ -539,6 +529,18 @@ LUCENE_NOTICE = None
 LUCENE_LICENSE = None
 
 
+def is_in_list(in_folder, files, indent=4):
+  for fileName in files:
+    print("%sChecking %s" % (" "*indent, fileName))
+    found = False
+    for f in [fileName, fileName + '.txt', fileName + '.md']:
+      if f in in_folder:
+        in_folder.remove(f)
+        found = True
+    if not found:
+      raise RuntimeError('file "%s"[.{txt,md}] is missing' % fileName)
+
+
 def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   global LUCENE_NOTICE
   global LUCENE_LICENSE
@@ -546,51 +548,53 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   os.chdir(unpackPath)
   isSrc = artifact.find('-src') != -1
 
-  l = os.listdir(unpackPath)
-  textFiles = ['LICENSE', 'NOTICE', 'README', 'JRE_VERSION_MIGRATION', 'CHANGES', 'MIGRATE', 'SYSTEM_REQUIREMENTS']
+  # Check text files in release
+  print("  %s" % artifact)
+  in_root_folder = list(filter(lambda x: x[0] != '.', os.listdir(unpackPath)))
+  in_lucene_folder = []
   if isSrc:
-    textFiles.append('BUILD')
-
-  for fileName in textFiles:
-    print("Checking textfile %s" % fileName)
-    fileNameTxt = fileName + '.txt'
-    fileNameMd = fileName + '.md'
-    if fileName in l:
-      l.remove(fileName)
-    elif fileNameTxt in l:
-      l.remove(fileNameTxt)
-    elif fileNameMd in l:
-      l.remove(fileNameMd)
-    else:
-      raise RuntimeError('file "%s".[txt|md] is missing from artifact %s' % (fileName, artifact))
+    in_lucene_folder.extend(os.listdir(os.path.join(unpackPath, 'lucene')))
+    is_in_list(in_root_folder, ['LICENSE', 'NOTICE', 'README'])
+    is_in_list(in_lucene_folder, ['README', 'JRE_VERSION_MIGRATION', 'CHANGES', 'MIGRATE', 'SYSTEM_REQUIREMENTS'])
+  else:
+    is_in_list(in_root_folder, ['LICENSE', 'NOTICE', 'README', 'JRE_VERSION_MIGRATION', 'CHANGES',
+                                'MIGRATE', 'SYSTEM_REQUIREMENTS'])
 
   if LUCENE_NOTICE is None:
     LUCENE_NOTICE = open('%s/NOTICE.txt' % unpackPath, encoding='UTF-8').read()
   if LUCENE_LICENSE is None:
     LUCENE_LICENSE = open('%s/LICENSE.txt' % unpackPath, encoding='UTF-8').read()
 
-  if not isSrc:
-    # TODO: we should add verifyModule/verifySubmodule (e.g. analysis) here and recurse through
-    expectedJARs = ()
-
-    for fileName in expectedJARs:
-      fileName += '.jar'
-      if fileName not in l:
-        raise RuntimeError('lucene: file "%s" is missing from artifact %s' % (fileName, artifact))
-      l.remove(fileName)
+  # if not isSrc:
+  #   # TODO: we should add verifyModule/verifySubmodule (e.g. analysis) here and recurse through
+  #   expectedJARs = ()
+  #
+  #   for fileName in expectedJARs:
+  #     fileName += '.jar'
+  #     if fileName not in l:
+  #       raise RuntimeError('lucene: file "%s" is missing from artifact %s' % (fileName, artifact))
+  #     in_root_folder.remove(fileName)
 
   # TODO: clean this up to not be a list of modules that we must maintain
-  extras = ('analysis', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core', 'demo', 'docs', 'expressions', 'facet', 'grouping', 'highlighter', 'join', 'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator', 'sandbox', 'spatial-extras', 'spatial3d', 'suggest', 'test-framework', 'licenses')
+  expected_folders = ['analysis', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core',
+                      'demo', 'expressions', 'facet', 'grouping', 'highlighter', 'join',
+                      'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
+                      'sandbox', 'spatial-extras', 'spatial3d', 'suggest', 'test-framework', 'licenses']
   if isSrc:
-    extras += ('build.gradle', 'build.xml', 'common-build.xml', 'module-build.xml', 'top-level-ivy-settings.xml', 'default-nested-ivy-settings.xml', 'ivy-versions.properties', 'ivy-ignore-conflicts.properties', 'tools', 'site', 'dev-docs')
+    expected_src_root_files = ['build.gradle', 'buildSrc', 'dev-docs', 'dev-tools', 'gradle', 'gradlew',
+                               'gradlew.bat', 'help', 'lucene', 'settings.gradle', 'versions.lock', 'versions.props']
+    expected_src_lucene_files = ['build.gradle', 'documentation', 'distribution', 'dev-docs']
+    is_in_list(in_root_folder, expected_src_root_files)
+    is_in_list(in_lucene_folder, expected_folders)
+    is_in_list(in_lucene_folder, expected_src_lucene_files)
+    if len(in_lucene_folder) > 0:
+      raise RuntimeError('lucene: unexpected files/dirs in artifact %s: %s' % (artifact, in_lucene_folder))
+  else:
+    is_in_list(in_root_folder, expected_folders)
+    is_in_list(in_root_folder, ['docs'])
 
-  for e in extras:
-    if e not in l:
-      raise RuntimeError('lucene: %s missing from artifact %s' % (e, artifact))
-    l.remove(e)
-
-  if len(l) > 0:
-    raise RuntimeError('lucene: unexpected files/dirs in artifact %s: %s' % (artifact, l))
+  if len(in_root_folder) > 0:
+    raise RuntimeError('lucene: unexpected files/dirs in artifact %s: %s' % (artifact, in_root_folder))
 
   if isSrc:
     print('    make sure no JARs/WARs in src dist...')
@@ -607,31 +611,22 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
         print('      %s' % line.strip())
       raise RuntimeError('source release has WARs...')
 
-    # TODO: test below gradle commands
-    # Can't run documentation-lint in lucene src, because dev-tools is missing TODO: No longer true
-    validateCmd = 'gradlew check -x test'
+    validateCmd = './gradlew check -p lucene/documentation'
     print('    run "%s"' % validateCmd)
     java.run_java11(validateCmd, '%s/validate.log' % unpackPath)
 
     print("    run tests w/ Java 11 and testArgs='%s'..." % testArgs)
-    java.run_java11('gradlew clean test %s' % testArgs, '%s/test.log' % unpackPath)
-    java.run_java11('gradlew assemble', '%s/compile.log' % unpackPath)
+    java.run_java11('./gradlew clean test %s' % testArgs, '%s/test.log' % unpackPath)
+    print("    compile jars w/ Java 11")
+    java.run_java11('./gradlew jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
     testDemo(java.run_java11, isSrc, version, '11')
 
-    #print('    generate javadocs w/ Java 11...')
-    # TODO: Do we need to check broken javadoc links in smoketester, or is that done in build now?
-    #java.run_java11('gradlew javadoc', '%s/javadocs.log' % unpackPath)
-    # checkBrokenLinks('%s/build/docs' % unpackPath)
-
-    if java.run_java12:
-      print("    run tests w/ Java 12 and testArgs='%s'..." % testArgs)
-      java.run_java12('gradlew clean test %s' % testArgs, '%s/test.log' % unpackPath)
-      java.run_java12('gradlew assemble', '%s/compile.log' % unpackPath)
-      testDemo(java.run_java12, isSrc, version, '12')
-
-      #print('    generate javadocs w/ Java 12...')
-      #java.run_java12('ant javadocs', '%s/javadocs.log' % unpackPath)
-      #checkBrokenLinks('%s/build/docs' % unpackPath)
+    if java.run_java17:
+      print("    run tests w/ Java 17 and testArgs='%s'..." % testArgs)
+      java.run_java17('./gradlew clean test %s' % testArgs, '%s/test.log' % unpackPath)
+      print("    compile jars w/ Java 17")
+      java.run_java17('./gradlew jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+      testDemo(java.run_java17, isSrc, version, '17')
 
     print('  confirm all releases have coverage in TestBackwardsCompatibility')
     confirmAllReleasesAreTestedForBackCompat(version, unpackPath)
@@ -641,16 +636,10 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     checkAllJARs(os.getcwd(), gitRevision, version)
 
     testDemo(java.run_java11, isSrc, version, '11')
-    if java.run_java12:
-      testDemo(java.run_java12, isSrc, version, '12')
+    if java.run_java17:
+      testDemo(java.run_java17, isSrc, version, '12')
 
   testChangesText('.', version)
-
-
-# def checkBrokenLinks(path):
-#   # also validate html/check for broken links
-#   if checkJavadocLinks.checkAll(path):
-#     raise RuntimeError('broken javadocs links found!')
 
 
 def testDemo(run_java, isSrc, version, jdk):
@@ -660,10 +649,18 @@ def testDemo(run_java, isSrc, version, jdk):
   print('    test demo with %s...' % jdk)
   sep = ';' if cygwin else ':'
   if isSrc:
-    cp = 'build/core/classes/java{0}build/demo/classes/java{0}build/analysis/common/classes/java{0}build/queryparser/classes/java'.format(sep)
-    docsDir = 'core/src'
+    classPath = ['lucene/core/build/libs/lucene-core-%s.jar' % version,
+                 'lucene/demo/build/libs/lucene-demo-%s.jar' % version,
+                 'lucene/analysis/common/build/libs/lucene-analyzers-common-%s.jar' % version,
+                 'lucene/queryparser/build/libs/lucene-queryparser-%s.jar' % version]
+    cp = sep.join(classPath)
+    docsDir = 'lucene/core/src'
   else:
-    cp = 'core/lucene-core-{0}.jar{1}demo/lucene-demo-{0}.jar{1}analysis/common/lucene-analyzers-common-{0}.jar{1}queryparser/lucene-queryparser-{0}.jar'.format(version, sep)
+    classPath = ['core/lucene-core-%s.jar' % version,
+                 'demo/lucene-demo-%s.jar' % version,
+                 'analysis/common/lucene-analyzers-common-%s.jar' % version,
+                 'queryparser/lucene-queryparser-%s.jar' % version]
+    cp = sep.join(classPath)
     docsDir = 'docs'
   run_java('java -cp "%s" -Dsmoketester=true org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir), 'index.log')
   run_java('java -cp "%s" org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp, 'search.log')
@@ -910,7 +907,7 @@ def crawl(downloadedFiles, urlString, targetDir, exclusions=set()):
         sys.stdout.write('.')
 
 
-def make_java_config(parser, java12_home):
+def make_java_config(parser, java17_home):
   def _make_runner(java_home, version):
     print('Java %s JAVA_HOME=%s' % (version, java_home))
     if cygwin:
@@ -928,12 +925,12 @@ def make_java_config(parser, java12_home):
   if java11_home is None:
     parser.error('JAVA_HOME must be set')
   run_java11 = _make_runner(java11_home, '11')
-  run_java12 = None
-  if java12_home is not None:
-    run_java12 = _make_runner(java12_home, '12')
+  run_java17 = None
+  if java17_home is not None:
+    run_java17 = _make_runner(java17_home, '12')
 
-  jc = namedtuple('JavaConfig', 'run_java11 java11_home run_java12 java12_home')
-  return jc(run_java11, java11_home, run_java12, java12_home)
+  jc = namedtuple('JavaConfig', 'run_java11 java11_home run_java17 java17_home')
+  return jc(run_java11, java11_home, run_java17, java17_home)
 
 version_re = re.compile(r'(\d+\.\d+\.\d+(-ALPHA|-BETA)?)')
 revision_re = re.compile(r'rev([a-f\d]+)')
@@ -955,8 +952,8 @@ def parse_config():
                       help='GIT revision number that release was built with, defaults to that in URL')
   parser.add_argument('--version', metavar='X.Y.Z(-ALPHA|-BETA)?',
                       help='Version of the release, defaults to that in URL')
-  parser.add_argument('--test-java12', metavar='JAVA12_HOME',
-                      help='Path to Java12 home directory, to run tests with if specified')
+  parser.add_argument('--test-java17', metavar='java17_home',
+                      help='Path to Java17 home directory, to run tests with if specified')
   parser.add_argument('--download-only', action='store_true', default=False,
                       help='Only perform download and sha hash check steps')
   parser.add_argument('url', help='Url pointing to release to test')
@@ -983,7 +980,7 @@ def parse_config():
   if c.local_keys is not None and not os.path.exists(c.local_keys):
     parser.error('Local KEYS file "%s" not found' % c.local_keys)
 
-  c.java = make_java_config(parser, c.test_java12)
+  c.java = make_java_config(parser, c.test_java17)
 
   if c.tmp_dir:
     c.tmp_dir = os.path.abspath(c.tmp_dir)
@@ -1033,7 +1030,7 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
   os.chdir(unpackPath)
 
   print('    run TestBackwardsCompatibility..')
-  command = 'gradlew test -p lucene/backward-codecs --tests TestBackwardsCompatibility --max-workers=1 ' \
+  command = './gradlew test -p lucene/backward-codecs --tests TestBackwardsCompatibility --max-workers=1 ' \
             '-Dtests.verbose=true '
   p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   stdout, stderr = p.communicate()
