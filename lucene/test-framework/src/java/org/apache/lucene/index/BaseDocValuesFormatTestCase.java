@@ -71,8 +71,6 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.RegExp;
 
-import javax.print.Doc;
-
 /**
  * Abstract class to do basic tests for a docvalues format. NOTE: This test focuses on the docvalues
  * impl, nothing else. The [stretch] goal is for this test to be so thorough in testing a new
@@ -3522,7 +3520,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
       }
       Document doc = new Document();
       for (int ord = 0; ord < numOrds; ord++) {
-        doc.add(new SortedSetDocValuesField("sorted_set_dv", TestUtil.randomBinaryTerm(random(), 2)));
+        doc.add(
+            new SortedSetDocValuesField("sorted_set_dv", TestUtil.randomBinaryTerm(random(), 2)));
       }
       writer.addDocument(doc);
     }
