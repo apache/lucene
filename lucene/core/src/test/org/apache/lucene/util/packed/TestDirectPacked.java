@@ -116,8 +116,6 @@ public class TestDirectPacked extends LuceneTestCase {
       for (int j = 0; j < original.length; j++) {
         assertEquals("bpv=" + bpv, original[j], reader.get(j));
       }
-      // Make sure that we can overread the last index by one.
-      assertEquals("bpv=" + bpv, 0, reader.get(original.length));
       input.close();
     }
   }

@@ -149,38 +149,11 @@ public final class DirectWriter {
     }
     assert !finished;
     flush();
-
-    // padding for fast io and allow over read the last index by 1.
-    final int paddingBytes = numberOfTrailingBytes(bitsPerValue);
-    for (int i = 0; i < paddingBytes; i++) {
+    // pad for fast io: we actually only need this for certain BPV, but its just 3 bytes...
+    for (int i = 0; i < 3; i++) {
       output.writeByte((byte) 0);
     }
     finished = true;
-  }
-
-  private static int numberOfTrailingBytes(int bitsPerValue) {
-    switch (bitsPerValue) {
-      case 1:
-      case 2:
-      case 4:
-      case 8:
-        return 1;
-      case 12:
-      case 16:
-        return 2;
-      case 20:
-      case 24:
-      case 28:
-      case 32:
-        return 5;
-      case 40:
-      case 48:
-      case 56:
-      case 64:
-        return 11;
-      default:
-        throw new IllegalArgumentException("unsupported bitsPerValue: " + bitsPerValue);
-    }
   }
 
   /** Returns an instance suitable for encoding {@code numValues} using {@code bitsPerValue} */

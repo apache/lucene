@@ -23,7 +23,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -3504,88 +3503,37 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
    * Tests where a DVField uses a high number of packed bits to store its ords. See:
    * https://issues.apache.org/jira/browse/LUCENE-10159
    */
-  @Nightly
-  public void testHighPackedBitsPerOrdsForSortedSetDV() throws Exception {
-    final Supplier<BytesRef> randomByteRef =
-        () -> {
-          byte[] bytes = new byte[3];
-          random().nextBytes(bytes);
-          return new BytesRef(bytes);
-        };
-
+  public void testHighPackedBitsPerOrdForSortedSetDV() throws Exception {
     String field = "sorted_set_dv";
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setRAMBufferSizeMB(8 + random().nextInt(64));
     IndexWriter writer = new IndexWriter(dir, iwc);
 
-    // Starts with some docs with low ords
-    int startDocs = 10 + random().nextInt(10);
-    for (int i = 0; i < startDocs; i++) {
-      Document doc = new Document();
-      if (random().nextInt(100) <= 90) {
-        int numOrds = 1 + random().nextInt(2);
-        for (int ord = 0; ord < numOrds; ord++) {
-          doc.add(new SortedSetDocValuesField(field, randomByteRef.get()));
-        }
-      }
-      writer.addDocument(doc);
-    }
+    // starts with a low ord doc.
+    Document doc = new Document();
+    doc.add(new SortedSetDocValuesField(field, TestUtil.randomBinaryTerm(random(), 2)));
+    writer.addDocument(doc);
 
-    // Many docs with some of them have very ords
-    int numDocs = 40_000 + random().nextInt(10_000);
+    // then many docs with some of them have very high ords
+    int numDocs = 20_000 + random().nextInt(5_000);
     for (int i = 1; i < numDocs; i++) {
-      Document doc = new Document();
+      doc = new Document();
       final int numOrds;
       if (random().nextInt(100) <= 5) {
-        numOrds = 1200 + random().nextInt(1000);
+        numOrds = 1000 + random().nextInt(500);
       } else {
-        if (random().nextBoolean()) {
-          numOrds = random().nextInt(20);
-        } else {
-          numOrds = 0;
-        }
+        numOrds = random().nextInt(3);
       }
       for (int ord = 0; ord < numOrds; ord++) {
-        doc.add(new SortedSetDocValuesField(field, randomByteRef.get()));
+        doc.add(new SortedSetDocValuesField(field, TestUtil.randomBinaryTerm(random(), 2)));
       }
       writer.addDocument(doc);
     }
-
-    // Ends with some docs with low ords
-    int endDocs = 10 + random().nextInt(10);
-    for (int i = 0; i < endDocs; i++) {
-      Document doc = new Document();
-      if (random().nextInt(100) <= 90) {
-        int numOrds = 1 + random().nextInt(2);
-        for (int ord = 0; ord < numOrds; ord++) {
-          doc.add(new SortedSetDocValuesField(field, randomByteRef.get()));
-        }
-      }
-      writer.addDocument(doc);
-    }
-    writer.flush();
-    Runnable checkReaderAndOrds =
-        () -> {
-          try (DirectoryReader reader = DirectoryReader.open(writer)) {
-            int actualOrds = 0;
-            for (LeafReaderContext leaf : reader.leaves()) {
-              SortedSetDocValues dv = leaf.reader().getSortedSetDocValues(field);
-              while (dv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-                while (dv.nextOrd() != SortedSetDocValues.NO_MORE_ORDS) {
-                  actualOrds++;
-                }
-              }
-            }
-            assertTrue(actualOrds > 0);
-            TestUtil.checkReader(reader);
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
-        };
-    checkReaderAndOrds.run();
     writer.forceMerge(1, true);
-    checkReaderAndOrds.run();
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      TestUtil.checkReader(reader);
+    }
     IOUtils.close(writer, dir);
   }
 
