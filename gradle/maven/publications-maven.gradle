@@ -30,6 +30,11 @@ configure(rootProject.ext.mavenProjects) { Project project ->
       }
     }
 
+    // signedJars publication is always signed.
+    signing {
+      sign publishing.publications.signedJars
+    }
+
     // Each publication consists of the java components, source and javadoc artifacts.
     // Add tasks to assemble source and javadoc JARs.
     task sourcesJar(type: Jar, dependsOn: classes) {
