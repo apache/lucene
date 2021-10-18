@@ -486,6 +486,46 @@ public final class RamUsageEstimator {
     return alignObjectSize(size);
   }
 
+  /** Returns the size in bytes of the byte[] object. */
+  public static long shallowSizeOf(byte[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the boolean[] object. */
+  public static long shallowSizeOf(boolean[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the char[] object. */
+  public static long shallowSizeOf(char[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the short[] object. */
+  public static long shallowSizeOf(short[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the int[] object. */
+  public static long shallowSizeOf(int[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the float[] object. */
+  public static long shallowSizeOf(float[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the long[] object. */
+  public static long shallowSizeOf(long[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the double[] object. */
+  public static long shallowSizeOf(double[] arr) {
+    return sizeOf(arr);
+  }
+
   /** Returns the shallow size in bytes of the Object[] object. */
   // Use this method instead of #shallowSizeOf(Object) to avoid costly reflection
   public static long shallowSizeOf(Object[] arr) {

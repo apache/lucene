@@ -6,6 +6,7 @@ http://s.apache.org/luceneversions
 ======================= Lucene 9.0.0 =======================
 
 New Features
+---------------------
 
 * LUCENE-9322, LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
@@ -24,11 +25,13 @@ New Features
 * LUCENE-10102: Add JapaneseCompletionFilter for Input Method-aware auto-completion (Tomoko Uchida, Robert Muir, Jun Ohtani)
 
 System Requirements
+---------------------
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
   (Adrien Grand, Uwe Schindler)
 
 API Changes
+---------------------
 
 * LUCENE-8638: Remove many deprecated methods and classes including FST.lookupByOutput(),
   LegacyBM25Similarity and Jaspell suggester.
@@ -162,6 +165,11 @@ API Changes
   testing new MMapDirectory implementation based on JDK Project Panama. (Uwe Schindler)
 
 Improvements
+---------------------
+
+* LUCENE-10129: RamUsageEstimator overloads the shallowSizeOf method for primitive arrays
+  to avoid falling back on shallowSizeOf(Object), which could lead to performance traps.
+  (Robert Muir, Uwe Schindler, Stefan Vodita)
 
 * LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator
   that is Closeable. (Dawid Weiss).
@@ -304,7 +312,10 @@ Improvements
 * LUCENE-10145, LUCENE-10153: Faster flushes and merges of points by leveraging
   VarHandles. (Adrien Grand)
 
+* LUCENE-10103: Make QueryCache respect Accountable queries. (Haoyu Zhai)
+
 Bug fixes
+---------------------
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
   Julie Tibshirani)
@@ -349,6 +360,9 @@ Bug fixes
 * LUCENE-10114: Remove unused byte order mark in Lucene90PostingsWriter. This
   was initially introduced by accident in Lucene 8.4. (Uwe Schindler)
 
+* LUCENE-10140: Fix cases where minimizing interval iterators could return 
+  incorrect matches (Nikolay Khitrin, Alan Woodward)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
@@ -361,7 +375,13 @@ Changes in Backwards Compatibility Policy
   semantic changes like analysis or certain encoding on top of the file format are only supported on
   a best effort basis. (Simon Willnauer)
 
+Build
+---------------------
+
+* LUCENE-10163: Move LICENSE and NOTICE files to top level to satisfy src artifact requirements (janhoy)
+
 Other
+---------------------
 
 * LUCENE-10136: allow 'var' declarations in source code (Dawid Weiss)
 
