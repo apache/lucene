@@ -1351,7 +1351,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
         private void set() {
           if (set == false) {
-            assert docID() != NO_MORE_DOCS;
             final int index = disi.index();
             start = addresses.get(index);
             end = addresses.get(index + 1L);
@@ -1403,11 +1402,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public int nextDoc() throws IOException {
         int doc = ords.nextDoc();
-        if (doc != NO_MORE_DOCS) {
-          count = ords.docValueCount();
-        } else {
-          count = 0;
-        }
+        count = ords.docValueCount();
         i = 0;
         return doc;
       }
@@ -1415,11 +1410,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public int advance(int target) throws IOException {
         int doc = ords.advance(target);
-        if (doc != NO_MORE_DOCS) {
-          count = ords.docValueCount();
-        } else {
-          count = 0;
-        }
+        count = ords.docValueCount();
         i = 0;
         return doc;
       }
