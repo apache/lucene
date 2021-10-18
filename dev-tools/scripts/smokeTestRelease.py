@@ -538,7 +538,7 @@ def is_in_list(in_folder, files, indent=4):
         in_folder.remove(f)
         found = True
     if not found:
-      raise RuntimeError('file "%s"[.{txt,md}] is missing' % fileName)
+      raise RuntimeError('file "%s" is missing' % fileName)
 
 
 def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
