@@ -588,7 +588,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     is_in_list(in_lucene_folder, expected_folders)
     is_in_list(in_lucene_folder, expected_src_lucene_files)
     if len(in_lucene_folder) > 0:
-      raise RuntimeError('lucene: unexpected files/dirs in artifact %s: %s' % (artifact, in_lucene_folder))
+      raise RuntimeError('lucene: unexpected files/dirs in artifact %s lucene/ folder: %s' % (artifact, in_lucene_folder))
   else:
     is_in_list(in_root_folder, expected_folders)
     is_in_list(in_root_folder, ['docs'])
