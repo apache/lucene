@@ -3503,6 +3503,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
    * Tests where a DVField uses a high number of packed bits to store its ords. See:
    * https://issues.apache.org/jira/browse/LUCENE-10159
    */
+  @Nightly
   public void testHighPackedBitsPerOrdForSortedSetDV() throws Exception {
     String field = "sorted_set_dv";
     Directory dir = newDirectory();
