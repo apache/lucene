@@ -30,20 +30,3 @@ task signReleaseArchives(type: Sign) {
 }
 
 
-// Optionally, switch to using an external GPG command, using it's configured gpg-agent for key management
-if (propertyOrDefault("useGpg", null) != null) {
-
-  // Do this check before 'useGpgCmd()', otherwise gradle will fail with a confusing error about 'signatory.keyId'
-  //
-  // 'signatory.keyId' is an implementation detail of the SigningPlugin that it populates from 'signing.gnupg.keyName' when useGpgCmd()
-  // is used -- but does not explain in the error produced if 'signing.gnupg.keyName' is not set.
-  def propName = 'signing.gnupg.keyName'
-  if (propertyOrDefault(propName, null) == null) {
-    throw new GradleException("'$propName' property must be set when using external GPG via 'useGpg', please see help/publishing.txt")
-  }
-
-  signing {
-    useGpgCmd()
-  }
-
-}
