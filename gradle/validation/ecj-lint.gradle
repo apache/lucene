@@ -65,6 +65,7 @@ allprojects {
         // Compilation environment.
         args += [ "-source", project.java.sourceCompatibility ]
         args += [ "-target", project.java.targetCompatibility ]
+        args += [ "--release", project.java.targetCompatibility ]
         args += [ "-encoding", "UTF-8"]
         args += [ "-proc:none" ]
         args += [ "-nowarn" ]

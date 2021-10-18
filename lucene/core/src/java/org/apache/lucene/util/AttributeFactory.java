@@ -148,7 +148,10 @@ public abstract class AttributeFactory {
       AttributeFactory delegate, Class<A> clazz) {
     final MethodHandle constr = findAttributeImplCtor(clazz);
     return new StaticImplementationAttributeFactory<A>(delegate, clazz) {
+      // UweSays: It's ok. I know why it happens, but it's a bug. The type safety is checked by the
+      // invokeexact
       @Override
+      @SuppressWarnings("unchecked")
       protected A createInstance() {
         try {
           return (A) constr.invokeExact();
