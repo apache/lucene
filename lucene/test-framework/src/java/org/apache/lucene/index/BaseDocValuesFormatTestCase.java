@@ -71,6 +71,8 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.RegExp;
 
+import javax.print.Doc;
+
 /**
  * Abstract class to do basic tests for a docvalues format. NOTE: This test focuses on the docvalues
  * impl, nothing else. The [stretch] goal is for this test to be so thorough in testing a new
@@ -3504,30 +3506,23 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
    * https://issues.apache.org/jira/browse/LUCENE-10159
    */
   @Nightly
-  public void testHighPackedBitsPerOrdForSortedSetDV() throws Exception {
-    String field = "sorted_set_dv";
+  public void testHighOrdsSortedSetDV() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setRAMBufferSizeMB(8 + random().nextInt(64));
     IndexWriter writer = new IndexWriter(dir, iwc);
-
-    // starts with a low ord doc.
-    Document doc = new Document();
-    doc.add(new SortedSetDocValuesField(field, TestUtil.randomBinaryTerm(random(), 2)));
-    writer.addDocument(doc);
-
-    // then many docs with some of them have very high ords
-    int numDocs = 20_000 + random().nextInt(5_000);
+    // many docs with some of them have very high ords
+    int numDocs = 20_000 + random().nextInt(10_000);
     for (int i = 1; i < numDocs; i++) {
-      doc = new Document();
       final int numOrds;
       if (random().nextInt(100) <= 5) {
         numOrds = 1000 + random().nextInt(500);
       } else {
-        numOrds = random().nextInt(3);
+        numOrds = random().nextInt(10);
       }
+      Document doc = new Document();
       for (int ord = 0; ord < numOrds; ord++) {
-        doc.add(new SortedSetDocValuesField(field, TestUtil.randomBinaryTerm(random(), 2)));
+        doc.add(new SortedSetDocValuesField("sorted_set_dv", TestUtil.randomBinaryTerm(random(), 2)));
       }
       writer.addDocument(doc);
     }
