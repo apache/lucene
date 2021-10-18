@@ -190,9 +190,9 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
     Dummy dummy = new Dummy();
     dummy.o1 = copyOf(new BitSet(length), length);
     dummy.o2 = set;
-    long bytes1 = RamUsageTester.sizeOf(dummy);
+    long bytes1 = RamUsageTester.ramUsed(dummy);
     dummy.o2 = null;
-    long bytes2 = RamUsageTester.sizeOf(dummy);
+    long bytes2 = RamUsageTester.ramUsed(dummy);
     return bytes1 - bytes2;
   }
 }
