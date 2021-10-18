@@ -28,8 +28,14 @@ configure(project(":lucene:distribution")) {
   task mavenToBuild() {
     outputs.dir(mavenRepositoryDir)
 
+    // In signed mode, collect signed artifacts. Otherwise collect
+    // unsigned JARs (and their checksums).
+    def mavenConventionTask = project.ext.withSignedArtifacts ?
+        "publishSignedJarsPublicationToBuildRepository" :
+        "publishJarsPublicationToBuildRepository"
+
     dependsOn rootProject.ext.mavenProjects.collect {
-      it.tasks.matching { it.name == "publishJarsPublicationToBuildRepository" }
+      it.tasks.matching { it.name == mavenConventionTask }
     }
   }
 
