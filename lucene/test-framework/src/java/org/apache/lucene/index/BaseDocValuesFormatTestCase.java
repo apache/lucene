@@ -3525,6 +3525,39 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         });
   }
 
+  /**
+   * Tests where a DVField uses a high number of packed bits to store its ords. See:
+   * https://issues.apache.org/jira/browse/LUCENE-10159
+   */
+  @Nightly
+  public void testHighOrdsSortedSetDV() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setRAMBufferSizeMB(8 + random().nextInt(64));
+    IndexWriter writer = new IndexWriter(dir, iwc);
+    // many docs with some of them have very high ords
+    int numDocs = 20_000 + random().nextInt(10_000);
+    for (int i = 1; i < numDocs; i++) {
+      final int numOrds;
+      if (random().nextInt(100) <= 5) {
+        numOrds = 1000 + random().nextInt(500);
+      } else {
+        numOrds = random().nextInt(10);
+      }
+      Document doc = new Document();
+      for (int ord = 0; ord < numOrds; ord++) {
+        doc.add(
+            new SortedSetDocValuesField("sorted_set_dv", TestUtil.randomBinaryTerm(random(), 2)));
+      }
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1, true);
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      TestUtil.checkReader(reader);
+    }
+    IOUtils.close(writer, dir);
+  }
+
   private interface FieldCreator {
     public Field next();
 

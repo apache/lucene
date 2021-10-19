@@ -149,9 +149,13 @@ public abstract class AttributeFactory {
     final MethodHandle constr = findAttributeImplCtor(clazz);
     return new StaticImplementationAttributeFactory<A>(delegate, clazz) {
       @Override
+      @SuppressWarnings("unchecked")
       protected A createInstance() {
         try {
-          return (A) constr.invokeExact();
+          // be explicit with casting, so javac compiles correct call to polymorphic signature:
+          final AttributeImpl impl = (AttributeImpl) constr.invokeExact();
+          // now cast to generic type:
+          return (A) impl;
         } catch (Error | RuntimeException e) {
           throw e;
         } catch (Throwable e) {

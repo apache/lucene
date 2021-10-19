@@ -1422,9 +1422,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       int i = 0;
       int count = 0;
+      boolean set = false;
 
       @Override
       public long nextOrd() throws IOException {
+        if (set == false) {
+          set = true;
+          i = 0;
+          count = ords.docValueCount();
+        }
         if (i++ == count) {
           return NO_MORE_ORDS;
         }
@@ -1433,13 +1439,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        if (ords.advanceExact(target)) {
-          count = ords.docValueCount();
-          i = 0;
-          return true;
-        } else {
-          return false;
-        }
+        set = false;
+        return ords.advanceExact(target);
       }
 
       @Override
@@ -1449,18 +1450,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public int nextDoc() throws IOException {
-        int doc = ords.nextDoc();
-        count = ords.docValueCount();
-        i = 0;
-        return doc;
+        set = false;
+        return ords.nextDoc();
       }
 
       @Override
       public int advance(int target) throws IOException {
-        int doc = ords.advance(target);
-        count = ords.docValueCount();
-        i = 0;
-        return doc;
+        set = false;
+        return ords.advance(target);
       }
 
       @Override
