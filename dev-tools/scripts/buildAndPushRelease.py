@@ -121,18 +121,18 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
   checkDOAPfiles(version)
 
   if not dev_mode:
-    print('  ./gradlew -Dtests.badapples=false clean check')
-    run('./gradlew -Dtests.badapples=false clean check')
+    print('  ./gradlew --no-daemon -Dtests.badapples=false clean check')
+    run('./gradlew --no-daemon -Dtests.badapples=false clean check')
   else:
     print('  skipping precommit check due to dev-mode')
 
   print('  prepare-release')
-  cmd = './gradlew clean assembleRelease' \
+  cmd = './gradlew --no-daemon assembleRelease' \
         ' -Dversion.release=%s' % version
   if dev_mode:
     cmd += ' -Pvalidation.git.failOnModified=false'
   if gpg_key_id is not None:
-    cmd += ' -Psign'
+    cmd += ' -Psign --max-workers 2'
     if sign_gradle:
       print("  Signing method is gradle java-plugin")
       cmd += ' -Psigning.keyId="%s"' % gpg_key_id
