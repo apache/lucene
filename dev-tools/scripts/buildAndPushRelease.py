@@ -127,12 +127,12 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
     print('  skipping precommit check due to dev-mode')
 
   print('  prepare-release')
-  cmd = './gradlew clean assembleRelease' \
+  cmd = './gradlew assembleRelease' \
         ' -Dversion.release=%s' % version
   if dev_mode:
     cmd += ' -Pvalidation.git.failOnModified=false'
   if gpg_key_id is not None:
-    cmd += ' -Psign'
+    cmd += ' -Psign --max-workers 2'
     if sign_gradle:
       print("  Signing method is gradle java-plugin")
       cmd += ' -Psigning.keyId="%s"' % gpg_key_id
