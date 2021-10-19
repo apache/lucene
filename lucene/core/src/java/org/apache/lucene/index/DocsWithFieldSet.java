@@ -62,4 +62,9 @@ final class DocsWithFieldSet extends DocIdSet {
   public DocIdSetIterator iterator() {
     return set != null ? new BitSetIterator(set, cost) : DocIdSetIterator.all(cost);
   }
+
+  /** Return the number of documents of this set. */
+  int cardinality() {
+    return cost;
+  }
 }
