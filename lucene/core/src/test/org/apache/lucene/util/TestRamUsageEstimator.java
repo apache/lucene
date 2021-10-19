@@ -60,44 +60,44 @@ public class TestRamUsageEstimator extends LuceneTestCase {
 
     {
       boolean[] array = new boolean[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), ramUsed(array));
-      assertEquals(shallowSizeOf(array), ramUsed(array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       char[] array = new char[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), ramUsed(array));
-      assertEquals(shallowSizeOf(array), ramUsed(array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       short[] array = new short[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), ramUsed(array));
-      assertEquals(shallowSizeOf(array), ramUsed(array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       int[] array = new int[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), ramUsed(array));
-      assertEquals(shallowSizeOf(array), ramUsed(array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       float[] array = new float[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), ramUsed(array));
-      assertEquals(shallowSizeOf(array), ramUsed(array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       long[] array = new long[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), ramUsed(array));
-      assertEquals(shallowSizeOf(array), ramUsed(array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       double[] array = new double[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), ramUsed(array));
-      assertEquals(shallowSizeOf(array), ramUsed(array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
   }
 
