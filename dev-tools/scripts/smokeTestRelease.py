@@ -301,7 +301,7 @@ def checkSigs(urlString, version, tmpDir, isSigned, keysFile):
           '%s/lucene.gpg.trust.import.log' % tmpDir)
       print('    verify trust')
       logFile = '%s/lucene.%s.gpg.trust.log' % (tmpDir, artifact)
-      run('gpg --verify %s %s' % (sigFile, artifactFile), logFile)
+      run('gpg --display-charset utf-8 --verify %s %s' % (sigFile, artifactFile), logFile)
       # Forward any GPG warnings:
       with open(logFile) as f:
         for line in f.readlines():
@@ -836,7 +836,7 @@ def verifyMavenSigs(tmpDir, artifacts, keysFile):
     sigFile = '%s.asc' % artifactFile
     # Test sig (this is done with a clean brand-new GPG world)
     logFile = '%s/lucene.%s.gpg.verify.log' % (tmpDir, artifact)
-    run('gpg --homedir %s --verify %s %s' % (gpgHomeDir, sigFile, artifactFile),
+    run('gpg --display-charset utf-8 --homedir %s --verify %s %s' % (gpgHomeDir, sigFile, artifactFile),
         logFile)
 
     # Forward any GPG warnings, except the expected one (since it's a clean world)
@@ -846,7 +846,7 @@ def verifyMavenSigs(tmpDir, artifacts, keysFile):
     run('gpg --import %s' % keysFile,
         '%s/lucene.gpg.trust.import.log' % tmpDir)
     logFile = '%s/lucene.%s.gpg.trust.log' % (tmpDir, artifact)
-    run('gpg --verify %s %s' % (sigFile, artifactFile), logFile)
+    run('gpg --display-charset utf-8 --verify %s %s' % (sigFile, artifactFile), logFile)
     # Forward any GPG warnings:
     print_warnings_in_file(logFile)
 
