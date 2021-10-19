@@ -220,14 +220,14 @@ def pushLocal(version, root, rev, rcNum, localDir):
   lucene_dist_dir = '%s/lucene/distribution/build/release' % root
   os.chdir(lucene_dist_dir)
   print('    zip...')
-  if os.path.exists('lucene.tar.bz2'):
-    os.remove('lucene.tar.bz2')
-  run('tar cjf lucene.tar.bz2 *')
+  if os.path.exists('lucene.tar'):
+    os.remove('lucene.tar')
+  run('tar cf lucene.tar *')
 
   os.chdir('%s/%s/lucene' % (localDir, dir))
   print('    unzip...')
-  run('tar xjf "%s/lucene.tar.bz2"' % lucene_dist_dir)
-  os.remove('%s/lucene.tar.bz2' % lucene_dist_dir)
+  run('tar xf "%s/lucene.tar"' % lucene_dist_dir)
+  os.remove('%s/lucene.tar' % lucene_dist_dir)
   os.chdir('..')
 
   print('  chmod...')
