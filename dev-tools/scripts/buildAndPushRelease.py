@@ -30,6 +30,7 @@ import xml.etree.ElementTree as ET
 import scriptutil
 
 LOG = '/tmp/release.log'
+REV_FILE = '/tmp/lucene-rev.txt'
 dev_mode = False
 
 def log(msg):
@@ -114,7 +115,7 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
   rev = getGitRev()
   print('  git rev: %s' % rev)
   log('\nGIT rev: %s\n' % rev)
-  with open('rev.txt', mode='wb') as f:
+  with open(REV_FILE, mode='wb') as f:
       f.write(rev.encode('UTF-8'))
 
   print('  Check DOAP files')
@@ -399,7 +400,7 @@ def main():
     rev = prepare(c.root, c.version, c.key_id, c.key_password, gpg_home=gpg_home, sign_gradle=c.sign_method_gradle)
   else:
     os.chdir(c.root)
-    rev = open('rev.txt', encoding='UTF-8').read()
+    rev = open(REV_FILE, encoding='UTF-8').read()
 
   if c.push_local:
     url = pushLocal(c.version, c.root, rev, c.rc_num, c.push_local)
