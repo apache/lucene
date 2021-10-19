@@ -611,21 +611,21 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
         print('      %s' % line.strip())
       raise RuntimeError('source release has WARs...')
 
-    validateCmd = './gradlew check -p lucene/documentation'
+    validateCmd = './gradlew --no-daemon check -p lucene/documentation'
     print('    run "%s"' % validateCmd)
     java.run_java11(validateCmd, '%s/validate.log' % unpackPath)
 
     print("    run tests w/ Java 11 and testArgs='%s'..." % testArgs)
-    java.run_java11('./gradlew clean test %s' % testArgs, '%s/test.log' % unpackPath)
+    java.run_java11('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
     print("    compile jars w/ Java 11")
-    java.run_java11('./gradlew jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+    java.run_java11('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
     testDemo(java.run_java11, isSrc, version, '11')
 
     if java.run_java17:
       print("    run tests w/ Java 17 and testArgs='%s'..." % testArgs)
-      java.run_java17('./gradlew clean test %s' % testArgs, '%s/test.log' % unpackPath)
+      java.run_java17('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
       print("    compile jars w/ Java 17")
-      java.run_java17('./gradlew jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+      java.run_java17('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
       testDemo(java.run_java17, isSrc, version, '17')
 
     print('  confirm all releases have coverage in TestBackwardsCompatibility')
@@ -1030,7 +1030,7 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
   os.chdir(unpackPath)
 
   print('    run TestBackwardsCompatibility..')
-  command = './gradlew test -p lucene/backward-codecs --tests TestBackwardsCompatibility --max-workers=1 ' \
+  command = './gradlew --no-daemon test -p lucene/backward-codecs --tests TestBackwardsCompatibility --max-workers=1 ' \
             '-Dtests.verbose=true '
   p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   stdout, stderr = p.communicate()
