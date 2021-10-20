@@ -61,7 +61,7 @@ public final class Lucene50RWStoredFieldsFormat extends Lucene50StoredFieldsForm
     switch (mode) {
       case BEST_SPEED:
         return new Lucene50RWCompressingStoredFieldsFormat(
-            "Lucene50StoredFieldsFastData", CompressionMode.FAST, 1 << 14, 128, 10);
+            "Lucene50StoredFieldsFastData", Lucene50StoredFieldsFormat.FAST_MODE, 1 << 14, 128, 10);
       case BEST_COMPRESSION:
         return new Lucene50RWCompressingStoredFieldsFormat(
             "Lucene50StoredFieldsHighData", CompressionMode.HIGH_COMPRESSION, 61440, 512, 10);
