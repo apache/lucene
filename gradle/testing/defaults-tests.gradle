@@ -46,6 +46,13 @@ class TestEnvironmentProvider implements CommandLineArgumentProvider {
 }
 
 allprojects {
+
+  normalization {
+    runtimeClasspath {
+      ignore '**/MANIFEST.MF'
+    }
+  }
+
   plugins.withType(JavaPlugin) {
     project.ext {
       // This array will collect all test options, including default values and option description.
