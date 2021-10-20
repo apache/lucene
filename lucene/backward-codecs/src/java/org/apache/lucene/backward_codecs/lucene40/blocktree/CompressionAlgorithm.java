@@ -17,6 +17,7 @@
 package org.apache.lucene.backward_codecs.lucene40.blocktree;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.compress.LowercaseAsciiCompression;
 
@@ -42,7 +43,8 @@ enum CompressionAlgorithm {
 
     @Override
     void read(DataInput in, byte[] out, int len) throws IOException {
-      org.apache.lucene.util.compress.LZ4.decompress(in, len, out, 0);
+      org.apache.lucene.util.compress.LZ4.decompress(
+          EndiannessReverserUtil.wrapDataInput(in), len, out, 0);
     }
   };
 
