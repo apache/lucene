@@ -30,6 +30,3 @@ CPU, disk and memory requirements are based on the many choices made in
 implementing Lucene (document size, number of documents, and number of 
 hits retrieved to name a few). The benchmarks page has some information 
 related to performance on particular platforms. 
-
-*To build Apache Lucene from the source, refer to the `BUILD.md` file in
-the distribution directory.*

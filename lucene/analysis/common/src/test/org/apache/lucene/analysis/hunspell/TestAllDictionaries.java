@@ -159,8 +159,8 @@ public class TestAllDictionaries extends LuceneTestCase {
         (Path aff) -> {
           try {
             Dictionary dic = loadDictionary(aff);
-            totalMemory.addAndGet(RamUsageTester.sizeOf(dic));
-            totalWords.addAndGet(RamUsageTester.sizeOf(dic.words));
+            totalMemory.addAndGet(RamUsageTester.ramUsed(dic));
+            totalWords.addAndGet(RamUsageTester.ramUsed(dic.words));
             System.out.println(aff + "\t" + memoryUsageSummary(dic));
           } catch (Throwable e) {
             failures.add(aff);

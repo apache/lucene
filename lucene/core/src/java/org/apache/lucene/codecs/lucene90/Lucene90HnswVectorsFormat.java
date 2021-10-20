@@ -144,4 +144,13 @@ public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene90HnswVectorsReader(state);
   }
+
+  @Override
+  public String toString() {
+    return "Lucene90HnswVectorsFormat(name = Lucene90HnswVectorsFormat, maxConn = "
+        + maxConn
+        + ", beamWidth="
+        + beamWidth
+        + ")";
+  }
 }

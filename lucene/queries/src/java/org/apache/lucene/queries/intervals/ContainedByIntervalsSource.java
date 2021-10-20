@@ -33,7 +33,7 @@ class ContainedByIntervalsSource extends ConjunctionIntervalsSource {
   private final IntervalsSource big;
 
   private ContainedByIntervalsSource(IntervalsSource small, IntervalsSource big) {
-    super(Arrays.asList(small, big), false);
+    super(Arrays.asList(small, big));
     this.small = small;
     this.big = big;
   }

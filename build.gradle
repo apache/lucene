@@ -120,9 +120,8 @@ apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/testing/alternative-jdk-support.gradle')
 apply from: file('gradle/java/jar-manifest.gradle')
 
-// Publishing and releasing
-apply from: file('gradle/publishing/defaults-maven.gradle')
-apply from: file('gradle/publishing/distribution.gradle')
+// Maven artifact publishing.
+apply from: file('gradle/maven/publications.gradle')
 
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')
@@ -162,7 +161,6 @@ apply from: file('gradle/datasets/external-datasets.gradle')
 apply from: file('gradle/native/disable-native.gradle')
 
 // Additional development aids.
-apply from: file('gradle/publishing/maven-local.gradle')
 apply from: file('gradle/testing/per-project-summary.gradle')
 apply from: file('gradle/testing/slowest-tests-at-end.gradle')
 apply from: file('gradle/testing/failed-tests-at-end.gradle')

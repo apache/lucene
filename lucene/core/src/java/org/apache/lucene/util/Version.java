@@ -176,6 +176,13 @@ public final class Version {
   @Deprecated public static final Version LUCENE_8_10_0 = new Version(8, 10, 0);
 
   /**
+   * Match settings and bugs in Lucene's 8.10.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_10_1 = new Version(8, 10, 1);
+
+  /**
    * Match settings and bugs in Lucene's 8.10.0 release.
    *
    * @deprecated Use latest
