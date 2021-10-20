@@ -14,31 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
 
-import org.apache.commons.codec.digest.DigestUtils
+/**
+ * An object with this interface is a wrapper around another object (e.g., a filter with a
+ * delegate). The method {@link #unwrap()} can be called to get the wrapped object
+ *
+ * @lucene.internal
+ */
+public interface Unwrappable<T> {
 
-allprojects {
-    plugins.withType(DistributionPlugin) {
-        def checksum = {
-            outputs.files.each { File file ->
-                String sha512 = new DigestUtils(DigestUtils.sha512Digest).digestAsHex(file).trim()
-                new File(file.parent, file.name + ".sha512").write(sha512 + "  " + file.name, "UTF-8")
-            }
-        }
+  /** Unwraps this instance */
+  T unwrap();
 
-        distZip {
-            doLast checksum
-        }
-
-        distTar {
-            compression = Compression.GZIP
-            doLast checksum
-        }
-
-        installDist {
-            doLast {
-                logger.lifecycle "Distribution assembled under: ${destinationDir}"
-            }
-        }
+  /** Unwraps all {@code Unwrappable}s around the given object. */
+  @SuppressWarnings("unchecked")
+  public static <T> T unwrapAll(T o) {
+    while (o instanceof Unwrappable) {
+      o = ((Unwrappable<T>) o).unwrap();
     }
+    return o;
+  }
 }

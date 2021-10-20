@@ -433,48 +433,52 @@ public class TestArrayUtil extends LuceneTestCase {
   }
 
   public void testCompareUnsigned4() {
-    int aI = TestUtil.nextInt(random(), 0, 3);
-    byte[] a = new byte[Integer.BYTES + aI];
-    int bI = TestUtil.nextInt(random(), 0, 3);
-    byte[] b = new byte[Integer.BYTES + bI];
+    int aOffset = TestUtil.nextInt(random(), 0, 3);
+    byte[] a = new byte[Integer.BYTES + aOffset];
+    int bOffset = TestUtil.nextInt(random(), 0, 3);
+    byte[] b = new byte[Integer.BYTES + bOffset];
 
     for (int i = 0; i < Integer.BYTES; ++i) {
-      a[aI + i] = (byte) random().nextInt(1 << 8);
+      a[aOffset + i] = (byte) random().nextInt(1 << 8);
       do {
-        b[bI + i] = (byte) random().nextInt(1 << 8);
-      } while (b[bI + i] == a[aI + i]);
+        b[bOffset + i] = (byte) random().nextInt(1 << 8);
+      } while (b[bOffset + i] == a[aOffset + i]);
     }
 
     for (int i = 0; i < Integer.BYTES; ++i) {
-      int expected = Arrays.compareUnsigned(a, aI, aI + Integer.BYTES, b, bI, bI + Integer.BYTES);
-      int actual = ArrayUtil.compareUnsigned4(a, aI, b, bI);
+      int expected =
+          Arrays.compareUnsigned(
+              a, aOffset, aOffset + Integer.BYTES, b, bOffset, bOffset + Integer.BYTES);
+      int actual = ArrayUtil.compareUnsigned4(a, aOffset, b, bOffset);
       assertEquals(Integer.signum(expected), Integer.signum(actual));
-      b[bI + i] = a[aI + i];
+      b[bOffset + i] = a[aOffset + i];
     }
 
-    assertEquals(0, ArrayUtil.compareUnsigned4(a, aI, b, bI));
+    assertEquals(0, ArrayUtil.compareUnsigned4(a, aOffset, b, bOffset));
   }
 
   public void testCompareUnsigned8() {
-    int aI = TestUtil.nextInt(random(), 0, 7);
-    byte[] a = new byte[Long.BYTES + aI];
-    int bI = TestUtil.nextInt(random(), 0, 3);
-    byte[] b = new byte[Long.BYTES + bI];
+    int aOffset = TestUtil.nextInt(random(), 0, 7);
+    byte[] a = new byte[Long.BYTES + aOffset];
+    int bOffset = TestUtil.nextInt(random(), 0, 7);
+    byte[] b = new byte[Long.BYTES + bOffset];
 
     for (int i = 0; i < Long.BYTES; ++i) {
-      a[aI + i] = (byte) random().nextInt(1 << 8);
+      a[aOffset + i] = (byte) random().nextInt(1 << 8);
       do {
-        b[bI + i] = (byte) random().nextInt(1 << 8);
-      } while (b[bI + i] == a[aI + i]);
+        b[bOffset + i] = (byte) random().nextInt(1 << 8);
+      } while (b[bOffset + i] == a[aOffset + i]);
     }
 
     for (int i = 0; i < Long.BYTES; ++i) {
-      int expected = Arrays.compareUnsigned(a, aI, aI + Long.BYTES, b, bI, bI + Long.BYTES);
-      int actual = ArrayUtil.compareUnsigned8(a, aI, b, bI);
+      int expected =
+          Arrays.compareUnsigned(
+              a, aOffset, aOffset + Long.BYTES, b, bOffset, bOffset + Long.BYTES);
+      int actual = ArrayUtil.compareUnsigned8(a, aOffset, b, bOffset);
       assertEquals(Integer.signum(expected), Integer.signum(actual));
-      b[bI + i] = a[aI + i];
+      b[bOffset + i] = a[aOffset + i];
     }
 
-    assertEquals(0, ArrayUtil.compareUnsigned8(a, aI, b, bI));
+    assertEquals(0, ArrayUtil.compareUnsigned8(a, aOffset, b, bOffset));
   }
 }

@@ -25,7 +25,7 @@ import org.apache.lucene.store.IndexOutput;
 /** A {@link IndexOutput} wrapper that changes the endianness of the provided index output. */
 final class EndiannessReverserIndexOutput extends IndexOutput {
 
-  private final IndexOutput out;
+  final IndexOutput out;
 
   EndiannessReverserIndexOutput(IndexOutput out) {
     super("Endianness reverser Index Output wrapper", out.getName());

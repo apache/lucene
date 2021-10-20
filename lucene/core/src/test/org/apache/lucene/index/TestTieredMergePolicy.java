@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -494,18 +495,21 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
   private static void assertMaxSize(MergeSpecification specification, double maxSegmentSizeMb) {
     for (OneMerge merge : specification.merges) {
-      assertTrue(
+      long size =
           merge.segments.stream()
-                  .mapToLong(
-                      s -> {
-                        try {
-                          return s.sizeInBytes();
-                        } catch (IOException e) {
-                          throw new AssertionError(e);
-                        }
-                      })
-                  .sum()
-              < 1024 * 1024 * maxSegmentSizeMb * 1.5);
+              .mapToLong(
+                  s -> {
+                    try {
+                      return s.sizeInBytes();
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  })
+              .sum();
+      long limit = (long) (1024 * 1024 * maxSegmentSizeMb * 1.5);
+      assertTrue(
+          "size=" + size + ",limit=" + limit + ",maxSegmentSizeMb=" + maxSegmentSizeMb,
+          size < limit);
     }
   }
 

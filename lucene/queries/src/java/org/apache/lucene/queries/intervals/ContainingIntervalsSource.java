@@ -33,7 +33,7 @@ class ContainingIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   private ContainingIntervalsSource(IntervalsSource big, IntervalsSource small) {
-    super(Arrays.asList(big, small), false);
+    super(Arrays.asList(big, small));
     this.big = big;
     this.small = small;
   }

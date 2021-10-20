@@ -22,12 +22,10 @@ subprojects {
     // per-project.
     def title = "Lucene Search Engine: ${project.name}"
     def implementationTitle = "org.apache.lucene"
-    def legaleseDir = project(":lucene").projectDir
+    def legaleseDir = project(":").projectDir
 
-    // Apply the manifest to any JAR or WAR file created by any project,
-    // excluding those explicitly listed.
+    // Apply the manifest to any JAR or WAR file created by any project.
     tasks.withType(Jar)
-      .matching { t -> !["sourcesJar", "javadocJar"].contains(t.name) }
       .configureEach { task ->
           // Compute git status once on the root project prior to assembling manifest.
           dependsOn ":gitStatus"

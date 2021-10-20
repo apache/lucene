@@ -30,7 +30,7 @@ import org.apache.lucene.util.packed.PackedLongValues;
 /** Buffers up pending long per doc, then flushes when segment flushes. */
 class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
 
-  private PackedLongValues.Builder pending;
+  private final PackedLongValues.Builder pending;
   private PackedLongValues finalValues;
   private final Counter iwBytesUsed;
   private long bytesUsed;
@@ -126,7 +126,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
   }
 
   // iterates over the values we have in ram
-  private static class BufferedNumericDocValues extends NumericDocValues {
+  static class BufferedNumericDocValues extends NumericDocValues {
     final PackedLongValues.Iterator iter;
     final DocIdSetIterator docsWithField;
     private long value;
