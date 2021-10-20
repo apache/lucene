@@ -307,7 +307,7 @@ public final class ByteBlockPool implements Accountable {
       term.offset = pos + 1;
     } else {
       // length is 2 bytes
-      term.length = (bytes[pos] & 0x7f) + ((bytes[pos + 1] & 0xff) << 7);
+      term.length = ((short) BitUtil.VH_BE_SHORT.get(bytes, pos)) & 0x7FFF;
       term.offset = pos + 2;
     }
     assert term.length >= 0;
