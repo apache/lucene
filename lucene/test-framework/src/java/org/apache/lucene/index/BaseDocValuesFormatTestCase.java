@@ -39,6 +39,7 @@ import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -3505,6 +3506,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
    */
   @Nightly
   public void testHighOrdsSortedSetDV() throws Exception {
+    assumeFalse(
+        "This test with SimpleTextCodec requires a lot of memory",
+        getCodec() instanceof SimpleTextCodec);
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setRAMBufferSizeMB(8 + random().nextInt(64));
