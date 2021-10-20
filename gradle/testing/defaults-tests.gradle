@@ -39,7 +39,8 @@ class TestEnvironmentProvider implements CommandLineArgumentProvider {
     Iterable<String> asArguments() {
         return [
             "-DtempDir=" + tmpDir,
-            "-Djava.util.logging.config.file=" + loggingConfigFile
+            "-Djava.util.logging.config.file=" + loggingConfigFile,
+            "-Dtests.jvms=" + ((int) Math.max(1, Math.min(Runtime.runtime.availableProcessors() / 2.0, 4.0)))
         ]
     }
 }

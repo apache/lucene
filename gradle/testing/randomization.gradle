@@ -108,7 +108,6 @@ allprojects {
 
 /**
  * Inject location sensitive props through a provider to benefit from cache
- * when locally cloning repo from 2 different locations
  */
 class RandomizationEnvironmentProvider implements CommandLineArgumentProvider {
 
@@ -122,12 +121,24 @@ class RandomizationEnvironmentProvider implements CommandLineArgumentProvider {
     @Internal
     String testWorkDir
 
+    @Internal
+    String gradleUserHome
+
+    @Internal
+    String gradleLibDir
+
+    @Internal
+    String gradleWorkerJar
+
     @Override
     Iterable<String> asArguments() {
         return [
             "-Dcommon.dir=" + commonDir,
             "-Djava.security.policy=" + securityPolicyFile.path,
-            "-Dtests.workDir=" + testWorkDir
+            "-Dtests.workDir=" + testWorkDir,
+            "-Dgradle.user.home=" + gradleUserHome,
+            "-Dgradle.lib.dir=" + gradleLibDir,
+            "-Dgradle.worker.jar=" + gradleWorkerJar
         ]
     }
 }
@@ -176,8 +187,9 @@ allprojects {
         // TODO: we could remove some options that are only relevant to the build environment
         // and not the test JVM itself.
 
-        // remove tests.workDir from the map as RandomizationEnvironmentProvider will provision it
+        // remove options provisioned through RandomizationEnvironmentProvider
         testOptionsResolved.remove('tests.workDir')
+        testOptionsResolved.remove('tests.jvms')
 
         systemProperties testOptionsResolved
 
@@ -202,19 +214,18 @@ allprojects {
           }
 
           systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
+          def gradleUserHome = project.gradle.getGradleUserHomeDir()
 
           jvmArgumentProviders.add(
             new RandomizationEnvironmentProvider(
                 commonDir: commonDir.path,
                 securityPolicyFile: policyFile,
-                testWorkDir: "${buildDir}/tmp/tests-tmp"
+                testWorkDir: "${buildDir}/tmp/tests-tmp",
+                gradleLibDir: Paths.get(project.class.location.toURI()).parent.toAbsolutePath().toString().replace('\\', '/'),
+                gradleWorkerJar: Paths.get("${gradleUserHome}/caches/${gradle.gradleVersion}/workerMain/gradle-worker.jar").toAbsolutePath().toString(),
+                gradleUserHome: gradleUserHome.toPath().toAbsolutePath().toString()
             )
           )
-
-          def gradleUserHome = project.gradle.getGradleUserHomeDir()
-          systemProperty 'gradle.lib.dir', Paths.get(project.class.location.toURI()).parent.toAbsolutePath().toString().replace('\\', '/')
-          systemProperty 'gradle.worker.jar', Paths.get("${gradleUserHome}/caches/${gradle.gradleVersion}/workerMain/gradle-worker.jar").toAbsolutePath().toString()
-          systemProperty 'gradle.user.home', gradleUserHome.toPath().toAbsolutePath().toString()
         }
 
         doFirst {

@@ -51,6 +51,23 @@ task checkoutHunspellRegressionRepos() {
   }
 }
 
+/**
+ * Inject location sensitive props through a provider to benefit from cache
+ */
+class RegressionTestEnvironmentProvider implements CommandLineArgumentProvider {
+
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    File hunspellDir
+
+    @Override
+    Iterable<String> asArguments() {
+        return [
+            "-Dhunspell.dictionaries=" + hunspellDir.path
+        ]
+    }
+}
+
 task testRegressions(type: Test) {
   group "Verification"
   description "Run Hunspell regression tests against Woorm/ LibreOffice git repositories."
@@ -60,7 +77,11 @@ task testRegressions(type: Test) {
   failFast = true
   include "**/TestAllDictionaries*"
 
-  systemProperty "hunspell.dictionaries", checkoutHunspellRegressionRepos.checkoutDir
+  jvmArgumentProviders.add(
+      new RegressionTestEnvironmentProvider(
+          hunspellDir: checkoutHunspellRegressionRepos.checkoutDir
+      )
+  )
 
   doFirst {
     logger.lifecycle("Running Hunspell regression tests...")
