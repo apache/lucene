@@ -219,13 +219,13 @@ def pushLocal(version, root, rev, rcNum, localDir):
   print('  Lucene')
   lucene_dist_dir = '%s/lucene/distribution/build/release' % root
   os.chdir(lucene_dist_dir)
-  print('    zip...')
+  print('    archive...')
   if os.path.exists('lucene.tar'):
     os.remove('lucene.tar')
   run('tar cf lucene.tar *')
 
   os.chdir('%s/%s/lucene' % (localDir, dir))
-  print('    unzip...')
+  print('    extract...')
   run('tar xf "%s/lucene.tar"' % lucene_dist_dir)
   os.remove('%s/lucene.tar' % lucene_dist_dir)
   os.chdir('..')
