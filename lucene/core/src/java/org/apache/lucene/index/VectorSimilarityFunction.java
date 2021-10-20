@@ -59,8 +59,8 @@ public enum VectorSimilarityFunction {
   /**
    * Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize all
    * vectors to unit length, and instead use {@link VectorSimilarityFunction#DOT_PRODUCT}. You
-   * should only use this function if you need to preserve the original vectors and cannot
-   * normalize them in advance.
+   * should only use this function if you need to preserve the original vectors and cannot normalize
+   * them in advance.
    */
   COSINE {
     @Override
