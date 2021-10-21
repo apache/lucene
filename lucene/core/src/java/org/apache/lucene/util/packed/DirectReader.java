@@ -127,8 +127,8 @@ public class DirectReader {
 
       private void fillBuffer(long index) throws IOException {
         // NOTE: we're not allowed to read more than 3 bytes past the last value
-        if (index > numValues - MERGE_BUFFER_SIZE) {
-          // Less than 128 values left
+        if (index >= numValues - MERGE_BUFFER_SIZE) {
+          // 128 values left or less
           final LongValues slowInstance = getInstance(slice, bitsPerValue, baseOffset);
           final int numValuesLastBlock = Math.toIntExact(numValues - index);
           for (int i = 0; i < numValuesLastBlock; ++i) {
