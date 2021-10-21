@@ -137,9 +137,10 @@ public abstract class BaseSortTestCase extends LuceneTestCase {
   }
 
   public void test(Strategy strategy, int length) {
+    Random random = random();
     final Entry[] arr = new Entry[length];
     for (int i = 0; i < arr.length; ++i) {
-      strategy.set(arr, i, random());
+      strategy.set(arr, i, random);
     }
     test(arr);
   }
