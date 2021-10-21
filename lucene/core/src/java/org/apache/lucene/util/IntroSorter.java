@@ -35,7 +35,7 @@ public abstract class IntroSorter extends Sorter {
   @Override
   public final void sort(int from, int to) {
     checkRange(from, to);
-    quicksort(from, to, 2 * MathUtil.log(to - from, 2));
+    sort(from, to, 2 * MathUtil.log(to - from, 2));
   }
 
   /**
@@ -45,7 +45,7 @@ public abstract class IntroSorter extends Sorter {
    * case. Selects the pivot with medians and partitions with the Bentley-McIlroy fast 3-ways
    * algorithm (Engineering a Sort Function, Bentley-McIlroy).
    */
-  void quicksort(int from, int to, int maxDepth) {
+  void sort(int from, int to, int maxDepth) {
     int size;
 
     // Sort small ranges with insertion sort.
@@ -111,10 +111,10 @@ public abstract class IntroSorter extends Sorter {
 
       // Recursion on the smallest partition. Replace the tail recursion by a loop.
       if (j - from < last - i) {
-        quicksort(from, j + 1, maxDepth);
+        sort(from, j + 1, maxDepth);
         from = i;
       } else {
-        quicksort(i, to, maxDepth);
+        sort(i, to, maxDepth);
         to = j + 1;
       }
     }

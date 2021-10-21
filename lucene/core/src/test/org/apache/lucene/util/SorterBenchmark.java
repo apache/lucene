@@ -78,7 +78,7 @@ public class SorterBenchmark {
 
   private static void benchmarkSorters(Strategy strategy, Random random, long seed) {
     for (SorterFactory sorterFactory : SorterFactory.values()) {
-      System.out.print("  " + padRight(sorterFactory.name, 13) + "...");
+      System.out.printf("  %-12s...", sorterFactory.name);
       random.setSeed(seed);
       benchmarkSorter(strategy, sorterFactory, random);
       System.out.println();
@@ -97,7 +97,7 @@ public class SorterBenchmark {
         sorter.sort(0, clone.length);
       }
       long timeMs = (System.nanoTime() - startTimeNs) / 1000000;
-      System.out.print(" " + padLeft(timeMs, 4));
+      System.out.printf("%5d", timeMs);
     }
   }
 
@@ -107,23 +107,5 @@ public class SorterBenchmark {
       strategy.set(arr, i, random);
     }
     return arr;
-  }
-
-  private static String padRight(Object o, int minLength) {
-    StringBuilder builder = new StringBuilder(minLength);
-    builder.append(o);
-    while (builder.length() < minLength) {
-      builder.append(' ');
-    }
-    return builder.toString();
-  }
-
-  private static String padLeft(Object o, int minLength) {
-    StringBuilder builder = new StringBuilder(minLength);
-    builder.append(o);
-    while (builder.length() < minLength) {
-      builder.insert(0, ' ');
-    }
-    return builder.toString();
   }
 }

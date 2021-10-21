@@ -193,7 +193,7 @@ public abstract class Sorter {
   /**
    * A binary sort implementation. This performs {@code O(n*log(n))} comparisons and {@code O(n^2)}
    * swaps. It is typically used by more sophisticated implementations as a fall-back when the
-   * numbers of items to sort has become less than {@value #BINARY_SORT_THRESHOLD}.
+   * number of items to sort has become less than {@value #BINARY_SORT_THRESHOLD}.
    */
   void binarySort(int from, int to) {
     binarySort(from, to, from + 1);
@@ -221,7 +221,7 @@ public abstract class Sorter {
 
   /**
    * Sorts between from (inclusive) and to (exclusive) with insertion sort. Runs in {@code O(n^2)}.
-   * It is typically used by more sophisticated implementations as a fall-back when the numbers of
+   * It is typically used by more sophisticated implementations as a fall-back when the number of
    * items to sort becomes less than {@value #INSERTION_SORT_THRESHOLD}.
    */
   void insertionSort(int from, int to) {
