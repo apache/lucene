@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Locale;
 import java.util.Random;
 import org.apache.lucene.util.BaseSortTestCase.Entry;
 import org.apache.lucene.util.BaseSortTestCase.Strategy;
@@ -78,7 +79,7 @@ public class SorterBenchmark {
 
   private static void benchmarkSorters(Strategy strategy, Random random, long seed) {
     for (SorterFactory sorterFactory : SorterFactory.values()) {
-      System.out.printf("  %-12s...", sorterFactory.name);
+      System.out.printf(Locale.ROOT, "  %-12s...", sorterFactory.name);
       random.setSeed(seed);
       benchmarkSorter(strategy, sorterFactory, random);
       System.out.println();
@@ -97,7 +98,7 @@ public class SorterBenchmark {
         sorter.sort(0, clone.length);
       }
       long timeMs = (System.nanoTime() - startTimeNs) / 1000000;
-      System.out.printf("%5d", timeMs);
+      System.out.printf(Locale.ROOT, "%5d", timeMs);
     }
   }
 
