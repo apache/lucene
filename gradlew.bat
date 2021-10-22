@@ -33,7 +33,7 @@ set APP_HOME=%DIRNAME%
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
 @rem Uncomment the next line to add more JVM options. E.g. proxy settings.
-@rem set JAVA_OPTS="-DproxySet=true -Dhttps.proxyHost=<host> -Dhttps.proxyPort=<port>"
+@rem set JAVA_OPTS="-Djava.net.useSystemProxies=true"
 
 @rem LUCENE-9471: workaround for gradle leaving junk temp. files behind.
 SET GRADLE_TEMPDIR=%DIRNAME%\.gradle\tmp
