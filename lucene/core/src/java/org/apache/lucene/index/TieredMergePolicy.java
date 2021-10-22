@@ -51,16 +51,16 @@ import java.util.Set;
  * <p><b>NOTE</b>: This policy always merges by byte size of the segments, always pro-rates by
  * percent deletes
  *
- * <p><b>NOTE</b> Starting with Lucene 7.5, there are several changes:
+ * <p><b>NOTE</b> Starting with Lucene 7.5, if you call {@link IndexWriter#forceMerge(int)} with
+ * this (default) merge policy, if {@link #setMaxMergedSegmentMB} is in conflict with {@code
+ * maxNumSegments} passed to {@link IndexWriter#forceMerge} then {@code maxNumSegments} wins. For
+ * example, if your index has 50 1 GB segments, and you have {@link #setMaxMergedSegmentMB} at 1024
+ * (1 GB), and you call {@code forceMerge(10)}, the two settings are clearly in conflict. {@code
+ * TieredMergePolicy} will choose to break the {@link #setMaxMergedSegmentMB} constraint and try to
+ * merge down to at most ten segments, each up to 5 * 1.25 GB in size (since an extra 25% buffer
+ * increase in the expected segment size is targetted).
  *
- * <p>- findForcedMerges and findForcedDeletesMerges) respect the max segment size by default.
- *
- * <p>- When findforcedmerges is called with maxSegmentCount other than 1, the resulting index is
- * not guaranteed to have &lt;= maxSegmentCount segments. Rather it is on a "best effort" basis.
- * Specifically the theoretical ideal segment size is calculated and a "fudge factor" of 25% is
- * added as the new maxSegmentSize, which is respected.
- *
- * <p>- findForcedDeletesMerges will not produce segments greater than maxSegmentSize.
+ * <p>findForcedDeletesMerges should never produce segments greater than maxSegmentSize.
  *
  * @lucene.experimental
  */
@@ -707,8 +707,8 @@ public class TieredMergePolicy extends MergePolicy {
     final Set<SegmentCommitInfo> merging = mergeContext.getMergingSegments();
 
     // Trim the list down, remove if we're respecting max segment size and it's not original.
-    // Presumably it's been merged before and
-    //   is close enough to the max segment size we shouldn't add it in again.
+    // Presumably it's been merged before and is close enough to the max segment size we
+    // shouldn't add it in again.
     Iterator<SegmentSizeAndDocs> iter = sortedSizeAndDocs.iterator();
     boolean forceMergeRunning = false;
     while (iter.hasNext()) {
@@ -729,17 +729,20 @@ public class TieredMergePolicy extends MergePolicy {
     long maxMergeBytes = maxMergedSegmentBytes;
 
     // Set the maximum segment size based on how many segments have been specified.
-    if (maxSegmentCount == 1) maxMergeBytes = Long.MAX_VALUE;
-    else if (maxSegmentCount != Integer.MAX_VALUE) {
-      // Fudge this up a bit so we have a better chance of not having to rewrite segments. If we use
-      // the exact size,
-      // it's almost guaranteed that the segments won't fit perfectly and we'll be left with more
-      // segments than
-      // we want and have to re-merge in the code at the bottom of this method.
+    if (maxSegmentCount == 1) {
+      maxMergeBytes = Long.MAX_VALUE;
+    } else if (maxSegmentCount != Integer.MAX_VALUE) {
       maxMergeBytes =
           Math.max(
               (long) (((double) totalMergeBytes / (double) maxSegmentCount)),
               maxMergedSegmentBytes);
+      // Fudge this up a bit so we have a better chance of not having to do a second pass of merging
+      // to get
+      // down to the requested target segment count. If we use the exact size, it's almost
+      // guaranteed
+      // that the segments selected below won't fit perfectly and we'll be left with more segments
+      // than
+      // we want and have to re-merge in the code at the bottom of this method.
       maxMergeBytes = (long) ((double) maxMergeBytes * 1.25);
     }
 
@@ -748,8 +751,8 @@ public class TieredMergePolicy extends MergePolicy {
     while (iter.hasNext()) {
       SegmentSizeAndDocs segSizeDocs = iter.next();
       Boolean isOriginal = segmentsToMerge.get(segSizeDocs.segInfo);
-      if (segSizeDocs.delCount
-          != 0) { // This is forceMerge, all segments with deleted docs should be merged.
+      if (segSizeDocs.delCount != 0) {
+        // This is forceMerge; all segments with deleted docs should be merged.
         if (isOriginal != null && isOriginal) {
           foundDeletes = true;
         }
@@ -770,8 +773,7 @@ public class TieredMergePolicy extends MergePolicy {
       return null;
     }
 
-    // We should never bail if there are segments that have deleted documents, all deleted docs
-    // should be purged.
+    // We only bail if there are no deletions
     if (foundDeletes == false) {
       SegmentCommitInfo infoZero = sortedSizeAndDocs.get(0).segInfo;
       if ((maxSegmentCount != Integer.MAX_VALUE
@@ -794,6 +796,11 @@ public class TieredMergePolicy extends MergePolicy {
 
     final int startingSegmentCount = sortedSizeAndDocs.size();
     if (forceMergeRunning) {
+      // hmm this is a little dangerous -- if a user kicks off a forceMerge, it is taking forever,
+      // lots of
+      // new indexing/segments happened since, and they want to kick off another to ensure those
+      // newly
+      // indexed segments partake in the force merge, they (silently) won't due to this?
       return null;
     }
 

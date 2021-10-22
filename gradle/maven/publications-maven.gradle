@@ -1,0 +1,162 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Configure projects for publishing Maven artifacts and set up repeatable metadata.
+
+configure(rootProject.ext.mavenProjects) { Project project ->
+  project.apply plugin: 'maven-publish'
+  project.apply plugin: 'signing'
+
+  plugins.withType(JavaPlugin) {
+    // We have two types of publications: jars and signed jars.
+    publishing {
+      publications {
+        jars(MavenPublication)
+        signedJars(MavenPublication)
+      }
+    }
+
+    // signedJars publication is always signed.
+    signing {
+      sign publishing.publications.signedJars
+    }
+
+    // Each publication consists of the java components, source and javadoc artifacts.
+    // Add tasks to assemble source and javadoc JARs.
+    task sourcesJar(type: Jar, dependsOn: classes) {
+      archiveClassifier = 'sources'
+      from sourceSets.main.allJava
+    }
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+      archiveClassifier = 'javadoc'
+      from javadoc.destinationDir
+    }
+
+    // This moves pom metadata configuration after all the scripts of all projects
+    // have been evaluated. This is required because we set artifact groups
+    // and archivesBaseName in other scripts and some of the properties below don't
+    // accept lazy property providers (so everything must be in its final form).
+    gradle.projectsEvaluated {
+      publishing {
+        publications.each { publication ->
+          configure(publication) {
+            from components.java
+            groupId = project.group
+            artifactId = project.archivesBaseName
+
+            artifact sourcesJar
+            artifact javadocJar
+
+            // LUCENE-9561:
+            // Remove dependencyManagement section created by a combination of
+            // Palantir and the publishing plugin.
+            //
+            // https://github.com/palantir/gradle-consistent-versions/issues/550
+            pom({
+              withXml {
+                def dm = asNode().dependencyManagement
+                if (dm) dm.replaceNode {}
+              }
+            })
+          }
+        }
+      }
+    }
+
+    // Configure pom defaults for all publications.
+    publishing {
+      publications.each { publication ->
+        configure(publication) {
+          pom {
+            name = provider { -> "Apache Lucene (module: ${project.name})" }
+            description = provider { -> "Apache Lucene (module: ${project.name})" }
+            url = "https://lucene.apache.org/"
+
+            licenses {
+              license {
+                name = 'Apache 2'
+                url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+              }
+            }
+
+            inceptionYear = "2000"
+
+            issueManagement {
+              system = "JIRA"
+              url = "https://issues.apache.org/jira/browse/LUCENE"
+            }
+
+            ciManagement {
+              system = "Jenkins"
+              url = "https://builds.apache.org/job/Lucene/"
+            }
+
+            mailingLists {
+              mailingList {
+                name = "Java User List"
+                subscribe = "java-user-subscribe@lucene.apache.org"
+                unsubscribe = "java-user-unsubscribe@lucene.apache.org"
+                archive = "https://mail-archives.apache.org/mod_mbox/lucene-java-user/"
+              }
+
+              mailingList {
+                name = "Java Developer List"
+                subscribe = "dev-subscribe@lucene.apache.org"
+                unsubscribe = "dev-unsubscribe@lucene.apache.org"
+                archive = "https://mail-archives.apache.org/mod_mbox/lucene-dev/"
+              }
+
+              mailingList {
+                name = "Java Commits List"
+                subscribe = "commits-subscribe@lucene.apache.org"
+                unsubscribe = "commits-unsubscribe@lucene.apache.org"
+                archive = "https://mail-archives.apache.org/mod_mbox/lucene-java-commits/"
+              }
+            }
+
+            scm {
+              connection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene.git'
+              developerConnection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene.git'
+              url = 'https://gitbox.apache.org/repos/asf?p=lucene.git'
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Hack: prevent any test fixture JARs from being published.
+  afterEvaluate {
+    configurations.matching { configuration ->
+      configuration.name in [
+          "testFixturesApiElements",
+          "testFixturesRuntimeElements"
+      ]
+    }.all {
+      project.components.java.withVariantsFromConfiguration(it) { variant ->
+        variant.skip()
+      }
+    }
+  }
+
+  // Hack: do not generate or publish gradle metadata files.
+  tasks.withType(GenerateModuleMetadata) {
+    enabled = false
+  }
+}
+

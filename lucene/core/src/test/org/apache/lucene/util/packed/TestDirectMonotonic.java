@@ -155,6 +155,14 @@ public class TestDirectMonotonic extends LuceneTestCase {
   }
 
   public void testRandom() throws IOException {
+    doTestRandom(false);
+  }
+
+  public void testRandomMerging() throws IOException {
+    doTestRandom(true);
+  }
+
+  private void doTestRandom(boolean merging) throws IOException {
     Random random = random();
     final int iters = atLeast(random, 3);
     for (int iter = 0; iter < iters; ++iter) {
@@ -199,7 +207,8 @@ public class TestDirectMonotonic extends LuceneTestCase {
         DirectMonotonicReader.Meta meta =
             DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
         LongValues values =
-            DirectMonotonicReader.getInstance(meta, dataIn.randomAccessSlice(0, dataLength));
+            DirectMonotonicReader.getInstance(
+                meta, dataIn.randomAccessSlice(0, dataLength), merging);
         for (int i = 0; i < numValues; ++i) {
           assertEquals(actualValues.get(i).longValue(), values.get(i));
         }

@@ -61,6 +61,7 @@ import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
@@ -417,7 +418,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         }
       }
       queryCache.assertConsistent();
-      assertEquals(RamUsageTester.sizeOf(queryCache, acc), queryCache.ramBytesUsed());
+      assertEquals(RamUsageTester.ramUsed(queryCache, acc), queryCache.ramBytesUsed());
     }
 
     w.close();
@@ -522,10 +523,50 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
     assertTrue(queryCache.getCacheCount() > 0);
 
-    final long actualRamBytesUsed = RamUsageTester.sizeOf(queryCache, acc);
+    final long actualRamBytesUsed = RamUsageTester.ramUsed(queryCache, acc);
     final long expectedRamBytesUsed = queryCache.ramBytesUsed();
     // error < 30%
     assertEquals(actualRamBytesUsed, expectedRamBytesUsed, 30 * actualRamBytesUsed / 100);
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  /** DummyQuery with Accountable, pretending to be a memory-eating query */
+  private class AccountableDummyQuery extends DummyQuery implements Accountable {
+
+    @Override
+    public long ramBytesUsed() {
+      return 10 * QUERY_DEFAULT_RAM_BYTES_USED;
+    }
+  }
+
+  public void testCachingAccountableQuery() throws IOException {
+    final LRUQueryCache queryCache =
+        new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+
+    Directory dir = newDirectory();
+    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      w.addDocument(doc);
+    }
+    final DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(queryCache);
+    searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+    final int numQueries = random().nextInt(100) + 100;
+    for (int i = 0; i < numQueries; ++i) {
+      final Query query = new AccountableDummyQuery();
+      searcher.count(query);
+    }
+    long queryRamBytesUsed =
+        numQueries * (10 * QUERY_DEFAULT_RAM_BYTES_USED + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY);
+    // allow 10% error for other ram bytes used estimation inside query cache
+    assertEquals(queryRamBytesUsed, queryCache.ramBytesUsed(), 10 * queryRamBytesUsed / 100);
 
     reader.close();
     w.close();

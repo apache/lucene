@@ -32,7 +32,6 @@ import java.util.Objects;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * LZ4 compression and decompression routines.
@@ -108,7 +107,7 @@ public final class LZ4 {
       }
 
       // matchs
-      final int matchDec = (compressed.readByte() & 0xFF) | ((compressed.readByte() & 0xFF) << 8);
+      final int matchDec = compressed.readShort() & 0xFFFF;
       assert matchDec > 0;
 
       int matchLen = token & 0x0F;
@@ -177,8 +176,7 @@ public final class LZ4 {
     // encode match dec
     final int matchDec = matchOff - matchRef;
     assert matchDec > 0 && matchDec < 1 << 16;
-    out.writeByte((byte) matchDec);
-    out.writeByte((byte) (matchDec >>> 8));
+    out.writeShort((short) matchDec);
 
     // encode match len
     if (matchLen >= MIN_MATCH + 0x0F) {
@@ -213,6 +211,85 @@ public final class LZ4 {
     abstract boolean assertReset();
   }
 
+  private abstract static class Table {
+
+    abstract void set(int offset, int value);
+
+    abstract int getAndSet(int offset, int value);
+
+    abstract int getBitsPerValue();
+
+    abstract int size();
+  }
+
+  /**
+   * 16 bits per offset. This is by far the most commonly used table since it gets used whenever
+   * compressing inputs whose size is <= 64kB.
+   */
+  private static class Table16 extends Table {
+
+    private final short[] table;
+
+    Table16(int size) {
+      this.table = new short[size];
+    }
+
+    @Override
+    void set(int index, int value) {
+      assert value >= 0 && value < 1 << 16;
+      table[index] = (short) value;
+    }
+
+    @Override
+    int getAndSet(int index, int value) {
+      int prev = Short.toUnsignedInt(table[index]);
+      set(index, value);
+      return prev;
+    }
+
+    @Override
+    int getBitsPerValue() {
+      return Short.SIZE;
+    }
+
+    @Override
+    int size() {
+      return table.length;
+    }
+  }
+
+  /** 32 bits per value, only used when inputs exceed 64kB, e.g. very large stored fields. */
+  private static class Table32 extends Table {
+
+    private final int[] table;
+
+    Table32(int size) {
+      this.table = new int[size];
+    }
+
+    @Override
+    void set(int index, int value) {
+      table[index] = value;
+    }
+
+    @Override
+    int getAndSet(int index, int value) {
+      int prev = table[index];
+      set(index, value);
+      return prev;
+    }
+
+    @Override
+    int getBitsPerValue() {
+      return Integer.SIZE;
+    }
+
+    @Override
+    int size() {
+      return table.length;
+    }
+  }
+
   /**
    * Simple lossy {@link HashTable} that only stores the last ocurrence for each hash on {@code
    * 2^14} bytes of memory.
@@ -224,7 +301,7 @@ public final class LZ4 {
     private int lastOff;
     private int end;
     private int hashLog;
-    private PackedInts.Mutable hashTable;
+    private Table hashTable;
 
     /** Sole constructor */
     public FastCompressionHashTable() {}
@@ -235,13 +312,24 @@ public final class LZ4 {
       this.bytes = bytes;
       this.base = off;
       this.end = off + len;
-      final int bitsPerOffset = PackedInts.bitsRequired(len - LAST_LITERALS);
+      final int bitsPerOffset;
+      if (len - LAST_LITERALS < 1 << Short.SIZE) {
+        bitsPerOffset = Short.SIZE;
+      } else {
+        bitsPerOffset = Integer.SIZE;
+      }
       final int bitsPerOffsetLog = 32 - Integer.numberOfLeadingZeros(bitsPerOffset - 1);
       hashLog = MEMORY_USAGE + 3 - bitsPerOffsetLog;
       if (hashTable == null
           || hashTable.size() < 1 << hashLog
           || hashTable.getBitsPerValue() < bitsPerOffset) {
-        hashTable = PackedInts.getMutable(1 << hashLog, bitsPerOffset, PackedInts.DEFAULT);
+        if (bitsPerOffset > Short.SIZE) {
+          assert bitsPerOffset == Integer.SIZE;
+          hashTable = new Table32(1 << hashLog);
+        } else {
+          assert bitsPerOffset == Short.SIZE;
+          hashTable = new Table16(1 << hashLog);
+        }
       } else {
         // Avoid calling hashTable.clear(), this makes it costly to compress many short sequences
         // otherwise.
@@ -268,8 +356,7 @@ public final class LZ4 {
       final int v = readInt(bytes, off);
       final int h = hash(v, hashLog);
 
-      final int ref = base + (int) hashTable.get(h);
-      hashTable.set(h, off - base);
+      final int ref = base + hashTable.getAndSet(h, off - base);
       lastOff = off;
 
       if (ref < off && off - ref < MAX_DISTANCE && readInt(bytes, ref) == v) {
