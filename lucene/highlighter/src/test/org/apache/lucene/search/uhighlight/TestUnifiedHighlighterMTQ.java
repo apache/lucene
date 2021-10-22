@@ -778,10 +778,15 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     snippets = highlighter.highlight("body", query, topDocs);
     assertEquals(1, snippets.length);
 
+    // All flags are enabled.
     assertEquals(
-        "<b>Test(body:te*)</b> a <b>one(body:*one*)</b> <b>sentence(body:zentence~~2)</b> document.",
+        "" + highlighter.getFlags("body"),
+        HighlightFlag.values().length,
+        highlighter.getFlags("body").size());
+    assertEquals(
+        "" + highlighter.getFlags("title"),
+        "<b>Test(body:te*)</b> a <b>one(body:*one*)</b> <b>sentence(sentence)</b> document.",
         snippets[0]);
-
     ir.close();
   }
 

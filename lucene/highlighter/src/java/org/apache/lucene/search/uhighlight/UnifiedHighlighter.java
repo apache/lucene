@@ -837,7 +837,7 @@ public class UnifiedHighlighter {
     }
     if (highlightFlags.contains(HighlightFlag.MULTI_TERM_QUERY)
         && highlightFlags.contains(HighlightFlag.PHRASES)
-        && !highlightFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)) {
+        && highlightFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)) {
       highlightFlags.add(HighlightFlag.WEIGHT_MATCHES);
     }
     return highlightFlags;
