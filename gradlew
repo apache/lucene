@@ -47,7 +47,7 @@ APP_BASE_NAME=`basename "$0"`
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
 # Uncomment the next line to add more JVM options. E.g. proxy settings.
-# JAVA_OPTS="-DproxySet=true -Dhttps.proxyHost=<host> -Dhttps.proxyPort=<port>"
+# JAVA_OPTS="-Djava.net.useSystemProxies=true"
 
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD="maximum"
