@@ -1177,9 +1177,8 @@ public class UnifiedHighlighter {
      * more accurate to the query, and the snippets can be a little different for phrases because
      * the whole phrase is marked up instead of each word. The passage relevancy calculation can be
      * different (maybe worse?) and it's slower when highlighting many fields. Use of this flag
-     * requires {@link #MULTI_TERM_QUERY} and {@link #PHRASES}. {@link
-     * #PASSAGE_RELEVANCY_OVER_SPEED} will be ignored. True by default, so long as the requirements
-     * are met.
+     * requires {@link #MULTI_TERM_QUERY} and {@link #PHRASES} and {@link
+     * #PASSAGE_RELEVANCY_OVER_SPEED}. True by default because those booleans are true by default.
      */
     WEIGHT_MATCHES
 
