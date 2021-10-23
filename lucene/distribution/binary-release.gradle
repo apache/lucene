@@ -27,6 +27,7 @@ configure(project(":lucene:distribution")) {
     docs
 
     jars
+    jarsTestFramework
   }
 
   dependencies { DependencyHandler handler ->
@@ -36,9 +37,9 @@ configure(project(":lucene:distribution")) {
     // (with a few exceptions explicitly filtered below).
     // We don't copy their transitive dependencies.
     def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p in [
-        // Will end up in a separate binary?
+        // Will end up in a separate binary
         project(":lucene:luke"),
-        // NOCOMMIT: Currently breaks the module system so excluded for now.
+        // Placed in a separate module folder.
         project(":lucene:test-framework"),
     ]) }
     for (Project module : binaryModules) {
@@ -46,6 +47,12 @@ configure(project(":lucene:distribution")) {
         transitive = false
       })
     }
+
+    // The test framework has split packages and breaks the module system layer so
+    // it's in a separate folder.
+    jarsTestFramework(project(":lucene:test-framework"), {
+      transitive = false
+    })
   }
 
 
@@ -91,6 +98,9 @@ configure(project(":lucene:distribution")) {
     // Binary artifacts from modules.
     from(configurations.jars, {
       into 'jars'
+    })
+    from(configurations.jarsTestFramework, {
+      into 'test-framework'
     })
 
     // Internal archive folder for all files.
