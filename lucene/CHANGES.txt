@@ -386,6 +386,9 @@ Changes in Backwards Compatibility Policy
 Build
 ---------------------
 
+* LUCENE-10198: LUCENE-10198: Allow external JAVA_OPTS in gradlew scripts; use sane defaults 
+  (balmukund.mandal@intel.com, Dawid Weiss)
+
 * LUCENE-10163: Move LICENSE and NOTICE files to top level to satisfy src artifact requirements (janhoy)
 
 Other
