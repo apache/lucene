@@ -60,28 +60,25 @@ configure(project(":lucene:distribution")) {
       copy.setMode(0755)
     }
 
-    // Cherry-picked root-level files.
+    // Attach binary release exclusive files.
+    from(file("src/binary-release"), {
+    })
+
+    // Cherry-pick certain files from the root.
     from(project(':').projectDir, {
         include "LICENSE.txt"
         include "NOTICE.txt"
     })
 
-    // Cherry-picked lucene-level files.
+    // Cherry-pick certain files from the lucene module.
     from(project(':lucene').projectDir, {
       include "CHANGES.txt"
       include "JRE_VERSION_MIGRATION.md"
       include "MIGRATE.md"
-      include "README.md"
       include "SYSTEM_REQUIREMENTS.md"
 
       include "licenses/*"
     })
-
-    // Analysis container is not a submodule but include its readme file.
-    from(project(':lucene:analysis').projectDir) {
-      include "README.txt"
-      into 'analysis'
-    }
 
     // The documentation.
     from(configurations.docs, {
