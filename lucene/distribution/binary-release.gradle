@@ -22,33 +22,30 @@
 configure(project(":lucene:distribution")) {
   def packageBaseName = "${buildDir}/packages/lucene-${version}"
 
-  // All the maven-published projects are part of the binary distribution.
-  def includeInBinaries = rootProject.ext.mavenProjects
-
-  // Create a separate configuration for each module that ends up in the binary
-  // because we want them in different output locations (prefixed with module name).
-  def moduleArtifactConfigurations = []
-  for (Project module : includeInBinaries) {
-    def binaryArtifactsConfiguration = configurations.create("binary-artifacts" + module.path.replace(':', '-'))
-
-    dependencies { DependencyHandler handler ->
-      handler.add(binaryArtifactsConfiguration.name, project(path: module.path, configuration: "binaryArtifacts"))
-    }
-
-    moduleArtifactConfigurations += [
-        "module": module,
-        "binaryArtifactsConfiguration": binaryArtifactsConfiguration
-    ]
-  }
-
-
-  // Prepare site documentation dependency for inclusion.
+   // Prepare site documentation dependency for inclusion.
   configurations {
     docs
+
+    jars
   }
 
-  dependencies {
+  dependencies { DependencyHandler handler ->
     docs project(path: ':lucene:documentation', configuration: 'site')
+
+    // Maven-published submodule JARs are part of the binary distribution
+    // (with a few exceptions explicitly filtered below).
+    // We don't copy their transitive dependencies.
+    def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p in [
+        // Will end up in a separate binary?
+        project(":lucene:luke"),
+        // NOCOMMIT: Currently breaks the module system so excluded for now.
+        project(":lucene:test-framework"),
+    ]) }
+    for (Project module : binaryModules) {
+      jars(project(path: module.path), {
+        transitive = false
+      })
+    }
   }
 
 
@@ -91,14 +88,10 @@ configure(project(":lucene:distribution")) {
       into 'docs'
     })
 
-    // Each module's binary artifacts and their dependencies.
-    moduleArtifactConfigurations.each {
-      def toPath = it.module.path.replaceFirst("^:lucene:", "").replace(':', '/')
-
-      from(it.binaryArtifactsConfiguration, {
-        into toPath
-      })
-    }
+    // Binary artifacts from modules.
+    from(configurations.jars, {
+      into 'jars'
+    })
 
     // Internal archive folder for all files.
     into "lucene-${rootProject.version}/"
