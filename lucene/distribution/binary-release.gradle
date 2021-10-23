@@ -53,8 +53,15 @@ configure(project(":lucene:distribution")) {
   }
 
 
-  // Distribution package (zip/tgz) content is the same so use the same closure to configure both tasks.
-  Closure<Void> distributionContent = { AbstractCopyTask task ->
+  task assembleBinaryTgz(type: Tar) {
+    description "Assemble binary Lucene artifact as a .tgz file."
+
+    archiveFileName = packageBaseName + ".tgz"
+    destinationDirectory = file(archiveFileName).parentFile
+
+    reproducibleFileOrder = true
+    compression = Compression.GZIP
+
     // Manually correct posix permissions (matters when assembling archives on Windows).
     filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
       copy.setMode(0755)
@@ -62,8 +69,8 @@ configure(project(":lucene:distribution")) {
 
     // Cherry-picked root-level files.
     from(project(':').projectDir, {
-        include "LICENSE.txt"
-        include "NOTICE.txt"
+      include "LICENSE.txt"
+      include "NOTICE.txt"
     })
 
     // Cherry-picked lucene-level files.
@@ -92,38 +99,12 @@ configure(project(":lucene:distribution")) {
     moduleArtifactConfigurations.each {
       def toPath = it.module.path.replaceFirst("^:lucene:", "").replace(':', '/')
 
-      task.from(it.binaryArtifactsConfiguration, {
+      from(it.binaryArtifactsConfiguration, {
         into toPath
       })
     }
 
     // Internal archive folder for all files.
     into "lucene-${rootProject.version}/"
-  }
-
-  // Assemble distribution archives
-  task assembleBinaryZip(type: Zip) {
-    description "Assemble binary Lucene artifact as a .zip file."
-
-    archiveFileName = packageBaseName + ".zip"
-    destinationDirectory = file(archiveFileName).parentFile
-
-    metadataCharset = "UTF-8"
-    reproducibleFileOrder = true
-  }
-
-  task assembleBinaryTgz(type: Tar) {
-    description "Assemble binary Lucene artifact as a .tgz file."
-
-    archiveFileName = packageBaseName + ".tgz"
-    destinationDirectory = file(archiveFileName).parentFile
-
-    reproducibleFileOrder = true
-    compression = Compression.GZIP
-  }
-
-  // Apply the content configuration.
-  [tasks.assembleBinaryZip, tasks.assembleBinaryTgz].each { Task task ->
-    task.configure distributionContent
   }
 }
