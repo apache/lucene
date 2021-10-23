@@ -24,21 +24,8 @@ configure(rootProject.ext.mavenProjects) {
     }
 
     configurations {
-      // All of the module's "binary" artifacts that should go to the release.
+      // All of the module's "binary" artifacts that should go to the binary release.
       binaryArtifacts
-
-      // Legacy binary distribution contains Lucene artifacts (JARs) and their dependencies
-      // under 'lib/'. We have to go through some hoops to split the artifact from all of its
-      // transitive dependencies and separate their output location.
-      transitiveDependencies {
-        // All of runtime elements
-        extendsFrom runtimeElements
-        // Exclude cross-module dependencies
-        exclude group: "org.apache.lucene"
-        // Exclude the following from all projects, if they appear.
-        exclude group: "commons-logging"
-        exclude group: "org.slf4j"
-      }
     }
 
     task assembleBinaryArtifacts(type: Sync) {
@@ -46,10 +33,6 @@ configure(rootProject.ext.mavenProjects) {
 
       from(projectDir, {
         include "README.*"
-      })
-
-      from(configurations.transitiveDependencies, {
-        into "lib/"
       })
 
       into binaryArtifactsDir

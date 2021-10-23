@@ -25,9 +25,8 @@ configure(project(":lucene:distribution")) {
   // All the maven-published projects are part of the binary distribution.
   def includeInBinaries = rootProject.ext.mavenProjects
 
-  // Legacy binary distribution contains Lucene artifacts (JARs) and their dependencies
-  // under 'lib/'. We have to go through some hoops to split the artifact from all of its
-  // transitive dependencies and separate their output location.
+  // Create a separate configuration for each module that ends up in the binary
+  // because we want them in different output locations (prefixed with module name).
   def moduleArtifactConfigurations = []
   for (Project module : includeInBinaries) {
     def binaryArtifactsConfiguration = configurations.create("binary-artifacts" + module.path.replace(':', '-'))
