@@ -49,6 +49,9 @@ allprojects {
           [propName: 'tests.jvmargs',
            value: { -> propertyOrEnvOrDefault("tests.jvmargs", "TEST_JVM_ARGS", "-XX:TieredStopAtLevel=1") },
            description: "Arguments passed to each forked JVM."],
+          // Other settings.
+          [propName: 'tests.neverUpToDate', value: true,
+           description: "Make test tasks always fail the up-to-date checks (rerun) even if the inputs have not changed."],
       ]
 
       // Resolves test option's value.
@@ -88,6 +91,11 @@ allprojects {
     tasks.withType(Test) {
       ext {
         testOutputsDir = file("${reports.junitXml.destination}/outputs")
+      }
+
+      // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally up-to-date.
+      if (resolvedTestOption("tests.neverUpToDate").toBoolean()) {
+        outputs.upToDateWhen { false }
       }
 
       maxParallelForks = resolvedTestOption("tests.jvms") as Integer
