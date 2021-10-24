@@ -29,10 +29,16 @@ and an API that can easily be used to add search capabilities to applications.
 
 ## Files in a binary distribution
 
-Files are organized by module, for example in core/:
+The following sub-folders are included in the binary Lucene distribution:
 
-* `core/lucene-core-XX.jar`:
-  The compiled core Lucene library.
+* `bin/`:
+  Convenience scripts to launch Lucene Luke and other index-maintenance tools.
+* `modules/`:
+  All binary Lucene Java modules (JARs).
+* `modules-thirdparty/` 
+  Third-party binary modules required to run Lucene Luke.
+* `licenses/`
+  Third-party licenses and notice files.
 
 To review the documentation, read the main documentation page, located at:
 `docs/index.html`

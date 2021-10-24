@@ -56,9 +56,18 @@ public class MessageUtils {
         }
       };
 
-  private static ResourceBundle bundle =
-      ResourceBundle.getBundle(
-          MESSAGE_BUNDLE_BASENAME, Locale.ENGLISH, UTF8_RESOURCEBUNDLE_CONTROL);
+  private static ResourceBundle bundle;
+
+  static {
+    Class<?> self = MessageUtils.class;
+    if (self.getModule().isNamed()) {
+      bundle = ResourceBundle.getBundle(MESSAGE_BUNDLE_BASENAME, Locale.ENGLISH, self.getModule());
+    } else {
+      bundle =
+          ResourceBundle.getBundle(
+              MESSAGE_BUNDLE_BASENAME, Locale.ENGLISH, UTF8_RESOURCEBUNDLE_CONTROL);
+    }
+  }
 
   private MessageUtils() {}
 }

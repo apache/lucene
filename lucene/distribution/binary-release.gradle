@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import org.apache.tools.ant.filters.ExpandProperties
 
 // Configure Lucene's binary release. This is a bit convoluted so is placed
 // in a separate script.
@@ -28,6 +29,9 @@ configure(project(":lucene:distribution")) {
 
     jars
     jarsTestFramework
+    jarsThirdParty
+
+    log4j
   }
 
   dependencies { DependencyHandler handler ->
@@ -37,13 +41,11 @@ configure(project(":lucene:distribution")) {
     // (with a few exceptions explicitly filtered below).
     // We don't copy their transitive dependencies.
     def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p in [
-        // Will end up in a separate binary
-        project(":lucene:luke"),
-        // Placed in a separate module folder.
+        // Placed in a separate folder (module layer conflicts).
         project(":lucene:test-framework"),
     ]) }
     for (Project module : binaryModules) {
-      jars(project(path: module.path), {
+      jars(module, {
         transitive = false
       })
     }
@@ -53,6 +55,19 @@ configure(project(":lucene:distribution")) {
     jarsTestFramework(project(":lucene:test-framework"), {
       transitive = false
     })
+
+    // The third-party JARs consist of all the transitive dependencies from these modules.
+    // Not sure whether we have to include all the thirdparty JARs from across all the modules.
+    for (Project module : [
+        project(":lucene:luke")
+    ]) {
+      jarsThirdParty(module, {
+        transitive = true
+      })
+    }
+
+    // Just to collect the version.
+    log4j "org.apache.logging.log4j:log4j-api"
   }
 
 
@@ -70,8 +85,19 @@ configure(project(":lucene:distribution")) {
       copy.setMode(0755)
     }
 
-    // Attach binary release exclusive files.
+    // Attach binary release - only files.
+
+    // We need to substitute log4j jar name because it's a proper module (for luke)
+    // and is otherwise invisible.
+    dependsOn configurations.log4j
+    def antPrj = new org.apache.tools.ant.Project()
+    doFirst {
+      antPrj.setProperty("log4j.api.jar", configurations.log4j.singleFile.name)
+    }
+
     from(file("src/binary-release"), {
+      filteringCharset = 'UTF-8'
+      filter(ExpandProperties, project: antPrj)
     })
 
     // Cherry-pick certain files from the root.
@@ -86,7 +112,6 @@ configure(project(":lucene:distribution")) {
       include "JRE_VERSION_MIGRATION.md"
       include "MIGRATE.md"
       include "SYSTEM_REQUIREMENTS.md"
-
       include "licenses/*"
     })
 
@@ -95,12 +120,17 @@ configure(project(":lucene:distribution")) {
       into 'docs'
     })
 
-    // Binary artifacts from modules.
+    // Binary modules (Lucene).
     from(configurations.jars, {
-      into 'jars'
+      into 'modules'
     })
     from(configurations.jarsTestFramework, {
-      into 'test-framework'
+      into 'modules-test-framework'
+    })
+
+    // Binary modules (with dependencies). Don't duplicate project artifacts.
+    from((configurations.jarsThirdParty - configurations.jars), {
+      into 'modules-thirdparty'
     })
 
     // Internal archive folder for all files.

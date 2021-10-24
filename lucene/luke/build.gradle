@@ -57,13 +57,6 @@ tasks.withType(Jar) {
   }
 }
 
-// Configure the default JAR without any class path information
-// (this may actually be wrong - perhaps we should add the
-// "distribution" paths here.
-jar {
-  manifest {
-  }
-}
 
 // Configure "stand-alone" JAR with proper dependency classpath links.
 task standaloneJar(type: Jar) {
