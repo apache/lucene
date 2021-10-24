@@ -16,4 +16,4 @@
 #  limitations under the License.
 
 MODULES=$(cd $(dirname $0) && pwd)
-java --module-path $MODULES/modules;$MODULES/modules-thirdparty -cp $MODULES/modules-thirdparty/${log4j.api.jar} --module lucene.luke
+java --module-path $MODULES/modules;$MODULES/modules-thirdparty --add-modules org.apache.logging.log4j --module lucene.luke

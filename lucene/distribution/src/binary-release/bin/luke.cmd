@@ -17,5 +17,5 @@
 
 SETLOCAL
 SET MODULES=%~dp0..
-start javaw --module-path %MODULES%\modules;%MODULES%\modules-thirdparty -cp %MODULES%\modules-thirdparty\${log4j.api.jar} --module lucene.luke
+start javaw --module-path %MODULES%\modules;%MODULES%\modules-thirdparty --add-modules org.apache.logging.log4j --module lucene.luke
 ENDLOCAL

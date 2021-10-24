@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-import org.apache.tools.ant.filters.ExpandProperties
-
 // Configure Lucene's binary release. This is a bit convoluted so is placed
 // in a separate script.
 
@@ -30,8 +28,6 @@ configure(project(":lucene:distribution")) {
     jars
     jarsTestFramework
     jarsThirdParty
-
-    log4j
   }
 
   dependencies { DependencyHandler handler ->
@@ -65,9 +61,6 @@ configure(project(":lucene:distribution")) {
         transitive = true
       })
     }
-
-    // Just to collect the version.
-    log4j "org.apache.logging.log4j:log4j-api"
   }
 
 
@@ -86,18 +79,8 @@ configure(project(":lucene:distribution")) {
     }
 
     // Attach binary release - only files.
-
-    // We need to substitute log4j jar name because it's a proper module (for luke)
-    // and is otherwise invisible.
-    dependsOn configurations.log4j
-    def antPrj = new org.apache.tools.ant.Project()
-    doFirst {
-      antPrj.setProperty("log4j.api.jar", configurations.log4j.singleFile.name)
-    }
-
     from(file("src/binary-release"), {
       filteringCharset = 'UTF-8'
-      filter(ExpandProperties, project: antPrj)
     })
 
     // Cherry-pick certain files from the root.
