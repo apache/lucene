@@ -143,9 +143,7 @@ public class UnifiedHighlighter {
 
   private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
 
-  /**
-   * Builder for UnifiedHighlighter.
-   */
+  /** Builder for UnifiedHighlighter. */
   public static class Builder {
     private final IndexSearcher searcher;
     private final Analyzer indexAnalyzer;
@@ -153,7 +151,8 @@ public class UnifiedHighlighter {
     private boolean highlightPhrasesStrictly = true;
     private boolean passageRelevancyOverSpeed = true;
     private int maxLength = DEFAULT_MAX_LENGTH;
-    private Supplier<BreakIterator> breakIterator = () -> BreakIterator.getSentenceInstance(Locale.ROOT);
+    private Supplier<BreakIterator> breakIterator =
+        () -> BreakIterator.getSentenceInstance(Locale.ROOT);
     private Predicate<String> fieldMatcher;
     private PassageScorer scorer = new PassageScorer();
     private PassageFormatter formatter = new DefaultPassageFormatter();

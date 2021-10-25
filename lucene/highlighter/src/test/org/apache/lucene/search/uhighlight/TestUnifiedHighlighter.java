@@ -17,7 +17,6 @@
 package org.apache.lucene.search.uhighlight;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -30,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenizer;
@@ -471,10 +469,12 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     iw.close();
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
-    UnifiedHighlighter highlighterUsingBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer).build();
+    UnifiedHighlighter highlighterUsingBuilder =
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer).build();
     assertTrue(highlighter.getFieldMatcher("body").test("body"));
     assertTrue(highlighterUsingBuilder.getFieldMatcher("body").test("body"));
-    assertEquals(highlighter.getFlags("body").size(), highlighterUsingBuilder.getFlags("body").size());
+    assertEquals(
+        highlighter.getFlags("body").size(), highlighterUsingBuilder.getFlags("body").size());
     assertEquals(highlighter.getMaxLength(), highlighterUsingBuilder.getMaxLength());
     ir.close();
   }
@@ -487,9 +487,10 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     IndexReader ir = iw.getReader();
     iw.close();
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter uh = new UnifiedHighlighter.Builder(searcher, indexAnalyzer)
-        .withHandleMultiTermQuery(false)
-        .build();
+    UnifiedHighlighter uh =
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer)
+            .withHandleMultiTermQuery(false)
+            .build();
     assertTrue(uh.getFieldMatcher("body").test("body"));
     assertFalse(uh.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES));
     ir.close();
@@ -689,10 +690,11 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter highlighter = new UnifiedHighlighter.Builder(searcher, indexAnalyzer)
-        .withBreakIterator(WholeBreakIterator::new)
-        .withMaxLength(10000)
-        .build();
+    UnifiedHighlighter highlighter =
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer)
+            .withBreakIterator(WholeBreakIterator::new)
+            .withMaxLength(10000)
+            .build();
     Query query = new TermQuery(new Term("body", "test"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
