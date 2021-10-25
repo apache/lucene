@@ -60,7 +60,8 @@ public class KnnVectorQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      perLeafResults[ctx.ord] = searchLeaf(ctx, Math.min(k, reader.numDocs()));
+      int numDocs = ctx.reader().numDocs();
+      perLeafResults[ctx.ord] = numDocs > 0 ? searchLeaf(ctx, Math.min(k, numDocs)) : NO_RESULTS;
     }
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
