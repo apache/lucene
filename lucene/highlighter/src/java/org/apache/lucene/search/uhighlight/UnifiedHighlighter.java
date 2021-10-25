@@ -143,6 +143,92 @@ public class UnifiedHighlighter {
 
   private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
 
+  /**
+   * Builder for UnifiedHighlighter.
+   */
+  public static class Builder {
+    private final IndexSearcher searcher;
+    private final Analyzer indexAnalyzer;
+    private boolean handleMultiTermQuery = true;
+    private boolean highlightPhrasesStrictly = true;
+    private boolean passageRelevancyOverSpeed = true;
+    private int maxLength = DEFAULT_MAX_LENGTH;
+    private Supplier<BreakIterator> breakIterator = () -> BreakIterator.getSentenceInstance(Locale.ROOT);
+    private Predicate<String> fieldMatcher;
+    private PassageScorer scorer = new PassageScorer();
+    private PassageFormatter formatter = new DefaultPassageFormatter();
+    private int maxNoHighlightPassages = -1;
+    private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
+
+    public Builder(IndexSearcher searcher, Analyzer indexAnalyzer) {
+      this.searcher = Objects.requireNonNull(searcher);
+      this.indexAnalyzer = Objects.requireNonNull(indexAnalyzer);
+    }
+
+    public Builder withHandleMultiTermQuery(boolean value) {
+      this.handleMultiTermQuery = value;
+      return self();
+    }
+
+    public Builder withHighlightPhrasesStrictly(boolean value) {
+      this.highlightPhrasesStrictly = value;
+      return self();
+    }
+
+    public Builder withPassageRelevancyOverSpeed(boolean value) {
+      this.passageRelevancyOverSpeed = value;
+      return self();
+    }
+
+    public Builder withMaxLength(int value) {
+      if (value < 0 || value == Integer.MAX_VALUE) {
+        // two reasons: no overflow problems in BreakIterator.preceding(offset+1),
+        // our sentinel in the offsets queue uses this value to terminate.
+        throw new IllegalArgumentException("maxLength must be < Integer.MAX_VALUE");
+      }
+      this.maxLength = value;
+      return self();
+    }
+
+    public Builder withBreakIterator(Supplier<BreakIterator> value) {
+      this.breakIterator = value;
+      return self();
+    }
+
+    public Builder withFieldMatcher(Predicate<String> value) {
+      this.fieldMatcher = value;
+      return self();
+    }
+
+    public Builder withScorer(PassageScorer value) {
+      this.scorer = value;
+      return self();
+    }
+
+    public Builder withFormatter(PassageFormatter value) {
+      this.formatter = value;
+      return self();
+    }
+
+    public Builder withMaxNoHighlightPassages(int value) {
+      this.maxNoHighlightPassages = value;
+      return self();
+    }
+
+    public Builder withCacheFieldValCharsThreshold(int value) {
+      this.cacheFieldValCharsThreshold = value;
+      return self();
+    }
+
+    protected Builder self() {
+      return this;
+    }
+
+    public UnifiedHighlighter build() {
+      return new UnifiedHighlighter(this);
+    }
+  }
+
   /** Extracts matching terms after rewriting against an empty index */
   protected static Set<Term> extractTerms(Query query) throws IOException {
     Set<Term> queryTerms = new HashSet<>();
@@ -163,6 +249,26 @@ public class UnifiedHighlighter {
         Objects.requireNonNull(
             indexAnalyzer,
             "indexAnalyzer is required" + " (even if in some circumstances it isn't used)");
+  }
+
+  /**
+   * Constructs the highlighter with the given the {@link Builder}.
+   *
+   * @param builder - a {@link Builder} object.
+   */
+  public UnifiedHighlighter(Builder builder) {
+    this.searcher = builder.searcher;
+    this.indexAnalyzer = builder.indexAnalyzer;
+    this.defaultHandleMtq = builder.handleMultiTermQuery;
+    this.defaultHighlightPhrasesStrictly = builder.highlightPhrasesStrictly;
+    this.defaultPassageRelevancyOverSpeed = builder.passageRelevancyOverSpeed;
+    this.maxLength = builder.maxLength;
+    this.defaultBreakIterator = builder.breakIterator;
+    this.defaultFieldMatcher = builder.fieldMatcher;
+    this.defaultScorer = builder.scorer;
+    this.defaultFormatter = builder.formatter;
+    this.defaultMaxNoHighlightPassages = builder.maxNoHighlightPassages;
+    this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
   }
 
   public void setHandleMultiTermQuery(boolean handleMtq) {

@@ -17,6 +17,7 @@
 package org.apache.lucene.search.uhighlight;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenizer;
@@ -460,6 +462,39 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     ir.close();
   }
 
+  public void testUnifiedHighlighterBuilderDefaults() throws Exception {
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    Document document = new Document();
+    document.add(new Field("body", "test body", fieldType));
+    iw.addDocument(document);
+    IndexReader ir = iw.getReader();
+    iw.close();
+    IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
+    UnifiedHighlighter highlighterUsingBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer).build();
+    assertTrue(highlighter.getFieldMatcher("body").test("body"));
+    assertTrue(highlighterUsingBuilder.getFieldMatcher("body").test("body"));
+    assertEquals(highlighter.getFlags("body").size(), highlighterUsingBuilder.getFlags("body").size());
+    assertEquals(highlighter.getMaxLength(), highlighterUsingBuilder.getMaxLength());
+    ir.close();
+  }
+
+  public void testUnifiedHighlighterBuilder() throws Exception {
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    Document document = new Document();
+    document.add(new Field("body", "test body", fieldType));
+    iw.addDocument(document);
+    IndexReader ir = iw.getReader();
+    iw.close();
+    IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter uh = new UnifiedHighlighter.Builder(searcher, indexAnalyzer)
+        .withHandleMultiTermQuery(false)
+        .build();
+    assertTrue(uh.getFieldMatcher("body").test("body"));
+    assertFalse(uh.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES));
+    ir.close();
+  }
+
   public void testHighlighterDefaultFlags() throws Exception {
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
     Document document = new Document();
@@ -626,6 +661,38 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
           }
         };
     highlighter.setMaxLength(10000);
+    Query query = new TermQuery(new Term("body", "test"));
+    TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
+    assertEquals(1, topDocs.totalHits.value);
+    String[] snippets = highlighter.highlight("body", query, topDocs, 2);
+    assertEquals(1, snippets.length);
+    assertEquals(
+        "This is a <b>test</b>.  Just highlighting from postings. This is also a much sillier <b>test</b>.  Feel free to <b>test</b> <b>test</b> <b>test</b> <b>test</b> <b>test</b> <b>test</b> <b>test</b>.",
+        snippets[0]);
+
+    ir.close();
+  }
+
+  // This is a copy of testHighlightAllText() where UnifiedHighlighter is created using a builder.
+  public void testHighlightAllTextUsingBuilder() throws Exception {
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+
+    Field body = new Field("body", "", fieldType);
+    Document doc = new Document();
+    doc.add(body);
+
+    body.setStringValue(
+        "This is a test.  Just highlighting from postings. This is also a much sillier test.  Feel free to test test test test test test test.");
+    iw.addDocument(doc);
+
+    IndexReader ir = iw.getReader();
+    iw.close();
+
+    IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter highlighter = new UnifiedHighlighter.Builder(searcher, indexAnalyzer)
+        .withBreakIterator(WholeBreakIterator::new)
+        .withMaxLength(10000)
+        .build();
     Query query = new TermQuery(new Term("body", "test"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
