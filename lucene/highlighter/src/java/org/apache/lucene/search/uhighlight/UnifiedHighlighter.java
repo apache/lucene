@@ -144,9 +144,9 @@ public class UnifiedHighlighter {
   private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
 
   /** Builder for UnifiedHighlighter. */
-  public static class Builder {
-    private final IndexSearcher searcher;
-    private final Analyzer indexAnalyzer;
+  public abstract static class Builder<T extends Builder<T>> {
+    private IndexSearcher searcher;
+    private Analyzer indexAnalyzer;
     private boolean handleMultiTermQuery = true;
     private boolean highlightPhrasesStrictly = true;
     private boolean passageRelevancyOverSpeed = true;
@@ -159,27 +159,32 @@ public class UnifiedHighlighter {
     private int maxNoHighlightPassages = -1;
     private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
 
-    public Builder(IndexSearcher searcher, Analyzer indexAnalyzer) {
-      this.searcher = Objects.requireNonNull(searcher);
-      this.indexAnalyzer = Objects.requireNonNull(indexAnalyzer);
+    public T withSearcher(IndexSearcher value) {
+      this.searcher = value;
+      return self();
     }
 
-    public Builder withHandleMultiTermQuery(boolean value) {
+    public T withIndexAnalyzer(Analyzer value) {
+      this.indexAnalyzer = value;
+      return self();
+    }
+
+    public T withHandleMultiTermQuery(boolean value) {
       this.handleMultiTermQuery = value;
       return self();
     }
 
-    public Builder withHighlightPhrasesStrictly(boolean value) {
+    public T withHighlightPhrasesStrictly(boolean value) {
       this.highlightPhrasesStrictly = value;
       return self();
     }
 
-    public Builder withPassageRelevancyOverSpeed(boolean value) {
+    public T withPassageRelevancyOverSpeed(boolean value) {
       this.passageRelevancyOverSpeed = value;
       return self();
     }
 
-    public Builder withMaxLength(int value) {
+    public T withMaxLength(int value) {
       if (value < 0 || value == Integer.MAX_VALUE) {
         // two reasons: no overflow problems in BreakIterator.preceding(offset+1),
         // our sentinel in the offsets queue uses this value to terminate.
@@ -189,43 +194,53 @@ public class UnifiedHighlighter {
       return self();
     }
 
-    public Builder withBreakIterator(Supplier<BreakIterator> value) {
+    public T withBreakIterator(Supplier<BreakIterator> value) {
       this.breakIterator = value;
       return self();
     }
 
-    public Builder withFieldMatcher(Predicate<String> value) {
+    public T withFieldMatcher(Predicate<String> value) {
       this.fieldMatcher = value;
       return self();
     }
 
-    public Builder withScorer(PassageScorer value) {
+    public T withScorer(PassageScorer value) {
       this.scorer = value;
       return self();
     }
 
-    public Builder withFormatter(PassageFormatter value) {
+    public T withFormatter(PassageFormatter value) {
       this.formatter = value;
       return self();
     }
 
-    public Builder withMaxNoHighlightPassages(int value) {
+    public T withMaxNoHighlightPassages(int value) {
       this.maxNoHighlightPassages = value;
       return self();
     }
 
-    public Builder withCacheFieldValCharsThreshold(int value) {
+    public T withCacheFieldValCharsThreshold(int value) {
       this.cacheFieldValCharsThreshold = value;
       return self();
     }
 
-    protected Builder self() {
-      return this;
-    }
+    protected abstract T self();
 
     public UnifiedHighlighter build() {
       return new UnifiedHighlighter(this);
     }
+  }
+
+  // Why? https://web.archive.org/web/20150920054846/https://weblogs.java.net/node/642849
+  private static class ConcreteBuilder extends Builder<ConcreteBuilder> {
+    @Override
+    protected ConcreteBuilder self() {
+      return this;
+    }
+  }
+
+  public static Builder<?> builder() {
+    return new ConcreteBuilder();
   }
 
   /** Extracts matching terms after rewriting against an empty index */
@@ -255,9 +270,9 @@ public class UnifiedHighlighter {
    *
    * @param builder - a {@link Builder} object.
    */
-  public UnifiedHighlighter(Builder builder) {
-    this.searcher = builder.searcher;
-    this.indexAnalyzer = builder.indexAnalyzer;
+  public UnifiedHighlighter(Builder<?> builder) {
+    this.searcher = Objects.requireNonNull(builder.searcher);
+    this.indexAnalyzer = Objects.requireNonNull(builder.indexAnalyzer);
     this.defaultHandleMtq = builder.handleMultiTermQuery;
     this.defaultHighlightPhrasesStrictly = builder.highlightPhrasesStrictly;
     this.defaultPassageRelevancyOverSpeed = builder.passageRelevancyOverSpeed;
