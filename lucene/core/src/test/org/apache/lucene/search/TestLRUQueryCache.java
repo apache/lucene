@@ -1099,9 +1099,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
        * same docs are returned in the same order.
        */
       int size = 1 + random().nextInt(1000);
-      assertArrayEquals(
-          Arrays.stream(uncachedSearcher.search(q, size).scoreDocs).mapToInt(d -> d.doc).toArray(),
-          Arrays.stream(cachedSearcher.search(q, size).scoreDocs).mapToInt(d -> d.doc).toArray());
+      CheckHits.checkEqual(
+          q, uncachedSearcher.search(q, size).scoreDocs, cachedSearcher.search(q, size).scoreDocs);
       if (rarely()) {
         queryCache.assertConsistent();
       }
@@ -2016,12 +2015,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
       Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
       LeafReaderContext context = getOnlyLeafReader(reader).getContext();
       // We don't have a fast count before the cache is filled
-      assertEquals(weight.count(context), -1);
+      assertEquals(-1, weight.count(context));
       // Fetch the scorer to populate the cache
       weight.scorer(context);
       assertEquals(List.of(query), allCache.cachedQueries());
       // Now we *do* have a fast count
-      assertEquals(weight.count(context), 2);
+      assertEquals(2, weight.count(context));
     }
 
     w.deleteDocuments(new TermQuery(new Term("f", new BytesRef("b"))));
@@ -2034,12 +2033,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
       Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
       LeafReaderContext context = getOnlyLeafReader(reader).getContext();
       // We don't have a fast count before the cache is filled
-      assertEquals(weight.count(context), -1);
+      assertEquals(-1, weight.count(context));
       // Fetch the scorer to populate the cache
       weight.scorer(context);
       assertEquals(List.of(query), allCache.cachedQueries());
       // We still don't have a fast count because we have deleted documents
-      assertEquals(weight.count(context), -1);
+      assertEquals(-1, weight.count(context));
     }
 
     w.close();
