@@ -554,7 +554,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   if isSrc:
     in_lucene_folder.extend(os.listdir(os.path.join(unpackPath, 'lucene')))
     is_in_list(in_root_folder, ['LICENSE', 'NOTICE', 'README'])
-    is_in_list(in_lucene_folder, ['README', 'JRE_VERSION_MIGRATION', 'CHANGES', 'MIGRATE', 'SYSTEM_REQUIREMENTS'])
+    is_in_list(in_lucene_folder, ['JRE_VERSION_MIGRATION', 'CHANGES', 'MIGRATE', 'SYSTEM_REQUIREMENTS'])
   else:
     is_in_list(in_root_folder, ['LICENSE', 'NOTICE', 'README', 'JRE_VERSION_MIGRATION', 'CHANGES',
                                 'MIGRATE', 'SYSTEM_REQUIREMENTS'])
