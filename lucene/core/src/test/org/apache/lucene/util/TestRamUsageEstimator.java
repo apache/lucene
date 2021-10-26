@@ -16,18 +16,8 @@
  */
 package org.apache.lucene.util;
 
-import static org.apache.lucene.util.RamUsageEstimator.COMPRESSED_REFS_ENABLED;
-import static org.apache.lucene.util.RamUsageEstimator.HOTSPOT_BEAN_CLASS;
-import static org.apache.lucene.util.RamUsageEstimator.JVM_IS_HOTSPOT_64BIT;
-import static org.apache.lucene.util.RamUsageEstimator.LONG_SIZE;
-import static org.apache.lucene.util.RamUsageEstimator.MANAGEMENT_FACTORY_CLASS;
-import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
-import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_ALIGNMENT;
-import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
-import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOf;
-import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
-import static org.apache.lucene.util.RamUsageTester.sizeOf;
+import static org.apache.lucene.util.RamUsageEstimator.*;
+import static org.apache.lucene.util.RamUsageTester.ramUsed;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,73 +37,73 @@ public class TestRamUsageEstimator extends LuceneTestCase {
   static final String[] strings = new String[] {"test string", "hollow", "catchmaster"};
 
   public void testSanity() {
-    assertTrue(sizeOf("test string") > shallowSizeOfInstance(String.class));
+    assertTrue(ramUsed("test string") > shallowSizeOfInstance(String.class));
 
     Holder holder = new Holder();
     holder.holder = new Holder("string2", 5000L);
-    assertTrue(sizeOf(holder) > shallowSizeOfInstance(Holder.class));
-    assertTrue(sizeOf(holder) > sizeOf(holder.holder));
+    assertTrue(ramUsed(holder) > shallowSizeOfInstance(Holder.class));
+    assertTrue(ramUsed(holder) > ramUsed(holder.holder));
 
     assertTrue(shallowSizeOfInstance(HolderSubclass.class) >= shallowSizeOfInstance(Holder.class));
     assertTrue(shallowSizeOfInstance(Holder.class) == shallowSizeOfInstance(HolderSubclass2.class));
 
-    assertTrue(sizeOf(strings) > shallowSizeOf(strings));
+    assertTrue(ramUsed(strings) > shallowSizeOf(strings));
   }
 
   public void testStaticOverloads() {
     Random rnd = random();
     {
       byte[] array = new byte[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
-      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
+      assertEquals(sizeOf(array), ramUsed(array));
+      assertEquals(shallowSizeOf(array), ramUsed(array));
     }
 
     {
       boolean[] array = new boolean[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
-      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       char[] array = new char[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
-      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       short[] array = new short[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
-      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       int[] array = new int[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
-      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       float[] array = new float[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
-      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       long[] array = new long[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
-      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       double[] array = new double[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
-      assertEquals(shallowSizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
   }
 
   public void testStrings() {
-    long actual = sizeOf(strings);
-    long estimated = RamUsageEstimator.sizeOf(strings);
+    long actual = ramUsed(strings);
+    long estimated = sizeOf(strings);
     assertEquals(actual, estimated);
   }
 
@@ -123,8 +113,8 @@ public class TestRamUsageEstimator extends LuceneTestCase {
       bytes.add(new BytesRef("foo bar " + i));
       bytes.add(new BytesRef("baz bam " + i));
     }
-    long actual = sizeOf(bytes);
-    long estimated = RamUsageEstimator.sizeOf(bytes);
+    long actual = ramUsed(bytes);
+    long estimated = sizeOf(bytes);
     assertEquals((double) actual, (double) estimated, (double) actual * 0.1);
   }
 
@@ -137,13 +127,13 @@ public class TestRamUsageEstimator extends LuceneTestCase {
       map.put("complex " + i, new Term("foo " + i, "bar " + i));
     }
     double errorFactor = COMPRESSED_REFS_ENABLED ? 0.2 : 0.3;
-    long actual = sizeOf(map);
+    long actual = ramUsed(map);
     long estimated = RamUsageEstimator.sizeOfObject(map);
     assertEquals((double) actual, (double) estimated, (double) actual * errorFactor);
 
     // test recursion
     map.put("self", map);
-    actual = sizeOf(map);
+    actual = ramUsed(map);
     estimated = RamUsageEstimator.sizeOfObject(map);
     assertEquals((double) actual, (double) estimated, (double) actual * errorFactor);
   }
@@ -155,13 +145,13 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     for (int i = 0; i < 100; i++) {
       list.add(new Term("foo " + i, "term " + i));
     }
-    long actual = sizeOf(list);
+    long actual = ramUsed(list);
     long estimated = RamUsageEstimator.sizeOfObject(list);
     assertEquals((double) actual, (double) estimated, (double) actual * 0.1);
 
     // test recursion
     list.add(list);
-    actual = sizeOf(list);
+    actual = ramUsed(list);
     estimated = RamUsageEstimator.sizeOfObject(list);
     assertEquals((double) actual, (double) estimated, (double) actual * 0.1);
   }
@@ -180,7 +170,7 @@ public class TestRamUsageEstimator extends LuceneTestCase {
                 BooleanClause.Occur.MUST_NOT)
             .add(dismax, BooleanClause.Occur.MUST)
             .build();
-    long actual = sizeOf(bq);
+    long actual = ramUsed(bq);
     long estimated = RamUsageEstimator.sizeOfObject(bq);
     // sizeOfObject uses much lower default size estimate than we normally use
     // but the query-specific default is so large that the comparison becomes meaningless.

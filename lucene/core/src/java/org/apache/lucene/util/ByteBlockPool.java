@@ -254,17 +254,16 @@ public final class ByteBlockPool implements Accountable {
     final int offset = newUpto + byteOffset;
     byteUpto += newSize;
 
-    // Copy forward the past 3 bytes (which we are about
-    // to overwrite with the forwarding address):
-    buffer[newUpto] = slice[upto - 3];
-    buffer[newUpto + 1] = slice[upto - 2];
-    buffer[newUpto + 2] = slice[upto - 1];
+    // Copy forward the past 3 bytes (which we are about to overwrite with the forwarding address).
+    // We actually copy 4 bytes at once since VarHandles make it cheap.
+    int past3Bytes = ((int) BitUtil.VH_LE_INT.get(slice, upto - 3)) & 0xFFFFFF;
+    // Ensure we're not changing the content of `buffer` by setting 4 bytes instead of 3. This
+    // should never happen since the next `newSize` bytes must be equal to 0.
+    assert buffer[newUpto + 3] == 0;
+    BitUtil.VH_LE_INT.set(buffer, newUpto, past3Bytes);
 
     // Write forwarding address at end of last slice:
-    slice[upto - 3] = (byte) (offset >>> 24);
-    slice[upto - 2] = (byte) (offset >>> 16);
-    slice[upto - 1] = (byte) (offset >>> 8);
-    slice[upto] = (byte) offset;
+    BitUtil.VH_LE_INT.set(slice, upto - 3, offset);
 
     // Write new level:
     buffer[byteUpto - 1] = (byte) (16 | newLevel);
@@ -308,7 +307,7 @@ public final class ByteBlockPool implements Accountable {
       term.offset = pos + 1;
     } else {
       // length is 2 bytes
-      term.length = (bytes[pos] & 0x7f) + ((bytes[pos + 1] & 0xff) << 7);
+      term.length = ((short) BitUtil.VH_BE_SHORT.get(bytes, pos)) & 0x7FFF;
       term.offset = pos + 2;
     }
     assert term.length >= 0;

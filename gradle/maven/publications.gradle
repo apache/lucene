@@ -44,6 +44,9 @@ configure(rootProject) {
   }
 }
 
+// Configure the signing plugin.
+apply from: buildscript.sourceFile.toPath().resolveSibling("signing.gradle")
+
 // Configure projects for publishing Maven artifacts and set up metadata.
 apply from: buildscript.sourceFile.toPath().resolveSibling("publications-maven.gradle")
 

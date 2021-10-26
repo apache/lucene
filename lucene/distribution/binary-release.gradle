@@ -61,12 +61,16 @@ configure(project(":lucene:distribution")) {
     }
 
     // Cherry-picked root-level files.
+    from(project(':').projectDir, {
+        include "LICENSE.txt"
+        include "NOTICE.txt"
+    })
+
+    // Cherry-picked lucene-level files.
     from(project(':lucene').projectDir, {
       include "CHANGES.txt"
       include "JRE_VERSION_MIGRATION.md"
-      include "LICENSE.txt"
       include "MIGRATE.md"
-      include "NOTICE.txt"
       include "README.md"
       include "SYSTEM_REQUIREMENTS.md"
 

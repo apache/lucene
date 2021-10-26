@@ -419,7 +419,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         }
       }
       queryCache.assertConsistent();
-      assertEquals(RamUsageTester.sizeOf(queryCache, acc), queryCache.ramBytesUsed());
+      assertEquals(RamUsageTester.ramUsed(queryCache, acc), queryCache.ramBytesUsed());
     }
 
     w.close();
@@ -524,7 +524,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
     assertTrue(queryCache.getCacheCount() > 0);
 
-    final long actualRamBytesUsed = RamUsageTester.sizeOf(queryCache, acc);
+    final long actualRamBytesUsed = RamUsageTester.ramUsed(queryCache, acc);
     final long expectedRamBytesUsed = queryCache.ramBytesUsed();
     // error < 30%
     assertEquals(actualRamBytesUsed, expectedRamBytesUsed, 30 * actualRamBytesUsed / 100);
