@@ -51,8 +51,6 @@ if [ ! -n "$JAVA_OPTS" ] ; then
     JAVA_OPTS="$DEFAULT_JVM_OPTS"
 fi
 
-echo "# $JAVA_OPTS"
-
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD="maximum"
 
