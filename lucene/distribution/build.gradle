@@ -64,7 +64,6 @@ task computeChecksums(type: Checksum) {
   files = objects.fileCollection()
   [
       tasks.assembleSourceTgz,
-      tasks.assembleBinaryZip,
       tasks.assembleBinaryTgz,
   ].each { dep ->
     dependsOn dep
@@ -88,7 +87,6 @@ task assembleRelease(type: Sync) {
   })
 
   from tasks.assembleSourceTgz
-  from tasks.assembleBinaryZip
   from tasks.assembleBinaryTgz
 
   from tasks.computeChecksums
@@ -106,7 +104,6 @@ task assembleRelease(type: Sync) {
 // sense at the user-level help.
 tasks.matching {it.name in [
     "assembleSourceTgz",
-    "assembleBinaryZip",
     "assembleBinaryTgz",
     "assembleRelease",
 ]}.all {

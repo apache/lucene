@@ -252,8 +252,7 @@ def checkSigs(urlString, version, tmpDir, isSigned, keysFile):
       raise RuntimeError('lucene: artifact %s has wrong sigs: expected %s but got %s' % (artifact, expectedSigs, sigs))
 
   expected = ['lucene-%s-src.tgz' % version,
-              'lucene-%s.tgz' % version,
-              'lucene-%s.zip' % version]
+              'lucene-%s.tgz' % version]
 
   actual = [x[0] for x in artifacts]
   if expected != actual:
@@ -1163,8 +1162,7 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
   print('Test Lucene...')
   checkSigs(lucenePath, version, tmpDir, isSigned, keysFile)
   if not downloadOnly:
-    for artifact in ('lucene-%s.tgz' % version, 'lucene-%s.zip' % version):
-      unpackAndVerify(java, tmpDir, artifact, gitRevision, version, testArgs)
+    unpackAndVerify(java, tmpDir, 'lucene-%s.tgz' % version, gitRevision, version, testArgs)
     unpackAndVerify(java, tmpDir, 'lucene-%s-src.tgz' % version, gitRevision, version, testArgs)
     print()
     print('Test Maven artifacts...')
