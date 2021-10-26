@@ -29,8 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenizer;
@@ -470,12 +468,13 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     IndexReader ir = iw.getReader();
     iw.close();
     IndexSearcher searcher = newSearcher(ir);
-    SubUnifiedHighlighter suh = SubUnifiedHighlighter.builder()
-        .withSearcher(searcher)
-        .withIndexAnalyzer(indexAnalyzer)
-        .withHandleMultiTermQuery(false)
-        .withNewField(true)
-        .build();
+    SubUnifiedHighlighter suh =
+        SubUnifiedHighlighter.builder()
+            .withSearcher(searcher)
+            .withIndexAnalyzer(indexAnalyzer)
+            .withHandleMultiTermQuery(false)
+            .withNewField(true)
+            .build();
     assertTrue(suh.getFieldMatcher("body").test("body"));
     assertFalse(suh.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES));
     assertTrue(suh.getNewField());
@@ -1644,7 +1643,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 class SubUnifiedHighlighter extends UnifiedHighlighter {
   private final boolean newField;
 
-  public static abstract class Builder<T extends Builder<T>> extends UnifiedHighlighter.Builder<T> {
+  public abstract static class Builder<T extends Builder<T>> extends UnifiedHighlighter.Builder<T> {
     private boolean newField;
 
     public T withNewField(boolean value) {
@@ -1652,6 +1651,7 @@ class SubUnifiedHighlighter extends UnifiedHighlighter {
       return self();
     }
 
+    @Override
     public SubUnifiedHighlighter build() {
       return new SubUnifiedHighlighter(this);
     }
