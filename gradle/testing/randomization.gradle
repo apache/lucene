@@ -189,7 +189,6 @@ allprojects {
 
         // remove options provisioned through RandomizationEnvironmentProvider
         testOptionsResolved.remove('tests.workDir')
-        testOptionsResolved.remove('tests.jvms')
 
         systemProperties testOptionsResolved
 
