@@ -53,7 +53,7 @@ configure(rootProject) {
             "  gradlew :help%-16s # %s", section, sectionInfo)
       }
       println ""
-      println "For the impatient, build the project with 'gradlew assemble' or 'gradlew dev' "
+      println "For the impatient, build the project with 'gradlew assemble'"
     }
   }
 
