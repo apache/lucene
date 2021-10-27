@@ -160,6 +160,9 @@ API Changes
 
 * LUCENE-9325: Sort is now final, and the `setSort()` method has been removed (Alan Woodward)
 
+* LUCENE-9431: The UnifiedHighlighter's WEIGHT_MATCHES flag is now set by default, provided its
+  requirements are met.  It can be disabled via over-riding getFlags (Animesh Pandey, David Smiley)
+
 * LUCENE-10158: Add a new interface Unwrappable to the utils package to allow code to
   unwrap wrappers/delegators that are added by Lucene's testing framework. This will allow
   testing new MMapDirectory implementation based on JDK Project Panama. (Uwe Schindler)
@@ -383,6 +386,9 @@ Changes in Backwards Compatibility Policy
 Build
 ---------------------
 
+* LUCENE-10198: LUCENE-10198: Allow external JAVA_OPTS in gradlew scripts; use sane defaults 
+  (balmukund.mandal@intel.com, Dawid Weiss)
+
 * LUCENE-10163: Move LICENSE and NOTICE files to top level to satisfy src artifact requirements (janhoy)
 
 Other
@@ -474,6 +480,8 @@ Bug Fixes
 
 * LUCENE-10134: ConcurrentSortedSetDocValuesFacetCounts shouldn't share liveDocs Bits across threads.
   (Ankur Goel)
+
+* LUCENE-10154: NumericLeafComparator to define getPointValues. (Mayya Sharipova, Adrien Grand)
 
 Build
 ---------------------

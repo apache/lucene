@@ -107,7 +107,7 @@ public final class LZ4 {
       }
 
       // matchs
-      final int matchDec = (compressed.readByte() & 0xFF) | ((compressed.readByte() & 0xFF) << 8);
+      final int matchDec = compressed.readShort() & 0xFFFF;
       assert matchDec > 0;
 
       int matchLen = token & 0x0F;
@@ -176,8 +176,7 @@ public final class LZ4 {
     // encode match dec
     final int matchDec = matchOff - matchRef;
     assert matchDec > 0 && matchDec < 1 << 16;
-    out.writeByte((byte) matchDec);
-    out.writeByte((byte) (matchDec >>> 8));
+    out.writeShort((short) matchDec);
 
     // encode match len
     if (matchLen >= MIN_MATCH + 0x0F) {

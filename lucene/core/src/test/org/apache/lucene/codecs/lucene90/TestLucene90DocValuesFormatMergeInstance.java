@@ -14,16 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.lucene90;
 
-// Configure release artifact signing.
+/** Tests Lucene90DocValuesFormat's merge instance. */
+public class TestLucene90DocValuesFormatMergeInstance extends TestLucene90DocValuesFormat {
 
-task signReleaseArchives(type: Sign) {
-  dependsOn tasks.assembleBinaryTgz
-  sign tasks.assembleBinaryTgz
-
-  // The source tgz is not an archive task so be explicit about the outputs to sign.
-  dependsOn tasks.assembleSourceTgz
-  sign tasks.assembleSourceTgz.destination
+  @Override
+  protected boolean shouldTestMergeInstance() {
+    return true;
+  }
 }
-
-

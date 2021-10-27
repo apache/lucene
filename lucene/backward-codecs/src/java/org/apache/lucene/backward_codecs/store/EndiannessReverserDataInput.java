@@ -21,7 +21,7 @@ import org.apache.lucene.store.DataInput;
 
 class EndiannessReverserDataInput extends DataInput {
 
-  private final DataInput in;
+  final DataInput in;
 
   EndiannessReverserDataInput(DataInput in) {
     this.in = in;

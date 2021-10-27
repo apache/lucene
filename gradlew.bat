@@ -33,7 +33,10 @@ set APP_HOME=%DIRNAME%
 for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+set DEFAULT_JVM_OPTS=-Xmx64m -Xms64m -Djava.net.useSystemProxies=true
+
+@rem Define this environment variable to override the default JVM options.
+IF NOT defined JAVA_OPTS SET "JAVA_OPTS=%DEFAULT_JVM_OPTS%"
 
 @rem LUCENE-9471: workaround for gradle leaving junk temp. files behind.
 SET GRADLE_TEMPDIR=%DIRNAME%\.gradle\tmp
@@ -73,7 +76,7 @@ goto fail
 
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
-"%JAVA_EXE%" --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+"%JAVA_EXE%" %JAVA_OPTS% --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
 IF %ERRORLEVEL% NEQ 0 goto fail
 
 @rem Setup the command line
@@ -84,7 +87,7 @@ SET GRADLE_DAEMON_CTRL=
 IF NOT EXIST "%DIRNAME%\gradle.properties" SET GRADLE_DAEMON_CTRL=--no-daemon
 
 @rem Execute Gradle
-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %GRADLE_DAEMON_CTRL% %*
+"%JAVA_EXE%" %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %GRADLE_DAEMON_CTRL% %*
 
 :end
 @rem End local scope for the variables with windows NT shell

@@ -53,35 +53,39 @@ configure(project(":lucene:distribution")) {
   }
 
 
-  // Distribution package (zip/tgz) content is the same so use the same closure to configure both tasks.
-  Closure<Void> distributionContent = { AbstractCopyTask task ->
+  task assembleBinaryTgz(type: Tar) {
+    description "Assemble binary Lucene artifact as a .tgz file."
+
+    archiveFileName = packageBaseName + ".tgz"
+    destinationDirectory = file(archiveFileName).parentFile
+
+    reproducibleFileOrder = true
+    compression = Compression.GZIP
+
     // Manually correct posix permissions (matters when assembling archives on Windows).
     filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
       copy.setMode(0755)
     }
 
-    // Cherry-picked root-level files.
-    from(project(':').projectDir, {
-        include "LICENSE.txt"
-        include "NOTICE.txt"
+    // Attach binary release exclusive files.
+    from(file("src/binary-release"), {
     })
 
-    // Cherry-picked lucene-level files.
+    // Cherry-pick certain files from the root.
+    from(project(':').projectDir, {
+      include "LICENSE.txt"
+      include "NOTICE.txt"
+    })
+
+    // Cherry-pick certain files from the lucene module.
     from(project(':lucene').projectDir, {
       include "CHANGES.txt"
       include "JRE_VERSION_MIGRATION.md"
       include "MIGRATE.md"
-      include "README.md"
       include "SYSTEM_REQUIREMENTS.md"
 
       include "licenses/*"
     })
-
-    // Analysis container is not a submodule but include its readme file.
-    from(project(':lucene:analysis').projectDir) {
-      include "README.txt"
-      into 'analysis'
-    }
 
     // The documentation.
     from(configurations.docs, {
@@ -92,38 +96,12 @@ configure(project(":lucene:distribution")) {
     moduleArtifactConfigurations.each {
       def toPath = it.module.path.replaceFirst("^:lucene:", "").replace(':', '/')
 
-      task.from(it.binaryArtifactsConfiguration, {
+      from(it.binaryArtifactsConfiguration, {
         into toPath
       })
     }
 
     // Internal archive folder for all files.
     into "lucene-${rootProject.version}/"
-  }
-
-  // Assemble distribution archives
-  task assembleBinaryZip(type: Zip) {
-    description "Assemble binary Lucene artifact as a .zip file."
-
-    archiveFileName = packageBaseName + ".zip"
-    destinationDirectory = file(archiveFileName).parentFile
-
-    metadataCharset = "UTF-8"
-    reproducibleFileOrder = true
-  }
-
-  task assembleBinaryTgz(type: Tar) {
-    description "Assemble binary Lucene artifact as a .tgz file."
-
-    archiveFileName = packageBaseName + ".tgz"
-    destinationDirectory = file(archiveFileName).parentFile
-
-    reproducibleFileOrder = true
-    compression = Compression.GZIP
-  }
-
-  // Apply the content configuration.
-  [tasks.assembleBinaryZip, tasks.assembleBinaryTgz].each { Task task ->
-    task.configure distributionContent
   }
 }

@@ -38,8 +38,8 @@ comprehensive documentation, visit:
 
 ### Basic steps:
   
-  0. Install OpenJDK 11 (or greater up until version 15)
-  1. Download Lucene from Apache and unpack it (or clone the git repository).
+  0. Install OpenJDK 11 (or greater).
+  1. Clone Lucene's git repository (or download the source distribution).
   2. Run gradle launcher script (`gradlew`).
 
 ### Step 0) Set up your development environment (OpenJDK 11 or greater)
@@ -51,10 +51,10 @@ Java 11 or later.
 
 Lucene uses [Gradle](https://gradle.org/) for build control. Gradle is itself Java-based
 and may be incompatible with newer Java versions; you can still build and test 
-Lucene with these Java releases, see help/tests.txt for more information.
+Lucene with these Java releases, see [jvms.txt](./help/jvms.txt) for more information.
 
-NOTE: Lucene changed from Ant to Gradle as of release 9.0. Prior releases
-still use Ant.
+NOTE: Lucene changed from Apache Ant to Gradle as of release 9.0. Prior releases
+still use Apache Ant.
 
 ### Step 1) Checkout/Download Lucene source code
 
@@ -66,8 +66,7 @@ or get Lucene source archives for a particular release from:
 
   https://lucene.apache.org/core/downloads.html
 
-Download either a zip or a tarred/gzipped version of the archive, and
-uncompress it into a directory of your choice.
+Download the source archive and uncompress it into a directory of your choice.
 
 ### Step 2) Run Gradle
 
@@ -80,28 +79,31 @@ If you want to build Lucene, type:
 ./gradlew assemble
 ```
 
-NOTE: DO NOT use `gradle` command that is already installed on your machine (unless you know what you'll do).
-The "gradle wrapper" (gradlew) does the job - downloads the correct version of it, setups necessary configurations.
+NOTE: DO NOT use the `gradle` command that is perhaps installed on your machine. This may
+result in using a different gradle version than the project requires and this is known
+to lead to very cryptic errors. The "gradle wrapper" (gradlew script) does everything
+required to build the project from scratch: it downloads the correct version of gradle,
+sets up sane local configurations and is tested on multiple environments.
 
-The first time you run Gradle, it will create a file "gradle.properties" that
+The first time you run gradlew, it will create a file "gradle.properties" that
 contains machine-specific settings. Normally you can use this file as-is, but it
 can be modified if necessary.
 
 `./gradlew check` will assemble Lucene and run all validation
-  tasks (including unit tests).
+  tasks (including tests).
 
-`./gradlew help` will print a list of help guides that help understand how
-  the build and typical workflow works.
+`./gradlew help` will print a list of help guides that introduce and explain
+  various parts of the build system, including typical workflow tasks.
 
-If you want to build the documentation, type:
+If you want to just build the documentation, type:
 
 ```
 ./gradlew documentation
 ```
 
-### Gradle build and IDE support
+### IDE support
 
-- *IntelliJ* - IntelliJ idea can import the project out of the box.
+- *IntelliJ* - IntelliJ idea can import and build gradle-based projects out of the box.
 - *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
 - *Netbeans* - Not tested.
 
