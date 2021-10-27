@@ -25,7 +25,6 @@ import static org.apache.lucene.util.TestVectorUtil.randomVector;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnVectorField;
