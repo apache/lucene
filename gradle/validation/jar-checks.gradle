@@ -304,7 +304,15 @@ configure(project(":lucene")) {
     dependsOn validationTasks
 
     ext {
-      exclude = []
+      // Exclude files that are not a result of direct dependencies but have to be there.
+      // It would be probably better to move non-dependency licenses into the actual project
+      // where they're used and only assemble them for the distribution package.
+      exclude = [
+          // Used by Luke.
+          "elegant-icon-font-*",
+          // glove knn dictionary.
+          "pddl-10.txt",
+      ]
     }
 
     doFirst {
@@ -332,18 +340,4 @@ configure(project(":lucene")) {
   }
 
   licenses.dependsOn checkDanglingLicenseFiles
-}
-
-// Exclude files that are not a result of direct dependencies but have to be there.
-// It would be probably better to move non-dependency licenses into the actual project
-// where they're used and only assemble them for the distribution package.
-configure(project(":lucene")) {
-  checkDanglingLicenseFiles {
-    exclude += [
-        "elegant-icon-font-*",
-        "ant-*",
-        "ivy-*",
-        "pddl-10.txt",
-    ]
-  }
 }
