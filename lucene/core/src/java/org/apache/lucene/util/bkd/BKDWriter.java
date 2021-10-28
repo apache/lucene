@@ -1394,12 +1394,24 @@ public class BKDWriter implements Closeable {
     BytesRef first = packedValues.apply(0);
     min.copyBytes(first.bytes, first.offset + offset, length);
     max.copyBytes(first.bytes, first.offset + offset, length);
-    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(length);
     for (int i = 1; i < count; ++i) {
       BytesRef candidate = packedValues.apply(i);
-      if (comparator.compare(min.bytes(), 0, candidate.bytes, candidate.offset + offset) > 0) {
+      if (Arrays.compareUnsigned(
+              min.bytes(),
+              0,
+              length,
+              candidate.bytes,
+              candidate.offset + offset,
+              candidate.offset + offset + length)
+          > 0) {
         min.copyBytes(candidate.bytes, candidate.offset + offset, length);
-      } else if (comparator.compare(max.bytes(), 0, candidate.bytes, candidate.offset + offset)
+      } else if (Arrays.compareUnsigned(
+              max.bytes(),
+              0,
+              length,
+              candidate.bytes,
+              candidate.offset + offset,
+              candidate.offset + offset + length)
           < 0) {
         max.copyBytes(candidate.bytes, candidate.offset + offset, length);
       }
