@@ -17,20 +17,31 @@
 
 apply plugin: 'java-library'
 
-description = 'Geospatial search'
+description = 'Geospatial search using Spatial4j'
+
+java {
+  registerFeature('spherical') { // i.e. that which is provided by spatial3d module
+    usingSourceSet(sourceSets.main)
+  }
+  registerFeature('jts') {
+    usingSourceSet(sourceSets.main)
+  }
+}
 
 dependencies {
   api project(':lucene:core')
-  api project(':lucene:spatial3d')
-
   api 'org.locationtech.spatial4j:spatial4j'
-  api 'io.sgr:s2-geometry-library-java'
+
+  // for surface-of-sphere (or ellipsoid) geometry
+  sphericalImplementation project(':lucene:spatial3d') // AKA Geo3d
+  // for S2PrefixTree which is a great choice with spatial3d
+  sphericalImplementation 'io.sgr:s2-geometry-library-java'
+
+  // for JtsSpatialContextFactory in Spatial4j.  Jts is well-known; has polygon support.
+  jtsImplementation 'org.locationtech.jts:jts-core'
 
   testImplementation project(':lucene:test-framework')
   testImplementation testFixtures(project(':lucene:spatial3d'))
 
-  testImplementation 'org.locationtech.jts:jts-core'
   testImplementation 'org.locationtech.spatial4j:spatial4j::tests'
 }
-
-
