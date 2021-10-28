@@ -35,6 +35,9 @@ import org.apache.lucene.util.LongBitSet;
  */
 public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
 
+  public static final DocValuesRewriteMethod DOC_VALUES_REWRITE_METHOD =
+      new DocValuesRewriteMethod();
+
   @Override
   public Query rewrite(IndexReader reader, MultiTermQuery query) {
     return new ConstantScoreQuery(new MultiTermQueryDocValuesWrapper(query));

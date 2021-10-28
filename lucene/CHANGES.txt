@@ -128,6 +128,9 @@ New Features
 * LUCENE-10274: Added facetsets module for high dimensional (hyper-rectangle) faceting
 (Shai Erera, Marc D'Mello, Greg Miller)
 
+* LUCENE-10207: Add new "slow" term-in-set query support to SortedDocValuesField / SortedSetDocValuesField.
+  (Robert Muir, Greg Miller)
+
 Improvements
 ---------------------
 
@@ -252,7 +255,7 @@ New Features
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
-* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
+* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory`
   implementation. `Monitor` can be created with a readonly `QueryIndex` in order to
   have readonly `Monitor` instances. (Niko Usai)
 
@@ -311,7 +314,7 @@ Optimizations
   term of each block as a dictionary when compressing suffixes of the other 63
   terms of the block. (Adrien Grand)
 
-* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader. 
+* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader.
   (Zach Chen, Adrien Grand, Julie Tibshirani, Tomoko Uchida)
 
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
@@ -476,7 +479,7 @@ New Features
   points are indexed.
   (Quentin Pradet, Adrien Grand)
 
-* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all 
+* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all
   documents have the field.. (Alan Woodward)
 
 * LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
@@ -502,14 +505,14 @@ New Features
 
 * LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
 
-* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss,
   Alan Woodward)
-  
+
 * LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
   the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
   (Gautam Worah, Ignacio Vera, Adrien Grand)
 
-* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)
 
 * LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
   nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
@@ -526,10 +529,10 @@ Improvements
 
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
-* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
+* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the
   PointValues abstract class. (Ignacio Vera, Adrien Grand)
-  
-* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree 
+
+* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree
   added in LUCENE-9820 (Ignacio Vera)
 
 * LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
@@ -644,8 +647,8 @@ Bug Fixes
 
 * LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
   in a disjunction. (Alan Woodward, Dawid Weiss)
-  
-* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
+
+* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored
    as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
 
 * LUCENE-10428: Queries with a misbehaving score function may no longer cause
@@ -677,7 +680,7 @@ Other
 
 * LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
 
-* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon 
+* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon
   does not contain enough no-collinear points. (Ignacio Vera)
 
 ======================= Lucene 9.0.0 =======================
@@ -1009,7 +1012,7 @@ Improvements
   (David Smiley)
 
 * LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. (Greg Miller) 
+  with its own custom encoding. (Greg Miller)
 
 Bug fixes
 ---------------------
