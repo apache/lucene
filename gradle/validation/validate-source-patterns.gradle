@@ -70,8 +70,9 @@ subprojects {
     sourceFiles = fileTree(projectDir) {
       extensions.each{
         include "**/*.${it}"
+        exclude '**/.gradle/**', '.idea/**'
       }
-      
+
       // Don't go into child projects (scanned separately).
       childProjects.keySet().each{
         exclude "${it}/**"
@@ -83,6 +84,10 @@ subprojects {
 
       // ignore txt files in source resources and tests.
       exclude 'src/**/*.txt'
+
+      // ignore tmp files under .gradle
+      exclude '.gradle/tmp/**'
+      exclude '.idea/**'
     }
   }
 
@@ -92,8 +97,9 @@ subprojects {
 
 configure(project(':lucene:benchmark')) {
   project.tasks.withType(ValidateSourcePatternsTask) {
-    sourceFiles.exclude 'data/**'
-    // Known .txt offenders.
+    sourceFiles.exclude 'data/**', '**/.gradle/**', '.idea/**'
+
+      // Known .txt offenders.
     sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
   }
 }
@@ -106,6 +112,7 @@ configure(rootProject) {
     sourceFiles = fileTree(projectDir) {
       extensions.each{
         include "**/*.${it}"
+        exclude '**/.gradle/**', '.idea/**'
       }
 
       // Don't go into child projects (scanned separately).
@@ -124,17 +131,20 @@ configure(rootProject) {
   check.dependsOn validateSourcePatterns
 }
 
+@CacheableTask
 class ValidateSourcePatternsTask extends DefaultTask {
   private ProgressLoggerFactory progressLoggerFactory
 
   @InputFiles
+  @PathSensitive(PathSensitivity.RELATIVE)
+  @IgnoreEmptyDirectories
   FileTree sourceFiles
 
   @Inject
   ValidateSourcePatternsTask(ProgressLoggerFactory progressLoggerFactory) {
     this.progressLoggerFactory = progressLoggerFactory
   }
-  
+
   @TaskAction
   public void check() {
     def invalidPatterns = [
