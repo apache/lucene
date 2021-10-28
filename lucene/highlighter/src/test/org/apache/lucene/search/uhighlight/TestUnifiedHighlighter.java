@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import org.apache.lucene.analysis.Analyzer;
@@ -94,6 +95,66 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
       IndexSearcher searcher, Analyzer indexAnalyzer) {
     return randomUnifiedHighlighter(
         searcher, indexAnalyzer, EnumSet.noneOf(HighlightFlag.class), null);
+  }
+
+  /** This randomized test method uses builder from the UH class. */
+  static UnifiedHighlighter randomUnifiedHighlighterWithBuilder(
+      IndexSearcher searcher, Analyzer indexAnalyzer) {
+    return randomUnifiedHighlighterWithBuilder(
+        searcher, indexAnalyzer, EnumSet.noneOf(HighlightFlag.class), null);
+  }
+
+  static UnifiedHighlighter randomUnifiedHighlighterWithBuilder(
+      IndexSearcher searcher,
+      Analyzer indexAnalyzer,
+      EnumSet<HighlightFlag> mandatoryFlags,
+      Boolean requireFieldMatch) {
+    final UnifiedHighlighter.ConcreteBuilder concreteBuilder =
+        new UnifiedHighlighter.ConcreteBuilder()
+            .withSearcher(searcher)
+            .withIndexAnalyzer(indexAnalyzer)
+            .withCacheFieldValCharsThreshold(random().nextInt(100));
+
+    if (requireFieldMatch == Boolean.FALSE
+        || (requireFieldMatch == null && random().nextBoolean())) {
+      concreteBuilder.withFieldMatcher(f -> true); // requireFieldMatch==false
+    }
+
+    UnifiedHighlighter.Builder<?> builder =
+        new UnifiedHighlighter.Builder<UnifiedHighlighter.ConcreteBuilder>() {
+          @Override
+          protected UnifiedHighlighter.ConcreteBuilder self() {
+            return concreteBuilder;
+          }
+
+          @Override
+          public UnifiedHighlighter build() {
+            return new UnifiedHighlighter(concreteBuilder) {
+              Set<HighlightFlag> flags;
+
+              @Override
+              protected Set<HighlightFlag> getFlags(String field) {
+                if (Objects.nonNull(flags)) {
+                  return flags;
+                }
+                final EnumSet<HighlightFlag> result = EnumSet.copyOf(mandatoryFlags);
+                int r = random().nextInt();
+                for (HighlightFlag highlightFlag : HighlightFlag.values()) {
+                  if (((1 << highlightFlag.ordinal()) & r) == 0) {
+                    result.add(highlightFlag);
+                  }
+                }
+                if (result.contains(HighlightFlag.WEIGHT_MATCHES)) {
+                  // these two are required for WEIGHT_MATCHES
+                  result.add(HighlightFlag.MULTI_TERM_QUERY);
+                  result.add(HighlightFlag.PHRASES);
+                }
+                return flags = result;
+              }
+            };
+          }
+        };
+    return builder.build();
   }
 
   static UnifiedHighlighter randomUnifiedHighlighter(

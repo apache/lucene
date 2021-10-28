@@ -231,8 +231,11 @@ public class UnifiedHighlighter {
     }
   }
 
-  // Why? https://web.archive.org/web/20150920054846/https://weblogs.java.net/node/642849
-  private static class ConcreteBuilder extends Builder<ConcreteBuilder> {
+  /**
+   * Intermediate builder class of implementing self() from {@link Builder}. Why?
+   * https://web.archive.org/web/20150920054846/https://weblogs.java.net/node/642849
+   */
+  protected static class ConcreteBuilder extends Builder<ConcreteBuilder> {
     @Override
     protected ConcreteBuilder self() {
       return this;
