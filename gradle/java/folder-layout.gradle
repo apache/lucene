@@ -29,7 +29,7 @@ allprojects {
       from('src/test') {
         exclude '**/*.java'
       }
-      into sourceSets.test.java.outputDir
+      into sourceSets.test.java.classesDirectory
     }
     processTestResources.dependsOn copyTestResources
 

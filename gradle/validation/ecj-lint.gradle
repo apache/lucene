@@ -52,7 +52,7 @@ allprojects {
         enabled = !srcDirs.isEmpty()
 
         classpath = rootProject.configurations.ecjDeps
-        main = "org.eclipse.jdt.internal.compiler.batch.Main"
+        mainClass = "org.eclipse.jdt.internal.compiler.batch.Main"
 
         // Don't emit any .class files.
         // Hack around "-d none" still emitting package-info.class
