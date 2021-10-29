@@ -23,8 +23,9 @@ public final class VectorUtil {
   private VectorUtil() {}
 
   /**
-   * Returns the vector dot product of the two vectors. IllegalArgumentException is thrown if the
-   * vectors' dimensions differ.
+   * Returns the vector dot product of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float dotProduct(float[] a, float[] b) {
     if (a.length != b.length) {
@@ -95,8 +96,35 @@ public final class VectorUtil {
   }
 
   /**
-   * Returns the sum of squared differences of the two vectors. IllegalArgumentException is thrown
-   * if the vectors' dimensions differ.
+   * Returns the cosine similarity between the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
+   */
+  public static float cosine(float[] v1, float[] v2) {
+    if (v1.length != v2.length) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + v1.length + "!=" + v2.length);
+    }
+
+    float sum = 0.0f;
+    float norm1 = 0.0f;
+    float norm2 = 0.0f;
+    int dim = v1.length;
+
+    for (int i = 0; i < dim; i++) {
+      float elem1 = v1[i];
+      float elem2 = v2[i];
+      sum += elem1 * elem2;
+      norm1 += elem1 * elem1;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt(norm1 * norm2));
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float squareDistance(float[] v1, float[] v2) {
     if (v1.length != v2.length) {
@@ -115,9 +143,12 @@ public final class VectorUtil {
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm. IllegalArgumentException is
    * thrown for zero vectors.
+   *
+   * @return the input array after normalization
    */
-  public static void l2normalize(float[] v) {
+  public static float[] l2normalize(float[] v) {
     l2normalize(v, true);
+    return v;
   }
 
   /**
@@ -125,9 +156,10 @@ public final class VectorUtil {
    *
    * @param v the vector to normalize
    * @param throwOnZero whether to throw an exception when <code>v</code> has all zeros
+   * @return the input array after normalization
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
-  public static void l2normalize(float[] v, boolean throwOnZero) {
+  public static float[] l2normalize(float[] v, boolean throwOnZero) {
     double squareSum = 0.0f;
     int dim = v.length;
     for (float x : v) {
@@ -137,13 +169,14 @@ public final class VectorUtil {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
-        return;
+        return v;
       }
     }
     double length = Math.sqrt(squareSum);
     for (int i = 0; i < dim; i++) {
       v[i] /= length;
     }
+    return v;
   }
 
   /**

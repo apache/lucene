@@ -290,7 +290,7 @@ class RepeatingIntervalsSource extends IntervalsSource {
       for (MatchesIterator mi : subs) {
         MatchesIterator sub = mi.getSubMatches();
         if (sub == null) {
-          sub = new ConjunctionIntervalsSource.SingletonMatchesIterator(mi);
+          sub = new ConjunctionMatchesIterator.SingletonMatchesIterator(mi);
         }
         subMatches.add(sub);
       }

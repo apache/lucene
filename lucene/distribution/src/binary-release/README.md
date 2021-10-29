@@ -19,9 +19,9 @@
 
 ## Introduction
 
-Lucene is a Java full-text search engine.  Lucene is not a complete
-application, but rather a code library and API that can easily be used
-to add search capabilities to applications.
+This is a binary distribution of Lucene. Lucene is a Java full-text 
+search engine. Lucene is not a complete application, but rather a code library 
+and an API that can easily be used to add search capabilities to applications.
 
  * The Lucene web site is at: https://lucene.apache.org/
  * Please join the Lucene-User mailing list by sending a message to:
@@ -37,4 +37,3 @@ Files are organized by module, for example in core/:
 To review the documentation, read the main documentation page, located at:
 `docs/index.html`
 
-To build Lucene or its documentation for a source distribution, see `BUILD.md`

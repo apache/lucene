@@ -80,8 +80,15 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     }
   }
 
+  /** Default {@code minBitsPerBlock} */
   public static final int DEFAULT_MIN_BITS_PER_BLOCK = 10; // 1024 B
+  /** Default {@code maxBitsPerBlock} */
   public static final int DEFAULT_MAX_BITS_PER_BLOCK = 26; //   64 MB
+
+  /** Smallest {@code minBitsPerBlock} allowed */
+  public static final int LIMIT_MIN_BITS_PER_BLOCK = 1;
+  /** Largest {@code maxBitsPerBlock} allowed */
+  public static final int LIMIT_MAX_BITS_PER_BLOCK = 31;
 
   /**
    * Maximum number of blocks at the current {@link #blockBits} block size before we increase the
@@ -110,6 +117,14 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   /** The current-or-next write block. */
   private ByteBuffer currentBlock = EMPTY;
 
+  /**
+   * Create a new output, suitable for writing a file of around {@code expectedSize} bytes.
+   *
+   * <p>Memory allocation will be optimized based on the {@code expectedSize} hint, so that there is
+   * less overhead for larger files.
+   *
+   * @param expectedSize estimated size of the output file
+   */
   public ByteBuffersDataOutput(long expectedSize) {
     this(
         computeBlockSizeBitsFor(expectedSize),
@@ -118,18 +133,47 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
         NO_REUSE);
   }
 
+  /** Creates a new output with all defaults. */
   public ByteBuffersDataOutput() {
     this(DEFAULT_MIN_BITS_PER_BLOCK, DEFAULT_MAX_BITS_PER_BLOCK, ALLOCATE_BB_ON_HEAP, NO_REUSE);
   }
 
+  /**
+   * Expert: Creates a new output with custom parameters.
+   *
+   * @param minBitsPerBlock minimum bits per block
+   * @param maxBitsPerBlock maximum bits per block
+   * @param blockAllocate block allocator
+   * @param blockReuse block recycler
+   */
   public ByteBuffersDataOutput(
       int minBitsPerBlock,
       int maxBitsPerBlock,
       IntFunction<ByteBuffer> blockAllocate,
       Consumer<ByteBuffer> blockReuse) {
-    if (minBitsPerBlock < 10 || minBitsPerBlock > maxBitsPerBlock || maxBitsPerBlock > 31) {
+    if (minBitsPerBlock < LIMIT_MIN_BITS_PER_BLOCK) {
       throw new IllegalArgumentException(
-          String.format(Locale.ROOT, "Invalid arguments: %s %s", minBitsPerBlock, maxBitsPerBlock));
+          String.format(
+              Locale.ROOT,
+              "minBitsPerBlock (%s) too small, must be at least %s",
+              minBitsPerBlock,
+              LIMIT_MIN_BITS_PER_BLOCK));
+    }
+    if (maxBitsPerBlock > LIMIT_MAX_BITS_PER_BLOCK) {
+      throw new IllegalArgumentException(
+          String.format(
+              Locale.ROOT,
+              "maxBitsPerBlock (%s) too large, must not exceed %s",
+              maxBitsPerBlock,
+              LIMIT_MAX_BITS_PER_BLOCK));
+    }
+    if (minBitsPerBlock > maxBitsPerBlock) {
+      throw new IllegalArgumentException(
+          String.format(
+              Locale.ROOT,
+              "minBitsPerBlock (%s) cannot exceed maxBitsPerBlock (%s)",
+              minBitsPerBlock,
+              maxBitsPerBlock));
     }
     this.maxBitsPerBlock = maxBitsPerBlock;
     this.blockBits = minBitsPerBlock;
