@@ -127,12 +127,17 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     assertEquals("<b>Test</b> a one sentence document.", snippets[1]);
 
     // disable MTQ; won't highlight
-    highlighter.setHandleMultiTermQuery(false);
+    highlighter.setHighlightFlags(
+        EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED));
     snippets = highlighter.highlight("body", query, topDocs);
     assertEquals(2, snippets.length);
     assertEquals("This is a test.", snippets[0]);
     assertEquals("Test a one sentence document.", snippets[1]);
-    highlighter.setHandleMultiTermQuery(true); // reset
+    highlighter.setHighlightFlags(
+        EnumSet.of(
+            HighlightFlag.PHRASES,
+            HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED,
+            HighlightFlag.MULTI_TERM_QUERY)); // reset
 
     // wrong field
     BooleanQuery bq =
@@ -895,7 +900,11 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, buggyAnalyzer);
-    highlighter.setHandleMultiTermQuery(true);
+    highlighter.setHighlightFlags(
+        EnumSet.of(
+            HighlightFlag.PHRASES,
+            HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED,
+            HighlightFlag.MULTI_TERM_QUERY));
     if (rarely()) {
       highlighter.setMaxLength(25); // a little past first sentence
     }

@@ -91,10 +91,20 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     dir.close();
   }
 
-  static UnifiedHighlighter randomUnifiedHighlighter(
-      IndexSearcher searcher, Analyzer indexAnalyzer) {
-    return randomUnifiedHighlighter(
-        searcher, indexAnalyzer, EnumSet.noneOf(HighlightFlag.class), null);
+  static Set<HighlightFlag> generateRandomHighlightFlags(EnumSet<HighlightFlag> requiredFlags) {
+    final EnumSet<HighlightFlag> result = EnumSet.copyOf(requiredFlags);
+    int r = random().nextInt();
+    for (HighlightFlag highlightFlag : HighlightFlag.values()) {
+      if (((1 << highlightFlag.ordinal()) & r) == 0) {
+        result.add(highlightFlag);
+      }
+    }
+    if (result.contains(HighlightFlag.WEIGHT_MATCHES)) {
+      // these two are required for WEIGHT_MATCHES
+      result.add(HighlightFlag.MULTI_TERM_QUERY);
+      result.add(HighlightFlag.PHRASES);
+    }
+    return result;
   }
 
   /** This randomized test method uses builder from the UH class. */
@@ -137,24 +147,18 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
                 if (Objects.nonNull(flags)) {
                   return flags;
                 }
-                final EnumSet<HighlightFlag> result = EnumSet.copyOf(mandatoryFlags);
-                int r = random().nextInt();
-                for (HighlightFlag highlightFlag : HighlightFlag.values()) {
-                  if (((1 << highlightFlag.ordinal()) & r) == 0) {
-                    result.add(highlightFlag);
-                  }
-                }
-                if (result.contains(HighlightFlag.WEIGHT_MATCHES)) {
-                  // these two are required for WEIGHT_MATCHES
-                  result.add(HighlightFlag.MULTI_TERM_QUERY);
-                  result.add(HighlightFlag.PHRASES);
-                }
-                return flags = result;
+                return flags = generateRandomHighlightFlags(mandatoryFlags);
               }
             };
           }
         };
     return builder.build();
+  }
+
+  static UnifiedHighlighter randomUnifiedHighlighter(
+      IndexSearcher searcher, Analyzer indexAnalyzer) {
+    return randomUnifiedHighlighter(
+        searcher, indexAnalyzer, EnumSet.noneOf(HighlightFlag.class), null);
   }
 
   static UnifiedHighlighter randomUnifiedHighlighter(
@@ -171,19 +175,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
             if (flags != null) {
               return flags;
             }
-            final EnumSet<HighlightFlag> result = EnumSet.copyOf(mandatoryFlags);
-            int r = random().nextInt();
-            for (HighlightFlag highlightFlag : HighlightFlag.values()) {
-              if (((1 << highlightFlag.ordinal()) & r) == 0) {
-                result.add(highlightFlag);
-              }
-            }
-            if (result.contains(HighlightFlag.WEIGHT_MATCHES)) {
-              // these two are required for WEIGHT_MATCHES
-              result.add(HighlightFlag.MULTI_TERM_QUERY);
-              result.add(HighlightFlag.PHRASES);
-            }
-            return flags = result;
+            return flags = generateRandomHighlightFlags(mandatoryFlags);
           }
         };
     uh.setCacheFieldValCharsThreshold(random().nextInt(100));
@@ -508,7 +500,8 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightPhrasesStrictly(false);
+    highlighter.setHighlightFlags(
+        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.PHRASES));
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     if (highlighter
@@ -533,7 +526,8 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
         SubUnifiedHighlighter.builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
-            .withHandleMultiTermQuery(false)
+            .withHighlightFlags(
+                EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.PHRASES))
             .withNewField(true)
             .build();
     assertTrue(suh.getFieldMatcher("body").test("body"));
@@ -584,7 +578,8 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightPhrasesStrictly(false);
+    highlighter.setHighlightFlags(
+        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.MULTI_TERM_QUERY));
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     assertFalse(snippets[0].contains("<b>Curious</b>Curious"));

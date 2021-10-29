@@ -355,7 +355,8 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightPhrasesStrictly(false);
+    highlighter.setHighlightFlags(
+        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.MULTI_TERM_QUERY));
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     //  highlighter.getFlags("body").containsAll(EnumSet.of(HighlightFlag.WEIGHT_MATCHES,
@@ -384,7 +385,8 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightPhrasesStrictly(false);
+    highlighter.setHighlightFlags(
+        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.MULTI_TERM_QUERY));
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     assertFalse(snippets[0].contains("<b>Curious</b>Curious"));

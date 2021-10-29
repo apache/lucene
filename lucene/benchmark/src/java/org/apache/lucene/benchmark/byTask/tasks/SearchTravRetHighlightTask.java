@@ -17,9 +17,12 @@
 
 package org.apache.lucene.benchmark.byTask.tasks;
 
+import static org.apache.lucene.search.uhighlight.UnifiedHighlighter.DEFAULT_HIGHLIGHT_FLAGS;
+
 import java.text.BreakIterator;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -297,8 +300,7 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
           };
       highlighter.setBreakIterator(() -> BreakIterator.getSentenceInstance(Locale.ENGLISH));
       highlighter.setMaxLength(maxDocCharsToAnalyze);
-      highlighter.setHighlightPhrasesStrictly(true);
-      highlighter.setHandleMultiTermQuery(true);
+      highlighter.setHighlightFlags(EnumSet.copyOf(DEFAULT_HIGHLIGHT_FLAGS));
     }
 
     @Override
