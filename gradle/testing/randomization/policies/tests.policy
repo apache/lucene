@@ -121,6 +121,11 @@ grant codeBase "file:${gradle.lib.dir}${/}-" {
   permission java.security.AllPermission;
 };
 
+// nocommit - hack to run test on indices stored elsewhere
+grant {
+  permission java.security.AllPermission;
+};
+
 grant codeBase "file:${gradle.worker.jar}" {
   permission java.security.AllPermission;
 };

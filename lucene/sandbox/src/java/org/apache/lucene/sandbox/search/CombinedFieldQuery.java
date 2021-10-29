@@ -20,15 +20,24 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
+
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.Impacts;
+import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -44,6 +53,7 @@ import org.apache.lucene.search.DisiWrapper;
 import org.apache.lucene.search.DisjunctionDISIApproximation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.ImpactsDISI;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Matches;
@@ -61,6 +71,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.SimilarityBase;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.SmallFloat;
 
@@ -94,8 +105,17 @@ import org.apache.lucene.util.SmallFloat;
  * @lucene.experimental
  */
 public final class CombinedFieldQuery extends Query implements Accountable {
+  /** Cache of decoded norms. */
+  private static final float[] LENGTH_TABLE = new float[256];
+
+  static {
+    for (int i = 0; i < 256; i++) {
+      LENGTH_TABLE[i] = SmallFloat.byte4ToInt((byte) i);
+    }
+  }
+
   private static final long BASE_RAM_BYTES =
-      RamUsageEstimator.shallowSizeOfInstance(CombinedFieldQuery.class);
+          RamUsageEstimator.shallowSizeOfInstance(CombinedFieldQuery.class);
 
   /** A builder for {@link CombinedFieldQuery}. */
   public static class Builder {
@@ -319,16 +339,19 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     private final IndexSearcher searcher;
     private final TermStates[] termStates;
     private final Similarity.SimScorer simWeight;
+    private final ScoreMode scoreMode;
 
     CombinedFieldWeight(Query query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
       super(query);
       assert scoreMode.needsScores();
+      this.scoreMode = scoreMode;
       this.searcher = searcher;
       long docFreq = 0;
       long totalTermFreq = 0;
       termStates = new TermStates[fieldTerms.length];
-      for (int i = 0; i < termStates.length; i++) {
+
+      for (int i = 0; i < fieldTerms.length; i++) {
         FieldAndWeight field = fieldAndWeights.get(fieldTerms[i].field());
         TermStates ts = TermStates.build(searcher.getTopReaderContext(), fieldTerms[i], true);
         termStates[i] = ts;
@@ -356,6 +379,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       long docCount = 0;
       long sumTotalTermFreq = 0;
       long sumDocFreq = 0;
+
       for (FieldAndWeight fieldWeight : fieldAndWeights.values()) {
         CollectionStatistics collectionStats = searcher.collectionStatistics(fieldWeight.field);
         if (collectionStats != null) {
@@ -402,14 +426,25 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     public Scorer scorer(LeafReaderContext context) throws IOException {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
+      Map<String, List<ImpactsEnum>> fieldImpacts = new HashMap<>();
+
       for (int i = 0; i < fieldTerms.length; i++) {
         TermState state = termStates[i].get(context);
         if (state != null) {
-          TermsEnum termsEnum = context.reader().terms(fieldTerms[i].field()).iterator();
+          String fieldName = fieldTerms[i].field();
+          fields.add(fieldAndWeights.get(fieldName));
+          fieldImpacts.putIfAbsent(fieldName, new ArrayList<>());
+
+          TermsEnum termsEnum = context.reader().terms(fieldName).iterator();
           termsEnum.seekExact(fieldTerms[i].bytes(), state);
-          PostingsEnum postingsEnum = termsEnum.postings(null, PostingsEnum.FREQS);
-          iterators.add(postingsEnum);
-          fields.add(fieldAndWeights.get(fieldTerms[i].field()));
+          if (scoreMode == ScoreMode.TOP_SCORES) {
+            ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
+            iterators.add(impactsEnum);
+            fieldImpacts.get(fieldName).add(impactsEnum);
+          } else {
+            PostingsEnum postingsEnum = termsEnum.postings(null, PostingsEnum.FREQS);
+            iterators.add(postingsEnum);
+          }
         }
       }
 
@@ -421,18 +456,33 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           new MultiNormsLeafSimScorer(simWeight, context.reader(), fields, true);
       LeafSimScorer nonScoringSimScorer =
           new LeafSimScorer(simWeight, context.reader(), "pseudo_field", false);
+
       // we use termscorers + disjunction as an impl detail
       DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
+      Map<String, Float> fieldWeights = new HashMap<>();
       for (int i = 0; i < iterators.size(); i++) {
-        float weight = fields.get(i).weight;
+        FieldAndWeight fieldAndWeight = fields.get(i);
+        if (fieldWeights.containsKey(fieldAndWeight.field)) {
+          assert fieldWeights.get(fieldAndWeight.field).equals(fieldAndWeight.weight);
+        } else {
+          fieldWeights.put(fieldAndWeight.field, fieldAndWeight.weight);
+        }
         queue.add(
             new WeightedDisiWrapper(
-                new TermScorer(this, iterators.get(i), nonScoringSimScorer), weight));
+                new TermScorer(this, iterators.get(i), nonScoringSimScorer), fieldAndWeight.weight));
       }
+
       // Even though it is called approximation, it is accurate since none of
       // the sub iterators are two-phase iterators.
       DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
-      return new CombinedFieldScorer(this, queue, iterator, scoringSimScorer);
+      ImpactsDISI impactsDisi = null;
+
+      if (scoreMode == ScoreMode.TOP_SCORES) {
+        ImpactsSource impactsSource = mergeImpacts(fieldImpacts, fieldWeights);
+        iterator = impactsDisi = new ImpactsDISI(iterator, impactsSource, simWeight);
+      }
+
+      return new CombinedFieldScorer(this, queue, iterator, impactsDisi, scoringSimScorer);
     }
 
     @Override
@@ -440,6 +490,318 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       return false;
     }
   }
+
+  /** Merge impacts for combined field. */
+  static ImpactsSource mergeImpacts(Map<String, List<ImpactsEnum>> fieldsWithImpactsEnums, Map<String, Float> fieldWeights) {
+    return new ImpactsSource() {
+
+      class SubIterator {
+        final Iterator<Impact> iterator;
+        int previousFreq;
+        Impact current;
+
+        SubIterator(Iterator<Impact> iterator) {
+          this.iterator = iterator;
+          this.current = iterator.next();
+        }
+
+        void next() {
+          previousFreq = current.freq;
+          if (iterator.hasNext() == false) {
+            current = null;
+          } else {
+            current = iterator.next();
+          }
+        }
+      }
+
+      Map<String, List<Impacts>> fieldsWithImpacts;
+
+      @Override
+      public Impacts getImpacts() throws IOException {
+        fieldsWithImpacts = new HashMap<>();
+
+        // Use the impacts that have the lower next boundary (doc id in skip entry) as a lead for each field
+        // They collectively will decide on the number of levels and the block boundaries.
+        Map<String, Impacts> leadingImpactsPerField = new HashMap<>(fieldsWithImpactsEnums.keySet().size());
+
+        for (Map.Entry<String, List<ImpactsEnum>> fieldImpacts : fieldsWithImpactsEnums.entrySet()) {
+          String field = fieldImpacts.getKey();
+          List<ImpactsEnum> impactsEnums = fieldImpacts.getValue();
+          fieldsWithImpacts.put(field, new ArrayList<>(impactsEnums.size()));
+
+          Impacts tmpLead = null;
+          // find the impact that has the lowest next boundary for this field
+          for (int i = 0; i < impactsEnums.size(); ++i) {
+            Impacts impacts = impactsEnums.get(i).getImpacts();
+            fieldsWithImpacts.get(field).add(impacts);
+
+            if (tmpLead == null ||
+                    impacts.getDocIdUpTo(0) < tmpLead.getDocIdUpTo(0)) {
+              tmpLead = impacts;
+            }
+          }
+
+          leadingImpactsPerField.put(field, tmpLead);
+        }
+
+        return new Impacts() {
+
+          @Override
+          public int numLevels() {
+            // max of levels across fields' impactEnums
+            return leadingImpactsPerField.values().stream().map(Impacts::numLevels).max(Integer::compareTo).get();
+          }
+
+          @Override
+          public int getDocIdUpTo(int level) {
+            // min of docIdUpTo across fields' impactEnums
+            return leadingImpactsPerField.values().stream().filter(i -> i.numLevels() > level).map(i -> i.getDocIdUpTo(level)).min(Integer::compareTo).get();
+          }
+
+          @Override
+          public List<Impact> getImpacts(int level) {
+            final int docIdUpTo = getDocIdUpTo(level);
+            final Map<String, List<Impact>> mergedImpactsPerField = mergeImpactsPerField(docIdUpTo);
+
+            return mergeImpactsAcrossFields(mergedImpactsPerField);
+          }
+
+          private Map<String, List<Impact>> mergeImpactsPerField(int docIdUpTo) {
+            final Map<String, List<Impact>> result = new HashMap<>();
+
+            for (Map.Entry<String, List<ImpactsEnum>> impactsPerField : fieldsWithImpactsEnums.entrySet()) {
+              String field = impactsPerField.getKey();
+              List<ImpactsEnum> impactsEnums = impactsPerField.getValue();
+              List<Impacts> impacts = fieldsWithImpacts.get(field);
+
+              List<Impact> mergedImpacts = doMergeImpactsPerField(field, impactsEnums, impacts, docIdUpTo);
+
+              if (mergedImpacts.size() == 0) {
+                // all impactEnums for this field were positioned beyond docIdUpTo, continue to next field
+                continue;
+              } else if (mergedImpacts.size() == 1 && mergedImpacts.get(0).freq == Integer.MAX_VALUE && mergedImpacts.get(0).norm == 1L) {
+                // one field gets impacts that trigger maximum score, pass it up
+                return Collections.singletonMap(field, mergedImpacts);
+              } else {
+                result.put(field, mergedImpacts);
+              }
+            }
+
+            return result;
+          }
+
+
+          // Merge impacts from same field by summing freqs with the same norms - the same logic used for SynonymQuery
+          private List<Impact> doMergeImpactsPerField(String field, List<ImpactsEnum> impactsEnums, List<Impacts> impacts, int docIdUpTo) {
+            List<List<Impact>> toMerge = new ArrayList<>();
+
+            for (int i = 0; i < impactsEnums.size(); ++i) {
+              if (impactsEnums.get(i).docID() <= docIdUpTo) {
+                int impactsLevel = getLevel(impacts.get(i), docIdUpTo);
+                if (impactsLevel == -1) {
+                  // one instance doesn't have impacts that cover up to docIdUpTo
+                  // return impacts that trigger the maximum score
+                  return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+                }
+                final List<Impact> impactList;
+                float weight = fieldWeights.get(field);
+                if (weight != 1f) {
+                  impactList =
+                          impacts.get(i).getImpacts(impactsLevel).stream()
+                                  .map(
+                                          impact ->
+                                                  new Impact((int) Math.ceil(impact.freq * weight),
+                                                          SmallFloat.intToByte4((int) Math.floor(normToLength(impact.norm) * weight))))
+                                  .collect(Collectors.toList());
+                } else {
+                  impactList = impacts.get(i).getImpacts(impactsLevel);
+                }
+                toMerge.add(impactList);
+              }
+            }
+
+            // all impactEnums for this field were positioned beyond docIdUpTo
+            if (toMerge.size() == 0) {
+              return new ArrayList<>();
+            }
+
+            if (toMerge.size() == 1) {
+              // common if one term is common and the other one is rare
+              return toMerge.get(0);
+            }
+
+            PriorityQueue<SubIterator> pq =
+                    new PriorityQueue<SubIterator>(impacts.size()) {
+                      @Override
+                      protected boolean lessThan(SubIterator a, SubIterator b) {
+                        if (a.current == null) { // means iteration is finished
+                          return false;
+                        }
+                        if (b.current == null) {
+                          return true;
+                        }
+                        return Long.compareUnsigned(a.current.norm, b.current.norm) < 0;
+                      }
+                    };
+
+            for (List<Impact> toMergeImpacts : toMerge) {
+              pq.add(new SubIterator(toMergeImpacts.iterator()));
+            }
+
+            List<Impact> mergedImpacts = new LinkedList<>();
+
+            // Idea: merge impacts by norm. The tricky thing is that we need to
+            // consider norm values that are not in the impacts too. For
+            // instance if the list of impacts is [{freq=2,norm=10}, {freq=4,norm=12}],
+            // there might well be a document that has a freq of 2 and a length of 11,
+            // which was just not added to the list of impacts because {freq=2,norm=10}
+            // is more competitive. So the way it works is that we track the sum of
+            // the term freqs that we have seen so far in order to account for these
+            // implicit impacts.
+
+            long sumTf = 0;
+            SubIterator top = pq.top();
+            do {
+              final long norm = top.current.norm;
+              do {
+                sumTf += top.current.freq - top.previousFreq;
+                top.next();
+                top = pq.updateTop();
+              } while (top.current != null && top.current.norm == norm);
+
+              final int freqUpperBound = (int) Math.min(Integer.MAX_VALUE, sumTf);
+              if (mergedImpacts.isEmpty()) {
+                mergedImpacts.add(new Impact(freqUpperBound, norm));
+              } else {
+                Impact prevImpact = mergedImpacts.get(mergedImpacts.size() - 1);
+                assert Long.compareUnsigned(prevImpact.norm, norm) < 0;
+                if (freqUpperBound > prevImpact.freq) {
+                  mergedImpacts.add(new Impact(freqUpperBound, norm));
+                } // otherwise the previous impact is already more competitive
+              }
+            } while (top.current != null);
+
+            return mergedImpacts;
+          }
+
+          private int getLevel(Impacts impacts, int docIdUpTo) {
+            for (int level = 0, numLevels = impacts.numLevels(); level < numLevels; ++level) {
+              if (impacts.getDocIdUpTo(level) >= docIdUpTo) {
+                return level;
+              }
+            }
+            return -1;
+          }
+
+          private List<Impact> mergeImpactsAcrossFields(Map<String, List<Impact>> mergedImpactsPerField) {
+            if (mergedImpactsPerField.size() == 1) {
+              return mergedImpactsPerField.values().iterator().next();
+            }
+
+            List<List<Impact>> impactLists = new ArrayList<>(mergedImpactsPerField.size());
+            for (List<Impact> impacts : mergedImpactsPerField.values()) {
+              // add empty impact for cartesian product calculation
+              List<Impact> newList = new ArrayList<>(impacts.size() + 1);
+              newList.addAll(impacts);
+              newList.add(new Impact(0, 0));
+              impactLists.add(newList);
+            }
+
+            List<Impact> result = getCartesianProductOfImpacts(impactLists, 0);
+
+            Collections.sort(result, new Comparator<Impact>() {
+              @Override
+              public int compare(Impact o1, Impact o2) {
+                return (int) (o1.norm - o2.norm);
+              }
+            });
+
+            // remove the dummy Impact {0, 0} added above
+            result.remove(0);
+
+            return result;
+          }
+
+          // merge impacts across fields by doing cartesian products recursively, and only keep competitive ones.
+          // this way of merging impacts across fields mirror the scoring logic in MultiNormsLeafSimScorer#score, where norms were summed along with freqs
+          // this operation would be expensive for many fields with long impact lists
+          //
+          // e.g.
+          // 1. field a impacts: <freq_a_1, norm_a_1> <freq_a_2, norm_a_2>
+          // 2. field b impacts: <freq_b_1, norm_b_1> <freq_b_2, norm_b_2>
+          // 3. cartesian products of above:
+          //     <freq_a_1 + freq_b_1, norm_a_1 + norm_b_1>
+          //     <freq_a_1 + freq_b_2, norm_a_1 + norm_b_2>
+          //     <freq_a_2 + freq_b_1, norm_a_2 + norm_b_1>
+          //     <freq_a_2 + freq_b_2, norm_a_2 + norm_b_2>
+          // 4. keep only the competitive ones from #3
+          // 5. after step #4, treat the result as competitive impacts for merged fields a & b, and merge it with the rest of fields' impacts
+
+          private List<Impact> getCartesianProductOfImpacts(List<List<Impact>> values, int index) {
+            if (index == values.size() - 1) {
+              return values.get(values.size() - 1);
+            }
+
+            List<Impact> firstImpactList = values.get(index);
+
+            List<Impact> cartesianProductOfRestOfImpacts = getCartesianProductOfImpacts(values, index + 1);
+
+            Map<Long, Integer> maxFreq = new HashMap<>();
+
+            for (int i = 0; i < firstImpactList.size(); i++) {
+              for (int j = 0; j < cartesianProductOfRestOfImpacts.size(); j++) {
+                Impact impactA = firstImpactList.get(i);
+                Impact impactB = cartesianProductOfRestOfImpacts.get(j);
+
+                int tempNorm = (int) Math.floor(normToLength(impactA.norm) + normToLength(impactB.norm));
+                long normSum = SmallFloat.intToByte4(tempNorm);
+
+                long freqSum = (long) impactA.freq + (long) impactB.freq;
+                int freqUpperBound = (int) Math.min(Integer.MAX_VALUE, freqSum);
+
+                if (maxFreq.containsKey(normSum) == false ||
+                          (maxFreq.containsKey(normSum) && freqUpperBound > maxFreq.get(normSum))) {
+                    maxFreq.put(normSum, freqUpperBound);
+                  }
+              }
+            }
+
+            // remove duplicate entries where freq is same, but norm larger
+//            Map<Integer, Long> reversedMaxFreq = new HashMap<>();
+//            for (Map.Entry<Long, Integer> normFreqPair : maxFreq.entrySet()) {
+//              Long norm = normFreqPair.getKey();
+//              Integer freq = normFreqPair.getValue();
+//
+//              if (reversedMaxFreq.containsKey(freq) == false ||
+//                      (reversedMaxFreq.containsKey(freq) && norm < reversedMaxFreq.get(freq))) {
+//                reversedMaxFreq.put(freq, norm);
+//              }
+//            }
+
+            return maxFreq.entrySet().stream().map(e -> new Impact(e.getValue(), e.getKey())).collect(Collectors.toList());
+          }
+
+        };
+      }
+
+      private float normToLength(long norm) {
+        return LENGTH_TABLE[Byte.toUnsignedInt((byte) norm)];
+      }
+
+      @Override
+      public void advanceShallow(int target) throws IOException {
+        for (List<ImpactsEnum> impactsEnums: fieldsWithImpactsEnums.values()) {
+          for (ImpactsEnum impactsEnum : impactsEnums) {
+            if (impactsEnum.docID() < target) {
+              impactsEnum.advanceShallow(target);
+            }
+          }
+        }
+      }
+    };
+  }
+
 
   private static class WeightedDisiWrapper extends DisiWrapper {
     final float weight;
@@ -458,15 +820,18 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     private final DisiPriorityQueue queue;
     private final DocIdSetIterator iterator;
     private final MultiNormsLeafSimScorer simScorer;
+    private final ImpactsDISI impactsDISI;
 
     CombinedFieldScorer(
         Weight weight,
         DisiPriorityQueue queue,
         DocIdSetIterator iterator,
+        ImpactsDISI impactsDISI,
         MultiNormsLeafSimScorer simScorer) {
       super(weight);
       this.queue = queue;
       this.iterator = iterator;
+      this.impactsDISI = impactsDISI;
       this.simScorer = simScorer;
     }
 
@@ -499,7 +864,29 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     @Override
     public float getMaxScore(int upTo) throws IOException {
-      return Float.POSITIVE_INFINITY;
+      if (impactsDISI != null) {
+        return impactsDISI.getMaxScore(upTo);
+      } else {
+        return Float.POSITIVE_INFINITY;
+      }
+    }
+
+    @Override
+    public int advanceShallow(int target) throws IOException {
+      if (impactsDISI != null) {
+        return impactsDISI.advanceShallow(target);
+      } else {
+        return super.advanceShallow(target);
+      }
+    }
+
+    @Override
+    public void setMinCompetitiveScore(float minScore) throws IOException {
+      if (impactsDISI != null) {
+        impactsDISI.setMinCompetitiveScore(minScore);
+      } else {
+        super.setMinCompetitiveScore(minScore);
+      }
     }
   }
 }
