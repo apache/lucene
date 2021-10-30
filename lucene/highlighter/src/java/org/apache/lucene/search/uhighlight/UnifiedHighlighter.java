@@ -97,12 +97,6 @@ public class UnifiedHighlighter {
 
   public static final int DEFAULT_CACHE_CHARS_THRESHOLD = 524288; // ~ 1 MB (2 byte chars)
 
-  public static final Set<HighlightFlag> DEFAULT_HIGHLIGHT_FLAGS =
-      EnumSet.of(
-          HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED,
-          HighlightFlag.MULTI_TERM_QUERY,
-          HighlightFlag.PHRASES);
-
   static final IndexSearcher EMPTY_INDEXSEARCHER;
 
   static {
@@ -141,12 +135,22 @@ public class UnifiedHighlighter {
 
   private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
 
-  private Set<HighlightFlag> highlightFlags = DEFAULT_HIGHLIGHT_FLAGS;
+  private Set<HighlightFlag> flags;
+
+  private boolean defaultHandleMtq = true; // e.g. wildcards
+
+  private boolean defaultHighlightPhrasesStrictly = true; // AKA "accuracy" or "query debugging"
+
+  // For analysis, prefer MemoryIndexOffsetStrategy
+  private boolean defaultPassageRelevancyOverSpeed = true;
 
   /** Builder for UnifiedHighlighter. */
   public abstract static class Builder<T extends Builder<T>> {
     private IndexSearcher searcher;
     private Analyzer indexAnalyzer;
+    private boolean handleMultiTermQuery = true;
+    private boolean highlightPhrasesStrictly = true;
+    private boolean passageRelevancyOverSpeed = true;
     private int maxLength = DEFAULT_MAX_LENGTH;
     private Supplier<BreakIterator> breakIterator =
         () -> BreakIterator.getSentenceInstance(Locale.ROOT);
@@ -155,20 +159,35 @@ public class UnifiedHighlighter {
     private PassageFormatter formatter = new DefaultPassageFormatter();
     private int maxNoHighlightPassages = -1;
     private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
-    private Set<HighlightFlag> highlightFlags = DEFAULT_HIGHLIGHT_FLAGS;
+    private Set<HighlightFlag> flags;
 
     public T withSearcher(IndexSearcher value) {
       this.searcher = value;
       return self();
     }
 
-    public T withHighlightFlags(Set<HighlightFlag> values) {
-      this.highlightFlags = values;
+    public T withIndexAnalyzer(Analyzer value) {
+      this.indexAnalyzer = value;
       return self();
     }
 
-    public T withIndexAnalyzer(Analyzer value) {
-      this.indexAnalyzer = value;
+    public T withFlags(Set<HighlightFlag> values) {
+      this.flags = values;
+      return self();
+    }
+
+    public T withHandleMultiTermQuery(boolean value) {
+      this.handleMultiTermQuery = value;
+      return self();
+    }
+
+    public T withHighlightPhrasesStrictly(boolean value) {
+      this.highlightPhrasesStrictly = value;
+      return self();
+    }
+
+    public T withPassageRelevancyOverSpeed(boolean value) {
+      this.passageRelevancyOverSpeed = value;
       return self();
     }
 
@@ -264,7 +283,10 @@ public class UnifiedHighlighter {
   public UnifiedHighlighter(Builder<?> builder) {
     this.searcher = builder.searcher;
     this.indexAnalyzer = Objects.requireNonNull(builder.indexAnalyzer);
-    this.highlightFlags = builder.highlightFlags;
+    this.flags = builder.flags;
+    this.defaultHandleMtq = builder.handleMultiTermQuery;
+    this.defaultHighlightPhrasesStrictly = builder.highlightPhrasesStrictly;
+    this.defaultPassageRelevancyOverSpeed = builder.passageRelevancyOverSpeed;
     this.maxLength = builder.maxLength;
     this.defaultBreakIterator = builder.breakIterator;
     this.defaultFieldMatcher = builder.fieldMatcher;
@@ -272,6 +294,14 @@ public class UnifiedHighlighter {
     this.defaultFormatter = builder.formatter;
     this.defaultMaxNoHighlightPassages = builder.maxNoHighlightPassages;
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
+  }
+
+  public void setHandleMultiTermQuery(boolean handleMtq) {
+    this.defaultHandleMtq = handleMtq;
+  }
+
+  public void setHighlightPhrasesStrictly(boolean highlightPhrasesStrictly) {
+    this.defaultHighlightPhrasesStrictly = highlightPhrasesStrictly;
   }
 
   public void setMaxLength(int maxLength) {
@@ -283,8 +313,8 @@ public class UnifiedHighlighter {
     this.maxLength = maxLength;
   }
 
-  public void setHighlightFlags(Set<HighlightFlag> highlightFlags) {
-    this.highlightFlags = highlightFlags;
+  public void setFlags(Set<HighlightFlag> flags) {
+    this.flags = flags;
   }
 
   public void setBreakIterator(Supplier<BreakIterator> breakIterator) {
@@ -322,6 +352,18 @@ public class UnifiedHighlighter {
       // requireFieldMatch = true
       return (qf) -> field.equals(qf);
     }
+  }
+
+  protected boolean shouldHandleMultiTermQuery(String field) {
+    return defaultHandleMtq;
+  }
+
+  protected boolean shouldHighlightPhrasesStrictly(String field) {
+    return defaultHighlightPhrasesStrictly;
+  }
+
+  protected boolean shouldPreferPassageRelevancyOverSpeed(String field) {
+    return defaultPassageRelevancyOverSpeed;
   }
 
   /**
@@ -907,15 +949,34 @@ public class UnifiedHighlighter {
     return filteredTerms.toArray(new BytesRef[filteredTerms.size()]);
   }
 
-  /** Customize the highlighting flags to use by field. */
+  /**
+   * Customize the highlighting flags to use by field. Here the user can either specify the set of
+   * {@link HighlightFlag}s to be applied or use the boolean flags to populate final list of {@link
+   * HighlightFlag}s.
+   */
   protected Set<HighlightFlag> getFlags(String field) {
-    Set<HighlightFlag> values = EnumSet.copyOf(highlightFlags);
-    if (values.contains(HighlightFlag.MULTI_TERM_QUERY)
-        && values.contains(HighlightFlag.PHRASES)
-        && values.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)) {
-      values.add(HighlightFlag.WEIGHT_MATCHES);
+    if (Objects.nonNull(flags) && !flags.isEmpty()) {
+      return flags;
     }
-    return values;
+
+    Set<HighlightFlag> highlightFlags = EnumSet.noneOf(HighlightFlag.class);
+    if (shouldHandleMultiTermQuery(field)) {
+      highlightFlags.add(HighlightFlag.MULTI_TERM_QUERY);
+    }
+    if (shouldHighlightPhrasesStrictly(field)) {
+      highlightFlags.add(HighlightFlag.PHRASES);
+    }
+    if (shouldPreferPassageRelevancyOverSpeed(field)) {
+      highlightFlags.add(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED);
+    }
+
+    // Evaluate if WEIGHT_MATCHES can be added as a flag.
+    if (highlightFlags.contains(HighlightFlag.MULTI_TERM_QUERY)
+        && highlightFlags.contains(HighlightFlag.PHRASES)
+        && highlightFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)) {
+      highlightFlags.add(HighlightFlag.WEIGHT_MATCHES);
+    }
+    return highlightFlags;
   }
 
   protected PhraseHelper getPhraseHelper(

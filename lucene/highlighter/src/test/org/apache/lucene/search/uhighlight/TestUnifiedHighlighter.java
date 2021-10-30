@@ -500,8 +500,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightFlags(
-        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.PHRASES));
+    highlighter.setHighlightPhrasesStrictly(false);
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     if (highlighter
@@ -526,13 +525,68 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
         SubUnifiedHighlighter.builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
-            .withHighlightFlags(
-                EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.PHRASES))
+            .withHandleMultiTermQuery(false)
             .withNewField(true)
             .build();
     assertTrue(suh.getFieldMatcher("body").test("body"));
     assertFalse(suh.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES));
     assertTrue(suh.getNewField());
+    ir.close();
+  }
+
+  public void testUnifiedHighlighterGetFlagsCustomInput() throws Exception {
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    Document document = new Document();
+    document.add(new Field("body", "test body", fieldType));
+    iw.addDocument(document);
+    IndexReader ir = iw.getReader();
+    iw.close();
+    IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter uh =
+        UnifiedHighlighter.builder()
+            .withSearcher(searcher)
+            .withIndexAnalyzer(indexAnalyzer)
+            .withFlags(EnumSet.allOf(HighlightFlag.class)) // add all flags
+            .withHandleMultiTermQuery(false) // disable MULTI_TERM_QUERY
+            .build();
+    assertEquals(
+        "All HighlightFlag values should be present.",
+        HighlightFlag.values().length,
+        uh.getFlags("body").size());
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.PHRASES));
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED));
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.MULTI_TERM_QUERY));
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES));
+
+    uh =
+        UnifiedHighlighter.builder()
+            .withSearcher(searcher)
+            .withIndexAnalyzer(indexAnalyzer)
+            .withFlags(
+                EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED))
+            .withHandleMultiTermQuery(true)
+            .build();
+    assertEquals(
+        "Only PHRASES and PASSAGE_RELEVANCY_OVER_SPEED should be present.",
+        2,
+        uh.getFlags("body").size());
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.PHRASES));
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED));
+
+    uh =
+        UnifiedHighlighter.builder()
+            .withSearcher(searcher)
+            .withIndexAnalyzer(indexAnalyzer)
+            .build();
+    assertEquals(
+        "All HighlightFlag values should be present.",
+        HighlightFlag.values().length,
+        uh.getFlags("body").size());
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.PHRASES));
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED));
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.MULTI_TERM_QUERY));
+    assertTrue(uh.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES));
+
     ir.close();
   }
 
@@ -578,8 +632,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightFlags(
-        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.MULTI_TERM_QUERY));
+    highlighter.setHighlightPhrasesStrictly(false);
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     assertFalse(snippets[0].contains("<b>Curious</b>Curious"));

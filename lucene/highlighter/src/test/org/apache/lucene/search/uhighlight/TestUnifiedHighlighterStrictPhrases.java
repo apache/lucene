@@ -316,8 +316,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
     // do again, this time with MTQ disabled.  We should only find "alpha bravo".
     highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightFlags(
-        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.PHRASES));
+    highlighter.setHandleMultiTermQuery(false); // disable but leave phrase processing enabled
 
     topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     snippets = highlighter.highlight("body", query, topDocs);
@@ -363,8 +362,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
     // do again, this time with MTQ disabled.  We should only find "alpha bravo".
     highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightFlags(
-        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.PHRASES));
+    highlighter.setHandleMultiTermQuery(false); // disable but leave phrase processing enabled
 
     topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     snippets = highlighter.highlight("body", query, topDocs);
@@ -411,8 +409,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
     // do again, this time with MTQ disabled.
     highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHighlightFlags(
-        EnumSet.of(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED, HighlightFlag.PHRASES));
+    highlighter.setHandleMultiTermQuery(false); // disable but leave phrase processing enabled
 
     topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     snippets = highlighter.highlight("body", query, topDocs);
@@ -531,11 +528,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
   public void testMatchNoDocsQuery() throws IOException {
     highlighter = new UnifiedHighlighter(null, indexAnalyzer);
-    highlighter.setHighlightFlags(
-        EnumSet.of(
-            HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED,
-            HighlightFlag.MULTI_TERM_QUERY,
-            HighlightFlag.PHRASES));
+    highlighter.setHighlightPhrasesStrictly(true);
     String content = "whatever";
     Object o = highlighter.highlightWithoutSearcher("body", new MatchNoDocsQuery(), content, 1);
     assertEquals(content, o);
@@ -564,11 +557,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
             return null;
           }
         };
-    highlighter.setHighlightFlags(
-        EnumSet.of(
-            HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED,
-            HighlightFlag.MULTI_TERM_QUERY,
-            HighlightFlag.PHRASES));
+    highlighter.setHighlightPhrasesStrictly(true);
 
     BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
     Query phraseQuery =
