@@ -322,6 +322,10 @@ Improvements
 
 * LUCENE-10103: Make QueryCache respect Accountable queries. (Haoyu Zhai)
 
+* LUCENE-10201: Spatial-Extras: Upgrading Spatial4j to 0.8 improving a varitety of minor things.
+  See release notes. https://github.com/locationtech/spatial4j/releases/tag/spatial4j-0.8
+  (David Smiley)
+
 Bug fixes
 ---------------------
 
