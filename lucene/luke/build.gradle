@@ -57,6 +57,13 @@ tasks.withType(Jar) {
   }
 }
 
+// Process UTF8 property files to unicode escapes.
+tasks.withType(ProcessResources).configureEach { task ->
+  task.filesMatching("**/messages*.properties", {
+    filteringCharset = 'UTF-8'
+    filter(EscapeUnicode)
+  })
+}
 
 // Configure "stand-alone" JAR with proper dependency classpath links.
 task standaloneJar(type: Jar) {
