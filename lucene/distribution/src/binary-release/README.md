@@ -27,9 +27,9 @@ and an API that can easily be used to add search capabilities to applications.
  * Please join the Lucene-User mailing list by sending a message to:
    java-user-subscribe@lucene.apache.org
 
-## Files in a binary distribution
+## Files in this binary distribution
 
-The following sub-folders are included in the binary Lucene distribution:
+The following sub-folders are included in the binary distribution of Lucene:
 
 * `bin/`:
   Convenience scripts to launch Lucene Luke and other index-maintenance tools.
@@ -39,6 +39,10 @@ The following sub-folders are included in the binary Lucene distribution:
   Third-party binary modules required to run Lucene Luke.
 * `licenses/`
   Third-party licenses and notice files.
+
+Please note that this package does not include all the binary dependencies
+of all Lucene modules. Up-to-date dependency information for each Lucene
+module is published to  Maven central (as Maven POMs).
 
 To review the documentation, read the main documentation page, located at:
 `docs/index.html`
