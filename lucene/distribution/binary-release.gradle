@@ -15,41 +15,52 @@
  * limitations under the License.
  */
 
-
 // Configure Lucene's binary release. This is a bit convoluted so is placed
 // in a separate script.
 
 configure(project(":lucene:distribution")) {
   def packageBaseName = "${buildDir}/packages/lucene-${version}"
 
-  // All the maven-published projects are part of the binary distribution.
-  def includeInBinaries = rootProject.ext.mavenProjects
-
-  // Legacy binary distribution contains Lucene artifacts (JARs) and their dependencies
-  // under 'lib/'. We have to go through some hoops to split the artifact from all of its
-  // transitive dependencies and separate their output location.
-  def moduleArtifactConfigurations = []
-  for (Project module : includeInBinaries) {
-    def binaryArtifactsConfiguration = configurations.create("binary-artifacts" + module.path.replace(':', '-'))
-
-    dependencies { DependencyHandler handler ->
-      handler.add(binaryArtifactsConfiguration.name, project(path: module.path, configuration: "binaryArtifacts"))
-    }
-
-    moduleArtifactConfigurations += [
-        "module": module,
-        "binaryArtifactsConfiguration": binaryArtifactsConfiguration
-    ]
-  }
-
-
-  // Prepare site documentation dependency for inclusion.
+   // Prepare site documentation dependency for inclusion.
   configurations {
     docs
+
+    jars
+    jarsTestFramework
+    jarsThirdParty
   }
 
-  dependencies {
+  dependencies { DependencyHandler handler ->
     docs project(path: ':lucene:documentation', configuration: 'site')
+
+    // Maven-published submodule JARs are part of the binary distribution
+    // (with a few exceptions explicitly filtered below).
+    // We don't copy their transitive dependencies.
+    def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p in [
+        // Placed in a separate folder (module layer conflicts).
+        project(":lucene:test-framework"),
+    ]) }
+    for (Project module : binaryModules) {
+      jars(module, {
+        transitive = false
+      })
+    }
+
+    // The test framework has split packages and breaks the module system layer so
+    // it's in a separate folder.
+    jarsTestFramework(project(":lucene:test-framework"), {
+      transitive = false
+    })
+
+    // The third-party JARs consist of all the transitive dependencies from these modules.
+    // Not sure whether we have to include all the thirdparty JARs from across all the modules.
+    for (Project module : [
+        project(":lucene:luke")
+    ]) {
+      jarsThirdParty(module, {
+        transitive = true
+      })
+    }
   }
 
 
@@ -67,8 +78,9 @@ configure(project(":lucene:distribution")) {
       copy.setMode(0755)
     }
 
-    // Attach binary release exclusive files.
+    // Attach binary release - only files.
     from(file("src/binary-release"), {
+      filteringCharset = 'UTF-8'
     })
 
     // Cherry-pick certain files from the root.
@@ -83,7 +95,6 @@ configure(project(":lucene:distribution")) {
       include "JRE_VERSION_MIGRATION.md"
       include "MIGRATE.md"
       include "SYSTEM_REQUIREMENTS.md"
-
       include "licenses/*"
     })
 
@@ -92,14 +103,18 @@ configure(project(":lucene:distribution")) {
       into 'docs'
     })
 
-    // Each module's binary artifacts and their dependencies.
-    moduleArtifactConfigurations.each {
-      def toPath = it.module.path.replaceFirst("^:lucene:", "").replace(':', '/')
+    // Binary modules (Lucene).
+    from(configurations.jars, {
+      into 'modules'
+    })
+    from(configurations.jarsTestFramework, {
+      into 'modules-test-framework'
+    })
 
-      from(it.binaryArtifactsConfiguration, {
-        into toPath
-      })
-    }
+    // Binary modules (with dependencies). Don't duplicate project artifacts.
+    from((configurations.jarsThirdParty - configurations.jars), {
+      into 'modules-thirdparty'
+    })
 
     // Internal archive folder for all files.
     into "lucene-${rootProject.version}/"

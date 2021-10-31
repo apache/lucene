@@ -37,7 +37,6 @@ ext {
 apply from: buildscript.sourceFile.toPath().resolveSibling("source-release.gradle")
 
 // Prepare the "binary" distribution artifact.
-apply from: buildscript.sourceFile.toPath().resolveSibling("binary-artifacts.gradle")
 apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
 
 // Configure maven artifact collection to a local build folder (required to collect artifacts for the release).

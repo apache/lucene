@@ -574,7 +574,6 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   #       raise RuntimeError('lucene: file "%s" is missing from artifact %s' % (fileName, artifact))
   #     in_root_folder.remove(fileName)
 
-  # TODO: clean this up to not be a list of modules that we must maintain
   expected_folders = ['analysis', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core',
                       'demo', 'expressions', 'facet', 'grouping', 'highlighter', 'join',
                       'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
@@ -589,8 +588,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     if len(in_lucene_folder) > 0:
       raise RuntimeError('lucene: unexpected files/dirs in artifact %s lucene/ folder: %s' % (artifact, in_lucene_folder))
   else:
-    is_in_list(in_root_folder, expected_folders)
-    is_in_list(in_root_folder, ['docs'])
+    is_in_list(in_root_folder, ['bin', 'docs', 'licenses', 'modules', 'modules-test-framework', 'modules-thirdparty'])
 
   if len(in_root_folder) > 0:
     raise RuntimeError('lucene: unexpected files/dirs in artifact %s: %s' % (artifact, in_root_folder))
@@ -648,21 +646,26 @@ def testDemo(run_java, isSrc, version, jdk):
   print('    test demo with %s...' % jdk)
   sep = ';' if cygwin else ':'
   if isSrc:
+    # For source release, use the classpath for each module.
     classPath = ['lucene/core/build/libs/lucene-core-%s.jar' % version,
                  'lucene/demo/build/libs/lucene-demo-%s.jar' % version,
                  'lucene/analysis/common/build/libs/lucene-analyzers-common-%s.jar' % version,
                  'lucene/queryparser/build/libs/lucene-queryparser-%s.jar' % version]
     cp = sep.join(classPath)
     docsDir = 'lucene/core/src'
+    checkIndexCmd = 'java -ea -cp "%s" org.apache.lucene.index.CheckIndex index' % cp
+    indexFilesCmd = 'java -cp "%s" -Dsmoketester=true org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
+    searchFilesCmd = 'java -cp "%s" org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
   else:
-    classPath = ['core/lucene-core-%s.jar' % version,
-                 'demo/lucene-demo-%s.jar' % version,
-                 'analysis/common/lucene-analyzers-common-%s.jar' % version,
-                 'queryparser/lucene-queryparser-%s.jar' % version]
-    cp = sep.join(classPath)
+    # For binary release, set up classpath as modules.
+    cp = "--module-path modules"
     docsDir = 'docs'
-  run_java('java -cp "%s" -Dsmoketester=true org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir), 'index.log')
-  run_java('java -cp "%s" org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp, 'search.log')
+    checkIndexCmd = 'java -ea %s --module lucene.core/org.apache.lucene.index.CheckIndex index' % cp
+    indexFilesCmd = 'java -Dsmoketester=true %s --module lucene.demo/org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
+    searchFilesCmd = 'java %s --module lucene.demo/org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
+      
+  run_java(indexFilesCmd, 'index.log')
+  run_java(searchFilesCmd, 'search.log')
   reMatchingDocs = re.compile('(\d+) total matching documents')
   m = reMatchingDocs.search(open('search.log', encoding='UTF-8').read())
   if m is None:
@@ -672,8 +675,9 @@ def testDemo(run_java, isSrc, version, jdk):
     if numHits < 100:
       raise RuntimeError('lucene demo\'s SearchFiles found too few results: %s' % numHits)
     print('      got %d hits for query "lucene"' % numHits)
+
   print('    checkindex with %s...' % jdk)
-  run_java('java -ea -cp "%s" org.apache.lucene.index.CheckIndex index' % cp, 'checkindex.log')
+  run_java(checkIndexCmd, 'checkindex.log')
   s = open('checkindex.log').read()
   m = re.search(r'^\s+version=(.*?)$', s, re.MULTILINE)
   if m is None:
