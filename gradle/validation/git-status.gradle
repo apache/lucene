@@ -51,6 +51,13 @@ configure(rootProject) {
         project.ext.gitRevShort = ref.abbreviate(8).name()
         project.ext.gitStatus = new Git(repository).status().call()
       } catch (RepositoryNotFoundException | NoWorkTreeException e) {
+        // Check if it's a source release, for which the git reference
+        // is statically stored.
+        def refStatic = rootProject.file(".gitref")
+        if (refStatic.exists()) {
+
+        }
+
         project.ext.gitRev = "(not a git checkout)"
         project.ext.gitRevShort = "(not a git checkout)"
         project.ext.gitStatus = null
