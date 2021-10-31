@@ -137,13 +137,6 @@ public class UnifiedHighlighter {
 
   private Set<HighlightFlag> flags;
 
-  private boolean defaultHandleMtq = true; // e.g. wildcards
-
-  private boolean defaultHighlightPhrasesStrictly = true; // AKA "accuracy" or "query debugging"
-
-  // For analysis, prefer MemoryIndexOffsetStrategy
-  private boolean defaultPassageRelevancyOverSpeed = true;
-
   /** Builder for UnifiedHighlighter. */
   public abstract static class Builder<T extends Builder<T>> {
     private IndexSearcher searcher;
@@ -236,6 +229,31 @@ public class UnifiedHighlighter {
     public UnifiedHighlighter build() {
       return new UnifiedHighlighter(this);
     }
+
+    protected Set<HighlightFlag> evaluateFlags() {
+      if (Objects.nonNull(flags) && !flags.isEmpty()) {
+        return flags;
+      }
+
+      Set<HighlightFlag> highlightFlags = EnumSet.noneOf(HighlightFlag.class);
+      if (handleMultiTermQuery) {
+        highlightFlags.add(HighlightFlag.MULTI_TERM_QUERY);
+      }
+      if (highlightPhrasesStrictly) {
+        highlightFlags.add(HighlightFlag.PHRASES);
+      }
+      if (passageRelevancyOverSpeed) {
+        highlightFlags.add(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED);
+      }
+
+      // Evaluate if WEIGHT_MATCHES can be added as a flag.
+      if (highlightFlags.contains(HighlightFlag.MULTI_TERM_QUERY)
+          && highlightFlags.contains(HighlightFlag.PHRASES)
+          && highlightFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)) {
+        highlightFlags.add(HighlightFlag.WEIGHT_MATCHES);
+      }
+      return highlightFlags;
+    }
   }
 
   /**
@@ -261,32 +279,17 @@ public class UnifiedHighlighter {
   }
 
   /**
-   * Constructs the highlighter with the given index searcher and analyzer.
-   *
-   * @param indexSearcher Usually required, unless {@link #highlightWithoutSearcher(String, Query,
-   *     String, int)} is used, in which case this needs to be null.
-   * @param indexAnalyzer Required, even if in some circumstances it isn't used.
-   */
-  public UnifiedHighlighter(IndexSearcher indexSearcher, Analyzer indexAnalyzer) {
-    this.searcher = indexSearcher; // TODO: make non nullable
-    this.indexAnalyzer =
-        Objects.requireNonNull(
-            indexAnalyzer,
-            "indexAnalyzer is required" + " (even if in some circumstances it isn't used)");
-  }
-
-  /**
    * Constructs the highlighter with the given the {@link Builder}.
    *
    * @param builder - a {@link Builder} object.
    */
   public UnifiedHighlighter(Builder<?> builder) {
     this.searcher = builder.searcher;
-    this.indexAnalyzer = Objects.requireNonNull(builder.indexAnalyzer);
-    this.flags = builder.flags;
-    this.defaultHandleMtq = builder.handleMultiTermQuery;
-    this.defaultHighlightPhrasesStrictly = builder.highlightPhrasesStrictly;
-    this.defaultPassageRelevancyOverSpeed = builder.passageRelevancyOverSpeed;
+    this.indexAnalyzer =
+        Objects.requireNonNull(
+            builder.indexAnalyzer,
+            "indexAnalyzer is required (even if in some circumstances it isn't used)");
+    this.flags = builder.evaluateFlags();
     this.maxLength = builder.maxLength;
     this.defaultBreakIterator = builder.breakIterator;
     this.defaultFieldMatcher = builder.fieldMatcher;
@@ -294,51 +297,6 @@ public class UnifiedHighlighter {
     this.defaultFormatter = builder.formatter;
     this.defaultMaxNoHighlightPassages = builder.maxNoHighlightPassages;
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
-  }
-
-  public void setHandleMultiTermQuery(boolean handleMtq) {
-    this.defaultHandleMtq = handleMtq;
-  }
-
-  public void setHighlightPhrasesStrictly(boolean highlightPhrasesStrictly) {
-    this.defaultHighlightPhrasesStrictly = highlightPhrasesStrictly;
-  }
-
-  public void setMaxLength(int maxLength) {
-    if (maxLength < 0 || maxLength == Integer.MAX_VALUE) {
-      // two reasons: no overflow problems in BreakIterator.preceding(offset+1),
-      // our sentinel in the offsets queue uses this value to terminate.
-      throw new IllegalArgumentException("maxLength must be < Integer.MAX_VALUE");
-    }
-    this.maxLength = maxLength;
-  }
-
-  public void setFlags(Set<HighlightFlag> flags) {
-    this.flags = flags;
-  }
-
-  public void setBreakIterator(Supplier<BreakIterator> breakIterator) {
-    this.defaultBreakIterator = breakIterator;
-  }
-
-  public void setScorer(PassageScorer scorer) {
-    this.defaultScorer = scorer;
-  }
-
-  public void setFormatter(PassageFormatter formatter) {
-    this.defaultFormatter = formatter;
-  }
-
-  public void setMaxNoHighlightPassages(int defaultMaxNoHighlightPassages) {
-    this.defaultMaxNoHighlightPassages = defaultMaxNoHighlightPassages;
-  }
-
-  public void setCacheFieldValCharsThreshold(int cacheFieldValCharsThreshold) {
-    this.cacheFieldValCharsThreshold = cacheFieldValCharsThreshold;
-  }
-
-  public void setFieldMatcher(Predicate<String> predicate) {
-    this.defaultFieldMatcher = predicate;
   }
 
   /**
@@ -352,18 +310,6 @@ public class UnifiedHighlighter {
       // requireFieldMatch = true
       return (qf) -> field.equals(qf);
     }
-  }
-
-  protected boolean shouldHandleMultiTermQuery(String field) {
-    return defaultHandleMtq;
-  }
-
-  protected boolean shouldHighlightPhrasesStrictly(String field) {
-    return defaultHighlightPhrasesStrictly;
-  }
-
-  protected boolean shouldPreferPassageRelevancyOverSpeed(String field) {
-    return defaultPassageRelevancyOverSpeed;
   }
 
   /**
@@ -955,28 +901,7 @@ public class UnifiedHighlighter {
    * HighlightFlag}s.
    */
   protected Set<HighlightFlag> getFlags(String field) {
-    if (Objects.nonNull(flags) && !flags.isEmpty()) {
-      return flags;
-    }
-
-    Set<HighlightFlag> highlightFlags = EnumSet.noneOf(HighlightFlag.class);
-    if (shouldHandleMultiTermQuery(field)) {
-      highlightFlags.add(HighlightFlag.MULTI_TERM_QUERY);
-    }
-    if (shouldHighlightPhrasesStrictly(field)) {
-      highlightFlags.add(HighlightFlag.PHRASES);
-    }
-    if (shouldPreferPassageRelevancyOverSpeed(field)) {
-      highlightFlags.add(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED);
-    }
-
-    // Evaluate if WEIGHT_MATCHES can be added as a flag.
-    if (highlightFlags.contains(HighlightFlag.MULTI_TERM_QUERY)
-        && highlightFlags.contains(HighlightFlag.PHRASES)
-        && highlightFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)) {
-      highlightFlags.add(HighlightFlag.WEIGHT_MATCHES);
-    }
-    return highlightFlags;
+    return flags;
   }
 
   protected PhraseHelper getPhraseHelper(

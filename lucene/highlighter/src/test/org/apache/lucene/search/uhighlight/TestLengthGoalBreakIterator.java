@@ -218,11 +218,15 @@ public class TestLengthGoalBreakIterator extends LuceneTestCase {
   private String highlightClosestToLen(
       String content, Query query, int lengthGoal, float fragAlign, int maxPassages, char separator)
       throws IOException {
-    UnifiedHighlighter highlighter = new UnifiedHighlighter(null, analyzer);
-    highlighter.setBreakIterator(
-        () ->
-            LengthGoalBreakIterator.createClosestToLength(
-                new CustomSeparatorBreakIterator(separator), lengthGoal, fragAlign));
+    UnifiedHighlighter highlighter =
+        UnifiedHighlighter.builder()
+            .withSearcher(null)
+            .withIndexAnalyzer(analyzer)
+            .withBreakIterator(
+                () ->
+                    LengthGoalBreakIterator.createClosestToLength(
+                        new CustomSeparatorBreakIterator(separator), lengthGoal, fragAlign))
+            .build();
     return highlighter.highlightWithoutSearcher(FIELD, query, content, maxPassages).toString();
   }
 
@@ -235,11 +239,15 @@ public class TestLengthGoalBreakIterator extends LuceneTestCase {
       String content, Query query, int lengthGoal, float fragAlign, char separator)
       throws IOException {
     // differs from above only by "createMinLength"
-    UnifiedHighlighter highlighter = new UnifiedHighlighter(null, analyzer);
-    highlighter.setBreakIterator(
-        () ->
-            LengthGoalBreakIterator.createMinLength(
-                new CustomSeparatorBreakIterator(separator), lengthGoal, fragAlign));
+    UnifiedHighlighter highlighter =
+        UnifiedHighlighter.builder()
+            .withSearcher(null)
+            .withIndexAnalyzer(analyzer)
+            .withBreakIterator(
+                () ->
+                    LengthGoalBreakIterator.createMinLength(
+                        new CustomSeparatorBreakIterator(separator), lengthGoal, fragAlign))
+            .build();
     return highlighter.highlightWithoutSearcher(FIELD, query, content, 1).toString();
   }
 }

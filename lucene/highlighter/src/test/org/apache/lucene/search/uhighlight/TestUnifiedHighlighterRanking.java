@@ -116,25 +116,21 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     for (int n = 1; n < maxTopN; n++) {
       final FakePassageFormatter f1 = new FakePassageFormatter();
       UnifiedHighlighter p1 =
-          new UnifiedHighlighter(is, indexAnalyzer) {
-            @Override
-            protected PassageFormatter getFormatter(String field) {
-              assertEquals("body", field);
-              return f1;
-            }
-          };
-      p1.setMaxLength(Integer.MAX_VALUE - 1);
+          creatUHObjectForCurrentTestSuite(
+              new UnifiedHighlighter.ConcreteBuilder()
+                  .withSearcher(is)
+                  .withIndexAnalyzer(indexAnalyzer)
+                  .withFormatter(f1)
+                  .withMaxLength(Integer.MAX_VALUE - 1));
 
       final FakePassageFormatter f2 = new FakePassageFormatter();
       UnifiedHighlighter p2 =
-          new UnifiedHighlighter(is, indexAnalyzer) {
-            @Override
-            protected PassageFormatter getFormatter(String field) {
-              assertEquals("body", field);
-              return f2;
-            }
-          };
-      p2.setMaxLength(Integer.MAX_VALUE - 1);
+          creatUHObjectForCurrentTestSuite(
+              new UnifiedHighlighter.ConcreteBuilder()
+                  .withSearcher(is)
+                  .withIndexAnalyzer(indexAnalyzer)
+                  .withFormatter(f2)
+                  .withMaxLength(Integer.MAX_VALUE - 1));
 
       BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
       queryBuilder.add(query, BooleanClause.Occur.MUST);
@@ -278,8 +274,12 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
+        new UnifiedHighlighter.ConcreteBuilder()
+            .withSearcher(searcher)
+            .withIndexAnalyzer(indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(searcher, indexAnalyzer) {
+        new UnifiedHighlighter(concreteBuilder) {
           @Override
           protected Set<HighlightFlag> getFlags(String field) {
             if (random().nextBoolean()) {
@@ -330,8 +330,13 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
+
+    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
+        new UnifiedHighlighter.ConcreteBuilder()
+            .withSearcher(searcher)
+            .withIndexAnalyzer(indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(searcher, indexAnalyzer) {
+        new UnifiedHighlighter(concreteBuilder) {
           @Override
           protected Set<HighlightFlag> getFlags(String field) {
             if (random().nextBoolean()) {
@@ -362,5 +367,28 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
 
     ir.close();
     dir.close();
+  }
+
+  private UnifiedHighlighter creatUHObjectForCurrentTestSuite(
+      UnifiedHighlighter.ConcreteBuilder concreteBuilder) {
+    UnifiedHighlighter.Builder<?> builder =
+        new UnifiedHighlighter.Builder<UnifiedHighlighter.ConcreteBuilder>() {
+          @Override
+          protected UnifiedHighlighter.ConcreteBuilder self() {
+            return concreteBuilder;
+          }
+
+          @Override
+          public UnifiedHighlighter build() {
+            return new UnifiedHighlighter(concreteBuilder) {
+              @Override
+              protected PassageFormatter getFormatter(String field) {
+                assertEquals("body", field);
+                return super.getFormatter(field);
+              }
+            };
+          }
+        };
+    return builder.build();
   }
 }
