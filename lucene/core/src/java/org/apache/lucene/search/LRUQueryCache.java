@@ -42,6 +42,7 @@ import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BitDocIdSet;
+import org.apache.lucene.util.DocIdSetProducer;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.RoaringDocIdSet;
@@ -510,7 +511,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   private static CacheAndCount cacheIntoBitSet(BulkScorer scorer, int maxDoc) throws IOException {
-    final FixedBitSet bitSet = new FixedBitSet(maxDoc);
+    DocIdSetProducer producer = new DocIdSetProducer(maxDoc);
     int[] count = new int[1];
     scorer.score(
         new LeafCollector() {
@@ -521,11 +522,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
           @Override
           public void collect(int doc) throws IOException {
             count[0]++;
-            bitSet.set(doc);
+            producer.add(doc);
           }
         },
         null);
-    return new CacheAndCount(new BitDocIdSet(bitSet, count[0]), count[0]);
+    return new CacheAndCount(producer.get(), count[0]);
   }
 
   private static CacheAndCount cacheIntoRoaringDocIdSet(BulkScorer scorer, int maxDoc)
