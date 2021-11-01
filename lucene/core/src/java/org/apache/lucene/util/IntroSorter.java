@@ -22,6 +22,9 @@ package org.apache.lucene.util;
  * log of the length of the array to sort, it falls back to heapsort. This prevents quicksort from
  * running into its worst-case quadratic runtime. Small ranges are sorted with insertion sort.
  *
+ * <p>This sort algorithm is fast on most data shapes, especially with low cardinality. If the data
+ * to sort is known to be strictly ascending or descending, prefer {@link TimSorter}.
+ *
  * @lucene.internal
  */
 public abstract class IntroSorter extends Sorter {
@@ -60,15 +63,16 @@ public abstract class IntroSorter extends Sorter {
       // Pivot selection based on medians.
       int last = to - 1;
       int mid = (from + last) >>> 1;
-      int range = size >> 3;
       int pivot;
       if (size <= SINGLE_MEDIAN_THRESHOLD) {
         // Select the pivot with a single median around the middle element.
         // Do not take the median between [from, mid, last] because it hurts performance
         // if the order is descending.
+        int range = size >> 2;
         pivot = median(mid - range, mid, mid + range);
       } else {
         // Select the pivot with the median of medians.
+        int range = size >> 3;
         int doubleRange = range << 1;
         int medianFirst = median(from, from + range, from + doubleRange);
         int medianMiddle = median(mid - range, mid, mid + range);
