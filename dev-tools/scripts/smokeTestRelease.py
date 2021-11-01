@@ -936,11 +936,11 @@ def make_java_config(parser, java17_home):
   return jc(run_java11, java11_home, run_java17, java17_home)
 
 version_re = re.compile(r'(\d+\.\d+\.\d+(-ALPHA|-BETA)?)')
-revision_re = re.compile(r'rev([a-f\d]+)')
+revision_re = re.compile(r'rev-([a-f\d]+)')
 def parse_config():
   epilogue = textwrap.dedent('''
     Example usage:
-    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-6.0.1-RC2-revc7510a0...
+    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-9.0.0-RC1-rev-c7510a0...
   ''')
   description = 'Utility to test a release.'
   parser = argparse.ArgumentParser(description=description, epilog=epilogue,

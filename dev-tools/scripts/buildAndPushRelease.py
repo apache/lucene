@@ -30,7 +30,6 @@ import xml.etree.ElementTree as ET
 import scriptutil
 
 LOG = '/tmp/release.log'
-REV_FILE = '/tmp/lucene-rev.txt'
 dev_mode = False
 
 def log(msg):
@@ -108,8 +107,6 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
   rev = getGitRev()
   print('  git rev: %s' % rev)
   log('\nGIT rev: %s\n' % rev)
-  with open(REV_FILE, mode='wb') as f:
-      f.write(rev.encode('UTF-8'))
 
   print('  Check DOAP files')
   checkDOAPfiles(version)
@@ -203,14 +200,16 @@ def normalizeVersion(tup):
   return '.'.join(tup) + suffix
 
 
-def pushLocal(version, root, rev, rcNum, localDir):
+def pushLocal(version, root, rcNum, localDir):
   print('Push local [%s]...' % localDir)
   os.makedirs(localDir)
 
-  dir = 'lucene-%s-RC%d-rev%s' % (version, rcNum, rev)
+  lucene_dist_dir = '%s/lucene/distribution/build/release' % root
+  rev = open('%s/lucene/distribution/build/release/.gitrev' % root, encoding='UTF-8').read()
+
+  dir = 'lucene-%s-RC%d-rev-%s' % (version, rcNum, rev)
   os.makedirs('%s/%s/lucene' % (localDir, dir))
   print('  Lucene')
-  lucene_dist_dir = '%s/lucene/distribution/build/release' % root
   os.chdir(lucene_dist_dir)
   print('    archive...')
   if os.path.exists('lucene.tar'):
@@ -390,13 +389,12 @@ def main():
     c.key_password = None
 
   if c.prepare:
-    rev = prepare(c.root, c.version, c.key_id, c.key_password, gpg_home=gpg_home, sign_gradle=c.sign_method_gradle)
+    prepare(c.root, c.version, c.key_id, c.key_password, gpg_home=gpg_home, sign_gradle=c.sign_method_gradle)
   else:
     os.chdir(c.root)
-    rev = open(REV_FILE, encoding='UTF-8').read()
 
   if c.push_local:
-    url = pushLocal(c.version, c.root, rev, c.rc_num, c.push_local)
+    url = pushLocal(c.version, c.root, c.rc_num, c.push_local)
   else:
     url = None
 
