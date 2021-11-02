@@ -69,9 +69,7 @@ def add_constant(new_version, deprecate):
     if deprecate:
       buffer.append('%s * @deprecated Use latest\n' % spaces)
     else:
-      buffer.append(( '{0} * <p>\n'
-                    + '{0} * Use this to get the latest &amp; greatest settings, bug\n'
-                    + '{0} * fixes, etc, for Lucene.\n').format(spaces))
+      buffer.append(( '{0} * <p>Use this to get the latest &amp; greatest settings, bug fixes, etc, for Lucene.\n').format(spaces))
     buffer.append('%s */\n' % spaces)
     if deprecate:
       buffer.append('%s@Deprecated\n' % spaces)
