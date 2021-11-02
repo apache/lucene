@@ -71,7 +71,7 @@ subprojects {
       extensions.each{
         include "**/*.${it}"
       }
-      
+
       // Don't go into child projects (scanned separately).
       childProjects.keySet().each{
         exclude "${it}/**"
@@ -93,6 +93,7 @@ subprojects {
 configure(project(':lucene:benchmark')) {
   project.tasks.withType(ValidateSourcePatternsTask) {
     sourceFiles.exclude 'data/**'
+
     // Known .txt offenders.
     sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
   }
@@ -118,23 +119,30 @@ configure(rootProject) {
 
       // ourselves :-)
       exclude 'gradle/validation/validate-source-patterns.gradle'
+
+      // gradle and idea folders.
+      exclude '.gradle/**'
+      exclude '.idea/**'
     }
   }
 
   check.dependsOn validateSourcePatterns
 }
 
+@CacheableTask
 class ValidateSourcePatternsTask extends DefaultTask {
   private ProgressLoggerFactory progressLoggerFactory
 
   @InputFiles
+  @PathSensitive(PathSensitivity.RELATIVE)
+  @IgnoreEmptyDirectories
   FileTree sourceFiles
 
   @Inject
   ValidateSourcePatternsTask(ProgressLoggerFactory progressLoggerFactory) {
     this.progressLoggerFactory = progressLoggerFactory
   }
-  
+
   @TaskAction
   public void check() {
     def invalidPatterns = [
