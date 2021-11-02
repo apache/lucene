@@ -22,12 +22,11 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
 import org.apache.lucene.util.Version;
 
-@SuppressWarnings("deprecation")
 public class TestLucene70SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
 
   @Override
   protected Version[] getVersions() {
-    return new Version[] {Version.LUCENE_8_4_0};
+    return new Version[] {Version.fromBits(8, 4, 0)};
   }
 
   @Override
