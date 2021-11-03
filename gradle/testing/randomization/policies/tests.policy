@@ -61,6 +61,8 @@ grant {
   permission java.lang.RuntimePermission "getenv.*";
   permission java.lang.RuntimePermission "getClassLoader";
   permission java.lang.RuntimePermission "setContextClassLoader";
+  // permission needed to load Zstd JNI library
+  permission java.lang.RuntimePermission "loadLibrary.*";
 
   // Needed for loading native library (lucene:misc:native) in lucene:misc
   permission java.lang.RuntimePermission "getFileStoreAttributes";
