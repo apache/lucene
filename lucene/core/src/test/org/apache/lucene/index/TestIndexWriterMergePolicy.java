@@ -28,12 +28,14 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.mockfile.HandleLimitFS;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 
+@HandleLimitFS.MaxOpenHandles(limit = HandleLimitFS.MaxOpenHandles.MAX_OPEN_FILES * 2)
 public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
   // Test the normal case
@@ -772,9 +774,9 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
               if (random().nextBoolean()) {
                 writer.commit();
               }
-              try (DirectoryReader open =
-                  new SoftDeletesDirectoryReaderWrapper(
-                      DirectoryReader.open(directory), "___soft_deletes")) {
+              try (DirectoryReader delegate = DirectoryReader.open(directory);
+                  DirectoryReader open =
+                      new SoftDeletesDirectoryReaderWrapper(delegate, "___soft_deletes")) {
                 assertEquals(
                     1,
                     new IndexSearcher(open)
