@@ -1034,38 +1034,4 @@ public class TestIntervals extends LuceneTestCase {
 
     checkVisits(source, 1);
   }
-
-  public void testAnalyzeText() throws IOException {
-    boolean ordered = true;
-    int gaps = 0;
-
-    IntervalsSource source = Intervals.analyzedText("", analyzer, "field", gaps, ordered);
-    checkIntervals(
-        source,
-        "field1",
-        3,
-        new int[][] {{}, {0, 1, 3, 4, 6, 7}, {0, 1, 3, 4, 6, 7}, {}, {0, 1, 3, 4, 6, 7}, {}});
-    assertNull(getMatches(source, 0, "field1"));
-    MatchesIterator mi = getMatches(source, 1, "field1");
-    assertMatch(mi, 0, 1, 0, 14);
-    assertMatch(mi, 3, 4, 20, 34);
-    MatchesIterator sub = mi.getSubMatches();
-    assertMatch(sub, 3, 3, 20, 25);
-    assertEquals(new TermQuery(new Term("field1", "pease")), sub.getQuery());
-    assertMatch(sub, 4, 4, 26, 34);
-    assertEquals(new TermQuery(new Term("field1", "porridge")), sub.getQuery());
-    assertFalse(sub.next());
-
-    assertMatch(mi, 6, 7, 41, 55);
-    sub = mi.getSubMatches();
-    assertTrue(sub.next());
-    assertEquals(new TermQuery(new Term("field1", "pease")), sub.getQuery());
-    assertTrue(sub.next());
-    assertEquals(new TermQuery(new Term("field1", "porridge")), sub.getQuery());
-    assertFalse(sub.next());
-
-    assertEquals(2, source.minExtent());
-
-    checkVisits(source, 3, "pease", "porridge");
-  }
 }
