@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -699,88 +698,20 @@ public final class CombinedFieldQuery extends Query implements Accountable {
               return mergedImpactsPerField.values().iterator().next();
             }
 
-            List<List<Impact>> impactLists = new ArrayList<>(mergedImpactsPerField.size());
+            // upper-bound by creating an impact that should be most competitive: <maxFreq * numOfFields, minNorm>
+            // this is done to avoid the potential combinatorial explosion from accurate computation on merged impacts across fields
+            int maxFreq = 0;
+            long minNorm = Long.MIN_VALUE;
             for (List<Impact> impacts : mergedImpactsPerField.values()) {
-              // add empty impact for cartesian product calculation
-              List<Impact> newList = new ArrayList<>(impacts.size() + 1);
-              newList.addAll(impacts);
-              newList.add(new Impact(0, 0));
-              impactLists.add(newList);
+              // highest freq at the end of each impact list
+              maxFreq = Math.max(maxFreq, impacts.get(impacts.size() - 1).freq);
+              // lowest norm at the start of each impact list
+              minNorm = Math.min(minNorm, impacts.get(0).norm);
             }
 
-            List<Impact> result = getCartesianProductOfImpacts(impactLists, 0);
-
-            Collections.sort(result, new Comparator<Impact>() {
-              @Override
-              public int compare(Impact o1, Impact o2) {
-                return (int) (o1.norm - o2.norm);
-              }
-            });
-
-            // remove the dummy Impact {0, 0} added above
-            result.remove(0);
-
-            return result;
+            return Collections.singletonList(new Impact(maxFreq * mergedImpactsPerField.size(), minNorm));
           }
 
-          // merge impacts across fields by doing cartesian products recursively, and only keep competitive ones.
-          // this way of merging impacts across fields mirror the scoring logic in MultiNormsLeafSimScorer#score, where norms were summed along with freqs
-          // this operation would be expensive for many fields with long impact lists
-          //
-          // e.g.
-          // 1. field a impacts: <freq_a_1, norm_a_1> <freq_a_2, norm_a_2>
-          // 2. field b impacts: <freq_b_1, norm_b_1> <freq_b_2, norm_b_2>
-          // 3. cartesian products of above:
-          //     <freq_a_1 + freq_b_1, norm_a_1 + norm_b_1>
-          //     <freq_a_1 + freq_b_2, norm_a_1 + norm_b_2>
-          //     <freq_a_2 + freq_b_1, norm_a_2 + norm_b_1>
-          //     <freq_a_2 + freq_b_2, norm_a_2 + norm_b_2>
-          // 4. keep only the competitive ones from #3
-          // 5. after step #4, treat the result as competitive impacts for merged fields a & b, and merge it with the rest of fields' impacts
-
-          private List<Impact> getCartesianProductOfImpacts(List<List<Impact>> values, int index) {
-            if (index == values.size() - 1) {
-              return values.get(values.size() - 1);
-            }
-
-            List<Impact> firstImpactList = values.get(index);
-
-            List<Impact> cartesianProductOfRestOfImpacts = getCartesianProductOfImpacts(values, index + 1);
-
-            Map<Long, Integer> maxFreq = new HashMap<>();
-
-            for (int i = 0; i < firstImpactList.size(); i++) {
-              for (int j = 0; j < cartesianProductOfRestOfImpacts.size(); j++) {
-                Impact impactA = firstImpactList.get(i);
-                Impact impactB = cartesianProductOfRestOfImpacts.get(j);
-
-                int tempNorm = (int) Math.floor(normToLength(impactA.norm) + normToLength(impactB.norm));
-                long normSum = SmallFloat.intToByte4(tempNorm);
-
-                long freqSum = (long) impactA.freq + (long) impactB.freq;
-                int freqUpperBound = (int) Math.min(Integer.MAX_VALUE, freqSum);
-
-                if (maxFreq.containsKey(normSum) == false ||
-                          (maxFreq.containsKey(normSum) && freqUpperBound > maxFreq.get(normSum))) {
-                    maxFreq.put(normSum, freqUpperBound);
-                  }
-              }
-            }
-
-            // remove duplicate entries where freq is same, but norm larger
-//            Map<Integer, Long> reversedMaxFreq = new HashMap<>();
-//            for (Map.Entry<Long, Integer> normFreqPair : maxFreq.entrySet()) {
-//              Long norm = normFreqPair.getKey();
-//              Integer freq = normFreqPair.getValue();
-//
-//              if (reversedMaxFreq.containsKey(freq) == false ||
-//                      (reversedMaxFreq.containsKey(freq) && norm < reversedMaxFreq.get(freq))) {
-//                reversedMaxFreq.put(freq, norm);
-//              }
-//            }
-
-            return maxFreq.entrySet().stream().map(e -> new Impact(e.getValue(), e.getKey())).collect(Collectors.toList());
-          }
 
         };
       }
@@ -801,7 +732,6 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       }
     };
   }
-
 
   private static class WeightedDisiWrapper extends DisiWrapper {
     final float weight;
