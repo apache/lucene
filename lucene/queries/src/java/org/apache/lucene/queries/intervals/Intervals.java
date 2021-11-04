@@ -18,44 +18,33 @@
 package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
-import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
-import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
 
 /**
  * Constructor functions for {@link IntervalsSource} types
  *
  * <p>These sources implement minimum-interval algorithms taken from the paper <a
- * href="http://vigna.di.unimi.it/ftp/papers/EfficientAlgorithmsMinimalIntervalSemantics.pdf">
- * Efficient Optimally Lazy Algorithms for Minimal-Interval Semantics</a>
+ * href="https://vigna.di.unimi.it/ftp/papers/EfficientLazy.pdf">Efficient Optimally Lazy Algorithms
+ * for Minimal-Interval Semantics</a>
  *
- * <p>By default, sources that are sensitive to internal gaps (e.g. PHRASE and MAXGAPS) will rewrite
- * their sub-sources so that disjunctions of different lengths are pulled up to the top of the
- * interval tree. For example, PHRASE(or(PHRASE("a", "b", "c"), "b"), "c") will automatically
- * rewrite itself to OR(PHRASE("a", "b", "c", "c"), PHRASE("b", "c")) to ensure that documents
- * containing "b c" are matched. This can lead to less efficient queries, as more terms need to be
- * loaded (for example, the "c" iterator above is loaded twice), so if you care more about speed
- * than about accuracy you can use the {@link #or(boolean, IntervalsSource...)} factory method to
- * prevent rewriting.
+ * <p>By default, sources that are sensitive to internal gaps (e.g. {@code PHRASE} and {@code
+ * MAXGAPS}) will rewrite their sub-sources so that disjunctions of different lengths are pulled up
+ * to the top of the interval tree. For example, {@code PHRASE(or(PHRASE("a", "b", "c"), "b"), "c")}
+ * will automatically rewrite itself to {@code OR(PHRASE("a", "b", "c", "c"), PHRASE("b", "c"))} to
+ * ensure that documents containing {@code "b c"} are matched. This can lead to less efficient
+ * queries, as more terms need to be loaded (for example, the {@code "c"} iterator above is loaded
+ * twice), so if you care more about speed than about accuracy you can use the {@link #or(boolean,
+ * IntervalsSource...)} factory method to prevent rewriting.
  */
 public final class Intervals {
 
@@ -488,256 +477,6 @@ public final class Intervals {
             ? (CachingTokenFilter) tokenStream
             : new CachingTokenFilter(tokenStream);
 
-    TermToBytesRefAttribute termAtt = stream.getAttribute(TermToBytesRefAttribute.class);
-    PositionIncrementAttribute posIncAtt = stream.addAttribute(PositionIncrementAttribute.class);
-    PositionLengthAttribute posLenAtt = stream.addAttribute(PositionLengthAttribute.class);
-
-    if (termAtt == null) {
-      return NO_INTERVALS;
-    }
-
-    // Phase 1: read through the stream and assess the situation:
-    // counting the number of tokens/positions and marking if we have any synonyms.
-
-    int numTokens = 0;
-    boolean hasSynonyms = false;
-    boolean isGraph = false;
-
-    stream.reset();
-    while (stream.incrementToken()) {
-      numTokens++;
-      int positionIncrement = posIncAtt.getPositionIncrement();
-      if (positionIncrement == 0) {
-        hasSynonyms = true;
-      }
-      int positionLength = posLenAtt.getPositionLength();
-      if (positionLength > 1) {
-        isGraph = true;
-      }
-    }
-
-    // Phase 2: based on token count, presence of synonyms, and options
-    // formulate a single term, boolean, or phrase.
-
-    if (numTokens == 0) {
-      return NO_INTERVALS;
-    } else if (numTokens == 1) {
-      // single term
-      return analyzeTerm(stream);
-    } else if (isGraph) {
-      // graph
-      return combineSources(analyzeGraph(stream), maxGaps, ordered);
-    } else {
-      // phrase
-      if (hasSynonyms) {
-        // phrase with single-term synonyms
-        return analyzeSynonyms(stream, maxGaps, ordered);
-      } else {
-        // simple phrase
-        return combineSources(analyzeTerms(stream), maxGaps, ordered);
-      }
-    }
+    return IntervalBuilder.analyzeText(stream, maxGaps, ordered);
   }
-
-  private static IntervalsSource analyzeTerm(TokenStream ts) throws IOException {
-    TermToBytesRefAttribute bytesAtt = ts.addAttribute(TermToBytesRefAttribute.class);
-    ts.reset();
-    ts.incrementToken();
-    return Intervals.term(BytesRef.deepCopyOf(bytesAtt.getBytesRef()));
-  }
-
-  private static IntervalsSource combineSources(
-      List<IntervalsSource> sources, int maxGaps, boolean ordered) {
-    if (sources.size() == 0) {
-      return NO_INTERVALS;
-    }
-    if (sources.size() == 1) {
-      return sources.get(0);
-    }
-    IntervalsSource[] sourcesArray = sources.toArray(new IntervalsSource[0]);
-    if (maxGaps == 0 && ordered) {
-      return Intervals.phrase(sourcesArray);
-    }
-    IntervalsSource inner =
-        ordered ? Intervals.ordered(sourcesArray) : Intervals.unordered(sourcesArray);
-    if (maxGaps == -1) {
-      return inner;
-    }
-    return Intervals.maxgaps(maxGaps, inner);
-  }
-
-  private static List<IntervalsSource> analyzeTerms(TokenStream ts) throws IOException {
-    List<IntervalsSource> terms = new ArrayList<>();
-    TermToBytesRefAttribute bytesAtt = ts.addAttribute(TermToBytesRefAttribute.class);
-    PositionIncrementAttribute posAtt = ts.addAttribute(PositionIncrementAttribute.class);
-    ts.reset();
-    while (ts.incrementToken()) {
-      BytesRef term = bytesAtt.getBytesRef();
-      int precedingSpaces = posAtt.getPositionIncrement() - 1;
-      terms.add(extend(Intervals.term(BytesRef.deepCopyOf(term)), precedingSpaces));
-    }
-    ts.end();
-    return terms;
-  }
-
-  private static IntervalsSource extend(IntervalsSource source, int precedingSpaces) {
-    if (precedingSpaces == 0) {
-      return source;
-    }
-    return Intervals.extend(source, precedingSpaces, 0);
-  }
-
-  private static IntervalsSource analyzeSynonyms(TokenStream ts, int maxGaps, boolean ordered)
-      throws IOException {
-    List<IntervalsSource> terms = new ArrayList<>();
-    List<IntervalsSource> synonyms = new ArrayList<>();
-    TermToBytesRefAttribute bytesAtt = ts.addAttribute(TermToBytesRefAttribute.class);
-    PositionIncrementAttribute posAtt = ts.addAttribute(PositionIncrementAttribute.class);
-    ts.reset();
-    int spaces = 0;
-    while (ts.incrementToken()) {
-      int posInc = posAtt.getPositionIncrement();
-      if (posInc > 0) {
-        if (synonyms.size() == 1) {
-          terms.add(extend(synonyms.get(0), spaces));
-        } else if (synonyms.size() > 1) {
-          terms.add(extend(Intervals.or(synonyms.toArray(new IntervalsSource[0])), spaces));
-        }
-        synonyms.clear();
-        spaces = posInc - 1;
-      }
-      synonyms.add(Intervals.term(BytesRef.deepCopyOf(bytesAtt.getBytesRef())));
-    }
-    if (synonyms.size() == 1) {
-      terms.add(extend(synonyms.get(0), spaces));
-    } else {
-      terms.add(extend(Intervals.or(synonyms.toArray(new IntervalsSource[0])), spaces));
-    }
-    return combineSources(terms, maxGaps, ordered);
-  }
-
-  private static List<IntervalsSource> analyzeGraph(TokenStream source) throws IOException {
-    source.reset();
-    GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(source);
-
-    List<IntervalsSource> clauses = new ArrayList<>();
-    int[] articulationPoints = graph.articulationPoints();
-    int lastState = 0;
-    int maxClauseCount = IndexSearcher.getMaxClauseCount();
-    for (int i = 0; i <= articulationPoints.length; i++) {
-      int start = lastState;
-      int end = -1;
-      if (i < articulationPoints.length) {
-        end = articulationPoints[i];
-      }
-      lastState = end;
-      if (graph.hasSidePath(start)) {
-        List<IntervalsSource> paths = new ArrayList<>();
-        Iterator<TokenStream> it = graph.getFiniteStrings(start, end);
-        while (it.hasNext()) {
-          TokenStream ts = it.next();
-          IntervalsSource phrase = combineSources(analyzeTerms(ts), 0, true);
-          if (paths.size() >= maxClauseCount) {
-            throw new IndexSearcher.TooManyClauses();
-          }
-          paths.add(phrase);
-        }
-        if (paths.size() > 0) {
-          clauses.add(Intervals.or(paths.toArray(new IntervalsSource[0])));
-        }
-      } else {
-        Iterator<TokenStream> it = graph.getFiniteStrings(start, end);
-        TokenStream ts = it.next();
-        clauses.addAll(analyzeTerms(ts));
-        assert !it.hasNext();
-      }
-    }
-    return clauses;
-  }
-
-  private static final IntervalsSource NO_INTERVALS =
-      new IntervalsSource() {
-        @Override
-        public IntervalIterator intervals(String field, LeafReaderContext ctx) {
-          return new IntervalIterator() {
-            @Override
-            public int start() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public int end() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public int gaps() {
-              throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int nextInterval() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public float matchCost() {
-              return 0;
-            }
-
-            @Override
-            public int docID() {
-              return NO_MORE_DOCS;
-            }
-
-            @Override
-            public int nextDoc() {
-              return NO_MORE_DOCS;
-            }
-
-            @Override
-            public int advance(int target) {
-              return NO_MORE_DOCS;
-            }
-
-            @Override
-            public long cost() {
-              return 0;
-            }
-          };
-        }
-
-        @Override
-        public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc) {
-          return null;
-        }
-
-        @Override
-        public void visit(String field, QueryVisitor visitor) {}
-
-        @Override
-        public int minExtent() {
-          return 0;
-        }
-
-        @Override
-        public Collection<IntervalsSource> pullUpDisjunctions() {
-          return Collections.emptyList();
-        }
-
-        @Override
-        public int hashCode() {
-          return 0;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-          return other == this;
-        }
-
-        @Override
-        public String toString() {
-          return "no_match";
-        }
-      };
 }
