@@ -159,7 +159,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         continue;
       }
       float[] vector = values.vectorValue();
-      float score = vectorSimilarity.compare(vector, target);
+      float score = vectorSimilarity.convertToScore(vectorSimilarity.compare(vector, target));
       if (vectorSimilarity.reversed) {
         score = 1 / (score + 1);
       }
