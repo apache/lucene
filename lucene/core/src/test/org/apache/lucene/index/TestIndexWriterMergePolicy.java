@@ -34,8 +34,12 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.MockIndexWriterEventListener;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.mockfile.HandleLimitFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
+@HandleLimitFS.MaxOpenHandles(limit = HandleLimitFS.MaxOpenHandles.MAX_OPEN_FILES * 2)
+// Some of these tests are too intense for SimpleText
+@LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
   // Test the normal case
@@ -774,9 +778,9 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
               if (random().nextBoolean()) {
                 writer.commit();
               }
-              try (DirectoryReader open =
-                  new SoftDeletesDirectoryReaderWrapper(
-                      DirectoryReader.open(directory), "___soft_deletes")) {
+              try (DirectoryReader delegate = DirectoryReader.open(directory);
+                  DirectoryReader open =
+                      new SoftDeletesDirectoryReaderWrapper(delegate, "___soft_deletes")) {
                 assertEquals(
                     1,
                     new IndexSearcher(open)
