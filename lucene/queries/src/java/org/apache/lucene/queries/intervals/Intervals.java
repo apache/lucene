@@ -458,9 +458,9 @@ public final class Intervals {
   }
 
   /**
-   * Returns intervals that correspond to tokens from the provided {@link CachingTokenFilter}. This
-   * is a low-level counterpart to {@link #analyzedText(String, Analyzer, String, int, boolean)}.
-   * The intervals can be ordered or unordered and can have optional gaps inside.
+   * Returns intervals that correspond to tokens from the provided {@link TokenStream}. This is a
+   * low-level counterpart to {@link #analyzedText(String, Analyzer, String, int, boolean)}. The
+   * intervals can be ordered or unordered and can have optional gaps inside.
    *
    * @param tokenStream The token stream to produce intervals for. The token stream may be fully or
    *     partially consumed after returning from this method.

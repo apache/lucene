@@ -237,7 +237,7 @@ final class IntervalBuilder {
     return clauses;
   }
 
-  private static final IntervalsSource NO_INTERVALS =
+  static final IntervalsSource NO_INTERVALS =
       new IntervalsSource() {
         @Override
         public IntervalIterator intervals(String field, LeafReaderContext ctx) {
