@@ -33,9 +33,9 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * @lucene.internal
  */
-public final class MutablePointsReaderUtils {
+public final class MutablePointTreeReaderUtils {
 
-  MutablePointsReaderUtils() {}
+  MutablePointTreeReaderUtils() {}
 
   /** Sort the given {@link MutablePointTree} based on its packed value then doc ID. */
   public static void sort(BKDConfig config, int maxDoc, MutablePointTree reader, int from, int to) {

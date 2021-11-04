@@ -579,7 +579,7 @@ public class BKDWriter implements Closeable {
       String fieldName,
       MutablePointTree reader)
       throws IOException {
-    MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
+    MutablePointTreeReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
 
     final OneDimensionBKDWriter oneDimWriter =
         new OneDimensionBKDWriter(metaOut, indexOut, dataOut);
@@ -1657,7 +1657,7 @@ public class BKDWriter implements Closeable {
       }
 
       // sort by sortedDim
-      MutablePointsReaderUtils.sortByDim(
+      MutablePointTreeReaderUtils.sortByDim(
           config,
           sortedDim,
           commonPrefixLengths,
@@ -1753,7 +1753,7 @@ public class BKDWriter implements Closeable {
               maxPackedValue,
               splitDim * config.bytesPerDim);
 
-      MutablePointsReaderUtils.partition(
+      MutablePointTreeReaderUtils.partition(
           config,
           maxDoc,
           splitDim,

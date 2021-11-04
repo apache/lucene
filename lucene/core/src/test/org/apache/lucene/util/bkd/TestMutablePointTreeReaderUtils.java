@@ -25,7 +25,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
-public class TestMutablePointsReaderUtils extends LuceneTestCase {
+public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
 
   public void testSort() {
     for (int iter = 0; iter < 10; ++iter) {
@@ -45,7 +45,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     BKDConfig config = new BKDConfig(1, 1, bytesPerDim, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
     Point[] points = createRandomPoints(config, maxDoc, new int[1], isDocIdIncremental);
     DummyPointsReader reader = new DummyPointsReader(points);
-    MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, points.length);
+    MutablePointTreeReaderUtils.sort(config, maxDoc, reader, 0, points.length);
     Arrays.sort(
         points,
         new Comparator<Point>() {
@@ -91,7 +91,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     Point[] points = createRandomPoints(config, maxDoc, commonPrefixLengths, false);
     DummyPointsReader reader = new DummyPointsReader(points);
     final int sortedDim = random().nextInt(config.numIndexDims);
-    MutablePointsReaderUtils.sortByDim(
+    MutablePointTreeReaderUtils.sortByDim(
         config,
         sortedDim,
         commonPrefixLengths,
@@ -145,7 +145,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     final int splitDim = random().nextInt(config.numIndexDims);
     DummyPointsReader reader = new DummyPointsReader(points);
     final int pivot = TestUtil.nextInt(random(), 0, points.length - 1);
-    MutablePointsReaderUtils.partition(
+    MutablePointTreeReaderUtils.partition(
         config,
         maxDoc,
         splitDim,

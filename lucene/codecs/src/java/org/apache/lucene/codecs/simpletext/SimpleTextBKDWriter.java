@@ -58,7 +58,7 @@ import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDRadixSelector;
 import org.apache.lucene.util.bkd.BKDWriter;
 import org.apache.lucene.util.bkd.HeapPointWriter;
-import org.apache.lucene.util.bkd.MutablePointsReaderUtils;
+import org.apache.lucene.util.bkd.MutablePointTreeReaderUtils;
 import org.apache.lucene.util.bkd.OfflinePointWriter;
 import org.apache.lucene.util.bkd.PointReader;
 import org.apache.lucene.util.bkd.PointValue;
@@ -357,7 +357,7 @@ final class SimpleTextBKDWriter implements Closeable {
    * same writing logic as we use at merge time. */
   private long writeField1Dim(IndexOutput out, String fieldName, MutablePointTree reader)
       throws IOException {
-    MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
+    MutablePointTreeReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
 
     final OneDimensionBKDWriter oneDimWriter = new OneDimensionBKDWriter(out);
 
@@ -980,7 +980,7 @@ final class SimpleTextBKDWriter implements Closeable {
       }
 
       // sort by sortedDim
-      MutablePointsReaderUtils.sortByDim(
+      MutablePointTreeReaderUtils.sortByDim(
           config,
           sortedDim,
           commonPrefixLengths,
@@ -1033,7 +1033,7 @@ final class SimpleTextBKDWriter implements Closeable {
           break;
         }
       }
-      MutablePointsReaderUtils.partition(
+      MutablePointTreeReaderUtils.partition(
           config,
           maxDoc,
           splitDim,
