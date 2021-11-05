@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -425,21 +424,23 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     public Scorer scorer(LeafReaderContext context) throws IOException {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
-      Map<String, List<ImpactsEnum>> fieldImpacts = new HashMap<>();
+      Map<String, List<ImpactsEnum>> fieldImpactsEnum = new HashMap<>();
+      Map<String, List<Impacts>> fieldImpacts = new HashMap<>();
 
       for (int i = 0; i < fieldTerms.length; i++) {
         TermState state = termStates[i].get(context);
         if (state != null) {
           String fieldName = fieldTerms[i].field();
           fields.add(fieldAndWeights.get(fieldName));
-          fieldImpacts.putIfAbsent(fieldName, new ArrayList<>());
+          fieldImpactsEnum.putIfAbsent(fieldName, new ArrayList<>());
 
           TermsEnum termsEnum = context.reader().terms(fieldName).iterator();
           termsEnum.seekExact(fieldTerms[i].bytes(), state);
+
           if (scoreMode == ScoreMode.TOP_SCORES) {
             ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
             iterators.add(impactsEnum);
-            fieldImpacts.get(fieldName).add(impactsEnum);
+            fieldImpactsEnum.get(fieldName).add(impactsEnum);
           } else {
             PostingsEnum postingsEnum = termsEnum.postings(null, PostingsEnum.FREQS);
             iterators.add(postingsEnum);
@@ -477,7 +478,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       ImpactsDISI impactsDisi = null;
 
       if (scoreMode == ScoreMode.TOP_SCORES) {
-        ImpactsSource impactsSource = mergeImpacts(fieldImpacts, fieldWeights);
+        ImpactsSource impactsSource = mergeImpacts(fieldImpactsEnum, fieldImpacts, fieldWeights);
         iterator = impactsDisi = new ImpactsDISI(iterator, impactsSource, simWeight);
       }
 
@@ -491,7 +492,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   }
 
   /** Merge impacts for combined field. */
-  static ImpactsSource mergeImpacts(Map<String, List<ImpactsEnum>> fieldsWithImpactsEnums, Map<String, Float> fieldWeights) {
+  static ImpactsSource mergeImpacts(Map<String, List<ImpactsEnum>> fieldsWithImpactsEnums, Map<String, List<Impacts>> fieldsWithImpacts, Map<String, Float> fieldWeights) {
     return new ImpactsSource() {
 
       class SubIterator {
@@ -514,15 +515,12 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         }
       }
 
-      Map<String, List<Impacts>> fieldsWithImpacts;
 
       @Override
       public Impacts getImpacts() throws IOException {
-        fieldsWithImpacts = new HashMap<>();
-
         // Use the impacts that have the lower next boundary (doc id in skip entry) as a lead for each field
         // They collectively will decide on the number of levels and the block boundaries.
-        Map<String, Impacts> leadingImpactsPerField = new HashMap<>(fieldsWithImpactsEnums.keySet().size());
+        Map<String, Impacts> leadingImpactsPerField = new HashMap<>(fieldsWithImpactsEnums.size());
 
         for (Map.Entry<String, List<ImpactsEnum>> fieldImpacts : fieldsWithImpactsEnums.entrySet()) {
           String field = fieldImpacts.getKey();
@@ -549,13 +547,27 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           @Override
           public int numLevels() {
             // max of levels across fields' impactEnums
-            return leadingImpactsPerField.values().stream().map(Impacts::numLevels).max(Integer::compareTo).get();
+            int result = 0;
+
+            for (Impacts impacts : leadingImpactsPerField.values()) {
+                result = Math.max(result, impacts.numLevels());
+            }
+
+            return result;
           }
 
           @Override
           public int getDocIdUpTo(int level) {
             // min of docIdUpTo across fields' impactEnums
-            return leadingImpactsPerField.values().stream().filter(i -> i.numLevels() > level).map(i -> i.getDocIdUpTo(level)).min(Integer::compareTo).get();
+            int result = Integer.MAX_VALUE;
+
+            for (Impacts impacts : leadingImpactsPerField.values()) {
+              if (impacts.numLevels() > level) {
+                result = Math.min(result, impacts.getDocIdUpTo(level));
+              }
+            }
+
+            return result;
           }
 
           @Override
@@ -567,7 +579,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           }
 
           private Map<String, List<Impact>> mergeImpactsPerField(int docIdUpTo) {
-            final Map<String, List<Impact>> result = new HashMap<>();
+            final Map<String, List<Impact>> result = new HashMap<>(fieldsWithImpactsEnums.size());
 
             for (Map.Entry<String, List<ImpactsEnum>> impactsPerField : fieldsWithImpactsEnums.entrySet()) {
               String field = impactsPerField.getKey();
@@ -593,7 +605,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
           // Merge impacts from same field by summing freqs with the same norms - the same logic used for SynonymQuery
           private List<Impact> doMergeImpactsPerField(String field, List<ImpactsEnum> impactsEnums, List<Impacts> impacts, int docIdUpTo) {
-            List<List<Impact>> toMerge = new ArrayList<>();
+            List<List<Impact>> toMerge = new ArrayList<>(impactsEnums.size());
 
             for (int i = 0; i < impactsEnums.size(); ++i) {
               if (impactsEnums.get(i).docID() <= docIdUpTo) {
@@ -603,20 +615,19 @@ public final class CombinedFieldQuery extends Query implements Accountable {
                   // return impacts that trigger the maximum score
                   return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
                 }
-                final List<Impact> impactList;
                 float weight = fieldWeights.get(field);
                 if (weight != 1f) {
-                  impactList =
-                          impacts.get(i).getImpacts(impactsLevel).stream()
-                                  .map(
-                                          impact ->
-                                                  new Impact((int) Math.ceil(impact.freq * weight),
-                                                          SmallFloat.intToByte4((int) Math.floor(normToLength(impact.norm) * weight))))
-                                  .collect(Collectors.toList());
+                  final List<Impact> originalImpactList = impacts.get(i).getImpacts(impactsLevel);
+                  final List<Impact> impactList = new ArrayList<>(originalImpactList.size());
+                  for (Impact impact : originalImpactList) {
+                    impactList.add(new Impact((int) Math.ceil(impact.freq * weight),
+                            SmallFloat.intToByte4((int) Math.floor(normToLength(impact.norm) * weight))));
+
+                  }
+                  toMerge.add(impactList);
                 } else {
-                  impactList = impacts.get(i).getImpacts(impactsLevel);
+                  toMerge.add(impacts.get(i).getImpacts(impactsLevel));
                 }
-                toMerge.add(impactList);
               }
             }
 
@@ -709,7 +720,14 @@ public final class CombinedFieldQuery extends Query implements Accountable {
               minNorm = Math.min(minNorm, impacts.get(0).norm);
             }
 
-            return Collections.singletonList(new Impact(maxFreq * mergedImpactsPerField.size(), minNorm));
+            int amplifiedMaxFreq = maxFreq * mergedImpactsPerField.size();
+
+            // overflow
+            if (amplifiedMaxFreq < 0) {
+              amplifiedMaxFreq = Integer.MAX_VALUE;
+            }
+
+            return Collections.singletonList(new Impact(amplifiedMaxFreq, minNorm));
           }
 
 
