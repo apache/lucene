@@ -20,7 +20,9 @@ package org.apache.lucene.util;
  * {@link Sorter} implementation based on a variant of the quicksort algorithm called <a
  * href="http://en.wikipedia.org/wiki/Introsort">introsort</a>: when the recursion level exceeds the
  * log of the length of the array to sort, it falls back to heapsort. This prevents quicksort from
- * running into its worst-case quadratic runtime. Small ranges are sorted with insertion sort.
+ * running into its worst-case quadratic runtime.
+ * Selects the pivot using Tukey's ninther median-of-medians, and partitions using Bentley-McIlroy
+ * 3-way partitioning. Small ranges are sorted with insertion sort.
  *
  * <p>This sort algorithm is fast on most data shapes, especially with low cardinality. If the data
  * to sort is known to be strictly ascending or descending, prefer {@link TimSorter}.
@@ -30,7 +32,7 @@ package org.apache.lucene.util;
 public abstract class IntroSorter extends Sorter {
 
   /** Below this size threshold, the partition selection is simplified to a single median. */
-  private static final int SINGLE_MEDIAN_THRESHOLD = 40;
+  static final int SINGLE_MEDIAN_THRESHOLD = 40;
 
   /** Create a new {@link IntroSorter}. */
   public IntroSorter() {}
@@ -38,7 +40,7 @@ public abstract class IntroSorter extends Sorter {
   @Override
   public final void sort(int from, int to) {
     checkRange(from, to);
-    sort(from, to, 2 * MathUtil.log(to - from, 2));
+    sort(from, to, 2 * MathUtil.log2(to - from));
   }
 
   /**
@@ -49,13 +51,12 @@ public abstract class IntroSorter extends Sorter {
    * algorithm (Engineering a Sort Function, Bentley-McIlroy).
    */
   void sort(int from, int to, int maxDepth) {
-    int size;
-
     // Sort small ranges with insertion sort.
+    int size;
     while ((size = to - from) > INSERTION_SORT_THRESHOLD) {
 
       if (--maxDepth < 0) {
-        // Max recursion depth reached: fallback to heap sort.
+        // Max recursion depth exceeded: fallback to heap sort.
         heapSort(from, to);
         return;
       }
@@ -67,11 +68,11 @@ public abstract class IntroSorter extends Sorter {
       if (size <= SINGLE_MEDIAN_THRESHOLD) {
         // Select the pivot with a single median around the middle element.
         // Do not take the median between [from, mid, last] because it hurts performance
-        // if the order is descending.
+        // if the order is descending in conjunction with the 3-way partitioning.
         int range = size >> 2;
         pivot = median(mid - range, mid, mid + range);
       } else {
-        // Select the pivot with the median of medians.
+        // Select the pivot with the Tukey's ninther median of medians.
         int range = size >> 3;
         int doubleRange = range << 1;
         int medianFirst = median(from, from + range, from + doubleRange);

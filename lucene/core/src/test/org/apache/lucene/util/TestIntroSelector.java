@@ -22,17 +22,11 @@ public class TestIntroSelector extends LuceneTestCase {
 
   public void testSelect() {
     for (int iter = 0; iter < 100; ++iter) {
-      doTestSelect(false);
+      doTestSelect();
     }
   }
 
-  public void testSlowSelect() {
-    for (int iter = 0; iter < 100; ++iter) {
-      doTestSelect(true);
-    }
-  }
-
-  private void doTestSelect(boolean slow) {
+  private void doTestSelect() {
     final int from = random().nextInt(5);
     final int to = from + TestUtil.nextInt(random(), 1, 10000);
     final int max = random().nextBoolean() ? random().nextInt(100) : random().nextInt(100000);
@@ -66,20 +60,16 @@ public class TestIntroSelector extends LuceneTestCase {
             return pivot.compareTo(actual[j]);
           }
         };
-    if (slow) {
-      selector.slowSelect(from, to, k);
-    } else {
-      selector.select(from, to, k);
-    }
+    selector.select(from, to, k);
 
     assertEquals(expected[k], actual[k]);
     for (int i = 0; i < actual.length; ++i) {
       if (i < from || i >= to) {
         assertSame(arr[i], actual[i]);
       } else if (i <= k) {
-        assertTrue(actual[i].intValue() <= actual[k].intValue());
+        assertTrue(actual[i] <= actual[k]);
       } else {
-        assertTrue(actual[i].intValue() >= actual[k].intValue());
+        assertTrue(actual[i] >= actual[k]);
       }
     }
   }
