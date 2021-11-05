@@ -32,10 +32,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.en.PorterStemFilter;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.document.Field;
@@ -261,6 +264,57 @@ public class TestMatchHighlighter extends LuceneTestCase {
               assertHighlights(
                   toDocList(highlighter.highlight(searcher.search(query, 10, sortOrder), query)),
                   "0. text1: Where the >moon shine< falls, >firewater< flows.");
+            });
+  }
+
+  @Test
+  public void testAnalyzedTextIntervals() throws IOException {
+    SynonymMap synonymMap =
+        buildSynonymMap(
+            new String[][] {
+              {"moon\u0000shine", "firewater"},
+              {"firewater", "moon\u0000shine"},
+            });
+
+    Analyzer analyzer =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new StandardTokenizer();
+            TokenStream ts = tokenizer;
+            ts = new LowerCaseFilter(ts);
+            ts = new SynonymGraphFilter(ts, synonymMap, true);
+            ts = new PorterStemFilter(ts);
+            return new TokenStreamComponents(tokenizer, ts);
+          }
+        };
+
+    new IndexBuilder(this::toField)
+        .doc(FLD_TEXT1, "Where the moon shine falls, firewater flows.")
+        .build(
+            analyzer,
+            reader -> {
+              IndexSearcher searcher = new IndexSearcher(reader);
+              Sort sortOrder = Sort.INDEXORDER; // So that results are consistently ordered.
+
+              MatchHighlighter highlighter =
+                  new MatchHighlighter(searcher, analyzer)
+                      .appendFieldHighlighter(
+                          FieldValueHighlighters.highlighted(
+                              80 * 3, 1, new PassageFormatter("...", ">", "<"), FLD_TEXT1::equals))
+                      .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
+
+              {
+                // [moon shine, firewater] are synonyms, tokens are lowercased. Porter stemming on.
+                Query query =
+                    new IntervalQuery(
+                        FLD_TEXT1,
+                        Intervals.analyzedText("Firewater Fall", analyzer, FLD_TEXT1, 0, true));
+
+                assertHighlights(
+                    toDocList(highlighter.highlight(searcher.search(query, 10, sortOrder), query)),
+                    "0. text1: Where the >moon shine falls<, firewater flows.");
+              }
             });
   }
 
