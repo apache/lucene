@@ -37,7 +37,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* LUCENE-10220: Add an utility method to get IntervalSource from analyzed text (or token stream).
+  (Uwe Schindler, Dawid Weiss, Alan Woodward)
 
 Improvements
 ---------------------
