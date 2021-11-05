@@ -17,13 +17,11 @@
 package org.apache.lucene.sandbox.search;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -173,47 +171,49 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
   }
 
   public void testSameScoreAndCollectionBetweenCompleteAndTopScores() throws IOException {
-    Path path = Paths.get("/Users/xichen/IdeaProjects/benchmarks/indices/wikimedium10m.lucene_baseline.facets.taxonomy:Date.taxonomy:Month.taxonomy:DayOfYear.sortedset:Month.sortedset:DayOfYear.Lucene90.Lucene90.nd10M/index");
+    Path path =
+        Paths.get(
+            "/Users/xichen/IdeaProjects/benchmarks/indices/wikimedium10m.lucene_baseline.facets.taxonomy:Date.taxonomy:Month.taxonomy:DayOfYear.sortedset:Month.sortedset:DayOfYear.Lucene90.Lucene90.nd10M/index");
 
     Directory index = FSDirectory.open(path);
     IndexReader reader = DirectoryReader.open(index);
     IndexSearcher searcher = new IndexSearcher(reader);
 
     // HighHigh: but publisher # freq=1456553 freq=1289029
-//    CombinedFieldQuery query =
-//            new CombinedFieldQuery.Builder()
-//                    .addField("title", (float) 4.0)
-//                    .addField("body", (float) 2.0)
-//                    .addTerm(new BytesRef("but"))
-//                    .addTerm(new BytesRef("publisher"))
-//                    .build();
+    //    CombinedFieldQuery query =
+    //            new CombinedFieldQuery.Builder()
+    //                    .addField("title", (float) 4.0)
+    //                    .addField("body", (float) 2.0)
+    //                    .addTerm(new BytesRef("but"))
+    //                    .addTerm(new BytesRef("publisher"))
+    //                    .build();
 
     // HighMed: from office # freq=3224339 freq=225338
-//    CombinedFieldQuery query =
-//            new CombinedFieldQuery.Builder()
-//                    .addField("title", (float) 4.0)
-//                    .addField("body", (float) 2.0)
-//                    .addTerm(new BytesRef("from"))
-//                    .addTerm(new BytesRef("office"))
-//                    .build();
+    //    CombinedFieldQuery query =
+    //            new CombinedFieldQuery.Builder()
+    //                    .addField("title", (float) 4.0)
+    //                    .addField("body", (float) 2.0)
+    //                    .addTerm(new BytesRef("from"))
+    //                    .addTerm(new BytesRef("office"))
+    //                    .build();
 
     // HighLow: with fung # freq=3709421 freq=1344
-//    CombinedFieldQuery query =
-//            new CombinedFieldQuery.Builder()
-//                    .addField("title", (float) 4.0)
-//                    .addField("body", (float) 2.0)
-//                    .addTerm(new BytesRef("with"))
-//                    .addTerm(new BytesRef("fung"))
-//                    .build();
+    //    CombinedFieldQuery query =
+    //            new CombinedFieldQuery.Builder()
+    //                    .addField("title", (float) 4.0)
+    //                    .addField("body", (float) 2.0)
+    //                    .addTerm(new BytesRef("with"))
+    //                    .addTerm(new BytesRef("fung"))
+    //                    .build();
 
     // HighLow: date insult # freq=2020626 freq=4424
     CombinedFieldQuery query =
-            new CombinedFieldQuery.Builder()
-                    .addField("title", (float) 4.0)
-                    .addField("body", (float) 2.0)
-                    .addTerm(new BytesRef("date"))
-                    .addTerm(new BytesRef("insult"))
-                    .build();
+        new CombinedFieldQuery.Builder()
+            .addField("title", (float) 4.0)
+            .addField("body", (float) 2.0)
+            .addTerm(new BytesRef("date"))
+            .addTerm(new BytesRef("insult"))
+            .build();
 
     long start;
     long end;
@@ -222,26 +222,32 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     TopScoreDocCollector topScoresCollector = null;
     start = System.nanoTime();
-    for (int i = 0 ; i < runCount ; i++) {
+    for (int i = 0; i < runCount; i++) {
       topScoresCollector = TopScoreDocCollector.create(100, null, 100); // TOP_SCORES
       searcher.search(query, topScoresCollector);
     }
     end = System.nanoTime();
     duration = (end - start) / runCount;
-    System.out.println("// top scores time usage\t" + TimeUnit.MILLISECONDS.convert(duration, TimeUnit.NANOSECONDS) + " milliseconds");
-
+    System.out.println(
+        "// top scores time usage\t"
+            + TimeUnit.MILLISECONDS.convert(duration, TimeUnit.NANOSECONDS)
+            + " milliseconds");
 
     TopScoreDocCollector completeCollector = null;
     start = System.nanoTime();
-    for (int i = 0 ; i < runCount ; i++) {
+    for (int i = 0; i < runCount; i++) {
       completeCollector = TopScoreDocCollector.create(100, null, Integer.MAX_VALUE); // COMPLETE
       searcher.search(query, completeCollector);
     }
     end = System.nanoTime();
     duration = (end - start) / runCount;
-    System.out.println("// complete time usage\t" + TimeUnit.MILLISECONDS.convert(duration, TimeUnit.NANOSECONDS) + " milliseconds");
+    System.out.println(
+        "// complete time usage\t"
+            + TimeUnit.MILLISECONDS.convert(duration, TimeUnit.NANOSECONDS)
+            + " milliseconds");
 
-    CheckHits.checkEqual(query, completeCollector.topDocs().scoreDocs, topScoresCollector.topDocs().scoreDocs);
+    CheckHits.checkEqual(
+        query, completeCollector.topDocs().scoreDocs, topScoresCollector.topDocs().scoreDocs);
 
     reader.close();
   }
