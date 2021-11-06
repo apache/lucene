@@ -734,12 +734,16 @@ public final class CombinedFieldQuery extends Query implements Accountable {
               minNorm = Math.min(minNorm, impacts.get(0).norm);
             }
 
-            int amplifiedMaxFreq = maxFreq * mergedImpactsPerField.size();
-
-            // overflow
-            if (amplifiedMaxFreq < 0) {
-              amplifiedMaxFreq = Integer.MAX_VALUE;
+            int amplifiedMaxFreq = 0;
+            if (maxFreq == Integer.MAX_VALUE) {
+              amplifiedMaxFreq = maxFreq;
+            } else {
+              amplifiedMaxFreq =
+                  (int) Math.min((long) maxFreq * mergedImpactsPerField.size(), Integer.MAX_VALUE);
             }
+
+            // no overflow should occur
+            assert amplifiedMaxFreq > 0;
 
             return Collections.singletonList(new Impact(amplifiedMaxFreq, minNorm));
           }
