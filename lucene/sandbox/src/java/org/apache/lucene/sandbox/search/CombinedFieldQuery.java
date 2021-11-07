@@ -423,8 +423,8 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     public Scorer scorer(LeafReaderContext context) throws IOException {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
-      Map<String, List<ImpactsEnum>> fieldImpactsEnum = new HashMap<>();
-      Map<String, List<Impacts>> fieldImpacts = new HashMap<>();
+      Map<String, List<ImpactsEnum>> fieldImpactsEnum = new HashMap<>(fieldAndWeights.size());
+      Map<String, List<Impacts>> fieldImpacts = new HashMap<>(fieldAndWeights.size());
 
       for (int i = 0; i < fieldTerms.length; i++) {
         TermState state = termStates[i].get(context);
@@ -458,7 +458,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
       // we use termscorers + disjunction as an impl detail
       DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
-      Map<String, Float> fieldWeights = new HashMap<>();
+      Map<String, Float> fieldWeights = new HashMap<>(fieldImpactsEnum.size());
       for (int i = 0; i < iterators.size(); i++) {
         FieldAndWeight fieldAndWeight = fields.get(i);
         if (fieldWeights.containsKey(fieldAndWeight.field)) {
@@ -721,31 +721,22 @@ public final class CombinedFieldQuery extends Query implements Accountable {
               return mergedImpactsPerField.values().iterator().next();
             }
 
-            // upper-bound by creating an impact that should be most competitive: <maxFreq *
-            // numOfFields, minNorm>
-            // this is done to avoid the potential combinatorial explosion from accurate computation
+            // upper-bound by creating an impact that should be most competitive: <maxFreqSum,
+            // minNorm>
+            // this is done to avoid the potential costly combinatorial explosion from accurate
+            // computation
             // on merged impacts across fields
-            int maxFreq = 0;
+            long maxFreqSum = 0;
             long minNorm = Long.MIN_VALUE;
             for (List<Impact> impacts : mergedImpactsPerField.values()) {
               // highest freq at the end of each impact list
-              maxFreq = Math.max(maxFreq, impacts.get(impacts.size() - 1).freq);
+              maxFreqSum += impacts.get(impacts.size() - 1).freq;
               // lowest norm at the start of each impact list
               minNorm = Math.min(minNorm, impacts.get(0).norm);
             }
 
-            int amplifiedMaxFreq = 0;
-            if (maxFreq == Integer.MAX_VALUE) {
-              amplifiedMaxFreq = maxFreq;
-            } else {
-              amplifiedMaxFreq =
-                  (int) Math.min((long) maxFreq * mergedImpactsPerField.size(), Integer.MAX_VALUE);
-            }
-
-            // no overflow should occur
-            assert amplifiedMaxFreq > 0;
-
-            return Collections.singletonList(new Impact(amplifiedMaxFreq, minNorm));
+            return Collections.singletonList(
+                new Impact((int) Math.min(maxFreqSum, Integer.MAX_VALUE), minNorm));
           }
         };
       }
