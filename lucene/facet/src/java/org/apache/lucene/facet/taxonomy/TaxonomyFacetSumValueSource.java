@@ -48,16 +48,28 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       FacetsCollector fc,
       DoubleValuesSource valueSource)
       throws IOException {
-    super(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, taxoReader, config);
+    this(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, taxoReader, config, fc, valueSource);
+  }
+
+  /**
+   * Aggreggates double facet values from the provided {@link DoubleValuesSource}, pulling ordinals
+   * from the specified indexed facet field.
+   */
+  public TaxonomyFacetSumValueSource(
+      String indexField,
+      TaxonomyReader taxoReader,
+      FacetsConfig config,
+      FacetsCollector fc,
+      DoubleValuesSource valueSource)
+      throws IOException {
+    super(indexField, taxoReader, config);
 
     // Maintain backwards compatibility with the older binary format using an OrdinalsReader (which
     // can support both formats currently):
     // TODO: Remove this logic and set ordinalsReader to null in Lucene 11:
     MatchingDocs first = fc.getMatchingDocs().isEmpty() ? null : fc.getMatchingDocs().get(0);
-    if (first != null
-        && FacetUtils.usesOlderBinaryOrdinals(
-            first.context.reader(), FacetsConfig.DEFAULT_INDEX_FIELD_NAME)) {
-      this.ordinalsReader = new DocValuesOrdinalsReader(FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
+    if (first != null && FacetUtils.usesOlderBinaryOrdinals(first.context.reader(), indexField)) {
+      this.ordinalsReader = new DocValuesOrdinalsReader(indexField);
     } else {
       this.ordinalsReader = null;
     }

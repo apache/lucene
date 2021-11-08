@@ -416,7 +416,8 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
           new TaxonomyFacetSumValueSource(
               new DocValuesOrdinalsReader("$b"), taxoReader, config, fc, DoubleValuesSource.SCORES);
     } else {
-      facets2 = new TaxonomyFacetSumValueSource(taxoReader, config, fc, DoubleValuesSource.SCORES);
+      facets2 =
+          new TaxonomyFacetSumValueSource("$b", taxoReader, config, fc, DoubleValuesSource.SCORES);
     }
 
     assertEquals(r.maxDoc(), facets1.getTopChildren(10, "a").value.intValue());
