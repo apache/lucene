@@ -15,6 +15,13 @@
  * limitations under the License.
  */
 
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
 rootProject.name = "lucene-root"
 
 includeBuild("dev-tools/missing-doclet")
@@ -53,4 +60,4 @@ include "lucene:spatial3d"
 include "lucene:suggest"
 include "lucene:test-framework"
 include "lucene:documentation"
-include "lucene:packaging"
+include "lucene:distribution"

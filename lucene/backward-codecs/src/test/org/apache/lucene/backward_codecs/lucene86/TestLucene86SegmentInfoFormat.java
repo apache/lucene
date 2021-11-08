@@ -27,7 +27,7 @@ public class TestLucene86SegmentInfoFormat extends BaseSegmentInfoFormatTestCase
 
   @Override
   protected Version[] getVersions() {
-    return new Version[] {Version.LUCENE_8_8_1};
+    return new Version[] {Version.fromBits(8, 8, 1)};
   }
 
   @Override

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
@@ -572,7 +573,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
   public void testCallingBulkPathReturnsCorrectResult() throws Exception {
     Directory src = newDirectory();
     DirectoryTaxonomyWriter w = new DirectoryTaxonomyWriter(src);
-    String randomArray[] = new String[random().nextInt(1000)];
+    String randomArray[] = new String[RandomizedTest.randomIntBetween(1, 1000)];
     // adding a smaller bound on ints ensures that we will have some duplicate ordinals in random
     // test cases
     Arrays.setAll(randomArray, i -> Integer.toString(random().nextInt(500)));

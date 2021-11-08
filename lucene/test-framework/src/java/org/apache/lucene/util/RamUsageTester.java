@@ -82,23 +82,23 @@ public final class RamUsageTester {
    * traversals so it does allocate memory (it isn't side-effect free). After the method exits, this
    * memory should be GCed.
    */
-  public static long sizeOf(Object obj, Accumulator accumulator) {
+  public static long ramUsed(Object obj, Accumulator accumulator) {
     return measureObjectSize(obj, accumulator);
   }
 
   /** Same as calling <code>sizeOf(obj, DEFAULT_FILTER)</code>. */
-  public static long sizeOf(Object obj) {
-    return sizeOf(obj, new Accumulator());
+  public static long ramUsed(Object obj) {
+    return ramUsed(obj, new Accumulator());
   }
 
   /**
    * Return a human-readable size of a given object.
    *
-   * @see #sizeOf(Object)
+   * @see #ramUsed(Object)
    * @see RamUsageEstimator#humanReadableUnits(long)
    */
   public static String humanSizeOf(Object object) {
-    return RamUsageEstimator.humanReadableUnits(sizeOf(object));
+    return RamUsageEstimator.humanReadableUnits(ramUsed(object));
   }
 
   /*

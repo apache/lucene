@@ -91,7 +91,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   private final Directory dir;
   private final IndexWriter indexWriter;
-  private final boolean useOlderStoredFieldIndex;
   private final boolean useOlderBinaryOrdinals;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
@@ -160,15 +159,11 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     openMode = config.getOpenMode();
     if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
-      // no commit exists so we can safely use the new BinaryDocValues field
-      useOlderStoredFieldIndex = false;
       useOlderBinaryOrdinals = false;
     } else {
       String epochStr = null;
 
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
-      /* a previous commit exists, so check the version of the last commit */
-      useOlderStoredFieldIndex = infos.getIndexCreatedVersionMajor() <= 8;
       useOlderBinaryOrdinals = infos.getIndexCreatedVersionMajor() <= 9;
 
       Map<String, String> commitData = infos.getUserData();
@@ -187,11 +182,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
     ft.setOmitNorms(true);
     parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
-    if (useOlderStoredFieldIndex) {
-      fullPathField = new StringField(Consts.FULL, "", Field.Store.YES);
-    } else {
-      fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
-    }
+    fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
 
     nextID = indexWriter.getDocStats().maxDoc;
 
@@ -485,10 +476,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
 
-    if (useOlderStoredFieldIndex == false) {
-      /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
-      d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
-    }
+    /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
+    d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
 
     d.add(fullPathField);
 

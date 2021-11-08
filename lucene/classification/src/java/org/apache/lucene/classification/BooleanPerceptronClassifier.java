@@ -216,7 +216,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
 
   @Override
   public ClassificationResult<Boolean> assignClass(String text) throws IOException {
-    Long output = 0L;
+    long output = 0L;
     try (TokenStream tokenStream = analyzer.tokenStream(textFieldName, text)) {
       CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
       tokenStream.reset();
@@ -230,17 +230,17 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       tokenStream.end();
     }
 
-    double score = 1 - Math.exp(-1 * Math.abs(bias - output.doubleValue()) / bias);
+    double score = 1 - Math.exp(-1 * Math.abs(bias - (double) output) / bias);
     return new ClassificationResult<>(output >= bias, score);
   }
 
   @Override
-  public List<ClassificationResult<Boolean>> getClasses(String text) throws IOException {
+  public List<ClassificationResult<Boolean>> getClasses(String text) {
     return null;
   }
 
   @Override
-  public List<ClassificationResult<Boolean>> getClasses(String text, int max) throws IOException {
+  public List<ClassificationResult<Boolean>> getClasses(String text, int max) {
     return null;
   }
 }

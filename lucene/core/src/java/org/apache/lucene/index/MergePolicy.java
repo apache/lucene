@@ -269,7 +269,7 @@ public abstract class MergePolicy {
 
     /**
      * Expert: Sets the {@link SegmentCommitInfo} of the merged segment. Allows sub-classes to e.g.
-     * set diagnostics properties.
+     * {@link SegmentInfo#addDiagnostics(Map) add diagnostic} properties.
      */
     public void setMergeInfo(SegmentCommitInfo info) {
       this.info = info;
@@ -447,6 +447,7 @@ public abstract class MergePolicy {
       merges.add(merge);
     }
 
+    // TODO: deprecate me (dir is never used!  and is sometimes difficult to provide!)
     /** Returns a description of the merges in this specification. */
     public String segString(Directory dir) {
       StringBuilder b = new StringBuilder();
@@ -454,6 +455,17 @@ public abstract class MergePolicy {
       final int count = merges.size();
       for (int i = 0; i < count; i++) {
         b.append("  ").append(1 + i).append(": ").append(merges.get(i).segString());
+      }
+      return b.toString();
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder b = new StringBuilder();
+      b.append("MergeSpec:");
+      final int count = merges.size();
+      for (int i = 0; i < count; i++) {
+        b.append("\n  ").append(1 + i).append(": ").append(merges.get(i).segString());
       }
       return b.toString();
     }
@@ -562,8 +574,7 @@ public abstract class MergePolicy {
    * one thread at a time will call this method.
    *
    * @param segmentInfos the total set of segments in the index
-   * @param maxSegmentCount requested maximum number of segments in the index (currently this is
-   *     always 1)
+   * @param maxSegmentCount requested maximum number of segments in the index
    * @param segmentsToMerge contains the specific SegmentInfo instances that must be merged away.
    *     This may be a subset of all SegmentInfos. If the value is True for a given SegmentInfo,
    *     that means this segment was an original segment present in the to-be-merged index; else, it

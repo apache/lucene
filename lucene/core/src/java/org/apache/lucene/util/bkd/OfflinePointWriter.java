@@ -64,11 +64,8 @@ public final class OfflinePointWriter implements PointWriter {
             + "]";
 
     out.writeBytes(packedValue, 0, packedValue.length);
-    // write bytes for comparing in lexicographically order
-    out.writeByte((byte) (docID >> 24));
-    out.writeByte((byte) (docID >> 16));
-    out.writeByte((byte) (docID >> 8));
-    out.writeByte((byte) docID);
+    // write bytes in big-endian order for comparing in lexicographically order
+    out.writeInt(Integer.reverseBytes(docID));
     count++;
     assert expectedCount == 0 || count <= expectedCount
         : "expectedCount=" + expectedCount + " vs count=" + count;

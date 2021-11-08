@@ -71,6 +71,33 @@ public class TestVectorUtil extends LuceneTestCase {
     assertEquals(4 * l2(v), VectorUtil.squareDistance(u, v), DELTA);
   }
 
+  public void testBasicCosine() {
+    assertEquals(
+        0.11952f, VectorUtil.cosine(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), DELTA);
+  }
+
+  public void testSelfCosine() {
+    // the dot product of a vector with itself is always equal to 1
+    float[] v = randomVector();
+    assertEquals(1.0f, VectorUtil.cosine(v, v), DELTA);
+  }
+
+  public void testOrthogonalCosine() {
+    // the cosine of two perpendicular vectors is 0
+    float[] v = new float[2];
+    v[0] = random().nextInt(100);
+    v[1] = random().nextInt(100);
+    float[] u = new float[2];
+    u[0] = v[1];
+    u[1] = -v[0];
+    assertEquals(0, VectorUtil.cosine(u, v), DELTA);
+  }
+
+  public void testCosineThrowsForDimensionMismatch() {
+    float[] v = {1, 0, 0}, u = {0, 1};
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.cosine(u, v));
+  }
+
   public void testNormalize() {
     float[] v = randomVector();
     v[random().nextInt(v.length)] = 1; // ensure vector is not all zeroes

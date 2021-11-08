@@ -36,7 +36,8 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
     /** Mapped doc ID */
     public int mappedDocID;
 
-    final MergeState.DocMap docMap;
+    /** Map from old to new doc IDs */
+    public final MergeState.DocMap docMap;
 
     /** Sole constructor */
     protected Sub(MergeState.DocMap docMap) {
