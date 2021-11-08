@@ -481,8 +481,11 @@ class RenderJavadocTask extends DefaultTask {
 
     // append some special table css, prettify css
     ant.concat(destfile: "${outputDir}/stylesheet.css", append: "true", fixlastline: "true", encoding: "UTF-8") {
-      filelist(dir: taskResources, files: "table_padding.css")
-      filelist(dir: project.file("${taskResources}/prettify"), files: "prettify.css")
+      filelist(dir: taskResources, files: [
+          "table_padding.css",
+          "custom_styles.css",
+          "prettify/prettify.css"
+      ])
     }
 
     // append prettify to scripts
