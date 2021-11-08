@@ -79,14 +79,14 @@ public class TestTopFieldCollector extends LuceneTestCase {
   private TopDocs doConcurrentSearchWithThreshold(
       int numResults, int threshold, Query q, Sort sort, IndexReader indexReader)
       throws IOException {
-      IndexSearcher searcher = newSearcher(indexReader, true, true, true);
+    IndexSearcher searcher = newSearcher(indexReader, true, true, true);
 
-      CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
-          TopFieldCollector.createSharedManager(sort, numResults, null, threshold);
+    CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
+        TopFieldCollector.createSharedManager(sort, numResults, null, threshold);
 
-      TopDocs tdc = searcher.search(q, collectorManager);
+    TopDocs tdc = searcher.search(q, collectorManager);
 
-      return tdc;
+    return tdc;
   }
 
   public void testSortWithoutFillFields() throws Exception {
@@ -132,7 +132,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     IndexSearcher concurrentSearcher = newSearcher(ir, true, true, true);
 
     // Two Sort criteria to instantiate the multi/single comparators.
-    Sort[] sort = new Sort[]{new Sort(SortField.FIELD_DOC), new Sort()};
+    Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
       Query q = new MatchAllDocsQuery();
       TopDocsCollector<Entry> tdc = TopFieldCollector.create(sort[i], 10, Integer.MAX_VALUE);
@@ -140,7 +140,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
       is.search(q, tdc);
 
       CollectorManager<TopFieldCollector, TopFieldDocs> tsdc =
-              TopFieldCollector.createSharedManager(sort[i], 10, null, Integer.MAX_VALUE);
+          TopFieldCollector.createSharedManager(sort[i], 10, null, Integer.MAX_VALUE);
 
       TopDocs td = tdc.topDocs();
       TopDocs td2 = concurrentSearcher.search(q, tsdc);

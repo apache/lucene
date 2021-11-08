@@ -146,7 +146,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       int numResults, int threshold, Query q, IndexReader indexReader) throws IOException {
     IndexSearcher searcher = newSearcher(indexReader, true, true, true);
     CollectorManager<TopScoreDocCollector, TopDocs> collectorManager =
-            TopScoreDocCollector.createSharedManager(numResults, null, threshold);
+        TopScoreDocCollector.createSharedManager(numResults, null, threshold);
     return searcher.search(q, collectorManager);
   }
 
