@@ -23,6 +23,7 @@ import org.apache.lucene.queries.intervals.IntervalQuery;
 import org.apache.lucene.queryparser.flexible.core.nodes.FieldableNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNodeImpl;
 import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.IntervalFunction;
 import org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuerySyntaxImpl;
 import org.apache.lucene.search.Query;
 

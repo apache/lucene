@@ -14,29 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
-import java.util.Locale;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
-import org.apache.lucene.util.BytesRef;
 
-/** Node that represents {@link Intervals#wildcard(BytesRef)}. */
-public class Wildcard extends IntervalFunction {
-  private final String wildcard;
-
-  public Wildcard(String wildcard) {
-    this.wildcard = wildcard;
-  }
+/** Representation of an interval function that can be converted to {@link IntervalsSource}. */
+public abstract class IntervalFunction {
+  public abstract IntervalsSource toIntervalSource(String field, Analyzer analyzer);
 
   @Override
-  public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.wildcard(new BytesRef(wildcard));
-  }
-
-  @Override
-  public String toString() {
-    return String.format(Locale.ROOT, "fn:wildcard(%s)", wildcard);
-  }
+  public abstract String toString();
 }

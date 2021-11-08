@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -22,24 +22,24 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#overlapping(IntervalsSource, IntervalsSource)}. */
-public class Overlapping extends IntervalFunction {
+/** Node that represents {@link Intervals#before(IntervalsSource, IntervalsSource)}. */
+public class Before extends IntervalFunction {
   private final IntervalFunction source;
   private final IntervalFunction reference;
 
-  public Overlapping(IntervalFunction source, IntervalFunction reference) {
+  public Before(IntervalFunction source, IntervalFunction reference) {
     this.source = Objects.requireNonNull(source);
     this.reference = Objects.requireNonNull(reference);
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.overlapping(
+    return Intervals.before(
         source.toIntervalSource(field, analyzer), reference.toIntervalSource(field, analyzer));
   }
 
   @Override
   public String toString() {
-    return String.format(Locale.ROOT, "fn:overlapping(%s %s)", source, reference);
+    return String.format(Locale.ROOT, "fn:before(%s %s)", source, reference);
   }
 }

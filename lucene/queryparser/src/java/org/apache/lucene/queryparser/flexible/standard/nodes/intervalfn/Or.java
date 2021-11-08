@@ -14,32 +14,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#after(IntervalsSource, IntervalsSource)}. */
-public class After extends IntervalFunction {
-  private final IntervalFunction source;
-  private final IntervalFunction reference;
+/** Node that represents {@link Intervals#or(IntervalsSource...)}. */
+public class Or extends IntervalFunction {
+  private final List<IntervalFunction> sources;
 
-  public After(IntervalFunction source, IntervalFunction reference) {
-    this.source = Objects.requireNonNull(source);
-    this.reference = Objects.requireNonNull(reference);
+  public Or(List<IntervalFunction> sources) {
+    this.sources = Objects.requireNonNull(sources);
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.after(
-        source.toIntervalSource(field, analyzer), reference.toIntervalSource(field, analyzer));
+    return Intervals.or(
+        sources.stream()
+            .map(intervalFunction -> intervalFunction.toIntervalSource(field, analyzer))
+            .toArray(IntervalsSource[]::new));
   }
 
   @Override
   public String toString() {
-    return String.format(Locale.ROOT, "fn:after(%s %s)", source, reference);
+    return String.format(
+        Locale.ROOT,
+        "fn:or(%s)",
+        sources.stream().map(IntervalFunction::toString).collect(Collectors.joining(" ")));
   }
 }

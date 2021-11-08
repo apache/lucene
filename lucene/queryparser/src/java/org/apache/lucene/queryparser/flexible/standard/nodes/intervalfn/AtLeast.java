@@ -14,35 +14,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#notWithin(IntervalsSource, int, IntervalsSource)}. */
-public class NotWithin extends IntervalFunction {
-  private final int positions;
-  private final IntervalFunction minuend, subtrahend;
+/** Node that represents {@link Intervals#atLeast(int, IntervalsSource...)}. */
+public class AtLeast extends IntervalFunction {
+  private final int minShouldMatch;
+  private final List<IntervalFunction> sources;
 
-  public NotWithin(IntervalFunction minuend, int positions, IntervalFunction subtrahend) {
-    this.positions = positions;
-    this.minuend = Objects.requireNonNull(minuend);
-    this.subtrahend = Objects.requireNonNull(subtrahend);
+  public AtLeast(int minShouldMatch, List<IntervalFunction> sources) {
+    this.minShouldMatch = minShouldMatch;
+    this.sources = Objects.requireNonNull(sources);
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.notWithin(
-        minuend.toIntervalSource(field, analyzer),
-        positions,
-        subtrahend.toIntervalSource(field, analyzer));
+    return Intervals.atLeast(
+        minShouldMatch,
+        sources.stream()
+            .map(intervalFunction -> intervalFunction.toIntervalSource(field, analyzer))
+            .toArray(IntervalsSource[]::new));
   }
 
   @Override
   public String toString() {
-    return String.format(Locale.ROOT, "fn:notWithin(%s %d %s)", minuend, positions, subtrahend);
+    return String.format(
+        Locale.ROOT,
+        "fn:atLeast(%s %s)",
+        minShouldMatch,
+        sources.stream().map(IntervalFunction::toString).collect(Collectors.joining(" ")));
   }
 }

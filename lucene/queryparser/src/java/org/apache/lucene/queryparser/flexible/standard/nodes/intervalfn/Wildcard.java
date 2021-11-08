@@ -14,41 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
-import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
+import org.apache.lucene.util.BytesRef;
 
-/** Node that represents {@link Intervals#atLeast(int, IntervalsSource...)}. */
-public class AtLeast extends IntervalFunction {
-  private final int minShouldMatch;
-  private final List<IntervalFunction> sources;
+/** Node that represents {@link Intervals#wildcard(BytesRef)}. */
+public class Wildcard extends IntervalFunction {
+  private final String wildcard;
 
-  public AtLeast(int minShouldMatch, List<IntervalFunction> sources) {
-    this.minShouldMatch = minShouldMatch;
-    this.sources = Objects.requireNonNull(sources);
+  public Wildcard(String wildcard) {
+    this.wildcard = wildcard;
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.atLeast(
-        minShouldMatch,
-        sources.stream()
-            .map(intervalFunction -> intervalFunction.toIntervalSource(field, analyzer))
-            .toArray(IntervalsSource[]::new));
+    return Intervals.wildcard(new BytesRef(wildcard));
   }
 
   @Override
   public String toString() {
-    return String.format(
-        Locale.ROOT,
-        "fn:atLeast(%s %s)",
-        minShouldMatch,
-        sources.stream().map(IntervalFunction::toString).collect(Collectors.joining(" ")));
+    return String.format(Locale.ROOT, "fn:wildcard(%s)", wildcard);
   }
 }

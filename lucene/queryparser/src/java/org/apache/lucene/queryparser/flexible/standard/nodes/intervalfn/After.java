@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -22,23 +22,24 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#maxgaps(int, IntervalsSource)}. */
-public class MaxGaps extends IntervalFunction {
-  private final int maxGaps;
+/** Node that represents {@link Intervals#after(IntervalsSource, IntervalsSource)}. */
+public class After extends IntervalFunction {
   private final IntervalFunction source;
+  private final IntervalFunction reference;
 
-  public MaxGaps(int maxGaps, IntervalFunction source) {
-    this.maxGaps = maxGaps;
+  public After(IntervalFunction source, IntervalFunction reference) {
     this.source = Objects.requireNonNull(source);
+    this.reference = Objects.requireNonNull(reference);
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.maxgaps(maxGaps, source.toIntervalSource(field, analyzer));
+    return Intervals.after(
+        source.toIntervalSource(field, analyzer), reference.toIntervalSource(field, analyzer));
   }
 
   @Override
   public String toString() {
-    return String.format(Locale.ROOT, "fn:maxgaps(%s %s)", maxGaps, source);
+    return String.format(Locale.ROOT, "fn:after(%s %s)", source, reference);
   }
 }

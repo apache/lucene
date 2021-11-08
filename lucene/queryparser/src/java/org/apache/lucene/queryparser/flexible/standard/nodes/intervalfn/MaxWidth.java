@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -22,24 +22,23 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#containedBy(IntervalsSource, IntervalsSource)}. */
-public class ContainedBy extends IntervalFunction {
-  private final IntervalFunction big;
-  private final IntervalFunction small;
+/** Node that represents {@link Intervals#maxwidth(int, IntervalsSource)}. */
+public class MaxWidth extends IntervalFunction {
+  private final int width;
+  private final IntervalFunction source;
 
-  public ContainedBy(IntervalFunction small, IntervalFunction big) {
-    this.small = Objects.requireNonNull(small);
-    this.big = Objects.requireNonNull(big);
+  public MaxWidth(int width, IntervalFunction source) {
+    this.width = width;
+    this.source = Objects.requireNonNull(source);
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.containedBy(
-        small.toIntervalSource(field, analyzer), big.toIntervalSource(field, analyzer));
+    return Intervals.maxwidth(width, source.toIntervalSource(field, analyzer));
   }
 
   @Override
   public String toString() {
-    return String.format(Locale.ROOT, "fn:containedBy(%s %s)", small, big);
+    return String.format(Locale.ROOT, "fn:maxwidth(%s %s)", width, source);
   }
 }

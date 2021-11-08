@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -22,24 +22,24 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#notContaining(IntervalsSource, IntervalsSource)}. */
-public class NotContaining extends IntervalFunction {
-  private final IntervalFunction minuend;
-  private final IntervalFunction subtrahend;
+/** Node that represents {@link Intervals#extend(IntervalsSource, int, int)}. */
+public class Extend extends IntervalFunction {
+  private final int before, after;
+  private final IntervalFunction source;
 
-  public NotContaining(IntervalFunction minuend, IntervalFunction subtrahend) {
-    this.minuend = Objects.requireNonNull(minuend);
-    this.subtrahend = Objects.requireNonNull(subtrahend);
+  public Extend(IntervalFunction source, int before, int after) {
+    this.source = Objects.requireNonNull(source);
+    this.before = before;
+    this.after = after;
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.notContaining(
-        minuend.toIntervalSource(field, analyzer), subtrahend.toIntervalSource(field, analyzer));
+    return Intervals.extend(source.toIntervalSource(field, analyzer), before, after);
   }
 
   @Override
   public String toString() {
-    return String.format(Locale.ROOT, "fn:notContaining(%s %s)", minuend, subtrahend);
+    return String.format(Locale.ROOT, "fn:extend(%s %d %d)", source, before, after);
   }
 }

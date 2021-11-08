@@ -14,32 +14,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#containing(IntervalsSource, IntervalsSource)}. */
-public class Containing extends IntervalFunction {
-  private final IntervalFunction big;
-  private final IntervalFunction small;
+/** Node that represents {@link Intervals#unordered(IntervalsSource...)}. */
+public class Unordered extends IntervalFunction {
+  private final List<IntervalFunction> sources;
 
-  public Containing(IntervalFunction big, IntervalFunction small) {
-    this.big = Objects.requireNonNull(big);
-    this.small = Objects.requireNonNull(small);
+  public Unordered(List<IntervalFunction> sources) {
+    this.sources = Objects.requireNonNull(sources);
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.containing(
-        big.toIntervalSource(field, analyzer), small.toIntervalSource(field, analyzer));
+    return Intervals.unordered(
+        sources.stream()
+            .map(intervalFunction -> intervalFunction.toIntervalSource(field, analyzer))
+            .toArray(IntervalsSource[]::new));
   }
 
   @Override
   public String toString() {
-    return String.format(Locale.ROOT, "fn:containing(%s %s)", big, small);
+    return String.format(
+        Locale.ROOT,
+        "fn:unordered(%s)",
+        sources.stream().map(IntervalFunction::toString).collect(Collectors.joining(" ")));
   }
 }

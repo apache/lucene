@@ -14,15 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
+import java.util.Locale;
+import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Representation of an interval function that can be converted to {@link IntervalsSource}. */
-public abstract class IntervalFunction {
-  public abstract IntervalsSource toIntervalSource(String field, Analyzer analyzer);
+/** Node that represents {@link Intervals#containing(IntervalsSource, IntervalsSource)}. */
+public class Containing extends IntervalFunction {
+  private final IntervalFunction big;
+  private final IntervalFunction small;
+
+  public Containing(IntervalFunction big, IntervalFunction small) {
+    this.big = Objects.requireNonNull(big);
+    this.small = Objects.requireNonNull(small);
+  }
 
   @Override
-  public abstract String toString();
+  public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
+    return Intervals.containing(
+        big.toIntervalSource(field, analyzer), small.toIntervalSource(field, analyzer));
+  }
+
+  @Override
+  public String toString() {
+    return String.format(Locale.ROOT, "fn:containing(%s %s)", big, small);
+  }
 }

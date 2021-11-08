@@ -14,37 +14,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.io.IOException;
+import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#unordered(IntervalsSource...)}. */
-public class Unordered extends IntervalFunction {
-  private final List<IntervalFunction> sources;
+/** Node that represents {@link Intervals#analyzedText(String, Analyzer, String, int, boolean)}. */
+public class AnalyzedText extends IntervalFunction {
+  private final String term;
 
-  public Unordered(List<IntervalFunction> sources) {
-    this.sources = Objects.requireNonNull(sources);
+  public AnalyzedText(String term) {
+    this.term = term;
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.unordered(
-        sources.stream()
-            .map(intervalFunction -> intervalFunction.toIntervalSource(field, analyzer))
-            .toArray(IntervalsSource[]::new));
+    int gaps = 0;
+    boolean ordered = true;
+    try {
+      return Intervals.analyzedText(term, analyzer, field, gaps, ordered);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public String toString() {
-    return String.format(
-        Locale.ROOT,
-        "fn:unordered(%s)",
-        sources.stream().map(IntervalFunction::toString).collect(Collectors.joining(" ")));
+    if (requiresQuotes(term)) {
+      return '"' + term + '"';
+    } else {
+      return term;
+    }
+  }
+
+  private boolean requiresQuotes(String term) {
+    return Pattern.compile("[\\s]").matcher(term).find();
   }
 }

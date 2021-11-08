@@ -41,8 +41,8 @@ import org.apache.lucene.search.Query;
 /**
  * This class is a helper that enables users to easily use the Lucene query parser.
  *
- * <p>To construct a Query object from a query string, use the {@link #parse(String, String)}
- * method:
+ * <p>To construct a {@link Query} object from a query string, use the {@link #parse(String,
+ * String)} method:
  *
  * <pre class="prettyprint">
  * StandardQueryParser queryParserHelper = new StandardQueryParser();

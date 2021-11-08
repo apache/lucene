@@ -14,37 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.standard.nodes;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 
-/** Node that represents {@link Intervals#ordered(IntervalsSource...)}. */
-public class Ordered extends IntervalFunction {
-  private final List<IntervalFunction> sources;
+/** Node that represents {@link Intervals#notWithin(IntervalsSource, int, IntervalsSource)}. */
+public class NotWithin extends IntervalFunction {
+  private final int positions;
+  private final IntervalFunction minuend, subtrahend;
 
-  public Ordered(List<IntervalFunction> sources) {
-    this.sources = Objects.requireNonNull(sources);
+  public NotWithin(IntervalFunction minuend, int positions, IntervalFunction subtrahend) {
+    this.positions = positions;
+    this.minuend = Objects.requireNonNull(minuend);
+    this.subtrahend = Objects.requireNonNull(subtrahend);
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.ordered(
-        sources.stream()
-            .map(intervalFunction -> intervalFunction.toIntervalSource(field, analyzer))
-            .toArray(IntervalsSource[]::new));
+    return Intervals.notWithin(
+        minuend.toIntervalSource(field, analyzer),
+        positions,
+        subtrahend.toIntervalSource(field, analyzer));
   }
 
   @Override
   public String toString() {
-    return String.format(
-        Locale.ROOT,
-        "fn:ordered(%s)",
-        sources.stream().map(IntervalFunction::toString).collect(Collectors.joining(" ")));
+    return String.format(Locale.ROOT, "fn:notWithin(%s %d %s)", minuend, positions, subtrahend);
   }
 }
