@@ -17,13 +17,10 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
-
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.util.ArrayUtil;
@@ -46,7 +43,8 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
 
   @Override
   public OrdinalsSegmentReader getReader(LeafReaderContext context) throws IOException {
-    // Continue to support the older binary doc values format (TODO: remove in Lucene 10):
+    // Continue to support the older binary doc values format through Lucene 10
+    // TODO: Remove in Lucene 11
     if (FacetUtils.usesOlderBinaryOrdinals(context.reader(), field)) {
       return getBinaryFormatReader(context);
     }
@@ -83,8 +81,9 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
     };
   }
 
-  @Deprecated // remove in Lucene 10
-  private OrdinalsSegmentReader getBinaryFormatReader(LeafReaderContext context) throws IOException {
+  // TODO: Remove in Lucene 11
+  private OrdinalsSegmentReader getBinaryFormatReader(LeafReaderContext context)
+      throws IOException {
     BinaryDocValues values0 = context.reader().getBinaryDocValues(field);
     if (values0 == null) {
       values0 = DocValues.emptyBinary();
@@ -133,8 +132,11 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
    *
    * @param buf binary payload containing encoded ordinals
    * @param ordinals buffer for decoded ordinals
+   * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
+   *     Lucene 10
    */
-  @Deprecated // remove in Lucene 10
+  // TODO: Remove in Lucene 11
+  @Deprecated
   public void decode(BytesRef buf, IntsRef ordinals) {
 
     // grow the buffer up front, even if by a large number of values (buf.length)

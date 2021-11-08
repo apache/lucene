@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
@@ -70,6 +69,7 @@ import org.apache.lucene.util.IntsRef;
 public class OrdinalMappingLeafReader extends FilterLeafReader {
 
   // silly way, but we need to use dedupAndEncode and it's protected on FacetsConfig.
+  // TODO: Remove in Lucene 11
   @Deprecated
   private static class InnerFacetsConfig extends FacetsConfig {
 
@@ -81,6 +81,7 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
     }
   }
 
+  // TODO: Remove in Lucene 11
   @Deprecated
   private class OrdinalMappingBinaryDocValues extends FilterBinaryDocValues {
 
@@ -199,20 +200,30 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
   /**
    * Expert: encodes category ordinals into a BytesRef. Override in case you use custom encoding,
    * other than the default done by FacetsConfig.
+   *
+   * @deprecated Custom binary formats are no longer directly supported for taxonomy faceting
+   *     starting in Lucene 10
    */
+  // TODO: Remove in Lucene 11
   @Deprecated
   protected BytesRef encode(IntsRef ordinals) {
     return facetsConfig.dedupAndEncode(ordinals);
   }
 
-  /** Expert: override in case you used custom encoding for the categories under this field. */
+  /**
+   * Expert: override in case you used custom encoding for the categories under this field.
+   *
+   * @deprecated Custom binary formats are no longer directly supported for taxonomy faceting
+   *     starting in Lucene 10
+   */
+  // TODO: Remove in Lucene 11
   @Deprecated
   protected OrdinalsReader getOrdinalsReader(String field) {
     return new DocValuesOrdinalsReader(field);
   }
 
+  // TODO: Remove in Lucene 11
   @Override
-  @Deprecated
   public BinaryDocValues getBinaryDocValues(String field) throws IOException {
     if (facetFields.contains(field)) {
       assert FacetUtils.usesOlderBinaryOrdinals(in, field);

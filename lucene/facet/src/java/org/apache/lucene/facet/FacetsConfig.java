@@ -410,11 +410,14 @@ public class FacetsConfig {
         indexDrillDownTerms(doc, indexFieldName, dimConfig, facetLabel);
       }
 
-
-      // Dedupe and encode the ordinals. It's not important that we sort here
-      // (SortedNumericDocValuesField will handle this internally), but we
-      // sort to identify dups (since SNDVF doesn't dedupe):
+      // Store the taxonomy ordinals associated with each doc. Prefer to use SortedNumericDocValues
+      // but "fall back" to a custom binary format to maintain backwards compatibility with Lucene 9
+      // and earlier indexes.
+      // TODO: Remove support for custom binary format in Lucene 11
       if (taxoWriter.useNumericDocValuesForOrdinals()) {
+        // Dedupe and encode the ordinals. It's not important that we sort here
+        // (SortedNumericDocValuesField will handle this internally), but we
+        // sort to identify dups (since SNDVF doesn't dedupe):
         IntsRef ords = ordinals.get();
         Arrays.sort(ords.ints, ords.offset, ords.offset + ords.length);
         int prev = -1;
@@ -523,7 +526,13 @@ public class FacetsConfig {
     }
   }
 
-  /** Encodes ordinals into a BytesRef; expert: subclass can override this to change encoding. */
+  /**
+   * Encodes ordinals into a BytesRef; expert: subclass can override this to change encoding.
+   *
+   * @deprecated Starting in Lucene 10, we moved to a more straight-forward numeric doc values
+   *     encoding and no longer support custom binary encodings.
+   */
+  // TODO: Remove in Lucene 11
   @Deprecated
   protected BytesRef dedupAndEncode(IntsRef ordinals) {
     Arrays.sort(ordinals.ints, ordinals.offset, ordinals.length);

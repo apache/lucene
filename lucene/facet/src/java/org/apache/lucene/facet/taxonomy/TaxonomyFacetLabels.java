@@ -20,7 +20,6 @@ import static org.apache.lucene.facet.taxonomy.TaxonomyReader.INVALID_ORDINAL;
 import static org.apache.lucene.facet.taxonomy.TaxonomyReader.ROOT_ORDINAL;
 
 import java.io.IOException;
-
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -63,7 +62,9 @@ public class TaxonomyFacetLabels {
    * @throws IOException when a low-level IO issue occurs
    */
   public FacetLabelReader getFacetLabelReader(LeafReaderContext readerContext) throws IOException {
-    // Support older binary format. TODO: remove in Lucene 10:
+    // Support older binary format by leveraging an OrdinalsReader, which can still support both
+    // formats for now:
+    // TODO: Remove in Lucene 11
     if (FacetUtils.usesOlderBinaryOrdinals(readerContext.reader(), indexFieldName)) {
       OrdinalsReader ordsReader = new DocValuesOrdinalsReader(indexFieldName);
       return new FacetLabelReader(ordsReader, readerContext);
@@ -80,10 +81,16 @@ public class TaxonomyFacetLabels {
    * @lucene.experimental
    */
   public class FacetLabelReader {
+    /** By default, we store taxonomy ordinals in SortedNumericDocValues field */
     private final SortedNumericDocValues ordinalValues;
 
+    /**
+     * Users can provide their own custom OrdinalsReader for cases where the default encoding isn't
+     * used
+     */
     private final OrdinalsReader.OrdinalsSegmentReader ordinalsSegmentReader;
-    private final IntsRef decodedOrds = new IntsRef();
+
+    private final IntsRef decodedOrds;
 
     private int currentDocId = -1;
     private boolean currentDocHasValues;
@@ -93,16 +100,26 @@ public class TaxonomyFacetLabels {
     // Lazily set when nextFacetLabel(int docId, String facetDimension) is first called
     private int[] parents;
 
-    /** Construct from a specified {@link SortedNumericDocValues} field; useful for reading the default encoding. */
+    /**
+     * Construct from a specified {@link SortedNumericDocValues} field; useful for reading the
+     * default encoding.
+     */
     public FacetLabelReader(SortedNumericDocValues ordinalValues) {
       this.ordinalValues = ordinalValues;
       ordinalsSegmentReader = null;
+      decodedOrds = null;
     }
 
-    /** Construct using a custom {@link OrdinalsReader}; useful if using a custom binary format. */
+    /**
+     * Construct using a custom {@link OrdinalsReader}; useful if using a custom binary format.
+     *
+     * <p>Note: If using the default encoding, you can use {@link
+     * #FacetLabelReader(SortedNumericDocValues)} directly
+     */
     public FacetLabelReader(OrdinalsReader ordsReader, LeafReaderContext readerContext)
         throws IOException {
       ordinalsSegmentReader = ordsReader.getReader(readerContext);
+      decodedOrds = new IntsRef();
       ordinalValues = null;
     }
 
@@ -150,7 +167,6 @@ public class TaxonomyFacetLabels {
         assert currentPos <= endPos;
 
         if (currentPos == endPos) {
-          // no more FacetLabels
           return null;
         }
 
@@ -234,7 +250,6 @@ public class TaxonomyFacetLabels {
         assert currentPos <= endPos;
 
         if (currentPos == endPos) {
-          // no more FacetLabels
           return null;
         }
 
@@ -269,7 +284,6 @@ public class TaxonomyFacetLabels {
             return taxoReader.getPath(ord);
           }
         }
-
       }
 
       return null;

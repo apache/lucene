@@ -19,7 +19,6 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
@@ -76,10 +75,13 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       return;
     }
 
-    boolean useBinaryDv = FacetUtils.usesOlderBinaryOrdinals(matchingDocs.get(0).context.reader(), indexFieldName);
+    // TODO: Remove support for the older binary format in Lucene 11
+    boolean useBinaryDv =
+        FacetUtils.usesOlderBinaryOrdinals(matchingDocs.get(0).context.reader(), indexFieldName);
 
     for (MatchingDocs hits : matchingDocs) {
-      assert useBinaryDv == FacetUtils.usesOlderBinaryOrdinals(hits.context.reader(), indexFieldName);
+      assert useBinaryDv
+          == FacetUtils.usesOlderBinaryOrdinals(hits.context.reader(), indexFieldName);
 
       if (useBinaryDv) {
         BinaryDocValues dv = hits.context.reader().getBinaryDocValues(indexFieldName);
@@ -131,7 +133,9 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       return;
     }
 
-    boolean useBinaryDv = FacetUtils.usesOlderBinaryOrdinals(reader.leaves().get(0).reader(), indexFieldName);
+    // TODO: Remove support for the older binary format in Lucene 11
+    boolean useBinaryDv =
+        FacetUtils.usesOlderBinaryOrdinals(reader.leaves().get(0).reader(), indexFieldName);
 
     for (LeafReaderContext context : reader.leaves()) {
       assert useBinaryDv == FacetUtils.usesOlderBinaryOrdinals(context.reader(), indexFieldName);

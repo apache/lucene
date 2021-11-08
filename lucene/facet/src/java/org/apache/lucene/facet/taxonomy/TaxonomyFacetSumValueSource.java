@@ -18,7 +18,6 @@ package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
@@ -51,9 +50,13 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       throws IOException {
     super(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, taxoReader, config);
 
-    // TODO: Remove this logic and set ordinalsReader to null in Lucene 10:
+    // Maintain backwards compatibility with the older binary format using an OrdinalsReader (which
+    // can support both formats currently):
+    // TODO: Remove this logic and set ordinalsReader to null in Lucene 11:
     MatchingDocs first = fc.getMatchingDocs().isEmpty() ? null : fc.getMatchingDocs().get(0);
-    if (first != null && FacetUtils.usesOlderBinaryOrdinals(first.context.reader(), FacetsConfig.DEFAULT_INDEX_FIELD_NAME)) {
+    if (first != null
+        && FacetUtils.usesOlderBinaryOrdinals(
+            first.context.reader(), FacetsConfig.DEFAULT_INDEX_FIELD_NAME)) {
       this.ordinalsReader = new DocValuesOrdinalsReader(FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
     } else {
       this.ordinalsReader = null;
@@ -101,6 +104,7 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       throws IOException {
 
     if (ordinalsReader != null) {
+      // If the user provided a custom ordinals reader, use it to retrieve the document ordinals:
       IntsRef scratch = new IntsRef();
       for (MatchingDocs hits : matchingDocs) {
         OrdinalsReader.OrdinalsSegmentReader ords = ordinalsReader.getReader(hits.context);
@@ -120,6 +124,7 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
         }
       }
     } else {
+      // If no custom ordinals reader is provided, expect the default encoding:
       for (MatchingDocs hits : matchingDocs) {
         SortedNumericDocValues ordinalValues =
             DocValues.getSortedNumeric(hits.context.reader(), indexFieldName);

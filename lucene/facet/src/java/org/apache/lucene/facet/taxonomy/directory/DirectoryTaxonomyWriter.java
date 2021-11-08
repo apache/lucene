@@ -159,11 +159,14 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     openMode = config.getOpenMode();
     if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
+      // If no index exists, we're safe to use the new format:
       useOlderBinaryOrdinals = false;
     } else {
       String epochStr = null;
 
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+      // Use the older binary format if we're dealing with an existing index on version 9 or
+      // earlier:
       useOlderBinaryOrdinals = infos.getIndexCreatedVersionMajor() <= 9;
 
       Map<String, String> commitData = infos.getUserData();
