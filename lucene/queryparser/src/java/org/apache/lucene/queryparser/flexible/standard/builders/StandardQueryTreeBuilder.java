@@ -72,8 +72,6 @@ public class StandardQueryTreeBuilder extends QueryTreeBuilder implements Standa
     setBuilder(MultiPhraseQueryNode.class, new MultiPhraseQueryNodeBuilder());
     setBuilder(MatchAllDocsQueryNode.class, new MatchAllDocsQueryNodeBuilder());
     setBuilder(MinShouldMatchNode.class, new MinShouldMatchNodeBuilder());
-    // TODO: add the optimizing boolean node builder later.
-    // setBuilder(BooleanQueryNode.class, new CustomBooleanQueryNodeBuilder());
     setBuilder(IntervalQueryNode.class, new IntervalQueryNodeBuilder());
   }
 
