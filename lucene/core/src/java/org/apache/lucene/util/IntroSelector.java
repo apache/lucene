@@ -21,13 +21,12 @@ import java.util.Random;
 
 /**
  * Implementation of the introspective quick select algorithm using Tukey's ninther
- * median-of-medians for pivot selection and Bentley-McIlroy 3-way partitioning.
- * In addition, small ranges are sorted with insertion sort.
- * The introspective protection shuffles the sub-range if the max recursive depth is
- * exceeded.
+ * median-of-medians for pivot selection and Bentley-McIlroy 3-way partitioning. In addition, small
+ * ranges are sorted with insertion sort. The introspective protection shuffles the sub-range if the
+ * max recursive depth is exceeded.
  *
- * <p>This selection algorithm is fast on most data shapes, especially with low cardinality.
- * It runs in linear time on average.
+ * <p>This selection algorithm is fast on most data shapes, especially with low cardinality. It runs
+ * in linear time on average.
  *
  * @lucene.internal
  */
@@ -149,8 +148,7 @@ public abstract class IntroSelector extends Selector {
   }
 
   /**
-   * Shuffles the entries between from (inclusive) and to (exclusive) with
-   * Durstenfeld's algorithm.
+   * Shuffles the entries between from (inclusive) and to (exclusive) with Durstenfeld's algorithm.
    */
   private void shuffle(int from, int to) {
     if (this.random == null) {

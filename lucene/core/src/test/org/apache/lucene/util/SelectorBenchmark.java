@@ -16,11 +16,10 @@
  */
 package org.apache.lucene.util;
 
-import org.apache.lucene.util.BaseSortTestCase.Entry;
-import org.apache.lucene.util.BaseSortTestCase.Strategy;
-
 import java.util.Locale;
 import java.util.Random;
+import org.apache.lucene.util.BaseSortTestCase.Entry;
+import org.apache.lucene.util.BaseSortTestCase.Strategy;
 
 /**
  * Benchmark for {@link Selector} implementations.
@@ -96,7 +95,7 @@ public class SelectorBenchmark {
   }
 
   private static void benchmarkSelector(
-    Strategy strategy, SelectorFactory selectorFactory, Random random) {
+      Strategy strategy, SelectorFactory selectorFactory, Random random) {
     for (int i = 0; i < RUNS; i++) {
       Entry[] original = createArray(strategy, random);
       Entry[] clone = original.clone();

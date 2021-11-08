@@ -48,8 +48,8 @@ public final class MathUtil {
 
   /**
    * Returns {@code x <= 0 ? 0 : Math.floor(Math.log(x) / Math.log(2))}.
-   * <p>
-   * This specialized method is 30x faster than {@link #log(long, int)}.
+   *
+   * <p>This specialized method is 30x faster than {@link #log(long, int)}.
    */
   public static int log2(int x) {
     return x <= 0 ? 0 : 31 - Integer.numberOfLeadingZeros(x);
@@ -57,8 +57,8 @@ public final class MathUtil {
 
   /**
    * Returns {@code x <= 0 ? 0 : Math.floor(Math.log(x) / Math.log(2))}.
-   * <p>
-   * This specialized method is 30x faster than {@link #log(long, int)}.
+   *
+   * <p>This specialized method is 30x faster than {@link #log(long, int)}.
    */
   public static int log2(long x) {
     return x <= 0 ? 0 : 63 - Long.numberOfLeadingZeros(x);
