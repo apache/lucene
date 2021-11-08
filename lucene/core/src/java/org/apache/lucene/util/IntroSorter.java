@@ -40,7 +40,7 @@ public abstract class IntroSorter extends Sorter {
   @Override
   public final void sort(int from, int to) {
     checkRange(from, to);
-    sort(from, to, 2 * MathUtil.log2(to - from));
+    sort(from, to, 2 * MathUtil.log(to - from, 2));
   }
 
   /**

@@ -17,7 +17,7 @@
 package org.apache.lucene.util;
 
 import java.util.Comparator;
-import java.util.Random;
+import java.util.SplittableRandom;
 
 /**
  * Implementation of the introspective quick select algorithm using Tukey's ninther
@@ -32,12 +32,12 @@ import java.util.Random;
  */
 public abstract class IntroSelector extends Selector {
 
-  private Random random;
+  private SplittableRandom random;
 
   @Override
   public final void select(int from, int to, int k) {
     checkArgs(from, to, k);
-    select(from, to, k, 2 * MathUtil.log2(to - from));
+    select(from, to, k, 2 * MathUtil.log(to - from, 2));
   }
 
   private void select(int from, int to, int k, int maxDepth) {
@@ -152,11 +152,11 @@ public abstract class IntroSelector extends Selector {
    */
   private void shuffle(int from, int to) {
     if (this.random == null) {
-      this.random = new Random();
+      this.random = new SplittableRandom();
     }
-    Random random = this.random;
-    for (int i = to - from; i > 1; i--) {
-      swap(i - 1 + from, random.nextInt(i) + from);
+    SplittableRandom random = this.random;
+    for (int i = to - 1; i > from; i--) {
+      swap(i, random.nextInt(from, i + 1));
     }
   }
 
