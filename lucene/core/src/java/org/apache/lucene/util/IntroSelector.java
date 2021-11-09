@@ -21,9 +21,8 @@ import java.util.SplittableRandom;
 
 /**
  * Implementation of the introspective quick select algorithm using Tukey's ninther
- * median-of-medians for pivot selection and Bentley-McIlroy 3-way partitioning. In addition, small
- * ranges are sorted with insertion sort. The introspective protection shuffles the sub-range if the
- * max recursive depth is exceeded.
+ * median-of-medians for pivot selection and Bentley-McIlroy 3-way partitioning. The introspective
+ * protection shuffles the sub-range if the max recursive depth is exceeded.
  *
  * <p>This selection algorithm is fast on most data shapes, especially with low cardinality. It runs
  * in linear time on average.
@@ -31,6 +30,11 @@ import java.util.SplittableRandom;
  * @lucene.internal
  */
 public abstract class IntroSelector extends Selector {
+
+  // This selector is used repeatedly by the radix selector for sub-ranges of less than
+  // 100 entries. This means this selector is also optimized to be fast on small ranges.
+  // It uses the medians-of-medians and 3-way partitioning as much as possible, and
+  // finishes the last tiny range (3 entries or less) with a very specialized sort method.
 
   private SplittableRandom random;
 
@@ -44,9 +48,10 @@ public abstract class IntroSelector extends Selector {
   void select(int from, int to, int k, int maxDepth) {
     // This code is similar to IntroSorter#sort, adapted to loop on a single partition.
 
-    // Sort small ranges with insertion sort.
+    // For efficiency, we must enter the loop with at least 4 entries to be able to skip
+    // some boundary tests during the 3-way partitioning.
     int size;
-    while ((size = to - from) > Sorter.INSERTION_SORT_THRESHOLD) {
+    while ((size = to - from) > 3) {
 
       if (--maxDepth == -1) {
         // Max recursion depth exceeded: shuffle (only once) and continue.
@@ -116,7 +121,17 @@ public abstract class IntroSelector extends Selector {
       }
     }
 
-    insertionSort(from, to);
+    // Sort the final tiny range (3 entries or less) with a very specialized sort.
+    switch (size) {
+      case 2:
+        if (compare(from, from + 1) > 0) {
+          swap(from, from + 1);
+        }
+        break;
+      case 3:
+        sort3(from);
+        break;
+    }
   }
 
   /** Copy of {@code IntroSorter#median}. */
@@ -133,17 +148,26 @@ public abstract class IntroSelector extends Selector {
     return compare(i, k) < 0 ? i : k;
   }
 
-  /** Copy of {@link Sorter#insertionSort(int, int)}. */
-  void insertionSort(int from, int to) {
-    for (int i = from + 1; i < to; ) {
-      int current = i++;
-      int previous;
-      while (compare((previous = current - 1), current) > 0) {
-        swap(previous, current);
-        if (previous == from) {
-          break;
+  /**
+   * Sorts 3 entries starting at from (inclusive). This specialized method is more efficient than
+   * calling {@link Sorter#insertionSort(int, int)}.
+   */
+  private void sort3(int from) {
+    final int middle = from + 1;
+    final int last = from + 2;
+    if (compare(from, middle) <= 0) {
+      if (compare(middle, last) > 0) {
+        swap(middle, last);
+        if (compare(from, middle) > 0) {
+          swap(from, middle);
         }
-        current = previous;
+      }
+    } else if (compare(middle, last) >= 0) {
+      swap(from, last);
+    } else {
+      swap(from, middle);
+      if (compare(middle, last) > 0) {
+        swap(middle, last);
       }
     }
   }
