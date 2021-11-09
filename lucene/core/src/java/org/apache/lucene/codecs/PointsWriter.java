@@ -137,31 +137,34 @@ public abstract class PointsWriter implements Closeable {
                         continue;
                       }
                       MergeState.DocMap docMap = mergeState.docMaps[i];
-                      values.intersect(
-                          new IntersectVisitor() {
-                            @Override
-                            public void visit(int docID) {
-                              // Should never be called because our compare method never returns
-                              // Relation.CELL_INSIDE_QUERY
-                              throw new IllegalStateException();
-                            }
+                      values
+                          .getPointTree()
+                          .visitDocValues(
+                              new IntersectVisitor() {
+                                @Override
+                                public void visit(int docID) {
+                                  // Should never be called during #visitDocValues()
+                                  throw new IllegalStateException();
+                                }
 
-                            @Override
-                            public void visit(int docID, byte[] packedValue) throws IOException {
-                              int newDocID = docMap.get(docID);
-                              if (newDocID != -1) {
-                                // Not deleted:
-                                mergedVisitor.visit(newDocID, packedValue);
-                              }
-                            }
+                                @Override
+                                public void visit(int docID, byte[] packedValue)
+                                    throws IOException {
+                                  int newDocID = docMap.get(docID);
+                                  if (newDocID != -1) {
+                                    // Not deleted:
+                                    mergedVisitor.visit(newDocID, packedValue);
+                                  }
+                                }
 
-                            @Override
-                            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                              // Forces this segment's PointsReader to always visit all docs +
-                              // values:
-                              return Relation.CELL_CROSSES_QUERY;
-                            }
-                          });
+                                @Override
+                                public Relation compare(
+                                    byte[] minPackedValue, byte[] maxPackedValue) {
+                                  // Forces this segment's PointsReader to always visit all docs +
+                                  // values:
+                                  return Relation.CELL_CROSSES_QUERY;
+                                }
+                              });
                     }
                   }
                 };
