@@ -95,12 +95,12 @@ public abstract class PointsWriter implements Closeable {
 
                   @Override
                   public byte[] getMinPackedValue() {
-                    return new byte[0];
+                    throw new UnsupportedOperationException();
                   }
 
                   @Override
                   public byte[] getMaxPackedValue() {
-                    return new byte[0];
+                    throw new UnsupportedOperationException();
                   }
 
                   @Override
