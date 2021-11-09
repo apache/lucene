@@ -36,7 +36,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 
 @HandleLimitFS.MaxOpenHandles(limit = HandleLimitFS.MaxOpenHandles.MAX_OPEN_FILES * 2)
-//Some of these tests are too intense for SimpleText
+// Some of these tests are too intense for SimpleText
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestIndexWriterMergePolicy extends LuceneTestCase {
 

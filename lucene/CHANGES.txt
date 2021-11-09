@@ -29,6 +29,34 @@ Other
 ---------------------
 (No changes)
 
+======================= Lucene 9.1.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+
+* LUCENE-10220: Add an utility method to get IntervalSource from analyzed text (or token stream).
+  (Uwe Schindler, Dawid Weiss, Alan Woodward)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
