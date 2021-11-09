@@ -78,7 +78,13 @@ final class MaxScoreAccumulator {
       int cmp = Float.compare(score, o.score);
       if (cmp == 0) {
         // tie-break on the minimum doc base
-        return -Integer.compare(docBase, o.docBase);
+        // For a given minimum competitive score, we want to know the first segment
+        // where this score occurred, hence the reverse order here.
+        // On segments with a lower docBase, any document whose score is greater
+        // than or equal to this score would be competitive, while on segments with a
+        // higher docBase, documents need to have a strictly greater score to be
+        // competitive since we tie break on doc ID.
+        return Integer.compare(o.docBase, docBase);
       }
       return cmp;
     }
