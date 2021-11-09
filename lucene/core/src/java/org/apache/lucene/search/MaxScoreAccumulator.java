@@ -36,7 +36,8 @@ final class MaxScoreAccumulator {
   }
 
   /**
-   * Return the max encoded DocAndScore in a way that is consistent with {@link DocAndScore#compareTo}.
+   * Return the max encoded DocAndScore in a way that is consistent with {@link
+   * DocAndScore#compareTo}.
    */
   private static long maxEncode(long v1, long v2) {
     float score1 = Float.intBitsToFloat((int) (v1 >> 32));
