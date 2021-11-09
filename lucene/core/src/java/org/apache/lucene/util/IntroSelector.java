@@ -40,7 +40,8 @@ public abstract class IntroSelector extends Selector {
     select(from, to, k, 2 * MathUtil.log(to - from, 2));
   }
 
-  private void select(int from, int to, int k, int maxDepth) {
+  // Visible for testing.
+  void select(int from, int to, int k, int maxDepth) {
     // This code is similar to IntroSorter#sort, adapted to loop on a single partition.
 
     // Sort small ranges with insertion sort.

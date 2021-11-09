@@ -17,24 +17,26 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
+import java.util.Random;
 
 public class TestIntroSelector extends LuceneTestCase {
 
   public void testSelect() {
+    Random random = random();
     for (int iter = 0; iter < 100; ++iter) {
-      doTestSelect();
+      doTestSelect(random);
     }
   }
 
-  private void doTestSelect() {
-    final int from = random().nextInt(5);
-    final int to = from + TestUtil.nextInt(random(), 1, 10000);
-    final int max = random().nextBoolean() ? random().nextInt(100) : random().nextInt(100000);
-    Integer[] arr = new Integer[to + random().nextInt(5)];
+  private void doTestSelect(Random random) {
+    final int from = random.nextInt(5);
+    final int to = from + TestUtil.nextInt(random, 1, 10000);
+    final int max = random.nextBoolean() ? random.nextInt(100) : random.nextInt(100000);
+    Integer[] arr = new Integer[to + random.nextInt(5)];
     for (int i = 0; i < arr.length; ++i) {
-      arr[i] = TestUtil.nextInt(random(), 0, max);
+      arr[i] = TestUtil.nextInt(random, 0, max);
     }
-    final int k = TestUtil.nextInt(random(), from, to - 1);
+    final int k = TestUtil.nextInt(random, from, to - 1);
 
     Integer[] expected = arr.clone();
     Arrays.sort(expected, from, to);
@@ -60,7 +62,11 @@ public class TestIntroSelector extends LuceneTestCase {
             return pivot.compareTo(actual[j]);
           }
         };
-    selector.select(from, to, k);
+    if (random.nextBoolean()) {
+      selector.select(from, to, k);
+    } else {
+      selector.select(from, to , k, random.nextInt(3));
+    }
 
     assertEquals(expected[k], actual[k]);
     for (int i = 0; i < actual.length; ++i) {
