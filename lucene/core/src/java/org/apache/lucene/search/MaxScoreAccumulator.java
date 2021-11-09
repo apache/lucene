@@ -35,7 +35,10 @@ final class MaxScoreAccumulator {
     this.modInterval = DEFAULT_INTERVAL;
   }
 
-  private static long maxBinary(long v1, long v2) {
+  /**
+   * Return the max encoded DocAndScore in a way that is consistent with {@link DocAndScore#compareTo}.
+   */
+  private static long maxEncode(long v1, long v2) {
     float score1 = Float.intBitsToFloat((int) (v1 >> 32));
     float score2 = Float.intBitsToFloat((int) (v2 >> 32));
     int cmp = Float.compare(score1, score2);
