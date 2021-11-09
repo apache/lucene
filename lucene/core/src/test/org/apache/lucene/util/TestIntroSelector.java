@@ -65,7 +65,7 @@ public class TestIntroSelector extends LuceneTestCase {
     if (random.nextBoolean()) {
       selector.select(from, to, k);
     } else {
-      selector.select(from, to , k, random.nextInt(3));
+      selector.select(from, to, k, random.nextInt(3));
     }
 
     assertEquals(expected[k], actual[k]);
