@@ -123,25 +123,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       final String formatName = format.getName();
 
       field.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
-      Integer suffix = null;
+      Integer suffix;
 
       WriterAndSuffix writerAndSuffix = formats.get(format);
       if (writerAndSuffix == null) {
         // First time we are seeing this format; create a new instance
 
-        String suffixAtt = field.getAttribute(PER_FIELD_SUFFIX_KEY);
-        if (suffixAtt != null) {
-          suffix = Integer.valueOf(suffixAtt);
-        }
-
+        suffix = suffixes.get(formatName);
         if (suffix == null) {
-          // bump the suffix
-          suffix = suffixes.get(formatName);
-          if (suffix == null) {
-            suffix = 0;
-          } else {
-            suffix = suffix + 1;
-          }
+          suffix = 0;
+        } else {
+          suffix = suffix + 1;
         }
         suffixes.put(formatName, suffix);
 
