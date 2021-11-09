@@ -26,7 +26,7 @@ final class MaxScoreAccumulator {
   static final int DEFAULT_INTERVAL = 0x3ff;
 
   // scores are always positive
-  final LongAccumulator acc = new LongAccumulator(MaxScoreAccumulator::maxBinary, Long.MIN_VALUE);
+  final LongAccumulator acc = new LongAccumulator(MaxScoreAccumulator::maxEncode, Long.MIN_VALUE);
 
   // non-final and visible for tests
   long modInterval;
