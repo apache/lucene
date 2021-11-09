@@ -134,9 +134,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     public void setScorer(Scorable scorer) throws IOException {
       this.scorer = scorer;
       comparator.setScorer(scorer);
-      minCompetitiveScore = 0f;
-      updateMinCompetitiveScore(scorer);
-      if (minScoreAcc != null) {
+      if (minScoreAcc == null) {
+        updateMinCompetitiveScore(scorer);
+      } else {
         updateGlobalMinCompetitiveScore(scorer);
       }
     }
@@ -191,6 +191,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      // reset the minimum competitive score
+      minCompetitiveScore = 0f;
       docBase = context.docBase;
 
       return new TopFieldLeafCollector(queue, sort, context) {
@@ -244,6 +246,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      // reset the minimum competitive score
+      minCompetitiveScore = 0f;
       docBase = context.docBase;
       final int afterDoc = after.doc - docBase;
 
@@ -363,7 +367,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         minCompetitiveScore = minScore;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         if (minScoreAcc != null) {
-          minScoreAcc.accumulate(bottom.doc, minScore);
+          minScoreAcc.accumulate(docBase, minScore);
         }
       }
     }
