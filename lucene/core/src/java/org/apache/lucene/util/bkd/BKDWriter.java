@@ -335,7 +335,15 @@ public class BKDWriter implements Closeable {
       assert docsInBlock == 0;
       if (docIDs.length < count) {
         docIDs = ArrayUtil.grow(docIDs, count);
-        packedValues = ArrayUtil.growExact(packedValues, docIDs.length * packedBytesLength);
+        int packedValuesSize = Math.toIntExact(docIDs.length * (long) packedBytesLength);
+        if (packedValuesSize > ArrayUtil.MAX_ARRAY_LENGTH) {
+          throw new IllegalStateException(
+              "array length must be <= to "
+                  + ArrayUtil.MAX_ARRAY_LENGTH
+                  + " but was: "
+                  + packedValuesSize);
+        }
+        packedValues = ArrayUtil.growExact(packedValues, packedValuesSize);
       }
     }
 
