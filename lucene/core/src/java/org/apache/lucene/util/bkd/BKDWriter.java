@@ -278,7 +278,7 @@ public class BKDWriter implements Closeable {
         int oldDocID = mergeIntersectsVisitor.docIDs[index];
 
         int mappedDocID;
-        if (docMap == null) {
+        if(docMap == null) {
           mappedDocID = oldDocID;
         } else {
           mappedDocID = docMap.get(oldDocID);
@@ -332,9 +332,10 @@ public class BKDWriter implements Closeable {
 
     @Override
     public void grow(int count) {
-      if (docIDs.length - docsInBlock < count) {
-        docIDs = ArrayUtil.grow(docIDs, count + docsInBlock);
-        packedValues = ArrayUtil.grow(packedValues, (count + docsInBlock) * packedBytesLength);
+      assert docsInBlock == 0;
+      if (docIDs.length < count) {
+        docIDs = ArrayUtil.grow(docIDs, count);
+        packedValues = ArrayUtil.growExact(packedValues, docIDs.length * packedBytesLength);
       }
     }
 
