@@ -123,20 +123,27 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         for (int i = 0; i < 3; i++) {
           Document doc = new Document();
           doc.add(newTextField("id", "1", Field.Store.YES));
-          doc.add(new KnnVectorField("field", new float[] {1, 2, 3}));
+          doc.add(new KnnVectorField("field1", new float[] {1, 2, 3}));
+          doc.add(new KnnVectorField("field2", new float[] {1, 2, 3}));
           iw.addDocument(doc);
           iw.commit();
         }
       }
 
       IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingKnnVectorsFormat newFormat =
+      WriteRecordingKnnVectorsFormat format1 =
+          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+      WriteRecordingKnnVectorsFormat format2 =
           new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       newConfig.setCodec(
           new AssertingCodec() {
             @Override
             public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return newFormat;
+              if ("field1".equals(field)) {
+                return format1;
+              } else {
+                return format2;
+              }
             }
           });
 
@@ -145,7 +152,8 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       }
 
       // Check that the new format was used while merging
-      MatcherAssert.assertThat(newFormat.fieldsWritten, equalTo(Set.of("field")));
+      MatcherAssert.assertThat(format1.fieldsWritten, equalTo(Set.of("field1")));
+      MatcherAssert.assertThat(format2.fieldsWritten, equalTo(Set.of("field2")));
     }
   }
 
