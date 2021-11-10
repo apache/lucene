@@ -278,7 +278,7 @@ public class BKDWriter implements Closeable {
         int oldDocID = mergeIntersectsVisitor.docIDs[index];
 
         int mappedDocID;
-        if(docMap == null) {
+        if (docMap == null) {
           mappedDocID = oldDocID;
         } else {
           mappedDocID = docMap.get(oldDocID);
