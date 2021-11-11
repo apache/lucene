@@ -14,18 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.queryparser.flexible.standard.builders;
 
-/**
- * Lucene Flexible Query Parser Implementation
- *
- * <p>The old Lucene query parser used to have only one class that performed all the parsing
- * operations. In the new query parser structure, the parsing was divided in 3 steps: parsing
- * (syntax), processing (semantic) and building.
- *
- * <p>The classes contained in the package org.apache.lucene.queryParser.standard are used to
- * reproduce the same behavior as the old query parser.
- *
- * <p>Check {@link org.apache.lucene.queryparser.flexible.standard.StandardQueryParser} to quick
- * start using the Lucene query parser.
- */
-package org.apache.lucene.queryparser.flexible.standard;
+import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
+import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
+import org.apache.lucene.queryparser.flexible.standard.nodes.IntervalQueryNode;
+import org.apache.lucene.search.Query;
+
+/** Builds a {@link Query} from an {@link IntervalQueryNode}. */
+public class IntervalQueryNodeBuilder implements StandardQueryBuilder {
+  @Override
+  public Query build(QueryNode queryNode) throws QueryNodeException {
+    return ((IntervalQueryNode) queryNode).getQuery();
+  }
+}

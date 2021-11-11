@@ -38,6 +38,10 @@ API Changes
 New Features
 ---------------------
 
+* LUCENE-10223: Add interval function support to StandardQueryParser. Add min-should-match operator
+  support to StandardQueryParser. Update and clean up package documentation in flexible query parser
+  module. (Dawid Weiss, Alan Woodward)
+
 * LUCENE-10220: Add an utility method to get IntervalSource from analyzed text (or token stream).
   (Uwe Schindler, Dawid Weiss, Alan Woodward)
 
