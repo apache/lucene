@@ -19,6 +19,10 @@ apply plugin: 'java-library'
 
 description = 'Simple example code for Apache Lucene'
 
+ext {
+  standaloneDistDir = file("$buildDir/${archivesBaseName}-${project.version}")
+}
+
 dependencies {
   implementation project(':lucene:core')
   implementation project(':lucene:facet')
@@ -28,4 +32,56 @@ dependencies {
   implementation project(':lucene:expressions')
 
   testImplementation project(':lucene:test-framework')
+}
+
+// Configure "stand-alone" JAR with proper dependency classpath links.
+task standaloneJar(type: Jar) {
+  dependsOn classes
+
+  archiveFileName = "${archivesBaseName}-${project.version}-standalone.jar"
+
+  from(sourceSets.main.output)
+
+  // manifest attributes are resolved eagerly and we can't access runtimeClasspath
+  // at configuration time so push it until execution.
+  doFirst {
+    manifest {
+      attributes("Class-Path": configurations.runtimeClasspath.collect {
+        "${it.getName()}"
+      }.join(' '))
+    }
+  }
+}
+
+task standaloneAssemble(type: Sync) {
+  def antHelper = new org.apache.tools.ant.Project()
+  afterEvaluate {
+    def substituteProperties = [
+        "required.java.version": project.java.targetCompatibility
+    ]
+    substituteProperties.each { k, v -> antHelper.setProperty(k.toString(), v.toString()) }
+  }
+
+  from standaloneJar
+  from configurations.runtimeClasspath
+
+  into standaloneDistDir
+
+  doLast {
+    logger.lifecycle("Standalone demo distribution assembled. You can execute demos with:\n"
+        + "java -cp " + file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()} org.apache.lucene.demo.{the-demo} {demo-args}"))
+  }
+}
+
+// Attach standalone distribution assembly to main assembly.
+assemble.dependsOn standaloneAssemble
+
+// Create a standalone package bundle.
+task standalonePackage(type: Tar) {
+  from standaloneAssemble
+
+  into "${archivesBaseName}-${project.version}/"
+
+  compression = Compression.GZIP
+  archiveFileName = "${archivesBaseName}-${project.version}-standalone.tgz"
 }
