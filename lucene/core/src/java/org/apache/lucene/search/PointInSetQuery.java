@@ -200,7 +200,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
 
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
-        return true;
+        return ramBytesUsed() <= RamUsageEstimator.QUERY_DEFAULT_RAM_BYTES_USED;
       }
     };
   }
