@@ -21,6 +21,18 @@ import java.util.Comparator;
 /**
  * Base class for sorting algorithms implementations.
  *
+ * <p>There are a number of subclasses to choose from that vary in performance and <a
+ * href="https://en.wikipedia.org/wiki/Sorting_algorithm#Stability">stability</a>. We suggest that
+ * you pick the first from this ranked list that meets your requirements:
+ *
+ * <ol>
+ *   <li>{@link MSBRadixSorter} for strings (array of bytes/chars). Not a stable sort.
+ *   <li>{@link StableMSBRadixSorter} for strings (array of bytes/chars). Stable sort.
+ *   <li>{@link IntroSorter}. Not a stable sort.
+ *   <li>{@link InPlaceMergeSorter}. When the data to sort is typically small. Stable sort.
+ *   <li>{@link TimSorter}. Stable sort.
+ * </ol>
+ *
  * @lucene.internal
  */
 public abstract class Sorter {

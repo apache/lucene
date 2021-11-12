@@ -21,7 +21,8 @@ package org.apache.lucene.util;
  * memory will be allocated). Small arrays are sorted with binary sort.
  *
  * <p>This algorithm is stable. It's especially suited to sorting small lists where we'd rather
- * optimize for avoiding allocating memory for this task.
+ * optimize for avoiding allocating memory for this task. It performs well on lists that are already
+ * sorted.
  *
  * @lucene.internal
  */
