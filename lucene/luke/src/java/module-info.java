@@ -1,9 +1,6 @@
-@SuppressWarnings("requires-automatic")
-module org.apache.lucene.luke {
+@SuppressWarnings({"requires-automatic"})
+module lucene.luke {
   requires java.desktop;
   requires org.apache.logging.log4j;
   requires lucene.core;
-// requires lucene.codecs;
-
-
 }

@@ -57,6 +57,11 @@ tasks.withType(Jar) {
   }
 }
 
+tasks.compileJava.configure {
+  options.javaModuleVersion.set(provider { project.version } )
+  options.javaModuleMainClass.set("org.apache.lucene.luke.app.desktop.LukeMain")
+}
+
 // Process UTF8 property files to unicode escapes.
 tasks.withType(ProcessResources).configureEach { task ->
   task.filesMatching("**/messages*.properties", {
@@ -143,3 +148,4 @@ task run() {
     }
   }
 }
+
