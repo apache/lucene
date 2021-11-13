@@ -20,12 +20,14 @@ import java.util.Comparator;
 import java.util.SplittableRandom;
 
 /**
- * Implementation of the introspective quick select algorithm using Tukey's ninther
- * median-of-medians for pivot selection and Bentley-McIlroy 3-way partitioning. The introspective
- * protection shuffles the sub-range if the max recursive depth is exceeded.
+ * Adaptive selection algorithm based on the introspective quick select algorithm. The quick select
+ * algorithm uses Tukey's ninther median-of-medians for pivot and Bentley-McIlroy 3-way
+ * partitioning. For the introspective protection, it shuffles the sub-range if the max recursive
+ * depth is exceeded. At anytime during the quick selection loop, if the selected {@code k} comes
+ * close to the analyzed range boundaries, then it shortcuts to a top-k selection algorithm.
  *
- * <p>This selection algorithm is fast on most data shapes, especially with low cardinality. It runs
- * in linear time on average.
+ * <p>This selection algorithm is fast on most data shapes, especially with low cardinality, or when
+ * k is close to the boundaries. It runs in linear time on average.
  *
  * @lucene.internal
  */
@@ -33,8 +35,14 @@ public abstract class IntroSelector extends Selector {
 
   // This selector is used repeatedly by the radix selector for sub-ranges of less than
   // 100 entries. This means this selector is also optimized to be fast on small ranges.
-  // It uses the medians-of-medians and 3-way partitioning as much as possible, and
-  // finishes the last tiny range (3 entries or less) with a very specialized sort method.
+  // It uses the medians-of-medians and 3-way partitioning, it shortcuts to a top-k selection when
+  // possible, and finishes the last tiny range (3 entries or less) with a very specialized sort
+  // method.
+
+  /** Top-k tuning: how close k must be to the boundaries. */
+  private static final int TOP_K_CLOSE = 30;
+  /** Top-k tuning: min range size to apply top-k selection. */
+  private static final int TOP_K_RANGE = 60;
 
   private SplittableRandom random;
 
@@ -52,6 +60,17 @@ public abstract class IntroSelector extends Selector {
     // some boundary tests during the 3-way partitioning.
     int size;
     while ((size = to - from) > 3) {
+
+      if (k - from < TOP_K_CLOSE && to - k > TOP_K_RANGE) {
+        // k is close to 'from' while the range is not too small: speed up with a bottom-k
+        // selection.
+        selectBottom(from, to, k);
+        return;
+      } else if (to - k <= TOP_K_CLOSE && k - from >= TOP_K_RANGE) {
+        // k is close to 'to' while the range is not too small: speed up with a top-k selection.
+        selectTop(from, to, k);
+        return;
+      }
 
       if (--maxDepth == -1) {
         // Max recursion depth exceeded: shuffle (only once) and continue.
@@ -153,21 +172,21 @@ public abstract class IntroSelector extends Selector {
    * calling {@link Sorter#insertionSort(int, int)}.
    */
   private void sort3(int from) {
-    final int middle = from + 1;
+    final int mid = from + 1;
     final int last = from + 2;
-    if (compare(from, middle) <= 0) {
-      if (compare(middle, last) > 0) {
-        swap(middle, last);
-        if (compare(from, middle) > 0) {
-          swap(from, middle);
+    if (compare(from, mid) <= 0) {
+      if (compare(mid, last) > 0) {
+        swap(mid, last);
+        if (compare(from, mid) > 0) {
+          swap(from, mid);
         }
       }
-    } else if (compare(middle, last) >= 0) {
+    } else if (compare(mid, last) >= 0) {
       swap(from, last);
     } else {
-      swap(from, middle);
-      if (compare(middle, last) > 0) {
-        swap(middle, last);
+      swap(from, mid);
+      if (compare(mid, last) > 0) {
+        swap(mid, last);
       }
     }
   }
@@ -183,6 +202,115 @@ public abstract class IntroSelector extends Selector {
     for (int i = to - 1; i > from; i--) {
       swap(i, random.nextInt(from, i + 1));
     }
+  }
+
+  /** Selects the k-th entry with a bottom-k algorithm, given that k is close to {@code from}. */
+  private void selectBottom(int from, int to, int k) {
+    assert k >= from && k < to - 1;
+    int last = to - 1;
+    int bSize = k - from + 1;
+    int[] bottom = new int[bSize];
+
+    // Adapt to descending order: swap the first and last k elements if the first elements are
+    // greater.
+    for (int i = 0; i < bSize && compare(from + i, last - i) > 0; i++) {
+      swap(from + i, last - i);
+    }
+
+    // Initialize the bottom list with the indexes of the first entries.
+    // Determine the bottom-max pivot: the greatest entry in the bottom list.
+    int bMax = 0;
+    int index;
+    setPivot(bottom[0] = index = from);
+    while (++index <= k) {
+      bottom[index - from] = index;
+      if (comparePivot(index) < 0) {
+        bMax = index - from;
+        setPivot(index);
+      }
+    }
+
+    // Loop on remaining entries and compare each one with the bottom-max pivot.
+    do {
+      if (comparePivot(index) > 0) {
+        // The entry is less than the bottom-max pivot.
+        // Replace the max by the new entry in the bottom list.
+        bottom[bMax] = index;
+        // Determine the new bottom-max.
+        setPivot(bottom[bMax = 0]);
+        for (int i = 1; i < bSize; i++) {
+          int bIndex;
+          if (comparePivot(bIndex = bottom[i]) < 0) {
+            bMax = i;
+            setPivot(bIndex);
+          }
+        }
+      }
+    } while (++index < to);
+
+    // Partially sort the bottom entries, and set the k-th entry with the bottom-max.
+    for (int i = 0; i < bSize; i++) {
+      int entryIndex = bottom[i];
+      if (entryIndex > k) {
+        swap(from + i, entryIndex);
+      }
+    }
+    swap(from + bMax, k);
+  }
+
+  /** Selects the k-th entry with a top-k algorithm, given that k is close to {@code to}. */
+  private void selectTop(int from, int to, int k) {
+    assert k > from && k < to;
+    int last = to - 1;
+    int tSize = to - k;
+    int[] top = new int[tSize];
+
+    // Adapt to descending order: swap the first and last k elements if the first elements are
+    // greater.
+    for (int i = 0; i < tSize && compare(from + i, last - i) > 0; i++) {
+      swap(from + i, last - i);
+    }
+
+    // Initialize the top list with the indexes of the last entries.
+    // Determine the top-min pivot: the least entry in the top list.
+    int tMin = 0;
+    int index;
+    setPivot(top[0] = index = last);
+    int tFirst = to - tSize;
+    while (--index >= tFirst) {
+      top[last - index] = index;
+      if (comparePivot(index) > 0) {
+        tMin = last - index;
+        setPivot(index);
+      }
+    }
+
+    // Loop on remaining entries and compare each one with the top-min pivot.
+    do {
+      if (comparePivot(index) < 0) {
+        // The entry is greater than the top-min pivot.
+        // Replace the min by the new entry in the top list.
+        top[tMin] = index;
+        // Determine the new top-min.
+        setPivot(top[tMin = 0]);
+        for (int i = 1; i < tSize; i++) {
+          int tIndex;
+          if (comparePivot(tIndex = top[i]) > 0) {
+            tMin = i;
+            setPivot(tIndex);
+          }
+        }
+      }
+    } while (--index >= from);
+
+    // Partially sort the top entries, and set the k-th entry with the top-min.
+    for (int i = 0; i < tSize; i++) {
+      int entryIndex = top[i];
+      if (entryIndex < tFirst) {
+        swap(last - i, entryIndex);
+      }
+    }
+    swap(last - tMin, k);
   }
 
   /**
