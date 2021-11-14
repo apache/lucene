@@ -24,7 +24,8 @@ import java.util.SplittableRandom;
  * algorithm uses Tukey's ninther median-of-medians for pivot and Bentley-McIlroy 3-way
  * partitioning. For the introspective protection, it shuffles the sub-range if the max recursive
  * depth is exceeded. At anytime during the quick selection loop, if the selected {@code k} comes
- * close to the analyzed range boundaries, then it shortcuts to a top-k selection algorithm.
+ * close to the analyzed range boundaries, then it shortcuts to a top-k selection algorithm (more
+ * details in the code doc).
  *
  * <p>This selection algorithm is fast on most data shapes, especially with low cardinality, or when
  * k is close to the boundaries. It runs in linear time on average.
@@ -204,7 +205,19 @@ public abstract class IntroSelector extends Selector {
     }
   }
 
-  /** Selects the k-th entry with a bottom-k algorithm, given that k is close to {@code from}. */
+  /**
+   * Selects the k-th entry with a bottom-k algorithm, given that k is close to {@code from}.
+   *
+   * <p>Bottom-k selection algorithm: <br>
+   * Create an int array of size {@code k - from + 1} called {@code bottom}. Initially each {@code
+   * bottom} array element {@code i} points to the corresponding {@code from + i} entry. Determine
+   * the max of this {@code bottom} array. Then loop on all the remaining entries. For each entry
+   * {@code e}, compare it to the max of {@code bottom}, if {@code e < bottom-max} then swap {@code
+   * e} and {@code bottom-max}, and then determine the new max of {@code bottom} (the speed comes
+   * from the fact that most of the time {@code e >= bottom-max}). At the end, all slots in {@code
+   * bottom} point to the {@code k} least entries, we just have to swap them with the first entries
+   * and finally swap the {@code bottom-max} at index {@code k}.
+   */
   private void selectBottom(int from, int to, int k) {
     assert k >= from && k < to - 1;
     int last = to - 1;
@@ -258,7 +271,19 @@ public abstract class IntroSelector extends Selector {
     swap(from + bMax, k);
   }
 
-  /** Selects the k-th entry with a top-k algorithm, given that k is close to {@code to}. */
+  /**
+   * Selects the k-th entry with a top-k algorithm, given that k is close to {@code to}.
+   *
+   * <p>Top-k selection algorithm: <br>
+   * Create an int array of size {@code to - k} called {@code top}. Initially each {@code top} array
+   * element {@code i} points to the corresponding {@code to - 1 - i} entry. Determine the min of
+   * this {@code top} array. Then reverse loop on all the remaining entries. For each entry {@code
+   * e}, compare it to the min of {@code top}, if {@code e > top-min} then swap {@code e} and {@code
+   * top-min}, and then determine the new min of {@code top} (the speed comes from the fact that
+   * most of the time {@code e <= top-min}). At the end, all slots in {@code top} point to the
+   * {@code k} greatest entries, we just have to swap them with the last entries and finally swap
+   * the {@code top-min} at index {@code k}.
+   */
   private void selectTop(int from, int to, int k) {
     assert k > from && k < to;
     int last = to - 1;
