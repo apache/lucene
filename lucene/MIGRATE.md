@@ -17,6 +17,13 @@
 
 # Apache Lucene Migration Guide
 
+## Minor syntactical changes in StandardQueryParser (Lucene 9.1)
+
+LUCENE-10223 adds interval functions and min-should-match support to StandardQueryParser. This
+means that interval function prefixes ("fn:") and the '@' character after parentheses will
+parse differently than before. If you need the exact previous behavior, clone the StandardSyntaxParser from the previous version of Lucene and create a custom query parser
+with that parser.
+
 ## Directory API is now little endian (LUCENE-9047)
 
 DataOutput's writeShort, writeInt, and writeLong methods now encode with
