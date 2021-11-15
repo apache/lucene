@@ -28,7 +28,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.Bits;
 
-/** Uses {@link KnnVectorsReader#search} to perform nearest Neighbour search. */
+/** Uses {@link KnnVectorsReader#search} to perform nearest neighbour search. */
 public class KnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS =
