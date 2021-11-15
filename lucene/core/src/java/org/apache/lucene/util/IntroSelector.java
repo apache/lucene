@@ -21,14 +21,14 @@ import java.util.SplittableRandom;
 
 /**
  * Adaptive selection algorithm based on the introspective quick select algorithm. The quick select
- * algorithm uses Tukey's ninther median-of-medians for pivot and Bentley-McIlroy 3-way
- * partitioning. For the introspective protection, it shuffles the sub-range if the max recursive
- * depth is exceeded. At anytime during the quick selection loop, if the selected {@code k} comes
- * close to the analyzed range boundaries, then it shortcuts to a top-k selection algorithm (more
- * details in the code doc).
+ * algorithm uses a variant of Tukey's ninther median-of-medians for pivot, and Bentley-McIlroy
+ * 3-way partitioning. For the introspective protection, it shuffles the sub-range if the max
+ * recursive depth is exceeded. At anytime during the quick selection loop, if the selected {@code
+ * k} comes very close to the analyzed range boundaries, then it shortcuts to a streaming top-k
+ * selection algorithm.
  *
  * <p>This selection algorithm is fast on most data shapes, especially with low cardinality, or when
- * k is close to the boundaries. It runs in linear time on average.
+ * k is very close to the boundaries. It runs in linear time on average.
  *
  * @lucene.internal
  */
@@ -36,12 +36,13 @@ public abstract class IntroSelector extends Selector {
 
   // This selector is used repeatedly by the radix selector for sub-ranges of less than
   // 100 entries. This means this selector is also optimized to be fast on small ranges.
-  // It uses the medians-of-medians and 3-way partitioning, it shortcuts to a top-k selection when
+  // It uses the variant of medians-of-medians and 3-way partitioning, it shortcuts to a streaming
+  // top-k selection when
   // possible, and finishes the last tiny range (3 entries or less) with a very specialized sort
   // method.
 
   /** Top-k tuning: how close k must be to the boundaries. */
-  private static final int TOP_K_CLOSE = 30;
+  private static final int TOP_K_VERY_CLOSE = 30;
   /** Top-k tuning: min range size to apply top-k selection. */
   private static final int TOP_K_MIN_RANGE = 60;
   /** Top-k tuning: min scan before checking the top-k fail-fast protection. */
@@ -57,7 +58,7 @@ public abstract class IntroSelector extends Selector {
 
   // Visible for testing.
   void select(int from, int to, int k, int maxDepth) {
-    // This code is similar to IntroSorter#sort, adapted to loop on a single partition.
+    // This code is inspired from IntroSorter#sort, adapted to loop on a single partition.
 
     // For efficiency, we must enter the loop with at least 4 entries to be able to skip
     // some boundary tests during the 3-way partitioning.
@@ -65,15 +66,20 @@ public abstract class IntroSelector extends Selector {
     int size;
     while ((size = to - from) > 3) {
 
-      if (k - from < TOP_K_CLOSE && to - k > TOP_K_MIN_RANGE && !topKDisabled) {
-        // k is close to 'from' while the range is not too small: speed up with a bottom-k
+      int bottomDistance = k - from;
+      int topDistance = to - k;
+      if (bottomDistance < TOP_K_VERY_CLOSE && topDistance > TOP_K_MIN_RANGE && !topKDisabled) {
+        // k is very close to 'from' while the range is not too small: speed up with a bottom-k
         // selection.
         if (selectBottom(from, to, k)) {
           return;
         }
         topKDisabled = true;
-      } else if (to - k <= TOP_K_CLOSE && k - from >= TOP_K_MIN_RANGE && !topKDisabled) {
-        // k is close to 'to' while the range is not too small: speed up with a top-k selection.
+      } else if (topDistance <= TOP_K_VERY_CLOSE
+          && bottomDistance >= TOP_K_MIN_RANGE
+          && !topKDisabled) {
+        // k is very close to 'to' while the range is not too small: speed up with a top-k
+        // selection.
         if (selectTop(from, to, k)) {
           return;
         }
@@ -96,13 +102,24 @@ public abstract class IntroSelector extends Selector {
         int range = size >> 2;
         pivot = median(mid - range, mid, mid + range);
       } else {
-        // Select the pivot with the Tukey's ninther median of medians.
+        // Select the pivot with a variant of the Tukey's ninther median of medians.
+        // If k is close to the boundaries, select either the lowest or highest median (this variant
+        // is inspired from the interpolation search).
         int range = size >> 3;
         int doubleRange = range << 1;
         int medianFirst = median(from, from + range, from + doubleRange);
         int medianMiddle = median(mid - range, mid, mid + range);
         int medianLast = median(last - doubleRange, last - range, last);
-        pivot = median(medianFirst, medianMiddle, medianLast);
+        if (bottomDistance < range) {
+          // k is close to 'from': select the lowest median.
+          pivot = min(medianFirst, medianMiddle, medianLast);
+        } else if (topDistance <= range) {
+          // k is close to 'to': select the highest median.
+          pivot = max(medianFirst, medianMiddle, medianLast);
+        } else {
+          // Otherwise select the median of medians.
+          pivot = median(medianFirst, medianMiddle, medianLast);
+        }
       }
 
       // Bentley-McIlroy 3-way partitioning.
@@ -159,6 +176,22 @@ public abstract class IntroSelector extends Selector {
         sort3(from);
         break;
     }
+  }
+
+  /** Returns the index of the min element among three elements at provided indices. */
+  private int min(int i, int j, int k) {
+    if (compare(i, j) <= 0) {
+      return compare(i, k) <= 0 ? i : k;
+    }
+    return compare(j, k) <= 0 ? j : k;
+  }
+
+  /** Returns the index of the max element among three elements at provided indices. */
+  private int max(int i, int j, int k) {
+    if (compare(i, j) <= 0) {
+      return compare(j, k) < 0 ? k : j;
+    }
+    return compare(i, k) < 0 ? k : i;
   }
 
   /** Copy of {@code IntroSorter#median}. */
@@ -258,7 +291,7 @@ public abstract class IntroSelector extends Selector {
       if (comparePivot(index) > 0) {
         // The entry is less than the bottom-max pivot.
 
-        // Fail-fast protection: abort if more than 50% remaining entries are less than the
+        // Fail-fast protection: abort if more than 50% of the scanned entries were less than the
         // bottom-max pivot.
         int scan = index - k;
         if (++maxReplacements >= (scan >>> 1) && scan >= TOP_K_PROTECTION) {
@@ -337,7 +370,7 @@ public abstract class IntroSelector extends Selector {
       if (comparePivot(index) < 0) {
         // The entry is greater than the top-min pivot.
 
-        // Fail-fast protection: abort if more than 50% remaining entries are greater than the
+        // Fail-fast protection: abort if more than 50% of the scanned entries were less than the
         // top-min pivot.
         int scan = index - k;
         if (++maxReplacements >= (scan >>> 1) && scan >= TOP_K_PROTECTION) {
