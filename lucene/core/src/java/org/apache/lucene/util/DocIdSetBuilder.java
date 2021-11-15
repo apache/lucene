@@ -23,7 +23,6 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.OffsetFixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**

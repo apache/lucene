@@ -5,7 +5,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 /**
  * a {@link FixedBitSet} that has a min value of this set, so the bits before the min value can be saved.
  */
-public class OffsetFixedBitSet extends BitSet implements Bits, Accountable {
+public class OffsetFixedBitSet extends BitSet {
 
   private static final long BASE_RAM_BYTES_USED = RamUsageEstimator.shallowSizeOfInstance(OffsetFixedBitSet.class);
 
