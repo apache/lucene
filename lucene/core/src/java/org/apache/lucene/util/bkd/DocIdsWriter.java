@@ -35,7 +35,7 @@ class DocIdsWriter {
     if (cardinality == 1
             && (docIds[start + count - 1] - docIds[start]) <= count << 4
             && isStrictlySorted(docIds, start, count)) {
-      // Do not want this bitset cause huge storage expand, so we only optimize it when max - min <= 16 * count
+      // Only optimize it when max - min <= 16 * count in order to avoid expanding too much storage.
       // A field with lower cardinality will have a higher probability to trigger this optimization.
       out.writeByte((byte) -1);
       writeIdsAsBitSet(docIds, start, count, out);
