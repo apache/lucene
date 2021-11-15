@@ -38,7 +38,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
-        test(dir, docIDs);
+        test(dir, docIDs, false);
       }
     }
   }
@@ -53,15 +53,15 @@ public class TestDocIdsWriter extends LuceneTestCase {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
         Arrays.sort(docIDs);
-        test(dir, docIDs);
+        test(dir, docIDs, random().nextBoolean());
       }
     }
   }
 
-  private void test(Directory dir, int[] ints) throws Exception {
+  private void test(Directory dir, int[] ints, boolean consistentValue) throws Exception {
     final long len;
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
-      DocIdsWriter.writeDocIds(ints, 0, ints.length, out, 2);
+      DocIdsWriter.writeDocIds(ints, 0, ints.length, out, consistentValue);
       len = out.getFilePointer();
       if (random().nextBoolean()) {
         out.writeLong(0); // garbage

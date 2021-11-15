@@ -28,9 +28,10 @@ class DocIdsWriter {
 
   private DocIdsWriter() {}
 
-  static void writeDocIds(int[] docIds, int start, int count, DataOutput out, int cardinality)
+  static void writeDocIds(
+      int[] docIds, int start, int count, DataOutput out, boolean consistentValue)
       throws IOException {
-    if (cardinality == 1
+    if (consistentValue
         && (docIds[start + count - 1] - docIds[start] + 1) <= count << 4
         && isStrictlySorted(docIds, start, count)) {
       // Only optimize it when max - min + 1 <= 16 * count in order to avoid expanding too much
@@ -42,7 +43,7 @@ class DocIdsWriter {
     }
     // docs can be sorted either when all docs in a block have the same value
     // or when a segment is sorted
-    boolean sorted = cardinality == 1 || isSorted(docIds, start, count);
+    boolean sorted = consistentValue || isSorted(docIds, start, count);
     if (sorted) {
       out.writeByte((byte) 0);
       int previous = 0;

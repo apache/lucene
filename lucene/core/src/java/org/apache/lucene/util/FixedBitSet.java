@@ -221,7 +221,8 @@ public final class FixedBitSet extends BitSet {
     return val;
   }
 
-  public static int nextSetBit(long[] bits, int index, int numBits, int numWords) {
+  @Override
+  public int nextSetBit(int index) {
     // Depends on the ghost bits being clear!
     assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
     int i = index >> 6;
@@ -239,11 +240,6 @@ public final class FixedBitSet extends BitSet {
     }
 
     return DocIdSetIterator.NO_MORE_DOCS;
-  }
-
-  @Override
-  public int nextSetBit(int index) {
-    return nextSetBit(bits, index, numBits, numWords);
   }
 
   @Override
