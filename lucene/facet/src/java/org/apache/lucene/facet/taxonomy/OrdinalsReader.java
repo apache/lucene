@@ -23,7 +23,8 @@ import org.apache.lucene.util.IntsRef;
 /**
  * Provides per-document ordinals.
  *
- * @deprecated Custom ordinal providers are no longer supported by the faceting module.
+ * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
+ *     Lucene 9
  */
 @Deprecated
 public abstract class OrdinalsReader {
