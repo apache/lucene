@@ -46,6 +46,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  * <p><b>NOTE:</b> create one instance of this and re-use it for all facet implementations (the
  * cache is per-instance, not static).
  */
+@Deprecated
 public class CachedOrdinalsReader extends OrdinalsReader implements Accountable {
 
   private final OrdinalsReader source;

@@ -20,7 +20,12 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.IntsRef;
 
-/** Provides per-document ordinals. */
+/**
+ * Provides per-document ordinals.
+ *
+ * @deprecated Custom ordinal providers are no longer supported by the faceting module.
+ */
+@Deprecated
 public abstract class OrdinalsReader {
 
   /** Returns ordinals for documents in one segment. */

@@ -29,8 +29,11 @@ import org.apache.lucene.util.IntsRef;
  * Reads from any {@link OrdinalsReader}; use {@link FastTaxonomyFacetCounts} if you are using the
  * default encoding from {@link BinaryDocValues}.
  *
- * @lucene.experimental
+ * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
+ *     Lucene 9. Please switch to {@link FastTaxonomyFacetCounts} or implement your own {@link
+ *     org.apache.lucene.facet.Facets} implementation if you have custom needs.
  */
+@Deprecated
 public class TaxonomyFacetCounts extends IntTaxonomyFacets {
   private final OrdinalsReader ordinalsReader;
 

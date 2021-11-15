@@ -79,7 +79,11 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
   /**
    * Aggreggates float facet values from the provided {@link DoubleValuesSource}, and pulls ordinals
    * from the provided {@link OrdinalsReader}.
+   *
+   * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
+   *     Lucene 9
    */
+  @Deprecated
   public TaxonomyFacetSumValueSource(
       OrdinalsReader ordinalsReader,
       TaxonomyReader taxoReader,

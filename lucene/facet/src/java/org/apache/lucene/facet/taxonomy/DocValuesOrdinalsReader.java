@@ -27,7 +27,13 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 
-/** Decodes ordinals previously indexed into a BinaryDocValues field */
+/**
+ * Decodes ordinals previously indexed into a BinaryDocValues field
+ *
+ * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
+ *     Lucene 9
+ */
+@Deprecated
 public class DocValuesOrdinalsReader extends OrdinalsReader {
   private final String field;
 
@@ -130,10 +136,7 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
    *
    * @param buf binary payload containing encoded ordinals
    * @param ordinals buffer for decoded ordinals
-   * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
-   *     Lucene 9
    */
-  @Deprecated
   public void decode(BytesRef buf, IntsRef ordinals) {
 
     // grow the buffer up front, even if by a large number of values (buf.length)

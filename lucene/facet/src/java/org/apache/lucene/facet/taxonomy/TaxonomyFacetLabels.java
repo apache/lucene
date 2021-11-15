@@ -114,7 +114,11 @@ public class TaxonomyFacetLabels {
      *
      * <p>Note: If using the default encoding, you can use {@link
      * #FacetLabelReader(SortedNumericDocValues)} directly
+     *
+     * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting
+     *     with Lucene 9
      */
+    @Deprecated
     public FacetLabelReader(OrdinalsReader ordsReader, LeafReaderContext readerContext)
         throws IOException {
       ordinalsSegmentReader = ordsReader.getReader(readerContext);
