@@ -342,11 +342,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
 
     @Override
-    public void visit(DocIdSetIterator iterator) throws IOException {
-      adder.add(iterator);
-    }
-
-    @Override
     public void visit(int docID, byte[] packedValue) {
       assert packedValue.length == pointBytes.length;
       if (Arrays.equals(packedValue, pointBytes)) {

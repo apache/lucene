@@ -146,7 +146,6 @@ class DocIdsWriter {
     for (int i=0; i<longLen; i++) {
       bits[i] = in.readLong();
     }
-    //Hope this stupid logic only happens during merge
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
     OffsetFixedBitSet offsetFixedBitSet = new OffsetFixedBitSet(offset, bitSet);
     BitSetIterator iterator = new BitSetIterator(offsetFixedBitSet, count);
@@ -154,6 +153,7 @@ class DocIdsWriter {
     while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       docIDs[pos++] = docId;
     }
+    assert pos == count;
   }
 
   private static void readDeltaVInts(IndexInput in, int count, int[] docIDs) throws IOException {
