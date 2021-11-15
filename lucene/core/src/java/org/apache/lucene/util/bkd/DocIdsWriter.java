@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.bkd;
 
+import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
@@ -24,17 +26,15 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.OffsetFixedBitSet;
 
-import java.io.IOException;
-import java.util.Arrays;
-
 class DocIdsWriter {
 
   private DocIdsWriter() {}
 
-  static void writeDocIds(int[] docIds, int start, int count, DataOutput out, int cardinality) throws IOException {
+  static void writeDocIds(int[] docIds, int start, int count, DataOutput out, int cardinality)
+      throws IOException {
     if (cardinality == 1
-            && (docIds[start + count - 1] - docIds[start]) <= count << 4
-            && isStrictlySorted(docIds, start, count)) {
+        && (docIds[start + count - 1] - docIds[start]) <= count << 4
+        && isStrictlySorted(docIds, start, count)) {
       // Only optimize it when max - min <= 16 * count in order to avoid expanding too much storage.
       // A field with lower cardinality will have a higher probability to trigger this optimization.
       out.writeByte((byte) -1);
@@ -113,23 +113,39 @@ class DocIdsWriter {
     return true;
   }
 
-  private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out) throws IOException {
+  private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out)
+      throws IOException {
     int min = docIds[start];
     int max = docIds[start + count - 1];
-    //TODO produce bit set in stream
+    // TODO produce bit set in stream
     OffsetFixedBitSet bitSet = new OffsetFixedBitSet(min, max);
     for (int i = 0; i < count; i++) {
       bitSet.set(docIds[start + i]);
     }
-    assert bitSet.cardinality() == count :
-            "cardinality: " + bitSet.cardinality() + "\n"
-                    + " count: " + count + "\n"
-                    + " start: " + start + "\n"
-                    + " ids: " + Arrays.toString(docIds) + "\n"
-                    + " min: " + min + "\n"
-                    + " max: " + max + "\n"
-                    + " bits: " + Arrays.toString(bitSet.getBitSet().getBits()) + "\n"
-                    + " offset: " + bitSet.getOffsetBits();
+    assert bitSet.cardinality() == count
+        : "cardinality: "
+            + bitSet.cardinality()
+            + "\n"
+            + " count: "
+            + count
+            + "\n"
+            + " start: "
+            + start
+            + "\n"
+            + " ids: "
+            + Arrays.toString(docIds)
+            + "\n"
+            + " min: "
+            + min
+            + "\n"
+            + " max: "
+            + max
+            + "\n"
+            + " bits: "
+            + Arrays.toString(bitSet.getBitSet().getBits())
+            + "\n"
+            + " offset: "
+            + bitSet.getOffsetBits();
     long[] bits = bitSet.getBitSet().getBits();
     out.writeVInt(bitSet.getOffsetBits());
     out.writeVInt(bits.length);
@@ -275,7 +291,8 @@ class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+  private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor)
+      throws IOException {
     BitSetIterator bitSetIterator = readBitSetIterator(in, count);
     visitor.visit(bitSetIterator);
   }

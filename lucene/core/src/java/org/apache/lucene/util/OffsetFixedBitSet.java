@@ -19,11 +19,13 @@ package org.apache.lucene.util;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * a {@link FixedBitSet} that has a min value of this set, so the bits before the min value can be saved.
+ * a {@link FixedBitSet} that has a min value of this set, so the bits before the min value can be
+ * saved.
  */
 public class OffsetFixedBitSet extends BitSet {
 
-  private static final long BASE_RAM_BYTES_USED = RamUsageEstimator.shallowSizeOfInstance(OffsetFixedBitSet.class);
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(OffsetFixedBitSet.class);
 
   private final FixedBitSet bitSet;
   private final int offsetWords;
@@ -65,10 +67,7 @@ public class OffsetFixedBitSet extends BitSet {
 
   @Override
   public void clear(int startIndex, int endIndex) {
-    bitSet.clear(
-            Math.max(0, startIndex - offsetBits),
-            Math.max(0, endIndex - offsetBits)
-    );
+    bitSet.clear(Math.max(0, startIndex - offsetBits), Math.max(0, endIndex - offsetBits));
   }
 
   @Override
