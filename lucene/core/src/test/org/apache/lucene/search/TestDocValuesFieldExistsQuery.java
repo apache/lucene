@@ -29,7 +29,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 
-public class TestFieldValueQuery extends LuceneTestCase {
+public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
   public void testRandom() throws IOException {
     final int iters = atLeast(10);
