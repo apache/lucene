@@ -20,20 +20,21 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.OffsetFixedBitSet;
-import org.apache.lucene.util.SparseFixedBitSet;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 class DocIdsWriter {
 
   private DocIdsWriter() {}
 
   static void writeDocIds(int[] docIds, int start, int count, DataOutput out, int cardinality) throws IOException {
-    if (cardinality == 1 && (docIds[start + count - 1] - docIds[start]) <= count << 4) {
+    if (cardinality == 1
+            && (docIds[start + count - 1] - docIds[start]) <= count << 4
+            && isStrictlySorted(docIds, start, count)) {
       // Do not want this bitset cause huge storage expand, so we only optimize it when max - min <= 16 * count
       // A field with lower cardinality will have a higher probability to trigger this optimization.
       out.writeByte((byte) -1);
@@ -102,18 +103,37 @@ class DocIdsWriter {
     return true;
   }
 
-  private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out) throws IOException {
+  private static boolean isStrictlySorted(int[] docIds, int start, int count) {
     assert isSorted(docIds, start, count);
+    for (int i = 1; i < count; ++i) {
+      if (docIds[start + i - 1] == docIds[start + i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out) throws IOException {
     int min = docIds[start];
     int max = docIds[start + count - 1];
+    //TODO produce bit set in stream
     OffsetFixedBitSet bitSet = new OffsetFixedBitSet(min, max);
-    for (int i=0; i<count; i++){
-      bitSet.set(docIds[start+i]);
+    for (int i = 0; i < count; i++) {
+      bitSet.set(docIds[start + i]);
     }
+    assert bitSet.cardinality() == count :
+            "cardinality: " + bitSet.cardinality() + "\n"
+                    + " count: " + count + "\n"
+                    + " start: " + start + "\n"
+                    + " ids: " + Arrays.toString(docIds) + "\n"
+                    + " min: " + min + "\n"
+                    + " max: " + max + "\n"
+                    + " bits: " + Arrays.toString(bitSet.getBitSet().getBits()) + "\n"
+                    + " offset: " + bitSet.getOffsetBits();
     long[] bits = bitSet.getBitSet().getBits();
     out.writeVInt(bitSet.getOffsetBits());
     out.writeVInt(bits.length);
-    for (long l:bits) {
+    for (long l : bits) {
       out.writeLong(l);
     }
   }
@@ -139,21 +159,25 @@ class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
+  private static BitSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
     int offset = in.readVInt();
     int longLen = in.readVInt();
     long[] bits = new long[longLen];
-    for (int i=0; i<longLen; i++) {
+    for (int i = 0; i < longLen; i++) {
       bits[i] = in.readLong();
     }
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
     OffsetFixedBitSet offsetFixedBitSet = new OffsetFixedBitSet(offset, bitSet);
-    BitSetIterator iterator = new BitSetIterator(offsetFixedBitSet, count);
-    int docId, pos=0;
+    return new BitSetIterator(offsetFixedBitSet, count);
+  }
+
+  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
+    BitSetIterator iterator = readBitSetIterator(in, count);
+    int docId, pos = 0;
     while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       docIDs[pos++] = docId;
     }
-    assert pos == count;
+    assert pos == count : "pos: " + pos + "count: " + count;
   }
 
   private static void readDeltaVInts(IndexInput in, int count, int[] docIDs) throws IOException {
@@ -251,20 +275,8 @@ class DocIdsWriter {
     }
   }
 
-    /**
-   * Read {@code count} integers and feed the result directly to {@link
-   * IntersectVisitor#visit(int)}.
-   */
   private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
-    int offset = in.readVInt();
-    int longLen = in.readVInt();
-    long[] bits = new long[longLen];
-    for (int i=0; i<longLen; i++) {
-      bits[i] = in.readLong();
-    }
-    FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
-    OffsetFixedBitSet offsetFixedBitSet = new OffsetFixedBitSet(offset, bitSet);
-    BitSetIterator bitSetIterator = new BitSetIterator(offsetFixedBitSet, count);
+    BitSetIterator bitSetIterator = readBitSetIterator(in, count);
     visitor.visit(bitSetIterator);
   }
 }

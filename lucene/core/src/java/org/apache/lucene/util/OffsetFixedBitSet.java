@@ -3,7 +3,7 @@ package org.apache.lucene.util;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * a {@link FixedBitSet} that knows its min value.
+ * a {@link FixedBitSet} that has a min value of this set, so the bits before the min value can be saved.
  */
 public class OffsetFixedBitSet extends BitSet implements Bits, Accountable {
 
