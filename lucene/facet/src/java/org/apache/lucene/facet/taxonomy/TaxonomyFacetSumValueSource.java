@@ -18,9 +18,13 @@ package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
@@ -36,8 +40,7 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
 
   /**
    * Aggreggates double facet values from the provided {@link DoubleValuesSource}, pulling ordinals
-   * using {@link DocValuesOrdinalsReader} against the default indexed facet field {@link
-   * FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
+   * from the default indexed facet field {@link FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
    */
   public TaxonomyFacetSumValueSource(
       TaxonomyReader taxoReader,
@@ -45,12 +48,32 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       FacetsCollector fc,
       DoubleValuesSource valueSource)
       throws IOException {
-    this(
-        new DocValuesOrdinalsReader(FacetsConfig.DEFAULT_INDEX_FIELD_NAME),
-        taxoReader,
-        config,
-        fc,
-        valueSource);
+    this(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, taxoReader, config, fc, valueSource);
+  }
+
+  /**
+   * Aggreggates double facet values from the provided {@link DoubleValuesSource}, pulling ordinals
+   * from the specified indexed facet field.
+   */
+  public TaxonomyFacetSumValueSource(
+      String indexField,
+      TaxonomyReader taxoReader,
+      FacetsConfig config,
+      FacetsCollector fc,
+      DoubleValuesSource valueSource)
+      throws IOException {
+    super(indexField, taxoReader, config);
+
+    // Maintain backwards compatibility with the older binary format using an OrdinalsReader (which
+    // can support both formats currently):
+    MatchingDocs first = fc.getMatchingDocs().isEmpty() ? null : fc.getMatchingDocs().get(0);
+    if (first != null && FacetUtils.usesOlderBinaryOrdinals(first.context.reader(), indexField)) {
+      this.ordinalsReader = new DocValuesOrdinalsReader(indexField);
+    } else {
+      this.ordinalsReader = null;
+    }
+
+    sumValues(fc.getMatchingDocs(), fc.getKeepScores(), valueSource);
   }
 
   /**
@@ -91,20 +114,43 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       List<MatchingDocs> matchingDocs, boolean keepScores, DoubleValuesSource valueSource)
       throws IOException {
 
-    IntsRef scratch = new IntsRef();
-    for (MatchingDocs hits : matchingDocs) {
-      OrdinalsReader.OrdinalsSegmentReader ords = ordinalsReader.getReader(hits.context);
-      DoubleValues scores = keepScores ? scores(hits) : null;
-      DoubleValues functionValues = valueSource.getValues(hits.context, scores);
-      DocIdSetIterator docs = hits.bits.iterator();
+    if (ordinalsReader != null) {
+      // If the user provided a custom ordinals reader, use it to retrieve the document ordinals:
+      IntsRef scratch = new IntsRef();
+      for (MatchingDocs hits : matchingDocs) {
+        OrdinalsReader.OrdinalsSegmentReader ords = ordinalsReader.getReader(hits.context);
+        DoubleValues scores = keepScores ? scores(hits) : null;
+        DoubleValues functionValues = valueSource.getValues(hits.context, scores);
+        DocIdSetIterator docs = hits.bits.iterator();
 
-      int doc;
-      while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        ords.get(doc, scratch);
-        if (functionValues.advanceExact(doc)) {
-          float value = (float) functionValues.doubleValue();
-          for (int i = 0; i < scratch.length; i++) {
-            values[scratch.ints[i]] += value;
+        int doc;
+        while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ords.get(doc, scratch);
+          if (functionValues.advanceExact(doc)) {
+            float value = (float) functionValues.doubleValue();
+            for (int i = 0; i < scratch.length; i++) {
+              values[scratch.ints[i]] += value;
+            }
+          }
+        }
+      }
+    } else {
+      // If no custom ordinals reader is provided, expect the default encoding:
+      for (MatchingDocs hits : matchingDocs) {
+        SortedNumericDocValues ordinalValues =
+            DocValues.getSortedNumeric(hits.context.reader(), indexFieldName);
+        DoubleValues scores = keepScores ? scores(hits) : null;
+        DoubleValues functionValues = valueSource.getValues(hits.context, scores);
+        DocIdSetIterator it =
+            ConjunctionUtils.intersectIterators(List.of(hits.bits.iterator(), ordinalValues));
+
+        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+          if (functionValues.advanceExact(doc)) {
+            float value = (float) functionValues.doubleValue();
+            int ordinalCount = ordinalValues.docValueCount();
+            for (int i = 0; i < ordinalCount; i++) {
+              values[(int) ordinalValues.nextValue()] += value;
+            }
           }
         }
       }

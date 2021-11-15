@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
@@ -409,9 +410,26 @@ public class FacetsConfig {
         indexDrillDownTerms(doc, indexFieldName, dimConfig, facetLabel);
       }
 
-      // Facet counts:
-      // DocValues are considered stored fields:
-      doc.add(new BinaryDocValuesField(indexFieldName, dedupAndEncode(ordinals.get())));
+      // Store the taxonomy ordinals associated with each doc. Prefer to use SortedNumericDocValues
+      // but "fall back" to a custom binary format to maintain backwards compatibility with Lucene 8
+      // indexes.
+      if (taxoWriter.useNumericDocValuesForOrdinals()) {
+        // Dedupe and encode the ordinals. It's not important that we sort here
+        // (SortedNumericDocValuesField will handle this internally), but we
+        // sort to identify dups (since SNDVF doesn't dedupe):
+        IntsRef ords = ordinals.get();
+        Arrays.sort(ords.ints, ords.offset, ords.offset + ords.length);
+        int prev = -1;
+        for (int i = 0; i < ords.length; i++) {
+          int ord = ords.ints[ords.offset + i];
+          if (ord > prev) {
+            doc.add(new SortedNumericDocValuesField(indexFieldName, ord));
+            prev = ord;
+          }
+        }
+      } else {
+        doc.add(new BinaryDocValuesField(indexFieldName, dedupAndEncode(ordinals.get())));
+      }
     }
   }
 
@@ -507,7 +525,13 @@ public class FacetsConfig {
     }
   }
 
-  /** Encodes ordinals into a BytesRef; expert: subclass can override this to change encoding. */
+  /**
+   * Encodes ordinals into a BytesRef; expert: subclass can override this to change encoding.
+   *
+   * @deprecated Starting in Lucene 9, we moved to a more straight-forward numeric doc values
+   *     encoding and no longer support custom binary encodings.
+   */
+  @Deprecated
   protected BytesRef dedupAndEncode(IntsRef ordinals) {
     Arrays.sort(ordinals.ints, ordinals.offset, ordinals.length);
     byte[] bytes = new byte[5 * ordinals.length];

@@ -17,10 +17,12 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
@@ -41,6 +43,45 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
 
   @Override
   public OrdinalsSegmentReader getReader(LeafReaderContext context) throws IOException {
+    // Continue to support the older binary doc values format through Lucene 9:
+    if (FacetUtils.usesOlderBinaryOrdinals(context.reader(), field)) {
+      return getBinaryFormatReader(context);
+    }
+
+    SortedNumericDocValues dv = DocValues.getSortedNumeric(context.reader(), field);
+
+    return new OrdinalsSegmentReader() {
+
+      private int lastDocID;
+
+      @Override
+      public void get(int docID, IntsRef ordinals) throws IOException {
+        if (docID < lastDocID) {
+          throw new AssertionError(
+              "docs out of order: lastDocID=" + lastDocID + " vs docID=" + docID);
+        }
+        lastDocID = docID;
+
+        ordinals.offset = 0;
+        ordinals.length = 0;
+
+        if (dv.advanceExact(docID)) {
+          int count = dv.docValueCount();
+          if (ordinals.ints.length < count) {
+            ordinals.ints = ArrayUtil.grow(ordinals.ints, count);
+          }
+
+          for (int i = 0; i < count; i++) {
+            ordinals.ints[ordinals.length] = (int) dv.nextValue();
+            ordinals.length++;
+          }
+        }
+      }
+    };
+  }
+
+  private OrdinalsSegmentReader getBinaryFormatReader(LeafReaderContext context)
+      throws IOException {
     BinaryDocValues values0 = context.reader().getBinaryDocValues(field);
     if (values0 == null) {
       values0 = DocValues.emptyBinary();
@@ -89,7 +130,10 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
    *
    * @param buf binary payload containing encoded ordinals
    * @param ordinals buffer for decoded ordinals
+   * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
+   *     Lucene 9
    */
+  @Deprecated
   public void decode(BytesRef buf, IntsRef ordinals) {
 
     // grow the buffer up front, even if by a large number of values (buf.length)

@@ -18,6 +18,9 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 
@@ -80,5 +83,19 @@ public final class FacetUtils {
         return it.cost();
       }
     };
+  }
+
+  /**
+   * Determine whether-or-not an index segment is using the older-style binary format or the newer
+   * NumericDocValues format for storing taxonomy faceting ordinals (for the specified field).
+   *
+   * @deprecated Please do not rely on this method. It is added as a temporary measure for providing
+   *     index backwards-compatibility with Lucene 8 and earlier indexes, and will be removed in
+   *     Lucene 10.
+   */
+  @Deprecated
+  public static boolean usesOlderBinaryOrdinals(LeafReader reader, String field) {
+    FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+    return fieldInfo != null && DocValuesType.BINARY == fieldInfo.getDocValuesType();
   }
 }
