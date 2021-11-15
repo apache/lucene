@@ -16,25 +16,32 @@
  */
 package org.apache.lucene.util.bkd;
 
-import java.io.IOException;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.OffsetFixedBitSet;
+import org.apache.lucene.util.SparseFixedBitSet;
+
+import java.io.IOException;
 
 class DocIdsWriter {
 
   private DocIdsWriter() {}
 
-  static void writeDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
+  static void writeDocIds(int[] docIds, int start, int count, DataOutput out, int cardinality) throws IOException {
+    if (cardinality == 1 && (docIds[start + count - 1] - docIds[start]) <= count << 4) {
+      // Do not want this bitset cause huge storage expand, so we only optimize it when max - min <= 16 * count
+      // A field with lower cardinality will have a higher probability to trigger this optimization.
+      out.writeByte((byte) -1);
+      writeIdsAsBitSet(docIds, start, count, out);
+      return;
+    }
     // docs can be sorted either when all docs in a block have the same value
     // or when a segment is sorted
-    boolean sorted = true;
-    for (int i = 1; i < count; ++i) {
-      if (docIds[start + i - 1] > docIds[start + i]) {
-        sorted = false;
-        break;
-      }
-    }
+    boolean sorted = cardinality == 1 || isSorted(docIds, start, count);
     if (sorted) {
       out.writeByte((byte) 0);
       int previous = 0;
@@ -85,10 +92,38 @@ class DocIdsWriter {
     }
   }
 
+  private static boolean isSorted(int[] docIds, int start, int count) {
+    for (int i = 1; i < count; ++i) {
+      if (docIds[start + i - 1] > docIds[start + i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out) throws IOException {
+    assert isSorted(docIds, start, count);
+    int min = docIds[start];
+    int max = docIds[start + count - 1];
+    OffsetFixedBitSet bitSet = new OffsetFixedBitSet(min, max);
+    for (int i=0; i<count; i++){
+      bitSet.set(docIds[start+i]);
+    }
+    long[] bits = bitSet.getBitSet().getBits();
+    out.writeVInt(bitSet.getOffsetBits());
+    out.writeVInt(bits.length);
+    for (long l:bits) {
+      out.writeLong(l);
+    }
+  }
+
   /** Read {@code count} integers into {@code docIDs}. */
   static void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
+      case -1:
+        readBitSet(in, count, docIDs);
+        break;
       case 0:
         readDeltaVInts(in, count, docIDs);
         break;
@@ -100,6 +135,21 @@ class DocIdsWriter {
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
+    }
+  }
+
+  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
+    int offset = in.readVInt();
+    int longLen = in.readVInt();
+    long[] bits = new long[longLen];
+    for (int i=0; i<longLen; i++) {
+      bits[i] = in.readLong();
+    }
+    FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
+    OffsetFixedBitSet offsetFixedBitSet = new OffsetFixedBitSet(offset, bitSet);
+    docIDs[0] = offsetFixedBitSet.nextSetBit(0);
+    for (int i = 1; i < count; i++) {
+      docIDs[i] = offsetFixedBitSet.nextSetBit(docIDs[i-1] + 1);
     }
   }
 
@@ -144,6 +194,9 @@ class DocIdsWriter {
   static void readInts(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
+      case -1:
+        readBitSet(in, count, visitor);
+        break;
       case 0:
         readDeltaVInts(in, count, visitor);
         break;
@@ -193,5 +246,22 @@ class DocIdsWriter {
     for (; i < count; ++i) {
       visitor.visit((Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte()));
     }
+  }
+
+    /**
+   * Read {@code count} integers and feed the result directly to {@link
+   * IntersectVisitor#visit(int)}.
+   */
+  private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+    int offset = in.readVInt();
+    int longLen = in.readVInt();
+    long[] bits = new long[longLen];
+    for (int i=0; i<longLen; i++) {
+      bits[i] = in.readLong();
+    }
+    FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
+    OffsetFixedBitSet offsetFixedBitSet = new OffsetFixedBitSet(offset, bitSet);
+    BitSetIterator bitSetIterator = new BitSetIterator(offsetFixedBitSet, count);
+    visitor.visit(bitSetIterator);
   }
 }

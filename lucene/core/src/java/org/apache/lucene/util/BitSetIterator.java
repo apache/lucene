@@ -42,6 +42,11 @@ public class BitSetIterator extends DocIdSetIterator {
     return getBitSet(iterator, FixedBitSet.class);
   }
 
+  /** If the provided iterator wraps a {@link OffsetFixedBitSet}, returns it, otherwise returns null. */
+  public static OffsetFixedBitSet getOffsetFixedBitSetOrNull(DocIdSetIterator iterator) {
+    return getBitSet(iterator, OffsetFixedBitSet.class);
+  }
+
   /**
    * If the provided iterator wraps a {@link SparseFixedBitSet}, returns it, otherwise returns null.
    */

@@ -23,6 +23,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.OffsetFixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -43,6 +44,13 @@ public final class DocIdSetBuilder {
    */
   public abstract static class BulkAdder {
     public abstract void add(int doc);
+
+    public void add(DocIdSetIterator iterator) throws IOException {
+      int docID;
+      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        add(docID);
+      }
+    }
   }
 
   private static class FixedBitSetAdder extends BulkAdder {
@@ -55,6 +63,17 @@ public final class DocIdSetBuilder {
     @Override
     public void add(int doc) {
       bitSet.set(doc);
+    }
+
+    @Override
+    public void add(DocIdSetIterator iterator) throws IOException {
+      //TODO FixedBitSet case
+      OffsetFixedBitSet offsetFixedBitSet = BitSetIterator.getOffsetFixedBitSetOrNull(iterator);
+      if (offsetFixedBitSet != null) {
+        bitSet.or(offsetFixedBitSet.getOffsetWords(), offsetFixedBitSet.getBitSet());
+      } else {
+        super.add(iterator);
+      }
     }
   }
 
