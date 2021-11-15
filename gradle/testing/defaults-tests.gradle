@@ -90,7 +90,7 @@ allprojects {
 
     tasks.withType(Test) {
       ext {
-        testOutputsDir = file("${reports.junitXml.outputLocation}/outputs")
+        testOutputsDir = file("${reports.junitXml.outputLocation.get()}/outputs")
       }
 
       // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally up-to-date.

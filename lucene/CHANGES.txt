@@ -29,6 +29,38 @@ Other
 ---------------------
 (No changes)
 
+======================= Lucene 9.1.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+
+* LUCENE-10223: Add interval function support to StandardQueryParser. Add min-should-match operator
+  support to StandardQueryParser. Update and clean up package documentation in flexible query parser
+  module. (Dawid Weiss, Alan Woodward)
+
+* LUCENE-10220: Add an utility method to get IntervalSource from analyzed text (or token stream).
+  (Uwe Schindler, Dawid Weiss, Alan Woodward)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
@@ -519,6 +551,8 @@ Bug Fixes
   (Ankur Goel)
 
 * LUCENE-10154: NumericLeafComparator to define getPointValues. (Mayya Sharipova, Adrien Grand)
+
+* LUCENE-10208: Ensure that the minimum competitive score does not decrease in concurrent search. (Jim Ferenczi, Adrien Grand)
 
 Build
 ---------------------
