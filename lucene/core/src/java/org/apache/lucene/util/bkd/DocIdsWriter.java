@@ -117,41 +117,32 @@ class DocIdsWriter {
       throws IOException {
     int min = docIds[start];
     int max = docIds[start + count - 1];
-    // TODO produce bit set in stream
-    OffsetFixedBitSet bitSet = new OffsetFixedBitSet(min, max);
+
+    final int offsetWords = min >> 6;
+    final int offsetBits = offsetWords << 6;
+    final int totalWordCount = FixedBitSet.bits2words(max - offsetBits + 1);
+    long currentWord = 0;
+    int currentWordIndex = 0;
+
+    out.writeVInt(offsetBits);
+    out.writeVInt(totalWordCount);
     for (int i = 0; i < count; i++) {
-      bitSet.set(docIds[start + i]);
+      final int index = docIds[start + i] - offsetBits;
+      final int nextWordIndex = index >> 6;
+      assert currentWordIndex <= nextWordIndex;
+      if (currentWordIndex < nextWordIndex) {
+        out.writeLong(currentWord);
+        currentWord = 0L;
+        currentWordIndex ++;
+        while (currentWordIndex < nextWordIndex) {
+          currentWordIndex++;
+          out.writeLong(0L);
+        }
+      }
+      currentWord |= 1L << index;
     }
-    assert bitSet.cardinality() == count
-        : "cardinality: "
-            + bitSet.cardinality()
-            + "\n"
-            + " count: "
-            + count
-            + "\n"
-            + " start: "
-            + start
-            + "\n"
-            + " ids: "
-            + Arrays.toString(docIds)
-            + "\n"
-            + " min: "
-            + min
-            + "\n"
-            + " max: "
-            + max
-            + "\n"
-            + " bits: "
-            + Arrays.toString(bitSet.getBitSet().getBits())
-            + "\n"
-            + " offset: "
-            + bitSet.getOffsetBits();
-    long[] bits = bitSet.getBitSet().getBits();
-    out.writeVInt(bitSet.getOffsetBits());
-    out.writeVInt(bits.length);
-    for (long l : bits) {
-      out.writeLong(l);
-    }
+    out.writeLong(currentWord);
+    assert currentWordIndex + 1 == totalWordCount;
   }
 
   /** Read {@code count} integers into {@code docIDs}. */
