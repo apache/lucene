@@ -221,8 +221,7 @@ public final class FixedBitSet extends BitSet {
     return val;
   }
 
-  @Override
-  public int nextSetBit(int index) {
+  public static int nextSetBit(long[] bits, int index, int numBits, int numWords) {
     // Depends on the ghost bits being clear!
     assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
     int i = index >> 6;
@@ -240,6 +239,11 @@ public final class FixedBitSet extends BitSet {
     }
 
     return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int nextSetBit(int index) {
+    return nextSetBit(bits, index, numBits, numWords);
   }
 
   @Override
@@ -267,8 +271,9 @@ public final class FixedBitSet extends BitSet {
   public void or(DocIdSetIterator iter) throws IOException {
     if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
       checkUnpositioned(iter);
-      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
-      or(bits);
+      BitSetIterator bitSetIterator = (BitSetIterator) iter;
+      final FixedBitSet bits = (FixedBitSet) bitSetIterator.getBitSet();
+      or(bitSetIterator.getDocBase() >> 6, bits);
     } else {
       super.or(iter);
     }
@@ -280,7 +285,10 @@ public final class FixedBitSet extends BitSet {
   }
 
   public void or(final int otherOffsetWords, FixedBitSet otherBitSet) {
-    int pos = Math.min(numWords - otherOffsetWords, otherBitSet.numWords);
+    int otherNumWords = otherBitSet.numWords;
+    assert otherNumWords + otherOffsetWords <= numWords
+        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
     final long[] otherArr = otherBitSet.bits;
     while (--pos >= 0) {

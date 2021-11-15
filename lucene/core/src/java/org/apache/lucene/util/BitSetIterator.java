@@ -43,13 +43,6 @@ public class BitSetIterator extends DocIdSetIterator {
   }
 
   /**
-   * If the provided iterator wraps a {@link OffsetFixedBitSet}, returns it, otherwise returns null.
-   */
-  public static OffsetFixedBitSet getOffsetFixedBitSetOrNull(DocIdSetIterator iterator) {
-    return getBitSet(iterator, OffsetFixedBitSet.class);
-  }
-
-  /**
    * If the provided iterator wraps a {@link SparseFixedBitSet}, returns it, otherwise returns null.
    */
   public static SparseFixedBitSet getSparseFixedBitSetOrNull(DocIdSetIterator iterator) {
@@ -59,6 +52,7 @@ public class BitSetIterator extends DocIdSetIterator {
   private final BitSet bits;
   private final int length;
   private final long cost;
+  private final int docBase;
   private int doc = -1;
 
   /** Sole constructor. */
@@ -69,6 +63,20 @@ public class BitSetIterator extends DocIdSetIterator {
     this.bits = bits;
     this.length = bits.length();
     this.cost = cost;
+    this.docBase = 0;
+  }
+
+  public BitSetIterator(BitSet bits, long cost, int docBase) {
+    if (cost < 0) {
+      throw new IllegalArgumentException("cost must be >= 0, got " + cost);
+    }
+    if ((docBase & 63) != 0) {
+      throw new IllegalArgumentException("docBase need to be a multiple of 64");
+    }
+    this.bits = bits;
+    this.length = bits.length();
+    this.cost = cost;
+    this.docBase = docBase;
   }
 
   /** Return the wrapped {@link BitSet}. */
@@ -79,6 +87,10 @@ public class BitSetIterator extends DocIdSetIterator {
   @Override
   public int docID() {
     return doc;
+  }
+
+  public int getDocBase() {
+    return docBase;
   }
 
   /** Set the current doc id that this iterator is on. */
@@ -93,10 +105,15 @@ public class BitSetIterator extends DocIdSetIterator {
 
   @Override
   public int advance(int target) {
-    if (target >= length) {
+    if (target >= length + docBase) {
       return doc = NO_MORE_DOCS;
     }
-    return doc = bits.nextSetBit(target);
+    int next = bits.nextSetBit(Math.max(0, target - docBase));
+    if (next == NO_MORE_DOCS) {
+      return this.doc = NO_MORE_DOCS;
+    } else {
+      return this.doc = next + docBase;
+    }
   }
 
   @Override

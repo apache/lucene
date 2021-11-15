@@ -17,14 +17,12 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.OffsetFixedBitSet;
 
 class DocIdsWriter {
 
@@ -33,9 +31,10 @@ class DocIdsWriter {
   static void writeDocIds(int[] docIds, int start, int count, DataOutput out, int cardinality)
       throws IOException {
     if (cardinality == 1
-        && (docIds[start + count - 1] - docIds[start]) <= count << 4
+        && (docIds[start + count - 1] - docIds[start] + 1) <= count << 4
         && isStrictlySorted(docIds, start, count)) {
-      // Only optimize it when max - min <= 16 * count in order to avoid expanding too much storage.
+      // Only optimize it when max - min + 1 <= 16 * count in order to avoid expanding too much
+      // storage.
       // A field with lower cardinality will have a higher probability to trigger this optimization.
       out.writeByte((byte) -1);
       writeIdsAsBitSet(docIds, start, count, out);
@@ -126,6 +125,7 @@ class DocIdsWriter {
 
     out.writeVInt(offsetBits);
     out.writeVInt(totalWordCount);
+    // build bit set streaming
     for (int i = 0; i < count; i++) {
       final int index = docIds[start + i] - offsetBits;
       final int nextWordIndex = index >> 6;
@@ -133,7 +133,7 @@ class DocIdsWriter {
       if (currentWordIndex < nextWordIndex) {
         out.writeLong(currentWord);
         currentWord = 0L;
-        currentWordIndex ++;
+        currentWordIndex++;
         while (currentWordIndex < nextWordIndex) {
           currentWordIndex++;
           out.writeLong(0L);
@@ -173,9 +173,9 @@ class DocIdsWriter {
     for (int i = 0; i < longLen; i++) {
       bits[i] = in.readLong();
     }
+    // TODO find some reuse
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
-    OffsetFixedBitSet offsetFixedBitSet = new OffsetFixedBitSet(offset, bitSet);
-    return new BitSetIterator(offsetFixedBitSet, count);
+    return new BitSetIterator(bitSet, count, offset);
   }
 
   private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {

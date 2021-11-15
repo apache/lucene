@@ -66,13 +66,7 @@ public final class DocIdSetBuilder {
 
     @Override
     public void add(DocIdSetIterator iterator) throws IOException {
-      // TODO FixedBitSet case
-      OffsetFixedBitSet offsetFixedBitSet = BitSetIterator.getOffsetFixedBitSetOrNull(iterator);
-      if (offsetFixedBitSet != null) {
-        bitSet.or(offsetFixedBitSet.getOffsetWords(), offsetFixedBitSet.getBitSet());
-      } else {
-        super.add(iterator);
-      }
+      bitSet.or(iterator);
     }
   }
 
