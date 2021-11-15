@@ -43,7 +43,9 @@ public abstract class IntroSelector extends Selector {
   /** Top-k tuning: how close k must be to the boundaries. */
   private static final int TOP_K_CLOSE = 30;
   /** Top-k tuning: min range size to apply top-k selection. */
-  private static final int TOP_K_RANGE = 60;
+  private static final int TOP_K_MIN_RANGE = 60;
+  /** Top-k tuning: min scan before checking the top-k fail-fast protection. */
+  private static final int TOP_K_PROTECTION = 120;
 
   private SplittableRandom random;
 
@@ -59,18 +61,23 @@ public abstract class IntroSelector extends Selector {
 
     // For efficiency, we must enter the loop with at least 4 entries to be able to skip
     // some boundary tests during the 3-way partitioning.
+    boolean topKDisabled = false;
     int size;
     while ((size = to - from) > 3) {
 
-      if (k - from < TOP_K_CLOSE && to - k > TOP_K_RANGE) {
+      if (k - from < TOP_K_CLOSE && to - k > TOP_K_MIN_RANGE && !topKDisabled) {
         // k is close to 'from' while the range is not too small: speed up with a bottom-k
         // selection.
-        selectBottom(from, to, k);
-        return;
-      } else if (to - k <= TOP_K_CLOSE && k - from >= TOP_K_RANGE) {
+        if (selectBottom(from, to, k)) {
+          return;
+        }
+        topKDisabled = true;
+      } else if (to - k <= TOP_K_CLOSE && k - from >= TOP_K_MIN_RANGE && !topKDisabled) {
         // k is close to 'to' while the range is not too small: speed up with a top-k selection.
-        selectTop(from, to, k);
-        return;
+        if (selectTop(from, to, k)) {
+          return;
+        }
+        topKDisabled = true;
       }
 
       if (--maxDepth == -1) {
@@ -217,8 +224,10 @@ public abstract class IntroSelector extends Selector {
    * from the fact that most of the time {@code e >= bottom-max}). At the end, all slots in {@code
    * bottom} point to the {@code k} least entries, we just have to swap them with the first entries
    * and finally swap the {@code bottom-max} at index {@code k}.
+   *
+   * @return true if the selection is complete; false if it is aborted for perf reason.
    */
-  private void selectBottom(int from, int to, int k) {
+  private boolean selectBottom(int from, int to, int k) {
     assert k >= from && k < to - 1;
     int last = to - 1;
     int bSize = k - from + 1;
@@ -244,9 +253,18 @@ public abstract class IntroSelector extends Selector {
     }
 
     // Loop on remaining entries and compare each one with the bottom-max pivot.
+    int maxReplacements = 0;
     do {
       if (comparePivot(index) > 0) {
         // The entry is less than the bottom-max pivot.
+
+        // Fail-fast protection: abort if more than 50% remaining entries are less than the
+        // bottom-max pivot.
+        int scan = index - k;
+        if (++maxReplacements >= (scan >>> 1) && scan >= TOP_K_PROTECTION) {
+          return false;
+        }
+
         // Replace the max by the new entry in the bottom list.
         bottom[bMax] = index;
         // Determine the new bottom-max.
@@ -269,6 +287,7 @@ public abstract class IntroSelector extends Selector {
       }
     }
     swap(from + bMax, k);
+    return true;
   }
 
   /**
@@ -283,8 +302,10 @@ public abstract class IntroSelector extends Selector {
    * most of the time {@code e <= top-min}). At the end, all slots in {@code top} point to the
    * {@code k} greatest entries, we just have to swap them with the last entries and finally swap
    * the {@code top-min} at index {@code k}.
+   *
+   * @return true if the selection is complete; false if it is aborted for perf reason.
    */
-  private void selectTop(int from, int to, int k) {
+  private boolean selectTop(int from, int to, int k) {
     assert k > from && k < to;
     int last = to - 1;
     int tSize = to - k;
@@ -311,9 +332,18 @@ public abstract class IntroSelector extends Selector {
     }
 
     // Loop on remaining entries and compare each one with the top-min pivot.
+    int maxReplacements = 0;
     do {
       if (comparePivot(index) < 0) {
         // The entry is greater than the top-min pivot.
+
+        // Fail-fast protection: abort if more than 50% remaining entries are greater than the
+        // top-min pivot.
+        int scan = index - k;
+        if (++maxReplacements >= (scan >>> 1) && scan >= TOP_K_PROTECTION) {
+          return false;
+        }
+
         // Replace the min by the new entry in the top list.
         top[tMin] = index;
         // Determine the new top-min.
@@ -336,6 +366,7 @@ public abstract class IntroSelector extends Selector {
       }
     }
     swap(last - tMin, k);
+    return true;
   }
 
   /**
