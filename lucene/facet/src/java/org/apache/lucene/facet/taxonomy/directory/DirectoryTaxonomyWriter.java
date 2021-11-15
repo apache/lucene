@@ -34,6 +34,7 @@ import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.facet.FacetsConfig;
@@ -92,15 +93,18 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   private final Directory dir;
   private final IndexWriter indexWriter;
   private final boolean useOlderStoredFieldIndex;
+  private final boolean useOlderTermPositionForParentOrdinal;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
 
   // Records the taxonomy index epoch, updated on replaceTaxonomy as well.
   private long indexEpoch;
 
+  // TODO: remove following 2 fields in Lucene 10
   private SinglePositionTokenStream parentStream =
       new SinglePositionTokenStream(Consts.PAYLOAD_PARENT);
   private Field parentStreamField;
+
   private Field fullPathField;
   private int cacheMissesUntilFill = 11;
   private boolean shouldFillCache = true;
@@ -161,12 +165,14 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       indexEpoch = 1;
       // no commit exists so we can safely use the new BinaryDocValues field
       useOlderStoredFieldIndex = false;
+      useOlderTermPositionForParentOrdinal = false;
     } else {
       String epochStr = null;
 
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
       /* a previous commit exists, so check the version of the last commit */
       useOlderStoredFieldIndex = infos.getIndexCreatedVersionMajor() <= 8;
+      useOlderTermPositionForParentOrdinal = infos.getIndexCreatedVersionMajor() <= 8;
 
       Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
@@ -181,9 +187,13 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       ++indexEpoch;
     }
 
-    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
-    ft.setOmitNorms(true);
-    parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
+    if (useOlderTermPositionForParentOrdinal) {
+      FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+      ft.setOmitNorms(true);
+      parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
+    } else {
+      parentStreamField = null;
+    }
     if (useOlderStoredFieldIndex) {
       fullPathField = new StringField(Consts.FULL, "", Field.Store.YES);
     } else {
@@ -466,18 +476,22 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * effectively synchronized as well.
    */
   private int addCategoryDocument(FacetLabel categoryPath, int parent) throws IOException {
-    // Before Lucene 2.9, position increments >=0 were supported, so we
-    // added 1 to parent to allow the parent -1 (the parent of the root).
-    // Unfortunately, starting with Lucene 2.9, after LUCENE-1542, this is
-    // no longer enough, since 0 is not encoded consistently either (see
-    // comment in SinglePositionTokenStream). But because we must be
-    // backward-compatible with existing indexes, we can't just fix what
-    // we write here (e.g., to write parent+2), and need to do a workaround
-    // in the reader (which knows that anyway only category 0 has a parent
-    // -1).
-    parentStream.set(Math.max(parent + 1, 1));
     Document d = new Document();
-    d.add(parentStreamField);
+    if (useOlderTermPositionForParentOrdinal) {
+      // Before Lucene 2.9, position increments >=0 were supported, so we
+      // added 1 to parent to allow the parent -1 (the parent of the root).
+      // Unfortunately, starting with Lucene 2.9, after LUCENE-1542, this is
+      // no longer enough, since 0 is not encoded consistently either (see
+      // comment in SinglePositionTokenStream). But because we must be
+      // backward-compatible with existing indexes, we can't just fix what
+      // we write here (e.g., to write parent+2), and need to do a workaround
+      // in the reader (which knows that anyway only category 0 has a parent
+      // -1).
+      parentStream.set(Math.max(parent + 1, 1));
+      d.add(parentStreamField);
+    } else {
+      d.add(new NumericDocValuesField(Consts.FIELD_PARENT_ORDINAL_NDV, parent));
+    }
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
@@ -508,6 +522,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     return id;
   }
 
+  // TODO: remove this class in Lucene 10
   private static class SinglePositionTokenStream extends TokenStream {
     private CharTermAttribute termAtt;
     private PositionIncrementAttribute posIncrAtt;

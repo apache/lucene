@@ -25,7 +25,9 @@ import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
@@ -58,13 +60,6 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     parents = new int[reader.maxDoc()];
     if (parents.length > 0) {
       initParents(reader, 0);
-      // Starting Lucene 2.9, following the change LUCENE-1542, we can
-      // no longer reliably read the parent "-1" (see comment in
-      // LuceneTaxonomyWriter.SinglePositionTokenStream). We have no way
-      // to fix this in indexing without breaking backward-compatibility
-      // with existing indexes, so what we'll do instead is just
-      // hard-code the parent of ordinal 0 to be -1, and assume (as is
-      // indeed the case) that no other parent can be -1.
       parents[0] = TaxonomyReader.INVALID_ORDINAL;
     }
   }
@@ -130,6 +125,36 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
       return;
     }
 
+    if (tryLoadParentUsingTermPosition(reader, first)) {
+      // The parent array is already loaded
+      return;
+    }
+
+    for (LeafReaderContext leafContext : reader.leaves()) {
+      int leafDocNum = leafContext.reader().maxDoc();
+      if (leafContext.docBase + leafDocNum <= first) {
+        // skip this leaf if it does not contain new categories
+        continue;
+      }
+      NumericDocValues parentValues =
+          leafContext.reader().getNumericDocValues(Consts.FIELD_PARENT_ORDINAL_NDV);
+      for (int doc = Math.max(first - leafContext.docBase, 0); doc < leafDocNum; doc++) {
+        if (parentValues.advanceExact(doc) == false) {
+          throw new CorruptIndexException(
+              "Missing parent data for category " + doc + leafContext.docBase, reader.toString());
+        }
+        // we're putting an int and converting it back so it should be safe
+        parents[doc + leafContext.docBase] = Math.toIntExact(parentValues.longValue());
+      }
+    }
+  }
+
+  /**
+   * Try loading the old way of storing parent ordinal first, return true if the parent array is
+   * loaded Or false if not, and we will try loading using NumericDocValues
+   */
+  // TODO: Remove in Lucene 10, this is only for back-compatibility
+  private boolean tryLoadParentUsingTermPosition(IndexReader reader, int first) throws IOException {
     // it's ok to use MultiTerms because we only iterate on one posting list.
     // breaking it to loop over the leaves() only complicates code for no
     // apparent gain.
@@ -137,8 +162,12 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
         MultiTerms.getTermPostingsEnum(
             reader, Consts.FIELD_PAYLOADS, Consts.PAYLOAD_PARENT_BYTES_REF, PostingsEnum.PAYLOADS);
 
+    if (positions == null) {
+      // The field does not exist, we're using NumericDocValues then
+      return false;
+    }
     // shouldn't really happen, if it does, something's wrong
-    if (positions == null || positions.advance(first) == DocIdSetIterator.NO_MORE_DOCS) {
+    if (positions.advance(first) == DocIdSetIterator.NO_MORE_DOCS) {
       throw new CorruptIndexException(
           "Missing parent data for category " + first, reader.toString());
     }
@@ -164,6 +193,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
         throw new CorruptIndexException("Missing parent data for category " + i, reader.toString());
       }
     }
+    return true;
   }
 
   /**
