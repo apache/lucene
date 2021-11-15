@@ -17,6 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import org.apache.lucene.index.PointValues.IntersectVisitor;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BitSet;
@@ -145,11 +146,13 @@ class DocIdsWriter {
     for (int i=0; i<longLen; i++) {
       bits[i] = in.readLong();
     }
+    //Hope this stupid logic only happens during merge
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
     OffsetFixedBitSet offsetFixedBitSet = new OffsetFixedBitSet(offset, bitSet);
-    docIDs[0] = offsetFixedBitSet.nextSetBit(0);
-    for (int i = 1; i < count; i++) {
-      docIDs[i] = offsetFixedBitSet.nextSetBit(docIDs[i-1] + 1);
+    BitSetIterator iterator = new BitSetIterator(offsetFixedBitSet, count);
+    int docId, pos=0;
+    while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      docIDs[pos++] = docId;
     }
   }
 
