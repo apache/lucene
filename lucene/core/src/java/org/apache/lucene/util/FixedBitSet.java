@@ -309,8 +309,9 @@ public final class FixedBitSet extends BitSet {
   /** Does in-place XOR of the bits provided by the iterator. */
   public void xor(DocIdSetIterator iter) throws IOException {
     checkUnpositioned(iter);
-    //TODO support docBase
-    if (BitSetIterator.getFixedBitSetOrNull(iter) != null && ((BitSetIterator) iter).getDocBase() == 0) {
+    // TODO support docBase
+    if (BitSetIterator.getFixedBitSetOrNull(iter) != null
+        && ((BitSetIterator) iter).getDocBase() == 0) {
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
       xor(bits);
     } else {
