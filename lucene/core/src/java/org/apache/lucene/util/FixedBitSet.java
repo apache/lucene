@@ -277,43 +277,39 @@ public final class FixedBitSet extends BitSet {
 
   /** this = this OR other */
   public void or(FixedBitSet other) {
-    or(other.bits, other.numWords);
+    or(0, other.bits, other.numWords);
   }
 
-  private void or(final int otherOffsetWords, FixedBitSet otherBitSet) {
-    int otherNumWords = otherBitSet.numWords;
+  private void or(final int otherOffsetWords, FixedBitSet other) {
+    or(otherOffsetWords, other.bits, other.numWords);
+  }
+
+  private void or(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
     assert otherNumWords + otherOffsetWords <= numWords
         : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
     int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
-    final long[] otherArr = otherBitSet.bits;
     while (--pos >= 0) {
       thisArr[pos + otherOffsetWords] |= otherArr[pos];
     }
   }
 
-  private void or(final long[] otherArr, final int otherNumWords) {
-    assert otherNumWords <= numWords : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
-    final long[] thisArr = this.bits;
-    int pos = Math.min(numWords, otherNumWords);
-    while (--pos >= 0) {
-      thisArr[pos] |= otherArr[pos];
-    }
-  }
-
   /** this = this XOR other */
   public void xor(FixedBitSet other) {
-    xor(other.bits, other.numWords);
+    xor(0, other.bits, other.numWords);
+  }
+
+  public void xor(int otherOffsetWords, FixedBitSet other) {
+    xor(otherOffsetWords, other.bits, other.numWords);
   }
 
   /** Does in-place XOR of the bits provided by the iterator. */
   public void xor(DocIdSetIterator iter) throws IOException {
     checkUnpositioned(iter);
-    // TODO support docBase
-    if (BitSetIterator.getFixedBitSetOrNull(iter) != null
-        && ((BitSetIterator) iter).getDocBase() == 0) {
-      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
-      xor(bits);
+    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
+      BitSetIterator bitSetIterator = (BitSetIterator) iter;
+      final FixedBitSet bits = (FixedBitSet) bitSetIterator.getBitSet();
+      xor(bitSetIterator.getDocBase() >> 6, bits);
     } else {
       int doc;
       while ((doc = iter.nextDoc()) < numBits) {
@@ -322,12 +318,13 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
-  private void xor(long[] otherBits, int otherNumWords) {
-    assert otherNumWords <= numWords : "numWords=" + numWords + ", other.numWords=" + otherNumWords;
-    final long[] thisBits = this.bits;
-    int pos = Math.min(numWords, otherNumWords);
+  private void xor(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
+    assert otherNumWords + otherOffsetWords <= numWords
+        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
+    final long[] thisArr = this.bits;
     while (--pos >= 0) {
-      thisBits[pos] ^= otherBits[pos];
+      thisArr[pos + otherOffsetWords] ^= otherArr[pos];
     }
   }
 
