@@ -17,6 +17,7 @@
 
 package org.apache.lucene.spatial3d;
 
+import java.io.IOException;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -27,8 +28,6 @@ import org.apache.lucene.spatial3d.geom.PlanetModel.DocValueEncoder;
 import org.apache.lucene.spatial3d.geom.XYZBounds;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.NumericUtils;
-
-import java.io.IOException;
 
 class PointInShapeIntersectVisitor implements IntersectVisitor {
   private final DocIdSetBuilder hits;
