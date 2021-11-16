@@ -74,7 +74,7 @@ public class BitSetIterator extends DocIdSetIterator {
       throw new IllegalArgumentException("docBase need to be a multiple of 64");
     }
     this.bits = bits;
-    this.length = bits.length();
+    this.length = bits.length() + docBase;
     this.cost = cost;
     this.docBase = docBase;
   }
@@ -105,14 +105,14 @@ public class BitSetIterator extends DocIdSetIterator {
 
   @Override
   public int advance(int target) {
-    if (target >= length + docBase) {
+    if (target >= length) {
       return doc = NO_MORE_DOCS;
     }
     int next = bits.nextSetBit(Math.max(0, target - docBase));
     if (next == NO_MORE_DOCS) {
-      return this.doc = NO_MORE_DOCS;
+      return doc = NO_MORE_DOCS;
     } else {
-      return this.doc = next + docBase;
+      return doc = next + docBase;
     }
   }
 
