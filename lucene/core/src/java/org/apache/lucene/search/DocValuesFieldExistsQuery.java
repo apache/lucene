@@ -79,7 +79,7 @@ public final class DocValuesFieldExistsQuery extends Query {
         final LeafReader reader = context.reader();
         FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
         if (fieldInfo == null || fieldInfo.getPointDimensionCount() == 0) {
-          return -1;
+          return super.count(context);
         }
         return reader.getPointValues(field).getDocCount();
       }
