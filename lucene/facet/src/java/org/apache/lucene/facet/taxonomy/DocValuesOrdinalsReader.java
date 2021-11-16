@@ -19,7 +19,6 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -49,50 +48,18 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
 
   @Override
   public OrdinalsSegmentReader getReader(LeafReaderContext context) throws IOException {
+    final SortedNumericDocValues dv;
     if (FacetUtils.usesOlderBinaryOrdinals(context.reader(), field)) {
-      return getBinaryFormatReader(context);
-    } else {
-      return getNumericFormatReader(context);
-    }
-  }
-
-  private OrdinalsSegmentReader getBinaryFormatReader(LeafReaderContext context)
-      throws IOException {
-    BinaryDocValues values0 = context.reader().getBinaryDocValues(field);
-    if (values0 == null) {
-      values0 = DocValues.emptyBinary();
-    }
-
-    final BinaryDocValues values = values0;
-
-    return new OrdinalsSegmentReader() {
-
-      private int lastDocID;
-
-      @Override
-      public void get(int docID, IntsRef ordinals) throws IOException {
-        if (docID < lastDocID) {
-          throw new AssertionError(
-              "docs out of order: lastDocID=" + lastDocID + " vs docID=" + docID);
-        }
-        lastDocID = docID;
-        if (docID > values.docID()) {
-          values.advance(docID);
-        }
-        final BytesRef bytes;
-        if (values.docID() == docID) {
-          bytes = values.binaryValue();
-        } else {
-          bytes = new BytesRef(BytesRef.EMPTY_BYTES);
-        }
-        decode(bytes, ordinals);
+      SortedNumericDocValues wrapped =
+          BackCompatSortedNumericDocValues.wrap(
+              context.reader().getBinaryDocValues(field), this::decode);
+      if (wrapped == null) {
+        wrapped = DocValues.emptySortedNumeric();
       }
-    };
-  }
-
-  private OrdinalsSegmentReader getNumericFormatReader(LeafReaderContext context)
-      throws IOException {
-    SortedNumericDocValues dv = DocValues.getSortedNumeric(context.reader(), field);
+      dv = wrapped;
+    } else {
+      dv = DocValues.getSortedNumeric(context.reader(), field);
+    }
 
     return new OrdinalsSegmentReader() {
 
@@ -142,33 +109,6 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
    * @param ordinals buffer for decoded ordinals
    */
   public void decode(BytesRef buf, IntsRef ordinals) {
-
-    // grow the buffer up front, even if by a large number of values (buf.length)
-    // that saves the need to check inside the loop for every decoded value if
-    // the buffer needs to grow.
-    if (ordinals.ints.length < buf.length) {
-      ordinals.ints = ArrayUtil.grow(ordinals.ints, buf.length);
-    }
-
-    ordinals.offset = 0;
-    ordinals.length = 0;
-
-    // it is better if the decoding is inlined like so, and not e.g.
-    // in a utility method
-    int upto = buf.offset + buf.length;
-    int value = 0;
-    int offset = buf.offset;
-    int prev = 0;
-    while (offset < upto) {
-      byte b = buf.bytes[offset++];
-      if (b >= 0) {
-        ordinals.ints[ordinals.length] = ((value << 7) | b) + prev;
-        value = 0;
-        prev = ordinals.ints[ordinals.length];
-        ordinals.length++;
-      } else {
-        value = (value << 7) | (b & 0x7F);
-      }
-    }
+    BackCompatSortedNumericDocValues.loadValues(buf, ordinals);
   }
 }
