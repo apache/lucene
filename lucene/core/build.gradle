@@ -20,6 +20,9 @@ apply plugin: 'java-library'
 description = 'Lucene core library'
 
 dependencies {
+  testImplementation('org.openjdk.jmh:jmh-core:1.33')
+  testImplementation('org.openjdk.jmh:jmh-generator-annprocess:1.33')
+
   testImplementation project(':lucene:codecs')
   testImplementation project(':lucene:test-framework')
 }

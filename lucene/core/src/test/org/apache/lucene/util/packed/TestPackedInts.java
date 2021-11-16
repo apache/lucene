@@ -246,6 +246,7 @@ public class TestPackedInts extends LuceneTestCase {
     for (PackedInts.Mutable packedInt : packedInts) {
       for (int i = 0; i < packedInt.size(); i++) {
         packedInt.set(i, i + 1);
+        assertEquals("The value just set at " + i + " is not correct", i + 1, packedInt.get(i));
       }
     }
     assertListEquality(packedInts);
@@ -349,9 +350,13 @@ public class TestPackedInts extends LuceneTestCase {
     assertListEquality(packedInts);
   }
 
+  private static PackedInts.MutableImpl packed64(int valueCount, int bitsPerValue) {
+    return new Packed64VHLongAndByte(valueCount, bitsPerValue);
+  }
+
   private static List<PackedInts.Mutable> createPackedInts(int valueCount, int bitsPerValue) {
     List<PackedInts.Mutable> packedInts = new ArrayList<>();
-    packedInts.add(new Packed64(valueCount, bitsPerValue));
+    packedInts.add(packed64(valueCount, bitsPerValue));
     for (int bpv = bitsPerValue; bpv <= Packed64SingleBlock.MAX_SUPPORTED_BITS_PER_VALUE; ++bpv) {
       if (Packed64SingleBlock.isSupported(bpv)) {
         packedInts.add(Packed64SingleBlock.create(valueCount, bpv));
@@ -409,7 +414,7 @@ public class TestPackedInts extends LuceneTestCase {
   }
 
   public void testSecondaryBlockChange() {
-    PackedInts.Mutable mutable = new Packed64(26, 5);
+    PackedInts.Mutable mutable = packed64(26, 5);
     mutable.set(24, 31);
     assertEquals("The value #24 should be correct", 31, mutable.get(24));
     mutable.set(4, 16);
