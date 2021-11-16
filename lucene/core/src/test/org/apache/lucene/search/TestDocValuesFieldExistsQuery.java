@@ -22,12 +22,15 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
 
 public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
@@ -204,6 +207,34 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     assertEquals(1, searcher.count(new DocValuesFieldExistsQuery("f")));
     reader.close();
     dir.close();
+  }
+
+  public void testQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
+    int numMatchingDocs = 0;
+
+    for (int i = 0; i < randomNumDocs; i++) {
+      Document doc = new Document();
+      if (random().nextBoolean()) {
+        doc.add(new NumericDocValuesField("f", 1));
+        numMatchingDocs++;
+      }
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+
+    DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+
+    Query testQuery = new DocValuesFieldExistsQuery("f");
+    assertEquals(searcher.count(testQuery), numMatchingDocs);
+    final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
+
+    IOUtils.close(reader, w, dir);
   }
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)

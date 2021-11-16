@@ -75,6 +75,16 @@ public final class DocValuesFieldExistsQuery extends Query {
       }
 
       @Override
+      public int count(LeafReaderContext context) throws IOException {
+        final LeafReader reader = context.reader();
+        FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+        if (fieldInfo == null || fieldInfo.getPointDimensionCount() == 0) {
+          return -1;
+        }
+        return reader.getPointValues(field).getDocCount();
+      }
+
+      @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return DocValues.isCacheable(ctx, field);
       }
