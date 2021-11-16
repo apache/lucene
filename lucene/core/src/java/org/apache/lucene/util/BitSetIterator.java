@@ -43,9 +43,7 @@ public class BitSetIterator extends DocIdSetIterator {
     return getBitSet(iterator, FixedBitSet.class, true);
   }
 
-  /**
-   * Similar to {@link #getFixedBitSetOrNull}, but not considering the docBase.
-   */
+  /** Similar to {@link #getFixedBitSetOrNull}, but not considering the docBase. */
   public static FixedBitSet getFixedBitSetOrNullRegardlessOfDocBase(DocIdSetIterator iterator) {
     return getBitSet(iterator, FixedBitSet.class, false);
   }
