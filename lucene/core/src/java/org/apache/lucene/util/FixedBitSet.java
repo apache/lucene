@@ -265,11 +265,11 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public void or(DocIdSetIterator iter) throws IOException {
-    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
+    if (BitSetIterator.getFixedBitSetOrNullRegardlessOfDocBase(iter) != null) {
       checkUnpositioned(iter);
-      BitSetIterator bitSetIterator = (BitSetIterator) iter;
-      final FixedBitSet bits = (FixedBitSet) bitSetIterator.getBitSet();
-      or(bitSetIterator.getDocBase() >> 6, bits);
+      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNullRegardlessOfDocBase(iter);
+      final int docBase = ((BitSetIterator) iter).getDocBase();
+      or(docBase >> 6, bits);
     } else {
       super.or(iter);
     }
@@ -306,10 +306,11 @@ public final class FixedBitSet extends BitSet {
   /** Does in-place XOR of the bits provided by the iterator. */
   public void xor(DocIdSetIterator iter) throws IOException {
     checkUnpositioned(iter);
-    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
-      BitSetIterator bitSetIterator = (BitSetIterator) iter;
-      final FixedBitSet bits = (FixedBitSet) bitSetIterator.getBitSet();
-      xor(bitSetIterator.getDocBase() >> 6, bits);
+    if (BitSetIterator.getFixedBitSetOrNullRegardlessOfDocBase(iter) != null) {
+      checkUnpositioned(iter);
+      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNullRegardlessOfDocBase(iter);
+      final int docBase = ((BitSetIterator) iter).getDocBase();
+      xor(docBase >> 6, bits);
     } else {
       int doc;
       while ((doc = iter.nextDoc()) < numBits) {

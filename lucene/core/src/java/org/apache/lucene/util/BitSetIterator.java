@@ -26,9 +26,10 @@ import org.apache.lucene.search.DocIdSetIterator;
 public class BitSetIterator extends DocIdSetIterator {
 
   private static <T extends BitSet> T getBitSet(
-      DocIdSetIterator iterator, Class<? extends T> clazz) {
+      DocIdSetIterator iterator, Class<? extends T> clazz, boolean considerDocBase) {
     if (iterator instanceof BitSetIterator) {
-      BitSet bits = ((BitSetIterator) iterator).bits;
+      BitSetIterator bitSetIterator = (BitSetIterator) iterator;
+      BitSet bits = considerDocBase ? bitSetIterator.getBitSet() : bitSetIterator.bits;
       assert bits != null;
       if (clazz.isInstance(bits)) {
         return clazz.cast(bits);
@@ -39,14 +40,21 @@ public class BitSetIterator extends DocIdSetIterator {
 
   /** If the provided iterator wraps a {@link FixedBitSet}, returns it, otherwise returns null. */
   public static FixedBitSet getFixedBitSetOrNull(DocIdSetIterator iterator) {
-    return getBitSet(iterator, FixedBitSet.class);
+    return getBitSet(iterator, FixedBitSet.class, true);
+  }
+
+  /**
+   * Similar to {@link #getFixedBitSetOrNull}, but not considering the docBase.
+   */
+  public static FixedBitSet getFixedBitSetOrNullRegardlessOfDocBase(DocIdSetIterator iterator) {
+    return getBitSet(iterator, FixedBitSet.class, false);
   }
 
   /**
    * If the provided iterator wraps a {@link SparseFixedBitSet}, returns it, otherwise returns null.
    */
   public static SparseFixedBitSet getSparseFixedBitSetOrNull(DocIdSetIterator iterator) {
-    return getBitSet(iterator, SparseFixedBitSet.class);
+    return getBitSet(iterator, SparseFixedBitSet.class, true);
   }
 
   private final BitSet bits;
@@ -73,15 +81,27 @@ public class BitSetIterator extends DocIdSetIterator {
     if ((docBase & 63) != 0) {
       throw new IllegalArgumentException("docBase need to be a multiple of 64");
     }
+    if (bits instanceof FixedBitSet == false) {
+      throw new IllegalArgumentException("docBase only supported for FixedBitSet");
+    }
     this.bits = bits;
     this.length = bits.length() + docBase;
     this.cost = cost;
     this.docBase = docBase;
   }
 
-  /** Return the wrapped {@link BitSet}. */
+  /** Return a {@link BitSet} represents all docs in this iterator. */
   public BitSet getBitSet() {
-    return bits;
+    if (docBase == 0) {
+      return bits;
+    } else {
+      FixedBitSet fixedBitSet = (FixedBitSet) bits;
+      int offsetWords = docBase >> 6;
+      long[] bits = fixedBitSet.getBits();
+      long[] words = new long[offsetWords + bits.length];
+      System.arraycopy(bits, 0, words, offsetWords, bits.length);
+      return new FixedBitSet(words, docBase + fixedBitSet.length());
+    }
   }
 
   @Override

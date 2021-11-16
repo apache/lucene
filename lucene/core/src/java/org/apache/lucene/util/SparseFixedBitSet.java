@@ -501,8 +501,7 @@ public class SparseFixedBitSet extends BitSet {
     {
       // specialize union with another SparseFixedBitSet
       final SparseFixedBitSet other = BitSetIterator.getSparseFixedBitSetOrNull(it);
-      // TODO support doc base
-      if (other != null && ((BitSetIterator) it).getDocBase() == 0) {
+      if (other != null) {
         checkUnpositioned(it);
         or(other);
         return;
