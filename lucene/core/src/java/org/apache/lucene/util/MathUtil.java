@@ -29,26 +29,6 @@ public final class MathUtil {
    *
    * @param base must be {@code > 1}
    */
-  public static int log(int x, int base) {
-    if (base == 2) {
-      // This specialized method is 30x faster.
-      return x <= 0 ? 0 : 31 - Integer.numberOfLeadingZeros(x);
-    } else if (base <= 1) {
-      throw new IllegalArgumentException("base must be > 1");
-    }
-    int ret = 0;
-    while (x >= base) {
-      x /= base;
-      ret++;
-    }
-    return ret;
-  }
-
-  /**
-   * Returns {@code x <= 0 ? 0 : Math.floor(Math.log(x) / Math.log(base))}
-   *
-   * @param base must be {@code > 1}
-   */
   public static int log(long x, int base) {
     if (base == 2) {
       // This specialized method is 30x faster.

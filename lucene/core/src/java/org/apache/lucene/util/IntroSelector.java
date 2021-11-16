@@ -62,8 +62,6 @@ public abstract class IntroSelector extends Selector {
       // Pivot selection based on medians.
       int last = to - 1;
       int mid = (from + last) >>> 1;
-      int bottomDistance = k - from;
-      int topDistance = to - k;
       int pivot;
       if (size <= IntroSorter.SINGLE_MEDIAN_THRESHOLD) {
         // Select the pivot with a single median around the middle element.
@@ -80,10 +78,10 @@ public abstract class IntroSelector extends Selector {
         int medianFirst = median(from, from + range, from + doubleRange);
         int medianMiddle = median(mid - range, mid, mid + range);
         int medianLast = median(last - doubleRange, last - range, last);
-        if (bottomDistance < range) {
+        if (k - from < range) {
           // k is close to 'from': select the lowest median.
           pivot = min(medianFirst, medianMiddle, medianLast);
-        } else if (topDistance <= range) {
+        } else if (to - k <= range) {
           // k is close to 'to': select the highest median.
           pivot = max(medianFirst, medianMiddle, medianLast);
         } else {
