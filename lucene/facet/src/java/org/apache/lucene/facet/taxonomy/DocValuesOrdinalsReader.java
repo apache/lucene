@@ -49,7 +49,7 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
   @Override
   public OrdinalsSegmentReader getReader(LeafReaderContext context) throws IOException {
     final SortedNumericDocValues dv;
-    if (FacetUtils.usesOlderBinaryOrdinals(context.reader(), field)) {
+    if (FacetUtils.usesOlderBinaryOrdinals(context.reader())) {
       SortedNumericDocValues wrapped =
           BackCompatSortedNumericDocValues.wrap(
               context.reader().getBinaryDocValues(field), this::decode);

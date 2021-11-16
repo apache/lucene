@@ -64,7 +64,7 @@ public class TaxonomyFacetLabels {
   public FacetLabelReader getFacetLabelReader(LeafReaderContext readerContext) throws IOException {
     // Support older binary format by leveraging an OrdinalsReader, which can still support both
     // formats for now:
-    if (FacetUtils.usesOlderBinaryOrdinals(readerContext.reader(), indexFieldName)) {
+    if (FacetUtils.usesOlderBinaryOrdinals(readerContext.reader())) {
       OrdinalsReader ordsReader = new DocValuesOrdinalsReader(indexFieldName);
       return new FacetLabelReader(ordsReader, readerContext);
     }

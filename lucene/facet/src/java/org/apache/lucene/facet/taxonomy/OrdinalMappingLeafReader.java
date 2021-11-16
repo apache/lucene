@@ -222,7 +222,7 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
     if (original != null && facetFields.contains(field)) {
       // The requested field is a facet ordinals field _and_ it's non-null, so move forward with
       // mapping:
-      assert FacetUtils.usesOlderBinaryOrdinals(in, field);
+      assert FacetUtils.usesOlderBinaryOrdinals(in);
       final OrdinalsReader ordsReader = getOrdinalsReader(field);
       return new OrdinalMappingBinaryDocValues(ordsReader.getReader(in.getContext()), original);
     } else {
@@ -238,7 +238,7 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
     if (original != null && facetFields.contains(field)) {
       // The requested field is a facet ordinals field _and_ it's non-null, so move forward with
       // mapping:
-      assert FacetUtils.usesOlderBinaryOrdinals(in, field) == false;
+      assert FacetUtils.usesOlderBinaryOrdinals(in) == false;
       return new OrdinalMappingSortedNumericDocValues(original);
     } else {
       // The requested field either isn't present (null) or isn't a facet ordinals field. Either

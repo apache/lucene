@@ -67,7 +67,7 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
     // Maintain backwards compatibility with the older binary format using an OrdinalsReader (which
     // can support both formats currently):
     MatchingDocs first = fc.getMatchingDocs().isEmpty() ? null : fc.getMatchingDocs().get(0);
-    if (first != null && FacetUtils.usesOlderBinaryOrdinals(first.context.reader(), indexField)) {
+    if (first != null && FacetUtils.usesOlderBinaryOrdinals(first.context.reader())) {
       this.ordinalsReader = new DocValuesOrdinalsReader(indexField);
     } else {
       this.ordinalsReader = null;
