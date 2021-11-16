@@ -251,6 +251,7 @@ final class ConjunctionDISI extends DocIdSetIterator {
       this.bitSets = new BitSet[this.bitSetIterators.length];
       int minLen = Integer.MAX_VALUE;
       for (int i = 0; i < this.bitSetIterators.length; ++i) {
+        assert this.bitSetIterators[i].getDocBase() == 0;
         BitSet bitSet = this.bitSetIterators[i].getBitSet();
         this.bitSets[i] = bitSet;
         minLen = Math.min(minLen, bitSet.length());

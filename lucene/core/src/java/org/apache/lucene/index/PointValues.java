@@ -240,7 +240,7 @@ public abstract class PointValues {
     void visit(int docID) throws IOException;
 
     /**
-     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implements can have
+     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implements may have
      * their optimizations.
      */
     default void visit(DocIdSetIterator iterator) throws IOException {

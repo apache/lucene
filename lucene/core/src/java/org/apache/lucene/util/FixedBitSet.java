@@ -280,7 +280,7 @@ public final class FixedBitSet extends BitSet {
     or(other.bits, other.numWords);
   }
 
-  public void or(final int otherOffsetWords, FixedBitSet otherBitSet) {
+  private void or(final int otherOffsetWords, FixedBitSet otherBitSet) {
     int otherNumWords = otherBitSet.numWords;
     assert otherNumWords + otherOffsetWords <= numWords
         : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
@@ -309,7 +309,8 @@ public final class FixedBitSet extends BitSet {
   /** Does in-place XOR of the bits provided by the iterator. */
   public void xor(DocIdSetIterator iter) throws IOException {
     checkUnpositioned(iter);
-    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
+    //TODO support docBase
+    if (BitSetIterator.getFixedBitSetOrNull(iter) != null && ((BitSetIterator) iter).getDocBase() == 0) {
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
       xor(bits);
     } else {
