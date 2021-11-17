@@ -221,7 +221,9 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
       Document doc = new Document();
       if (random().nextBoolean()) {
         doc.add(new LongPoint("long", i));
+        doc.add(new NumericDocValuesfield("long", i));
         doc.add(new StringField("string", "value", Store.NO));
+        doc.add(new SortedDocValuesField("string", new BytesRef("value"));
         numMatchingDocs++;
       }
       w.addDocument(doc);
