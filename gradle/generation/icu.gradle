@@ -33,24 +33,23 @@ def resources = scriptResources(buildscript)
 // Configure different icu4j dependencies.
 configure(rootProject) {
   configurations {
-    icu_62
     icu_68
     icu_current
   }
 
   dependencies {
-    icu_62 "com.ibm.icu:icu4j:62.2"
     icu_68 "com.ibm.icu:icu4j:68.2"
     icu_current 'com.ibm.icu:icu4j'
   }
 
   // Exclude ICU config from palantir's version unification.
   versionRecommendations {
-    excludeConfigurations "icu_68", "icu_62"
+    excludeConfigurations "icu_68"
   }
 }
 
-
+// This retrieves the module name/ version for ICU from the given
+// configuration (if present).
 def icuVersionFromConfiguration(Configuration configuration) {
   return configuration.resolvedConfiguration.getFirstLevelModuleDependencies({ dep -> dep.group.startsWith("com.ibm.icu") }).collect { dep -> dep.module.id }.join(", ")
 }
@@ -81,6 +80,9 @@ configure(project(":lucene:analysis:icu")) {
   def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
 
   task genUtr30DataFilesInternal() {
+    def icuConfig = rootProject.configurations.icu_current
+
+    dependsOn icuConfig
     dependsOn icuCompileTask
 
     // May be undefined yet, so use a provider.
@@ -91,7 +93,7 @@ configure(project(":lucene:analysis:icu")) {
     def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
 
     inputs.files inputFiles
-    inputs.property "icu4j", icu4jVersionProvider
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
     outputs.file outputFile
 
     doFirst {
@@ -131,6 +133,10 @@ configure(project(":lucene:analysis:icu")) {
   }
 
   task genRbbiInternal() {
+    def icuConfig = rootProject.configurations.icu_current
+
+    dependsOn icuConfig
+
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
 
@@ -138,7 +144,7 @@ configure(project(":lucene:analysis:icu")) {
     def targetDir = file("src/resources/org/apache/lucene/analysis/icu/segmentation")
 
     inputs.files fileTree(dir: sourceDir, include: "*.rbbi")
-    inputs.property "icu4j", icu4jVersionProvider
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
     outputs.files fileTree(dir: targetDir, include: "*.brk")
 
     doFirst {

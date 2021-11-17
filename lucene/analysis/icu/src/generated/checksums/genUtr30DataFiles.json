@@ -8,5 +8,5 @@
     "lucene/analysis/icu/src/data/utr30/nfkc.txt": "960d000f7f0b20a01d6eae915649f8a5d75bc590",
     "lucene/analysis/icu/src/data/utr30/nfkc_cf.txt": "bc71ce253a290fba8bb32bf55b543b49fabe4271",
     "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/utr30.nrm": "188d75c1faf8f3212a772a93c809b7fe69d3e57f",
-    "property:icu4j": "70.1"
+    "property:icuConfig": "com.ibm.icu:icu4j:70.1"
 }
