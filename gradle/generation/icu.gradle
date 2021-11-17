@@ -35,11 +35,13 @@ configure(rootProject) {
   configurations {
     icu_62
     icu_68
+    icu_current
   }
 
   dependencies {
     icu_62 "com.ibm.icu:icu4j:62.2"
     icu_68 "com.ibm.icu:icu4j:68.2"
+    icu_current 'com.ibm.icu:icu4j'
   }
 
   // Exclude ICU config from palantir's version unification.
@@ -48,6 +50,10 @@ configure(rootProject) {
   }
 }
 
+
+def icuVersionFromConfiguration(Configuration configuration) {
+  return configuration.resolvedConfiguration.getFirstLevelModuleDependencies({ dep -> dep.group.startsWith("com.ibm.icu") }).collect { dep -> dep.module.id }.join(", ")
+}
 
 configure(project(":lucene:analysis:icu")) {
   def utr30DataDir = file("src/data/utr30")
@@ -276,7 +282,7 @@ configure(project(":lucene:analysis:common")) {
 // UnicodeEmojiProperties.jflex
 configure(project(":lucene:core")) {
   task generateEmojiPropertiesInternal() {
-    def icuConfig = rootProject.configurations.icu_62
+    def icuConfig = rootProject.configurations.icu_current
     def outputFile = file("src/data/jflex/UnicodeEmojiProperties.jflex")
 
     description "Regenerate ${outputFile} (with ${icuConfig.name})"
@@ -284,7 +290,7 @@ configure(project(":lucene:core")) {
 
     dependsOn icuConfig
 
-    inputs.property "icuConfig", icuConfig.name
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
     outputs.file outputFile
 
     doFirst {
