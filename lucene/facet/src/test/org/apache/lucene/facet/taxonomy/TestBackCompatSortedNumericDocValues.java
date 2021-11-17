@@ -33,6 +33,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -123,6 +124,9 @@ public class TestBackCompatSortedNumericDocValues extends LuceneTestCase {
       assertEquals(expected.size(), docValues.docValueCount());
       checkValues(expected, docValues);
     }
+
+    // Run off the end and make sure that case is handled gracefully:
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docValues.nextDoc());
 
     IOUtils.close(reader, dir);
   }

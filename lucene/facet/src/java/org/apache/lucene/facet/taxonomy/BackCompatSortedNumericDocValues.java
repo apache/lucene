@@ -108,7 +108,9 @@ class BackCompatSortedNumericDocValues extends SortedNumericDocValues {
   @Override
   public int advance(int target) throws IOException {
     int doc = binaryDocValues.advance(target);
-    reloadValues();
+    if (doc != NO_MORE_DOCS) {
+      reloadValues();
+    }
     return doc;
   }
 
