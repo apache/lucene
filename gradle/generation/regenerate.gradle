@@ -71,10 +71,11 @@ configure(rootProject) {
      */
     modifyFile = { File path, Function<String, String> modify ->
       Function<String, String> normalizeEols = { text -> text.replace("\r\n", "\n") }
-      modify = normalizeEols.andThen(modify).andThen(normalizeEols)
 
       String original = path.getText("UTF-8")
-      String modified = modify.apply(original)
+      String modified = normalizeEols.apply(original)
+      modified = modify.apply(modified)
+      modified = normalizeEols.apply(modified)
       if (!original.equals(modified)) {
         path.write(modified, "UTF-8")
       }
