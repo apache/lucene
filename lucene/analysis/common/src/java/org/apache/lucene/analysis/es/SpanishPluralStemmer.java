@@ -16,14 +16,14 @@ package org.apache.lucene.analysis.es;
  * limitations under the License.
  */
 
-import org.apache.lucene.analysis.CharArraySet;
-
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.analysis.CharArraySet;
+
 /**
  * Plural Stemmer for Spanish
- * <p>
- * This stemmer implements the rules described in:
+ *
+ * <p>This stemmer implements the rules described in:
  * <i>http://www.wikilengua.org/index.php/Plural_(formación)</i>
  */
 public class SpanishPluralStemmer {
@@ -31,27 +31,139 @@ public class SpanishPluralStemmer {
   private static final CharArraySet invariants;
   private static final CharArraySet specialCases;
 
+  private static final List<String> invariantsList =
+      Arrays.asList(
+          "abrebotellas",
+          "abrecartas",
+          "abrelatas",
+          "afueras",
+          "albatros",
+          "albricias",
+          "aledaños",
+          "alexis",
+          "aries",
+          "alicates",
+          "analisis",
+          "andurriales",
+          "antitesis",
+          "añicos",
+          "apendicitis",
+          "apocalipsis",
+          "arcoiris",
+          "aries",
+          "bilis",
+          "boletus",
+          "boris",
+          "brindis",
+          "cactus",
+          "canutas",
+          "caries",
+          "cascanueces",
+          "cascarrabias",
+          "ciempies",
+          "cifosis",
+          "cortaplumas",
+          "corpus",
+          "cosmos",
+          "cosquillas",
+          "creces",
+          "crisis",
+          "cuatrocientas",
+          "cuatrocientos",
+          "cuelgacapas",
+          "cuentacuentos",
+          "cuentapasos",
+          "cumpleaños",
+          "doscientas",
+          "doscientos",
+          "dosis",
+          "enseres",
+          "entonces",
+          "esponsales",
+          "estatus",
+          "exequias",
+          "fauces",
+          "forceps",
+          "fotosintesis",
+          "gafas",
+          "gafotas",
+          "gargaras",
+          "gris",
+          "honorarios",
+          "ictus",
+          "jueves",
+          "lapsus",
+          "lavacoches",
+          "lavaplatos",
+          "limpiabotas",
+          "lunes",
+          "maitines",
+          "martes",
+          "mondadientes",
+          "novecientas",
+          "novecientos",
+          "nupcias",
+          "ochocientas",
+          "ochocientos",
+          "pais",
+          "paris",
+          "parabrisas",
+          "paracaidas",
+          "parachoques",
+          "paraguas",
+          "pararrayos",
+          "pisapapeles",
+          "piscis",
+          "portaaviones",
+          "portamaletas",
+          "portamantas",
+          "quinientas",
+          "quinientos",
+          "quinientos",
+          "quitamanchas",
+          "recogepelotas",
+          "rictus",
+          "rompeolas",
+          "sacacorchos",
+          "sacapuntas",
+          "saltamontes",
+          "salvavidas",
+          "seis",
+          "seiscientas",
+          "seiscientos",
+          "setecientas",
+          "setecientos",
+          "sintesis",
+          "tenis",
+          "tifus",
+          "trabalenguas",
+          "vacaciones",
+          "venus",
+          "versus",
+          "viacrucis",
+          "virus",
+          "viveres",
+          "volandas");
 
-  private final static List<String> invariantsList =
-          Arrays.asList("abrebotellas","abrecartas","abrelatas","afueras","albatros","albricias","aledaños","alexis","aries"
-                  ,"alicates","analisis","andurriales","antitesis","añicos","apendicitis","apocalipsis","arcoiris","aries","bilis",
-                  "boletus","boris","brindis","cactus","canutas","caries","cascanueces","cascarrabias","ciempies","cifosis",
-                  "cortaplumas","corpus","cosmos","cosquillas","creces","crisis","cuatrocientas","cuatrocientos",
-                  "cuelgacapas","cuentacuentos","cuentapasos","cumpleaños","doscientas","doscientos","dosis","enseres",
-                  "entonces","esponsales","estatus","exequias","fauces","forceps","fotosintesis","gafas","gafotas","gargaras",
-                  "gris","honorarios","ictus","jueves","lapsus","lavacoches","lavaplatos","limpiabotas","lunes","maitines","martes",
-                  "mondadientes","novecientas","novecientos","nupcias","ochocientas","ochocientos","pais","paris",
-                  "parabrisas","paracaidas","parachoques","paraguas","pararrayos","pisapapeles","piscis","portaaviones",
-                  "portamaletas","portamantas","quinientas","quinientos","quinientos","quitamanchas",
-                  "recogepelotas","rictus","rompeolas","sacacorchos","sacapuntas","saltamontes","salvavidas","seis",
-                  "seiscientas","seiscientos","setecientas","setecientos","sintesis","tenis","tifus","trabalenguas","vacaciones",
-                  "venus","versus","viacrucis","virus","viveres","volandas");
-  static{
+  static {
     final CharArraySet invariantSet = new CharArraySet(invariantsList, true);
     invariants = CharArraySet.unmodifiableSet(invariantSet);
 
     final List<String> specialCasesList =
-            Arrays.asList("yoes", "noes", "sies", "clubes", "faralaes", "albalaes", "itemes", "albumes","sandwiches","relojes","bojes","contrarreloj","carcajes");
+        Arrays.asList(
+            "yoes",
+            "noes",
+            "sies",
+            "clubes",
+            "faralaes",
+            "albalaes",
+            "itemes",
+            "albumes",
+            "sandwiches",
+            "relojes",
+            "bojes",
+            "contrarreloj",
+            "carcajes");
     final CharArraySet sepecialSet = new CharArraySet(specialCasesList, true);
     specialCases = CharArraySet.unmodifiableSet(sepecialSet);
   }
@@ -66,9 +178,10 @@ public class SpanishPluralStemmer {
         if (!isVowel(s[len - 2])) { // no vocals, singular words ending with consonant
           return len - 1;
         }
-        if ((s[len - 4] == 'q' || (s[len - 4] == 'g')
-            && s[len - 3] == 'u'
-            && (s[len - 2] == 'i' || s[len - 2] == 'e'))) { // maniquis,caquis, parques
+        if ((s[len - 4] == 'q'
+            || (s[len - 4] == 'g')
+                && s[len - 3] == 'u'
+                && (s[len - 2] == 'i' || s[len - 2] == 'e'))) { // maniquis,caquis, parques
           return len - 1;
         }
         if (isVowel(s[len - 4])
@@ -84,7 +197,11 @@ public class SpanishPluralStemmer {
         if ((s[len - 3] == 'y' || s[len - 3] == 'u') && s[len - 2] == 'e') { // bambues,leyes
           return len - 2;
         }
-        if ((s[len - 4] == 'u'|| s[len - 4] == 'l' || s[len - 4] == 'r' || s[len - 4] == 't' || s[len - 4] == 'n')
+        if ((s[len - 4] == 'u'
+                || s[len - 4] == 'l'
+                || s[len - 4] == 'r'
+                || s[len - 4] == 't'
+                || s[len - 4] == 'n')
             && (s[len - 3] == 'i')
             && s[len - 2] == 'e') { // jabalies,israelies, maniquies
           return len - 2;
@@ -104,7 +221,7 @@ public class SpanishPluralStemmer {
           s[len - 3] = 'z';
           return len - 2;
         }
-        if (isVowel(s[len - 2] )) // remove last 's': jabalís, casas, coches, etc.
+        if (isVowel(s[len - 2])) // remove last 's': jabalís, casas, coches, etc.
         {
           return len - 1;
         }

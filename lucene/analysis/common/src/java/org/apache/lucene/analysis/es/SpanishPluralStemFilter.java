@@ -15,13 +15,13 @@ package org.apache.lucene.analysis.es;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
-import java.io.IOException;
 /**
  * A {@link TokenFilter} that applies {@link SpanishPluralStemmer} to stem Spanish words.
  *

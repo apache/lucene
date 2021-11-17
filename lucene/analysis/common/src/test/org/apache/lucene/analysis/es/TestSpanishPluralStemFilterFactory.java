@@ -16,13 +16,12 @@
  */
 package org.apache.lucene.analysis.es;
 
+import java.io.Reader;
+import java.io.StringReader;
 import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-
-import java.io.Reader;
-import java.io.StringReader;
 
 /** Simple tests to ensure the Spanish Plural stem factory is working. */
 public class TestSpanishPluralStemFilterFactory extends BaseTokenStreamFactoryTestCase {

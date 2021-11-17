@@ -16,10 +16,10 @@
  */
 package org.apache.lucene.analysis.es;
 
+import java.util.Map;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 
-import java.util.Map;
 /**
  * Factory for {@link SpanishPluralStemFilterFactory}.
  *
