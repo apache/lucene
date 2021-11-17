@@ -91,7 +91,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   private final Directory dir;
   private final IndexWriter indexWriter;
-  private final boolean useOlderBinaryOrdinals;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
 
@@ -159,16 +158,9 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     openMode = config.getOpenMode();
     if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
-      // If no index exists, we're safe to use the new format:
-      useOlderBinaryOrdinals = false;
     } else {
       String epochStr = null;
-
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
-      // Use the older binary format if we're dealing with an existing index on version 9 or
-      // earlier:
-      useOlderBinaryOrdinals = infos.getIndexCreatedVersionMajor() <= 9;
-
       Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
         epochStr = commitData.get(INDEX_EPOCH);
@@ -985,10 +977,5 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   public final long getTaxonomyEpoch() {
     return indexEpoch;
-  }
-
-  @Override
-  public boolean useNumericDocValuesForOrdinals() {
-    return useOlderBinaryOrdinals == false;
   }
 }

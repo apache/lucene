@@ -15,8 +15,7 @@ New Features
 
 Improvements
 ---------------------
-* LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. Significant performance improvements were observed with this change. (Greg Miller)
+(No changes)
 
 Optimizations
 ---------------------
@@ -384,6 +383,9 @@ Improvements
 * LUCENE-10201: Spatial-Extras: Upgrading Spatial4j to 0.8 improving a varitety of minor things.
   See release notes. https://github.com/locationtech/spatial4j/releases/tag/spatial4j-0.8
   (David Smiley)
+
+* LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
+  with its own custom encoding. (Greg Miller)
 
 Bug fixes
 ---------------------
