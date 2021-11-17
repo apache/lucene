@@ -237,8 +237,9 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     // Test that we can't count in O(1) when there are deleted documents
     w.deleteDocuments(LongPoint.newRangeQuery("long", 0L, 10L));
     DirectoryReader reader2 = w.getReader();
+    final IndexSearcher searcher2 = new IndexSearcher(reader2);
     final Query testQuery = new DocValuesFieldExistsQuery("long");
-    final Weight weight2 = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    final Weight weight2 = searcher2.createWeight(testQuery, ScoreMode.COMPLETE, 1);
     assertEquals(weight2.count(reader2.leaves().get(0)), -1);
 
     IOUtils.close(reader, reader2, w, dir);
