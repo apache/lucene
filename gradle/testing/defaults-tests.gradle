@@ -90,7 +90,7 @@ allprojects {
 
     tasks.withType(Test) {
       ext {
-        testOutputsDir = file("${reports.junitXml.destination}/outputs")
+        testOutputsDir = file("${reports.junitXml.outputLocation.get()}/outputs")
       }
 
       // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally up-to-date.
@@ -148,7 +148,7 @@ allprojects {
       }
 
       // Disable HTML report generation. The reports are big and slow to generate.
-      reports.html.enabled = false
+      reports.html.required = false
 
       // Set up logging.
       testLogging {

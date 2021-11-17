@@ -50,7 +50,7 @@ sourceSets {
 
 task run(type: JavaExec) {
   description "Run a perf test (optional: -PtaskAlg=conf/your-algorithm-file -PmaxHeapSize=1G)"
-  main 'org.apache.lucene.benchmark.byTask.Benchmark'
+  mainClass = 'org.apache.lucene.benchmark.byTask.Benchmark'
 
   classpath sourceSets.main.runtimeClasspath
   // allow these to be specified on the CLI via -PtaskAlg=  for example

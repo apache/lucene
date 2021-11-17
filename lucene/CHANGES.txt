@@ -3,6 +3,66 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene 10.0.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
+======================= Lucene 9.1.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+
+* LUCENE-10223: Add interval function support to StandardQueryParser. Add min-should-match operator
+  support to StandardQueryParser. Update and clean up package documentation in flexible query parser
+  module. (Dawid Weiss, Alan Woodward)
+
+* LUCENE-10220: Add an utility method to get IntervalSource from analyzed text (or token stream).
+  (Uwe Schindler, Dawid Weiss, Alan Woodward)
+
+Improvements
+---------------------
+
+* LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
+
+Optimizations
+---------------------
+
+* LUCENE-10225: Improve IntroSelector with 3-ways partitioning. (Bruno Roustant, Adrien Grand)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
@@ -170,6 +230,8 @@ API Changes
 Improvements
 ---------------------
 
+* LUCENE-10234: Added Automatic-Module-Name to all JARs. (Dawid Weiss)
+
 * LUCENE-10182: TestRamUsageEstimator used RamUsageTester.sizeOf throughout, making some of the
   tests trivial. Now, it compares results from RamUsageEstimator with those from RamUsageTester.
   To prevent this error in the future, RamUsageTester.sizeOf was renamed to ramUsed.
@@ -320,7 +382,9 @@ Improvements
 * LUCENE-10145, LUCENE-10153: Faster flushes and merges of points by leveraging
   VarHandles. (Adrien Grand)
 
-* LUCENE-10103: Make QueryCache respect Accountable queries. (Haoyu Zhai)
+* LUCENE-10201: Spatial-Extras: Upgrading Spatial4j to 0.8 improving a varitety of minor things.
+  See release notes. https://github.com/locationtech/spatial4j/releases/tag/spatial4j-0.8
+  (David Smiley)
 
 Bug fixes
 ---------------------
@@ -385,6 +449,8 @@ Changes in Backwards Compatibility Policy
 
 Build
 ---------------------
+
+* LUCENE-10195: Add gradle cache option and make some tasks cacheable. (Jerome Prinet, Dawid Weiss)
 
 * LUCENE-10198: LUCENE-10198: Allow external JAVA_OPTS in gradlew scripts; use sane defaults 
   (balmukund.mandal@intel.com, Dawid Weiss)
@@ -463,9 +529,16 @@ Improvements
 * LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
   (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
 
+* LUCENE-10103: Make QueryCache respect Accountable queries. (Haoyu Zhai)
+
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-9673: Substantially improve RAM efficiency of how MemoryIndex stores
+  postings in memory, and reduced a bit of RAM overhead in
+  IndexWriter's internal postings book-keeping (mashudong)
+
+* LUCENE-10196: Improve IntroSorter with 3-ways partitioning. (Bruno Roustant)
 
 Bug Fixes
 ---------------------
@@ -482,6 +555,8 @@ Bug Fixes
   (Ankur Goel)
 
 * LUCENE-10154: NumericLeafComparator to define getPointValues. (Mayya Sharipova, Adrien Grand)
+
+* LUCENE-10208: Ensure that the minimum competitive score does not decrease in concurrent search. (Jim Ferenczi, Adrien Grand)
 
 Build
 ---------------------

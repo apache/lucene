@@ -17,9 +17,13 @@
 
 package org.apache.lucene.queries.intervals;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CachingTokenFilter;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.WildcardQuery;
@@ -27,20 +31,20 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
- * Constructor functions for {@link IntervalsSource} types
+ * Factory functions for creating {@link IntervalsSource interval sources}.
  *
  * <p>These sources implement minimum-interval algorithms taken from the paper <a
- * href="http://vigna.di.unimi.it/ftp/papers/EfficientAlgorithmsMinimalIntervalSemantics.pdf">
- * Efficient Optimally Lazy Algorithms for Minimal-Interval Semantics</a>
+ * href="https://vigna.di.unimi.it/ftp/papers/EfficientLazy.pdf">Efficient Optimally Lazy Algorithms
+ * for Minimal-Interval Semantics</a>
  *
- * <p>By default, sources that are sensitive to internal gaps (e.g. PHRASE and MAXGAPS) will rewrite
- * their sub-sources so that disjunctions of different lengths are pulled up to the top of the
- * interval tree. For example, PHRASE(or(PHRASE("a", "b", "c"), "b"), "c") will automatically
- * rewrite itself to OR(PHRASE("a", "b", "c", "c"), PHRASE("b", "c")) to ensure that documents
- * containing "b c" are matched. This can lead to less efficient queries, as more terms need to be
- * loaded (for example, the "c" iterator above is loaded twice), so if you care more about speed
- * than about accuracy you can use the {@link #or(boolean, IntervalsSource...)} factory method to
- * prevent rewriting.
+ * <p><em>Note:</em> by default, sources that are sensitive to internal gaps (e.g. {@code PHRASE}
+ * and {@code MAXGAPS}) will rewrite their sub-sources so that disjunctions of different lengths are
+ * pulled up to the top of the interval tree. For example, {@code PHRASE(or(PHRASE("a", "b", "c"),
+ * "b"), "c")} will automatically rewrite itself to {@code OR(PHRASE("a", "b", "c", "c"),
+ * PHRASE("b", "c"))} to ensure that documents containing {@code "b c"} are matched. This can lead
+ * to less efficient queries, as more terms need to be loaded (for example, the {@code "c"} iterator
+ * above is loaded twice), so if you care more about speed than about accuracy you can use the
+ * {@link #or(boolean, IntervalsSource...)} factory method to prevent rewriting.
  */
 public final class Intervals {
 
@@ -90,7 +94,7 @@ public final class Intervals {
 
   /**
    * Return an {@link IntervalsSource} exposing intervals for a phrase consisting of a list of
-   * IntervalsSources
+   * {@link IntervalsSource interval sources}
    */
   public static IntervalsSource phrase(IntervalsSource... subSources) {
     return BlockIntervalsSource.build(Arrays.asList(subSources));
@@ -428,5 +432,51 @@ public final class Intervals {
     return ContainedByIntervalsSource.build(
         source,
         Intervals.extend(new OffsetIntervalsSource(reference, false), 0, Integer.MAX_VALUE));
+  }
+
+  /**
+   * Returns intervals that correspond to tokens from a {@link TokenStream} returned for {@code
+   * text} by applying the provided {@link Analyzer} as if {@code text} was the content of the given
+   * {@code field}. The intervals can be ordered or unordered and can have optional gaps inside.
+   *
+   * @param text The text to analyze.
+   * @param analyzer The {@link Analyzer} to use to acquire a {@link TokenStream} which is then
+   *     converted into intervals.
+   * @param field The field {@code text} should be parsed as.
+   * @param maxGaps Maximum number of allowed gaps between sub-intervals resulting from tokens.
+   * @param ordered Whether sub-intervals should enforce token ordering or not.
+   * @return Returns an {@link IntervalsSource} that matches tokens acquired from analysis of {@code
+   *     text}. Possibly an empty interval source, never {@code null}.
+   * @throws IOException If an I/O exception occurs.
+   */
+  public static IntervalsSource analyzedText(
+      String text, Analyzer analyzer, String field, int maxGaps, boolean ordered)
+      throws IOException {
+    try (TokenStream ts = analyzer.tokenStream(field, text)) {
+      return analyzedText(ts, maxGaps, ordered);
+    }
+  }
+
+  /**
+   * Returns intervals that correspond to tokens from the provided {@link TokenStream}. This is a
+   * low-level counterpart to {@link #analyzedText(String, Analyzer, String, int, boolean)}. The
+   * intervals can be ordered or unordered and can have optional gaps inside.
+   *
+   * @param tokenStream The token stream to produce intervals for. The token stream may be fully or
+   *     partially consumed after returning from this method.
+   * @param maxGaps Maximum number of allowed gaps between sub-intervals resulting from tokens.
+   * @param ordered Whether sub-intervals should enforce token ordering or not.
+   * @return Returns an {@link IntervalsSource} that matches tokens acquired from analysis of {@code
+   *     text}. Possibly an empty interval source, never {@code null}.
+   * @throws IOException If an I/O exception occurs.
+   */
+  public static IntervalsSource analyzedText(TokenStream tokenStream, int maxGaps, boolean ordered)
+      throws IOException {
+    CachingTokenFilter stream =
+        tokenStream instanceof CachingTokenFilter
+            ? (CachingTokenFilter) tokenStream
+            : new CachingTokenFilter(tokenStream);
+
+    return IntervalBuilder.analyzeText(stream, maxGaps, ordered);
   }
 }
