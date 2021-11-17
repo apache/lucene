@@ -73,13 +73,13 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorsFormat.GRAPH_INDEX_EXTENSION);
+            Lucene90HnswVectorsFormat.GRAPH_LEVELS_EXTENSION);
 
     String graphDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorsFormat.GRAPH_DATA_EXTENSION);
+            Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_EXTENSION);
 
     boolean success = false;
     try {
@@ -102,13 +102,13 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           graphIndex,
-          Lucene90HnswVectorsFormat.GRAPH_INDEX_CODEC_NAME,
+          Lucene90HnswVectorsFormat.GRAPH_LEVELS_CODEC_NAME,
           Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           graphData,
-          Lucene90HnswVectorsFormat.GRAPH_DATA_CODEC_NAME,
+          Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_CODEC_NAME,
           Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);

@@ -128,13 +128,11 @@ public final class HnswGraph extends KnnGraphValues {
 
     int[] eps = new int[] {graphValues.entryNode()};
     for (int level = graphValues.numLevels() - 1; level >= 1; level--) {
-      results =
-          HnswGraph.searchLevel(
-              query, 1, level, eps, vectors, similarityFunction, graphValues, null);
+      results = searchLevel(query, 1, level, eps, vectors, similarityFunction, graphValues, null);
       eps[0] = results.pop();
     }
     results =
-        HnswGraph.searchLevel(
+        searchLevel(
             query, boundedNumSeed, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
     while (results.size() > topK) {
       results.pop();

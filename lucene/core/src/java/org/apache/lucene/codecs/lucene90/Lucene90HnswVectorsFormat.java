@@ -35,7 +35,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  * <p>This file stores all the floating-point vector data ordered by field, document ordinal, and
  * vector dimension. The floats are stored in little-endian byte order.
  *
- * <h2>.vex (graph index) file</h2>
+ * <h2>.vel (graph levels) file</h2>
  *
  * <p>Stores the graph info for each vector field: graph nodes on each level and for each node a
  * pointer to the graph data file that contains this node's neighbours. For each vector field
@@ -57,7 +57,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *       </ul>
  * </ul>
  *
- * <h2>.veg (graph data) file</h2>
+ * <h2>.ven (graph neighbours) file</h2>
  *
  * <p>Stores graphs connecting the documents for each field organized as a list of nodes' neighbours
  * as following:
@@ -83,9 +83,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int32]</b> vector similarity function ordinal
  *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
- *   <li><b>[vlong]</b> offset to this field's graph index in the .vex file
+ *   <li><b>[vlong]</b> offset to this field's graph index in the .vel file
  *   <li><b>[vlong]</b> length of this field's graph index data, in bytes
- *   <li><b>[vlong]</b> offset to this field's graph data in the .veg file
+ *   <li><b>[vlong]</b> offset to this field's graph data in the .ven file
  *   <li><b>[vlong]</b> length of this field's graph data' data, in bytes
  *   <li><b>[int]</b> number of levels in the graph
  *   <li><b>[int]</b> dimension of this field's vectors
@@ -99,12 +99,12 @@ public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
 
   static final String META_CODEC_NAME = "Lucene90HnswVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene90HnswVectorsFormatData";
-  static final String GRAPH_INDEX_CODEC_NAME = "Lucene90HnswVectorsFormatGraphIndex";
-  static final String GRAPH_DATA_CODEC_NAME = "Lucene90HnswVectorsFormatGraphData";
+  static final String GRAPH_LEVELS_CODEC_NAME = "Lucene90HnswVectorsFormatGraphLevels";
+  static final String GRAPH_NEIGHBOURS_CODEC_NAME = "Lucene90HnswVectorsFormatGraphNeighbours";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
-  static final String GRAPH_INDEX_EXTENSION = "vex";
-  static final String GRAPH_DATA_EXTENSION = "veg";
+  static final String GRAPH_LEVELS_EXTENSION = "vel";
+  static final String GRAPH_NEIGHBOURS_EXTENSION = "ven";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;

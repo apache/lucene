@@ -82,15 +82,15 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene90HnswVectorsFormat.GRAPH_INDEX_EXTENSION,
-              Lucene90HnswVectorsFormat.GRAPH_INDEX_CODEC_NAME,
+              Lucene90HnswVectorsFormat.GRAPH_LEVELS_EXTENSION,
+              Lucene90HnswVectorsFormat.GRAPH_LEVELS_CODEC_NAME,
               checksumRef);
       graphData =
           openDataInput(
               state,
               versionMeta,
-              Lucene90HnswVectorsFormat.GRAPH_DATA_EXTENSION,
-              Lucene90HnswVectorsFormat.GRAPH_DATA_CODEC_NAME,
+              Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_EXTENSION,
+              Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_CODEC_NAME,
               checksumRef);
       // TODO: should graph data be off-heap?
       fillGraphNodesAndOffsetsByLevel();
