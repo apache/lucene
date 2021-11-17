@@ -93,7 +93,6 @@ public final class FacetUtils {
    */
   @Deprecated
   public static boolean usesOlderBinaryOrdinals(LeafReader reader) {
-    assert reader != null;
     return reader.getMetaData().getCreatedVersionMajor() <= 8;
   }
 }

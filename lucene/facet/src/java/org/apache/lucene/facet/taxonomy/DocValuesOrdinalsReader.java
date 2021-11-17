@@ -50,6 +50,8 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
   public OrdinalsSegmentReader getReader(LeafReaderContext context) throws IOException {
     final SortedNumericDocValues dv;
     if (FacetUtils.usesOlderBinaryOrdinals(context.reader())) {
+      // Wrap the binary values so they appear as numeric doc values. Delegate to the #decode method
+      // so sub-class decoding implementations are honored:
       SortedNumericDocValues wrapped =
           BackCompatSortedNumericDocValues.wrap(
               context.reader().getBinaryDocValues(field), this::decode);

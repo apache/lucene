@@ -34,32 +34,43 @@ import org.apache.lucene.util.IntsRef;
 @Deprecated
 class BackCompatSortedNumericDocValues extends SortedNumericDocValues {
   private final BinaryDocValues binaryDocValues;
-  private final BiConsumer<BytesRef, IntsRef> loader;
+  private final BiConsumer<BytesRef, IntsRef> binaryValueDecoder;
   private final IntsRef scratch = new IntsRef();
   private int curr;
 
+  /**
+   * Wrap the provided binary encoded doc values. Decodes the binary values with {@link
+   * #loadValues(BytesRef, IntsRef)}. If a null doc values instance is provided, the returned
+   * instance will also be null.
+   */
   static SortedNumericDocValues wrap(BinaryDocValues binaryDocValues) {
     return wrap(binaryDocValues, null);
   }
 
+  /**
+   * Wrap the provided binary encoded doc values. Decodes the binary values with the provided {@code
+   * binaryValueDecoder}, allowing the default decoding behavior to be overridden. If a null doc
+   * values instance is provided, the returned instance will also be null.
+   */
   static SortedNumericDocValues wrap(
-      BinaryDocValues binaryDocValues, BiConsumer<BytesRef, IntsRef> loader) {
+      BinaryDocValues binaryDocValues, BiConsumer<BytesRef, IntsRef> binaryValueDecoder) {
     if (binaryDocValues == null) {
       return null;
     }
 
-    return new BackCompatSortedNumericDocValues(binaryDocValues, loader);
+    return new BackCompatSortedNumericDocValues(binaryDocValues, binaryValueDecoder);
   }
 
+  /** see the static {@code wrap} methods */
   private BackCompatSortedNumericDocValues(
-      BinaryDocValues binaryDocValues, BiConsumer<BytesRef, IntsRef> loader) {
+      BinaryDocValues binaryDocValues, BiConsumer<BytesRef, IntsRef> binaryValueDecoder) {
     assert binaryDocValues != null;
     this.binaryDocValues = binaryDocValues;
 
-    if (loader != null) {
-      this.loader = loader;
+    if (binaryValueDecoder != null) {
+      this.binaryValueDecoder = binaryValueDecoder;
     } else {
-      this.loader = BackCompatSortedNumericDocValues::loadValues;
+      this.binaryValueDecoder = BackCompatSortedNumericDocValues::loadValues;
     }
   }
 
@@ -67,7 +78,7 @@ class BackCompatSortedNumericDocValues extends SortedNumericDocValues {
   public boolean advanceExact(int target) throws IOException {
     boolean result = binaryDocValues.advanceExact(target);
     if (result) {
-      loader.accept(binaryDocValues.binaryValue(), scratch);
+      reloadValues();
     }
     return result;
   }
@@ -97,7 +108,7 @@ class BackCompatSortedNumericDocValues extends SortedNumericDocValues {
   @Override
   public int advance(int target) throws IOException {
     int doc = binaryDocValues.advance(target);
-    loader.accept(binaryDocValues.binaryValue(), scratch);
+    reloadValues();
     return doc;
   }
 
@@ -106,6 +117,12 @@ class BackCompatSortedNumericDocValues extends SortedNumericDocValues {
     return binaryDocValues.cost();
   }
 
+  private void reloadValues() throws IOException {
+    curr = -1;
+    binaryValueDecoder.accept(binaryDocValues.binaryValue(), scratch);
+  }
+
+  /** Load ordinals for the currently-positioned doc, assuming the default binary encoding. */
   static void loadValues(BytesRef buf, IntsRef ordinals) {
     // grow the buffer up front, even if by a large number of values (buf.length)
     // that saves the need to check inside the loop for every decoded value if
