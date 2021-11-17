@@ -1,6 +1,11 @@
-
-Apache OpenNLP Tools
-Copyright 2015 The Apache Software Foundation
+Apache OpenNLP
+Copyright 2017 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
+
+The snowball stemmers in
+opennlp-tools/src/main/java/opennlp/tools/stemmer/snowball
+were developed by Martin Porter and Richard Boulton.
+The full snowball package is available from
+http://snowball.tartarus.org/
