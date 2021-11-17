@@ -26,6 +26,7 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -240,6 +241,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     assertSameCount(reader, searcher, "doesNotExist", 0);
 
     // Test that we can't count in O(1) when there are deleted documents
+    w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     w.deleteDocuments(LongPoint.newRangeQuery("long", 0L, 10L));
     DirectoryReader reader2 = w.getReader();
     final IndexSearcher searcher2 = new IndexSearcher(reader2);
