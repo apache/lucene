@@ -413,11 +413,11 @@ public class FacetsConfig {
       // Store the taxonomy ordinals associated with each doc. Prefer to use SortedNumericDocValues
       // but "fall back" to a custom binary format to maintain backwards compatibility with Lucene 8
       // indexes.
+      IntsRef ords = ordinals.get();
       if (taxoWriter.useNumericDocValuesForOrdinals()) {
         // Dedupe and encode the ordinals. It's not important that we sort here
         // (SortedNumericDocValuesField will handle this internally), but we
         // sort to identify dups (since SNDVF doesn't dedupe):
-        IntsRef ords = ordinals.get();
         Arrays.sort(ords.ints, ords.offset, ords.offset + ords.length);
         int prev = -1;
         for (int i = 0; i < ords.length; i++) {
@@ -428,7 +428,7 @@ public class FacetsConfig {
           }
         }
       } else {
-        doc.add(new BinaryDocValuesField(indexFieldName, dedupAndEncode(ordinals.get())));
+        doc.add(new BinaryDocValuesField(indexFieldName, dedupAndEncode(ords)));
       }
     }
   }

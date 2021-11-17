@@ -158,13 +158,15 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
       currIndex = 0;
       currentValues.clear();
       for (int i = 0; i < in.docValueCount(); i++) {
-        currentValues.add(ordinalMap[(int) in.nextValue()]);
+        int originalOrd = Math.toIntExact(in.nextValue());
+        currentValues.add(ordinalMap[originalOrd]);
       }
       Arrays.sort(currentValues.buffer, 0, currentValues.elementsCount);
     }
 
     @Override
     public long nextValue() {
+      assert currIndex < currentValues.size();
       int actual = currentValues.get(currIndex);
       currIndex++;
       return actual;

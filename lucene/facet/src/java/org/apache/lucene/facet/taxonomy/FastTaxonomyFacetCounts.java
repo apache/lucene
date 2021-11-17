@@ -73,13 +73,14 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       return;
     }
 
-    boolean useBinaryDv = FacetUtils.usesOlderBinaryOrdinals(matchingDocs.get(0).context.reader());
+    boolean useOlderBinaryDv =
+        FacetUtils.usesOlderBinaryOrdinals(matchingDocs.get(0).context.reader());
 
     for (MatchingDocs hits : matchingDocs) {
-      assert useBinaryDv == FacetUtils.usesOlderBinaryOrdinals(hits.context.reader());
+      assert useOlderBinaryDv == FacetUtils.usesOlderBinaryOrdinals(hits.context.reader());
 
       final SortedNumericDocValues dv;
-      if (useBinaryDv) {
+      if (useOlderBinaryDv) {
         dv =
             BackCompatSortedNumericDocValues.wrap(
                 hits.context.reader().getBinaryDocValues(indexFieldName));
@@ -109,13 +110,13 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       return;
     }
 
-    boolean useBinaryDv = FacetUtils.usesOlderBinaryOrdinals(reader.leaves().get(0).reader());
+    boolean useOlderBinaryDv = FacetUtils.usesOlderBinaryOrdinals(reader.leaves().get(0).reader());
 
     for (LeafReaderContext context : reader.leaves()) {
-      assert useBinaryDv == FacetUtils.usesOlderBinaryOrdinals(context.reader());
+      assert useOlderBinaryDv == FacetUtils.usesOlderBinaryOrdinals(context.reader());
 
       final SortedNumericDocValues dv;
-      if (useBinaryDv) {
+      if (useOlderBinaryDv) {
         dv =
             BackCompatSortedNumericDocValues.wrap(
                 context.reader().getBinaryDocValues(indexFieldName));

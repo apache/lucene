@@ -71,6 +71,7 @@ public class TaxonomyFacetLabels {
 
     SortedNumericDocValues ordinalValues =
         DocValues.getSortedNumeric(readerContext.reader(), indexFieldName);
+    assert ordinalValues != null;
     return new FacetLabelReader(ordinalValues);
   }
 

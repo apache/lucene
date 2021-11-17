@@ -39,9 +39,7 @@ import org.apache.lucene.facet.taxonomy.TaxonomyFacetSumValueSource;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomIndexWriter;
-import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -138,7 +136,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     assertEquals(2, facetResult.value);
     facets =
         new TaxonomyFacetSumValueSource(
-            taxoReader, facetsConfig, facetsCollector, new DummyDoubleValuesSource());
+            taxoReader, facetsConfig, facetsCollector, DoubleValuesSource.constant(1d));
     facetResult = facets.getTopChildren(10, "f1");
     assertEquals(2.0f, facetResult.value);
     // Test that we can drill-down as expected (and read facet labels from matching docs):
@@ -200,16 +198,12 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     assertEquals(3, facetResult.value);
     facets =
         new TaxonomyFacetSumValueSource(
-            taxoReader, facetsConfig, facetsCollector, new DummyDoubleValuesSource());
+            taxoReader, facetsConfig, facetsCollector, DoubleValuesSource.constant(1d));
     facetResult = facets.getTopChildren(10, "f1");
     assertEquals(3.0f, facetResult.value);
+    // Test that we can drill-down as expected, and access facet labels:
     facetLabels = new TaxonomyFacetLabels(taxoReader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
     assert (searcher.getIndexReader().leaves().size() == 1);
-    labelReader = facetLabels.getFacetLabelReader(searcher.getIndexReader().leaves().get(0));
-    assertEquals(new FacetLabel("f1", "foo"), labelReader.nextFacetLabel(0));
-    assertEquals(new FacetLabel("f2", "foo"), labelReader.nextFacetLabel(0));
-    assertEquals(new FacetLabel("f1", "zed"), labelReader.nextFacetLabel(3));
-    // Test that we can drill-down as expected, and access facet labels:
     labelReader = facetLabels.getFacetLabelReader(searcher.getIndexReader().leaves().get(0));
     query = new DrillDownQuery(facetsConfig, new MatchAllDocsQuery());
     query.add("f1", "foo");
@@ -330,52 +324,5 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         "backcompat creation tests must be run with -Dtests.bwcdir=/path/to/write/indexes",
         path != null);
     return Paths.get(path);
-  }
-
-  private static class DummyDoubleValuesSource extends DoubleValuesSource {
-    @Override
-    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      return new DoubleValues() {
-        @Override
-        public double doubleValue() throws IOException {
-          return 1;
-        }
-
-        @Override
-        public boolean advanceExact(int doc) throws IOException {
-          return true;
-        }
-      };
-    }
-
-    @Override
-    public boolean needsScores() {
-      return false;
-    }
-
-    @Override
-    public DoubleValuesSource rewrite(IndexSearcher reader) throws IOException {
-      return this;
-    }
-
-    @Override
-    public int hashCode() {
-      return 0;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      return getClass() == obj.getClass();
-    }
-
-    @Override
-    public String toString() {
-      return null;
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return false;
-    }
   }
 }
