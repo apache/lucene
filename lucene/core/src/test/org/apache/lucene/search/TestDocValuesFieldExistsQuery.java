@@ -21,6 +21,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -29,6 +30,7 @@ import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -221,9 +223,9 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
       Document doc = new Document();
       if (random().nextBoolean()) {
         doc.add(new LongPoint("long", i));
-        doc.add(new NumericDocValuesfield("long", i));
+        doc.add(new NumericDocValuesField("long", i));
         doc.add(new StringField("string", "value", Store.NO));
-        doc.add(new SortedDocValuesField("string", new BytesRef("value"));
+        doc.add(new SortedDocValuesField("string", new BytesRef("value")));
         numMatchingDocs++;
       }
       w.addDocument(doc);
