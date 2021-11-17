@@ -92,8 +92,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   private final Directory dir;
   private final IndexWriter indexWriter;
-  private final boolean useOlderStoredFieldIndex;
-  private final boolean useOlderTermPositionForParentOrdinal;
+  private final boolean useOlderFormat;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
 
@@ -164,15 +163,13 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
       // no commit exists so we can safely use the new BinaryDocValues field
-      useOlderStoredFieldIndex = false;
-      useOlderTermPositionForParentOrdinal = false;
+      useOlderFormat = false;
     } else {
       String epochStr = null;
 
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
       /* a previous commit exists, so check the version of the last commit */
-      useOlderStoredFieldIndex = infos.getIndexCreatedVersionMajor() <= 8;
-      useOlderTermPositionForParentOrdinal = infos.getIndexCreatedVersionMajor() <= 8;
+      useOlderFormat = infos.getIndexCreatedVersionMajor() <= 8;
 
       Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
@@ -187,16 +184,17 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       ++indexEpoch;
     }
 
-    if (useOlderTermPositionForParentOrdinal) {
+    if (useOlderFormat) {
+      // parent ordinal field
       FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
       ft.setOmitNorms(true);
       parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
-    } else {
-      parentStreamField = null;
-    }
-    if (useOlderStoredFieldIndex) {
+
+      // full path field
       fullPathField = new StringField(Consts.FULL, "", Field.Store.YES);
     } else {
+      parentStreamField = null;
+
       fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
     }
 
@@ -477,7 +475,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   private int addCategoryDocument(FacetLabel categoryPath, int parent) throws IOException {
     Document d = new Document();
-    if (useOlderTermPositionForParentOrdinal) {
+    if (useOlderFormat) {
       // Before Lucene 2.9, position increments >=0 were supported, so we
       // added 1 to parent to allow the parent -1 (the parent of the root).
       // Unfortunately, starting with Lucene 2.9, after LUCENE-1542, this is
@@ -487,6 +485,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       // we write here (e.g., to write parent+2), and need to do a workaround
       // in the reader (which knows that anyway only category 0 has a parent
       // -1).
+      assert parentStreamField != null;
       parentStream.set(Math.max(parent + 1, 1));
       d.add(parentStreamField);
     } else {
@@ -496,7 +495,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
 
-    if (useOlderStoredFieldIndex == false) {
+    if (useOlderFormat == false) {
       /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
       d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
     }

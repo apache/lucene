@@ -125,7 +125,8 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
       return;
     }
 
-    if (tryLoadParentUsingTermPosition(reader, first)) {
+    if (getMajorVersion(reader) <= 8) {
+      loadParentUsingTermPosition(reader, first);
       return;
     }
 
@@ -139,7 +140,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
           leafContext.reader().getNumericDocValues(Consts.FIELD_PARENT_ORDINAL_NDV);
       if (parentValues == null) {
         throw new CorruptIndexException(
-            "Parent data field " + Consts.FIELD_PARENT_ORDINAL_NDV + "not exists",
+            "Parent data field " + Consts.FIELD_PARENT_ORDINAL_NDV + " not exists",
             leafContext.reader().toString());
       }
 
@@ -154,12 +155,16 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     }
   }
 
+  private static int getMajorVersion(IndexReader reader) {
+    return reader.leaves().get(0).reader().getMetaData().getCreatedVersionMajor();
+  }
+
   /**
    * Try loading the old way of storing parent ordinal first, return true if the parent array is
    * loaded Or false if not, and we will try loading using NumericDocValues
    */
   // TODO: Remove in Lucene 10, this is only for back-compatibility
-  private boolean tryLoadParentUsingTermPosition(IndexReader reader, int first) throws IOException {
+  private void loadParentUsingTermPosition(IndexReader reader, int first) throws IOException {
     // it's ok to use MultiTerms because we only iterate on one posting list.
     // breaking it to loop over the leaves() only complicates code for no
     // apparent gain.
@@ -167,15 +172,10 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
         MultiTerms.getTermPostingsEnum(
             reader, Consts.FIELD_PAYLOADS, Consts.PAYLOAD_PARENT_BYTES_REF, PostingsEnum.PAYLOADS);
 
-    if (positions == null) {
-      // try using NumericDocValues then
-      return false;
-    }
-
     // shouldn't really happen, if it does, something's wrong
-    if (positions.advance(first) == DocIdSetIterator.NO_MORE_DOCS) {
+    if (positions == null || positions.advance(first) == DocIdSetIterator.NO_MORE_DOCS) {
       throw new CorruptIndexException(
-          "[Lucene 8]Missing parent data for category " + first, reader.toString());
+          "[Lucene 8] Missing parent data for category " + first, reader.toString());
     }
 
     int num = reader.maxDoc();
@@ -183,7 +183,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
       if (positions.docID() == i) {
         if (positions.freq() == 0) { // shouldn't happen
           throw new CorruptIndexException(
-              "[Lucene 8]Missing parent data for category " + i, reader.toString());
+              "[Lucene 8] Missing parent data for category " + i, reader.toString());
         }
 
         parents[i] = positions.nextPosition();
@@ -191,16 +191,15 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
         if (positions.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
           if (i + 1 < num) {
             throw new CorruptIndexException(
-                "[Lucene 8]Missing parent data for category " + (i + 1), reader.toString());
+                "[Lucene 8] Missing parent data for category " + (i + 1), reader.toString());
           }
           break;
         }
       } else { // this shouldn't happen
         throw new CorruptIndexException(
-            "[Lucene 8]Missing parent data for category " + i, reader.toString());
+            "[Lucene 8] Missing parent data for category " + i, reader.toString());
       }
     }
-    return true;
   }
 
   /**
