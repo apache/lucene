@@ -33,18 +33,18 @@ def resources = scriptResources(buildscript)
 // Configure different icu4j dependencies.
 configure(rootProject) {
   configurations {
-    icu_68
+    // icu_xyz
     icu_current
   }
 
   dependencies {
-    icu_68 "com.ibm.icu:icu4j:68.2"
+    // icu_xyz "com.ibm.icu:icu4j:xyz"
     icu_current 'com.ibm.icu:icu4j'
   }
 
-  // Exclude ICU config from palantir's version unification.
+  // Exclude explicit ICU configs from palantir's version unification.
   versionRecommendations {
-    excludeConfigurations "icu_68"
+    // excludeConfigurations "icu_xyz"
   }
 }
 
@@ -256,7 +256,7 @@ configure(project(":lucene:analysis:icu")) {
 // Regenerates UnicodeProps.java
 configure(project(":lucene:analysis:common")) {
   task generateUnicodePropsInternal() {
-    def icuConfig = rootProject.configurations.icu_68
+    def icuConfig = rootProject.configurations.icu_current
     def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
 
     description "Regenerate ${outputFile} (with ${icuConfig.name})"
@@ -264,7 +264,7 @@ configure(project(":lucene:analysis:common")) {
 
     dependsOn icuConfig
 
-    inputs.property "icuConfig", icuConfig.name
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
     outputs.file outputFile
 
     doFirst {
