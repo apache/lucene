@@ -51,7 +51,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10225: Improve IntroSelector with 3-ways partitioning. (Bruno Roustant, Adrien Grand)
 
 Bug Fixes
 ---------------------
