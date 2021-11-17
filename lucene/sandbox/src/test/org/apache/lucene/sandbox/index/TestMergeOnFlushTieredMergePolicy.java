@@ -34,8 +34,8 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.junit.Ignore;
 
-/** Test for {@link org.apache.lucene.sandbox.index.MergeOnCommitTieredMergePolicy}. */
-public class TestMergeOnCommitTieredMergePolicy extends BaseMergePolicyTestCase {
+/** Test for {@link MergeOnFlushTieredMergePolicy}. */
+public class TestMergeOnFlushTieredMergePolicy extends BaseMergePolicyTestCase {
 
   private static long getIndexSize(SegmentInfos segmentInfos) throws IOException {
     long totalBytes = 0;
@@ -63,7 +63,7 @@ public class TestMergeOnCommitTieredMergePolicy extends BaseMergePolicyTestCase 
   protected MergePolicy mergePolicy() {
     Random r = random();
     TieredMergePolicy tieredMergePolicy = newTieredMergePolicy(r);
-    MergeOnCommitTieredMergePolicy mergePolicy = new MergeOnCommitTieredMergePolicy();
+    MergeOnFlushTieredMergePolicy mergePolicy = new MergeOnFlushTieredMergePolicy();
     mergePolicy.setDeletesPctAllowed(tieredMergePolicy.getDeletesPctAllowed());
     mergePolicy.setFloorSegmentMB(tieredMergePolicy.getFloorSegmentMB());
     mergePolicy.setForceMergeDeletesPctAllowed(tieredMergePolicy.getForceMergeDeletesPctAllowed());
@@ -90,20 +90,20 @@ public class TestMergeOnCommitTieredMergePolicy extends BaseMergePolicyTestCase 
   @Override
   protected void assertMerge(MergePolicy policy, MergePolicy.MergeSpecification merge)
       throws IOException {
-    MergeOnCommitTieredMergePolicy mergePolicy = (MergeOnCommitTieredMergePolicy) policy;
+    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) policy;
     for (MergePolicy.OneMerge oneMerge : merge.merges) {
       for (SegmentCommitInfo sci : oneMerge.segments) {
         assertTrue(
             "Basic merge should not merge small segments",
             sci.sizeInBytes()
-                >= MergeOnCommitTieredMergePolicy.Units.mbToBytes(
+                >= MergeOnFlushTieredMergePolicy.Units.mbToBytes(
                     mergePolicy.getSmallSegmentThresholdMB()));
       }
     }
   }
 
   public void testRegularMerge() throws IOException {
-    MergeOnCommitTieredMergePolicy mergePolicy = (MergeOnCommitTieredMergePolicy) mergePolicy();
+    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) mergePolicy();
     double smallSegmentThresholdMB = mergePolicy.getSmallSegmentThresholdMB();
     Random r = random();
 
@@ -121,7 +121,7 @@ public class TestMergeOnCommitTieredMergePolicy extends BaseMergePolicyTestCase 
                 r.nextDouble() * 2.0 * smallSegmentThresholdMB,
                 IndexWriter.SOURCE_FLUSH);
         if (sci.sizeInBytes()
-            < MergeOnCommitTieredMergePolicy.Units.mbToBytes(smallSegmentThresholdMB)) {
+            < MergeOnFlushTieredMergePolicy.Units.mbToBytes(smallSegmentThresholdMB)) {
           smallSegments.add(sci);
         }
         if (r.nextBoolean()) {
@@ -143,7 +143,7 @@ public class TestMergeOnCommitTieredMergePolicy extends BaseMergePolicyTestCase 
   }
 
   public void testOnlySmallSegmentsInRegularMerge() throws IOException {
-    MergeOnCommitTieredMergePolicy mergePolicy = (MergeOnCommitTieredMergePolicy) mergePolicy();
+    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) mergePolicy();
     double smallSegmentThresholdMB = mergePolicy.getSmallSegmentThresholdMB();
     SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
     Random r = random();
@@ -164,7 +164,7 @@ public class TestMergeOnCommitTieredMergePolicy extends BaseMergePolicyTestCase 
   }
 
   public void testFindCommitMerges() throws IOException {
-    MergeOnCommitTieredMergePolicy mergePolicy = (MergeOnCommitTieredMergePolicy) mergePolicy();
+    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) mergePolicy();
     double smallSegmentThresholdMB = mergePolicy.getSmallSegmentThresholdMB();
     Random r = random();
 
@@ -182,7 +182,7 @@ public class TestMergeOnCommitTieredMergePolicy extends BaseMergePolicyTestCase 
                 r.nextDouble() * 2.0 * smallSegmentThresholdMB,
                 IndexWriter.SOURCE_FLUSH);
         if (sci.sizeInBytes()
-            < MergeOnCommitTieredMergePolicy.Units.mbToBytes(smallSegmentThresholdMB)) {
+            < MergeOnFlushTieredMergePolicy.Units.mbToBytes(smallSegmentThresholdMB)) {
           smallSegments.add(sci);
         }
         if (r.nextBoolean()) {
@@ -235,7 +235,7 @@ public class TestMergeOnCommitTieredMergePolicy extends BaseMergePolicyTestCase 
 
   public void testMaxSegmentSizeAsProportionOfIndexSize() throws IOException {
     Random r = random();
-    MergeOnCommitTieredMergePolicy mergePolicy = (MergeOnCommitTieredMergePolicy) mergePolicy();
+    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) mergePolicy();
     final double maxSegmentSizeAsProportionOfIndex = r.nextDouble();
     mergePolicy.setMaxSegmentSizeAsProportionOfIndex(maxSegmentSizeAsProportionOfIndex);
     mergePolicy.setMaxMergedSegmentMB(r.nextInt(20) + 1);

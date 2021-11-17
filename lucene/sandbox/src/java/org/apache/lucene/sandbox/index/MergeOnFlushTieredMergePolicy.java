@@ -29,7 +29,7 @@ import org.apache.lucene.index.TieredMergePolicy;
  * A simple extension to {@link TieredMergePolicy} to merge all tiny segments (or at least segments
  * smaller than specified in setSmallSegmentThresholdMB) into one segment on commit.
  */
-public class MergeOnCommitTieredMergePolicy extends TieredMergePolicy {
+public class MergeOnFlushTieredMergePolicy extends TieredMergePolicy {
   private double maxSegmentSizeAsProportionOfIndex = 1.0;
   private long smallSegmentThresholdBytes = Units.mbToBytes(100.0);
   private long hardMaxSegmentSizeBytes = 5 * 1024 * 1024 * 1024L;
