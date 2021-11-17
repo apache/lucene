@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 
@@ -78,10 +79,14 @@ public final class DocValuesFieldExistsQuery extends Query {
       public int count(LeafReaderContext context) throws IOException {
         final LeafReader reader = context.reader();
         final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
-        if (reader.hasDeletions() || fieldInfo == null || fieldInfo.getPointDimensionCount() == 0) {
-          return super.count(context);
+        if (!reader.hasDeletions() && fieldInfo != null) {
+          if (fieldInfo.getPointDimensionCount() > 0) {
+            return reader.getPointValues(field).getDocCount();
+          } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
+            return reader.terms(field).getDocCount();
+          }
         }
-        return reader.getPointValues(field).getDocCount();
+        return super.count(context);
       }
 
       @Override

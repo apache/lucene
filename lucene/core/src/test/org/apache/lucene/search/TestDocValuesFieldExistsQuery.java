@@ -221,6 +221,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
       Document doc = new Document();
       if (random().nextBoolean()) {
         doc.add(new LongPoint("long", i));
+        doc.add(new StringField("string", "value", Store.NO));
         numMatchingDocs++;
       }
       w.addDocument(doc);
@@ -231,6 +232,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     final IndexSearcher searcher = new IndexSearcher(reader);
 
     assertSameCount(reader, searcher, "long", numMatchingDocs);
+    assertSameCount(reader, searcher, "string", numMatchingDocs);
 
     // Test that we can't count in O(1) when there are deleted documents
     w.deleteDocuments(LongPoint.newRangeQuery("long", 0L, 10L));
