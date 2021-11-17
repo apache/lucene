@@ -175,7 +175,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             ? atLeast(1000)
             : atLeast(128 * 8 * 8 * 3); // make sure some terms have skip data
     int numMatchDoc = randomIntBetween(200, 500);
-    int numHits = atMost(100);
+    int numHits = atMost(100) + 1;
     int boost1 = Math.max(1, random().nextInt(5));
     int boost2 = Math.max(1, random().nextInt(5));
 
