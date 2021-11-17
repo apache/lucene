@@ -126,7 +126,6 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     }
 
     if (tryLoadParentUsingTermPosition(reader, first)) {
-      // The parent array is already loaded
       return;
     }
 
@@ -138,10 +137,16 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
       }
       NumericDocValues parentValues =
           leafContext.reader().getNumericDocValues(Consts.FIELD_PARENT_ORDINAL_NDV);
+      if (parentValues == null) {
+        throw new CorruptIndexException(
+            "Parent data field " + Consts.FIELD_PARENT_ORDINAL_NDV + "not exists",
+            leafContext.reader().toString());
+      }
+
       for (int doc = Math.max(first - leafContext.docBase, 0); doc < leafDocNum; doc++) {
         if (parentValues.advanceExact(doc) == false) {
           throw new CorruptIndexException(
-              "Missing parent data for category " + doc + leafContext.docBase, reader.toString());
+              "Missing parent data for category " + (doc + leafContext.docBase), reader.toString());
         }
         // we're putting an int and converting it back so it should be safe
         parents[doc + leafContext.docBase] = Math.toIntExact(parentValues.longValue());
@@ -163,13 +168,14 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
             reader, Consts.FIELD_PAYLOADS, Consts.PAYLOAD_PARENT_BYTES_REF, PostingsEnum.PAYLOADS);
 
     if (positions == null) {
-      // The field does not exist, we're using NumericDocValues then
+      // try using NumericDocValues then
       return false;
     }
+
     // shouldn't really happen, if it does, something's wrong
     if (positions.advance(first) == DocIdSetIterator.NO_MORE_DOCS) {
       throw new CorruptIndexException(
-          "Missing parent data for category " + first, reader.toString());
+          "[Lucene 8]Missing parent data for category " + first, reader.toString());
     }
 
     int num = reader.maxDoc();
@@ -177,7 +183,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
       if (positions.docID() == i) {
         if (positions.freq() == 0) { // shouldn't happen
           throw new CorruptIndexException(
-              "Missing parent data for category " + i, reader.toString());
+              "[Lucene 8]Missing parent data for category " + i, reader.toString());
         }
 
         parents[i] = positions.nextPosition();
@@ -185,12 +191,13 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
         if (positions.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
           if (i + 1 < num) {
             throw new CorruptIndexException(
-                "Missing parent data for category " + (i + 1), reader.toString());
+                "[Lucene 8]Missing parent data for category " + (i + 1), reader.toString());
           }
           break;
         }
       } else { // this shouldn't happen
-        throw new CorruptIndexException("Missing parent data for category " + i, reader.toString());
+        throw new CorruptIndexException(
+            "[Lucene 8]Missing parent data for category " + i, reader.toString());
       }
     }
     return true;
