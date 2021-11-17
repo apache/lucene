@@ -48,7 +48,7 @@ New Features
 Improvements
 ---------------------
 
-* LUCENE-xxx: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
+* LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
 Optimizations
 ---------------------
