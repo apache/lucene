@@ -23,7 +23,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 
 import static org.apache.lucene.analysis.VocabularyAssert.assertVocabulary;
 
