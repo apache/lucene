@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
@@ -79,7 +80,9 @@ public final class DocValuesFieldExistsQuery extends Query {
       public int count(LeafReaderContext context) throws IOException {
         final LeafReader reader = context.reader();
         final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
-        if (!reader.hasDeletions() && fieldInfo != null) {
+        if (fieldInfo == null || fieldInfo.getDocValuesType() == DocValuesType.NONE) {
+          return 0; // the field doesn't index doc values
+        } else if (!reader.hasDeletions()) {
           if (fieldInfo.getPointDimensionCount() > 0) {
             return reader.getPointValues(field).getDocCount();
           } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
