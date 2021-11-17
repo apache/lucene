@@ -220,8 +220,8 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     for (int i = 0; i < randomNumDocs; i++) {
       Document doc = new Document();
       if (random().nextBoolean()) {
-        doc.add(new NumericDocValuesField("f", 1));
-        doc.add(new LongPoint("f", 1));
+        doc.add(new NumericDocValuesField("f", i));
+        doc.add(new LongPoint("f", i));
         numMatchingDocs++;
       }
       w.addDocument(doc);
@@ -236,7 +236,14 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
     assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
 
-    IOUtils.close(reader, w, dir);
+    // Test that we can't count in O(1) when there are deleted documents
+    w.deleteDocuments(LongPoint.newRangeQuery("f", 0L, 10L));
+    w.commit();
+    DirectoryReader reader2 = w.getReader();
+    final Weight weight2 = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(weight2.count(reader2.leaves().get(0)), -1);
+
+    IOUtils.close(reader, reader2, w, dir);
   }
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)

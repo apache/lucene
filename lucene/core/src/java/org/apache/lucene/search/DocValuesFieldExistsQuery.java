@@ -77,8 +77,8 @@ public final class DocValuesFieldExistsQuery extends Query {
       @Override
       public int count(LeafReaderContext context) throws IOException {
         final LeafReader reader = context.reader();
-        FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
-        if (fieldInfo == null || fieldInfo.getPointDimensionCount() == 0) {
+        final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+        if (reader.hasDeletions() || fieldInfo == null || fieldInfo.getPointDimensionCount() == 0) {
           return super.count(context);
         }
         return reader.getPointValues(field).getDocCount();
