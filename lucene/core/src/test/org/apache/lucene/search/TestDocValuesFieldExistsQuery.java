@@ -235,8 +235,9 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
 
-    assertSameCount(reader, searcher, "long", numMatchingDocs);
-    assertSameCount(reader, searcher, "string", numMatchingDocs);
+    assertSameCount(reader, searcher, "long", numMatchingDocs, numMatchingDocs);
+    assertSameCount(reader, searcher, "string", numMatchingDocs, numMatchingDocs);
+    assertSameCount(reader, searcher, "doesNotExist", 0, -1);
 
     // Test that we can't count in O(1) when there are deleted documents
     w.deleteDocuments(LongPoint.newRangeQuery("long", 0L, 10L));
@@ -250,12 +251,16 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
   }
 
   private void assertSameCount(
-      IndexReader reader, IndexSearcher searcher, String field, int numMatchingDocs)
+      IndexReader reader,
+      IndexSearcher searcher,
+      String field,
+      int searchNumMatchingDocs,
+      int countNumMatchingDocs)
       throws IOException {
     final Query testQuery = new DocValuesFieldExistsQuery(field);
-    assertEquals(searcher.count(testQuery), numMatchingDocs);
+    assertEquals(searcher.count(testQuery), searchNumMatchingDocs);
     final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
-    assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
+    assertEquals(weight.count(reader.leaves().get(0)), countNumMatchingDocs);
   }
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
