@@ -3,5 +3,5 @@
     "lucene/analysis/icu/src/data/uax29/MyanmarSyllable.rbbi": "4c6817658b454add5ec1f9ac8c0015ce8eb3b5f2",
     "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/Default.brk": "50fa00b5e1f40da5dfe3f0b9e49ab5612dfd4a0e",
     "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/MyanmarSyllable.brk": "1034111656380fbeb08e80ad98983f575a6f07fd",
-    "property:icu4j": "70.1"
+    "property:icuConfig": "com.ibm.icu:icu4j:70.1"
 }
