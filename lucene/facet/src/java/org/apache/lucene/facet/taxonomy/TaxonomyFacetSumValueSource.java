@@ -22,7 +22,6 @@ import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -63,16 +62,7 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       DoubleValuesSource valueSource)
       throws IOException {
     super(indexField, taxoReader, config);
-
-    // Maintain backwards compatibility with the older binary format using an OrdinalsReader (which
-    // can support both formats currently):
-    MatchingDocs first = fc.getMatchingDocs().isEmpty() ? null : fc.getMatchingDocs().get(0);
-    if (first != null && FacetUtils.usesOlderBinaryOrdinals(first.context.reader())) {
-      this.ordinalsReader = new DocValuesOrdinalsReader(indexField);
-    } else {
-      this.ordinalsReader = null;
-    }
-
+    ordinalsReader = null;
     sumValues(fc.getMatchingDocs(), fc.getKeepScores(), valueSource);
   }
 
@@ -142,7 +132,11 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       // If no custom ordinals reader is provided, expect the default encoding:
       for (MatchingDocs hits : matchingDocs) {
         SortedNumericDocValues ordinalValues =
-            DocValues.getSortedNumeric(hits.context.reader(), indexFieldName);
+            FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
+        if (ordinalValues == null) {
+          continue;
+        }
+
         DoubleValues scores = keepScores ? scores(hits) : null;
         DoubleValues functionValues = valueSource.getValues(hits.context, scores);
         DocIdSetIterator it =

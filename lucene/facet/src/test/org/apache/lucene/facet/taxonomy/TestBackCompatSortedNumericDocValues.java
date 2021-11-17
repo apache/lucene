@@ -98,7 +98,7 @@ public class TestBackCompatSortedNumericDocValues extends LuceneTestCase {
     assert reader.leaves().size() == 1;
     BinaryDocValues binaryDocValues = reader.leaves().get(0).reader().getBinaryDocValues("bdv");
     assertNotNull(binaryDocValues);
-    SortedNumericDocValues docValues = BackCompatSortedNumericDocValues.wrap(binaryDocValues);
+    SortedNumericDocValues docValues = BackCompatSortedNumericDocValues.wrap(binaryDocValues, null);
 
     TopFieldDocs docs = searcher.search(new MatchAllDocsQuery(), numDocs, Sort.INDEXORDER);
 

@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
@@ -32,27 +31,19 @@ import org.apache.lucene.util.IntsRef;
  * @deprecated Only here for back-compat support. Should be removed with Lucene 10.
  */
 @Deprecated
-class BackCompatSortedNumericDocValues extends SortedNumericDocValues {
+public class BackCompatSortedNumericDocValues extends SortedNumericDocValues {
   private final BinaryDocValues binaryDocValues;
   private final BiConsumer<BytesRef, IntsRef> binaryValueDecoder;
   private final IntsRef scratch = new IntsRef();
   private int curr;
 
   /**
-   * Wrap the provided binary encoded doc values. Decodes the binary values with {@link
-   * #loadValues(BytesRef, IntsRef)}. If a null doc values instance is provided, the returned
-   * instance will also be null.
-   */
-  static SortedNumericDocValues wrap(BinaryDocValues binaryDocValues) {
-    return wrap(binaryDocValues, null);
-  }
-
-  /**
    * Wrap the provided binary encoded doc values. Decodes the binary values with the provided {@code
    * binaryValueDecoder}, allowing the default decoding behavior to be overridden. If a null doc
-   * values instance is provided, the returned instance will also be null.
+   * values instance is provided, the returned instance will also be null. If a null value decoder
+   * is specified, the default encoding will be assumed.
    */
-  static SortedNumericDocValues wrap(
+  public static SortedNumericDocValues wrap(
       BinaryDocValues binaryDocValues, BiConsumer<BytesRef, IntsRef> binaryValueDecoder) {
     if (binaryDocValues == null) {
       return null;

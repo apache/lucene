@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.taxonomy.OrdinalsReader.OrdinalsSegmentReader;
@@ -224,7 +223,6 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
     if (original != null && facetFields.contains(field)) {
       // The requested field is a facet ordinals field _and_ it's non-null, so move forward with
       // mapping:
-      assert FacetUtils.usesOlderBinaryOrdinals(in);
       final OrdinalsReader ordsReader = getOrdinalsReader(field);
       return new OrdinalMappingBinaryDocValues(ordsReader.getReader(in.getContext()), original);
     } else {
@@ -240,7 +238,6 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
     if (original != null && facetFields.contains(field)) {
       // The requested field is a facet ordinals field _and_ it's non-null, so move forward with
       // mapping:
-      assert FacetUtils.usesOlderBinaryOrdinals(in) == false;
       return new OrdinalMappingSortedNumericDocValues(original);
     } else {
       // The requested field either isn't present (null) or isn't a facet ordinals field. Either

@@ -48,20 +48,12 @@ public class DocValuesOrdinalsReader extends OrdinalsReader {
 
   @Override
   public OrdinalsSegmentReader getReader(LeafReaderContext context) throws IOException {
-    final SortedNumericDocValues dv;
-    if (FacetUtils.usesOlderBinaryOrdinals(context.reader())) {
-      // Wrap the binary values so they appear as numeric doc values. Delegate to the #decode method
-      // so sub-class decoding implementations are honored:
-      SortedNumericDocValues wrapped =
-          BackCompatSortedNumericDocValues.wrap(
-              context.reader().getBinaryDocValues(field), this::decode);
-      if (wrapped == null) {
-        wrapped = DocValues.emptySortedNumeric();
-      }
-      dv = wrapped;
-    } else {
-      dv = DocValues.getSortedNumeric(context.reader(), field);
+    SortedNumericDocValues dv0 =
+        FacetUtils.loadOrdinalValues(context.reader(), field, this::decode);
+    if (dv0 == null) {
+      dv0 = DocValues.emptySortedNumeric();
     }
+    final SortedNumericDocValues dv = dv0;
 
     return new OrdinalsSegmentReader() {
 
