@@ -450,8 +450,9 @@ The side-car taxonomy index now uses doc values for ord-to-path lookup (LUCENE-9
 lookup (LUCENE-10122) instead of stored fields and positions (respectively). Document ordinals
 are now encoded with `SortedNumericDocValues` instead of using a custom (v-int) binary format.
 Performance gains have been observed with these encoding changes, but to benefit from them, users
-must do a full index rebuild. In order to remain backwards-compatible with 8.x indexes, the older
-format is retained until a full rebuild is done.
+must create a new index using 9.x (it is not sufficient to reindex documents against an existing
+8.x index). In order to remain backwards-compatible with 8.x indexes, the older format is retained 
+until a full rebuild is done.
 
 Additionally, `OrdinalsReader` (and sub-classes) have been marked `@Deprecated` as custom binary
 encodings will not be supported for Document ordinals in 9.x onwards (`SortedNumericDocValues` are

@@ -71,11 +71,11 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   //
   // Then move the zip file to your trunk checkout and use it in your test cases
 
-  public static final String oldTaxonomyIndexName = "taxonomy.8.10.0-cfs";
-  private static final String OLD_INDEX_NAME = "index.8.10.0-cfs";
+  private static final String OLD_TAXONOMY_INDEX_NAME = "taxonomy.8.11.0-cfs";
+  private static final String OLD_INDEX_NAME = "index.8.11.0-cfs";
 
   public void testCreateNewTaxonomy() throws IOException {
-    createNewTaxonomyIndex(oldTaxonomyIndexName, OLD_INDEX_NAME);
+    createNewTaxonomyIndex(OLD_TAXONOMY_INDEX_NAME, OLD_INDEX_NAME);
   }
 
   /**
@@ -258,8 +258,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
   // Opens up a pre-existing index and tries to run getBulkPath on it
   public void testGetBulkPathOnOlderCodec() throws Exception {
-    Path indexDir = createTempDir(oldTaxonomyIndexName);
-    TestUtil.unzip(getDataInputStream(oldTaxonomyIndexName + ".zip"), indexDir);
+    Path indexDir = createTempDir(OLD_TAXONOMY_INDEX_NAME);
+    TestUtil.unzip(getDataInputStream(OLD_TAXONOMY_INDEX_NAME + ".zip"), indexDir);
     Directory dir = newFSDirectory(indexDir);
 
     DirectoryTaxonomyWriter writer = new DirectoryTaxonomyWriter(dir);
@@ -281,7 +281,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   // Used to create a fresh taxonomy index with StoredFields
   @Ignore
   public void testCreateOldTaxonomy() throws IOException {
-    createOldTaxonomyIndex(oldTaxonomyIndexName, OLD_INDEX_NAME);
+    createOldTaxonomyIndex(OLD_TAXONOMY_INDEX_NAME, OLD_INDEX_NAME);
   }
 
   private void createOldTaxonomyIndex(String taxoDirName, String indexDirName) throws IOException {
