@@ -34,6 +34,7 @@ import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.facet.FacetsConfig;
@@ -98,9 +99,11 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   // Records the taxonomy index epoch, updated on replaceTaxonomy as well.
   private long indexEpoch;
 
+  // TODO: remove following 2 fields in Lucene 10
   private SinglePositionTokenStream parentStream =
       new SinglePositionTokenStream(Consts.PAYLOAD_PARENT);
   private Field parentStreamField;
+
   private Field fullPathField;
   private int cacheMissesUntilFill = 11;
   private boolean shouldFillCache = true;
@@ -181,12 +184,17 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       ++indexEpoch;
     }
 
-    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
-    ft.setOmitNorms(true);
-    parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
     if (useOlderFormat) {
+      // parent ordinal field
+      FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+      ft.setOmitNorms(true);
+      parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
+
+      // full path field
       fullPathField = new StringField(Consts.FULL, "", Field.Store.YES);
     } else {
+      parentStreamField = null;
+
       fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
     }
 
@@ -466,18 +474,23 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * effectively synchronized as well.
    */
   private int addCategoryDocument(FacetLabel categoryPath, int parent) throws IOException {
-    // Before Lucene 2.9, position increments >=0 were supported, so we
-    // added 1 to parent to allow the parent -1 (the parent of the root).
-    // Unfortunately, starting with Lucene 2.9, after LUCENE-1542, this is
-    // no longer enough, since 0 is not encoded consistently either (see
-    // comment in SinglePositionTokenStream). But because we must be
-    // backward-compatible with existing indexes, we can't just fix what
-    // we write here (e.g., to write parent+2), and need to do a workaround
-    // in the reader (which knows that anyway only category 0 has a parent
-    // -1).
-    parentStream.set(Math.max(parent + 1, 1));
     Document d = new Document();
-    d.add(parentStreamField);
+    if (useOlderFormat) {
+      // Before Lucene 2.9, position increments >=0 were supported, so we
+      // added 1 to parent to allow the parent -1 (the parent of the root).
+      // Unfortunately, starting with Lucene 2.9, after LUCENE-1542, this is
+      // no longer enough, since 0 is not encoded consistently either (see
+      // comment in SinglePositionTokenStream). But because we must be
+      // backward-compatible with existing indexes, we can't just fix what
+      // we write here (e.g., to write parent+2), and need to do a workaround
+      // in the reader (which knows that anyway only category 0 has a parent
+      // -1).
+      assert parentStreamField != null;
+      parentStream.set(Math.max(parent + 1, 1));
+      d.add(parentStreamField);
+    } else {
+      d.add(new NumericDocValuesField(Consts.FIELD_PARENT_ORDINAL_NDV, parent));
+    }
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
@@ -508,6 +521,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     return id;
   }
 
+  // TODO: remove this class in Lucene 10
   private static class SinglePositionTokenStream extends TokenStream {
     private CharTermAttribute termAtt;
     private PositionIncrementAttribute posIncrAtt;
