@@ -1,6 +1,6 @@
 {
     "gradle/generation/jflex/skeleton.disable.buffer.expansion.txt": "6e43a3a64a9b5eb82ec5b4bc21f95aff5a2a061e",
     "lucene/core/src/data/jflex/UnicodeEmojiProperties.jflex": "704643e507c77a66142dd5b1c84ac4273559371a",
-    "lucene/core/src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java": "2c3b6b015664f8eaf013a7102f608c445789a5d2",
-    "lucene/core/src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex": "5338adebbc717897a5d261d34b272dce9f53f422"
+    "lucene/core/src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java": "31ef8f607183c70ee0d4fa8898de3a7a13fd3b17",
+    "lucene/core/src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex": "1ec159cb922ff052992a2a57d42392584e24efbd"
 }
