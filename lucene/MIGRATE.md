@@ -458,8 +458,10 @@ lookup (LUCENE-10122) instead of stored fields and positions (respectively). Doc
 are now encoded with `SortedNumericDocValues` instead of using a custom (v-int) binary format.
 Performance gains have been observed with these encoding changes. These changes were introduced
 in 9.0, and 9.x releases remain backwards-compatible with 8.x indexes, but starting with 10.0,
-only the newer formats are supported. Users will need to complete a full index rebuild with
-9.0 or later to pick up the new format and remain compatible with 10.x releases.
+only the newer formats are supported. Users will need to create a new index with all their
+documents using 9.0 or later to pick up the new format and remain compatible with 10.x releases.
+Just re-adding documents to an existing index is not enough to pick up the changes as the
+format will "stick" to whatever version was used to initially create the index.
 
 Additionally, `OrdinalsReader` (and sub-classes) are fully removed starting with 10.0. These
 classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on the default

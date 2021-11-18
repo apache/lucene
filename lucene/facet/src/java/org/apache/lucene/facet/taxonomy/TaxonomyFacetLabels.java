@@ -62,7 +62,10 @@ public class TaxonomyFacetLabels {
   public FacetLabelReader getFacetLabelReader(LeafReaderContext readerContext) throws IOException {
     SortedNumericDocValues ordinalValues =
         DocValues.getSortedNumeric(readerContext.reader(), indexFieldName);
-    assert ordinalValues != null;
+    if (ordinalValues == null) {
+      ordinalValues = DocValues.emptySortedNumeric();
+    }
+
     return new FacetLabelReader(ordinalValues);
   }
 
