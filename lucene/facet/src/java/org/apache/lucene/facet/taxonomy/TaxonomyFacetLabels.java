@@ -21,6 +21,7 @@ import static org.apache.lucene.facet.taxonomy.TaxonomyReader.ROOT_ORDINAL;
 
 import java.io.IOException;
 import org.apache.lucene.facet.FacetUtils;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.util.IntsRef;
@@ -61,11 +62,12 @@ public class TaxonomyFacetLabels {
    * @throws IOException when a low-level IO issue occurs
    */
   public FacetLabelReader getFacetLabelReader(LeafReaderContext readerContext) throws IOException {
-    // Support older binary format by leveraging an OrdinalsReader, which can still support both
-    // formats for now:
     SortedNumericDocValues ordinalValues =
         FacetUtils.loadOrdinalValues(readerContext.reader(), indexFieldName);
-    assert ordinalValues != null;
+    if (ordinalValues == null) {
+      ordinalValues = DocValues.emptySortedNumeric();
+    }
+
     return new FacetLabelReader(ordinalValues);
   }
 
@@ -80,7 +82,7 @@ public class TaxonomyFacetLabels {
 
     /**
      * Users can provide their own custom OrdinalsReader for cases where the default encoding isn't
-     * used
+     * used. This capability is deprecated and will be removed in Lucene 10.
      */
     private final OrdinalsReader.OrdinalsSegmentReader ordinalsSegmentReader;
 
