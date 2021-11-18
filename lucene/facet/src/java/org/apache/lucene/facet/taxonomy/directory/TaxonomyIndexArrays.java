@@ -147,10 +147,6 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     }
   }
 
-  private static int getMajorVersion(IndexReader reader) {
-    return reader.leaves().get(0).reader().getMetaData().getCreatedVersionMajor();
-  }
-
   /**
    * Adds the given ordinal/parent info and returns either a new instance if the underlying array
    * had to grow, or this instance otherwise.
