@@ -169,13 +169,9 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testSameScoreAndCollectionBetweenCompleteAndTopScores() throws IOException {
-    int numDocs =
-        randomBoolean()
-            ? atLeast(1000)
-            : atLeast(128 * 8 * 8 * 3); // make sure some terms have skip data
-    int numMatchDoc = randomIntBetween(200, 500);
-    int numHits = atMost(100) + 1;
+  public void testScoringWithMultipleFieldTermsMatch() throws IOException {
+    int numMatchDoc = randomIntBetween(100, 500);
+    int numHits = atMost(100);
     int boost1 = Math.max(1, random().nextInt(5));
     int boost2 = Math.max(1, random().nextInt(5));
 
@@ -186,35 +182,13 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     iwc.setSimilarity(similarity);
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
 
-    // adding non-matching docs
-    for (int i = 0; i < numDocs - numMatchDoc; ++i) {
-      Document doc = new Document();
-
-      int freqA = random().nextInt(50) + 1;
-      for (int j = 0; j < freqA; j++) {
-        doc.add(new TextField("a", "bar" + j, Store.NO));
-      }
-
-      int freqB = random().nextInt(50) + 1;
-      for (int j = 0; j < freqB; j++) {
-        doc.add(new TextField("b", "bla" + j, Store.NO));
-      }
-      int freqC = random().nextInt(50) + 1;
-      for (int j = 0; j < freqC; j++) {
-        doc.add(new TextField("c", "bla" + j, Store.NO));
-      }
-      w.addDocument(doc);
-    }
-
     // adding potentially matching doc
     for (int i = 0; i < numMatchDoc; i++) {
       Document doc = new Document();
 
       int freqA = random().nextInt(20) + 1;
-      if (randomBoolean()) {
-        for (int j = 0; j < freqA; j++) {
-          doc.add(new TextField("a", "foo", Store.NO));
-        }
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "foo", Store.NO));
       }
 
       freqA = random().nextInt(20) + 1;
@@ -225,17 +199,13 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
       }
 
       freqA = random().nextInt(20) + 1;
-      if (randomBoolean()) {
-        for (int j = 0; j < freqA; j++) {
-          doc.add(new TextField("a", "zoo", Store.NO));
-        }
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "zoo", Store.NO));
       }
 
       int freqB = random().nextInt(20) + 1;
-      if (randomBoolean()) {
-        for (int j = 0; j < freqB; j++) {
-          doc.add(new TextField("b", "zoo", Store.NO));
-        }
+      for (int j = 0; j < freqB; j++) {
+        doc.add(new TextField("b", "zoo", Store.NO));
       }
 
       freqB = random().nextInt(20) + 1;
@@ -264,16 +234,9 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addTerm(new BytesRef("zoo"))
             .build();
 
-    TopScoreDocCollector topScoresCollector =
-        TopScoreDocCollector.create(numHits, null, numHits); // TOP_SCORES
-    searcher.search(query, topScoresCollector);
-
     TopScoreDocCollector completeCollector =
-        TopScoreDocCollector.create(numHits, null, Integer.MAX_VALUE); // COMPLETE
+        TopScoreDocCollector.create(numHits, null, Integer.MAX_VALUE);
     searcher.search(query, completeCollector);
-
-    CheckHits.checkEqual(
-        query, completeCollector.topDocs().scoreDocs, topScoresCollector.topDocs().scoreDocs);
 
     reader.close();
     w.close();
