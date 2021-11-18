@@ -242,7 +242,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments
    */
   public static CollectorManager<TopScoreDocCollector, TopDocs> createSharedManager(
-      int numHits, FieldDoc after, int totalHitsThreshold) {
+      int numHits, ScoreDoc after, int totalHitsThreshold) {
     return new CollectorManager<>() {
 
       private final HitsThresholdChecker hitsThresholdChecker =
