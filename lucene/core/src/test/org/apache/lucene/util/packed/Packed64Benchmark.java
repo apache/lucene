@@ -54,7 +54,7 @@ public class Packed64Benchmark {
     }
 
     @Benchmark
-    public void packed64VarHandleDoubleLong(Blackhole bh) {
+    public void packed64VarHandleLongLong(Blackhole bh) {
         for (int i = 0; i < values.length; i++) {
             packed64vhll.set(i, values[i]);
         }
