@@ -33,10 +33,7 @@ Other
 
 API Changes
 ---------------------
-
-* LUCENE-10085: Added Weight#count on DocValuesFieldExistsQuery to speed up the query if terms or
-  points are indexed.
-  (Quentin Pradet, Adrien Grand)
+(No changes)
 
 New Features
 ---------------------
@@ -47,6 +44,10 @@ New Features
 
 * LUCENE-10220: Add an utility method to get IntervalSource from analyzed text (or token stream).
   (Uwe Schindler, Dawid Weiss, Alan Woodward)
+
+* LUCENE-10085: Added Weight#count on DocValuesFieldExistsQuery to speed up the query if terms or
+  points are indexed.
+  (Quentin Pradet, Adrien Grand)
 
 Improvements
 ---------------------
