@@ -47,11 +47,16 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
+
+* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
+  PointValues abstract class. (Ignacio Vera, Adrien Grand)
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10225: Improve IntroSelector with 3-ways partitioning. (Bruno Roustant, Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -249,7 +254,7 @@ Improvements
 * LUCENE-9633: Improve match highlighter behavior for degenerate intervals (on non-existing positions).
   (Dawid Weiss)
 
-* LUCENE-9618: Do not call IntervalIterator.nextInterval after NO_MORE_DOCS is returned. (Haoyu Zhai)
+* LUCENE-9618: Do not call IntervalIterator.nextInterval after NO_MORE_DOCS is returned. (Patrick Zhai)
 
 * LUCENE-9576: Improve ConcurrentMergeScheduler settings by default, assuming modern I/O.
   Previously Lucene was too conservative, jumping through hoops to detect if disks were SSD-backed.
@@ -458,6 +463,8 @@ Build
 Other
 ---------------------
 
+* LUCENE-10122: Use NumericDocValues to store taxonomy parent array (Patrick Zhai)
+
 * LUCENE-10136: allow 'var' declarations in source code (Dawid Weiss)
 
 * LUCENE-9570, LUCENE-9564: Apply google java format and enforce it on source Java files.
@@ -466,7 +473,7 @@ Other
 
 * LUCENE-9631: Properly override slice() on subclasses of OffsetRange. (Dawid Weiss)
 
-* LUCENE-9391: Upgrade HPPC to 0.8.2. (Haoyu Zhai)
+* LUCENE-9391: Upgrade HPPC to 0.8.2. (Patrick Zhai)
 
 * LUCENE-10021: Upgrade HPPC to 0.9.0. Replace usage of ...ScatterMap to ...HashMap. (Patrick Zhai)
 
@@ -527,7 +534,7 @@ Improvements
 * LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
   (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
 
-* LUCENE-10103: Make QueryCache respect Accountable queries. (Haoyu Zhai)
+* LUCENE-10103: Make QueryCache respect Accountable queries. (Patrick Zhai)
 
 Optimizations
 ---------------------
@@ -739,7 +746,7 @@ New Features
   (Cameron VandenBerg)
 
 * LUCENE-9694: New tool for creating a deterministic index to enable benchmarking changes
-  on a consistent multi-segment index even when they require re-indexing. (Haoyu Zhai)
+  on a consistent multi-segment index even when they require re-indexing. (Patrick Zhai)
 
 * LUCENE-9385: Add FacetsConfig option to control which drill-down
   terms are indexed for a FacetLabel (Zachary Chen)
@@ -942,7 +949,7 @@ Improvements
 
 * LUCENE-8574: Add a new ExpressionValueSource which will enforce only one value per name
   per hit in dependencies, ExpressionFunctionValues will no longer
-  recompute already computed values (Haoyu Zhai)
+  recompute already computed values (Patrick Zhai)
 
 * LUCENE-9416: Fix CheckIndex to print an invalid non-zero norm as
   unsigned long when detecting corruption.
@@ -1015,7 +1022,7 @@ Bug Fixes
 Documentation
 ---------------------
 
-* LUCENE-9424: Add a performance warning to AttributeSource.captureState javadocs (Haoyu Zhai)
+* LUCENE-9424: Add a performance warning to AttributeSource.captureState javadocs (Patrick Zhai)
 
 Changes in Runtime Behavior
 ---------------------
