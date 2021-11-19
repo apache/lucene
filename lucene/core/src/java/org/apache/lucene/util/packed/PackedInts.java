@@ -717,7 +717,7 @@ public class PackedInts {
         return Packed64SingleBlock.create(valueCount, bitsPerValue);
       case PACKED:
         //return new Packed64(valueCount, bitsPerValue);
-        return new Packed64VHLongLong(valueCount, bitsPerValue);
+        return new Packed64VHLongAndByte(valueCount, bitsPerValue);
       default:
         throw new AssertionError();
     }

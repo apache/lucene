@@ -18,10 +18,8 @@ package org.apache.lucene.util.packed;
 
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.RamUsageEstimator;
 
-import java.sql.Array;
 import java.util.Arrays;
 
 /**
@@ -40,9 +38,9 @@ import java.util.Arrays;
  */
 class Packed64VHLongAndByte extends PackedInts.MutableImpl {
   static final int BLOCK_SIZE = 64; // 32 = int, 64 = long
-  static final int BLOCK_BITS = 6; // The #bits representing BLOCK_SIZE
-  static final int MOD_MASK = BLOCK_SIZE - 1; // x % BLOCK_SIZE
-  static final int BYTE_BLOCK_MOD_MASK = 8 - 1; // x % BYTE_BLOCK
+  static final int BYTE_BITS = 3;
+  static final int BYTE_BLOCK_SIZE = 8;
+  static final int BYTE_BLOCK_MOD_MASK = BYTE_BLOCK_SIZE - 1; // x % BYTE_BLOCK
 
   /** Values are stores contiguously in the blocks array. */
   private final byte[] blocks;
@@ -50,7 +48,6 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
   private final long maskRight;
   /** Optimization: Saves one lookup in {@link #get(int)}. */
   private final int bpvMinusBlockSize;
-  private final int bpvMinusByteBlockSize;
 
   /**
    * Creates an array with the internal structures adjusted for the given limits and initialized to
@@ -66,10 +63,9 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
     if (byteCount > ArrayUtil.MAX_ARRAY_LENGTH) {
       throw new IllegalArgumentException("Not yet supported");
     }
-    this.blocks = new byte[(int) byteCount + 64];
+    this.blocks = new byte[(int) byteCount + Long.BYTES];
     maskRight = ~0L << (BLOCK_SIZE - bitsPerValue) >>> (BLOCK_SIZE - bitsPerValue);
     bpvMinusBlockSize = bitsPerValue - BLOCK_SIZE;
-    bpvMinusByteBlockSize = bitsPerValue - 8;
   }
 
   /**
@@ -81,17 +77,18 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
     // The abstract index in a bit stream
     final long majorBitPos = (long) index * bitsPerValue;
     // The index in the backing byte-array
-    final int elementPos = (int) (majorBitPos >>> 3); // BYTE_BLOCK
-
+    final int elementPos = (int) (majorBitPos >>> BYTE_BITS); // BYTE_BLOCK
+    // The number of bits already occupied from the previous position
     final int maskOffset = (int) majorBitPos & BYTE_BLOCK_MOD_MASK;
-    // The number of value-bits in the second long
+    final int endBits = maskOffset + bpvMinusBlockSize;
+    // Read the main long
     final long packed = ((long) BitUtil.VH_LE_LONG.get(blocks, elementPos) >>> maskOffset) & maskRight;
 
-    if (bpvMinusByteBlockSize + maskOffset <= 56) { // Single block
+    if (endBits <= 0) { // Single block
       return packed;
     }
-    long shift = (int) ((majorBitPos + bitsPerValue) & BYTE_BLOCK_MOD_MASK);
-    return packed | (blocks[elementPos + 8] & ~(~0L << shift)) << (64 - maskOffset);
+    // compute next mask
+    return packed | (blocks[elementPos + BYTE_BLOCK_SIZE] & ~(~0L << endBits)) << (BLOCK_SIZE - maskOffset);
   }
 
   @Override
@@ -99,23 +96,20 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
     // The abstract index in a contiguous bit stream
     final long majorBitPos = (long) index * bitsPerValue;
     // The index in the backing byte-array
-    final int elementPos = (int) (majorBitPos >>> 3); // / BYTE_BLOCK
+    final int elementPos = (int) (majorBitPos >>> BYTE_BITS); // / BYTE_BLOCK
     // The number of bits already occupied from the previous position
     final int maskOffset = (int) majorBitPos & BYTE_BLOCK_MOD_MASK;
-
+    final int endBits = maskOffset + bpvMinusBlockSize;
     // Read the main long
-    long packed = (long) BitUtil.VH_LE_LONG.get(blocks, elementPos);
+    final long packed = (long) BitUtil.VH_LE_LONG.get(blocks, elementPos);
     BitUtil.VH_LE_LONG.set(blocks, elementPos, packed & ~(maskRight << maskOffset) | (value << maskOffset));
 
-    if (bpvMinusByteBlockSize + maskOffset <= 56) { // Fits in single block, bail out
+    if (endBits <= 0) { // Fits in single block, bail out
       return;
     }
 
     // Extra read for the overflow bits
-    int nextPos = elementPos + 8;
-
-    long shift = (int) ((majorBitPos + bitsPerValue) & BYTE_BLOCK_MOD_MASK);
-    blocks[nextPos] = (byte) (blocks[nextPos] & (~0L << shift) | (value >>> bitsPerValue - shift));
+    blocks[elementPos + BYTE_BLOCK_SIZE] = (byte) (blocks[elementPos + BYTE_BLOCK_SIZE] & (~0L << endBits) | (value >>> bitsPerValue - endBits));
   }
 
   @Override
