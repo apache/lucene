@@ -40,10 +40,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  *   <li>&lt;EMOJI&gt;: A sequence of Emoji characters</li>
  * </ul>
  */
-@SuppressWarnings({"unused","fallthrough"})
 %%
 
-%unicode 9.0
+%unicode 9
 %integer
 %final
 %public
@@ -250,7 +249,8 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   /** Character count processed so far */
   public final int yychar()
   {
-    return yychar;
+    // jflex supports > 2GB docs but not lucene
+    return (int) yychar;
   }
 
   /**
