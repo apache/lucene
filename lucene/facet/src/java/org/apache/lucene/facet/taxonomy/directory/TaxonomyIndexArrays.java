@@ -156,6 +156,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
   }
 
   private static int getMajorVersion(IndexReader reader) {
+    assert reader.leaves().size() > 0;
     return reader.leaves().get(0).reader().getMetaData().getCreatedVersionMajor();
   }
 
