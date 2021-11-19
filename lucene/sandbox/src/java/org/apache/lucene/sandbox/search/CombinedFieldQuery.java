@@ -497,6 +497,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       Map<String, List<Impacts>> fieldsWithImpacts,
       Map<String, Float> fieldWeights) {
     return new ImpactsSource() {
+      Map<String, Impacts> leadingImpactsPerField = null;
 
       class SubIterator {
         final Iterator<Impact> iterator;
@@ -523,26 +524,28 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         // Use the impacts that have the lower next boundary (doc id in skip entry) as a lead for
         // each field
         // They collectively will decide on the number of levels and the block boundaries.
-        Map<String, Impacts> leadingImpactsPerField = new HashMap<>(fieldsWithImpactsEnums.size());
 
-        for (Map.Entry<String, List<ImpactsEnum>> fieldImpacts :
-            fieldsWithImpactsEnums.entrySet()) {
-          String field = fieldImpacts.getKey();
-          List<ImpactsEnum> impactsEnums = fieldImpacts.getValue();
-          fieldsWithImpacts.put(field, new ArrayList<>(impactsEnums.size()));
+        if (leadingImpactsPerField == null) {
+          leadingImpactsPerField = new HashMap<>(fieldsWithImpactsEnums.size());
+          for (Map.Entry<String, List<ImpactsEnum>> fieldImpacts :
+              fieldsWithImpactsEnums.entrySet()) {
+            String field = fieldImpacts.getKey();
+            List<ImpactsEnum> impactsEnums = fieldImpacts.getValue();
+            fieldsWithImpacts.put(field, new ArrayList<>(impactsEnums.size()));
 
-          Impacts tmpLead = null;
-          // find the impact that has the lowest next boundary for this field
-          for (int i = 0; i < impactsEnums.size(); ++i) {
-            Impacts impacts = impactsEnums.get(i).getImpacts();
-            fieldsWithImpacts.get(field).add(impacts);
+            Impacts tmpLead = null;
+            // find the impact that has the lowest next boundary for this field
+            for (int i = 0; i < impactsEnums.size(); ++i) {
+              Impacts impacts = impactsEnums.get(i).getImpacts();
+              fieldsWithImpacts.get(field).add(impacts);
 
-            if (tmpLead == null || impacts.getDocIdUpTo(0) < tmpLead.getDocIdUpTo(0)) {
-              tmpLead = impacts;
+              if (tmpLead == null || impacts.getDocIdUpTo(0) < tmpLead.getDocIdUpTo(0)) {
+                tmpLead = impacts;
+              }
             }
-          }
 
-          leadingImpactsPerField.put(field, tmpLead);
+            leadingImpactsPerField.put(field, tmpLead);
+          }
         }
 
         return new Impacts() {
@@ -754,6 +757,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
             }
           }
         }
+        leadingImpactsPerField = null;
       }
     };
   }
