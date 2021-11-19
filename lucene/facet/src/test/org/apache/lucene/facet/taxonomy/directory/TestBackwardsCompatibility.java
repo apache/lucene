@@ -219,6 +219,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     assertEquals(2, labels.size());
     assertTrue(
         labels.containsAll(List.of(new FacetLabel("f1", "foo"), new FacetLabel("f2", "foo"))));
+    labelReader = facetLabels.getFacetLabelReader(searcher.getIndexReader().leaves().get(0));
     query = new DrillDownQuery(facetsConfig, new MatchAllDocsQuery());
     query.add("f1", "zed");
     docResults = searcher.search(query, 10);
