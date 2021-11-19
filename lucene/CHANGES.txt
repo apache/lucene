@@ -57,7 +57,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10236: Update field-weight used in CombinedFieldQuery scoring calculation.
+  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 
 Other
 ---------------------
