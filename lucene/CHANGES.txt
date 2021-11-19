@@ -33,7 +33,10 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10085: Added Weight#count on DocValuesFieldExistsQuery to speed up the query if terms or
+  points are indexed.
+  (Quentin Pradet, Adrien Grand)
 
 New Features
 ---------------------
