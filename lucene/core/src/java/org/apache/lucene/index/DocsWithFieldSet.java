@@ -32,7 +32,7 @@ final class DocsWithFieldSet extends DocIdSet {
       RamUsageEstimator.shallowSizeOfInstance(DocsWithFieldSet.class);
 
   private FixedBitSet set;
-  private int cost = 0;
+  private int cardinality = 0;
   private int lastDocId = -1;
 
   void add(int docID) {
@@ -43,14 +43,14 @@ final class DocsWithFieldSet extends DocIdSet {
     if (set != null) {
       set = FixedBitSet.ensureCapacity(set, docID);
       set.set(docID);
-    } else if (docID != cost) {
+    } else if (docID != cardinality) {
       // migrate to a sparse encoding using a bit set
       set = new FixedBitSet(docID + 1);
-      set.set(0, cost);
+      set.set(0, cardinality);
       set.set(docID);
     }
     lastDocId = docID;
-    cost++;
+    cardinality++;
   }
 
   @Override
@@ -60,6 +60,11 @@ final class DocsWithFieldSet extends DocIdSet {
 
   @Override
   public DocIdSetIterator iterator() {
-    return set != null ? new BitSetIterator(set, cost) : DocIdSetIterator.all(cost);
+    return set != null ? new BitSetIterator(set, cardinality) : DocIdSetIterator.all(cardinality);
+  }
+
+  /** Return the number of documents of this set. */
+  int cardinality() {
+    return cardinality;
   }
 }

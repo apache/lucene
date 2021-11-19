@@ -29,7 +29,7 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
   private final IntervalsSource reference;
 
   OverlappingIntervalsSource(IntervalsSource source, IntervalsSource reference) {
-    super(Arrays.asList(source, reference), false);
+    super(Arrays.asList(source, reference));
     this.source = source;
     this.reference = reference;
   }

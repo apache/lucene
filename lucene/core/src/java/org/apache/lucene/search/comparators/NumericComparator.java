@@ -18,7 +18,6 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
@@ -29,17 +28,25 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.DocIdSetBuilder;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
  * functionality – an iterator that can skip over non-competitive documents.
+ *
+ * <p>Parameter {@code field} provided in the constructor is used as a field name in the default
+ * implementations of the methods {@code getNumericDocValues} and {@code getPointValues} to retrieve
+ * doc values and points. You can pass a dummy value for a field name (e.g. when sorting by script),
+ * but in this case you must override both of these methods.
  */
 public abstract class NumericComparator<T extends Number> extends FieldComparator<T> {
   protected final T missingValue;
   protected final String field;
   protected final boolean reverse;
   private final int bytesCount; // how many bytes are used to encode this number
+  private final ByteArrayComparator bytesComparator;
 
   protected boolean topValueSet;
   protected boolean singleSort; // singleSort is true, if sort is based on a single sort field.
@@ -55,6 +62,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     // skipping functionality is only relevant for primary sort
     this.canSkipDocuments = (sortPos == 0);
     this.bytesCount = bytesCount;
+    this.bytesComparator = ArrayUtil.getUnsignedComparator(bytesCount);
   }
 
   @Override
@@ -89,7 +97,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);
-      this.pointValues = canSkipDocuments ? context.reader().getPointValues(field) : null;
+      this.pointValues = canSkipDocuments ? getPointValues(context, field) : null;
       if (pointValues != null) {
         FieldInfo info = context.reader().getFieldInfos().fieldInfo(field);
         if (info == null || info.getPointDimensionCount() == 0) {
@@ -127,10 +135,42 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
     }
 
-    /** Retrieves the NumericDocValues for the field in this segment */
+    /**
+     * Retrieves the NumericDocValues for the field in this segment
+     *
+     * <p>If you override this method, you must also override {@link
+     * #getPointValues(LeafReaderContext, String)} This class uses sort optimization that leverages
+     * points to filter out non-competitive matches, which relies on the assumption that points and
+     * doc values record the same information.
+     *
+     * @param context – reader context
+     * @param field - field name
+     * @return numeric doc values for the field in this segment.
+     * @throws IOException If there is a low-level I/O error
+     */
     protected NumericDocValues getNumericDocValues(LeafReaderContext context, String field)
         throws IOException {
       return DocValues.getNumeric(context.reader(), field);
+    }
+
+    /**
+     * Retrieves point values for the field in this segment
+     *
+     * <p>If you override this method, you must also override {@link
+     * #getNumericDocValues(LeafReaderContext, String)} This class uses sort optimization that
+     * leverages points to filter out non-competitive matches, which relies on the assumption that
+     * points and doc values record the same information. Return {@code null} even if no points
+     * implementation is available, in this case sort optimization with points will be disabled.
+     *
+     * @param context – reader context
+     * @param field - field name
+     * @return point values for the field in this segment if they are available or {@code null} if
+     *     sort optimization with points should be disabled.
+     * @throws IOException If there is a low-level I/O error
+     */
+    protected PointValues getPointValues(LeafReaderContext context, String field)
+        throws IOException {
+      return context.reader().getPointValues(field);
     }
 
     @Override
@@ -209,17 +249,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                 return; // already visited or skipped
               }
               if (maxValueAsBytes != null) {
-                int cmp =
-                    Arrays.compareUnsigned(
-                        packedValue, 0, bytesCount, maxValueAsBytes, 0, bytesCount);
+                int cmp = bytesComparator.compare(packedValue, 0, maxValueAsBytes, 0);
                 // if doc's value is too high or for single sort even equal, it is not competitive
                 // and the doc can be skipped
                 if (cmp > 0 || (singleSort && cmp == 0)) return;
               }
               if (minValueAsBytes != null) {
-                int cmp =
-                    Arrays.compareUnsigned(
-                        packedValue, 0, bytesCount, minValueAsBytes, 0, bytesCount);
+                int cmp = bytesComparator.compare(packedValue, 0, minValueAsBytes, 0);
                 // if doc's value is too low or for single sort even equal, it is not competitive
                 // and the doc can be skipped
                 if (cmp < 0 || (singleSort && cmp == 0)) return;
@@ -230,27 +266,19 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             @Override
             public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               if (maxValueAsBytes != null) {
-                int cmp =
-                    Arrays.compareUnsigned(
-                        minPackedValue, 0, bytesCount, maxValueAsBytes, 0, bytesCount);
+                int cmp = bytesComparator.compare(minPackedValue, 0, maxValueAsBytes, 0);
                 if (cmp > 0 || (singleSort && cmp == 0))
                   return PointValues.Relation.CELL_OUTSIDE_QUERY;
               }
               if (minValueAsBytes != null) {
-                int cmp =
-                    Arrays.compareUnsigned(
-                        maxPackedValue, 0, bytesCount, minValueAsBytes, 0, bytesCount);
+                int cmp = bytesComparator.compare(maxPackedValue, 0, minValueAsBytes, 0);
                 if (cmp < 0 || (singleSort && cmp == 0))
                   return PointValues.Relation.CELL_OUTSIDE_QUERY;
               }
               if ((maxValueAsBytes != null
-                      && Arrays.compareUnsigned(
-                              maxPackedValue, 0, bytesCount, maxValueAsBytes, 0, bytesCount)
-                          > 0)
+                      && bytesComparator.compare(maxPackedValue, 0, maxValueAsBytes, 0) > 0)
                   || (minValueAsBytes != null
-                      && Arrays.compareUnsigned(
-                              minPackedValue, 0, bytesCount, minValueAsBytes, 0, bytesCount)
-                          < 0)) {
+                      && bytesComparator.compare(minPackedValue, 0, minValueAsBytes, 0) < 0)) {
                 return PointValues.Relation.CELL_CROSSES_QUERY;
               }
               return PointValues.Relation.CELL_INSIDE_QUERY;
@@ -273,7 +301,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     public DocIdSetIterator competitiveIterator() {
       if (enableSkipping == false) return null;
       return new DocIdSetIterator() {
-        private int docID = -1;
+        private int docID = competitiveIterator.docID();
 
         @Override
         public int nextDoc() throws IOException {

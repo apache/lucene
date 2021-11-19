@@ -3,9 +3,70 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene 10.0.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
+======================= Lucene 9.1.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+
+* LUCENE-10223: Add interval function support to StandardQueryParser. Add min-should-match operator
+  support to StandardQueryParser. Update and clean up package documentation in flexible query parser
+  module. (Dawid Weiss, Alan Woodward)
+
+* LUCENE-10220: Add an utility method to get IntervalSource from analyzed text (or token stream).
+  (Uwe Schindler, Dawid Weiss, Alan Woodward)
+
+Improvements
+---------------------
+
+* LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
+
+Optimizations
+---------------------
+
+* LUCENE-10225: Improve IntroSelector with 3-ways partitioning. (Bruno Roustant, Adrien Grand)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
+---------------------
 
 * LUCENE-9322, LUCENE-9855: Vector-valued fields, Lucene90 Codec (Mike Sokolov, Julie Tibshirani, Tomoko Uchida)
 
@@ -24,11 +85,13 @@ New Features
 * LUCENE-10102: Add JapaneseCompletionFilter for Input Method-aware auto-completion (Tomoko Uchida, Robert Muir, Jun Ohtani)
 
 System Requirements
+---------------------
 
 * LUCENE-8738: Move to Java 11 as minimum Java version.
   (Adrien Grand, Uwe Schindler)
 
 API Changes
+---------------------
 
 * LUCENE-8638: Remove many deprecated methods and classes including FST.lookupByOutput(),
   LegacyBM25Similarity and Jaspell suggester.
@@ -153,14 +216,42 @@ API Changes
 * LUCENE-10115: Add an extension point, BaseQueryParser#getFuzzyDistance, to allow custom
   query parsers to determine the similarity distance for fuzzy queries. (Chris Hegarty)
 
+* LUCENE-10132: Support addition of diagnostics by custom merge policies (Chris Hegarty)
+
+* LUCENE-9325: Sort is now final, and the `setSort()` method has been removed (Alan Woodward)
+
+* LUCENE-9431: The UnifiedHighlighter's WEIGHT_MATCHES flag is now set by default, provided its
+  requirements are met.  It can be disabled via over-riding getFlags (Animesh Pandey, David Smiley)
+
+* LUCENE-10158: Add a new interface Unwrappable to the utils package to allow code to
+  unwrap wrappers/delegators that are added by Lucene's testing framework. This will allow
+  testing new MMapDirectory implementation based on JDK Project Panama. (Uwe Schindler)
+
 Improvements
+---------------------
+
+* LUCENE-10234: Added Automatic-Module-Name to all JARs. (Dawid Weiss)
+
+* LUCENE-10182: TestRamUsageEstimator used RamUsageTester.sizeOf throughout, making some of the
+  tests trivial. Now, it compares results from RamUsageEstimator with those from RamUsageTester.
+  To prevent this error in the future, RamUsageTester.sizeOf was renamed to ramUsed.
+  (Uwe Schindler, Dawid Weiss, Stefan Vodita)
+
+* LUCENE-10129: RamUsageEstimator overloads the shallowSizeOf method for primitive arrays
+  to avoid falling back on shallowSizeOf(Object), which could lead to performance traps.
+  (Robert Muir, Uwe Schindler, Stefan Vodita)
+
+* LUCENE-10139: ExternalRefSorter returns a covariant with a subtype of BytesRefIterator
+  that is Closeable. (Dawid Weiss).
+
+* LUCENE-10135: Correct passage selector behavior for long matching snippets (Dawid Weiss).
 
 * LUCENE-9960: Avoid unnecessary top element replacement for equal elements in PriorityQueue. (Dawid Weiss)
 
 * LUCENE-9633: Improve match highlighter behavior for degenerate intervals (on non-existing positions).
   (Dawid Weiss)
 
-* LUCENE-9618: Do not call IntervalIterator.nextInterval after NO_MORE_DOCS is returned. (Haoyu Zhai)
+* LUCENE-9618: Do not call IntervalIterator.nextInterval after NO_MORE_DOCS is returned. (Patrick Zhai)
 
 * LUCENE-9576: Improve ConcurrentMergeScheduler settings by default, assuming modern I/O.
   Previously Lucene was too conservative, jumping through hoops to detect if disks were SSD-backed.
@@ -282,9 +373,21 @@ Improvements
 * LUCENE-10112: Improve LZ4 Compression performance with direct primitive read/writes.
   (Tim Brooks, Uwe Schindler, Robert Muir, Adrien Grand)
 
-Bug fixes
+* LUCENE-10125: Optimize primitive writes in OutputStreamIndexOutput.
+  (Uwe Schindler, Robert Muir, Adrien Grand)
 
-* LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
+* LUCENE-10143: Delegate primitive writes in RateLimitedIndexOutput.
+  (Uwe Schindler, Robert Muir, Adrien Grand)
+
+* LUCENE-10145, LUCENE-10153: Faster flushes and merges of points by leveraging
+  VarHandles. (Adrien Grand)
+
+* LUCENE-10201: Spatial-Extras: Upgrading Spatial4j to 0.8 improving a varitety of minor things.
+  See release notes. https://github.com/locationtech/spatial4j/releases/tag/spatial4j-0.8
+  (David Smiley)
+
+Bug fixes
+---------------------
 
 * LUCENE-9686: Fix read past EOF handling in DirectIODirectory. (Zach Chen,
   Julie Tibshirani)
@@ -329,6 +432,9 @@ Bug fixes
 * LUCENE-10114: Remove unused byte order mark in Lucene90PostingsWriter. This
   was initially introduced by accident in Lucene 8.4. (Uwe Schindler)
 
+* LUCENE-10140: Fix cases where minimizing interval iterators could return 
+  incorrect matches (Nikolay Khitrin, Alan Woodward)
+
 Changes in Backwards Compatibility Policy
 
 * LUCENE-9904: regenerated UAX29URLEmailTokenizer and the corresponding analyzer with up-to-date top
@@ -341,7 +447,22 @@ Changes in Backwards Compatibility Policy
   semantic changes like analysis or certain encoding on top of the file format are only supported on
   a best effort basis. (Simon Willnauer)
 
+Build
+---------------------
+
+* LUCENE-10195: Add gradle cache option and make some tasks cacheable. (Jerome Prinet, Dawid Weiss)
+
+* LUCENE-10198: LUCENE-10198: Allow external JAVA_OPTS in gradlew scripts; use sane defaults 
+  (balmukund.mandal@intel.com, Dawid Weiss)
+
+* LUCENE-10163: Move LICENSE and NOTICE files to top level to satisfy src artifact requirements (janhoy)
+
 Other
+---------------------
+
+* LUCENE-10122: Use NumericDocValues to store taxonomy parent array (Patrick Zhai)
+
+* LUCENE-10136: allow 'var' declarations in source code (Dawid Weiss)
 
 * LUCENE-9570, LUCENE-9564: Apply google java format and enforce it on source Java files.
   Review diffs and correct automatic formatting oddities. (Erick Erickson,
@@ -349,7 +470,7 @@ Other
 
 * LUCENE-9631: Properly override slice() on subclasses of OffsetRange. (Dawid Weiss)
 
-* LUCENE-9391: Upgrade HPPC to 0.8.2. (Haoyu Zhai)
+* LUCENE-9391: Upgrade HPPC to 0.8.2. (Patrick Zhai)
 
 * LUCENE-10021: Upgrade HPPC to 0.9.0. Replace usage of ...ScatterMap to ...HashMap. (Patrick Zhai)
 
@@ -410,15 +531,34 @@ Improvements
 * LUCENE-9662: Make CheckIndex concurrent by parallelizing index check across segments.
   (Zach Chen, Mike McCandless, Dawid Weiss, Robert Muir)
 
+* LUCENE-10103: Make QueryCache respect Accountable queries. (Patrick Zhai)
+
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-9673: Substantially improve RAM efficiency of how MemoryIndex stores
+  postings in memory, and reduced a bit of RAM overhead in
+  IndexWriter's internal postings book-keeping (mashudong)
+
+* LUCENE-10196: Improve IntroSorter with 3-ways partitioning. (Bruno Roustant)
 
 Bug Fixes
 ---------------------
 
-* LUCENE-10110: MultiCollector now handles single leaf collector that wants to skip low-scoring hits
- but the combined score mode doesn't allow it. (Jim Ferenczi)
+* LUCENE-10111: Missing calculating the bytes used of DocsWithFieldSet in NormValuesWriter.
+  (Lu Xugang)
+
+* LUCENE-10116: Missing calculating the bytes used of DocsWithFieldSet and currentValues in SortedSetDocValuesWriter.
+  (Lu Xugang)
+
+* LUCENE-10070 Skip deleted docs when accumulating facet counts for all docs. (Ankur Goel, Greg Miller)
+
+* LUCENE-10134: ConcurrentSortedSetDocValuesFacetCounts shouldn't share liveDocs Bits across threads.
+  (Ankur Goel)
+
+* LUCENE-10154: NumericLeafComparator to define getPointValues. (Mayya Sharipova, Adrien Grand)
+
+* LUCENE-10208: Ensure that the minimum competitive score does not decrease in concurrent search. (Jim Ferenczi, Adrien Grand)
 
 Build
 ---------------------
@@ -429,6 +569,20 @@ Other
 ---------------------
 
 * LUCENE-10098: Add docs/links to GermanAnalyzer describing how to decompound nouns. (Robert Muir)
+
+======================= Lucene 8.10.1 =======================
+
+Bug Fixes
+---------------------
+
+* LUCENE-10110: MultiCollector now handles single leaf collector that wants to skip low-scoring hits
+ but the combined score mode doesn't allow it. (Jim Ferenczi)
+
+* LUCENE-10119: Sort optimization with search_after can wrongly skip documents
+  whose values are equal to the last value of the previous page (Nhat Nguyen)
+
+* LUCENE-10126: Sort optimization with a chunked bulk scorer
+  can wrongly skip documents (Nhat Nguyen, Mayya Sharipova)
 
 ======================= Lucene 8.10.0 =======================
 
@@ -549,6 +703,9 @@ Bug Fixes
 * LUCENE-10081: KoreanTokenizer should check the max backtrace gap on whitespaces.
   (Jim Ferenczi)
 
+* LUCENE-10106: Sort optimization can wrongly skip the first document of
+  each segment (Nhat Nguyen)
+
 Other
 ---------------------
 (No changes)
@@ -586,7 +743,7 @@ New Features
   (Cameron VandenBerg)
 
 * LUCENE-9694: New tool for creating a deterministic index to enable benchmarking changes
-  on a consistent multi-segment index even when they require re-indexing. (Haoyu Zhai)
+  on a consistent multi-segment index even when they require re-indexing. (Patrick Zhai)
 
 * LUCENE-9385: Add FacetsConfig option to control which drill-down
   terms are indexed for a FacetLabel (Zachary Chen)
@@ -789,7 +946,7 @@ Improvements
 
 * LUCENE-8574: Add a new ExpressionValueSource which will enforce only one value per name
   per hit in dependencies, ExpressionFunctionValues will no longer
-  recompute already computed values (Haoyu Zhai)
+  recompute already computed values (Patrick Zhai)
 
 * LUCENE-9416: Fix CheckIndex to print an invalid non-zero norm as
   unsigned long when detecting corruption.
@@ -862,7 +1019,7 @@ Bug Fixes
 Documentation
 ---------------------
 
-* LUCENE-9424: Add a performance warning to AttributeSource.captureState javadocs (Haoyu Zhai)
+* LUCENE-9424: Add a performance warning to AttributeSource.captureState javadocs (Patrick Zhai)
 
 Changes in Runtime Behavior
 ---------------------

@@ -85,6 +85,21 @@ public final class SegmentInfo {
     this.diagnostics = Map.copyOf(Objects.requireNonNull(diagnostics));
   }
 
+  /**
+   * Adds or modifies this segment's diagnostics.
+   *
+   * <p>Entries in the given map whose keys are not present in the current diagnostics are added.
+   * Otherwise, existing entries are modified with the given map's value.
+   *
+   * @param diagnostics the additional diagnostics
+   */
+  public void addDiagnostics(Map<String, String> diagnostics) {
+    Objects.requireNonNull(diagnostics);
+    Map<String, String> copy = new HashMap<>(this.diagnostics);
+    copy.putAll(diagnostics);
+    setDiagnostics(copy);
+  }
+
   /** Returns diagnostics saved into the segment when it was written. The map is immutable. */
   public Map<String, String> getDiagnostics() {
     return diagnostics;

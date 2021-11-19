@@ -460,6 +460,25 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     ir.close();
   }
 
+  public void testHighlighterDefaultFlags() throws Exception {
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    Document document = new Document();
+    document.add(new Field("body", "test body", fieldType));
+    iw.addDocument(document);
+    IndexReader ir = iw.getReader();
+    iw.close();
+    IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
+    Set<HighlightFlag> flags = highlighter.getFlags("body");
+    assertTrue(flags.contains(HighlightFlag.PHRASES));
+    assertTrue(flags.contains(HighlightFlag.MULTI_TERM_QUERY));
+    assertTrue(flags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED));
+    assertTrue(flags.contains(HighlightFlag.WEIGHT_MATCHES));
+    // if more flags are added, bump the number below and add an assertTrue or assertFalse above
+    assertEquals(4, HighlightFlag.values().length);
+    ir.close();
+  }
+
   public void testCuriousGeorge() throws Exception {
     String text =
         "It’s the formula for success for preschoolers—Curious George and fire trucks! "

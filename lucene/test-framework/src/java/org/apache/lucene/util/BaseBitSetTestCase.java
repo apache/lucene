@@ -112,6 +112,22 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     assertEquals(set1, set2, numBits);
   }
 
+  /** Test the {@link BitSet#getAndSet} method. */
+  public void testGetAndSet() throws IOException {
+    Random random = random();
+    final int numBits = 1 + random.nextInt(100000);
+    BitSet set1 = new JavaUtilBitSet(randomSet(numBits, 0), numBits);
+    T set2 = copyOf(set1, numBits);
+    final int iters = 10000 + random.nextInt(10000);
+    for (int i = 0; i < iters; ++i) {
+      final int index = random.nextInt(numBits);
+      boolean v1 = set1.getAndSet(index);
+      boolean v2 = set2.getAndSet(index);
+      assertEquals(v1, v2);
+    }
+    assertEquals(set1, set2, numBits);
+  }
+
   /** Test the {@link BitSet#clear(int)} method. */
   public void testClear() throws IOException {
     Random random = random();
@@ -226,6 +242,13 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     @Override
     public boolean get(int index) {
       return bitSet.get(index);
+    }
+
+    @Override
+    public boolean getAndSet(int index) {
+      boolean v = get(index);
+      set(index);
+      return v;
     }
 
     @Override

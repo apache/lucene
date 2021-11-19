@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.util.Arrays;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
@@ -29,6 +28,8 @@ import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LatLonPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.bkd.BKDConfig;
 
 /**
@@ -165,16 +166,11 @@ public abstract class PointValues {
       } else {
         final int numDimensions = values.getNumIndexDimensions();
         final int numBytesPerDimension = values.getBytesPerDimension();
+        final ByteArrayComparator comparator =
+            ArrayUtil.getUnsignedComparator(numBytesPerDimension);
         for (int i = 0; i < numDimensions; ++i) {
           int offset = i * numBytesPerDimension;
-          if (Arrays.compareUnsigned(
-                  leafMinValue,
-                  offset,
-                  offset + numBytesPerDimension,
-                  minValue,
-                  offset,
-                  offset + numBytesPerDimension)
-              < 0) {
+          if (comparator.compare(leafMinValue, offset, minValue, offset) < 0) {
             System.arraycopy(leafMinValue, offset, minValue, offset, numBytesPerDimension);
           }
         }
@@ -205,16 +201,11 @@ public abstract class PointValues {
       } else {
         final int numDimensions = values.getNumIndexDimensions();
         final int numBytesPerDimension = values.getBytesPerDimension();
+        final ByteArrayComparator comparator =
+            ArrayUtil.getUnsignedComparator(numBytesPerDimension);
         for (int i = 0; i < numDimensions; ++i) {
           int offset = i * numBytesPerDimension;
-          if (Arrays.compareUnsigned(
-                  leafMaxValue,
-                  offset,
-                  offset + numBytesPerDimension,
-                  maxValue,
-                  offset,
-                  offset + numBytesPerDimension)
-              > 0) {
+          if (comparator.compare(leafMaxValue, offset, maxValue, offset) > 0) {
             System.arraycopy(leafMaxValue, offset, maxValue, offset, numBytesPerDimension);
           }
         }

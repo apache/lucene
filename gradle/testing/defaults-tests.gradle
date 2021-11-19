@@ -49,6 +49,9 @@ allprojects {
           [propName: 'tests.jvmargs',
            value: { -> propertyOrEnvOrDefault("tests.jvmargs", "TEST_JVM_ARGS", "-XX:TieredStopAtLevel=1") },
            description: "Arguments passed to each forked JVM."],
+          // Other settings.
+          [propName: 'tests.neverUpToDate', value: true,
+           description: "Make test tasks always fail the up-to-date checks (rerun) even if the inputs have not changed."],
       ]
 
       // Resolves test option's value.
@@ -87,7 +90,12 @@ allprojects {
 
     tasks.withType(Test) {
       ext {
-        testOutputsDir = file("${reports.junitXml.destination}/outputs")
+        testOutputsDir = file("${reports.junitXml.outputLocation.get()}/outputs")
+      }
+
+      // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally up-to-date.
+      if (resolvedTestOption("tests.neverUpToDate").toBoolean()) {
+        outputs.upToDateWhen { false }
       }
 
       maxParallelForks = resolvedTestOption("tests.jvms") as Integer
@@ -105,7 +113,12 @@ allprojects {
       ignoreFailures = resolvedTestOption("tests.haltonfailure").toBoolean() == false
 
       jvmArgs Commandline.translateCommandline(resolvedTestOption("tests.jvmargs"))
-      jvmArgs '--illegal-access=deny'
+      
+      // Up to JDK-15 we have to enforce --illegal-access=deny, because we want no code to access
+      // JDK internals; JDK-16 and later will default to deny, see https://openjdk.java.net/jeps/396:
+      if (rootProject.runtimeJavaVersion < JavaVersion.VERSION_16) {
+        jvmArgs '--illegal-access=deny'
+      }
 
       systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
       systemProperty 'java.awt.headless', 'true'
@@ -135,7 +148,7 @@ allprojects {
       }
 
       // Disable HTML report generation. The reports are big and slow to generate.
-      reports.html.enabled = false
+      reports.html.required = false
 
       // Set up logging.
       testLogging {

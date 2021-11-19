@@ -17,6 +17,19 @@
 
 # Apache Lucene Migration Guide
 
+## Minor syntactical changes in StandardQueryParser (Lucene 9.1)
+
+LUCENE-10223 adds interval functions and min-should-match support to StandardQueryParser. This
+means that interval function prefixes ("fn:") and the '@' character after parentheses will
+parse differently than before. If you need the exact previous behavior, clone the StandardSyntaxParser from the previous version of Lucene and create a custom query parser
+with that parser.
+
+## Directory API is now little endian (LUCENE-9047)
+
+DataOutput's writeShort, writeInt, and writeLong methods now encode with
+LE byte order. If you have custom subclasses of DataInput/DataOutput, you
+will need to adjust them from BE byte order to LE byte order.
+
 ## NativeUnixDirectory removed and replaced by DirectIODirectory (LUCENE-8982)
 
 Java 11 supports to use Direct IO without native wrappers from Java code.
@@ -432,3 +445,8 @@ They can now be found in the o.a.l.queries.spans package.
 
 SpanBoostQuery was a no-op unless used at the top level of a SpanQuery nested
 structure. Use a standard BoostQuery here instead.
+
+## Sort is immutable (LUCENE-9325)
+
+Rather than using `setSort()` to change sort values, you should instead create
+a new Sort instance with the new values.

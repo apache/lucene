@@ -71,8 +71,8 @@ public class TestSegmentInfos extends LuceneTestCase {
     SegmentInfo info =
         new SegmentInfo(
             dir,
-            Version.LUCENE_9_0_0,
-            Version.LUCENE_9_0_0,
+            Version.LUCENE_10_0_0,
+            Version.LUCENE_10_0_0,
             "_0",
             1,
             false,
@@ -89,7 +89,7 @@ public class TestSegmentInfos extends LuceneTestCase {
     sis.add(commitInfo);
     sis.commit(dir);
     sis = SegmentInfos.readLatestCommit(dir);
-    assertEquals(Version.LUCENE_9_0_0, sis.getMinSegmentLuceneVersion());
+    assertEquals(Version.LUCENE_10_0_0, sis.getMinSegmentLuceneVersion());
     assertEquals(Version.LATEST, sis.getCommitLuceneVersion());
     dir.close();
   }
@@ -105,8 +105,8 @@ public class TestSegmentInfos extends LuceneTestCase {
     SegmentInfo info =
         new SegmentInfo(
             dir,
-            Version.LUCENE_9_0_0,
-            Version.LUCENE_9_0_0,
+            Version.LUCENE_10_0_0,
+            Version.LUCENE_10_0_0,
             "_0",
             1,
             false,
@@ -124,8 +124,8 @@ public class TestSegmentInfos extends LuceneTestCase {
     info =
         new SegmentInfo(
             dir,
-            Version.LUCENE_9_0_0,
-            Version.LUCENE_9_0_0,
+            Version.LUCENE_10_0_0,
+            Version.LUCENE_10_0_0,
             "_1",
             1,
             false,
@@ -143,7 +143,7 @@ public class TestSegmentInfos extends LuceneTestCase {
     byte[] commitInfoId0 = sis.info(0).getId();
     byte[] commitInfoId1 = sis.info(1).getId();
     sis = SegmentInfos.readLatestCommit(dir);
-    assertEquals(Version.LUCENE_9_0_0, sis.getMinSegmentLuceneVersion());
+    assertEquals(Version.LUCENE_10_0_0, sis.getMinSegmentLuceneVersion());
     assertEquals(Version.LATEST, sis.getCommitLuceneVersion());
     assertEquals(
         StringHelper.idToString(commitInfoId0), StringHelper.idToString(sis.info(0).getId()));
@@ -391,5 +391,51 @@ public class TestSegmentInfos extends LuceneTestCase {
         () -> SegmentInfos.readLatestCommit(corruptDir));
     dir.close();
     corruptDir.close();
+  }
+
+  /** Test addDiagnostics method */
+  public void testAddDiagnostics() throws Throwable {
+    SegmentInfo si;
+    final Directory dir = newDirectory();
+    Codec codec = Codec.getDefault();
+
+    // diagnostics map
+    Map<String, String> diagnostics = Map.of("key1", "value1", "key2", "value2");
+
+    // adds an additional key/value pair
+    si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "TEST",
+            10000,
+            false,
+            codec,
+            diagnostics,
+            StringHelper.randomId(),
+            new HashMap<>(),
+            Sort.INDEXORDER);
+    si.addDiagnostics(Map.of("key3", "value3"));
+    assertEquals(Map.of("key1", "value1", "key2", "value2", "key3", "value3"), si.getDiagnostics());
+
+    // modifies an existing key/value pair
+    si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "TEST",
+            10000,
+            false,
+            codec,
+            diagnostics,
+            StringHelper.randomId(),
+            new HashMap<>(),
+            Sort.INDEXORDER);
+    si.addDiagnostics(Map.of("key2", "foo"));
+    assertEquals(Map.of("key1", "value1", "key2", "foo"), si.getDiagnostics());
+
+    dir.close();
   }
 }

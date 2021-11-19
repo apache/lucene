@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.SplittableRandom;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -97,7 +97,7 @@ public final class HnswGraph extends KnnGraphValues {
       VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
       Bits acceptOrds,
-      Random random)
+      SplittableRandom random)
       throws IOException {
     int size = graphValues.size();
 
@@ -112,8 +112,7 @@ public final class HnswGraph extends KnnGraphValues {
     int boundedNumSeed = Math.min(numSeed, 2 * size);
     for (int i = 0; i < boundedNumSeed; i++) {
       int entryPoint = random.nextInt(size);
-      if (visited.get(entryPoint) == false) {
-        visited.set(entryPoint);
+      if (visited.getAndSet(entryPoint) == false) {
         // explore the topK starting points of some random numSeed probes
         float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
         candidates.add(entryPoint, score);
@@ -141,10 +140,9 @@ public final class HnswGraph extends KnnGraphValues {
       int friendOrd;
       while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.get(friendOrd)) {
+        if (visited.getAndSet(friendOrd)) {
           continue;
         }
-        visited.set(friendOrd);
 
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         if (results.size() < numSeed || bound.check(score) == false) {

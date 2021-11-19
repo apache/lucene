@@ -95,7 +95,7 @@ final class ByteSliceReader extends DataInput {
   public void nextSlice() {
 
     // Skip to our next slice
-    final int nextIndex = (int) BitUtil.VH_BE_INT.get(buffer, limit);
+    final int nextIndex = (int) BitUtil.VH_LE_INT.get(buffer, limit);
 
     level = ByteBlockPool.NEXT_LEVEL_ARRAY[level];
     final int newSize = ByteBlockPool.LEVEL_SIZE_ARRAY[level];

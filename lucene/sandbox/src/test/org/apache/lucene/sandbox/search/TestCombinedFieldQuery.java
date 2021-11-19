@@ -211,6 +211,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
       Document doc = new Document();
 
       int freqA = random().nextInt(20) + 1;
+
       if (randomBoolean()) {
         for (int j = 0; j < freqA; j++) {
           doc.add(new TextField("a", "foo", Store.NO));
@@ -274,6 +275,80 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     CheckHits.checkEqual(
         query, completeCollector.topDocs().scoreDocs, topScoresCollector.topDocs().scoreDocs);
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testScoringWithMultipleFieldTermsMatch() throws IOException {
+    int numMatchDoc = randomIntBetween(100, 500);
+    int numHits = atMost(100);
+    int boost1 = Math.max(1, random().nextInt(5));
+    int boost2 = Math.max(1, random().nextInt(5));
+
+    Directory dir = newDirectory();
+    Similarity similarity = randomCompatibleSimilarity();
+
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setSimilarity(similarity);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    // adding potentially matching doc
+    for (int i = 0; i < numMatchDoc; i++) {
+      Document doc = new Document();
+
+      int freqA = random().nextInt(20) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "foo", Store.NO));
+      }
+
+      freqA = random().nextInt(20) + 1;
+      if (randomBoolean()) {
+        for (int j = 0; j < freqA; j++) {
+          doc.add(new TextField("a", "foo" + j, Store.NO));
+        }
+      }
+
+      freqA = random().nextInt(20) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "zoo", Store.NO));
+      }
+
+      int freqB = random().nextInt(20) + 1;
+      for (int j = 0; j < freqB; j++) {
+        doc.add(new TextField("b", "zoo", Store.NO));
+      }
+
+      freqB = random().nextInt(20) + 1;
+      if (randomBoolean()) {
+        for (int j = 0; j < freqB; j++) {
+          doc.add(new TextField("b", "zoo" + j, Store.NO));
+        }
+      }
+
+      int freqC = random().nextInt(20) + 1;
+      for (int j = 0; j < freqC; j++) {
+        doc.add(new TextField("c", "bla" + j, Store.NO));
+      }
+      w.addDocument(doc);
+    }
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(similarity);
+
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("a", (float) boost1)
+            .addField("b", (float) boost2)
+            .addTerm(new BytesRef("foo"))
+            .addTerm(new BytesRef("zoo"))
+            .build();
+
+    TopScoreDocCollector completeCollector =
+        TopScoreDocCollector.create(numHits, null, Integer.MAX_VALUE);
+    searcher.search(query, completeCollector);
 
     reader.close();
     w.close();

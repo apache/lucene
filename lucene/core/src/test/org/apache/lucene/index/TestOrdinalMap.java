@@ -93,12 +93,12 @@ public class TestOrdinalMap extends LuceneTestCase {
     SortedDocValues sdv = MultiDocValues.getSortedValues(r, "sdv");
     if (sdv instanceof MultiDocValues.MultiSortedDocValues) {
       OrdinalMap map = ((MultiDocValues.MultiSortedDocValues) sdv).mapping;
-      assertEquals(RamUsageTester.sizeOf(map, ORDINAL_MAP_ACCUMULATOR), map.ramBytesUsed());
+      assertEquals(RamUsageTester.ramUsed(map, ORDINAL_MAP_ACCUMULATOR), map.ramBytesUsed());
     }
     SortedSetDocValues ssdv = MultiDocValues.getSortedSetValues(r, "ssdv");
     if (ssdv instanceof MultiDocValues.MultiSortedSetDocValues) {
       OrdinalMap map = ((MultiDocValues.MultiSortedSetDocValues) ssdv).mapping;
-      assertEquals(RamUsageTester.sizeOf(map, ORDINAL_MAP_ACCUMULATOR), map.ramBytesUsed());
+      assertEquals(RamUsageTester.ramUsed(map, ORDINAL_MAP_ACCUMULATOR), map.ramBytesUsed());
     }
     iw.close();
     r.close();

@@ -314,12 +314,8 @@ public final class IndexUtils {
           if (CodecUtil.CODEC_MAGIC == CodecUtil.readBEInt(in)) {
             int actualVersion =
                 CodecUtil.checkHeaderNoMagic(
-                    in, "segments", SegmentInfos.VERSION_70, Integer.MAX_VALUE);
-            if (actualVersion == SegmentInfos.VERSION_70) {
-              format = "Lucene 7.0 or later";
-            } else if (actualVersion == SegmentInfos.VERSION_72) {
-              format = "Lucene 7.2 or later";
-            } else if (actualVersion == SegmentInfos.VERSION_74) {
+                    in, "segments", SegmentInfos.VERSION_74, Integer.MAX_VALUE);
+            if (actualVersion == SegmentInfos.VERSION_74) {
               format = "Lucene 7.4 or later";
             } else if (actualVersion == SegmentInfos.VERSION_86) {
               format = "Lucene 8.6 or later";
