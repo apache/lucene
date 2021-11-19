@@ -24,6 +24,9 @@ Improvements
 
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
+* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
+  PointValues abstract class. (Ignacio Vera, Adrien Grand)
+
 Optimizations
 ---------------------
 
