@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import com.carrotsearch.hppc.IntArrayList;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.facet.FacetsConfig;
@@ -26,7 +28,10 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter.Ordina
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.FilterBinaryDocValues;
 import org.apache.lucene.index.FilterLeafReader;
+import org.apache.lucene.index.FilterSortedNumericDocValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 
@@ -107,6 +112,66 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
     }
   }
 
+  private class OrdinalMappingSortedNumericDocValues extends FilterSortedNumericDocValues {
+    private final IntArrayList currentValues;
+    private int currIndex;
+
+    OrdinalMappingSortedNumericDocValues(SortedNumericDocValues in) {
+      super(in);
+      currentValues = new IntArrayList(32);
+    }
+
+    @Override
+    public boolean advanceExact(int target) throws IOException {
+      boolean result = in.advanceExact(target);
+      if (result) {
+        reloadValues();
+      }
+      return result;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      int result = in.advance(target);
+      if (result != DocIdSetIterator.NO_MORE_DOCS) {
+        reloadValues();
+      }
+      return result;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      int result = in.nextDoc();
+      if (result != DocIdSetIterator.NO_MORE_DOCS) {
+        reloadValues();
+      }
+      return result;
+    }
+
+    @Override
+    public int docValueCount() {
+      return currentValues.elementsCount;
+    }
+
+    private void reloadValues() throws IOException {
+      currIndex = 0;
+      currentValues.clear();
+      for (int i = 0; i < in.docValueCount(); i++) {
+        int originalOrd = Math.toIntExact(in.nextValue());
+        currentValues.add(ordinalMap[originalOrd]);
+      }
+      Arrays.sort(currentValues.buffer, 0, currentValues.elementsCount);
+    }
+
+    @Override
+    public long nextValue() {
+      assert currIndex < currentValues.size();
+      int actual = currentValues.get(currIndex);
+      currIndex++;
+      return actual;
+    }
+  }
+
   private final int[] ordinalMap;
   private final InnerFacetsConfig facetsConfig;
   private final Set<String> facetFields;
@@ -125,31 +190,59 @@ public class OrdinalMappingLeafReader extends FilterLeafReader {
     }
     // always add the default indexFieldName. This is because FacetsConfig does
     // not explicitly record dimensions that were indexed under the default
-    // DimConfig, unless they have a custome DimConfig.
+    // DimConfig, unless they have a custom DimConfig.
     facetFields.add(FacetsConfig.DEFAULT_DIM_CONFIG.indexFieldName);
   }
 
   /**
    * Expert: encodes category ordinals into a BytesRef. Override in case you use custom encoding,
    * other than the default done by FacetsConfig.
+   *
+   * @deprecated Custom binary formats are no longer directly supported for taxonomy faceting
+   *     starting in Lucene 9
    */
+  @Deprecated
   protected BytesRef encode(IntsRef ordinals) {
     return facetsConfig.dedupAndEncode(ordinals);
   }
 
-  /** Expert: override in case you used custom encoding for the categories under this field. */
+  /**
+   * Expert: override in case you used custom encoding for the categories under this field.
+   *
+   * @deprecated Custom binary formats are no longer directly supported for taxonomy faceting
+   *     starting in Lucene 9
+   */
+  @Deprecated
   protected OrdinalsReader getOrdinalsReader(String field) {
     return new DocValuesOrdinalsReader(field);
   }
 
   @Override
   public BinaryDocValues getBinaryDocValues(String field) throws IOException {
-    if (facetFields.contains(field)) {
+    BinaryDocValues original = in.getBinaryDocValues(field);
+    if (original != null && facetFields.contains(field)) {
+      // The requested field is a facet ordinals field _and_ it's non-null, so move forward with
+      // mapping:
       final OrdinalsReader ordsReader = getOrdinalsReader(field);
-      return new OrdinalMappingBinaryDocValues(
-          ordsReader.getReader(in.getContext()), in.getBinaryDocValues(field));
+      return new OrdinalMappingBinaryDocValues(ordsReader.getReader(in.getContext()), original);
     } else {
-      return in.getBinaryDocValues(field);
+      // The requested field either isn't present (null) or isn't a facet ordinals field. Either
+      // way, just return the original:
+      return original;
+    }
+  }
+
+  @Override
+  public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
+    SortedNumericDocValues original = in.getSortedNumericDocValues(field);
+    if (original != null && facetFields.contains(field)) {
+      // The requested field is a facet ordinals field _and_ it's non-null, so move forward with
+      // mapping:
+      return new OrdinalMappingSortedNumericDocValues(original);
+    } else {
+      // The requested field either isn't present (null) or isn't a facet ordinals field. Either
+      // way, just return the original:
+      return original;
     }
   }
 

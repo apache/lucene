@@ -19,17 +19,17 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Computes facets counts, assuming the default encoding into DocValues was used.
@@ -70,8 +70,9 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
   private final void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      BinaryDocValues dv = hits.context.reader().getBinaryDocValues(indexFieldName);
-      if (dv == null) { // this reader does not have DocValues for the requested category list
+      SortedNumericDocValues dv =
+          FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
+      if (dv == null) {
         continue;
       }
 
@@ -79,21 +80,8 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
           ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        final BytesRef bytesRef = dv.binaryValue();
-        byte[] bytes = bytesRef.bytes;
-        int end = bytesRef.offset + bytesRef.length;
-        int ord = 0;
-        int offset = bytesRef.offset;
-        int prev = 0;
-        while (offset < end) {
-          byte b = bytes[offset++];
-          if (b >= 0) {
-            prev = ord = ((ord << 7) | b) + prev;
-            increment(ord);
-            ord = 0;
-          } else {
-            ord = (ord << 7) | (b & 0x7F);
-          }
+        for (int i = 0; i < dv.docValueCount(); i++) {
+          increment((int) dv.nextValue());
         }
       }
     }
@@ -103,8 +91,8 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
   private final void countAll(IndexReader reader) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
-      BinaryDocValues dv = context.reader().getBinaryDocValues(indexFieldName);
-      if (dv == null) { // this reader does not have DocValues for the requested category list
+      SortedNumericDocValues dv = FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
+      if (dv == null) {
         continue;
       }
 
@@ -114,21 +102,9 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
         if (liveDocs != null && liveDocs.get(doc) == false) {
           continue;
         }
-        final BytesRef bytesRef = dv.binaryValue();
-        byte[] bytes = bytesRef.bytes;
-        int end = bytesRef.offset + bytesRef.length;
-        int ord = 0;
-        int offset = bytesRef.offset;
-        int prev = 0;
-        while (offset < end) {
-          byte b = bytes[offset++];
-          if (b >= 0) {
-            prev = ord = ((ord << 7) | b) + prev;
-            increment(ord);
-            ord = 0;
-          } else {
-            ord = (ord << 7) | (b & 0x7F);
-          }
+
+        for (int i = 0; i < dv.docValueCount(); i++) {
+          increment((int) dv.nextValue());
         }
       }
     }
