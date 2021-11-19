@@ -35,7 +35,7 @@ import org.apache.lucene.util.bkd.BKDReader;
 public class Lucene90PointsReader extends PointsReader {
   final IndexInput indexIn, dataIn;
   final SegmentReadState readState;
-  final Map<Integer, BKDReader> readers = new HashMap<>();
+  final Map<Integer, PointValues> readers = new HashMap<>();
 
   /** Sole constructor */
   public Lucene90PointsReader(SegmentReadState readState) throws IOException {
@@ -97,7 +97,7 @@ public class Lucene90PointsReader extends PointsReader {
             } else if (fieldNumber < 0) {
               throw new CorruptIndexException("Illegal field number: " + fieldNumber, metaIn);
             }
-            BKDReader reader = new BKDReader(metaIn, indexIn, dataIn);
+            PointValues reader = new BKDReader(metaIn, indexIn, dataIn);
             readers.put(fieldNumber, reader);
           }
           indexLength = metaIn.readLong();

@@ -1185,20 +1185,33 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   public void testDocCountEdgeCases() {
+    IntersectVisitor visitor =
+        new IntersectVisitor() {
+          @Override
+          public void visit(int docID) {}
+
+          @Override
+          public void visit(int docID, byte[] packedValue) {}
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_INSIDE_QUERY;
+          }
+        };
     PointValues values = getPointValues(Long.MAX_VALUE, 1, Long.MAX_VALUE);
-    long docs = values.estimateDocCount(null);
+    long docs = values.estimateDocCount(visitor);
     assertEquals(1, docs);
     values = getPointValues(Long.MAX_VALUE, 1, 1);
-    docs = values.estimateDocCount(null);
+    docs = values.estimateDocCount(visitor);
     assertEquals(1, docs);
     values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, Long.MAX_VALUE);
-    docs = values.estimateDocCount(null);
+    docs = values.estimateDocCount(visitor);
     assertEquals(Integer.MAX_VALUE, docs);
     values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, Long.MAX_VALUE / 2);
-    docs = values.estimateDocCount(null);
+    docs = values.estimateDocCount(visitor);
     assertEquals(Integer.MAX_VALUE, docs);
     values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, 1);
-    docs = values.estimateDocCount(null);
+    docs = values.estimateDocCount(visitor);
     assertEquals(1, docs);
   }
 
@@ -1209,7 +1222,20 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       int docCount = TestUtil.nextInt(random(), 1, maxDoc);
       long estimatedPointCount = TestUtil.nextLong(random(), 0, size);
       PointValues values = getPointValues(size, docCount, estimatedPointCount);
-      long docs = values.estimateDocCount(null);
+      long docs =
+          values.estimateDocCount(
+              new IntersectVisitor() {
+                @Override
+                public void visit(int docID) {}
+
+                @Override
+                public void visit(int docID, byte[] packedValue) {}
+
+                @Override
+                public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                  return Relation.CELL_INSIDE_QUERY;
+                }
+              });
       assertTrue(docs <= estimatedPointCount);
       assertTrue(docs <= maxDoc);
       assertTrue(docs >= estimatedPointCount / (size / docCount));
@@ -1219,13 +1245,54 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
   private PointValues getPointValues(long size, int docCount, long estimatedPointCount) {
     return new PointValues() {
       @Override
-      public void intersect(IntersectVisitor visitor) {
-        throw new UnsupportedOperationException();
-      }
+      public PointTree getPointTree() {
+        return new PointTree() {
 
-      @Override
-      public long estimatePointCount(IntersectVisitor visitor) {
-        return estimatedPointCount;
+          @Override
+          public PointTree clone() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public boolean moveToChild() {
+            return false;
+          }
+
+          @Override
+          public boolean moveToSibling() {
+            return false;
+          }
+
+          @Override
+          public boolean moveToParent() {
+            return false;
+          }
+
+          @Override
+          public byte[] getMinPackedValue() {
+            return new byte[0];
+          }
+
+          @Override
+          public byte[] getMaxPackedValue() {
+            return new byte[0];
+          }
+
+          @Override
+          public long size() {
+            return estimatedPointCount;
+          }
+
+          @Override
+          public void visitDocIDs(IntersectVisitor visitor) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void visitDocValues(IntersectVisitor visitor) {
+            throw new UnsupportedOperationException();
+          }
+        };
       }
 
       @Override

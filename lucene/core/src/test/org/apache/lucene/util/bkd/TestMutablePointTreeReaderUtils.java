@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.util.bkd;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointTree;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
-public class TestMutablePointsReaderUtils extends LuceneTestCase {
+public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
 
   public void testSort() {
     for (int iter = 0; iter < 10; ++iter) {
@@ -45,7 +45,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     BKDConfig config = new BKDConfig(1, 1, bytesPerDim, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
     Point[] points = createRandomPoints(config, maxDoc, new int[1], isDocIdIncremental);
     DummyPointsReader reader = new DummyPointsReader(points);
-    MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, points.length);
+    MutablePointTreeReaderUtils.sort(config, maxDoc, reader, 0, points.length);
     Arrays.sort(
         points,
         new Comparator<Point>() {
@@ -91,7 +91,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     Point[] points = createRandomPoints(config, maxDoc, commonPrefixLengths, false);
     DummyPointsReader reader = new DummyPointsReader(points);
     final int sortedDim = random().nextInt(config.numIndexDims);
-    MutablePointsReaderUtils.sortByDim(
+    MutablePointTreeReaderUtils.sortByDim(
         config,
         sortedDim,
         commonPrefixLengths,
@@ -145,7 +145,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     final int splitDim = random().nextInt(config.numIndexDims);
     DummyPointsReader reader = new DummyPointsReader(points);
     final int pivot = TestUtil.nextInt(random(), 0, points.length - 1);
-    MutablePointsReaderUtils.partition(
+    MutablePointTreeReaderUtils.partition(
         config,
         maxDoc,
         splitDim,
@@ -303,7 +303,7 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     }
   }
 
-  private static class DummyPointsReader extends MutablePointValues {
+  private static class DummyPointsReader extends MutablePointTree {
 
     private final Point[] points;
 
@@ -337,51 +337,6 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public byte[] getMinPackedValue() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public byte[] getMaxPackedValue() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getNumDimensions() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getNumIndexDimensions() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getBytesPerDimension() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long size() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getDocCount() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void save(int i, int j) {
       if (temp == null) {
         temp = new Point[points.length];
@@ -394,6 +349,16 @@ public class TestMutablePointsReaderUtils extends LuceneTestCase {
       if (temp != null) {
         System.arraycopy(temp, i, points, i, j - i);
       }
+    }
+
+    @Override
+    public long size() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void visitDocValues(PointValues.IntersectVisitor visitor) {
+      throw new UnsupportedOperationException();
     }
   }
 }

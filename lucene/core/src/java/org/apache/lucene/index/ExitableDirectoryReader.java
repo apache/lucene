@@ -373,15 +373,9 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
+    public PointTree getPointTree() throws IOException {
       checkAndThrow();
-      in.intersect(new ExitableIntersectVisitor(visitor, queryTimeout));
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      checkAndThrow();
-      return in.estimatePointCount(visitor);
+      return new ExitablePointTree(in, in.getPointTree(), queryTimeout);
     }
 
     @Override
@@ -427,17 +421,117 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
   }
 
+  private static class ExitablePointTree implements PointValues.PointTree {
+
+    private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 10;
+
+    private final PointValues pointValues;
+    private final PointValues.PointTree in;
+    private final ExitableIntersectVisitor exitableIntersectVisitor;
+    private final QueryTimeout queryTimeout;
+    private int calls;
+
+    private ExitablePointTree(
+        PointValues pointValues, PointValues.PointTree in, QueryTimeout queryTimeout) {
+      this.pointValues = pointValues;
+      this.in = in;
+      this.queryTimeout = queryTimeout;
+      this.exitableIntersectVisitor = new ExitableIntersectVisitor(queryTimeout);
+    }
+
+    /**
+     * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
+     * if {@link Thread#interrupted()} returns true.
+     */
+    private void checkAndThrowWithSampling() {
+      if (calls++ % MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
+        checkAndThrow();
+      }
+    }
+
+    private void checkAndThrow() {
+      if (queryTimeout.shouldExit()) {
+        throw new ExitingReaderException(
+            "The request took too long to intersect point values. Timeout: "
+                + queryTimeout.toString()
+                + ", PointValues="
+                + pointValues);
+      } else if (Thread.interrupted()) {
+        throw new ExitingReaderException(
+            "Interrupted while intersecting point values. PointValues=" + in);
+      }
+    }
+
+    @Override
+    public PointValues.PointTree clone() {
+      checkAndThrow();
+      return new ExitablePointTree(pointValues, in.clone(), queryTimeout);
+    }
+
+    @Override
+    public boolean moveToChild() throws IOException {
+      checkAndThrowWithSampling();
+      return in.moveToChild();
+    }
+
+    @Override
+    public boolean moveToSibling() throws IOException {
+      checkAndThrowWithSampling();
+      return in.moveToSibling();
+    }
+
+    @Override
+    public boolean moveToParent() throws IOException {
+      checkAndThrowWithSampling();
+      return in.moveToParent();
+    }
+
+    @Override
+    public byte[] getMinPackedValue() {
+      checkAndThrowWithSampling();
+      return in.getMinPackedValue();
+    }
+
+    @Override
+    public byte[] getMaxPackedValue() {
+      checkAndThrowWithSampling();
+      return in.getMaxPackedValue();
+    }
+
+    @Override
+    public long size() {
+      checkAndThrow();
+      return in.size();
+    }
+
+    @Override
+    public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
+      checkAndThrow();
+      in.visitDocIDs(visitor);
+    }
+
+    @Override
+    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+      checkAndThrow();
+      exitableIntersectVisitor.setIntersectVisitor(visitor);
+      in.visitDocValues(exitableIntersectVisitor);
+    }
+  }
+
   private static class ExitableIntersectVisitor implements PointValues.IntersectVisitor {
 
     private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 10;
 
-    private final PointValues.IntersectVisitor in;
+    private PointValues.IntersectVisitor in;
     private final QueryTimeout queryTimeout;
     private int calls;
 
-    private ExitableIntersectVisitor(PointValues.IntersectVisitor in, QueryTimeout queryTimeout) {
-      this.in = in;
+    private ExitableIntersectVisitor(QueryTimeout queryTimeout) {
       this.queryTimeout = queryTimeout;
+    }
+
+    private void setIntersectVisitor(PointValues.IntersectVisitor in) {
+      this.in = in;
     }
 
     /**
