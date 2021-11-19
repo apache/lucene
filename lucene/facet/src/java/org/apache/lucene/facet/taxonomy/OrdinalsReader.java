@@ -20,7 +20,13 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.IntsRef;
 
-/** Provides per-document ordinals. */
+/**
+ * Provides per-document ordinals.
+ *
+ * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
+ *     Lucene 9
+ */
+@Deprecated
 public abstract class OrdinalsReader {
 
   /** Returns ordinals for documents in one segment. */

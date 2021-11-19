@@ -97,4 +97,18 @@ public interface TaxonomyWriter extends Closeable, TwoPhaseCommit {
 
   /** Returns the commit user data iterable that was set on {@link #setLiveCommitData(Iterable)}. */
   public Iterable<Map.Entry<String, String>> getLiveCommitData();
+
+  /**
+   * Determine whether-or-not to store taxonomy ordinals for each document using the older binary
+   * format or the newer SortedNumericDocValues format (based on the version used to create the
+   * index).
+   *
+   * @deprecated Please don't rely on this method as it will be removed in Lucene 10. It's being
+   *     introduced to support backwards-compatibility with Lucene 8 and earlier index formats
+   *     temporarily.
+   */
+  @Deprecated
+  default boolean useNumericDocValuesForOrdinals() {
+    return false;
+  }
 }

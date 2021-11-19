@@ -162,7 +162,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     openMode = config.getOpenMode();
     if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
-      // no commit exists so we can safely use the new BinaryDocValues field
+      // no commit exists so we can safely use the newer formats:
       useOlderFormat = false;
     } else {
       String epochStr = null;
@@ -1004,5 +1004,10 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   public final long getTaxonomyEpoch() {
     return indexEpoch;
+  }
+
+  @Override
+  public boolean useNumericDocValuesForOrdinals() {
+    return useOlderFormat == false;
   }
 }

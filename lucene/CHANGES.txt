@@ -363,6 +363,9 @@ Improvements
   See release notes. https://github.com/locationtech/spatial4j/releases/tag/spatial4j-0.8
   (David Smiley)
 
+* LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
+  with its own custom encoding. (Greg Miller)
+
 Bug fixes
 ---------------------
 
