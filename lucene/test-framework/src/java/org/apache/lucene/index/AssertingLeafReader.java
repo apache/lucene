@@ -1091,22 +1091,9 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
+    public PointTree getPointTree() throws IOException {
       assertThread("Points", creationThread);
-      in.intersect(
-          new AssertingIntersectVisitor(
-              in.getNumDimensions(),
-              in.getNumIndexDimensions(),
-              in.getBytesPerDimension(),
-              visitor));
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      assertThread("Points", creationThread);
-      long cost = in.estimatePointCount(visitor);
-      assert cost >= 0;
-      return cost;
+      return new AssertingPointTree(in, in.getPointTree());
     }
 
     @Override
@@ -1152,6 +1139,80 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
   }
 
+  /** Validates that we don't call moveToChild() or clone() after having called moveToParent() */
+  static class AssertingPointTree implements PointValues.PointTree {
+
+    final PointValues pointValues;
+    final PointValues.PointTree in;
+    private boolean moveToParent;
+
+    AssertingPointTree(PointValues pointValues, PointValues.PointTree in) {
+      this.pointValues = pointValues;
+      this.in = in;
+    }
+
+    @Override
+    public PointValues.PointTree clone() {
+      assert moveToParent == false : "calling clone() after calling moveToParent()";
+      return new AssertingPointTree(pointValues, in.clone());
+    }
+
+    @Override
+    public boolean moveToChild() throws IOException {
+      assert moveToParent == false : "calling moveToChild() after calling moveToParent()";
+      return in.moveToChild();
+    }
+
+    @Override
+    public boolean moveToSibling() throws IOException {
+      moveToParent = false;
+      return in.moveToSibling();
+    }
+
+    @Override
+    public boolean moveToParent() throws IOException {
+      moveToParent = true;
+      return in.moveToParent();
+    }
+
+    @Override
+    public byte[] getMinPackedValue() {
+      return in.getMinPackedValue();
+    }
+
+    @Override
+    public byte[] getMaxPackedValue() {
+      return in.getMaxPackedValue();
+    }
+
+    @Override
+    public long size() {
+      final long size = in.size();
+      assert size > 0;
+      return size;
+    }
+
+    @Override
+    public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+      in.visitDocIDs(
+          new AssertingIntersectVisitor(
+              pointValues.getNumDimensions(),
+              pointValues.getNumIndexDimensions(),
+              pointValues.getBytesPerDimension(),
+              visitor));
+    }
+
+    @Override
+    public void visitDocValues(IntersectVisitor visitor) throws IOException {
+      in.visitDocValues(
+          new AssertingIntersectVisitor(
+              pointValues.getNumDimensions(),
+              pointValues.getNumIndexDimensions(),
+              pointValues.getBytesPerDimension(),
+              visitor));
+    }
+  }
+
   /**
    * Validates in the 1D case that all points are visited in order, and point values are in bounds
    * of the last cell checked
@@ -1189,7 +1250,7 @@ public class AssertingLeafReader extends FilterLeafReader {
 
       // This method, not filtering each hit, should only be invoked when the cell is inside the
       // query shape:
-      assert lastCompareResult == Relation.CELL_INSIDE_QUERY;
+      assert lastCompareResult == null || lastCompareResult == Relation.CELL_INSIDE_QUERY;
       in.visit(docID);
     }
 
@@ -1199,28 +1260,32 @@ public class AssertingLeafReader extends FilterLeafReader {
 
       // This method, to filter each doc's value, should only be invoked when the cell crosses the
       // query shape:
-      assert lastCompareResult == PointValues.Relation.CELL_CROSSES_QUERY;
+      assert lastCompareResult == null
+          || lastCompareResult == PointValues.Relation.CELL_CROSSES_QUERY;
 
-      // This doc's packed value should be contained in the last cell passed to compare:
-      for (int dim = 0; dim < numIndexDims; dim++) {
-        assert Arrays.compareUnsigned(
-                    lastMinPackedValue,
-                    dim * bytesPerDim,
-                    dim * bytesPerDim + bytesPerDim,
-                    packedValue,
-                    dim * bytesPerDim,
-                    dim * bytesPerDim + bytesPerDim)
-                <= 0
-            : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
-        assert Arrays.compareUnsigned(
-                    lastMaxPackedValue,
-                    dim * bytesPerDim,
-                    dim * bytesPerDim + bytesPerDim,
-                    packedValue,
-                    dim * bytesPerDim,
-                    dim * bytesPerDim + bytesPerDim)
-                >= 0
-            : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
+      if (lastCompareResult != null) {
+        // This doc's packed value should be contained in the last cell passed to compare:
+        for (int dim = 0; dim < numIndexDims; dim++) {
+          assert Arrays.compareUnsigned(
+                      lastMinPackedValue,
+                      dim * bytesPerDim,
+                      dim * bytesPerDim + bytesPerDim,
+                      packedValue,
+                      dim * bytesPerDim,
+                      dim * bytesPerDim + bytesPerDim)
+                  <= 0
+              : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
+          assert Arrays.compareUnsigned(
+                      lastMaxPackedValue,
+                      dim * bytesPerDim,
+                      dim * bytesPerDim + bytesPerDim,
+                      packedValue,
+                      dim * bytesPerDim,
+                      dim * bytesPerDim + bytesPerDim)
+                  >= 0
+              : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
+        }
+        lastCompareResult = null;
       }
 
       // TODO: we should assert that this "matches" whatever relation the last call to compare had

@@ -1672,18 +1672,61 @@ public class MemoryIndex {
       }
 
       @Override
-      public void intersect(IntersectVisitor visitor) throws IOException {
-        BytesRef[] values = info.pointValues;
+      public PointTree getPointTree() {
+        return new PointTree() {
+          @Override
+          public PointTree clone() {
+            return this;
+          }
 
-        visitor.grow(info.pointValuesCount);
-        for (int i = 0; i < info.pointValuesCount; i++) {
-          visitor.visit(0, values[i].bytes);
-        }
-      }
+          @Override
+          public boolean moveToChild() {
+            return false;
+          }
 
-      @Override
-      public long estimatePointCount(IntersectVisitor visitor) {
-        return 1L;
+          @Override
+          public boolean moveToSibling() {
+            return false;
+          }
+
+          @Override
+          public boolean moveToParent() {
+            return false;
+          }
+
+          @Override
+          public byte[] getMinPackedValue() {
+            return info.minPackedValue;
+          }
+
+          @Override
+          public byte[] getMaxPackedValue() {
+            return info.maxPackedValue;
+          }
+
+          @Override
+          public long size() {
+            return info.pointValuesCount;
+          }
+
+          @Override
+          public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+            visitor.grow(info.pointValuesCount);
+            for (int i = 0; i < info.pointValuesCount; i++) {
+              visitor.visit(0);
+            }
+          }
+
+          @Override
+          public void visitDocValues(IntersectVisitor visitor) throws IOException {
+            BytesRef[] values = info.pointValues;
+
+            visitor.grow(info.pointValuesCount);
+            for (int i = 0; i < info.pointValuesCount; i++) {
+              visitor.visit(0, values[i].bytes);
+            }
+          }
+        };
       }
 
       @Override
