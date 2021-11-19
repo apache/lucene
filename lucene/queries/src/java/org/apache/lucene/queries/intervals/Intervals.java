@@ -31,20 +31,20 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
- * Constructor functions for {@link IntervalsSource} types
+ * Factory functions for creating {@link IntervalsSource interval sources}.
  *
  * <p>These sources implement minimum-interval algorithms taken from the paper <a
  * href="https://vigna.di.unimi.it/ftp/papers/EfficientLazy.pdf">Efficient Optimally Lazy Algorithms
  * for Minimal-Interval Semantics</a>
  *
- * <p>By default, sources that are sensitive to internal gaps (e.g. {@code PHRASE} and {@code
- * MAXGAPS}) will rewrite their sub-sources so that disjunctions of different lengths are pulled up
- * to the top of the interval tree. For example, {@code PHRASE(or(PHRASE("a", "b", "c"), "b"), "c")}
- * will automatically rewrite itself to {@code OR(PHRASE("a", "b", "c", "c"), PHRASE("b", "c"))} to
- * ensure that documents containing {@code "b c"} are matched. This can lead to less efficient
- * queries, as more terms need to be loaded (for example, the {@code "c"} iterator above is loaded
- * twice), so if you care more about speed than about accuracy you can use the {@link #or(boolean,
- * IntervalsSource...)} factory method to prevent rewriting.
+ * <p><em>Note:</em> by default, sources that are sensitive to internal gaps (e.g. {@code PHRASE}
+ * and {@code MAXGAPS}) will rewrite their sub-sources so that disjunctions of different lengths are
+ * pulled up to the top of the interval tree. For example, {@code PHRASE(or(PHRASE("a", "b", "c"),
+ * "b"), "c")} will automatically rewrite itself to {@code OR(PHRASE("a", "b", "c", "c"),
+ * PHRASE("b", "c"))} to ensure that documents containing {@code "b c"} are matched. This can lead
+ * to less efficient queries, as more terms need to be loaded (for example, the {@code "c"} iterator
+ * above is loaded twice), so if you care more about speed than about accuracy you can use the
+ * {@link #or(boolean, IntervalsSource...)} factory method to prevent rewriting.
  */
 public final class Intervals {
 
@@ -94,7 +94,7 @@ public final class Intervals {
 
   /**
    * Return an {@link IntervalsSource} exposing intervals for a phrase consisting of a list of
-   * IntervalsSources
+   * {@link IntervalsSource interval sources}
    */
   public static IntervalsSource phrase(IntervalsSource... subSources) {
     return BlockIntervalsSource.build(Arrays.asList(subSources));
