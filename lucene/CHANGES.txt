@@ -33,7 +33,9 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
+  collectors. (Andriy Redko)
 
 New Features
 ---------------------
