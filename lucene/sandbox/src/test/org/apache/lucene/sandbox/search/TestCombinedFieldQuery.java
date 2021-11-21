@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.sandbox.search;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.atMost;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
@@ -171,7 +170,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
   public void testScoringWithMultipleFieldTermsMatch() throws IOException {
     int numMatchDoc = randomIntBetween(100, 500);
-    int numHits = atMost(100);
+    int numHits = randomIntBetween(1, 100);
     int boost1 = Math.max(1, random().nextInt(5));
     int boost2 = Math.max(1, random().nextInt(5));
 
