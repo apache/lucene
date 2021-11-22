@@ -1058,7 +1058,7 @@ public final class FST<T> implements Accountable {
         }
       } else if (nodeIn.numArcs == 1) {
         // just 1 arc, which is encoded with BIT_TARGET_NEXT, this optimization is not required
-        return -1L;
+        return 0L;
       }
 
       // account for flags
