@@ -19,6 +19,8 @@ package org.apache.lucene.queryparser.indri;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -107,7 +109,7 @@ public class IndriQueryParser {
     QueryParserOperatorQuery operatorQuery = new QueryParserOperatorQuery();
 
     int operatorDistance = 0;
-    String operatorNameLowerCase = (new String(operatorName)).toLowerCase();
+    String operatorNameLowerCase = (new String(operatorName)).toLowerCase(Locale.ROOT);
     operatorNameLowerCase = operatorNameLowerCase.replace("#", "");
     operatorNameLowerCase = operatorNameLowerCase.replace("~", "");
 
@@ -194,7 +196,7 @@ public class IndriQueryParser {
     if (delimiter < 0) {
       term = token;
     } else { // Remove the field from the token
-      field = token.substring(delimiter + 1).toLowerCase();
+      field = token.substring(delimiter + 1).toLowerCase(Locale.ROOT);
       term = token.substring(0, delimiter);
     }
 
