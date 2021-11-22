@@ -42,7 +42,7 @@ import org.apache.lucene.util.BytesRef;
  *   <li>'{@code #wsum(boost1 token1 boost2 token2)}' specifies {@code IndriOr} operation: <code>#wsum(1.0 term1 2.0 term2)</code>
  * </ul>
  *
- * <p>The {@link #setDefaultOperator default operator} is {@code IndriAnd} if no other operator is
+ * <p>The default operator is {@code IndriAnd} if no other operator is
  * specified. For example, the following will {@code IndriAnd} {@code token1} and {@code token2} together:
  * <code>token1 token2</code>
  *
