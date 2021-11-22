@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.queryparser.indri;
 
+/** The domain object for storing an Indri Query Term */
 public class QueryParserTermQuery extends QueryParserQuery {
 
   private String term;

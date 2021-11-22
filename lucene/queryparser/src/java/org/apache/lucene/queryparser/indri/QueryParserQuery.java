@@ -18,6 +18,7 @@ package org.apache.lucene.queryparser.indri;
 
 import org.apache.lucene.search.BooleanClause.Occur;
 
+/** The domain object for storing an Indri Query */
 public abstract class QueryParserQuery {
 
   private String type; // Either operator or term

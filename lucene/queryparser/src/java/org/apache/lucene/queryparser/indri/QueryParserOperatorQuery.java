@@ -19,6 +19,7 @@ package org.apache.lucene.queryparser.indri;
 import java.util.ArrayList;
 import java.util.List;
 
+/** The domain object for storing an Indri Query Operator */
 public class QueryParserOperatorQuery extends QueryParserQuery {
 
   private String operator;
