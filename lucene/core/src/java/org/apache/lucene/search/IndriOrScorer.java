@@ -19,6 +19,10 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Combines scores of subscorers. If a subscorer does not contain the docId, a smoothing score is
+ * calculated for that document/subscorer combination.
+ */
 public class IndriOrScorer extends IndriDisjunctionScorer {
 
   protected IndriOrScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode, float boost)

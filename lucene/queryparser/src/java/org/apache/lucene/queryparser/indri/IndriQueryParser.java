@@ -31,6 +31,22 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 
+/**
+ * IndriQueryParser is used to parse human readable query syntax and create Indri queries.
+ *
+ * <p><b>Query Operators</b>
+ *
+ * <ul>
+ *   <li>'{@code #and(t1 t2)}' specifies {@code IndriAnd} operation: <code>#and(term1 term2)</code>
+ *   <li>'{@code #or(t1 t2)}' specifies {@code IndriOr} operation: <code>#or(term1 term2)</code>
+ *   <li>'{@code #wsum(boost1 token1 boost2 token2)}' specifies {@code IndriOr} operation: <code>#wsum(1.0 term1 2.0 term2)</code>
+ * </ul>
+ *
+ * <p>The {@link #setDefaultOperator default operator} is {@code IndriAnd} if no other operator is
+ * specified. For example, the following will {@code IndriAnd} {@code token1} and {@code token2} together:
+ * <code>token1 token2</code>
+ *
+ */
 public class IndriQueryParser {
 
   private static final String AND = "and";

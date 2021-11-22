@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.List;
 
+/** A Query that matches documents matching combinations of subqueries. */
 public class IndriWeightedSumQuery extends IndriQuery {
 
   public IndriWeightedSumQuery(List<BooleanClause> clauses) {

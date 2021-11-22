@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.List;
 
+/** A Query that matches documents matching combinations of subqueries. */
 public class IndriOrQuery extends IndriQuery {
 
   public IndriOrQuery(List<BooleanClause> clauses) {
