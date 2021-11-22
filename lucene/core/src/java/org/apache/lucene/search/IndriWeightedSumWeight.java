@@ -46,9 +46,7 @@ public class IndriWeightedSumWeight extends Weight {
 
   private Scorer getScorer(LeafReaderContext context) throws IOException {
     List<Scorer> subScorers = new ArrayList<>();
-    Iterator<BooleanClause> cIter = query.iterator();
     for (Weight w : weights) {
-      BooleanClause c = cIter.next();
       Scorer scorer = w.scorer(context);
       if (scorer != null) {
         subScorers.add(scorer);
