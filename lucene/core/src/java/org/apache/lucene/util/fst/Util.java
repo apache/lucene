@@ -288,7 +288,7 @@ public final class Util {
         if (path.arc.isLast()) {
           break;
         }
-        fst.readNextArc(path.arc, bytesReader);
+        fst.readNextArc(path.arc, bytesReader, node.target());
       }
     }
 
@@ -351,7 +351,7 @@ public final class Util {
 
         // For each input letter:
         while (true) {
-
+          long node = path.arc.target();
           fst.readFirstTargetArc(path.arc, path.arc, fstReader);
 
           // For each arc leaving this node:
@@ -380,7 +380,7 @@ public final class Util {
               scratchArc.copyFrom(path.arc);
               arcCopyIsPending = false;
             }
-            fst.readNextArc(path.arc, fstReader);
+            fst.readNextArc(path.arc, fstReader, node);
           }
 
           assert foundZero;
@@ -682,7 +682,7 @@ public final class Util {
               // System.out.println("    break");
               break;
             }
-            fst.readNextRealArc(arc, r);
+            fst.readNextRealArc(arc, r, node);
           }
         }
       }
@@ -878,9 +878,18 @@ public final class Util {
       } else if (arc.isLast()) {
         return null;
       } else {
-        fst.readNextRealArc(arc, in);
+        fst.readNextRealArc(arc, in, follow.target());
       }
     }
+  }
+
+  public static int calculateVLongLength(long i) {
+    int l = 1;
+    while ((i & ~0x7FL) != 0L) {
+      i >>>= 7;
+      ++l;
+    }
+    return l;
   }
 
   /**

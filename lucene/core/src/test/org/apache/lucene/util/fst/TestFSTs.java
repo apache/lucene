@@ -1120,9 +1120,10 @@ public class TestFSTs extends LuceneTestCase {
         if (FST.targetHasArcs(arc)) {
           int childCount = 0;
           BytesReader fstReader = fst.getBytesReader();
+          long node = arc.target();
           for (arc = fst.readFirstTargetArc(arc, arc, fstReader);
               ;
-              arc = fst.readNextArc(arc, fstReader), childCount++) {
+              arc = fst.readNextArc(arc, fstReader, node), childCount++) {
             boolean expanded = fst.isExpandedTarget(arc, fstReader);
             int children = verifyStateAndBelow(fst, new FST.Arc<>().copyFrom(arc), depth + 1);
 
@@ -1262,7 +1263,7 @@ public class TestFSTs extends LuceneTestCase {
     assertEquals(17, arc.nextFinalOutput().longValue());
     assertTrue(arc.isFinal());
 
-    arc = fst.readNextArc(arc, fst.getBytesReader());
+    arc = fst.readNextArc(arc, fst.getBytesReader(), startArc.target());
     assertEquals('b', arc.label());
     assertFalse(arc.isFinal());
     assertEquals(42, arc.output().longValue());

@@ -86,6 +86,16 @@ public final class PositiveIntOutputs extends Outputs<Long> {
   }
 
   @Override
+  public long outputSize(Long output) {
+    return Util.calculateVLongLength(output);
+  }
+
+  @Override
+  public long finalOutputSize(Long output) {
+    return Util.calculateVLongLength(output);
+  }
+
+  @Override
   public Long read(DataInput in) throws IOException {
     long v = in.readVLong();
     if (v == 0) {

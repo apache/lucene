@@ -137,11 +137,14 @@ public class FSTCompletion {
       List<Arc<Object>> rootArcs = new ArrayList<>();
       Arc<Object> arc = automaton.getFirstArc(new Arc<>());
       FST.BytesReader fstReader = automaton.getBytesReader();
+
+      long node = arc.target();
+
       automaton.readFirstTargetArc(arc, arc, fstReader);
       while (true) {
         rootArcs.add(new Arc<>().copyFrom(arc));
         if (arc.isLast()) break;
-        automaton.readNextArc(arc, fstReader);
+        automaton.readNextArc(arc, fstReader, node);
       }
 
       Collections.reverse(rootArcs); // we want highest weights first.

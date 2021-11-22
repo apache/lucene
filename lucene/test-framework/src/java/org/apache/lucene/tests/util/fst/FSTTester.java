@@ -242,10 +242,11 @@ public class FSTTester<T> {
 
     while (true) {
       // read all arcs:
+      long node = arc.target();
       fst.readFirstTargetArc(arc, arc, fstReader);
       arcs.add(new FST.Arc<T>().copyFrom(arc));
       while (!arc.isLast()) {
-        fst.readNextArc(arc, fstReader);
+        fst.readNextArc(arc, fstReader, node);
         arcs.add(new FST.Arc<T>().copyFrom(arc));
       }
 

@@ -1228,6 +1228,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
       if (FST.targetHasArcs(arc)) {
         // System.out.println("  targetHasArcs");
         result.grow(1 + upto);
+        long node = arc.target();
         fr.index.readFirstRealTargetArc(arc.target(), arc, fstReader);
 
         if (arc.bytesPerArc() != 0 && arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH) {
@@ -1308,7 +1309,8 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
             } else {
               // System.out.println("  next arc");
               // Read next arc in this node:
-              fr.index.readNextRealArc(arc, fstReader);
+
+              fr.index.readNextRealArc(arc, fstReader, node);
             }
           }
         }

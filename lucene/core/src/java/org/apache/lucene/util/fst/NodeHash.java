@@ -72,7 +72,7 @@ final class NodeHash<T> {
           return false;
         }
       }
-      fst.readNextRealArc(scratchArc, in);
+      fst.readNextRealArc(scratchArc, in, address);
     }
 
     return false;
@@ -123,7 +123,7 @@ final class NodeHash<T> {
       if (scratchArc.isLast()) {
         break;
       }
-      fst.readNextRealArc(scratchArc, in);
+      fst.readNextRealArc(scratchArc, in, node);
     }
     // System.out.println("  ret " + (h&Integer.MAX_VALUE));
     return h & Long.MAX_VALUE;

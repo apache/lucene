@@ -94,6 +94,9 @@ public final class FST<T> implements Accountable {
    */
   static final byte ARCS_FOR_DIRECT_ADDRESSING = 1 << 6;
 
+  /** This flag is set if the target of the arc is a relative instead of an absolute pointer */
+  private static final byte BIT_ARC_RELATIVE_TARGET = (byte) (1 << 7);
+
   /**
    * @see #shouldExpandNodeWithFixedLengthArcs
    */
@@ -665,10 +668,16 @@ public final class FST<T> implements Accountable {
     fstCompiler.arcCount += nodeIn.numArcs;
 
     final int lastArc = nodeIn.numArcs - 1;
-
     long lastArcStart = fstCompiler.bytes.getPosition();
     int maxBytesPerArc = 0;
     int maxBytesPerArcWithoutLabel = 0;
+
+    long estimateNodeAddress = 0;
+
+    if (doFixedLengthArcs == false) {
+      estimateNodeAddress = estimateNodeAddress(fstCompiler, nodeIn);
+    }
+
     for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
       final FSTCompiler.Arc<T> arc = nodeIn.arcs[arcIdx];
       final FSTCompiler.CompiledNode target = (FSTCompiler.CompiledNode) arc.target;
@@ -706,6 +715,22 @@ public final class FST<T> implements Accountable {
         flags += BIT_ARC_HAS_OUTPUT;
       }
 
+      // we have to write the flags before the target, that means we have to decide
+      // _now_ if relative or absolute
+      long targetNode = 0;
+      if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
+        assert target.node > 0;
+        long relativeTarget =
+            estimateNodeAddress > 0 ? estimateNodeAddress - target.node : Long.MAX_VALUE;
+
+        if (relativeTarget > target.node) {
+          targetNode = target.node;
+        } else {
+          flags += BIT_ARC_RELATIVE_TARGET;
+          targetNode = relativeTarget;
+        }
+      }
+
       fstCompiler.bytes.writeByte((byte) flags);
       long labelStart = fstCompiler.bytes.getPosition();
       writeLabel(fstCompiler.bytes, arc.label);
@@ -726,9 +751,9 @@ public final class FST<T> implements Accountable {
       }
 
       if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
-        assert target.node > 0;
+        assert targetNode > 0;
         // System.out.println("    write target");
-        fstCompiler.bytes.writeVLong(target.node);
+        fstCompiler.bytes.writeVLong(targetNode);
       }
 
       // just write the arcs "like normal" on first pass, but record how many bytes each one took
@@ -785,6 +810,8 @@ public final class FST<T> implements Accountable {
     final long thisNodeAddress = fstCompiler.bytes.getPosition() - 1;
     fstCompiler.bytes.reverse(startAddress, thisNodeAddress);
     fstCompiler.nodeCount++;
+
+    assert estimateNodeAddress == 0 || estimateNodeAddress == thisNodeAddress;
     return thisNodeAddress;
   }
 
@@ -1006,6 +1033,98 @@ public final class FST<T> implements Accountable {
     assert bytePos - dest == numPresenceBytes;
   }
 
+  private long estimateNodeAddress(
+      FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn) {
+    T NO_OUTPUT = outputs.getNoOutput();
+
+    // TODO: add support for BYTE4 which uses a variable length encoding
+    if (inputType != INPUT_TYPE.BYTE1 && inputType != INPUT_TYPE.BYTE2) {
+      return 0L;
+    }
+
+    // -1 as done at the end of addNode
+    long estimateNodeAddress = fstCompiler.bytes.getPosition() - 1;
+
+    // 1st pass: add the fields we know and are fixed in size
+    for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
+      final FSTCompiler.Arc<T> arc = nodeIn.arcs[arcIdx];
+      final FSTCompiler.CompiledNode target = (FSTCompiler.CompiledNode) arc.target;
+
+      // account for BIT_TARGET_NEXT
+      if (fstCompiler.lastFrozenNode != target.node) {
+        // if it has a target, assume we can encode the target using 1 byte
+        if (target.node > 0) {
+          ++estimateNodeAddress;
+        }
+      } else if (nodeIn.numArcs == 1) {
+        // just 1 arc, which is encoded with BIT_TARGET_NEXT, this optimization is not required
+        return -1L;
+      }
+
+      // account for flags
+      ++estimateNodeAddress;
+
+      // account for the label
+      if (inputType == INPUT_TYPE.BYTE1) {
+        estimateNodeAddress++;
+      } else if (inputType == INPUT_TYPE.BYTE2) {
+        estimateNodeAddress += 2;
+      }
+      if (arc.output != NO_OUTPUT) {
+        estimateNodeAddress += outputs.outputSize(arc.output);
+      }
+      if (arc.nextFinalOutput != NO_OUTPUT) {
+        estimateNodeAddress += outputs.finalOutputSize(arc.nextFinalOutput);
+      }
+    }
+
+    // 2nd pass
+    long tolerance = Long.MAX_VALUE;
+    int overshoot = 0;
+    for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
+      final FSTCompiler.Arc<T> arc = nodeIn.arcs[arcIdx];
+      final FSTCompiler.CompiledNode target = (FSTCompiler.CompiledNode) arc.target;
+
+      // skip if BIT_TARGET_NEXT or no target node
+      if (fstCompiler.lastFrozenNode == target.node || target.node < 0) {
+        continue;
+      }
+      // check if relativeTarget is smaller than target.node
+      long relativeTarget = estimateNodeAddress - target.node;
+
+      // check if target.node is smaller
+      if (relativeTarget > target.node) {
+        overshoot += Util.calculateVLongLength(target.node) - 1;
+      } else if (relativeTarget < 0x80L) {
+        tolerance = Math.min(tolerance, 0x7FL - relativeTarget);
+        // we overshoot by 1
+      } else if (relativeTarget < (0x4000L - 1)) {
+        ++overshoot;
+        tolerance = Math.min(tolerance, 0x4000L - relativeTarget - 1);
+        // we overshoot by 2
+      } else if (relativeTarget < 0x200000L - 2) {
+        overshoot += 2;
+        tolerance = Math.min(tolerance, 0x200000L - relativeTarget - 2);
+        // we overshoot by 3
+      } else if (relativeTarget < 0x10000000L) {
+        overshoot += 3;
+        tolerance = Math.min(tolerance, 0x10000000L - relativeTarget - 3);
+      } else {
+        // we overshoot by >= 4, unlikely scenario and if, probably use absolute coding instead
+        return 0L;
+      }
+    }
+
+    if (overshoot < tolerance) {
+      // our estimation worked perfectly or we overshoot the initial estimation within the tolerance
+      estimateNodeAddress += overshoot;
+      return estimateNodeAddress;
+    }
+
+    // TODO: we could do a 3rd round with the new estimation to catch a couple more cases
+    return 0L;
+  }
+
   /**
    * Gets the number of bytes required to flag the presence of each arc in the given label range,
    * one bit per arc.
@@ -1054,7 +1173,8 @@ public final class FST<T> implements Accountable {
    *
    * @return Returns the second argument (<code>arc</code>).
    */
-  Arc<T> readLastTargetArc(Arc<T> follow, Arc<T> arc, BytesReader in) throws IOException {
+  Arc<T> readLastTargetArc(Arc<T> follow, Arc<T> arc, BytesReader in, long nodeAddress)
+      throws IOException {
     // System.out.println("readLast");
     if (!targetHasArcs(follow)) {
       // System.out.println("  end node");
@@ -1082,7 +1202,7 @@ public final class FST<T> implements Accountable {
         } else {
           arc.arcIdx = arc.numArcs() - 2;
           arc.posArcsStart = in.getPosition();
-          readNextRealArc(arc, in);
+          readNextRealArc(arc, in, nodeAddress);
         }
       } else {
         arc.flags = flags;
@@ -1108,7 +1228,7 @@ public final class FST<T> implements Accountable {
         // Undo the byte flags we read:
         in.skipBytes(-1);
         arc.nextArc = in.getPosition();
-        readNextRealArc(arc, in);
+        readNextRealArc(arc, in, nodeAddress);
       }
       assert arc.isLast();
       return arc;
@@ -1175,7 +1295,7 @@ public final class FST<T> implements Accountable {
       arc.bytesPerArc = 0;
     }
 
-    return readNextRealArc(arc, in);
+    return readNextRealArc(arc, in, nodeAddress);
   }
 
   /**
@@ -1193,7 +1313,7 @@ public final class FST<T> implements Accountable {
   }
 
   /** In-place read; returns the arc. */
-  public Arc<T> readNextArc(Arc<T> arc, BytesReader in) throws IOException {
+  public Arc<T> readNextArc(Arc<T> arc, BytesReader in, long nodeAddress) throws IOException {
     if (arc.label() == END_LABEL) {
       // This was a fake inserted "final" arc
       if (arc.nextArc() <= 0) {
@@ -1201,7 +1321,8 @@ public final class FST<T> implements Accountable {
       }
       return readFirstRealTargetArc(arc.nextArc(), arc, in);
     } else {
-      return readNextRealArc(arc, in);
+      // Todo: should not be -1 here
+      return readNextRealArc(arc, in, nodeAddress);
     }
   }
 
@@ -1261,7 +1382,7 @@ public final class FST<T> implements Accountable {
     in.setPosition(arc.posArcsStart() - idx * (long) arc.bytesPerArc());
     arc.arcIdx = idx;
     arc.flags = in.readByte();
-    return readArc(arc, in);
+    return readArc(arc, in, -1L);
   }
 
   /**
@@ -1289,7 +1410,7 @@ public final class FST<T> implements Accountable {
     arc.arcIdx = rangeIndex;
     arc.presenceIndex = presenceIndex;
     arc.flags = in.readByte();
-    return readArc(arc, in);
+    return readArc(arc, in, -1);
   }
 
   /**
@@ -1304,7 +1425,8 @@ public final class FST<T> implements Accountable {
   }
 
   /** Never returns null, but you should never call this if arc.isLast() is true. */
-  public Arc<T> readNextRealArc(Arc<T> arc, final BytesReader in) throws IOException {
+  public Arc<T> readNextRealArc(Arc<T> arc, final BytesReader in, long nodeAddress)
+      throws IOException {
 
     // TODO: can't assert this because we call from readFirstArc
     // assert !flag(arc.flags, BIT_LAST_ARC);
@@ -1330,7 +1452,7 @@ public final class FST<T> implements Accountable {
         in.setPosition(arc.nextArc());
         arc.flags = in.readByte();
     }
-    return readArc(arc, in);
+    return readArc(arc, in, nodeAddress);
   }
 
   /**
@@ -1338,7 +1460,7 @@ public final class FST<T> implements Accountable {
    * Precondition: The arc flags byte has already been read and set; the given BytesReader is
    * positioned just after the arc flags byte.
    */
-  private Arc<T> readArc(Arc<T> arc, BytesReader in) throws IOException {
+  private Arc<T> readArc(Arc<T> arc, BytesReader in, long nodeAddress) throws IOException {
     if (arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING) {
       arc.label = arc.firstLabel() + arc.arcIdx();
     } else {
@@ -1381,6 +1503,9 @@ public final class FST<T> implements Accountable {
         }
       }
       arc.target = in.getPosition();
+    } else if (arc.flag(BIT_ARC_RELATIVE_TARGET)) {
+      arc.target = nodeAddress - readUnpackedNodeTarget(in);
+      arc.nextArc = in.getPosition(); // Only useful for list.
     } else {
       arc.target = readUnpackedNodeTarget(in);
       arc.nextArc = in.getPosition(); // Only useful for list.
@@ -1437,6 +1562,7 @@ public final class FST<T> implements Accountable {
       return null;
     }
 
+    long targetAddress = follow.target();
     in.setPosition(follow.target());
 
     // System.out.println("fta label=" + (char) labelToMatch);
@@ -1478,7 +1604,7 @@ public final class FST<T> implements Accountable {
         } else {
           arc.arcIdx = mid - 1;
           // System.out.println("    found!");
-          return readNextRealArc(arc, in);
+          return readNextRealArc(arc, in, targetAddress);
         }
       }
       return null;
@@ -1500,7 +1626,7 @@ public final class FST<T> implements Accountable {
       } else if (arc.isLast()) {
         return null;
       } else {
-        readNextRealArc(arc, in);
+        readNextRealArc(arc, in, targetAddress);
       }
     }
   }

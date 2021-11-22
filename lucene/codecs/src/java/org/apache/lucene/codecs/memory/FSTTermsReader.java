@@ -646,7 +646,7 @@ public class FSTTermsReader extends FieldsProducer {
           return null;
         }
         while (!frame.fstArc.isLast()) {
-          frame.fstArc = fst.readNextRealArc(frame.fstArc, fstReader);
+          frame.fstArc = fst.readNextRealArc(frame.fstArc, fstReader, top.fstArc.target());
           frame.fsaState = fsa.step(top.fsaState, frame.fstArc.label());
           if (frame.fsaState != -1) {
             break;
@@ -764,7 +764,7 @@ public class FSTTermsReader extends FieldsProducer {
           if (arc.isLast()) {
             break;
           } else {
-            fst.readNextRealArc(arc, reader);
+            fst.readNextRealArc(arc, reader, node);
           }
         }
       }

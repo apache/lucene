@@ -109,7 +109,7 @@ abstract class FSTEnum<T> {
           return;
         }
       }
-      fst.readNextArc(arcs[upto], fstReader);
+      fst.readNextArc(arcs[upto], fstReader, arcs[upto - 1].target());
     }
 
     pushFirst();
@@ -177,7 +177,7 @@ abstract class FSTEnum<T> {
         // System.out.println("  rollback upto=" + upto + " arc.label=" + prevArc.label + "
         // isLast?=" + prevArc.isLast());
         if (!prevArc.isLast()) {
-          fst.readNextArc(prevArc, fstReader);
+          fst.readNextArc(prevArc, fstReader, arcs[upto - 1].target());
           pushFirst();
           return null;
         }
@@ -242,7 +242,7 @@ abstract class FSTEnum<T> {
         // System.out.println("  rollback upto=" + upto + " arc.label=" + prevArc.label + "
         // isLast?=" + prevArc.isLast());
         if (!prevArc.isLast()) {
-          fst.readNextArc(prevArc, fstReader);
+          fst.readNextArc(prevArc, fstReader, arcs[upto - 1].target());
           pushFirst();
           return null;
         }
@@ -284,7 +284,7 @@ abstract class FSTEnum<T> {
         // System.out.println("  rollback upto=" + upto + " arc.label=" + prevArc.label + "
         // isLast?=" + prevArc.isLast());
         if (!prevArc.isLast()) {
-          fst.readNextArc(prevArc, fstReader);
+          fst.readNextArc(prevArc, fstReader, arcs[upto - 1].target());
           pushFirst();
           return null;
         }
@@ -293,7 +293,7 @@ abstract class FSTEnum<T> {
     } else {
       // keep scanning
       // System.out.println("    next scan");
-      fst.readNextArc(arc, fstReader);
+      fst.readNextArc(arc, fstReader, arcs[upto - 1].target());
     }
     return arc;
   }
@@ -405,7 +405,7 @@ abstract class FSTEnum<T> {
             }
           } else {
             while (!arc.isLast() && fst.readNextArcLabel(arc, in) < targetLabel) {
-              fst.readNextArc(arc, fstReader);
+              fst.readNextArc(arc, fstReader, arcs[upto - 1].target());
             }
           }
         }
@@ -524,7 +524,7 @@ abstract class FSTEnum<T> {
           // Then, scan forwards to the arc just before
           // the targetLabel:
           while (!arc.isLast() && fst.readNextArcLabel(arc, fstReader) < targetLabel) {
-            fst.readNextArc(arc, fstReader);
+            fst.readNextArc(arc, fstReader, arcs[upto - 1].target());
           }
           pushLast();
           return null;
@@ -544,7 +544,7 @@ abstract class FSTEnum<T> {
         return null;
       } else {
         // keep scanning
-        return fst.readNextArc(arc, fstReader);
+        return fst.readNextArc(arc, fstReader, arcs[upto - 1].target());
       }
     } else {
       pushLast();
@@ -656,7 +656,7 @@ abstract class FSTEnum<T> {
       }
       incr();
 
-      arc = fst.readLastTargetArc(arc, getArc(upto), fstReader);
+      arc = fst.readLastTargetArc(arc, getArc(upto), fstReader, arcs[upto].target());
     }
   }
 

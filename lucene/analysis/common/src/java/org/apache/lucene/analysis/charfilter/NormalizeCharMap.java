@@ -58,7 +58,7 @@ public class NormalizeCharMap {
             if (scratchArc.isLast()) {
               break;
             }
-            map.readNextRealArc(scratchArc, fstReader);
+            map.readNextRealArc(scratchArc, fstReader, scratchArc.target());
           }
         }
         // System.out.println("cached " + cachedRootArcs.size() + " root arcs");

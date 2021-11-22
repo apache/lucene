@@ -130,7 +130,10 @@ public class FSTUtil {
                     fst.outputs.add(path.output, nextArc.output()),
                     newInput));
             final int label = nextArc.label(); // used in assert
-            nextArc = nextArc.isLast() ? null : fst.readNextRealArc(nextArc, fstReader);
+            nextArc =
+                nextArc.isLast()
+                    ? null
+                    : fst.readNextRealArc(nextArc, fstReader, path.fstNode.target());
             assert nextArc == null || label < nextArc.label()
                 : "last: " + label + " next: " + nextArc.label();
           }
