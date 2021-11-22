@@ -87,7 +87,6 @@ final class SimpleTextBKDReader extends PointValues {
     int nodeID;
     int level;
     final int rootNode;
-    final int lastLeafNodeCount;
     // holds the min / max value of the current node.
     private final byte[] minPackedValue, maxPackedValue;
     // holds the previous value of the split dimension
@@ -107,9 +106,6 @@ final class SimpleTextBKDReader extends PointValues {
       int treeDepth = getTreeDepth(leafNodeOffset);
       splitDimValueStack = new byte[treeDepth + 1][];
       splitDims = new int[treeDepth + 1];
-      int lastLeafNodeCount = Math.toIntExact(pointCount % config.maxPointsInLeafNode);
-      this.lastLeafNodeCount =
-          lastLeafNodeCount == 0 ? config.maxPointsInLeafNode : lastLeafNodeCount;
     }
 
     private int getTreeDepth(int numLeaves) {
@@ -291,7 +287,7 @@ final class SimpleTextBKDReader extends PointValues {
     private long sizeFromBalancedTree(int leftMostLeafNode, int rightMostLeafNode) {
       // number of points that need to be distributed between leaves, one per leaf
       final int extraPoints =
-              Math.toIntExact(((long) config.maxPointsInLeafNode * leafNodeOffset) - pointCount);
+          Math.toIntExact(((long) config.maxPointsInLeafNode * leafNodeOffset) - pointCount);
       assert extraPoints < leafNodeOffset : "point excess should be lower than leafNodeOffset";
       // offset where we stop adding one point to the leaves
       final int nodeOffset = leafNodeOffset - extraPoints;
@@ -307,7 +303,8 @@ final class SimpleTextBKDReader extends PointValues {
       return count;
     }
 
-    private int balanceTreeNodePosition(int minNode, int maxNode, int node, int position, int level) {
+    private int balanceTreeNodePosition(
+        int minNode, int maxNode, int node, int position, int level) {
       if (maxNode - minNode == 1) {
         return position;
       }
