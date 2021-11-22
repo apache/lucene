@@ -470,7 +470,8 @@ public class BKDReader extends PointValues {
       return count;
     }
 
-    private int balanceTreeNodePosition(int minNode, int maxNode, int node, int position, int level) {
+    private int balanceTreeNodePosition(
+        int minNode, int maxNode, int node, int position, int level) {
       if (maxNode - minNode == 1) {
         return position;
       }
