@@ -142,10 +142,6 @@ public class IndriQueryParser {
 
   /**
    * Remove a weight from an argument string. Return the weight and the modified argument string.
-   *
-   * @param String A partial query argument string, e.g., "3.0 fu 2.0 bar".
-   * @return PopData<String,String> The weight string and the modified argString (e.g., "3.0" and
-   *     "fu 2.0 bar".
    */
   private PopWeight popWeight(String argString, Float weight) {
 
@@ -165,10 +161,6 @@ public class IndriQueryParser {
   /**
    * Remove a subQuery from an argument string. Return the subquery and the modified argument
    * string.
-   *
-   * @param String A partial query argument string, e.g., "#and(a b) c d".
-   * @return PopData<String,String> The subquery string and the modified argString (e.g., "#and(a
-   *     b)" and "c d".
    */
   private String popSubquery(
       String argString, QueryParserOperatorQuery queryTree, Float weight, Occur occur) {
@@ -189,10 +181,6 @@ public class IndriQueryParser {
 
   /**
    * Remove a term from an argument string. Return the term and the modified argument string.
-   *
-   * @param String A partial query argument string, e.g., "a b c d".
-   * @return PopData<String,String> The term string and the modified argString (e.g., "a" and "b c
-   *     d".
    */
   private String popTerm(
       String argString, QueryParserOperatorQuery queryTree, Float weight, Occur occur) {
