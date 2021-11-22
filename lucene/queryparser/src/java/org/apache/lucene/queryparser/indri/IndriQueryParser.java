@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -41,13 +40,13 @@ import org.apache.lucene.util.BytesRef;
  * <ul>
  *   <li>'{@code #and(t1 t2)}' specifies {@code IndriAnd} operation: <code>#and(term1 term2)</code>
  *   <li>'{@code #or(t1 t2)}' specifies {@code IndriOr} operation: <code>#or(term1 term2)</code>
- *   <li>'{@code #wsum(boost1 token1 boost2 token2)}' specifies {@code IndriOr} operation: <code>#wsum(1.0 term1 2.0 term2)</code>
+ *   <li>'{@code #wsum(boost1 token1 boost2 token2)}' specifies {@code IndriOr} operation: <code>
+ *       #wsum(1.0 term1 2.0 term2)</code>
  * </ul>
  *
- * <p>The default operator is {@code IndriAnd} if no other operator is
- * specified. For example, the following will {@code IndriAnd} {@code token1} and {@code token2} together:
- * <code>token1 token2</code>
- *
+ * <p>The default operator is {@code IndriAnd} if no other operator is specified. For example, the
+ * following will {@code IndriAnd} {@code token1} and {@code token2} together: <code>token1 token2
+ * </code>
  */
 public class IndriQueryParser {
 
@@ -181,9 +180,7 @@ public class IndriQueryParser {
     return argString;
   }
 
-  /**
-   * Remove a term from an argument string. Return the term and the modified argument string.
-   */
+  /** Remove a term from an argument string. Return the term and the modified argument string. */
   private String popTerm(
       String argString, QueryParserOperatorQuery queryTree, Float weight, Occur occur) {
     String[] substrings = argString.split("[ \t\n\r]+", 2);
