@@ -106,7 +106,7 @@ ExtFmtZwj           = [\p{WB:Format}\p{WB:Extend}\p{WB:ZWJ}]*
 
 HangulEx            = [\p{Script:Hangul}&&[\p{WB:ALetter}\p{WB:Hebrew_Letter}]] {ExtFmtZwj}
 AHLetterEx          = [\p{WB:ALetter}\p{WB:Hebrew_Letter}]                      {ExtFmtZwj}
-NumericEx           = [\p{WB:Numeric}[\p{Blk:HalfAndFullForms}&&\p{Nd}]]        {ExtFmtZwj}
+NumericEx           = [\p{WB:Numeric}]                                          {ExtFmtZwj}
 KatakanaEx          = \p{WB:Katakana}                                           {ExtFmtZwj} 
 MidLetterEx         = [\p{WB:MidLetter}\p{WB:MidNumLet}\p{WB:SingleQuote}]      {ExtFmtZwj} 
 MidNumericEx        = [\p{WB:MidNum}\p{WB:MidNumLet}\p{WB:SingleQuote}]         {ExtFmtZwj}

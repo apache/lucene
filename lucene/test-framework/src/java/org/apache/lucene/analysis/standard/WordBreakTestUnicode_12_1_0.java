@@ -35,8 +35,7 @@ import org.junit.Ignore;
  * Hiragana} \p{LineBreak = Complex_Context} (From
  * http://www.unicode.org/Public/12.1.0/ucd/LineBreak.txt) \p{WordBreak = ALetter} (From
  * http://www.unicode.org/Public/12.1.0/ucd/auxiliary/WordBreakProperty.txt) \p{WordBreak =
- * Hebrew_Letter} \p{WordBreak = Katakana} \p{WordBreak = Numeric} (Excludes full-width Arabic
- * digits) [\uFF10-\uFF19] (Full-width Arabic digits) \p{Extended_Pictographic} (From
+ * Hebrew_Letter} \p{WordBreak = Katakana} \p{WordBreak = Numeric} \p{Extended_Pictographic} (From
  * http://www.unicode.org/Public/emoji/12.1/emoji-data.txt)
  */
 @Ignore

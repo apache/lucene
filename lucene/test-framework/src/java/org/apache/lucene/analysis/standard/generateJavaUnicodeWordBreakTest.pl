@@ -82,8 +82,7 @@ import org.junit.Ignore;
  *    \\p{WordBreak = ALetter}         (From $word_break_url)
  *    \\p{WordBreak = Hebrew_Letter}
  *    \\p{WordBreak = Katakana}
- *    \\p{WordBreak = Numeric}         (Excludes full-width Arabic digits)
- *    [\\uFF10-\\uFF19]                 (Full-width Arabic digits)
+ *    \\p{WordBreak = Numeric}
  *    \\p{Extended_Pictographic}       (From $emoji_url)
  */
 \@Ignore
@@ -93,7 +92,6 @@ public class ${class_name} extends BaseTokenStreamTestCase {
 __HEADER__
 
 my $codepoints = [];
-map { $codepoints->[$_] = 1 } (0xFF10..0xFF19);
 my $regional_indicator_codepoints = [];
 # Complex_Context is an alias for 'SA', which is used in LineBreak.txt
 # Using lowercase versions of property value names to allow for case-
