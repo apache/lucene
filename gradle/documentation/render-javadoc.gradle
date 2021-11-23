@@ -353,7 +353,7 @@ class RenderJavadocTask extends DefaultTask {
 
   @TaskAction
   public void render() {
-    def srcDirs = srcDirSet.srcDirs.findAll { dir -> dir.exists() }
+    Set<File> srcDirs = srcDirSet.srcDirs.findAll { dir -> dir.exists() }
     def optionsFile = project.file("${getTemporaryDir()}/javadoc-options.txt")
     
     // create the directory, so relative link calculation knows that it's a directory:
@@ -361,8 +361,6 @@ class RenderJavadocTask extends DefaultTask {
     
     def opts = []
     opts << [ '-overview', project.file("${srcDirs[0]}/overview.html") ]
-    opts << [ '-sourcepath', srcDirs.join(File.pathSeparator) ]
-    opts << [ '-subpackages', project.path.startsWith(':lucene') ? 'org.apache.lucene' : 'org.apache.solr' ]
     opts << [ '-d', outputDir ]
     opts << '-protected'
     opts << [ '-encoding', 'UTF-8' ]
@@ -453,6 +451,14 @@ class RenderJavadocTask extends DefaultTask {
     // -J options have to be passed on command line, they are not interpreted if passed via args file.
     def jOpts = opts.findAll { opt -> opt instanceof String && opt.startsWith("-J") }
     opts.removeAll(jOpts)
+
+    // Collect all source files, for now excluding module descriptors (these would require a proper setup of module paths,
+    // dependencies on other JARs, etc.). It's complicated like hell.
+    opts.addAll(
+        srcDirs.collectMany { dir ->
+          project.fileTree(dir: dir, include: "**/*.java", exclude: "**/module-info.java").files
+        }.collect { it.toString() }
+    )
 
     // Temporary file that holds all javadoc options for the current task (except jOpts)
     optionsFile.withWriter("UTF-8", { writer ->
