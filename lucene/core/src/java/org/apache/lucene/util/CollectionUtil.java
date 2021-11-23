@@ -127,6 +127,7 @@ public final class CollectionUtil {
    * implement {@link RandomAccess}. This method uses the intro sort algorithm, but falls back to
    * insertion sort for small lists.
    *
+   * @see IntroSorter
    * @throws IllegalArgumentException if list is e.g. a linked list without random access.
    */
   public static <T> void introSort(List<T> list, Comparator<? super T> comp) {
@@ -140,6 +141,7 @@ public final class CollectionUtil {
    * RandomAccess}. This method uses the intro sort algorithm, but falls back to insertion sort for
    * small lists.
    *
+   * @see IntroSorter
    * @throws IllegalArgumentException if list is e.g. a linked list without random access.
    */
   public static <T extends Comparable<? super T>> void introSort(List<T> list) {
@@ -155,6 +157,7 @@ public final class CollectionUtil {
    * implement {@link RandomAccess}. This method uses the Tim sort algorithm, but falls back to
    * binary sort for small lists.
    *
+   * @see TimSorter
    * @throws IllegalArgumentException if list is e.g. a linked list without random access.
    */
   public static <T> void timSort(List<T> list, Comparator<? super T> comp) {
@@ -168,6 +171,7 @@ public final class CollectionUtil {
    * RandomAccess}. This method uses the Tim sort algorithm, but falls back to binary sort for small
    * lists.
    *
+   * @see TimSorter
    * @throws IllegalArgumentException if list is e.g. a linked list without random access.
    */
   public static <T extends Comparable<? super T>> void timSort(List<T> list) {

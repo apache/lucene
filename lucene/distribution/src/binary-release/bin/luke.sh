@@ -15,5 +15,5 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-MODULES=$(cd $(dirname $0) && pwd)
-java --module-path $MODULES/modules;$MODULES/modules-thirdparty --module lucene.luke
+MODULES=$(cd $(dirname $0)/.. && pwd)
+java --module-path $MODULES/modules:$MODULES/modules-thirdparty --module lucene.luke
