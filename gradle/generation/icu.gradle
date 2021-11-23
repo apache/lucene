@@ -283,35 +283,3 @@ configure(project(":lucene:analysis:common")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
 }
-
-
-// UnicodeEmojiProperties.jflex
-configure(project(":lucene:core")) {
-  task generateEmojiPropertiesInternal() {
-    def icuConfig = rootProject.configurations.icu_current
-    def outputFile = file("src/data/jflex/UnicodeEmojiProperties.jflex")
-
-    description "Regenerate ${outputFile} (with ${icuConfig.name})"
-    group "generation"
-
-    dependsOn icuConfig
-
-    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
-    outputs.file outputFile
-
-    doFirst {
-      project.javaexec {
-        main "groovy.lang.GroovyShell"
-        classpath icuConfig, rootProject.configurations.groovy
-
-        args = [
-            "--encoding", "UTF-8",
-            file("${resources}/GenerateEmojiProperties.groovy"),
-            outputFile
-        ]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiPropertiesInternal)
-}

@@ -52,8 +52,10 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 //////////////////////////////////////////////////////////////////////////
 // Begin Emoji Macros - see documentation below, near the EMOJI_TYPE rule
 
-// TODO: Remove this include file when JFlex supports these properties directly (in Unicode 11.0+)
-%include ../../../../../../data/jflex/UnicodeEmojiProperties.jflex
+Emoji = \p{Emoji}
+Emoji_Modifier = \p{Emoji_Modifier}
+Emoji_Modifier_Base = \p{Emoji_Modifier_Base}
+Extended_Pictographic = \p{Extended_Pictographic}
 
 // UAX#29 WB4.  X (Extend | Format | ZWJ)* --> X
 //
@@ -174,13 +176,11 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 //
 <<EOF>> { return YYEOF; }
 
-// Instead of these: UAX#29 WB3c. ZWJ × (Glue_After_Zwj | EBG)
-//                          WB14. (E_Base | EBG) × E_Modifier
+// Instead of these: UAX#29 WB3c. ZWJ × \p{Extended_Pictographic}
 //                          WB15. ^ (RI RI)* RI × RI
 //                          WB16. [^RI] (RI RI)* RI × RI
 //
-// We use the "emoji_sequence" rule from http://www.unicode.org/reports/tr51/tr51-14.html (Unicode 11.0)
-// and the Emoji data from http://unicode.org/Public/emoji/11.0/emoji-data.txt (in included file UnicodeEmojiProperties.jflex)
+// We use the "emoji_sequence" rule from http://www.unicode.org/reports/tr51/tr51-16.html (Unicode 12.0)
 // 
 // emoji_sequence :=
 //    Top-level EBNF           Expanded #1                       Expanded #2                       Expanded #3
@@ -202,7 +202,7 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 //                             tag_spec                                                            [\u{E0020}-\u{E007E}]+
 //                             tag_term                                                            \u{E007F}
 //
-// [1] https://unicode.org/Public/emoji/11.0/emoji-test.txt includes key cap sequences 
+// [1] https://unicode.org/Public/emoji/12.1/emoji-test.txt includes key cap sequences 
 //     WITHOUT \uFE0F (emoji presentation indicator), annotating them as "non-fully-qualified";
 //     TR#51 says about non-fully-qualified *ZWJ sequences* that implementations may
 //     choose whether to support them for segmentation.  This implementation will
