@@ -1650,7 +1650,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         String name = entry.getKey();
         Directory origDir = entry.getValue();
         int indexCreatedVersion =
-            SegmentInfos.readLatestCommit(entry.getValue()).getIndexCreatedVersionMajor();
+            SegmentInfos.readLatestCommit(origDir).getIndexCreatedVersionMajor();
         Path dir = createTempDir(name);
         try (FSDirectory fsDir = FSDirectory.open(dir)) {
           for (String file : origDir.listAll()) {
