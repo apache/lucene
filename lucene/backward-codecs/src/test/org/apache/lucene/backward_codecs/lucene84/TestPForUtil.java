@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.backward_codecs.lucene84;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -30,8 +30,6 @@ import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.packed.PackedInts;
-
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 
 @Nightly // N-2 formats are only tested on nightly runs
 public class TestPForUtil extends LuceneTestCase {

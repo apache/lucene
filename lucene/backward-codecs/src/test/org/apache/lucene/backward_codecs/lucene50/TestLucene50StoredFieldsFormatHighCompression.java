@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_codecs.lucene50;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.backward_codecs.lucene50.Lucene50StoredFieldsFormat.Mode;
 import org.apache.lucene.backward_codecs.lucene86.Lucene86RWCodec;
 import org.apache.lucene.codecs.Codec;
@@ -27,8 +28,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase.Nightly;
-
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 
 @Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene50StoredFieldsFormatHighCompression extends BaseStoredFieldsFormatTestCase {

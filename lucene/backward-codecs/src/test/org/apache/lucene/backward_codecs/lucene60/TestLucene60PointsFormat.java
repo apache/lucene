@@ -18,7 +18,6 @@ package org.apache.lucene.backward_codecs.lucene60;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.backward_codecs.lucene84.Lucene84RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryPoint;

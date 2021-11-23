@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.backward_codecs.packed;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
-
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexInput;
@@ -28,8 +28,6 @@ import org.apache.lucene.util.RamUsageTester;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedInts.Reader;
-
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 
 @Nightly // N-2 formats are only tested on nightly runs
 public class TestLegacyPackedInts extends LuceneTestCase {

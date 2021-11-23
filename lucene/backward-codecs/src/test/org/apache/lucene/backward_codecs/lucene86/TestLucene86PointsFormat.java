@@ -18,7 +18,6 @@ package org.apache.lucene.backward_codecs.lucene86;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;

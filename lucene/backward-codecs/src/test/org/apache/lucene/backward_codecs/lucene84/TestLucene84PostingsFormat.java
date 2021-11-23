@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.backward_codecs.lucene40.blocktree.FieldReader;
 import org.apache.lucene.backward_codecs.lucene40.blocktree.Stats;

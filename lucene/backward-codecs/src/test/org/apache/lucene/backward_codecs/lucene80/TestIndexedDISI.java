@@ -18,7 +18,6 @@ package org.apache.lucene.backward_codecs.lucene80;
 
 import java.io.IOException;
 import java.util.Random;
-
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
