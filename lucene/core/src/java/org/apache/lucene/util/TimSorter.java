@@ -20,10 +20,10 @@ import java.util.Arrays;
 
 /**
  * {@link Sorter} implementation based on the <a
- * href="http://svn.python.org/projects/python/trunk/Objects/listsort.txt">TimSort</a> algorithm.
+ * href="http://svn.python.org/projects/python/trunk/Objects/listsort.txt">TimSort</a> algorithm. It
+ * sorts small arrays with a binary sort.
  *
- * <p>This implementation is especially good at sorting partially-sorted arrays and sorts small
- * arrays with binary sort.
+ * <p>This algorithm is stable. It's especially good at sorting partially-sorted arrays.
  *
  * <p><b>NOTE</b>:There are a few differences with the original implementation:
  *
