@@ -1089,6 +1089,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       do {
         assertSize(tree);
       } while (tree.moveToSibling());
+      tree.moveToParent();
     }
   }
 
