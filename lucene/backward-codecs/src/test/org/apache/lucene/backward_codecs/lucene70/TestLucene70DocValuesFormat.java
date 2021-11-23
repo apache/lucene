@@ -66,9 +66,11 @@ import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.TestUtil;
 
 /** Tests Lucene70DocValuesFormat */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene70DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
   private final Codec codec = TestUtil.alwaysDocValuesFormat(new Lucene70DocValuesFormat());
 

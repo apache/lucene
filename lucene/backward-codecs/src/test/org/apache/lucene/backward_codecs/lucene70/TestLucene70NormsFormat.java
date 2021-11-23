@@ -18,8 +18,10 @@ package org.apache.lucene.backward_codecs.lucene70;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseNormsFormatTestCase;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 
 /** Tests Lucene70NormsFormat */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene70NormsFormat extends BaseNormsFormatTestCase {
   @Override
   protected Codec getCodec() {
