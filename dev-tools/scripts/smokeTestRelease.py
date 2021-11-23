@@ -1126,9 +1126,6 @@ def main():
 def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys, testArgs, downloadOnly=False):
   startTime = datetime.datetime.now()
 
-  # disable flakey tests for smoke-tester runs:
-  testArgs = '-Dtests.badapples=false %s' % testArgs
-
   if FORCE_CLEAN:
     if os.path.exists(tmpDir):
       raise RuntimeError('temp dir %s exists; please remove first' % tmpDir)
