@@ -39,7 +39,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  */
 %%
 
-%unicode 9
+%unicode 12.1
 %integer
 %final
 %public

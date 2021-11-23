@@ -24,18 +24,20 @@ use LWP::UserAgent;
 my ($volume, $directory, $script_name) = File::Spec->splitpath($0);
 
 my $version = '';
-unless (GetOptions("version=s" => \$version) && $version =~ /\d+\.\d+\.\d+/) {
+unless (GetOptions("version=s" => \$version) && $version =~ /\d+\.\d+/) {
   print STDERR "Usage: $script_name -v <version>\n";
-  print STDERR "\tversion must be of the form X.Y.Z, e.g. 5.2.0\n"
+  print STDERR "\tversion must be of the form X.Y, e.g. 5.2\n"
       if ($version);
   exit 1;
 }
-my $url_prefix = "http://www.unicode.org/Public/${version}/ucd";
+my $url_prefix = "http://www.unicode.org/Public/${version}.0/ucd";
 my $scripts_url = "${url_prefix}/Scripts.txt";
 my $line_break_url = "${url_prefix}/LineBreak.txt";
 my $word_break_url = "${url_prefix}/auxiliary/WordBreakProperty.txt";
 my $word_break_test_url = "${url_prefix}/auxiliary/WordBreakTest.txt";
-my $underscore_version = $version;
+my $emoji_prefix = "http://www.unicode.org/Public/emoji/${version}";
+my $emoji_url = "${emoji_prefix}/emoji-data.txt";
+my $underscore_version = "${version}.0";
 $underscore_version =~ s/\./_/g;
 my $class_name = "WordBreakTestUnicode_${underscore_version}";
 my $output_filename = "${class_name}.java";
@@ -82,6 +84,7 @@ import org.junit.Ignore;
  *    \\p{WordBreak = Katakana}
  *    \\p{WordBreak = Numeric}         (Excludes full-width Arabic digits)
  *    [\\uFF10-\\uFF19]                 (Full-width Arabic digits)
+ *    \\p{Extended_Pictographic}       (From $emoji_url)
  */
 \@Ignore
 public class ${class_name} extends BaseTokenStreamTestCase {
@@ -99,9 +102,9 @@ parse_Unicode_data_file($line_break_url, $codepoints, {'sa' => 1});
 parse_Unicode_data_file($scripts_url, $codepoints, 
                         {'han' => 1, 'hiragana' => 1});
 parse_Unicode_data_file($word_break_url, $codepoints,
-                        {'aletter' => 1, 'hebrew_letter' => 1, 'katakana' => 1, 'numeric' => 1, 'e_base' => 1,
-                         'e_modifier' => 1, 'glue_after_zwj' => 1, 'e_base_gaz' => 1});
+                        {'aletter' => 1, 'hebrew_letter' => 1, 'katakana' => 1, 'numeric' => 1});
 parse_Unicode_data_file($word_break_url, $regional_indicator_codepoints, {'regional_indicator' => 1});
+parse_Unicode_data_file($emoji_url, $codepoints, {'extended_pictographic' => 1});
 my @tests = split /\r?\n/, get_URL_content($word_break_test_url);
 
 my $output_path = File::Spec->catpath($volume, $directory, $output_filename);
@@ -127,14 +130,20 @@ for my $line (@tests) {
   $test_string =~ s/\\u000D/\\r/g;
   $test_string =~ s/\\u0022/\\\"/g;
   $sequence =~ s/^\s*÷\s*//; # Trim leading break character
-  
-  # TODO: When upgrading JFlex to a version that supports Unicode 11.0+: remove the special case below for a Unicode 9.0 test data line that conflicts with TR#51 11.0 test data
-  # ÷ 200D ÷ 261D ÷  #  ÷ [0.2] ZERO WIDTH JOINER (ZWJ_FE) ÷ [999.0] WHITE UP POINTING INDEX (E_Base) ÷ [0.3]
-  if ($sequence =~ /^200D\s*÷\s*261D$/) {
+
+  # TODO: When refactoring JFlex grammars to new unicode rules, remove these exceptions
+  #
+  # ÷ 0061 × 200D × 1F6D1 ÷  #  ÷ [0.2] LATIN SMALL LETTER A (ALetter) × [4.0] ZERO WIDTH JOINER (ZWJ_FE) × [3.3] OCTAGONAL SIGN (ExtPict) ÷ [0.3]
+  if ($sequence =~ /^0061\s*×\s*200D\s*×\s*1F6D1$/) {
     print OUT "    // Skipping this test because it conflicts with TR#51 v11.0 rules.\n\n";
     next;
   }
-  
+  # ÷ 0061 × 200D × 2701 ÷  #  ÷ [0.2] LATIN SMALL LETTER A (ALetter) × [4.0] ZERO WIDTH JOINER (ZWJ_FE) × [3.3] UPPER BLADE SCISSORS (Other) ÷ [0.3]
+  if ($sequence =~ /^0061\s*×\s*200D\s*×\s*2701$/) {
+    print OUT "    // Skipping this test because it conflicts with TR#51 v11.0 rules.\n\n";
+    next;
+  }
+
   my @tokens = ();
   my $isfirst = 0;
   for my $candidate (split /\s*÷\s*/, $sequence) {
