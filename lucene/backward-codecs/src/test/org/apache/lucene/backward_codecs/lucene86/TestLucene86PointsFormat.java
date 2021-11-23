@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene86;
 
 import java.io.IOException;
 import java.util.Arrays;
+
 import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
@@ -39,9 +40,11 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.bkd.BKDConfig;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
 
   private final Codec codec;

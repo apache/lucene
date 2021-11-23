@@ -17,13 +17,16 @@
 package org.apache.lucene.backward_codecs.store;
 
 import java.io.IOException;
+
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public abstract class EndiannessReverserTestCase extends LuceneTestCase {
 
   protected abstract IndexInput getEndiannessReverserInput(

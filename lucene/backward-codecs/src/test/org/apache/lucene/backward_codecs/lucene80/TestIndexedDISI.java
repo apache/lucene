@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene80;
 
 import java.io.IOException;
 import java.util.Random;
+
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
@@ -29,9 +30,11 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.TestUtil;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestIndexedDISI extends LuceneTestCase {
 
   public void testEmpty() throws IOException {

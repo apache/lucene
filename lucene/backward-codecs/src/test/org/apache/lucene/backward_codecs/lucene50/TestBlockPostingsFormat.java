@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.backward_codecs.lucene40.blocktree.FieldReader;
 import org.apache.lucene.backward_codecs.lucene40.blocktree.Stats;
@@ -39,9 +40,11 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.TestUtil;
 
 /** Tests BlockPostingsFormat */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestBlockPostingsFormat extends BasePostingsFormatTestCase {
   private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene50RWPostingsFormat());
 

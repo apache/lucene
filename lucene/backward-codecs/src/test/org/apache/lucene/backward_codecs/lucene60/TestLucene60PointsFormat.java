@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene60;
 
 import java.io.IOException;
 import java.util.Arrays;
+
 import org.apache.lucene.backward_codecs.lucene84.Lucene84RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryPoint;
@@ -33,10 +34,12 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.bkd.BKDConfig;
 
 /** Tests Lucene60PointsFormat */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
   private final Codec codec;
   private final int maxPointsInLeafNode;
