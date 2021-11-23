@@ -60,9 +60,6 @@ public class TaxonomyFacetSumIntAssociations extends IntTaxonomyFacets {
 
       int doc;
       while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        // System.out.println("  doc=" + doc);
-        // TODO: use OrdinalsReader?  we'd need to add a
-        // BytesRef getAssociation()?
         if (dv.docID() < doc) {
           dv.advance(doc);
         }
