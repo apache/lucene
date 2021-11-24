@@ -106,6 +106,7 @@ import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -1015,11 +1016,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       searchIndex(oldIndexDirs.get(name), name, Version.MIN_SUPPORTED_MAJOR);
     }
 
-    for (String name : binarySupportedNames) {
-      Path oldIndexDir = createTempDir(name);
-      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
-      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-        searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+    if (TEST_NIGHTLY) {
+      for (String name : binarySupportedNames) {
+        Path oldIndexDir = createTempDir(name);
+        TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
+        try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
+          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+        }
       }
     }
   }
@@ -1640,17 +1643,22 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void testCommandLineArgs() throws Exception {
+  public void testIndexUpgraderCommandLineArgs() throws Exception {
 
     PrintStream savedSystemOut = System.out;
     System.setOut(new PrintStream(new ByteArrayOutputStream(), false, "UTF-8"));
     try {
       for (Map.Entry<String, Directory> entry : oldIndexDirs.entrySet()) {
         String name = entry.getKey();
+        Directory origDir = entry.getValue();
         int indexCreatedVersion =
-            SegmentInfos.readLatestCommit(entry.getValue()).getIndexCreatedVersionMajor();
+            SegmentInfos.readLatestCommit(origDir).getIndexCreatedVersionMajor();
         Path dir = createTempDir(name);
-        TestUtil.unzip(getDataInputStream("index." + name + ".zip"), dir);
+        try (FSDirectory fsDir = FSDirectory.open(dir)) {
+          for (String file : origDir.listAll()) {
+            fsDir.copyFrom(origDir, file, file, IOContext.DEFAULT);
+          }
+        }
 
         String path = dir.toAbsolutePath().toString();
 
@@ -2080,6 +2088,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
+  @Nightly
   public void testReadNMinusTwoCommit() throws IOException {
     for (String name : binarySupportedNames) {
       Path oldIndexDir = createTempDir(name);
