@@ -16,13 +16,53 @@
  */
 package org.apache.lucene;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.util.jar.Manifest;
+
 /** Lucene's package information, including version. */
 public final class LucenePackage {
+  private static LucenePackage lazyInstance;
+  private final String implementationVersion;
 
-  private LucenePackage() {} // can't construct
+  private LucenePackage(String implementationVersion) {
+    this.implementationVersion = implementationVersion;
+  }
 
   /** Return Lucene's package, including version information. */
-  public static Package get() {
-    return LucenePackage.class.getPackage();
+  public static synchronized LucenePackage get() {
+    if (lazyInstance == null) {
+      String version;
+
+      Package p = LucenePackage.class.getPackage();
+      version = p.getImplementationVersion();
+
+      if (version == null) {
+        var module = LucenePackage.class.getModule();
+        if (module.isNamed()) {
+          // Running as a module? Try parsing the manifest manually.
+          InputStream is = null;
+          try {
+            is = module.getResourceAsStream("/META-INF/MANIFEST.MF");
+            if (is != null) {
+              Manifest m = new Manifest(is);
+              version = m.getMainAttributes().getValue("Implementation-Version");
+            }
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+      }
+
+      lazyInstance = new LucenePackage(version);
+    }
+
+    return lazyInstance;
+  }
+
+  /** @return Return Lucene's implementation version or {@code null} if it cannot be determined. */
+  public String getImplementationVersion() {
+    return implementationVersion;
   }
 }
