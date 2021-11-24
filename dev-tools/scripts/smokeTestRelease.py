@@ -1126,6 +1126,12 @@ def main():
 def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys, testArgs, downloadOnly=False):
   startTime = datetime.datetime.now()
 
+  # Tests annotated @Nightly are more resource-intensive but often cover
+  # important code paths. They're disabled by default to preserve a good
+  # developer experience, but we enable them for smoke tests where we want good
+  # coverage.
+  testArgs = '-Dtests.nigthly=true %s' % testArgs
+
   if FORCE_CLEAN:
     if os.path.exists(tmpDir):
       raise RuntimeError('temp dir %s exists; please remove first' % tmpDir)
