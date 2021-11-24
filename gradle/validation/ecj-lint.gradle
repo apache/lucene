@@ -35,9 +35,11 @@ allprojects {
     // with a non-empty java.srcDirs. These tasks are then
     // attached to project's "ecjLint" task.
     def lintTasks = sourceSets.collect { sourceSet ->
-      def srcDirs = sourceSet.java.srcDirs.findAll { dir -> dir.exists() }
+      def srcDirs = sourceSet.java.sourceDirectories
+          .findAll { dir -> dir.exists() }
+          .findAll { dir -> dir.name != "java-module" }
 
-      tasks.create(sourceSet.getTaskName("ecjLint", null), JavaExec, { task ->
+      tasks.create(sourceSet.getTaskName("ecjLint", null), JavaExec, {task ->
         // This dependency is on a configuration; technically it causes
         // all dependencies to be resolved before this task executes
         // (this includes scheduling tasks that compile the
@@ -99,13 +101,5 @@ allprojects {
 
     // Attach ecjLint to check.
     check.dependsOn ecjLint
-  }
-}
-
-// Disable eclLint for luke (does not like module-info.java).
-configure(project(":lucene:luke")) {
-  tasks.matching { it.name.startsWith("ecjLint") }.configureEach {
-    logger.warn("Disabling ${it.path} because it can't handle the java module system.")
-    onlyIf { false } 
   }
 }

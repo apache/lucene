@@ -115,8 +115,13 @@ task standaloneAssemble(type: Sync) {
   into standaloneDistDir
 
   doLast {
-    logger.lifecycle("Standalone Luke distribution assembled. You can run it with:\n"
-        + "java -jar " + file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}"))
+    logger.lifecycle(
+        """
+Standalone Luke distribution assembled. You can run it with:
+java -jar " + file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}
+java --module-path ${standaloneDistDir} -m lucene.luke
+        """
+    )
   }
 }
 
