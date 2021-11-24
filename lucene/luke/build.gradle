@@ -58,10 +58,7 @@ tasks.withType(Jar) {
 }
 
 // Configure the main class and version attribute for the module system.
-// That it has to be done this way is... eh, awkward. There is no source-level
-// equivalent for this in module-info.java.
 tasks.compileJava.configure {
-  options.javaModuleVersion.set(provider { project.version } )
   options.javaModuleMainClass.set("org.apache.lucene.luke.app.desktop.LukeMain")
 }
 
