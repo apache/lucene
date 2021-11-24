@@ -39,9 +39,11 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.bkd.BKDConfig;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
 
   private final Codec codec;

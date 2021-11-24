@@ -1015,11 +1015,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       searchIndex(oldIndexDirs.get(name), name, Version.MIN_SUPPORTED_MAJOR);
     }
 
-    for (String name : binarySupportedNames) {
-      Path oldIndexDir = createTempDir(name);
-      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
-      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-        searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+    if (TEST_NIGHTLY) {
+      for (String name : binarySupportedNames) {
+        Path oldIndexDir = createTempDir(name);
+        TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
+        try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
+          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+        }
       }
     }
   }
@@ -2080,6 +2082,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
+  @Nightly
   public void testReadNMinusTwoCommit() throws IOException {
     for (String name : binarySupportedNames) {
       Path oldIndexDir = createTempDir(name);

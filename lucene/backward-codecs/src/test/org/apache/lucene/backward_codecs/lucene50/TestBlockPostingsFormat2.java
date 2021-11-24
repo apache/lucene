@@ -29,9 +29,11 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.TestUtil;
 
 /** Tests special cases of BlockPostingsFormat */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestBlockPostingsFormat2 extends LuceneTestCase {
   Directory dir;
   RandomIndexWriter iw;

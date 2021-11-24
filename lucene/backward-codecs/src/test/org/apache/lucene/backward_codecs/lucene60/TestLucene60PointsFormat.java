@@ -33,10 +33,12 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.bkd.BKDConfig;
 
 /** Tests Lucene60PointsFormat */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
   private final Codec codec;
   private final int maxPointsInLeafNode;
