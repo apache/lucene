@@ -35,16 +35,6 @@ import org.junit.Test;
 public class TestAnalysisImpl extends LuceneTestCase {
 
   @Test
-  public void testGetPresetAnalyzerTypes() throws Exception {
-    AnalysisImpl analysis = new AnalysisImpl();
-    Collection<Class<? extends Analyzer>> analyerTypes = analysis.getPresetAnalyzerTypes();
-    assertNotNull(analyerTypes);
-    for (Class<? extends Analyzer> clazz : analyerTypes) {
-      clazz.getConstructor().newInstance();
-    }
-  }
-
-  @Test
   public void testGetAvailableCharFilters() {
     AnalysisImpl analysis = new AnalysisImpl();
     Collection<String> charFilters = analysis.getAvailableCharFilters();
