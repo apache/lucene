@@ -256,7 +256,8 @@ public class Lucene60PointsWriter extends PointsWriter {
             Lucene60PointsFormat.INDEX_EXTENSION);
     // Write index file
     try (IndexOutput indexOut =
-        writeState.directory.createOutput(indexFileName, writeState.context)) {
+        EndiannessReverserUtil.createOutput(
+            writeState.directory, indexFileName, writeState.context)) {
       CodecUtil.writeIndexHeader(
           indexOut,
           Lucene60PointsFormat.META_CODEC_NAME,
