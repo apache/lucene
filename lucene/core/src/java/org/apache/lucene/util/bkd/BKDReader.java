@@ -132,6 +132,8 @@ public class BKDReader extends PointValues {
     private final IndexInput leafNodes;
     // holds the minimum (left most) leaf block file pointer for each level we've recursed to:
     private final long[] leafBlockFPStack;
+    // holds the address, in the off-heap index, after reading the node data of each level:
+    private final int[] readNodeDataPositions;
     // holds the address, in the off-heap index, of the right-node of each level:
     private final int[] rightNodePositions;
     // holds the splitDim position for each level:
@@ -229,6 +231,7 @@ public class BKDReader extends PointValues {
       splitValuesStack = new byte[treeDepth][];
       splitValuesStack[0] = new byte[config.packedIndexBytesLength];
       leafBlockFPStack = new long[treeDepth + 1];
+      readNodeDataPositions = new int[treeDepth + 1];
       rightNodePositions = new int[treeDepth];
       splitDimsPos = new int[treeDepth];
       negativeDeltas = new boolean[config.numIndexDims * treeDepth];
@@ -270,6 +273,7 @@ public class BKDReader extends PointValues {
       if (isLeafNode() == false) {
         // copy node data
         index.rightNodePositions[index.level] = rightNodePositions[level];
+        index.readNodeDataPositions[index.level] = readNodeDataPositions[level];
         index.splitValuesStack[index.level] = splitValuesStack[level].clone();
         System.arraycopy(
             negativeDeltas,
@@ -297,9 +301,18 @@ public class BKDReader extends PointValues {
       if (isLeafNode()) {
         return false;
       }
+      maybeResetNodeDataPosition();
       pushBoundsLeft();
       pushLeft();
       return true;
+    }
+
+    private void maybeResetNodeDataPosition() throws IOException {
+      if (readNodeDataPositions[level] != innerNodes.getFilePointer()) {
+        // move position of the inner nodes in case we move to the child again
+        assert readNodeDataPositions[level] <= innerNodes.getFilePointer();
+        innerNodes.seek(readNodeDataPositions[level]);
+      }
     }
 
     private void pushBoundsLeft() {
@@ -485,6 +498,7 @@ public class BKDReader extends PointValues {
 
     @Override
     public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
+      maybeResetNodeDataPosition();
       addAll(visitor, false);
     }
 
@@ -515,15 +529,20 @@ public class BKDReader extends PointValues {
 
     @Override
     public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+      maybeResetNodeDataPosition();
+      addOneByOne(visitor);
+    }
+
+    public void addOneByOne(PointValues.IntersectVisitor visitor) throws IOException {
       if (isLeafNode()) {
         // Leaf node
         visitDocValues(visitor, getLeafBlockFP());
       } else {
         pushLeft();
-        visitDocValues(visitor);
+        addOneByOne(visitor);
         pop();
         pushRight();
-        visitDocValues(visitor);
+        addOneByOne(visitor);
         pop();
       }
     }
@@ -636,6 +655,7 @@ public class BKDReader extends PointValues {
           leftNumBytes = 0;
         }
         rightNodePositions[level] = Math.toIntExact(innerNodes.getFilePointer()) + leftNumBytes;
+        readNodeDataPositions[level] = Math.toIntExact(innerNodes.getFilePointer());
       }
     }
 
