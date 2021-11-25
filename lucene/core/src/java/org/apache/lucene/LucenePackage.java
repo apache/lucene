@@ -17,7 +17,6 @@
 package org.apache.lucene;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.jar.Manifest;
 
@@ -42,9 +41,7 @@ public final class LucenePackage {
         var module = LucenePackage.class.getModule();
         if (module.isNamed()) {
           // Running as a module? Try parsing the manifest manually.
-          InputStream is = null;
-          try {
-            is = module.getResourceAsStream("/META-INF/MANIFEST.MF");
+          try (var is = module.getResourceAsStream("/META-INF/MANIFEST.MF")) {
             if (is != null) {
               Manifest m = new Manifest(is);
               version = m.getMainAttributes().getValue("Implementation-Version");
