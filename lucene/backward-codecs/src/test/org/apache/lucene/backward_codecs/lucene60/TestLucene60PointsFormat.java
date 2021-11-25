@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene60;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.lucene60.bkd.BKDWriter60;
 import org.apache.lucene.backward_codecs.lucene84.Lucene84RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryPoint;
@@ -34,7 +35,6 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestUtil;
-import org.apache.lucene.util.bkd.BKDConfig;
 
 /** Tests Lucene60PointsFormat */
 public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
@@ -43,7 +43,7 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
 
   public TestLucene60PointsFormat() {
     codec = new Lucene84RWCodec();
-    maxPointsInLeafNode = BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+    maxPointsInLeafNode = BKDWriter60.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
   }
 
   @Override
@@ -278,16 +278,23 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
         };
 
     final long pointCount = points.estimatePointCount(onePointMatchVisitor);
-    final long lastNodePointCount = totalValues % maxPointsInLeafNode;
+    // With >1 dims, the tree is balanced
+    long actualMaxPointsInLeafNode = points.size();
+    while (actualMaxPointsInLeafNode > maxPointsInLeafNode) {
+      actualMaxPointsInLeafNode = (actualMaxPointsInLeafNode + 1) / 2;
+    }
+    final long countPerFullLeaf = (actualMaxPointsInLeafNode + 1) / 2;
+    final long countPerNotFullLeaf = (actualMaxPointsInLeafNode) / 2;
     assertTrue(
-        "" + pointCount,
-        pointCount == (maxPointsInLeafNode + 1) / 2 // common case
-            || pointCount == (lastNodePointCount + 1) / 2 // not fully populated leaf
-            || pointCount == 2 * ((maxPointsInLeafNode + 1) / 2) // if the point is a split value
-            || pointCount == ((maxPointsInLeafNode + 1) / 2) + ((lastNodePointCount + 1) / 2)
-            // in extreme cases, a point can be shared by 4 leaves
-            || pointCount == 4 * ((maxPointsInLeafNode + 1) / 2)
-            || pointCount == 3 * ((maxPointsInLeafNode + 1) / 2) + ((lastNodePointCount + 1) / 2));
+        pointCount + " vs " + actualMaxPointsInLeafNode,
+        // common case, point in one leaf.
+        pointCount >= countPerNotFullLeaf && pointCount <= countPerFullLeaf
+            ||
+            // one dimension is a split value
+            pointCount >= 2 * countPerNotFullLeaf && pointCount <= 2 * countPerFullLeaf
+            ||
+            // both dimensions are split values
+            pointCount >= 4 * countPerNotFullLeaf && pointCount <= 4 * countPerFullLeaf);
 
     final long docCount = points.estimateDocCount(onePointMatchVisitor);
     if (multiValues) {

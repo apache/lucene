@@ -822,7 +822,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
         if (dimValues == null) {
           continue;
         }
-
+        assertSize(dimValues.getPointTree());
         byte[] leafMinValues = dimValues.getMinPackedValue();
         byte[] leafMaxValues = dimValues.getMaxPackedValue();
         for (int dim = 0; dim < numIndexDims; dim++) {
@@ -1060,6 +1060,36 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       }
     } finally {
       IOUtils.closeWhileHandlingException(r, w, saveW, saveDir == null ? null : dir);
+    }
+  }
+
+  private void assertSize(PointValues.PointTree tree) throws IOException {
+    final PointValues.PointTree clone = tree.clone();
+    assertEquals(clone.size(), tree.size());
+    final long[] size = new long[] {0};
+    clone.visitDocIDs(
+        new IntersectVisitor() {
+          @Override
+          public void visit(int docID) {
+            size[0]++;
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            throw new UnsupportedOperationException();
+          }
+        });
+    assertEquals(size[0], tree.size());
+    if (tree.moveToChild()) {
+      do {
+        assertSize(tree);
+      } while (tree.moveToSibling());
+      tree.moveToParent();
     }
   }
 
