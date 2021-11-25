@@ -50,8 +50,6 @@ import org.apache.lucene.util.IOUtils;
 /** Default implementation of {@link AnalysisImpl} */
 public final class AnalysisImpl implements Analysis {
 
-  private List<Class<? extends Analyzer>> presetAnalyzerTypes;
-
   private Analyzer analyzer;
 
   @Override
