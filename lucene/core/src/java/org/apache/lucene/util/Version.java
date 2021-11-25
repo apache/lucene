@@ -340,6 +340,10 @@ public final class Version {
           }
         }
 
+        if (version == null) {
+          version = "unknown";
+        }
+
         implementationVersion = version;
       }
 
