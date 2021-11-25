@@ -21,6 +21,7 @@ import java.util.Objects;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 
@@ -77,6 +78,19 @@ public final class NormsFieldExistsQuery extends Query {
         LeafReader reader = context.reader();
         DocIdSetIterator iterator = reader.getNormValues(field);
         return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        final LeafReader reader = context.reader();
+        final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+        if (fieldInfo == null || fieldInfo.hasNorms() == false) {
+          return 0;
+        }
+        if (reader.hasDeletions() == false && fieldInfo.getIndexOptions() != IndexOptions.NONE) {
+          return reader.terms(field).getDocCount();
+        }
+        return super.count(context);
       }
 
       @Override

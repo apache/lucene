@@ -18,15 +18,26 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
 
 public class TestNormsFieldExistsQuery extends LuceneTestCase {
 
@@ -198,5 +209,60 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
         assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-7);
       }
     }
+  }
+
+  public void testQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
+    int numMatchingDocs = 1;
+
+    FieldType noNormsFieldType = new FieldType();
+    noNormsFieldType.setOmitNorms(true);
+    noNormsFieldType.setIndexOptions(IndexOptions.DOCS);
+
+    Document doc = new Document();
+    doc.add(new TextField("text", "always here", Store.NO));
+    doc.add(new Field("text_n", "always here", noNormsFieldType));
+    w.addDocument(doc);
+
+    for (int i = 0; i < randomNumDocs; i++) {
+      doc.clear();
+      if (random().nextBoolean()) {
+        doc.add(new TextField("text", "some text", Store.NO));
+        doc.add(new Field("text_n", "some here", noNormsFieldType));
+        numMatchingDocs++;
+      }
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+
+    DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+
+    assertSameCount(reader, searcher, "text", numMatchingDocs);
+    assertSameCount(reader, searcher, "doesNotExist", 0);
+    assertSameCount(reader, searcher, "text_n", 0);
+
+    // Test that we can't count in O(1) when there are deleted documents
+    w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    w.deleteDocuments(new Term("text", "text"));
+    DirectoryReader reader2 = w.getReader();
+    final IndexSearcher searcher2 = new IndexSearcher(reader2);
+    final Query testQuery = new NormsFieldExistsQuery("text");
+    final Weight weight2 = searcher2.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(weight2.count(reader2.leaves().get(0)), -1);
+
+    IOUtils.close(reader, reader2, w, dir);
+  }
+
+  private void assertSameCount(
+          IndexReader reader, IndexSearcher searcher, String field, int numMatchingDocs)
+          throws IOException {
+    final Query testQuery = new NormsFieldExistsQuery(field);
+    assertEquals(searcher.count(testQuery), numMatchingDocs);
+    final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
   }
 }
