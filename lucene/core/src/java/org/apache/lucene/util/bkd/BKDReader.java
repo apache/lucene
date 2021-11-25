@@ -309,8 +309,8 @@ public class BKDReader extends PointValues {
 
     private void maybeResetNodeDataPosition() throws IOException {
       if (readNodeDataPositions[level] != innerNodes.getFilePointer()) {
-        // move position of the inner nodes in case we move to the child again
-        assert readNodeDataPositions[level] <= innerNodes.getFilePointer();
+        // move position of the inner nodes index in case we move to the first child
+        assert readNodeDataPositions[level] < innerNodes.getFilePointer();
         innerNodes.seek(readNodeDataPositions[level]);
       }
     }
