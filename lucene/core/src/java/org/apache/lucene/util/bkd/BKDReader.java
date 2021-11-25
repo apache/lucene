@@ -301,18 +301,16 @@ public class BKDReader extends PointValues {
       if (isLeafNode()) {
         return false;
       }
-      maybeResetNodeDataPosition();
+      resetNodeDataPosition();
       pushBoundsLeft();
       pushLeft();
       return true;
     }
 
-    private void maybeResetNodeDataPosition() throws IOException {
-      if (readNodeDataPositions[level] != innerNodes.getFilePointer()) {
-        // move position of the inner nodes index in case we move to the first child
-        assert readNodeDataPositions[level] < innerNodes.getFilePointer();
-        innerNodes.seek(readNodeDataPositions[level]);
-      }
+    private void resetNodeDataPosition() throws IOException {
+      // move position of the inner nodes index to visit the first child
+      assert readNodeDataPositions[level] <= innerNodes.getFilePointer();
+      innerNodes.seek(readNodeDataPositions[level]);
     }
 
     private void pushBoundsLeft() {
@@ -498,7 +496,7 @@ public class BKDReader extends PointValues {
 
     @Override
     public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
-      maybeResetNodeDataPosition();
+      resetNodeDataPosition();
       addAll(visitor, false);
     }
 
@@ -529,20 +527,20 @@ public class BKDReader extends PointValues {
 
     @Override
     public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
-      maybeResetNodeDataPosition();
-      addOneByOne(visitor);
+      resetNodeDataPosition();
+      visitLeavesOneByOne(visitor);
     }
 
-    public void addOneByOne(PointValues.IntersectVisitor visitor) throws IOException {
+    private void visitLeavesOneByOne(PointValues.IntersectVisitor visitor) throws IOException {
       if (isLeafNode()) {
         // Leaf node
         visitDocValues(visitor, getLeafBlockFP());
       } else {
         pushLeft();
-        addOneByOne(visitor);
+        visitLeavesOneByOne(visitor);
         pop();
         pushRight();
-        addOneByOne(visitor);
+        visitLeavesOneByOne(visitor);
         pop();
       }
     }
