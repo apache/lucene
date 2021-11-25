@@ -68,7 +68,7 @@ public class MergeOnFlushTieredMergePolicy extends TieredMergePolicy {
   }
 
   @Override
-  public TieredMergePolicy setMaxMergedSegmentMB(double v) {
+  public MergeOnFlushTieredMergePolicy setMaxMergedSegmentMB(double v) {
     this.hardMaxSegmentSizeBytes = Units.mbToBytes(v);
     return this;
   }
@@ -126,7 +126,10 @@ public class MergeOnFlushTieredMergePolicy extends TieredMergePolicy {
     return null;
   }
   /** Utility class to handle conversion between megabytes and bytes */
-  public static class Units {
+  protected static class Units {
+
+    private Units() {}
+
     public static double bytesToMB(long bytes) {
       return bytes / 1024. / 1024.;
     }
