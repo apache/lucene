@@ -70,7 +70,7 @@ public final class Version {
    */
   public static final int MIN_SUPPORTED_MAJOR = Version.LATEST.major - 1;
 
-  /** @see #getImplementationVersion() */
+  /** @see #getPackageImplementationVersion() */
   private static String implementationVersion;
 
   /**
@@ -316,7 +316,7 @@ public final class Version {
    *
    * @return Lucene implementation version string, never {@code null}.
    */
-  public static String getImplementationVersion() {
+  public static String getPackageImplementationVersion() {
     // Initialize the lazy value.
     synchronized (Version.class) {
       if (implementationVersion == null) {

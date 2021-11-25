@@ -29,7 +29,6 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -172,12 +171,13 @@ public final class AboutDialogFactory implements DialogOpener.DialogFactory {
     return panel;
   }
 
-  private static final String LUCENE_IMPLEMENTATION_VERSION = Version.getImplementationVersion();
+  private static final String LUCENE_IMPLEMENTATION_VERSION =
+      Version.getPackageImplementationVersion();
 
   private static final String LICENSE_NOTICE =
       "<p>[Implementation Version]</p>"
           + "<p>"
-          + (Objects.nonNull(LUCENE_IMPLEMENTATION_VERSION) ? LUCENE_IMPLEMENTATION_VERSION : "")
+          + LUCENE_IMPLEMENTATION_VERSION
           + "</p>"
           + "<p>[License]</p>"
           + "<p>Luke is distributed under <a href=\"https://www.apache.org/licenses/LICENSE-2.0\">Apache License Version 2.0</a> (https://www.apache.org/licenses/LICENSE-2.0) "

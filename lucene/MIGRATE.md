@@ -24,6 +24,11 @@ means that interval function prefixes ("fn:") and the '@' character after parent
 parse differently than before. If you need the exact previous behavior, clone the StandardSyntaxParser from the previous version of Lucene and create a custom query parser
 with that parser.
 
+## LucenePackage class removed (LUCENE-10260)
+
+LucenePackage class has been removed. The implementation string can be
+retrieved from Version.getPackageImplementationVersion().
+
 ## Directory API is now little endian (LUCENE-9047)
 
 DataOutput's writeShort, writeInt, and writeLong methods now encode with
