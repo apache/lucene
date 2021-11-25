@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -33,8 +34,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
-
-import java.io.IOException;
 
 public class TestNormsFieldExistsQuery extends LuceneTestCase {
 
@@ -255,8 +254,8 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
   }
 
   private void assertSameCount(
-          IndexReader reader, IndexSearcher searcher, String field, int numMatchingDocs)
-          throws IOException {
+      IndexReader reader, IndexSearcher searcher, String field, int numMatchingDocs)
+      throws IOException {
     final Query testQuery = new NormsFieldExistsQuery(field);
     assertEquals(searcher.count(testQuery), numMatchingDocs);
     final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
