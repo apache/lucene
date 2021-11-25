@@ -58,6 +58,9 @@ Improvements
 
 * LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
   PointValues abstract class. (Ignacio Vera, Adrien Grand)
+  
+* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree 
+  added in LUCENE-9820 (Ignacio Vera)
 
 Optimizations
 ---------------------
