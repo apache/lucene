@@ -36,7 +36,7 @@ class DocIdsWriter {
         && isStrictlySorted(docIds, start, count)) {
       // Only optimize it when max - min + 1 <= 16 * count in order to avoid expanding too much
       // storage.
-      // A field with lower cardinality will have a higher probability to trigger this optimization.
+      // A field with lower cardinality will have higher probability to trigger this optimization.
       out.writeByte((byte) -1);
       writeIdsAsBitSet(docIds, start, count, out);
       return;
