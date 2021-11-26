@@ -171,10 +171,7 @@ class DocIdsWriter {
     int offset = in.readVInt();
     int longLen = in.readVInt();
     long[] bits = new long[longLen];
-    for (int i = 0; i < longLen; i++) {
-      bits[i] = in.readLong();
-    }
-    // TODO find some reuse
+    in.readLongs(bits, 0, longLen);
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
     return new DocBaseBitSetIterator(bitSet, count, offset);
   }
