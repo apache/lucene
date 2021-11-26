@@ -175,7 +175,7 @@ public final class AboutDialogFactory implements DialogOpener.DialogFactory {
       Version.getPackageImplementationVersion();
 
   private static final String LICENSE_NOTICE =
-      "<p>[Implementation Version]</p>"
+      "<p>[Lucene Implementation Version]</p>"
           + "<p>"
           + LUCENE_IMPLEMENTATION_VERSION
           + "</p>"
