@@ -53,7 +53,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
         Arrays.sort(docIDs);
-        test(dir, docIDs, random().nextBoolean());
+        test(dir, docIDs, false);
       }
     }
   }
