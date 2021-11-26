@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
@@ -71,7 +70,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
         while (set.size() < size) {
           set.add(small + random().nextInt(size * 16));
         }
-        int[] docIDs = set.stream().mapToInt(t -> (int)t).sorted().toArray();
+        int[] docIDs = set.stream().mapToInt(t -> t).sorted().toArray();
         test(dir, docIDs, true);
       }
     }
