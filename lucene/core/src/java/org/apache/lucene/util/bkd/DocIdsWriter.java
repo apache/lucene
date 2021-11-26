@@ -32,7 +32,7 @@ class DocIdsWriter {
       int[] docIds, int start, int count, DataOutput out, boolean consistentValue)
       throws IOException {
     if (consistentValue
-        && (docIds[start + count - 1] - docIds[start] + 1) <= count << 4
+        && (docIds[start + count - 1] - docIds[start] + 1) <= (count << 4)
         && isStrictlySorted(docIds, start, count)) {
       // Only optimize it when max - min + 1 <= 16 * count in order to avoid expanding too much
       // storage.
