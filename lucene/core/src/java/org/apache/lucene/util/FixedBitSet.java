@@ -298,7 +298,7 @@ public final class FixedBitSet extends BitSet {
 
   private void or(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
     assert otherNumWords + otherOffsetWords <= numWords
-            : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
+        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
     int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
     while (--pos >= 0) {

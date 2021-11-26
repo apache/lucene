@@ -19,8 +19,8 @@ package org.apache.lucene.util;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * A @{@link DocIdSetIterator} like {@link BitSetIterator} but has a doc base in
- * onder to store previous 0s.
+ * A @{@link DocIdSetIterator} like {@link BitSetIterator} but has a doc base in onder to store
+ * previous 0s.
  */
 public class DocBaseBitSetIterator extends DocIdSetIterator {
 
