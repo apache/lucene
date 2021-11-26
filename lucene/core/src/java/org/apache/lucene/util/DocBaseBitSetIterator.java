@@ -19,53 +19,31 @@ package org.apache.lucene.util;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * A {@link DocIdSetIterator} which iterates over set bits in a bit set.
- *
- * @lucene.internal
+ * A @{@link DocIdSetIterator} like {@link BitSetIterator} but has a doc base in
+ * onder to store previous 0s.
  */
-public class BitSetIterator extends DocIdSetIterator {
+public class DocBaseBitSetIterator extends DocIdSetIterator {
 
-  private static <T extends BitSet> T getBitSet(
-      DocIdSetIterator iterator, Class<? extends T> clazz) {
-    if (iterator instanceof BitSetIterator) {
-      BitSet bits = ((BitSetIterator) iterator).bits;
-      assert bits != null;
-      if (clazz.isInstance(bits)) {
-        return clazz.cast(bits);
-      }
-    }
-    return null;
-  }
-
-  /** If the provided iterator wraps a {@link FixedBitSet}, returns it, otherwise returns null. */
-  public static FixedBitSet getFixedBitSetOrNull(DocIdSetIterator iterator) {
-    return getBitSet(iterator, FixedBitSet.class);
-  }
-
-  /**
-   * If the provided iterator wraps a {@link SparseFixedBitSet}, returns it, otherwise returns null.
-   */
-  public static SparseFixedBitSet getSparseFixedBitSetOrNull(DocIdSetIterator iterator) {
-    return getBitSet(iterator, SparseFixedBitSet.class);
-  }
-
-  private final BitSet bits;
+  private final FixedBitSet bits;
   private final int length;
   private final long cost;
+  private final int docBase;
   private int doc = -1;
 
-  /** Sole constructor. */
-  public BitSetIterator(BitSet bits, long cost) {
+  public DocBaseBitSetIterator(FixedBitSet bits, long cost, int docBase) {
     if (cost < 0) {
       throw new IllegalArgumentException("cost must be >= 0, got " + cost);
     }
+    if ((docBase & 63) != 0) {
+      throw new IllegalArgumentException("docBase need to be a multiple of 64");
+    }
     this.bits = bits;
-    this.length = bits.length();
+    this.length = bits.length() + docBase;
     this.cost = cost;
+    this.docBase = docBase;
   }
 
-  /** Return the wrapped {@link BitSet}. */
-  public BitSet getBitSet() {
+  public FixedBitSet getBitSet() {
     return bits;
   }
 
@@ -74,9 +52,8 @@ public class BitSetIterator extends DocIdSetIterator {
     return doc;
   }
 
-  /** Set the current doc id that this iterator is on. */
-  public void setDocId(int docId) {
-    this.doc = docId;
+  public int getDocBase() {
+    return docBase;
   }
 
   @Override
@@ -89,7 +66,12 @@ public class BitSetIterator extends DocIdSetIterator {
     if (target >= length) {
       return doc = NO_MORE_DOCS;
     }
-    return doc = bits.nextSetBit(target);
+    int next = bits.nextSetBit(Math.max(0, target - docBase));
+    if (next == NO_MORE_DOCS) {
+      return doc = NO_MORE_DOCS;
+    } else {
+      return doc = next + docBase;
+    }
   }
 
   @Override

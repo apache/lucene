@@ -21,7 +21,7 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.DocBaseBitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 
 class DocIdsWriter {
@@ -167,7 +167,7 @@ class DocIdsWriter {
     }
   }
 
-  private static BitSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
+  private static DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
     int offset = in.readVInt();
     int longLen = in.readVInt();
     long[] bits = new long[longLen];
@@ -176,11 +176,11 @@ class DocIdsWriter {
     }
     // TODO find some reuse
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
-    return new BitSetIterator(bitSet, count, offset);
+    return new DocBaseBitSetIterator(bitSet, count, offset);
   }
 
   private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
-    BitSetIterator iterator = readBitSetIterator(in, count);
+    DocIdSetIterator iterator = readBitSetIterator(in, count);
     int docId, pos = 0;
     while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       docIDs[pos++] = docId;
@@ -285,7 +285,7 @@ class DocIdsWriter {
 
   private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
-    BitSetIterator bitSetIterator = readBitSetIterator(in, count);
+    DocIdSetIterator bitSetIterator = readBitSetIterator(in, count);
     visitor.visit(bitSetIterator);
   }
 }
