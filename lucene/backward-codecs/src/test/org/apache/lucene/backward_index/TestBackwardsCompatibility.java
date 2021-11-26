@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1655,8 +1656,12 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
             SegmentInfos.readLatestCommit(origDir).getIndexCreatedVersionMajor();
         Path dir = createTempDir(name);
         try (FSDirectory fsDir = FSDirectory.open(dir)) {
+          // beware that ExtraFS might add extraXXX files
+          Set<String> extraFiles = Set.of(fsDir.listAll());
           for (String file : origDir.listAll()) {
-            fsDir.copyFrom(origDir, file, file, IOContext.DEFAULT);
+            if (extraFiles.contains(file) == false) {
+              fsDir.copyFrom(origDir, file, file, IOContext.DEFAULT);
+            }
           }
         }
 

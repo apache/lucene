@@ -58,6 +58,9 @@ Improvements
 
 * LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
   PointValues abstract class. (Ignacio Vera, Adrien Grand)
+  
+* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree 
+  added in LUCENE-9820 (Ignacio Vera)
 
 Optimizations
 ---------------------
@@ -235,6 +238,9 @@ API Changes
 * LUCENE-10158: Add a new interface Unwrappable to the utils package to allow code to
   unwrap wrappers/delegators that are added by Lucene's testing framework. This will allow
   testing new MMapDirectory implementation based on JDK Project Panama. (Uwe Schindler)
+
+* LUCENE-10260: LucenePackage class has been removed. The implementation string can be
+  retrieved from Version.getPackageImplementationVersion(). (Uwe Schindler, Dawid Weiss)
 
 Improvements
 ---------------------
