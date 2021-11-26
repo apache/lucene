@@ -17,6 +17,11 @@
 
 # Apache Lucene Migration Guide
 
+## LucenePackage class removed (LUCENE-10260)
+
+LucenePackage class has been removed. The implementation string can be
+retrieved from Version.getPackageImplementationVersion().
+
 ## Directory API is now little endian (LUCENE-9047)
 
 DataOutput's writeShort, writeInt, and writeLong methods now encode with

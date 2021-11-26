@@ -167,6 +167,9 @@ API Changes
   unwrap wrappers/delegators that are added by Lucene's testing framework. This will allow
   testing new MMapDirectory implementation based on JDK Project Panama. (Uwe Schindler)
 
+* LUCENE-10260: LucenePackage class has been removed. The implementation string can be
+  retrieved from Version.getPackageImplementationVersion(). (Uwe Schindler, Dawid Weiss)
+
 Improvements
 ---------------------
 
