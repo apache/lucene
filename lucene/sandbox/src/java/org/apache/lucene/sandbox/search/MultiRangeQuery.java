@@ -170,6 +170,11 @@ public abstract class MultiRangeQuery extends Query {
           }
 
           @Override
+          public void visit(DocIdSetIterator iterator) throws IOException {
+            adder.add(iterator);
+          }
+
+          @Override
           public void visit(int docID, byte[] packedValue) {
             // If a single OR clause has the value in range, the entire query accepts the value
             for (RangeClause rangeClause : rangeClauses) {
