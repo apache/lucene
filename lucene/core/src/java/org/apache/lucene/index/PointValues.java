@@ -238,16 +238,12 @@ public abstract class PointValues {
    */
   public interface PointTree extends Cloneable {
 
-    /**
-     * Clone, the current node becomes the root of the new tree. The method should not be called
-     * after a successful call to {@link #moveToParent()}
-     */
+    /** Clone, the current node becomes the root of the new tree. */
     PointTree clone();
 
     /**
      * Move to the first child node and return {@code true} upon success. Returns {@code false} for
-     * leaf nodes and {@code true} otherwise. The method should not be called after a successful
-     * call to {@link #moveToParent()}
+     * leaf nodes and {@code true} otherwise.
      */
     boolean moveToChild() throws IOException;
 

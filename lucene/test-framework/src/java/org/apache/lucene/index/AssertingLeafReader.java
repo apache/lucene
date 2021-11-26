@@ -1139,12 +1139,10 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
   }
 
-  /** Validates that we don't call moveToChild() or clone() after having called moveToParent() */
   static class AssertingPointTree implements PointValues.PointTree {
 
     final PointValues pointValues;
     final PointValues.PointTree in;
-    private boolean moveToParent;
 
     AssertingPointTree(PointValues pointValues, PointValues.PointTree in) {
       this.pointValues = pointValues;
@@ -1153,25 +1151,21 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public PointValues.PointTree clone() {
-      assert moveToParent == false : "calling clone() after calling moveToParent()";
       return new AssertingPointTree(pointValues, in.clone());
     }
 
     @Override
     public boolean moveToChild() throws IOException {
-      assert moveToParent == false : "calling moveToChild() after calling moveToParent()";
       return in.moveToChild();
     }
 
     @Override
     public boolean moveToSibling() throws IOException {
-      moveToParent = false;
       return in.moveToSibling();
     }
 
     @Override
     public boolean moveToParent() throws IOException {
-      moveToParent = true;
       return in.moveToParent();
     }
 
