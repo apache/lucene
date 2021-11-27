@@ -37,7 +37,6 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.luke.app.desktop.MessageBroker;
 import org.apache.lucene.luke.app.desktop.components.dialog.analysis.AnalysisChainDialogFactory;
 import org.apache.lucene.luke.app.desktop.components.dialog.analysis.TokenAttributeDialogFactory;
@@ -100,7 +99,6 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
     this.messageBroker = MessageBroker.getInstance();
 
     this.analysisModel = new AnalysisFactory().newInstance();
-    analysisModel.createAnalyzerFromClassName(StandardAnalyzer.class.getName());
 
     this.simpleResult = new SimpleAnalyzeResultPanelProvider(tokenAttrDialogFactory).get();
     this.stepByStepResult = new StepByStepAnalyzeResultPanelProvider(tokenAttrDialogFactory).get();
