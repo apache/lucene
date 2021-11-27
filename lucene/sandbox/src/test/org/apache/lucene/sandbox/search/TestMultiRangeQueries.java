@@ -17,6 +17,7 @@
 
 package org.apache.lucene.sandbox.search;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
@@ -29,13 +30,70 @@ import org.apache.lucene.sandbox.document.DoublePointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.FloatPointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.IntPointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.LongPointMultiRangeBuilder;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
 public class TestMultiRangeQueries extends LuceneTestCase {
+
+  public void testDuelWithStandardDisjunction() throws IOException {
+    int iterations = LuceneTestCase.TEST_NIGHTLY ? atLeast(100) : 10;
+    for (int iter = 0; iter < iterations; iter++) {
+      Directory dir = newDirectory();
+      RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+      int dims = RandomNumbers.randomIntBetween(random(), 1, 8);
+
+      long[] scratch = new long[dims];
+      for (int i = 0; i < 100; i++) {
+        int numPoints = RandomNumbers.randomIntBetween(random(), 1, 10);
+        Document doc = new Document();
+        for (int j = 0; j < numPoints; j++) {
+          for (int v = 0; v < dims; v++) {
+            scratch[v] = RandomNumbers.randomLongBetween(random(), 0, 100);
+          }
+          doc.add(new LongPoint("point", scratch));
+        }
+        w.addDocument(doc);
+      }
+
+      IndexReader reader = w.getReader();
+      IndexSearcher searcher = newSearcher(reader);
+
+      int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
+      LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
+      BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
+      for (int i = 0; i < numRanges; i++) {
+        long[] lower = new long[dims];
+        long[] upper = new long[dims];
+        for (int j = 0; j < dims; j++) {
+          lower[j] = RandomNumbers.randomLongBetween(random(), -100, 200);
+          upper[j] = lower[j] + RandomNumbers.randomLongBetween(random(), 0, 100);
+        }
+        builder1.add(lower, upper);
+        builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
+      }
+
+      Query query1 = builder1.build();
+      Query query2 = builder2.build();
+      TopDocs result1 = searcher.search(query1, 10, Sort.INDEXORDER);
+      TopDocs result2 = searcher.search(query2, 10, Sort.INDEXORDER);
+      assertEquals(result2.totalHits, result1.totalHits);
+      assertEquals(result2.scoreDocs.length, result1.scoreDocs.length);
+      for (int i = 0; i < result2.scoreDocs.length; i++) {
+        assertEquals(result2.scoreDocs[i].doc, result1.scoreDocs[i].doc);
+      }
+
+      IOUtils.close(reader, w, dir);
+    }
+  }
 
   public void testDoubleRandomMultiRangeQuery() throws IOException {
     final int numDims = TestUtil.nextInt(random(), 1, 3);
