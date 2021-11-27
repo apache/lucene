@@ -62,6 +62,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
@@ -1088,7 +1089,18 @@ public class TestLRUQueryCache extends LuceneTestCase {
         cachedSearcher.setQueryCachingPolicy(ALWAYS_CACHE);
       }
       final Query q = buildRandomQuery(0);
+      /*
+       * Counts are the same. If the query has already been cached
+       * this'll use the O(1) Weight#count method.
+       */
       assertEquals(uncachedSearcher.count(q), cachedSearcher.count(q));
+      /*
+       * Just to make sure we can iterate every time also check that the
+       * same docs are returned in the same order.
+       */
+      int size = 1 + random().nextInt(1000);
+      CheckHits.checkEqual(
+          q, uncachedSearcher.search(q, size).scoreDocs, cachedSearcher.search(q, size).scoreDocs);
       if (rarely()) {
         queryCache.assertConsistent();
       }
@@ -1974,6 +1986,62 @@ public class TestLRUQueryCache extends LuceneTestCase {
     assertEquals(cacheSet, new HashSet<>(allCache.cachedQueries()));
 
     reader.close();
+    dir.close();
+  }
+
+  public void testCacheHasFastCount() throws IOException {
+    Query query = new PhraseQuery("words", new BytesRef("alice"), new BytesRef("ran"));
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+    Document doc1 = new Document();
+    doc1.add(new TextField("words", "tom ran", Store.NO));
+    Document doc2 = new Document();
+    doc2.add(new TextField("words", "alice ran", Store.NO));
+    doc2.add(new StringField("f", "a", Store.NO));
+    Document doc3 = new Document();
+    doc3.add(new TextField("words", "alice ran", Store.NO));
+    doc3.add(new StringField("f", "b", Store.NO));
+    w.addDocuments(Arrays.asList(doc1, doc2, doc3));
+
+    try (IndexReader reader = w.getReader()) {
+      IndexSearcher searcher = newSearcher(reader);
+      searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+      LRUQueryCache allCache =
+          new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+      searcher.setQueryCache(allCache);
+      Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
+      LeafReaderContext context = getOnlyLeafReader(reader).getContext();
+      // We don't have a fast count before the cache is filled
+      assertEquals(-1, weight.count(context));
+      // Fetch the scorer to populate the cache
+      weight.scorer(context);
+      assertEquals(List.of(query), allCache.cachedQueries());
+      // Now we *do* have a fast count
+      assertEquals(2, weight.count(context));
+    }
+
+    w.deleteDocuments(new TermQuery(new Term("f", new BytesRef("b"))));
+    try (IndexReader reader = w.getReader()) {
+      IndexSearcher searcher = newSearcher(reader);
+      searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+      LRUQueryCache allCache =
+          new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+      searcher.setQueryCache(allCache);
+      Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
+      LeafReaderContext context = getOnlyLeafReader(reader).getContext();
+      // We don't have a fast count before the cache is filled
+      assertEquals(-1, weight.count(context));
+      // Fetch the scorer to populate the cache
+      weight.scorer(context);
+      assertEquals(List.of(query), allCache.cachedQueries());
+      // We still don't have a fast count because we have deleted documents
+      assertEquals(-1, weight.count(context));
+    }
+
+    w.close();
     dir.close();
   }
 }

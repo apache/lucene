@@ -30,13 +30,17 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FilterDirectoryReader;
+import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
@@ -518,6 +522,34 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /**
+   * Check that the query behaves reasonably when using a custom filter reader where there are no
+   * live docs.
+   */
+  public void testNoLiveDocsReader() throws IOException {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, iwc)) {
+      final int numDocs = 10;
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new StringField("index", String.valueOf(i), Field.Store.NO));
+        d.add(new KnnVectorField("vector", randomVector(dim)));
+        w.addDocument(d);
+      }
+      w.commit();
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        DirectoryReader wrappedReader = new NoLiveDocsDirectoryReader(reader);
+        IndexSearcher searcher = new IndexSearcher(wrappedReader);
+        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs);
+        TopDocs topDocs = searcher.search(query, numDocs);
+        assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
   private Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
@@ -535,5 +567,55 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       throws IOException {
     ScoreDoc[] result = searcher.search(q, 1000).scoreDocs;
     assertEquals(expectedMatches, result.length);
+  }
+
+  private static class NoLiveDocsDirectoryReader extends FilterDirectoryReader {
+
+    private NoLiveDocsDirectoryReader(DirectoryReader in) throws IOException {
+      super(
+          in,
+          new SubReaderWrapper() {
+            @Override
+            public LeafReader wrap(LeafReader reader) {
+              return new NoLiveDocsLeafReader(reader);
+            }
+          });
+    }
+
+    @Override
+    protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
+      return new NoLiveDocsDirectoryReader(in);
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return in.getReaderCacheHelper();
+    }
+  }
+
+  private static class NoLiveDocsLeafReader extends FilterLeafReader {
+    private NoLiveDocsLeafReader(LeafReader in) {
+      super(in);
+    }
+
+    @Override
+    public int numDocs() {
+      return 0;
+    }
+
+    @Override
+    public Bits getLiveDocs() {
+      return new Bits.MatchNoBits(in.maxDoc());
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return in.getReaderCacheHelper();
+    }
+
+    @Override
+    public CacheHelper getCoreCacheHelper() {
+      return in.getCoreCacheHelper();
+    }
   }
 }

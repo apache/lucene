@@ -64,7 +64,9 @@ subprojects {
               "X-Compile-Target-JDK"  : "${-> project.targetCompatibility}",
 
               "X-Build-JDK"           : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
-              "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
+              "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}",
+
+              "Automatic-Module-Name" : "${-> project.path.replaceFirst(":", "").replace(':', '.').replace("-", "_")}"
             ])
           }
 

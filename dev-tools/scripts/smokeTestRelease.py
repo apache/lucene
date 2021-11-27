@@ -252,8 +252,7 @@ def checkSigs(urlString, version, tmpDir, isSigned, keysFile):
       raise RuntimeError('lucene: artifact %s has wrong sigs: expected %s but got %s' % (artifact, expectedSigs, sigs))
 
   expected = ['lucene-%s-src.tgz' % version,
-              'lucene-%s.tgz' % version,
-              'lucene-%s.zip' % version]
+              'lucene-%s.tgz' % version]
 
   actual = [x[0] for x in artifacts]
   if expected != actual:
@@ -555,7 +554,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   if isSrc:
     in_lucene_folder.extend(os.listdir(os.path.join(unpackPath, 'lucene')))
     is_in_list(in_root_folder, ['LICENSE', 'NOTICE', 'README'])
-    is_in_list(in_lucene_folder, ['README', 'JRE_VERSION_MIGRATION', 'CHANGES', 'MIGRATE', 'SYSTEM_REQUIREMENTS'])
+    is_in_list(in_lucene_folder, ['JRE_VERSION_MIGRATION', 'CHANGES', 'MIGRATE', 'SYSTEM_REQUIREMENTS'])
   else:
     is_in_list(in_root_folder, ['LICENSE', 'NOTICE', 'README', 'JRE_VERSION_MIGRATION', 'CHANGES',
                                 'MIGRATE', 'SYSTEM_REQUIREMENTS'])
@@ -575,7 +574,6 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   #       raise RuntimeError('lucene: file "%s" is missing from artifact %s' % (fileName, artifact))
   #     in_root_folder.remove(fileName)
 
-  # TODO: clean this up to not be a list of modules that we must maintain
   expected_folders = ['analysis', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core',
                       'demo', 'expressions', 'facet', 'grouping', 'highlighter', 'join',
                       'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
@@ -590,8 +588,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     if len(in_lucene_folder) > 0:
       raise RuntimeError('lucene: unexpected files/dirs in artifact %s lucene/ folder: %s' % (artifact, in_lucene_folder))
   else:
-    is_in_list(in_root_folder, expected_folders)
-    is_in_list(in_root_folder, ['docs'])
+    is_in_list(in_root_folder, ['bin', 'docs', 'licenses', 'modules', 'modules-test-framework', 'modules-thirdparty'])
 
   if len(in_root_folder) > 0:
     raise RuntimeError('lucene: unexpected files/dirs in artifact %s: %s' % (artifact, in_root_folder))
@@ -649,21 +646,26 @@ def testDemo(run_java, isSrc, version, jdk):
   print('    test demo with %s...' % jdk)
   sep = ';' if cygwin else ':'
   if isSrc:
+    # For source release, use the classpath for each module.
     classPath = ['lucene/core/build/libs/lucene-core-%s.jar' % version,
                  'lucene/demo/build/libs/lucene-demo-%s.jar' % version,
                  'lucene/analysis/common/build/libs/lucene-analyzers-common-%s.jar' % version,
                  'lucene/queryparser/build/libs/lucene-queryparser-%s.jar' % version]
     cp = sep.join(classPath)
     docsDir = 'lucene/core/src'
+    checkIndexCmd = 'java -ea -cp "%s" org.apache.lucene.index.CheckIndex index' % cp
+    indexFilesCmd = 'java -cp "%s" -Dsmoketester=true org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
+    searchFilesCmd = 'java -cp "%s" org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
   else:
-    classPath = ['core/lucene-core-%s.jar' % version,
-                 'demo/lucene-demo-%s.jar' % version,
-                 'analysis/common/lucene-analyzers-common-%s.jar' % version,
-                 'queryparser/lucene-queryparser-%s.jar' % version]
-    cp = sep.join(classPath)
+    # For binary release, set up classpath as modules.
+    cp = "--module-path modules"
     docsDir = 'docs'
-  run_java('java -cp "%s" -Dsmoketester=true org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir), 'index.log')
-  run_java('java -cp "%s" org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp, 'search.log')
+    checkIndexCmd = 'java -ea %s --module lucene.core/org.apache.lucene.index.CheckIndex index' % cp
+    indexFilesCmd = 'java -Dsmoketester=true %s --module lucene.demo/org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
+    searchFilesCmd = 'java %s --module lucene.demo/org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
+      
+  run_java(indexFilesCmd, 'index.log')
+  run_java(searchFilesCmd, 'search.log')
   reMatchingDocs = re.compile('(\d+) total matching documents')
   m = reMatchingDocs.search(open('search.log', encoding='UTF-8').read())
   if m is None:
@@ -673,8 +675,9 @@ def testDemo(run_java, isSrc, version, jdk):
     if numHits < 100:
       raise RuntimeError('lucene demo\'s SearchFiles found too few results: %s' % numHits)
     print('      got %d hits for query "lucene"' % numHits)
+
   print('    checkindex with %s...' % jdk)
-  run_java('java -ea -cp "%s" org.apache.lucene.index.CheckIndex index' % cp, 'checkindex.log')
+  run_java(checkIndexCmd, 'checkindex.log')
   s = open('checkindex.log').read()
   m = re.search(r'^\s+version=(.*?)$', s, re.MULTILINE)
   if m is None:
@@ -933,11 +936,11 @@ def make_java_config(parser, java17_home):
   return jc(run_java11, java11_home, run_java17, java17_home)
 
 version_re = re.compile(r'(\d+\.\d+\.\d+(-ALPHA|-BETA)?)')
-revision_re = re.compile(r'rev([a-f\d]+)')
+revision_re = re.compile(r'rev-([a-f\d]+)')
 def parse_config():
   epilogue = textwrap.dedent('''
     Example usage:
-    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-6.0.1-RC2-revc7510a0...
+    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-9.0.0-RC1-rev-c7510a0...
   ''')
   description = 'Utility to test a release.'
   parser = argparse.ArgumentParser(description=description, epilog=epilogue,
@@ -1126,6 +1129,12 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
   # disable flakey tests for smoke-tester runs:
   testArgs = '-Dtests.badapples=false %s' % testArgs
 
+  # Tests annotated @Nightly are more resource-intensive but often cover
+  # important code paths. They're disabled by default to preserve a good
+  # developer experience, but we enable them for smoke tests where we want good
+  # coverage.
+  testArgs = '-Dtests.nigthly=true %s' % testArgs
+
   if FORCE_CLEAN:
     if os.path.exists(tmpDir):
       raise RuntimeError('temp dir %s exists; please remove first' % tmpDir)
@@ -1163,8 +1172,7 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
   print('Test Lucene...')
   checkSigs(lucenePath, version, tmpDir, isSigned, keysFile)
   if not downloadOnly:
-    for artifact in ('lucene-%s.tgz' % version, 'lucene-%s.zip' % version):
-      unpackAndVerify(java, tmpDir, artifact, gitRevision, version, testArgs)
+    unpackAndVerify(java, tmpDir, 'lucene-%s.tgz' % version, gitRevision, version, testArgs)
     unpackAndVerify(java, tmpDir, 'lucene-%s-src.tgz' % version, gitRevision, version, testArgs)
     print()
     print('Test Maven artifacts...')

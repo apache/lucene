@@ -57,12 +57,12 @@ tasks.withType(Jar) {
   }
 }
 
-// Configure the default JAR without any class path information
-// (this may actually be wrong - perhaps we should add the
-// "distribution" paths here.
-jar {
-  manifest {
-  }
+// Process UTF8 property files to unicode escapes.
+tasks.withType(ProcessResources).configureEach { task ->
+  task.filesMatching("**/messages*.properties", {
+    filteringCharset = 'UTF-8'
+    filter(EscapeUnicode)
+  })
 }
 
 // Configure "stand-alone" JAR with proper dependency classpath links.

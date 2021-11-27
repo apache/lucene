@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -106,6 +107,7 @@ import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -332,81 +334,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  static final String[] oldNames = {
-    "8.0.0-cfs",
-    "8.0.0-nocfs",
-    "8.1.0-cfs",
-    "8.1.0-nocfs",
-    "8.1.1-cfs",
-    "8.1.1-nocfs",
-    "8.2.0-cfs",
-    "8.2.0-nocfs",
-    "8.3.0-cfs",
-    "8.3.0-nocfs",
-    "8.3.1-cfs",
-    "8.3.1-nocfs",
-    "8.4.0-cfs",
-    "8.4.0-nocfs",
-    "8.4.1-cfs",
-    "8.4.1-nocfs",
-    "8.5.0-cfs",
-    "8.5.0-nocfs",
-    "8.5.1-cfs",
-    "8.5.1-nocfs",
-    "8.5.2-cfs",
-    "8.5.2-nocfs",
-    "8.6.0-cfs",
-    "8.6.0-nocfs",
-    "8.6.1-cfs",
-    "8.6.1-nocfs",
-    "8.6.2-cfs",
-    "8.6.2-nocfs",
-    "8.6.3-cfs",
-    "8.6.3-nocfs",
-    "8.7.0-cfs",
-    "8.7.0-nocfs",
-    "8.8.0-cfs",
-    "8.8.0-nocfs",
-    "8.8.1-cfs",
-    "8.8.1-nocfs",
-    "8.8.2-cfs",
-    "8.8.2-nocfs",
-    "8.9.0-cfs",
-    "8.9.0-nocfs",
-    "8.10.0-cfs",
-    "8.10.0-nocfs",
-    "8.10.1-cfs",
-    "8.10.1-nocfs"
-  };
+  static final String[] oldNames = {};
 
   public static String[] getOldNames() {
     return oldNames;
   }
 
-  static final String[] oldSortedNames = {
-    "sorted.8.0.0",
-    "sorted.8.1.0",
-    "sorted.8.1.1",
-    "sorted.8.10.0",
-    "sorted.8.2.0",
-    "sorted.8.3.0",
-    "sorted.8.3.1",
-    "sorted.8.4.0",
-    "sorted.8.4.1",
-    "sorted.8.5.0",
-    "sorted.8.5.1",
-    "sorted.8.5.2",
-    "sorted.8.6.0",
-    "sorted.8.6.1",
-    "sorted.8.6.2",
-    "sorted.8.6.3",
-    "sorted.8.7.0",
-    "sorted.8.8.0",
-    "sorted.8.8.1",
-    "sorted.8.8.2",
-    "sorted.8.9.0",
-    "sorted.8.10.1"
-  };
+  static final String[] oldSortedNames = {};
 
   public static String[] getOldSortedNames() {
     return oldSortedNames;
@@ -609,7 +543,51 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "7.7.2-cfs",
     "7.7.2-nocfs",
     "7.7.3-cfs",
-    "7.7.3-nocfs"
+    "7.7.3-nocfs",
+    "8.0.0-cfs",
+    "8.0.0-nocfs",
+    "8.1.0-cfs",
+    "8.1.0-nocfs",
+    "8.1.1-cfs",
+    "8.1.1-nocfs",
+    "8.2.0-cfs",
+    "8.2.0-nocfs",
+    "8.3.0-cfs",
+    "8.3.0-nocfs",
+    "8.3.1-cfs",
+    "8.3.1-nocfs",
+    "8.4.0-cfs",
+    "8.4.0-nocfs",
+    "8.4.1-cfs",
+    "8.4.1-nocfs",
+    "8.5.0-cfs",
+    "8.5.0-nocfs",
+    "8.5.1-cfs",
+    "8.5.1-nocfs",
+    "8.5.2-cfs",
+    "8.5.2-nocfs",
+    "8.6.0-cfs",
+    "8.6.0-nocfs",
+    "8.6.1-cfs",
+    "8.6.1-nocfs",
+    "8.6.2-cfs",
+    "8.6.2-nocfs",
+    "8.6.3-cfs",
+    "8.6.3-nocfs",
+    "8.7.0-cfs",
+    "8.7.0-nocfs",
+    "8.8.0-cfs",
+    "8.8.0-nocfs",
+    "8.8.1-cfs",
+    "8.8.1-nocfs",
+    "8.8.2-cfs",
+    "8.8.2-nocfs",
+    "8.9.0-cfs",
+    "8.9.0-nocfs",
+    "8.10.0-cfs",
+    "8.10.0-nocfs",
+    "8.10.1-cfs",
+    "8.10.1-nocfs"
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
@@ -904,12 +882,17 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       CheckIndex checker = new CheckIndex(dir);
       checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8));
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (unsupportedNames[i].startsWith("7.")) {
+      if (unsupportedNames[i].startsWith("8.")) {
         assertTrue(indexStatus.clean);
       } else {
         assertFalse(indexStatus.clean);
-        assertTrue(
-            bos.toString(IOUtils.UTF_8).contains(IndexFormatTooOldException.class.getName()));
+        // CheckIndex doesn't enforce a minimum version, so we either get an
+        // IndexFormatTooOldException
+        // or an IllegalArgumentException saying that the codec doesn't exist.
+        boolean formatTooOld =
+            bos.toString(IOUtils.UTF_8).contains(IndexFormatTooOldException.class.getName());
+        boolean missingCodec = bos.toString(IOUtils.UTF_8).contains("Could not load codec");
+        assertTrue(formatTooOld || missingCodec);
       }
       checker.close();
 
@@ -982,7 +965,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
               .filter( // depending on the MergePolicy we might see these segments merged away
                   sci ->
                       sci.getId() != null
-                          && sci.info.getVersion().onOrAfter(Version.LUCENE_8_6_0) == false)
+                          && sci.info.getVersion().onOrAfter(Version.fromBits(8, 6, 0)) == false)
               .findAny()
               .orElse(null));
       if (VERBOSE) {
@@ -1034,11 +1017,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       searchIndex(oldIndexDirs.get(name), name, Version.MIN_SUPPORTED_MAJOR);
     }
 
-    for (String name : binarySupportedNames) {
-      Path oldIndexDir = createTempDir(name);
-      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
-      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-        searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+    if (TEST_NIGHTLY) {
+      for (String name : binarySupportedNames) {
+        Path oldIndexDir = createTempDir(name);
+        TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
+        try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
+          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+        }
       }
     }
   }
@@ -1589,7 +1574,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       Directory dir = oldIndexDirs.get(name);
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
       for (SegmentCommitInfo info : infos) {
-        if (info.info.getVersion().onOrAfter(Version.LUCENE_8_6_0)) {
+        if (info.info.getVersion().onOrAfter(Version.fromBits(8, 6, 0))) {
           assertNotNull(info.toString(), info.getId());
         } else {
           assertNull(info.toString(), info.getId());
@@ -1659,17 +1644,26 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void testCommandLineArgs() throws Exception {
+  public void testIndexUpgraderCommandLineArgs() throws Exception {
 
     PrintStream savedSystemOut = System.out;
     System.setOut(new PrintStream(new ByteArrayOutputStream(), false, "UTF-8"));
     try {
       for (Map.Entry<String, Directory> entry : oldIndexDirs.entrySet()) {
         String name = entry.getKey();
+        Directory origDir = entry.getValue();
         int indexCreatedVersion =
-            SegmentInfos.readLatestCommit(entry.getValue()).getIndexCreatedVersionMajor();
+            SegmentInfos.readLatestCommit(origDir).getIndexCreatedVersionMajor();
         Path dir = createTempDir(name);
-        TestUtil.unzip(getDataInputStream("index." + name + ".zip"), dir);
+        try (FSDirectory fsDir = FSDirectory.open(dir)) {
+          // beware that ExtraFS might add extraXXX files
+          Set<String> extraFiles = Set.of(fsDir.listAll());
+          for (String file : origDir.listAll()) {
+            if (extraFiles.contains(file) == false) {
+              fsDir.copyFrom(origDir, file, file, IOContext.DEFAULT);
+            }
+          }
+        }
 
         String path = dir.toAbsolutePath().toString();
 
@@ -1767,6 +1761,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
   public static final String emptyIndex = "empty.8.0.0.zip";
 
+  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testUpgradeEmptyOldIndex() throws Exception {
     Path oldIndexDir = createTempDir("emptyIndex");
     TestUtil.unzip(getDataInputStream(emptyIndex), oldIndexDir);
@@ -1779,8 +1774,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  public static final String moreTermsIndex = "moreterms.8.0.0.zip";
+  public static final String moreTermsIndex = "moreterms.9.0.0.zip";
 
+  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testMoreTerms() throws Exception {
     Path oldIndexDir = createTempDir("moreterms");
     TestUtil.unzip(getDataInputStream(moreTermsIndex), oldIndexDir);
@@ -1795,7 +1791,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  public static final String dvUpdatesIndex = "dvupdates.8.0.0.zip";
+  public static final String dvUpdatesIndex = "dvupdates.9.0.0.zip";
 
   private void assertNumericDocValues(LeafReader r, String f, String cf) throws IOException {
     NumericDocValues ndvf = r.getNumericDocValues(f);
@@ -1829,6 +1825,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     reader.close();
   }
 
+  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDocValuesUpdates() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1857,6 +1854,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
+  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDeletes() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1880,6 +1878,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
+  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testSoftDeletes() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1901,6 +1900,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
+  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDocValuesUpdatesWithNewField() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -2093,6 +2093,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
+  @Nightly
   public void testReadNMinusTwoCommit() throws IOException {
     for (String name : binarySupportedNames) {
       Path oldIndexDir = createTempDir(name);

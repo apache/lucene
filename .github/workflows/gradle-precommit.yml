@@ -8,6 +8,7 @@ on:
   push:
     branches:
     - main
+    - branch_9x
 
 jobs:
   # This runs all validation checks without tests.
@@ -50,7 +51,7 @@ jobs:
     - name: Run gradle check (without tests)
       run: ./gradlew check -x test -Ptask.times=true --max-workers 2
 
-    - uses: gradle/wrapper-validation-action@v1
+    # - uses: gradle/wrapper-validation-action@v1
 
   # This runs all tests without any other validation checks.
   tests:
@@ -94,4 +95,4 @@ jobs:
     - name: Run gradle tests
       run: ./gradlew test "-Ptask.times=true" "-Ptests.slow=false" --max-workers 2
 
-    - uses: gradle/wrapper-validation-action@v1
+    # - uses: gradle/wrapper-validation-action@v1
