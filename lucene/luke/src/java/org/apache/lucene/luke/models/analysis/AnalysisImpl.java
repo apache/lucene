@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,8 +41,10 @@ import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.TokenizerFactory;
+import org.apache.lucene.analysis.core.LowerCaseFilterFactory;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.standard.StandardTokenizerFactory;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.luke.models.LukeException;
 import org.apache.lucene.util.AttributeImpl;
@@ -154,7 +157,16 @@ public final class AnalysisImpl implements Analysis {
   }
 
   private Analyzer defaultAnalyzer() {
-    return new StandardAnalyzer();
+    try {
+      Map<String, String> params = new HashMap<>();
+      params.put("maxTokenLength", Integer.toString(StandardAnalyzer.DEFAULT_MAX_TOKEN_LENGTH));
+      return CustomAnalyzer.builder()
+          .withTokenizer(StandardTokenizerFactory.NAME, params)
+          .addTokenFilter(LowerCaseFilterFactory.NAME)
+          .build();
+    } catch (IOException e) {
+      throw new LukeException("Failed to build custom analyzer.", e);
+    }
   }
 
   @Override
