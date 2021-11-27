@@ -125,11 +125,11 @@ public class TestAnalysisImpl extends LuceneTestCase {
     assertNotNull(tokens);
   }
 
-  @Test(expected = LukeException.class)
-  public void testAnalyze_not_set() {
+  public void testAnalyze_default() {
     AnalysisImpl analysis = new AnalysisImpl();
-    String text = "This test must fail.";
-    analysis.analyze(text);
+    String text = "Apache Lucene";
+    List<Analysis.Token> tokens = analysis.analyze(text);
+    assertNotNull(tokens);
   }
 
   @Test(expected = LukeException.class)
