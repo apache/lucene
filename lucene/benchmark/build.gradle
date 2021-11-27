@@ -50,6 +50,7 @@ sourceSets {
 
 task run(type: JavaExec) {
   description "Run a perf test (optional: -PtaskAlg=conf/your-algorithm-file -PmaxHeapSize=1G)"
+  group "Utility launchers"
   mainClass = 'org.apache.lucene.benchmark.byTask.Benchmark'
 
   classpath sourceSets.main.runtimeClasspath
