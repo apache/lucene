@@ -41,6 +41,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.TokenizerFactory;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.luke.models.LukeException;
 import org.apache.lucene.util.AttributeImpl;
@@ -153,11 +154,7 @@ public final class AnalysisImpl implements Analysis {
   }
 
   private Analyzer defaultAnalyzer() {
-    try {
-      return CustomAnalyzer.builder().withTokenizer("standard").build();
-    } catch (IOException e) {
-      throw new LukeException("Failed to build custom analyzer.", e);
-    }
+    return new StandardAnalyzer();
   }
 
   @Override
