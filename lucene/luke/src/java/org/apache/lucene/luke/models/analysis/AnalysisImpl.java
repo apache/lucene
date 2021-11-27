@@ -50,7 +50,7 @@ import org.apache.lucene.util.IOUtils;
 /** Default implementation of {@link AnalysisImpl} */
 public final class AnalysisImpl implements Analysis {
 
-  private Analyzer analyzer;
+  private Analyzer analyzer = defaultAnalyzer();
 
   @Override
   public void addExternalJars(List<String> jarFiles) {
@@ -149,6 +149,14 @@ public final class AnalysisImpl implements Analysis {
     } catch (ReflectiveOperationException e) {
       throw new LukeException(
           String.format(Locale.ENGLISH, "Failed to instantiate class: %s", analyzerType), e);
+    }
+  }
+
+  private Analyzer defaultAnalyzer() {
+    try {
+      return CustomAnalyzer.builder().withTokenizer("standard").build();
+    } catch (IOException e) {
+      throw new LukeException("Failed to build custom analyzer.", e);
     }
   }
 
