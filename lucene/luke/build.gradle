@@ -126,7 +126,7 @@ task standalonePackage(type: Tar) {
 }
 
 // Utility to launch Luke (and fork it from the build).
-task run() {
+task runLuke() {
   dependsOn standaloneAssemble
   description "Launches (spawns) Luke directly from the build process."
   group "Utility launchers"
