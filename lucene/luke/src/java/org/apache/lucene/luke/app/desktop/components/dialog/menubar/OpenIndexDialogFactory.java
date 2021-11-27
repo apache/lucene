@@ -56,6 +56,8 @@ import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 import org.apache.lucene.luke.app.desktop.util.StyleConstants;
 import org.apache.lucene.luke.models.LukeException;
 import org.apache.lucene.luke.util.LoggerFactory;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -253,9 +255,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
   }
 
   private String[] supportedDirImpls() {
-    return new String[] {
-      "org.apache.lucene.store.MMapDirectory", "org.apache.lucene.store.NIOFSDirectory"
-    };
+    return new String[] {MMapDirectory.class.getName(), NIOFSDirectory.class.getName()};
   }
 
   private JPanel buttons() {
