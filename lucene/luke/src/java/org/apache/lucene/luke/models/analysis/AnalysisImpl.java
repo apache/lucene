@@ -157,16 +157,7 @@ public final class AnalysisImpl implements Analysis {
   }
 
   private Analyzer defaultAnalyzer() {
-    try {
-      Map<String, String> params = new HashMap<>();
-      params.put("maxTokenLength", Integer.toString(StandardAnalyzer.DEFAULT_MAX_TOKEN_LENGTH));
-      return CustomAnalyzer.builder()
-          .withTokenizer(StandardTokenizerFactory.NAME, params)
-          .addTokenFilter(LowerCaseFilterFactory.NAME)
-          .build();
-    } catch (IOException e) {
-      throw new LukeException("Failed to build custom analyzer.", e);
-    }
+    return new StandardAnalyzer();
   }
 
   @Override
