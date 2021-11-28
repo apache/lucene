@@ -19,6 +19,8 @@
 @SuppressWarnings({"requires-automatic"})
 module lucene.luke {
   requires java.desktop;
-  requires org.apache.logging.log4j;
+  requires java.logging;
   requires lucene.core;
+  requires org.apache.logging.log4j;
+  requires org.apache.logging.log4j.core;
 }

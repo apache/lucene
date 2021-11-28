@@ -20,9 +20,9 @@ package org.apache.lucene.luke.app.desktop;
 import static org.apache.lucene.luke.app.desktop.util.ExceptionHandler.handle;
 
 import java.awt.GraphicsEnvironment;
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.FileSystems;
+import java.util.concurrent.SynchronousQueue;
 import javax.swing.JFrame;
 import javax.swing.UIManager;
 import org.apache.logging.log4j.Logger;
@@ -55,19 +55,19 @@ public class LukeMain {
     return frame;
   }
 
-  private static void createAndShowGUI() {
+  /** @return Returns {@code true} if GUI startup and initialization was successful. */
+  private static boolean createAndShowGUI() {
     // uncaught error handler
     MessageBroker messageBroker = MessageBroker.getInstance();
-    Thread.setDefaultUncaughtExceptionHandler((thread, cause) -> handle(cause, messageBroker));
-
     try {
+      Thread.setDefaultUncaughtExceptionHandler((thread, cause) -> handle(cause, messageBroker));
+
       frame = new LukeWindowProvider().get();
       frame.setLocation(200, 100);
       frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
       frame.pack();
       frame.setVisible(true);
 
-      // show open index dialog
       OpenIndexDialogFactory openIndexDialogFactory = OpenIndexDialogFactory.getInstance();
       new DialogOpener<>(openIndexDialogFactory)
           .open(
@@ -75,9 +75,12 @@ public class LukeMain {
               600,
               420,
               (factory) -> {});
-    } catch (IOException e) {
+
+      return true;
+    } catch (Throwable e) {
       messageBroker.showUnknownErrorMessage();
       log.error("Cannot initialize components.", e);
+      return false;
     }
   }
 
@@ -93,6 +96,21 @@ public class LukeMain {
     GraphicsEnvironment genv = GraphicsEnvironment.getLocalGraphicsEnvironment();
     genv.registerFont(FontUtils.createElegantIconFont());
 
-    javax.swing.SwingUtilities.invokeLater(LukeMain::createAndShowGUI);
+    var guiThreadResult = new SynchronousQueue<Boolean>();
+    javax.swing.SwingUtilities.invokeLater(
+        () -> {
+          try {
+            guiThreadResult.put(createAndShowGUI());
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        });
+
+    if (Boolean.FALSE.equals(guiThreadResult.take())) {
+      // Use java logging just in case log4j didn't start up properly.
+      java.util.logging.Logger.getGlobal()
+          .severe("Luke could not start because of errors, see the log file: " + LOG_FILE);
+      Runtime.getRuntime().exit(1);
+    }
   }
 }
