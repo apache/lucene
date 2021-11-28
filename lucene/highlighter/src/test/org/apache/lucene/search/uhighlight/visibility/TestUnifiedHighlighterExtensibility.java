@@ -96,14 +96,133 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
    */
   @Test
   public void testUnifiedHighlighterExtensibility() {
-    SubUnifiedHighlighter uh =
-        SubUnifiedHighlighter.builder()
+    final int maxLength = 1000;
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(null)
-            .withIndexAnalyzer(new MockAnalyzer(random()))
-            .withNewField(false)
-            .build();
-    assertEquals(1000, uh.getMaxLength());
-    assertFalse(uh.getNewField());
+            .withIndexAnalyzer(new MockAnalyzer(random()));
+    UnifiedHighlighter uh =
+        new UnifiedHighlighter(uhBuilder) {
+
+          @Override
+          protected Map<String, Object[]> highlightFieldsAsObjects(
+              String[] fieldsIn, Query query, int[] docIdsIn, int[] maxPassagesIn)
+              throws IOException {
+            return super.highlightFieldsAsObjects(fieldsIn, query, docIdsIn, maxPassagesIn);
+          }
+
+          @Override
+          protected OffsetSource getOffsetSource(String field) {
+            return super.getOffsetSource(field);
+          }
+
+          @Override
+          protected BreakIterator getBreakIterator(String field) {
+            return super.getBreakIterator(field);
+          }
+
+          @Override
+          protected PassageScorer getScorer(String field) {
+            return super.getScorer(field);
+          }
+
+          @Override
+          protected PassageFormatter getFormatter(String field) {
+            return super.getFormatter(field);
+          }
+
+          @Override
+          public Analyzer getIndexAnalyzer() {
+            return super.getIndexAnalyzer();
+          }
+
+          @Override
+          public IndexSearcher getIndexSearcher() {
+            return super.getIndexSearcher();
+          }
+
+          @Override
+          protected int getMaxNoHighlightPassages(String field) {
+            return super.getMaxNoHighlightPassages(field);
+          }
+
+          @Override
+          protected Boolean requiresRewrite(SpanQuery spanQuery) {
+            return super.requiresRewrite(spanQuery);
+          }
+
+          @Override
+          protected LimitedStoredFieldVisitor newLimitedStoredFieldsVisitor(String[] fields) {
+            return super.newLimitedStoredFieldsVisitor(fields);
+          }
+
+          @Override
+          protected List<CharSequence[]> loadFieldValues(
+              String[] fields, DocIdSetIterator docIter, int cacheCharsThreshold)
+              throws IOException {
+            return super.loadFieldValues(fields, docIter, cacheCharsThreshold);
+          }
+
+          @Override
+          protected FieldHighlighter getFieldHighlighter(
+              String field, Query query, Set<Term> allTerms, int maxPassages) {
+            // THIS IS A COPY of the superclass impl; but use CustomFieldHighlighter
+            UHComponents components = getHighlightComponents(field, query, allTerms);
+            OffsetSource offsetSource = getOptimizedOffsetSource(components);
+
+            // test all is accessible
+            components.getField();
+            components.getFieldMatcher();
+            components.getQuery();
+            components.getTerms();
+            components.getPhraseHelper();
+            components.getAutomata();
+            components.hasUnrecognizedQueryPart();
+            components.getHighlightFlags();
+
+            return new CustomFieldHighlighter(
+                field,
+                getOffsetStrategy(offsetSource, components),
+                new SplittingBreakIterator(
+                    getBreakIterator(field), UnifiedHighlighter.MULTIVAL_SEP_CHAR),
+                getScorer(field),
+                maxPassages,
+                getMaxNoHighlightPassages(field),
+                getFormatter(field));
+          }
+
+          @Override
+          protected UHComponents getHighlightComponents(
+              String field, Query query, Set<Term> allTerms) {
+            Predicate<String> fieldMatcher = getFieldMatcher(field);
+            BytesRef[] terms = filterExtractedTerms(fieldMatcher, allTerms);
+            Set<HighlightFlag> highlightFlags = getFlags(field);
+            PhraseHelper phraseHelper = getPhraseHelper(field, query, highlightFlags);
+            LabelledCharArrayMatcher[] automata = getAutomata(field, query, highlightFlags);
+            boolean queryHasUnrecognizedPart = false;
+            return new UHComponents(
+                field,
+                fieldMatcher,
+                query,
+                terms,
+                phraseHelper,
+                automata,
+                queryHasUnrecognizedPart,
+                highlightFlags);
+          }
+
+          @Override
+          protected FieldOffsetStrategy getOffsetStrategy(
+              OffsetSource offsetSource, UHComponents components) {
+            return super.getOffsetStrategy(offsetSource, components);
+          }
+
+          @Override
+          public int getMaxLength() {
+            return maxLength;
+          }
+        };
+    assertEquals(uh.getMaxLength(), maxLength);
   }
 
   @Test
@@ -186,163 +305,5 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
 
       return super.highlightOffsetsEnums(offsetsEnums);
     }
-  }
-}
-
-class SubUnifiedHighlighter extends UnifiedHighlighter {
-  private final boolean newField;
-  final int maxLength = 1000;
-
-  public abstract static class Builder<T extends SubUnifiedHighlighter.Builder<T>>
-      extends UnifiedHighlighter.Builder<T> {
-    private boolean newField;
-
-    public T withNewField(boolean value) {
-      this.newField = value;
-      return self();
-    }
-
-    @Override
-    public SubUnifiedHighlighter build() {
-      return new SubUnifiedHighlighter(this) {
-        @Override
-        protected Map<String, Object[]> highlightFieldsAsObjects(
-            String[] fieldsIn, Query query, int[] docIdsIn, int[] maxPassagesIn)
-            throws IOException {
-          return super.highlightFieldsAsObjects(fieldsIn, query, docIdsIn, maxPassagesIn);
-        }
-
-        @Override
-        protected OffsetSource getOffsetSource(String field) {
-          return super.getOffsetSource(field);
-        }
-
-        @Override
-        protected BreakIterator getBreakIterator(String field) {
-          return super.getBreakIterator(field);
-        }
-
-        @Override
-        protected PassageScorer getScorer(String field) {
-          return super.getScorer(field);
-        }
-
-        @Override
-        protected PassageFormatter getFormatter(String field) {
-          return super.getFormatter(field);
-        }
-
-        @Override
-        public Analyzer getIndexAnalyzer() {
-          return super.getIndexAnalyzer();
-        }
-
-        @Override
-        public IndexSearcher getIndexSearcher() {
-          return super.getIndexSearcher();
-        }
-
-        @Override
-        protected int getMaxNoHighlightPassages(String field) {
-          return super.getMaxNoHighlightPassages(field);
-        }
-
-        @Override
-        protected Boolean requiresRewrite(SpanQuery spanQuery) {
-          return super.requiresRewrite(spanQuery);
-        }
-
-        @Override
-        protected LimitedStoredFieldVisitor newLimitedStoredFieldsVisitor(String[] fields) {
-          return super.newLimitedStoredFieldsVisitor(fields);
-        }
-
-        @Override
-        protected List<CharSequence[]> loadFieldValues(
-            String[] fields, DocIdSetIterator docIter, int cacheCharsThreshold) throws IOException {
-          return super.loadFieldValues(fields, docIter, cacheCharsThreshold);
-        }
-
-        @Override
-        protected FieldHighlighter getFieldHighlighter(
-            String field, Query query, Set<Term> allTerms, int maxPassages) {
-          // THIS IS A COPY of the superclass impl; but use CustomFieldHighlighter
-          UHComponents components = getHighlightComponents(field, query, allTerms);
-          OffsetSource offsetSource = getOptimizedOffsetSource(components);
-
-          // test all is accessible
-          components.getField();
-          components.getFieldMatcher();
-          components.getQuery();
-          components.getTerms();
-          components.getPhraseHelper();
-          components.getAutomata();
-          components.hasUnrecognizedQueryPart();
-          components.getHighlightFlags();
-
-          return new TestUnifiedHighlighterExtensibility.CustomFieldHighlighter(
-              field,
-              getOffsetStrategy(offsetSource, components),
-              new SplittingBreakIterator(
-                  getBreakIterator(field), UnifiedHighlighter.MULTIVAL_SEP_CHAR),
-              getScorer(field),
-              maxPassages,
-              getMaxNoHighlightPassages(field),
-              getFormatter(field));
-        }
-
-        @Override
-        protected UHComponents getHighlightComponents(
-            String field, Query query, Set<Term> allTerms) {
-          Predicate<String> fieldMatcher = getFieldMatcher(field);
-          BytesRef[] terms = filterExtractedTerms(fieldMatcher, allTerms);
-          Set<HighlightFlag> highlightFlags = getFlags(field);
-          PhraseHelper phraseHelper = getPhraseHelper(field, query, highlightFlags);
-          LabelledCharArrayMatcher[] automata = getAutomata(field, query, highlightFlags);
-          boolean queryHasUnrecognizedPart = false;
-          return new UHComponents(
-              field,
-              fieldMatcher,
-              query,
-              terms,
-              phraseHelper,
-              automata,
-              queryHasUnrecognizedPart,
-              highlightFlags);
-        }
-
-        @Override
-        protected FieldOffsetStrategy getOffsetStrategy(
-            OffsetSource offsetSource, UHComponents components) {
-          return super.getOffsetStrategy(offsetSource, components);
-        }
-
-        @Override
-        public int getMaxLength() {
-          return maxLength;
-        }
-      };
-    }
-  }
-
-  private static class ConcreteBuilder extends Builder<SubUnifiedHighlighter.ConcreteBuilder> {
-
-    @Override
-    protected SubUnifiedHighlighter.ConcreteBuilder self() {
-      return this;
-    }
-  }
-
-  public static SubUnifiedHighlighter.Builder<?> builder() {
-    return new SubUnifiedHighlighter.ConcreteBuilder();
-  }
-
-  protected SubUnifiedHighlighter(SubUnifiedHighlighter.Builder<?> builder) {
-    super(builder);
-    this.newField = builder.newField;
-  }
-
-  public boolean getNewField() {
-    return newField;
   }
 }

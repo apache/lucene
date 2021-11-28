@@ -73,7 +73,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
   RandomIndexWriter indexWriter;
   IndexSearcher searcher;
   UnifiedHighlighter highlighter;
-  UnifiedHighlighter.ConcreteBuilder uhConcreteBuilder;
+  UnifiedHighlighter.Builder uhBuilder;
   IndexReader indexReader;
 
   // Is it okay if a match (identified by offset pair) appears multiple times in the passage?
@@ -114,19 +114,15 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
   private void initReaderSearcherHighlighter() throws IOException {
     indexReader = indexWriter.getReader();
     searcher = newSearcher(indexReader);
-    uhConcreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
+    uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
     highlighter =
         TestUnifiedHighlighter.randomUnifiedHighlighter(
-            uhConcreteBuilder,
-            EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.MULTI_TERM_QUERY),
-            true);
+            uhBuilder, EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.MULTI_TERM_QUERY), true);
     // intercept the formatter in order to check constraints on the passage.
     final PassageFormatter defaultFormatter = highlighter.getFormatter(null);
     highlighter =
-        uhConcreteBuilder
+        uhBuilder
             .withFormatter(
                 new PassageFormatter() {
                   @Override
@@ -499,7 +495,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
     indexWriter.addDocument(
         newDoc("alpha bravo charlie - gap alpha bravo")); // hyphen is at char 21
     initReaderSearcherHighlighter();
-    highlighter = uhConcreteBuilder.withMaxLength(21).build();
+    highlighter = uhBuilder.withMaxLength(21).build();
 
     BooleanQuery query =
         new BooleanQuery.Builder()
@@ -563,15 +559,15 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
             "There is no accord and satisfaction with this - Consideration of the accord is arbitrary."));
     initReaderSearcherHighlighter();
 
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder concreteBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withHighlightPhrasesStrictly(true);
-    UnifiedHighlighter.Builder<?> builder =
-        new UnifiedHighlighter.Builder<UnifiedHighlighter.ConcreteBuilder>() {
+    UnifiedHighlighter.Builder builder =
+        new UnifiedHighlighter.Builder() {
           @Override
-          protected UnifiedHighlighter.ConcreteBuilder self() {
+          protected UnifiedHighlighter.Builder self() {
             return concreteBuilder;
           }
 

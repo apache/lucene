@@ -18,7 +18,12 @@
 package org.apache.lucene.benchmark.byTask.tasks;
 
 import java.text.BreakIterator;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
@@ -283,32 +288,19 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
         return;
       }
       lastSearcher = searcher;
-      ConcreteBuilder concreteBuilder =
-          new ConcreteBuilder()
-              .withSearcher(searcher)
-              .withIndexAnalyzer(analyzer)
+      UnifiedHighlighter.Builder uhBuilder =
+          new UnifiedHighlighter.Builder()
               .withBreakIterator(() -> BreakIterator.getSentenceInstance(Locale.ENGLISH))
               .withMaxLength(maxDocCharsToAnalyze)
               .withHighlightPhrasesStrictly(true)
               .withHandleMultiTermQuery(true);
-      UnifiedHighlighter.Builder<?> builder =
-          new UnifiedHighlighter.Builder<ConcreteBuilder>() {
+      highlighter =
+          new UnifiedHighlighter(uhBuilder) {
             @Override
-            protected ConcreteBuilder self() {
-              return concreteBuilder;
-            }
-
-            @Override
-            public UnifiedHighlighter build() {
-              return new UnifiedHighlighter(concreteBuilder) {
-                @Override
-                protected OffsetSource getOffsetSource(String field) {
-                  return offsetSource != null ? offsetSource : super.getOffsetSource(field);
-                }
-              };
+            protected OffsetSource getOffsetSource(String field) {
+              return offsetSource != null ? offsetSource : super.getOffsetSource(field);
             }
           };
-      highlighter = builder.build();
     }
 
     @Override
@@ -327,14 +319,6 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
       for (ScoreDoc scoreDoc : docIdOrder(hits.scoreDocs)) {
         preventOptimizeAway += searcher.doc(scoreDoc.doc, hlFields).iterator().hasNext() ? 2 : 1;
       }
-    }
-  }
-
-  /** This ConcreteBuilder has been created for this class only. */
-  private static class ConcreteBuilder extends UnifiedHighlighter.Builder<ConcreteBuilder> {
-    @Override
-    protected ConcreteBuilder self() {
-      return this;
     }
   }
 }

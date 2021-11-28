@@ -196,12 +196,10 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(concreteBuilder) {
+        new UnifiedHighlighter(uhBuilder) {
           @Override
           protected Set<HighlightFlag> getFlags(String field) {
             return Collections.emptySet(); // no WEIGHT_MATCHES

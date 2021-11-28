@@ -90,10 +90,9 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
         searcher, indexAnalyzer, EnumSet.noneOf(HighlightFlag.class), null);
   }
 
-  private UnifiedHighlighter randomUnifiedHighlighter(
-      UnifiedHighlighter.ConcreteBuilder concreteBuilder) {
+  private UnifiedHighlighter randomUnifiedHighlighter(UnifiedHighlighter.Builder uhBuilder) {
     return TestUnifiedHighlighter.randomUnifiedHighlighter(
-        concreteBuilder, EnumSet.noneOf(HighlightFlag.class), null);
+        uhBuilder, EnumSet.noneOf(HighlightFlag.class), null);
   }
 
   //
@@ -183,12 +182,12 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
 
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withMaxLength(maxLength);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     String[] snippets = highlighter.highlight("body", query, topDocs);
 
     ir.close();
@@ -266,12 +265,12 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withMaxLength(value.length() * 2 + 1);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     Query query = new IntervalQuery("body", Intervals.term("field"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
@@ -368,12 +367,12 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     Query query = new IntervalQuery("body", Intervals.phrase("buddhist", "origins"));
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withHighlightPhrasesStrictly(false);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     //  highlighter.getFlags("body").containsAll(EnumSet.of(HighlightFlag.WEIGHT_MATCHES,
@@ -401,12 +400,12 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     Query query = new IntervalQuery("body", Intervals.phrase("curious", "george"));
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withHighlightPhrasesStrictly(false);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     assertFalse(snippets[0].contains("<b>Curious</b>Curious"));
@@ -444,12 +443,12 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
                   Intervals.term("massachusetts")));
       TopDocs topDocs = searcher.search(query, 10);
       assertEquals(1, topDocs.totalHits.value);
-      UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-          new UnifiedHighlighter.ConcreteBuilder()
+      UnifiedHighlighter.Builder uhBuilder =
+          new UnifiedHighlighter.Builder()
               .withSearcher(searcher)
               .withIndexAnalyzer(indexAnalyzer)
               .withMaxLength(Integer.MAX_VALUE - 1);
-      UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+      UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
       String[] snippets = highlighter.highlight("body", query, topDocs, 2);
       assertEquals(1, snippets.length);
       assertTrue(snippets[0].contains("<b>Square</b>"));
@@ -504,12 +503,12 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
             "body", Intervals.notContaining(Intervals.term("terms"), Intervals.term("both")));
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withMaxLength(Integer.MAX_VALUE - 1);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     String[] snippets = highlighter.highlight("body", query, topDocs, 2);
     assertEquals(1, snippets.length);
     assertFalse(snippets[0].contains("<b>both</b>"));
@@ -532,13 +531,13 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withMaxLength(1000)
             .withBreakIterator(WholeBreakIterator::new);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     Query query = new IntervalQuery("body", Intervals.term("test"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
@@ -600,12 +599,10 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(concreteBuilder) {
+        new UnifiedHighlighter(uhBuilder) {
           @Override
           protected List<CharSequence[]> loadFieldValues(
               String[] fields, DocIdSetIterator docIter, int cacheCharsThreshold)
@@ -713,12 +710,12 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withMaxNoHighlightPassages(0); // don't want any default summary
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     Query query = new IntervalQuery("body", Intervals.term("highlighting"));
     int[] docIDs = new int[] {0};
     String[] snippets =
@@ -881,13 +878,13 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withCacheFieldValCharsThreshold(
                 random().nextInt(10) * 10); // 0 thru 90 intervals of 10
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     Query query = new IntervalQuery("body", Intervals.term("answer"));
     TopDocs hits = searcher.search(query, numDocs);
     assertEquals(numDocs, hits.totalHits.value);

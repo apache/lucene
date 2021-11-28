@@ -117,7 +117,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
       final FakePassageFormatter f1 = new FakePassageFormatter();
       UnifiedHighlighter p1 =
           creatUHObjectForCurrentTestSuite(
-              new UnifiedHighlighter.ConcreteBuilder()
+              new UnifiedHighlighter.Builder()
                   .withSearcher(is)
                   .withIndexAnalyzer(indexAnalyzer)
                   .withFormatter(f1)
@@ -126,7 +126,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
       final FakePassageFormatter f2 = new FakePassageFormatter();
       UnifiedHighlighter p2 =
           creatUHObjectForCurrentTestSuite(
-              new UnifiedHighlighter.ConcreteBuilder()
+              new UnifiedHighlighter.Builder()
                   .withSearcher(is)
                   .withIndexAnalyzer(indexAnalyzer)
                   .withFormatter(f2)
@@ -274,10 +274,8 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder concreteBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
     UnifiedHighlighter highlighter =
         new UnifiedHighlighter(concreteBuilder) {
           @Override
@@ -331,10 +329,8 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
 
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder concreteBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
     UnifiedHighlighter highlighter =
         new UnifiedHighlighter(concreteBuilder) {
           @Override
@@ -370,17 +366,12 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
   }
 
   private UnifiedHighlighter creatUHObjectForCurrentTestSuite(
-      UnifiedHighlighter.ConcreteBuilder concreteBuilder) {
-    UnifiedHighlighter.Builder<?> builder =
-        new UnifiedHighlighter.Builder<UnifiedHighlighter.ConcreteBuilder>() {
-          @Override
-          protected UnifiedHighlighter.ConcreteBuilder self() {
-            return concreteBuilder;
-          }
-
+      UnifiedHighlighter.Builder uhBuilder) {
+    UnifiedHighlighter.Builder builder =
+        new UnifiedHighlighter.Builder() {
           @Override
           public UnifiedHighlighter build() {
-            return new UnifiedHighlighter(concreteBuilder) {
+            return new UnifiedHighlighter(uhBuilder) {
               @Override
               protected PassageFormatter getFormatter(String field) {
                 assertEquals("body", field);

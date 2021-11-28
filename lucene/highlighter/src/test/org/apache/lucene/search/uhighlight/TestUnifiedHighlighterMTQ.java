@@ -117,26 +117,21 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = concreteBuilder.build();
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
     Query query = new WildcardQuery(new Term("body", "te*"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
-    String[] snippets = highlighter.highlight("body", query, topDocs);
+    String[] snippets = uhBuilder.build().highlight("body", query, topDocs);
     assertEquals(2, snippets.length);
     assertEquals("This is a <b>test</b>.", snippets[0]);
     assertEquals("<b>Test</b> a one sentence document.", snippets[1]);
 
     // disable MTQ; won't highlight
-    highlighter = concreteBuilder.withHandleMultiTermQuery(false).build();
-    snippets = highlighter.highlight("body", query, topDocs);
+    snippets = uhBuilder.withHandleMultiTermQuery(false).build().highlight("body", query, topDocs);
     assertEquals(2, snippets.length);
     assertEquals("This is a test.", snippets[0]);
     assertEquals("Test a one sentence document.", snippets[1]);
-    highlighter = concreteBuilder.withHandleMultiTermQuery(true).build(); // reset
 
     // wrong field
     BooleanQuery bq =
@@ -146,7 +141,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
-    snippets = highlighter.highlight("body", bq, topDocs);
+    snippets = uhBuilder.withHandleMultiTermQuery(true).build().highlight("body", bq, topDocs);
     assertEquals(2, snippets.length);
     assertEquals("This is a test.", snippets[0]);
     assertEquals("Test a one sentence document.", snippets[1]);
@@ -160,10 +155,9 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
         searcher, indexAnalyzer, EnumSet.of(HighlightFlag.MULTI_TERM_QUERY), null);
   }
 
-  private UnifiedHighlighter randomUnifiedHighlighter(
-      UnifiedHighlighter.ConcreteBuilder concreteBuilder) {
+  private UnifiedHighlighter randomUnifiedHighlighter(UnifiedHighlighter.Builder uhBuilder) {
     return TestUnifiedHighlighter.randomUnifiedHighlighter(
-        concreteBuilder, EnumSet.of(HighlightFlag.MULTI_TERM_QUERY), null);
+        uhBuilder, EnumSet.of(HighlightFlag.MULTI_TERM_QUERY), null);
   }
 
   public void testOnePrefix() throws Exception {
@@ -182,11 +176,9 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     // wrap in a BoostQuery to also show we see inside it
     Query query = new BoostQuery(new PrefixQuery(new Term("body", "te")), 2.0f);
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
@@ -197,7 +189,6 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     assertEquals("<b>Test</b> a one sentence document.", snippets[1]);
 
     // wrong field
-    highlighter = concreteBuilder.withFieldMatcher(null).build(); // default
     BooleanQuery bq =
         new BooleanQuery.Builder()
             .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
@@ -205,7 +196,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
-    snippets = highlighter.highlight("body", bq, topDocs);
+    snippets = uhBuilder.withFieldMatcher(null).build().highlight("body", bq, topDocs);
     assertEquals(2, snippets.length);
     assertEquals("This is a test.", snippets[0]);
     assertEquals("Test a one sentence document.", snippets[1]);
@@ -229,11 +220,9 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     Query query = new RegexpQuery(new Term("body", "te.*"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
@@ -243,7 +232,6 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     assertEquals("<b>Test</b> a one sentence document.", snippets[1]);
 
     // wrong field
-    highlighter = concreteBuilder.withFieldMatcher(null).build(); // default
     BooleanQuery bq =
         new BooleanQuery.Builder()
             .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
@@ -251,7 +239,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
-    snippets = highlighter.highlight("body", bq, topDocs);
+    snippets = uhBuilder.withFieldMatcher(null).build().highlight("body", bq, topDocs);
     assertEquals(2, snippets.length);
     assertEquals("This is a test.", snippets[0]);
     assertEquals("Test a one sentence document.", snippets[1]);
@@ -275,11 +263,9 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     Query query = new FuzzyQuery(new Term("body", "tets"), 1);
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
@@ -307,7 +293,6 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     assertEquals("<b>Test</b> a one sentence document.", snippets[1]);
 
     // wrong field
-    highlighter = concreteBuilder.withFieldMatcher(null).build(); // default
     BooleanQuery bq =
         new BooleanQuery.Builder()
             .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
@@ -315,7 +300,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
-    snippets = highlighter.highlight("body", bq, topDocs);
+    snippets = uhBuilder.withFieldMatcher(null).build().highlight("body", bq, topDocs);
     assertEquals(2, snippets.length);
     assertEquals("This is a test.", snippets[0]);
     assertEquals("Test a one sentence document.", snippets[1]);
@@ -339,11 +324,9 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
     Query query = TermRangeQuery.newStringRange("body", "ta", "tf", true, true);
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
@@ -419,7 +402,6 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     assertEquals("Test a one sentence document.", snippets[1]);
 
     // wrong field
-    highlighter = concreteBuilder.withFieldMatcher(null).build(); // default
     bq =
         new BooleanQuery.Builder()
             .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
@@ -429,7 +411,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
-    snippets = highlighter.highlight("body", bq, topDocs);
+    snippets = uhBuilder.withFieldMatcher(null).build().highlight("body", bq, topDocs);
     assertEquals(2, snippets.length);
     assertEquals("This is a test.", snippets[0]);
     assertEquals("Test a one sentence document.", snippets[1]);
@@ -752,53 +734,56 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     // Default formatter just bolds each hit:
     assertEquals("<b>Test</b> a <b>one</b> <b>sentence</b> document.", snippets[0]);
 
-    PassageFormatter passageFormatter =
-        new PassageFormatter() {
-          @Override
-          public Object format(Passage[] passages, String content) {
-            // Copied from DefaultPassageFormatter, but
-            // tweaked to include the matched term:
-            StringBuilder sb = new StringBuilder();
-            int pos = 0;
-            for (Passage passage : passages) {
-              // don't add ellipsis if its the first one, or if its connected.
-              if (passage.getStartOffset() > pos && pos > 0) {
-                sb.append("... ");
-              }
-              pos = passage.getStartOffset();
-              for (int i = 0; i < passage.getNumMatches(); i++) {
-                int start = passage.getMatchStarts()[i];
-                int end = passage.getMatchEnds()[i];
-                // its possible to have overlapping terms
-                if (start > pos) {
-                  sb.append(content, pos, start);
-                }
-                if (end > pos) {
-                  sb.append("<b>");
-                  sb.append(content, Math.max(pos, start), end);
-                  sb.append('(');
-                  sb.append(passage.getMatchTerms()[i].utf8ToString());
-                  sb.append(')');
-                  sb.append("</b>");
-                  pos = end;
-                }
-              }
-              // its possible a "term" from the analyzer could span a sentence boundary.
-              sb.append(content, pos, Math.max(pos, passage.getEndOffset()));
-              pos = passage.getEndOffset();
-            }
-            return sb.toString();
-          }
-        };
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
 
     // Now use our own formatter, that also stuffs the
     // matching term's text into the result:
     highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
-            .withFormatter(passageFormatter)
-            .build();
+        new UnifiedHighlighter(uhBuilder) {
+
+          @Override
+          protected PassageFormatter getFormatter(String field) {
+            return new PassageFormatter() {
+
+              @Override
+              public Object format(Passage[] passages, String content) {
+                // Copied from DefaultPassageFormatter, but
+                // tweaked to include the matched term:
+                StringBuilder sb = new StringBuilder();
+                int pos = 0;
+                for (Passage passage : passages) {
+                  // don't add ellipsis if its the first one, or if its connected.
+                  if (passage.getStartOffset() > pos && pos > 0) {
+                    sb.append("... ");
+                  }
+                  pos = passage.getStartOffset();
+                  for (int i = 0; i < passage.getNumMatches(); i++) {
+                    int start = passage.getMatchStarts()[i];
+                    int end = passage.getMatchEnds()[i];
+                    // its possible to have overlapping terms
+                    if (start > pos) {
+                      sb.append(content, pos, start);
+                    }
+                    if (end > pos) {
+                      sb.append("<b>");
+                      sb.append(content, Math.max(pos, start), end);
+                      sb.append('(');
+                      sb.append(passage.getMatchTerms()[i].utf8ToString());
+                      sb.append(')');
+                      sb.append("</b>");
+                      pos = end;
+                    }
+                  }
+                  // its possible a "term" from the analyzer could span a sentence boundary.
+                  sb.append(content, pos, Math.max(pos, passage.getEndOffset()));
+                  pos = passage.getEndOffset();
+                }
+                return sb.toString();
+              }
+            };
+          }
+        };
 
     assertEquals(1, topDocs.totalHits.value);
     snippets = highlighter.highlight("body", query, topDocs);
@@ -835,12 +820,12 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withMaxLength(25); // a little past first sentence
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
 
     BooleanQuery query =
         new BooleanQuery.Builder()
@@ -873,12 +858,12 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(indexAnalyzer)
             .withMaxLength(32); // a little past first sentence
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
 
     BooleanQuery query =
         new BooleanQuery.Builder()
@@ -928,15 +913,15 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
         };
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-        new UnifiedHighlighter.ConcreteBuilder()
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder()
             .withSearcher(searcher)
             .withIndexAnalyzer(buggyAnalyzer)
             .withHandleMultiTermQuery(true);
     if (rarely()) {
-      concreteBuilder = concreteBuilder.withMaxLength(25); // a little past first sentence
+      uhBuilder = uhBuilder.withMaxLength(25); // a little past first sentence
     }
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
 
     boolean hasClauses = false;
     BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
@@ -1201,12 +1186,12 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
         iw.commit();
         try (IndexReader ir = iw.getReader()) {
           IndexSearcher searcher = newSearcher(ir);
-          UnifiedHighlighter.ConcreteBuilder concreteBuilder =
-              new UnifiedHighlighter.ConcreteBuilder()
+          UnifiedHighlighter.Builder uhBuilder =
+              new UnifiedHighlighter.Builder()
                   .withSearcher(searcher)
                   .withIndexAnalyzer(analyzer)
                   .withBreakIterator(WholeBreakIterator::new);
-          UnifiedHighlighter highlighter = randomUnifiedHighlighter(concreteBuilder);
+          UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
 
           // Test PrefixQuery
           Query query = new PrefixQuery(new Term(field, UnicodeUtil.newString(valuePoints, 0, 1)));
