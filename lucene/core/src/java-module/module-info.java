@@ -58,4 +58,13 @@ module lucene.core {
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,
       org.apache.lucene.search.SortedSetSortField.Provider;
+
+  uses org.apache.lucene.analysis.CharFilterFactory;
+  uses org.apache.lucene.analysis.TokenFilterFactory;
+  uses org.apache.lucene.analysis.TokenizerFactory;
+  uses org.apache.lucene.codecs.Codec;
+  uses org.apache.lucene.codecs.DocValuesFormat;
+  uses org.apache.lucene.codecs.KnnVectorsFormat;
+  uses org.apache.lucene.codecs.PostingsFormat;
+  uses org.apache.lucene.index.SortFieldProvider;
 }
