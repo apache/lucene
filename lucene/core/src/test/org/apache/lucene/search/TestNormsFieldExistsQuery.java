@@ -247,7 +247,7 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
 
     // We can still shortcut with deleted docs
     w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
-    w.deleteDocuments(new Term("text", "text"));  // deletes all but the first doc
+    w.deleteDocuments(new Term("text", "text")); // deletes all but the first doc
     DirectoryReader reader2 = w.getReader();
     final IndexSearcher searcher2 = new IndexSearcher(reader2);
     assertCountWithShortcut(searcher2, "text", 1);
@@ -255,7 +255,8 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     IOUtils.close(reader, reader2, w, dir);
   }
 
-  private void assertCountWithoutShortcut(IndexSearcher searcher, String field, int expectedCount) throws IOException {
+  private void assertCountWithoutShortcut(IndexSearcher searcher, String field, int expectedCount)
+      throws IOException {
     final Query q = new NormsFieldExistsQuery(field);
     final Weight weight = searcher.createWeight(q, ScoreMode.COMPLETE, 1);
     assertEquals(-1, weight.count(searcher.reader.leaves().get(0)));
