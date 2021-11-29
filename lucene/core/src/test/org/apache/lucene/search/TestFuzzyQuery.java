@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.containsString;
-
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,7 +45,6 @@ import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
-import org.apache.lucene.util.automaton.Operations;
 
 /** Tests {@link FuzzyQuery}. */
 public class TestFuzzyQuery extends LuceneTestCase {
@@ -564,36 +560,6 @@ public class TestFuzzyQuery extends LuceneTestCase {
               new FuzzyQuery(new Term("field", "foo"), 1, 0, -1, false);
             });
     assertTrue(expected.getMessage().contains("maxExpansions must be positive"));
-  }
-
-  private String randomRealisticMultiByteUnicode(int length) {
-    while (true) {
-      // There is 1 single-byte unicode block, and 194 multi-byte blocks
-      String value = RandomizedTest.randomRealisticUnicodeOfCodepointLength(length);
-      if (value.charAt(0) > Byte.MAX_VALUE) {
-        return value;
-      }
-    }
-  }
-
-  public void testErrorMessage() {
-    // 45 states per vector from Lev2TParametricDescription
-    final int length = (Operations.DEFAULT_DETERMINIZE_WORK_LIMIT / 5) + 10;
-    final String value = randomRealisticMultiByteUnicode(length);
-
-    FuzzyTermsEnum.FuzzyTermsException expected =
-        expectThrows(
-            FuzzyTermsEnum.FuzzyTermsException.class,
-            () -> {
-              new FuzzyAutomatonBuilder(value, 2, 0, true).buildMaxEditAutomaton();
-            });
-    assertThat(expected.getMessage(), containsString(value));
-
-    expected =
-        expectThrows(
-            FuzzyTermsEnum.FuzzyTermsException.class,
-            () -> new FuzzyAutomatonBuilder(value, 2, 0, true).buildAutomatonSet());
-    assertThat(expected.getMessage(), containsString(value));
   }
 
   private void addDoc(String text, RandomIndexWriter writer) throws IOException {
