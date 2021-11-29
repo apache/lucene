@@ -749,7 +749,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
             // computation
             // on merged impacts across fields
             long maxFreqSum = 0;
-            long minNorm = Long.MIN_VALUE;
+            long minNorm = Long.MAX_VALUE;
             for (List<Impact> impacts : mergedImpactsPerField.values()) {
               // highest freq at the end of each impact list
               maxFreqSum += impacts.get(impacts.size() - 1).freq;
