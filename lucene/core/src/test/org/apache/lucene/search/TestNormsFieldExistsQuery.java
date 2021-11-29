@@ -212,7 +212,6 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
     int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
-    int numMatchingDocs = 1;
 
     FieldType noNormsFieldType = new FieldType();
     noNormsFieldType.setOmitNorms(true);
@@ -220,16 +219,15 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
 
     Document doc = new Document();
     doc.add(new TextField("text", "always here", Store.NO));
+    doc.add(new TextField("text_s", "", Store.NO));
     doc.add(new Field("text_n", "always here", noNormsFieldType));
     w.addDocument(doc);
 
-    for (int i = 0; i < randomNumDocs; i++) {
+    for (int i = 1; i < randomNumDocs; i++) {
       doc.clear();
-      if (random().nextBoolean()) {
-        doc.add(new TextField("text", "some text", Store.NO));
-        doc.add(new Field("text_n", "some here", noNormsFieldType));
-        numMatchingDocs++;
-      }
+      doc.add(new TextField("text", "some text", Store.NO));
+      doc.add(new TextField("text_s", "some text", Store.NO));
+      doc.add(new Field("text_n", "some here", noNormsFieldType));
       w.addDocument(doc);
     }
     w.forceMerge(1);
@@ -237,28 +235,38 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
 
-    assertSameCount(reader, searcher, "text", numMatchingDocs);
-    assertSameCount(reader, searcher, "doesNotExist", 0);
-    assertSameCount(reader, searcher, "text_n", 0);
+    assertCountWithShortcut(searcher, "text", randomNumDocs);
+    assertCountWithShortcut(searcher, "doesNotExist", 0);
+    assertCountWithShortcut(searcher, "text_n", 0);
 
-    // Test that we can't count in O(1) when there are deleted documents
+    // docs that have a text field that analyzes to an empty token
+    // stream still have a recorded norm value but don't show up in
+    // Reader.getDocCount(field), so we can't use the shortcut for
+    // these fields
+    assertCountWithoutShortcut(searcher, "text_s", randomNumDocs);
+
+    // We can still shortcut with deleted docs
     w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
-    w.deleteDocuments(new Term("text", "text"));
+    w.deleteDocuments(new Term("text", "text"));  // deletes all but the first doc
     DirectoryReader reader2 = w.getReader();
     final IndexSearcher searcher2 = new IndexSearcher(reader2);
-    final Query testQuery = new NormsFieldExistsQuery("text");
-    final Weight weight2 = searcher2.createWeight(testQuery, ScoreMode.COMPLETE, 1);
-    assertEquals(weight2.count(reader2.leaves().get(0)), -1);
+    assertCountWithShortcut(searcher2, "text", 1);
 
     IOUtils.close(reader, reader2, w, dir);
   }
 
-  private void assertSameCount(
-      IndexReader reader, IndexSearcher searcher, String field, int numMatchingDocs)
+  private void assertCountWithoutShortcut(IndexSearcher searcher, String field, int expectedCount) throws IOException {
+    final Query q = new NormsFieldExistsQuery(field);
+    final Weight weight = searcher.createWeight(q, ScoreMode.COMPLETE, 1);
+    assertEquals(-1, weight.count(searcher.reader.leaves().get(0)));
+    assertEquals(expectedCount, searcher.count(q));
+  }
+
+  private void assertCountWithShortcut(IndexSearcher searcher, String field, int numMatchingDocs)
       throws IOException {
     final Query testQuery = new NormsFieldExistsQuery(field);
-    assertEquals(searcher.count(testQuery), numMatchingDocs);
+    assertEquals(numMatchingDocs, searcher.count(testQuery));
     final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
-    assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
+    assertEquals(numMatchingDocs, weight.count(searcher.reader.leaves().get(0)));
   }
 }

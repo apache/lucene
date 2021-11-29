@@ -87,8 +87,9 @@ public final class NormsFieldExistsQuery extends Query {
         if (fieldInfo == null || fieldInfo.hasNorms() == false) {
           return 0;
         }
-        if (reader.hasDeletions() == false && fieldInfo.getIndexOptions() != IndexOptions.NONE) {
-          return reader.terms(field).getDocCount();
+        // If every field has a value then we can shortcut
+        if (reader.getDocCount(field) == reader.maxDoc()) {
+          return reader.numDocs();
         }
         return super.count(context);
       }
