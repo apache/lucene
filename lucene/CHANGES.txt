@@ -247,7 +247,9 @@ API Changes
 Improvements
 ---------------------
 
-* LUCENE-10234: Added Automatic-Module-Name to all JARs. (Dawid Weiss)
+* LUCENE-10234: Added Automatic-Module-Name to all JARs. This in a first step to enable full Java
+  module system (JMS) support in later Lucene versions. At the moment, the automatic names should
+  not be considered stable. (Dawid Weiss, Uwe Schindler)
 
 * LUCENE-10182: TestRamUsageEstimator used RamUsageTester.sizeOf throughout, making some of the
   tests trivial. Now, it compares results from RamUsageEstimator with those from RamUsageTester.
