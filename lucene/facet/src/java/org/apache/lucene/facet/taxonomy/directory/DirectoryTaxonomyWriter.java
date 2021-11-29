@@ -27,15 +27,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
@@ -91,16 +87,12 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   private final Directory dir;
   private final IndexWriter indexWriter;
-  private final boolean useOlderStoredFieldIndex;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
 
   // Records the taxonomy index epoch, updated on replaceTaxonomy as well.
   private long indexEpoch;
 
-  private SinglePositionTokenStream parentStream =
-      new SinglePositionTokenStream(Consts.PAYLOAD_PARENT);
-  private Field parentStreamField;
   private Field fullPathField;
   private int cacheMissesUntilFill = 11;
   private boolean shouldFillCache = true;
@@ -159,15 +151,9 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     openMode = config.getOpenMode();
     if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
-      // no commit exists so we can safely use the new BinaryDocValues field
-      useOlderStoredFieldIndex = false;
     } else {
       String epochStr = null;
-
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
-      /* a previous commit exists, so check the version of the last commit */
-      useOlderStoredFieldIndex = infos.getIndexCreatedVersionMajor() <= 8;
-
       Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
         epochStr = commitData.get(INDEX_EPOCH);
@@ -181,14 +167,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       ++indexEpoch;
     }
 
-    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
-    ft.setOmitNorms(true);
-    parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
-    if (useOlderStoredFieldIndex) {
-      fullPathField = new StringField(Consts.FULL, "", Field.Store.YES);
-    } else {
-      fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
-    }
+    fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
 
     nextID = indexWriter.getDocStats().maxDoc;
 
@@ -466,26 +445,15 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * effectively synchronized as well.
    */
   private int addCategoryDocument(FacetLabel categoryPath, int parent) throws IOException {
-    // Before Lucene 2.9, position increments >=0 were supported, so we
-    // added 1 to parent to allow the parent -1 (the parent of the root).
-    // Unfortunately, starting with Lucene 2.9, after LUCENE-1542, this is
-    // no longer enough, since 0 is not encoded consistently either (see
-    // comment in SinglePositionTokenStream). But because we must be
-    // backward-compatible with existing indexes, we can't just fix what
-    // we write here (e.g., to write parent+2), and need to do a workaround
-    // in the reader (which knows that anyway only category 0 has a parent
-    // -1).
-    parentStream.set(Math.max(parent + 1, 1));
     Document d = new Document();
-    d.add(parentStreamField);
+    /* Lucene 9 switches to NumericDocValuesField for storing parent ordinals */
+    d.add(new NumericDocValuesField(Consts.FIELD_PARENT_ORDINAL_NDV, parent));
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
 
-    if (useOlderStoredFieldIndex == false) {
-      /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
-      d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
-    }
+    /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
+    d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
 
     d.add(fullPathField);
 
@@ -506,50 +474,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     addToCache(categoryPath, id);
 
     return id;
-  }
-
-  private static class SinglePositionTokenStream extends TokenStream {
-    private CharTermAttribute termAtt;
-    private PositionIncrementAttribute posIncrAtt;
-    private boolean returned;
-    private int val;
-    private final String word;
-
-    public SinglePositionTokenStream(String word) {
-      termAtt = addAttribute(CharTermAttribute.class);
-      posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-      this.word = word;
-      returned = true;
-    }
-
-    /**
-     * Set the value we want to keep, as the position increment. Note that when
-     * TermPositions.nextPosition() is later used to retrieve this value, val-1 will be returned,
-     * not val.
-     *
-     * <p>IMPORTANT NOTE: Before Lucene 2.9, val&gt;=0 were safe (for val==0, the retrieved position
-     * would be -1). But starting with Lucene 2.9, this unfortunately changed, and only val&gt;0 are
-     * safe. val=0 can still be used, but don't count on the value you retrieve later (it could be 0
-     * or -1, depending on circumstances or versions). This change is described in Lucene's JIRA:
-     * LUCENE-1542.
-     */
-    public void set(int val) {
-      this.val = val;
-      returned = false;
-    }
-
-    @Override
-    public boolean incrementToken() throws IOException {
-      if (returned) {
-        return false;
-      }
-      clearAttributes();
-      posIncrAtt.setPositionIncrement(val);
-      termAtt.setEmpty();
-      termAtt.append(word);
-      returned = true;
-      return true;
-    }
   }
 
   private void addToCache(FacetLabel categoryPath, int id) throws IOException {

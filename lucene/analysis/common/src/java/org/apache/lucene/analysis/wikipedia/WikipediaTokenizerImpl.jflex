@@ -22,7 +22,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 /**
  * JFlex-generated tokenizer that is aware of Wikipedia syntax.
  */
-@SuppressWarnings({"unused","fallthrough"})
 %%
 
 %class WikipediaTokenizerImpl
@@ -76,7 +75,8 @@ public final int getNumWikiTokensSeen(){
 
 public final int yychar()
 {
-    return yychar;
+    // jflex supports > 2GB docs but not lucene
+    return (int) yychar;
 }
 
 public final int getPositionIncrement(){

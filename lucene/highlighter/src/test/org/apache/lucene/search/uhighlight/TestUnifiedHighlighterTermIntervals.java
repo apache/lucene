@@ -27,7 +27,6 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
@@ -87,45 +86,8 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
 
   static UnifiedHighlighter randomUnifiedHighlighter(
       IndexSearcher searcher, Analyzer indexAnalyzer) {
-    return randomUnifiedHighlighter(
+    return TestUnifiedHighlighter.randomUnifiedHighlighter(
         searcher, indexAnalyzer, EnumSet.noneOf(HighlightFlag.class), null);
-  }
-
-  static UnifiedHighlighter randomUnifiedHighlighter(
-      IndexSearcher searcher,
-      Analyzer indexAnalyzer,
-      EnumSet<HighlightFlag> mandatoryFlags,
-      Boolean requireFieldMatch) {
-    final UnifiedHighlighter uh =
-        new UnifiedHighlighter(searcher, indexAnalyzer) {
-          Set<HighlightFlag> flags; // consistently random set of flags for this test run
-
-          @Override
-          protected Set<HighlightFlag> getFlags(String field) {
-            if (flags != null) {
-              return flags;
-            }
-            final EnumSet<HighlightFlag> result = EnumSet.copyOf(mandatoryFlags);
-            int r = random().nextInt();
-            for (HighlightFlag highlightFlag : HighlightFlag.values()) {
-              if (((1 << highlightFlag.ordinal()) & r) == 0) {
-                result.add(highlightFlag);
-              }
-            }
-            if (result.contains(HighlightFlag.WEIGHT_MATCHES)) {
-              // these two are required for WEIGHT_MATCHES
-              result.add(HighlightFlag.MULTI_TERM_QUERY);
-              result.add(HighlightFlag.PHRASES);
-            }
-            return flags = result;
-          }
-        };
-    uh.setCacheFieldValCharsThreshold(random().nextInt(100));
-    if (requireFieldMatch == Boolean.FALSE
-        || (requireFieldMatch == null && random().nextBoolean())) {
-      uh.setFieldMatcher(f -> true); // requireFieldMatch==false
-    }
-    return uh;
   }
 
   //
@@ -1033,15 +995,15 @@ public class TestUnifiedHighlighterTermIntervals extends LuceneTestCase {
     assertEquals(1, topDocs.totalHits.value);
     String[] snippets = highlighter.highlight("title", query, topDocs, 10);
     assertEquals(1, snippets.length);
-    if (highlighter.getFlags("title").contains(HighlightFlag.WEIGHT_MATCHES)) {
-      assertEquals(
-          "" + highlighter.getFlags("title"), "<b>This is the title field</b>.", snippets[0]);
-    } else {
-      assertEquals(
-          "" + highlighter.getFlags("title"),
-          "<b>This</b> <b>is</b> <b>the</b> title <b>field</b>.",
-          snippets[0]);
-    }
+    // All flags are enabled.
+    assertEquals(
+        "" + highlighter.getFlags("title"),
+        HighlightFlag.values().length,
+        highlighter.getFlags("title").size());
+    assertEquals(
+        "" + highlighter.getFlags("title"),
+        "<b>This</b> <b>is</b> <b>the</b> title <b>field</b>.",
+        snippets[0]);
     ir.close();
   }
 

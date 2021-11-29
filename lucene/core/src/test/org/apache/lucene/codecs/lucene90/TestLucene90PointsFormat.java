@@ -113,9 +113,11 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     final int numDocs =
         TEST_NIGHTLY ? atLeast(10000) : atLeast(500); // at night, make sure we have several leaves
     final boolean multiValues = random().nextBoolean();
+    int totalValues = 0;
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
       if (i == numDocs / 2) {
+        totalValues++;
         doc.add(new BinaryPoint("f", uniquePointValue));
       } else {
         final int numValues = (multiValues) ? TestUtil.nextInt(random(), 2, 100) : 1;
@@ -124,6 +126,7 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
             random().nextBytes(pointValue);
           } while (Arrays.equals(pointValue, uniquePointValue));
           doc.add(new BinaryPoint("f", pointValue));
+          totalValues++;
         }
       }
       w.addDocument(doc);
@@ -133,9 +136,6 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     w.close();
     final LeafReader lr = getOnlyLeafReader(r);
     PointValues points = lr.getPointValues("f");
-
-    // If all points match, then the point count is numLeaves * maxPointsInLeafNode
-    final int numLeaves = (int) Math.ceil((double) points.size() / maxPointsInLeafNode);
 
     IntersectVisitor allPointsVisitor =
         new IntersectVisitor() {
@@ -151,7 +151,7 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
           }
         };
 
-    assertEquals(numLeaves * maxPointsInLeafNode, points.estimatePointCount(allPointsVisitor));
+    assertEquals(totalValues, points.estimatePointCount(allPointsVisitor));
     assertEquals(numDocs, points.estimateDocCount(allPointsVisitor));
 
     IntersectVisitor noPointsVisitor =
@@ -193,11 +193,16 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     // If only one point matches, then the point count is (maxPointsInLeafNode + 1) / 2
     // in general, or maybe 2x that if the point is a split value
     final long pointCount = points.estimatePointCount(onePointMatchVisitor);
+    final long lastNodePointCount = totalValues % maxPointsInLeafNode;
     assertTrue(
         "" + pointCount,
-        pointCount == (maxPointsInLeafNode + 1) / 2
-            || // common case
-            pointCount == 2 * ((maxPointsInLeafNode + 1) / 2)); // if the point is a split value
+        pointCount == (maxPointsInLeafNode + 1) / 2 // common case
+            || pointCount == (lastNodePointCount + 1) / 2 // not fully populated leaf
+            || pointCount == 2 * ((maxPointsInLeafNode + 1) / 2) // if the point is a split value
+            || pointCount
+                == ((maxPointsInLeafNode + 1) / 2)
+                    + ((lastNodePointCount + 1)
+                        / 2)); // if the point is a split value and one leaf is not fully populated
 
     final long docCount = points.estimateDocCount(onePointMatchVisitor);
 
@@ -234,10 +239,12 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
             ? atLeast(10000)
             : atLeast(1000); // in nightly, make sure we have several leaves
     final boolean multiValues = random().nextBoolean();
+    int totalValues = 0;
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
       if (i == numDocs / 2) {
         doc.add(new BinaryPoint("f", uniquePointValue));
+        totalValues++;
       } else {
         final int numValues = (multiValues) ? TestUtil.nextInt(random(), 2, 100) : 1;
         for (int j = 0; j < numValues; j++) {
@@ -247,6 +254,7 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
           } while (Arrays.equals(pointValue[0], uniquePointValue[0])
               || Arrays.equals(pointValue[1], uniquePointValue[1]));
           doc.add(new BinaryPoint("f", pointValue));
+          totalValues++;
         }
       }
       w.addDocument(doc);
@@ -271,10 +279,7 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
           }
         };
 
-    // If all points match, then the point count is numLeaves * maxPointsInLeafNode
-    final int numLeaves = (int) Math.ceil((double) points.size() / maxPointsInLeafNode);
-
-    assertEquals(numLeaves * maxPointsInLeafNode, points.estimatePointCount(allPointsVisitor));
+    assertEquals(totalValues, points.estimatePointCount(allPointsVisitor));
     assertEquals(numDocs, points.estimateDocCount(allPointsVisitor));
 
     IntersectVisitor noPointsVisitor =
@@ -320,11 +325,16 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
         };
 
     final long pointCount = points.estimatePointCount(onePointMatchVisitor);
-    // The number of matches needs to be multiple of count per leaf
-    final long countPerLeaf = (maxPointsInLeafNode + 1) / 2;
-    assertTrue("" + pointCount, pointCount % countPerLeaf == 0);
-    // in extreme cases, a point can be be shared by 4 leaves
-    assertTrue("" + pointCount, pointCount / countPerLeaf <= 4 && pointCount / countPerLeaf >= 1);
+    final long lastNodePointCount = totalValues % maxPointsInLeafNode;
+    assertTrue(
+        "" + pointCount,
+        pointCount == (maxPointsInLeafNode + 1) / 2 // common case
+            || pointCount == (lastNodePointCount + 1) / 2 // not fully populated leaf
+            || pointCount == 2 * ((maxPointsInLeafNode + 1) / 2) // if the point is a split value
+            || pointCount == ((maxPointsInLeafNode + 1) / 2) + ((lastNodePointCount + 1) / 2)
+            // in extreme cases, a point can be shared by 4 leaves
+            || pointCount == 4 * ((maxPointsInLeafNode + 1) / 2)
+            || pointCount == 3 * ((maxPointsInLeafNode + 1) / 2) + ((lastNodePointCount + 1) / 2));
 
     final long docCount = points.estimateDocCount(onePointMatchVisitor);
     if (multiValues) {

@@ -1,7 +1,7 @@
 {
-    "gradle/generation/jflex/skeleton.disable.buffer.expansion.txt": "1424f4df33c977bb150d7377c3bd61f819113091",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex": "bb3878ea10f85f124a0a9e4ea614d3400d664dae",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java": "b88c349d24028f557f2c014437f3f60c968ad9de",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex": "56a751d27e481fb55388f91ebf34f5a0cb8cb1b2",
-    "lucene/core/src/data/jflex/UnicodeEmojiProperties.jflex": "7491dd535debc6e9e9ce367c4d3a7217e466dcae"
+    "gradle/generation/jflex/skeleton.disable.buffer.expansion.txt": "6e43a3a64a9b5eb82ec5b4bc21f95aff5a2a061e",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex": "b79e24f254afcd138287049394f22bac9e094e13",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java": "e91f1cfdd3cc6ca341eab366460bb3b924a287bd",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex": "c1f5899cae026a48486ed0eef547e835116d4759",
+    "lucene/core/src/data/jflex/UnicodeEmojiProperties.jflex": "704643e507c77a66142dd5b1c84ac4273559371a"
 }

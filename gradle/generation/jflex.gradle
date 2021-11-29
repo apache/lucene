@@ -270,6 +270,17 @@ class JFlexTask extends DefaultTask {
       ]
     }
 
+    // fix invalid SuppressWarnings from jflex, so that it works with javac.
+    // we also need to suppress 'unused' because of dead code, so it passes ecjLint
+    // you can't "stack" SuppressWarnings annotations, jflex adds its own, this is the only way
+    // https://github.com/jflex-de/jflex/issues/762
+    project.ant.replace(
+          file: target,
+          encoding: "UTF-8",
+          token: 'SuppressWarnings("FallThrough")',
+          value: 'SuppressWarnings({"fallthrough","unused"})'
+    )
+
     // Correct line endings for Windows.
     project.ant.fixcrlf(
         file: target,

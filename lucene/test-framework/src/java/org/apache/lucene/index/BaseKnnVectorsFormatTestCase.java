@@ -957,7 +957,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     // enumerators
     assertEquals(0, VectorSimilarityFunction.EUCLIDEAN.ordinal());
     assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
-    assertEquals(2, VectorSimilarityFunction.values().length);
+    assertEquals(2, VectorSimilarityFunction.COSINE.ordinal());
+    assertEquals(3, VectorSimilarityFunction.values().length);
   }
 
   public void testAdvance() throws Exception {

@@ -101,7 +101,9 @@ org.eclipse.jdt.core.compiler.problem.suppressWarnings=enabled
 org.eclipse.jdt.core.compiler.problem.suppressWarningsNotFullyAnalysed=error
 org.eclipse.jdt.core.compiler.problem.syntacticNullAnalysisForFields=disabled
 org.eclipse.jdt.core.compiler.problem.syntheticAccessEmulation=ignore
-org.eclipse.jdt.core.compiler.problem.terminalDeprecation=error
+# Ignore terminal deprecation, allowing this tool to run faster.
+# we can just let javac do this check instead!
+org.eclipse.jdt.core.compiler.problem.terminalDeprecation=ignore
 org.eclipse.jdt.core.compiler.problem.typeParameterHiding=error
 org.eclipse.jdt.core.compiler.problem.unavoidableGenericTypeProblems=enabled
 org.eclipse.jdt.core.compiler.problem.uncheckedTypeOperation=error

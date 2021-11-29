@@ -133,7 +133,7 @@ public class TestXYShape extends LuceneTestCase {
       if (areBoxDisjoint(r1, r2)) {
         p = toPolygon(r2);
         try {
-          Tessellator.tessellate(p);
+          Tessellator.tessellate(p, random.nextBoolean());
           break;
         } catch (
             @SuppressWarnings("unused")

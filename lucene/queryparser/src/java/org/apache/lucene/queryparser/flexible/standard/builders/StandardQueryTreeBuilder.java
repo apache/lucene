@@ -29,6 +29,8 @@ import org.apache.lucene.queryparser.flexible.core.nodes.ModifierQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.SlopQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.TokenizedPhraseQueryNode;
+import org.apache.lucene.queryparser.flexible.standard.nodes.IntervalQueryNode;
+import org.apache.lucene.queryparser.flexible.standard.nodes.MinShouldMatchNode;
 import org.apache.lucene.queryparser.flexible.standard.nodes.MultiPhraseQueryNode;
 import org.apache.lucene.queryparser.flexible.standard.nodes.PointQueryNode;
 import org.apache.lucene.queryparser.flexible.standard.nodes.PointRangeQueryNode;
@@ -69,6 +71,8 @@ public class StandardQueryTreeBuilder extends QueryTreeBuilder implements Standa
     setBuilder(SynonymQueryNode.class, new SynonymQueryNodeBuilder());
     setBuilder(MultiPhraseQueryNode.class, new MultiPhraseQueryNodeBuilder());
     setBuilder(MatchAllDocsQueryNode.class, new MatchAllDocsQueryNodeBuilder());
+    setBuilder(MinShouldMatchNode.class, new MinShouldMatchNodeBuilder());
+    setBuilder(IntervalQueryNode.class, new IntervalQueryNodeBuilder());
   }
 
   @Override

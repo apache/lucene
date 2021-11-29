@@ -1,4 +1,4 @@
 {
-    "lucene/core/src/data/jflex/UnicodeEmojiProperties.jflex": "7491dd535debc6e9e9ce367c4d3a7217e466dcae",
-    "property:icuConfig": "icu_62"
+    "lucene/core/src/data/jflex/UnicodeEmojiProperties.jflex": "704643e507c77a66142dd5b1c84ac4273559371a",
+    "property:icuConfig": "com.ibm.icu:icu4j:70.1"
 }

@@ -24,8 +24,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntFunction;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -239,83 +240,42 @@ public class BKDWriter implements Closeable {
   }
 
   private static class MergeReader {
-    final BKDReader bkd;
-    final BKDReader.IntersectState state;
-    final MergeState.DocMap docMap;
-
-    /** Current doc ID */
-    public int docID;
-
+    private final PointValues.PointTree pointTree;
+    private final int packedBytesLength;
+    private final MergeState.DocMap docMap;
+    private final MergeIntersectsVisitor mergeIntersectsVisitor;
     /** Which doc in this block we are up to */
     private int docBlockUpto;
+    /** Current doc ID */
+    public int docID;
+    /** Current packed value */
+    public final byte[] packedValue;
 
-    /** How many docs in the current block */
-    private int docsInBlock;
-
-    /** Which leaf block we are up to */
-    private int blockID;
-
-    private final byte[] packedValues;
-
-    public MergeReader(BKDReader bkd, MergeState.DocMap docMap) throws IOException {
-      this.bkd = bkd;
-      state = new BKDReader.IntersectState(bkd.in.clone(), bkd.config, null, null);
+    public MergeReader(PointValues pointValues, MergeState.DocMap docMap) throws IOException {
+      this.packedBytesLength = pointValues.getBytesPerDimension() * pointValues.getNumDimensions();
+      this.pointTree = pointValues.getPointTree();
+      this.mergeIntersectsVisitor = new MergeIntersectsVisitor(packedBytesLength);
+      // move to first child of the tree and collect docs
+      while (pointTree.moveToChild()) {}
+      pointTree.visitDocValues(mergeIntersectsVisitor);
       this.docMap = docMap;
-      state.in.seek(bkd.getMinLeafBlockFP());
-      this.packedValues = new byte[bkd.config.maxPointsInLeafNode * bkd.config.packedBytesLength];
+      this.packedValue = new byte[packedBytesLength];
     }
 
     public boolean next() throws IOException {
       // System.out.println("MR.next this=" + this);
       while (true) {
-        if (docBlockUpto == docsInBlock) {
-          if (blockID == bkd.leafNodeOffset) {
-            // System.out.println("  done!");
+        if (docBlockUpto == mergeIntersectsVisitor.docsInBlock) {
+          if (collectNextLeaf() == false) {
+            assert mergeIntersectsVisitor.docsInBlock == 0;
             return false;
           }
-          // System.out.println("  new block @ fp=" + state.in.getFilePointer());
-          docsInBlock = bkd.readDocIDs(state.in, state.in.getFilePointer(), state.scratchIterator);
-          assert docsInBlock > 0;
+          assert mergeIntersectsVisitor.docsInBlock > 0;
           docBlockUpto = 0;
-          bkd.visitDocValues(
-              state.commonPrefixLengths,
-              state.scratchDataPackedValue,
-              state.scratchMinIndexPackedValue,
-              state.scratchMaxIndexPackedValue,
-              state.in,
-              state.scratchIterator,
-              docsInBlock,
-              new IntersectVisitor() {
-                int i = 0;
-
-                @Override
-                public void visit(int docID) {
-                  throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public void visit(int docID, byte[] packedValue) {
-                  assert docID == state.scratchIterator.docIDs[i];
-                  System.arraycopy(
-                      packedValue,
-                      0,
-                      packedValues,
-                      i * bkd.config.packedBytesLength,
-                      bkd.config.packedBytesLength);
-                  i++;
-                }
-
-                @Override
-                public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                  return Relation.CELL_CROSSES_QUERY;
-                }
-              });
-
-          blockID++;
         }
 
         final int index = docBlockUpto++;
-        int oldDocID = state.scratchIterator.docIDs[index];
+        int oldDocID = mergeIntersectsVisitor.docIDs[index];
 
         int mappedDocID;
         if (docMap == null) {
@@ -328,23 +288,89 @@ public class BKDWriter implements Closeable {
           // Not deleted!
           docID = mappedDocID;
           System.arraycopy(
-              packedValues,
-              index * bkd.config.packedBytesLength,
-              state.scratchDataPackedValue,
+              mergeIntersectsVisitor.packedValues,
+              index * packedBytesLength,
+              packedValue,
               0,
-              bkd.config.packedBytesLength);
+              packedBytesLength);
           return true;
         }
       }
     }
+
+    private boolean collectNextLeaf() throws IOException {
+      assert pointTree.moveToChild() == false;
+      mergeIntersectsVisitor.reset();
+      do {
+        if (pointTree.moveToSibling()) {
+          // move to first child of this node and collect docs
+          while (pointTree.moveToChild()) {}
+          pointTree.visitDocValues(mergeIntersectsVisitor);
+          return true;
+        }
+      } while (pointTree.moveToParent());
+      return false;
+    }
+  }
+
+  private static class MergeIntersectsVisitor implements IntersectVisitor {
+
+    int docsInBlock = 0;
+    byte[] packedValues;
+    int[] docIDs;
+    private final int packedBytesLength;
+
+    MergeIntersectsVisitor(int packedBytesLength) {
+      this.docIDs = new int[0];
+      this.packedValues = new byte[0];
+      this.packedBytesLength = packedBytesLength;
+    }
+
+    void reset() {
+      docsInBlock = 0;
+    }
+
+    @Override
+    public void grow(int count) {
+      assert docsInBlock == 0;
+      if (docIDs.length < count) {
+        docIDs = ArrayUtil.grow(docIDs, count);
+        int packedValuesSize = Math.toIntExact(docIDs.length * (long) packedBytesLength);
+        if (packedValuesSize > ArrayUtil.MAX_ARRAY_LENGTH) {
+          throw new IllegalStateException(
+              "array length must be <= to "
+                  + ArrayUtil.MAX_ARRAY_LENGTH
+                  + " but was: "
+                  + packedValuesSize);
+        }
+        packedValues = ArrayUtil.growExact(packedValues, packedValuesSize);
+      }
+    }
+
+    @Override
+    public void visit(int docID) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void visit(int docID, byte[] packedValue) {
+      System.arraycopy(
+          packedValue, 0, packedValues, docsInBlock * packedBytesLength, packedBytesLength);
+      docIDs[docsInBlock++] = docID;
+    }
+
+    @Override
+    public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+      return Relation.CELL_CROSSES_QUERY;
+    }
   }
 
   private static class BKDMergeQueue extends PriorityQueue<MergeReader> {
-    private final ByteArrayComparator comparator;
+    private final int bytesPerDim;
 
     public BKDMergeQueue(int bytesPerDim, int maxSize) {
       super(maxSize);
-      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+      this.bytesPerDim = bytesPerDim;
     }
 
     @Override
@@ -352,7 +378,7 @@ public class BKDWriter implements Closeable {
       assert a != b;
 
       int cmp =
-          comparator.compare(a.state.scratchDataPackedValue, 0, b.state.scratchDataPackedValue, 0);
+          Arrays.compareUnsigned(a.packedValue, 0, bytesPerDim, b.packedValue, 0, bytesPerDim);
       if (cmp < 0) {
         return true;
       } else if (cmp > 0) {
@@ -387,7 +413,7 @@ public class BKDWriter implements Closeable {
   }
 
   /**
-   * Write a field from a {@link MutablePointValues}. This way of writing points is faster than
+   * Write a field from a {@link MutablePointTree}. This way of writing points is faster than
    * regular writes with {@link BKDWriter#add} since there is opportunity for reordering points
    * before writing them to disk. This method does not use transient disk in order to reorder
    * points.
@@ -397,7 +423,7 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues reader)
+      MutablePointTree reader)
       throws IOException {
     if (config.numDims == 1) {
       return writeField1Dim(metaOut, indexOut, dataOut, fieldName, reader);
@@ -407,7 +433,7 @@ public class BKDWriter implements Closeable {
   }
 
   private void computePackedValueBounds(
-      MutablePointValues values,
+      MutablePointTree values,
       int from,
       int to,
       byte[] minPackedValue,
@@ -425,8 +451,14 @@ public class BKDWriter implements Closeable {
       values.getValue(i, scratch);
       for (int dim = 0; dim < config.numIndexDims; dim++) {
         final int startOffset = dim * config.bytesPerDim;
-        if (comparator.compare(
-                scratch.bytes, scratch.offset + startOffset, minPackedValue, startOffset)
+        final int endOffset = startOffset + config.bytesPerDim;
+        if (Arrays.compareUnsigned(
+                scratch.bytes,
+                scratch.offset + startOffset,
+                scratch.offset + endOffset,
+                minPackedValue,
+                startOffset,
+                endOffset)
             < 0) {
           System.arraycopy(
               scratch.bytes,
@@ -434,8 +466,13 @@ public class BKDWriter implements Closeable {
               minPackedValue,
               startOffset,
               config.bytesPerDim);
-        } else if (comparator.compare(
-                scratch.bytes, scratch.offset + startOffset, maxPackedValue, startOffset)
+        } else if (Arrays.compareUnsigned(
+                scratch.bytes,
+                scratch.offset + startOffset,
+                scratch.offset + endOffset,
+                maxPackedValue,
+                startOffset,
+                endOffset)
             > 0) {
           System.arraycopy(
               scratch.bytes,
@@ -455,7 +492,7 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues values)
+      MutablePointTree values)
       throws IOException {
     if (pointCount != 0) {
       throw new IllegalStateException("cannot mix add and writeField");
@@ -549,14 +586,14 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues reader)
+      MutablePointTree reader)
       throws IOException {
-    MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
+    MutablePointTreeReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
 
     final OneDimensionBKDWriter oneDimWriter =
         new OneDimensionBKDWriter(metaOut, indexOut, dataOut);
 
-    reader.intersect(
+    reader.visitDocValues(
         new IntersectVisitor() {
 
           @Override
@@ -579,30 +616,33 @@ public class BKDWriter implements Closeable {
   }
 
   /**
-   * More efficient bulk-add for incoming {@link BKDReader}s. This does a merge sort of the already
-   * sorted values and currently only works when numDims==1. This returns -1 if all documents
-   * containing dimensional values were deleted.
+   * More efficient bulk-add for incoming {@link PointValues}s. This does a merge sort of the
+   * already sorted values and currently only works when numDims==1. This returns -1 if all
+   * documents containing dimensional values were deleted.
    */
   public Runnable merge(
       IndexOutput metaOut,
       IndexOutput indexOut,
       IndexOutput dataOut,
       List<MergeState.DocMap> docMaps,
-      List<BKDReader> readers)
+      List<PointValues> readers)
       throws IOException {
     assert docMaps == null || readers.size() == docMaps.size();
 
     BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim, readers.size());
 
     for (int i = 0; i < readers.size(); i++) {
-      BKDReader bkd = readers.get(i);
+      PointValues pointValues = readers.get(i);
+      assert pointValues.getNumDimensions() == config.numDims
+          && pointValues.getBytesPerDimension() == config.bytesPerDim
+          && pointValues.getNumIndexDimensions() == config.numIndexDims;
       MergeState.DocMap docMap;
       if (docMaps == null) {
         docMap = null;
       } else {
         docMap = docMaps.get(i);
       }
-      MergeReader reader = new MergeReader(bkd, docMap);
+      MergeReader reader = new MergeReader(pointValues, docMap);
       if (reader.next()) {
         queue.add(reader);
       }
@@ -614,7 +654,7 @@ public class BKDWriter implements Closeable {
       MergeReader reader = queue.top();
       // System.out.println("iter reader=" + reader);
 
-      oneDimWriter.add(reader.state.scratchDataPackedValue, reader.docID);
+      oneDimWriter.add(reader.packedValue, reader.docID);
 
       if (reader.next()) {
         queue.updateTop();
@@ -1394,12 +1434,24 @@ public class BKDWriter implements Closeable {
     BytesRef first = packedValues.apply(0);
     min.copyBytes(first.bytes, first.offset + offset, length);
     max.copyBytes(first.bytes, first.offset + offset, length);
-    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(length);
     for (int i = 1; i < count; ++i) {
       BytesRef candidate = packedValues.apply(i);
-      if (comparator.compare(min.bytes(), 0, candidate.bytes, candidate.offset + offset) > 0) {
+      if (Arrays.compareUnsigned(
+              min.bytes(),
+              0,
+              length,
+              candidate.bytes,
+              candidate.offset + offset,
+              candidate.offset + offset + length)
+          > 0) {
         min.copyBytes(candidate.bytes, candidate.offset + offset, length);
-      } else if (comparator.compare(max.bytes(), 0, candidate.bytes, candidate.offset + offset)
+      } else if (Arrays.compareUnsigned(
+              max.bytes(),
+              0,
+              length,
+              candidate.bytes,
+              candidate.offset + offset,
+              candidate.offset + offset + length)
           < 0) {
         max.copyBytes(candidate.bytes, candidate.offset + offset, length);
       }
@@ -1549,7 +1601,7 @@ public class BKDWriter implements Closeable {
   private void build(
       int leavesOffset,
       int numLeaves,
-      MutablePointValues reader,
+      MutablePointTree reader,
       int from,
       int to,
       IndexOutput out,
@@ -1614,7 +1666,7 @@ public class BKDWriter implements Closeable {
       }
 
       // sort by sortedDim
-      MutablePointsReaderUtils.sortByDim(
+      MutablePointTreeReaderUtils.sortByDim(
           config,
           sortedDim,
           commonPrefixLengths,
@@ -1710,7 +1762,7 @@ public class BKDWriter implements Closeable {
               maxPackedValue,
               splitDim * config.bytesPerDim);
 
-      MutablePointsReaderUtils.partition(
+      MutablePointTreeReaderUtils.partition(
           config,
           maxDoc,
           splitDim,

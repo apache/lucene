@@ -181,7 +181,7 @@ public final class BytesRefHash implements Accountable {
       offset = pos + 1;
     } else {
       // length is 2 bytes
-      length = (bytes[pos] & 0x7f) + ((bytes[pos + 1] & 0xff) << 7);
+      length = ((short) BitUtil.VH_BE_SHORT.get(bytes, pos)) & 0x7FFF;
       offset = pos + 2;
     }
     return Arrays.equals(bytes, offset, offset + length, b.bytes, b.offset, b.offset + b.length);
@@ -282,8 +282,7 @@ public final class BytesRefHash implements Accountable {
         System.arraycopy(bytes.bytes, bytes.offset, buffer, bufferUpto + 1, length);
       } else {
         // 2 byte to store length
-        buffer[bufferUpto] = (byte) (0x80 | (length & 0x7f));
-        buffer[bufferUpto + 1] = (byte) ((length >> 7) & 0xff);
+        BitUtil.VH_BE_SHORT.set(buffer, bufferUpto, (short) (length | 0x8000));
         pool.byteUpto += length + 2;
         System.arraycopy(bytes.bytes, bytes.offset, buffer, bufferUpto + 2, length);
       }
@@ -392,7 +391,7 @@ public final class BytesRefHash implements Accountable {
             len = bytes[start];
             pos = start + 1;
           } else {
-            len = (bytes[start] & 0x7f) + ((bytes[start + 1] & 0xff) << 7);
+            len = ((short) BitUtil.VH_BE_SHORT.get(bytes, start)) & 0x7FFF;
             pos = start + 2;
           }
           code = doHash(bytes, pos, len);

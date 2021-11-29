@@ -1,0 +1,128 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import org.apache.lucene.gradle.Checksum
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+
+plugins {
+  id 'signing'
+}
+
+// This project puts together the Lucene "distribution", assembling bits and pieces
+// from across the project structure into release artifacts.
+
+ext {
+  releaseDir = file("${buildDir}/release")
+  withSignedArtifacts = { ->
+    def propValue = propertyOrDefault("sign", null)
+    // Allow -Psign to work as a shorthand for -Psign=true
+    return propValue != null && (propValue.isBlank() || Boolean.parseBoolean(propValue))
+  }.call()
+}
+
+// Prepare the "source" distribution artifact.
+apply from: buildscript.sourceFile.toPath().resolveSibling("source-release.gradle")
+
+// Prepare the "binary" distribution artifact.
+apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
+
+// Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
+apply from: buildscript.sourceFile.toPath().resolveSibling("collect-maven-artifacts.gradle")
+
+// Configure artifact signing.
+apply from: buildscript.sourceFile.toPath().resolveSibling("artifact-signing.gradle")
+
+
+// Set up the HTML-rendered "changes" distribution artifact by linking to documentation's output.
+configurations {
+  changesHtml
+}
+
+dependencies {
+  changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
+}
+
+
+// Compute checksums for release archives.
+task computeChecksums(type: Checksum) {
+  algorithm = Checksum.Algorithm.SHA512
+
+  files = objects.fileCollection()
+  [
+      tasks.assembleSourceTgz,
+      tasks.assembleBinaryTgz,
+  ].each { dep ->
+    dependsOn dep
+    files += dep.outputs.files
+  }
+
+  outputDir = file("${buildDir}/checksums")
+}
+
+
+task prepareGitRev() {
+  dependsOn ":gitStatus"
+
+  ext.outputFile = file("${buildDir}/.gitrev")
+
+  outputs.file(ext.outputFile)
+  inputs.property("gitrev", provider { -> rootProject.ext.gitRev })
+
+  doFirst {
+    Files.writeString(ext.outputFile.toPath(), rootProject.ext.gitRev, StandardCharsets.UTF_8)
+  }
+}
+
+
+// Assemble everything needed in the release folder structure.
+task assembleRelease(type: Sync) {
+  description "Assemble all Lucene artifacts for a release."
+
+  from(configurations.changesHtml, {
+    into "changes"
+  })
+
+  from(tasks.mavenToBuild, {
+    into "maven"
+  })
+
+  from tasks.prepareGitRev
+  from tasks.assembleSourceTgz
+  from tasks.assembleBinaryTgz
+
+  from tasks.computeChecksums
+
+  // Conditionally, attach signatures of all the release archives.
+  if (project.ext.withSignedArtifacts) {
+    from tasks.signReleaseArchives
+  }
+
+  into releaseDir
+}
+
+
+// Add the description and task group to some of the tasks that make
+// sense at the user-level help.
+tasks.matching {it.name in [
+    "assembleSourceTgz",
+    "assembleBinaryTgz",
+    "assembleRelease",
+]}.all {
+  group "distribution"
+}
