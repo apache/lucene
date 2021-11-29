@@ -15,15 +15,27 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.luke.app.desktop.components.fragments.analysis;
+/*
+ * Used by interval function documentation.
+ */
 
-import java.util.Collection;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.luke.app.desktop.components.ComponentOperatorRegistry;
-
-/** Operator of the preset analyzer panel */
-public interface PresetAnalyzerPanelOperator extends ComponentOperatorRegistry.ComponentOperator {
-  void setPresetAnalyzers(Collection<Class<? extends Analyzer>> presetAnalyzers);
-
-  void setSelectedAnalyzer(Class<? extends Analyzer> analyzer);
+.example.sentence {
+  text-align: center;
+  padding: 1rem 0 2rem;
+  font-style: italic;
 }
+.example.sentence.with-highlights {
+  line-height: 150%;
+}
+.example.sentence.with-positions sub {
+  color: red;
+  font-weight: bold;
+}
+.example.sentence.left-aligned {
+  text-align: left;
+}
+span.highlight {
+  padding-bottom: 2px;
+  border-bottom: 2px solid red;
+}
+

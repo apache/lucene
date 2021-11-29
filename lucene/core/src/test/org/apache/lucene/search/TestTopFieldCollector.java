@@ -21,10 +21,6 @@ import static org.apache.lucene.search.SortField.FIELD_SCORE;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -42,7 +38,6 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.FieldValueHitQueue.Entry;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.TestUtil;
 
 public class TestTopFieldCollector extends LuceneTestCase {
@@ -75,7 +70,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
   private TopFieldCollector doSearchWithThreshold(
       int numResults, int thresHold, Query q, Sort sort, IndexReader indexReader)
       throws IOException {
-    IndexSearcher searcher = new IndexSearcher(indexReader);
+    IndexSearcher searcher = newSearcher(indexReader);
     TopFieldCollector tdc = TopFieldCollector.create(sort, numResults, thresHold);
     searcher.search(q, tdc);
     return tdc;
@@ -84,26 +79,14 @@ public class TestTopFieldCollector extends LuceneTestCase {
   private TopDocs doConcurrentSearchWithThreshold(
       int numResults, int threshold, Query q, Sort sort, IndexReader indexReader)
       throws IOException {
-    ExecutorService service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestTopDocsCollector"));
-    try {
-      IndexSearcher searcher = new IndexSearcher(indexReader, service);
+    IndexSearcher searcher = newSearcher(indexReader, true, true, true);
 
-      CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
-          TopFieldCollector.createSharedManager(sort, numResults, null, threshold);
+    CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
+        TopFieldCollector.createSharedManager(sort, numResults, null, threshold);
 
-      TopDocs tdc = searcher.search(q, collectorManager);
+    TopDocs tdc = searcher.search(q, collectorManager);
 
-      return tdc;
-    } finally {
-      service.shutdown();
-    }
+    return tdc;
   }
 
   public void testSortWithoutFillFields() throws Exception {
@@ -146,17 +129,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
   }
 
   public void testSharedHitcountCollector() throws Exception {
-
-    ExecutorService service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestTopFieldCollector"));
-
-    IndexSearcher concurrentSearcher = new IndexSearcher(ir, service);
+    IndexSearcher concurrentSearcher = newSearcher(ir, true, true, true);
 
     // Two Sort criteria to instantiate the multi/single comparators.
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
@@ -178,8 +151,6 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
       CheckHits.checkEqual(q, td.scoreDocs, td2.scoreDocs);
     }
-
-    service.shutdown();
   }
 
   public void testSortWithoutTotalHitTracking() throws Exception {
@@ -677,6 +648,10 @@ public class TestTopFieldCollector extends LuceneTestCase {
     TopFieldDocs topDocs = manager.reduce(Arrays.asList(collector, collector2, collector3));
     assertEquals(11, topDocs.totalHits.value);
     assertEquals(new TotalHits(11, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), topDocs.totalHits);
+
+    leafCollector.setScorer(scorer);
+    leafCollector2.setScorer(scorer2);
+    leafCollector3.setScorer(scorer3);
 
     reader.close();
     dir.close();

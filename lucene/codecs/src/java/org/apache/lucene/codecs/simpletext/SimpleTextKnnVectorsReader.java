@@ -160,9 +160,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       }
       float[] vector = values.vectorValue();
       float score = vectorSimilarity.convertToScore(vectorSimilarity.compare(vector, target));
-      if (vectorSimilarity.reversed) {
-        score = 1 / (score + 1);
-      }
       topK.insertWithOverflow(new ScoreDoc(doc, score));
     }
     ScoreDoc[] topScoreDocs = new ScoreDoc[topK.size()];

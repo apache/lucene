@@ -16,12 +16,8 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
-import org.apache.lucene.util.BytesRef;
-
 /** @lucene.experimental */
 abstract class Consts {
   static final String FULL = "$full_path$";
-  static final String FIELD_PAYLOADS = "$payloads$";
-  static final String PAYLOAD_PARENT = "p";
-  static final BytesRef PAYLOAD_PARENT_BYTES_REF = new BytesRef(PAYLOAD_PARENT);
+  static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";
 }

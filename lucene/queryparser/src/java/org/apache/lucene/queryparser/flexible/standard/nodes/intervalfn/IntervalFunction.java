@@ -14,15 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene;
+package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
-/** Lucene's package information, including version. */
-public final class LucenePackage {
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.queries.intervals.IntervalsSource;
 
-  private LucenePackage() {} // can't construct
+/** Representation of an interval function that can be converted to {@link IntervalsSource}. */
+public abstract class IntervalFunction {
+  public abstract IntervalsSource toIntervalSource(String field, Analyzer analyzer);
 
-  /** Return Lucene's package, including version information. */
-  public static Package get() {
-    return LucenePackage.class.getPackage();
-  }
+  @Override
+  public abstract String toString();
 }

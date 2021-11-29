@@ -29,7 +29,6 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -42,7 +41,6 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
-import org.apache.lucene.LucenePackage;
 import org.apache.lucene.luke.app.desktop.Preferences;
 import org.apache.lucene.luke.app.desktop.PreferencesFactory;
 import org.apache.lucene.luke.app.desktop.util.DialogOpener;
@@ -51,6 +49,7 @@ import org.apache.lucene.luke.app.desktop.util.ImageUtils;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 import org.apache.lucene.luke.app.desktop.util.URLLabel;
 import org.apache.lucene.luke.models.LukeException;
+import org.apache.lucene.util.Version;
 
 /** Factory of about dialog */
 public final class AboutDialogFactory implements DialogOpener.DialogFactory {
@@ -173,15 +172,15 @@ public final class AboutDialogFactory implements DialogOpener.DialogFactory {
   }
 
   private static final String LUCENE_IMPLEMENTATION_VERSION =
-      LucenePackage.get().getImplementationVersion();
+      Version.getPackageImplementationVersion();
 
   private static final String LICENSE_NOTICE =
-      "<p>[Implementation Version]</p>"
+      "<p>[Lucene Implementation Version]</p>"
           + "<p>"
-          + (Objects.nonNull(LUCENE_IMPLEMENTATION_VERSION) ? LUCENE_IMPLEMENTATION_VERSION : "")
+          + LUCENE_IMPLEMENTATION_VERSION
           + "</p>"
           + "<p>[License]</p>"
-          + "<p>Luke is distributed under <a href=\"http://www.apache.org/licenses/LICENSE-2.0\">Apache License Version 2.0</a> (http://www.apache.org/licenses/LICENSE-2.0) "
+          + "<p>Luke is distributed under <a href=\"https://www.apache.org/licenses/LICENSE-2.0\">Apache License Version 2.0</a> (https://www.apache.org/licenses/LICENSE-2.0) "
           + "and includes <a href=\"https://www.elegantthemes.com/blog/resources/elegant-icon-font\">The Elegant Icon Font</a> (https://www.elegantthemes.com/blog/resources/elegant-icon-font) "
           + "licensed under <a href=\"https://opensource.org/licenses/MIT\">MIT</a> (https://opensource.org/licenses/MIT)</p>"
           + "<p>[Brief history]</p>"
