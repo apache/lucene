@@ -129,7 +129,7 @@ public class SweetSpotSimilarity extends ClassicSimilarity {
    *  (x &lt;= min) &#63; base : sqrt(x+(base**2)-min)
    * </code> ...but with a special case check for 0.
    *
-   * <p>This degrates to <code>sqrt(x)</code> when min and base are both 0
+   * <p>This degrades to <code>sqrt(x)</code> when min and base are both 0
    *
    * @see #setBaselineTfFactors
    * @see <a href="doc-files/ss.baselineTf.svg">An SVG visualization of this function</a>

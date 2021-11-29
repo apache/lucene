@@ -269,7 +269,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
   }
 
   private double calculateLogPrior(Term term, int docsWithClassSize) throws IOException {
-    return Math.log((double) docCount(term)) - Math.log(docsWithClassSize);
+    return Math.log(docCount(term)) - Math.log(docsWithClassSize);
   }
 
   private int docCount(Term term) throws IOException {

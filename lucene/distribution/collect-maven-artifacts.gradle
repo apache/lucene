@@ -1,0 +1,64 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+//
+// Configure artifact publishing into a build-local Maven repository. This is technically not required
+// at all - maven artifacts can go directly to ASF Nexus - but smoke-testing scripts run checks on these
+// artifacts.
+//
+
+configure(project(":lucene:distribution")) {
+  def mavenRepositoryDir = file("${buildDir}/maven-artifacts")
+
+  task mavenToBuild() {
+    outputs.dir(mavenRepositoryDir)
+
+    // In signed mode, collect signed artifacts. Otherwise collect
+    // unsigned JARs (and their checksums).
+    def mavenConventionTask = project.ext.withSignedArtifacts ?
+        "publishSignedJarsPublicationToBuildRepository" :
+        "publishJarsPublicationToBuildRepository"
+
+    dependsOn rootProject.ext.mavenProjects.collect {
+      it.tasks.matching { it.name == mavenConventionTask }
+    }
+  }
+
+  def cleanBuildTask = task cleanMavenBuildRepository(type: Delete) {
+    delete mavenRepositoryDir
+  }
+
+  configure(rootProject.ext.mavenProjects) { Project project ->
+    // Clean the build repository prior to publishing anything. Ensures we don't
+    // have multiple artifacts there.
+    tasks.matching { it.name ==~ /publish.+ToBuildRepository/ }.all {
+      dependsOn cleanBuildTask
+    }
+
+    plugins.withType(PublishingPlugin) {
+      publishing {
+        repositories {
+          maven {
+            name = "Build"
+            url = mavenRepositoryDir
+          }
+        }
+      }
+    }
+  }
+}

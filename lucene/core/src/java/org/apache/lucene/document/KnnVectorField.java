@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
@@ -73,8 +74,8 @@ public class KnnVectorField extends Field {
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some strategies (notably dot-product) require values to be unit-length, which can be enforced
-   * using VectorUtil.l2Normalize(float[]).
+   * some strategies (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to be
+   * unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
    *
    * @param name field name
    * @param vector value

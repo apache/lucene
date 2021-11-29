@@ -106,7 +106,7 @@ public class RandomCodec extends AssertingCodec {
               @Override
               public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
 
-                PointValues values = reader.getValues(fieldInfo.name);
+                PointValues.PointTree values = reader.getValues(fieldInfo.name).getPointTree();
 
                 BKDConfig config =
                     new BKDConfig(
@@ -124,7 +124,7 @@ public class RandomCodec extends AssertingCodec {
                         maxMBSortInHeap,
                         values.size(),
                         bkdSplitRandomSeed ^ fieldInfo.name.hashCode())) {
-                  values.intersect(
+                  values.visitDocValues(
                       new IntersectVisitor() {
                         @Override
                         public void visit(int docID) {

@@ -25,7 +25,7 @@ import org.apache.lucene.store.RandomAccessInput;
 /** A {@link IndexInput} wrapper that changes the endianness of the provided index input. */
 final class EndiannessReverserIndexInput extends IndexInput {
 
-  private final IndexInput in;
+  final IndexInput in;
 
   EndiannessReverserIndexInput(IndexInput in) {
     super("Endianness reverser Index Input wrapper");

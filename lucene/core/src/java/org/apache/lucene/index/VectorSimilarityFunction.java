@@ -16,8 +16,7 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.VectorUtil.dotProduct;
-import static org.apache.lucene.util.VectorUtil.squareDistance;
+import static org.apache.lucene.util.VectorUtil.*;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
@@ -39,11 +38,34 @@ public enum VectorSimilarityFunction {
     }
   },
 
-  /** Dot product */
+  /**
+   * Dot product. NOTE: this similarity is intended as an optimized way to perform cosine
+   * similarity. In order to use it, all vectors must be of unit length, including both document and
+   * query vectors. Using dot product with vectors that are not unit length can result in errors or
+   * poor search results.
+   */
   DOT_PRODUCT {
     @Override
     public float compare(float[] v1, float[] v2) {
       return dotProduct(v1, v2);
+    }
+
+    @Override
+    public float convertToScore(float similarity) {
+      return (1 + similarity) / 2;
+    }
+  },
+
+  /**
+   * Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize all
+   * vectors to unit length, and instead use {@link VectorSimilarityFunction#DOT_PRODUCT}. You
+   * should only use this function if you need to preserve the original vectors and cannot normalize
+   * them in advance.
+   */
+  COSINE {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      return cosine(v1, v2);
     }
 
     @Override

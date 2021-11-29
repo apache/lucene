@@ -37,8 +37,8 @@ import org.apache.lucene.util.packed.PackedLongValues;
  */
 class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
   final BytesRefHash hash;
-  private PackedLongValues.Builder pending;
-  private DocsWithFieldSet docsWithField;
+  private final PackedLongValues.Builder pending;
+  private final DocsWithFieldSet docsWithField;
   private final Counter iwBytesUsed;
   private long bytesUsed; // this currently only tracks differences in 'pending'
   private final FieldInfo fieldInfo;
@@ -123,7 +123,7 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
       finalOrdMap[finalSortedValues[ord]] = ord;
     }
     return new BufferedSortedDocValues(
-        hash, valueCount, finalOrds, finalSortedValues, finalOrdMap, docsWithField.iterator());
+        hash, finalOrds, finalSortedValues, finalOrdMap, docsWithField.iterator());
   }
 
   private int[] sortDocValues(int maxDoc, Sorter.DocMap sortMap, SortedDocValues oldValues)
@@ -159,12 +159,7 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
               state.segmentInfo.maxDoc(),
               sortMap,
               new BufferedSortedDocValues(
-                  hash,
-                  valueCount,
-                  finalOrds,
-                  finalSortedValues,
-                  finalOrdMap,
-                  docsWithField.iterator()));
+                  hash, finalOrds, finalSortedValues, finalOrdMap, docsWithField.iterator()));
     } else {
       sorted = null;
     }
@@ -178,12 +173,7 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
             }
             final SortedDocValues buf =
                 new BufferedSortedDocValues(
-                    hash,
-                    valueCount,
-                    finalOrds,
-                    finalSortedValues,
-                    finalOrdMap,
-                    docsWithField.iterator());
+                    hash, finalOrds, finalSortedValues, finalOrdMap, docsWithField.iterator());
             if (sorted == null) {
               return buf;
             }
@@ -192,25 +182,22 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
         });
   }
 
-  private static class BufferedSortedDocValues extends SortedDocValues {
+  static class BufferedSortedDocValues extends SortedDocValues {
     final BytesRefHash hash;
     final BytesRef scratch = new BytesRef();
     final int[] sortedValues;
     final int[] ordMap;
-    final int valueCount;
     private int ord;
     final PackedLongValues.Iterator iter;
     final DocIdSetIterator docsWithField;
 
     public BufferedSortedDocValues(
         BytesRefHash hash,
-        int valueCount,
         PackedLongValues docToOrd,
         int[] sortedValues,
         int[] ordMap,
         DocIdSetIterator docsWithField) {
       this.hash = hash;
-      this.valueCount = valueCount;
       this.sortedValues = sortedValues;
       this.iter = docToOrd.iterator();
       this.ordMap = ordMap;
@@ -262,7 +249,7 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
 
     @Override
     public int getValueCount() {
-      return valueCount;
+      return hash.size();
     }
   }
 

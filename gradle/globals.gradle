@@ -47,7 +47,11 @@ allprojects {
 
     // System environment variable or default.
     envOrDefault = { envName, defValue ->
-      return Objects.requireNonNullElse(System.getenv(envName), defValue);
+      def result = System.getenv(envName)
+      if (result == null) {
+        result = defValue
+      }
+      return result
     }
 
     // Either a project, system property, environment variable or default value.

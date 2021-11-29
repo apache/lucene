@@ -149,8 +149,25 @@ public final class DirectWriter {
     }
     assert !finished;
     flush();
-    // pad for fast io: we actually only need this for certain BPV, but its just 3 bytes...
-    for (int i = 0; i < 3; i++) {
+    // add padding bytes for fast io
+    // for every number of bits per value, we want to be able to read the entire value in a single
+    // read e.g. for 20 bits per value, we want to be able to read values using ints so we need
+    // 32 - 20 = 12 bits of padding
+    int paddingBitsNeeded;
+    if (bitsPerValue > Integer.SIZE) {
+      paddingBitsNeeded = Long.SIZE - bitsPerValue;
+    } else if (bitsPerValue > Short.SIZE) {
+      paddingBitsNeeded = Integer.SIZE - bitsPerValue;
+    } else if (bitsPerValue > Byte.SIZE) {
+      paddingBitsNeeded = Short.SIZE - bitsPerValue;
+    } else {
+      paddingBitsNeeded = 0;
+    }
+    assert paddingBitsNeeded >= 0;
+    final int paddingBytesNeeded = (paddingBitsNeeded + Byte.SIZE - 1) / Byte.SIZE;
+    assert paddingBytesNeeded <= 3;
+
+    for (int i = 0; i < paddingBytesNeeded; i++) {
       output.writeByte((byte) 0);
     }
     finished = true;

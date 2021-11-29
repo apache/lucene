@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.util.CloseableThreadLocal;
@@ -45,6 +46,18 @@ public class MergingCodecReader extends FilterCodecReader {
           }
         }
       };
+  private final CloseableThreadLocal<DocValuesProducer> docValuesReader =
+      new CloseableThreadLocal<DocValuesProducer>() {
+        @Override
+        protected DocValuesProducer initialValue() {
+          DocValuesProducer docValues = in.getDocValuesReader();
+          if (docValues == null) {
+            return null;
+          } else {
+            return docValues.getMergeInstance();
+          }
+        }
+      };
   // TODO: other formats too
 
   /** Wrap the given instance. */
@@ -60,6 +73,11 @@ public class MergingCodecReader extends FilterCodecReader {
   @Override
   public NormsProducer getNormsReader() {
     return normsReader.get();
+  }
+
+  @Override
+  public DocValuesProducer getDocValuesReader() {
+    return docValuesReader.get();
   }
 
   @Override

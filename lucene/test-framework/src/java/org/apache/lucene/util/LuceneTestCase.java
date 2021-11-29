@@ -2854,6 +2854,12 @@ public abstract class LuceneTestCase extends Assert {
     void run() throws Throwable;
   }
 
+  /** A {@link java.util.function.Consumer} that can throw any checked exception. */
+  @FunctionalInterface
+  public interface ThrowingConsumer<T> {
+    void accept(T t) throws Exception;
+  }
+
   /** Checks a specific exception class is thrown by the given runnable, and returns it. */
   public static <T extends Throwable> T expectThrows(
       Class<T> expectedType, ThrowingRunnable runnable) {

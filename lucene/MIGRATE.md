@@ -17,6 +17,18 @@
 
 # Apache Lucene Migration Guide
 
+## Minor syntactical changes in StandardQueryParser (Lucene 9.1)
+
+LUCENE-10223 adds interval functions and min-should-match support to StandardQueryParser. This
+means that interval function prefixes ("fn:") and the '@' character after parentheses will
+parse differently than before. If you need the exact previous behavior, clone the StandardSyntaxParser from the previous version of Lucene and create a custom query parser
+with that parser.
+
+## LucenePackage class removed (LUCENE-10260)
+
+LucenePackage class has been removed. The implementation string can be
+retrieved from Version.getPackageImplementationVersion().
+
 ## Directory API is now little endian (LUCENE-9047)
 
 DataOutput's writeShort, writeInt, and writeLong methods now encode with
@@ -443,3 +455,20 @@ structure. Use a standard BoostQuery here instead.
 
 Rather than using `setSort()` to change sort values, you should instead create
 a new Sort instance with the new values.
+
+## Taxonomy-based faceting uses more modern encodings (LUCENE-9450, LUCENE-10062, LUCENE-10122)
+
+The side-car taxonomy index now uses doc values for ord-to-path lookup (LUCENE-9450) and parent
+lookup (LUCENE-10122) instead of stored fields and positions (respectively). Document ordinals
+are now encoded with `SortedNumericDocValues` instead of using a custom (v-int) binary format.
+Performance gains have been observed with these encoding changes. These changes were introduced
+in 9.0, and 9.x releases remain backwards-compatible with 8.x indexes, but starting with 10.0,
+only the newer formats are supported. Users will need to create a new index with all their
+documents using 9.0 or later to pick up the new format and remain compatible with 10.x releases.
+Just re-adding documents to an existing index is not enough to pick up the changes as the
+format will "stick" to whatever version was used to initially create the index.
+
+Additionally, `OrdinalsReader` (and sub-classes) are fully removed starting with 10.0. These
+classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on the default
+taxonomy facet encodings where possible. If custom formats are needed, users will need
+to manage the indexed data on their own and create new `Facet` implementations to use it.

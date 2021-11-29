@@ -37,7 +37,7 @@ public class TestRamUsageTesterOnWildAnimals extends LuceneTestCase {
         for (int i = 0; i < mid; i++) {
           last = (last.next = new ListElement());
         }
-        RamUsageTester.sizeOf(first); // cause SOE or pass.
+        RamUsageTester.ramUsed(first); // cause SOE or pass.
         lower = mid;
       } catch (
           @SuppressWarnings("unused")

@@ -99,13 +99,25 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
     return meta;
   }
 
-  /** Retrieves an instance from the specified slice. */
+  /** Retrieves a non-merging instance from the specified slice. */
   public static DirectMonotonicReader getInstance(Meta meta, RandomAccessInput data)
       throws IOException {
+    return getInstance(meta, data, false);
+  }
+
+  /** Retrieves an instance from the specified slice. */
+  public static DirectMonotonicReader getInstance(
+      Meta meta, RandomAccessInput data, boolean merging) throws IOException {
     final LongValues[] readers = new LongValues[meta.numBlocks];
-    for (int i = 0; i < meta.mins.length; ++i) {
+    for (int i = 0; i < meta.numBlocks; ++i) {
       if (meta.bpvs[i] == 0) {
         readers[i] = EMPTY;
+      } else if (merging
+          && i < meta.numBlocks - 1 // we only know the number of values for the last block
+          && meta.blockShift >= DirectReader.MERGE_BUFFER_SHIFT) {
+        readers[i] =
+            DirectReader.getMergeInstance(
+                data, meta.bpvs[i], meta.offsets[i], 1L << meta.blockShift);
       } else {
         readers[i] = DirectReader.getInstance(data, meta.bpvs[i], meta.offsets[i]);
       }
