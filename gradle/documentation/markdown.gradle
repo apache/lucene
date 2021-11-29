@@ -107,7 +107,12 @@ class MarkdownFilter extends FilterReader {
     // convert the markdown
     MutableDataSet options = new MutableDataSet();
     options.setFrom(ParserEmulationProfile.MARKDOWN);
-    options.set(Parser.EXTENSIONS, [ AbbreviationExtension.create(), AutolinkExtension.create(), AttributesExtension.create(), TablesExtension.create() ]);
+    options.set(Parser.EXTENSIONS, [
+      AbbreviationExtension.create(),
+      AutolinkExtension.create(),
+      AttributesExtension.create(),
+      TablesExtension.create(),
+    ]);
     options.set(HtmlRenderer.RENDER_HEADER_ID, true);
     options.set(HtmlRenderer.MAX_TRAILING_BLANK_LINES, 0);
     Document parsed = Parser.builder(options).build().parse(markdownSource);
