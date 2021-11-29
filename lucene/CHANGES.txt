@@ -36,6 +36,8 @@ Improvements
 * LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree 
   added in LUCENE-9820 (Ignacio Vera)
 
+* LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
+  
 Optimizations
 ---------------------
 
