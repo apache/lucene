@@ -17,6 +17,24 @@
 
 # Apache Lucene Migration Guide
 
+## Rename of binary artifacts from '**-analyzers-**' to '**-analysis-**' (LUCENE-9562)
+
+All binary analysis packages (and corresponding Maven artifacts) have been renamed and are
+now consistent with repository module 'analysis'. You will need to adjust build dependencies
+to the new coordinates:
+
+|         Old Artifact Coordinates            |        New Artifact Coordinates            |
+|---------------------------------------------|--------------------------------------------|
+|org.apache.lucene:lucene-analyzers-common    |org.apache.lucene:lucene-analysis-common    |
+|org.apache.lucene:lucene-analyzers-icu       |org.apache.lucene:lucene-analysis-icu       |
+|org.apache.lucene:lucene-analyzers-kuromoji  |org.apache.lucene:lucene-analysis-kuromoji  |
+|org.apache.lucene:lucene-analyzers-morfologik|org.apache.lucene:lucene-analysis-morfologik|
+|org.apache.lucene:lucene-analyzers-nori      |org.apache.lucene:lucene-analysis-nori      |
+|org.apache.lucene:lucene-analyzers-opennlp   |org.apache.lucene:lucene-analysis-opennlp   |
+|org.apache.lucene:lucene-analyzers-phonetic  |org.apache.lucene:lucene-analysis-phonetic  |
+|org.apache.lucene:lucene-analyzers-smartcn   |org.apache.lucene:lucene-analysis-smartcn   |
+|org.apache.lucene:lucene-analyzers-stempel   |org.apache.lucene:lucene-analysis-stempel   |
+
 ## LucenePackage class removed (LUCENE-10260)
 
 LucenePackage class has been removed. The implementation string can be
@@ -74,11 +92,6 @@ the default stop tags returned by `JapaneseAnalyzer.getDefaultStopTags()` (i.e. 
 
 o.a.l.collation.ICUCollationAnalyzer is renamed to o.a.l.a.icu.ICUCollationKeyAnalyzer.
 Also, its dependant classes are renamed in the same way.
-
-## Rename of binary artifacts from '**-analyzers-**' to '**-analysis-**' (LUCENE-9562)
-
-All binary analysis packages (and corresponding Maven artifacts) have been renamed and are
-now consistent with repository module 'analysis'. 
 
 ## Base and concrete analysis factories are moved / package renamed (LUCENE-9317)
 
