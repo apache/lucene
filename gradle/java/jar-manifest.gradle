@@ -19,6 +19,8 @@ import java.util.jar.JarFile
 
 // Configures JAR manifest entries
 
+import java.util.regex.Matcher
+
 subprojects {
     // Declare these inline for now. Don't know if it makes sense to declare them
     // per-project.
@@ -70,7 +72,8 @@ subprojects {
 
           // Only apply automatic module name to jar task.
           if (task.name in ["jar"]) {
-            manifestAttrs.put("Automatic-Module-Name", "${-> project.group.toString() + "." + project.name.replace("-", "_")}")
+            manifestAttrs["Automatic-Module-Name"] =
+              "${->  project.path.replaceFirst(/^:lucene/, Matcher.quoteReplacement(project.group)).replace(':', '.').replace('-', '_')}"
           }
 
           manifest {
