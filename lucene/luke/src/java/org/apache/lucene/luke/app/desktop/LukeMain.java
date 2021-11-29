@@ -79,7 +79,7 @@ public class LukeMain {
       return true;
     } catch (Throwable e) {
       messageBroker.showUnknownErrorMessage();
-      log.error("Cannot initialize components.", e);
+      log.fatal("Cannot initialize components.", e);
       return false;
     }
   }
