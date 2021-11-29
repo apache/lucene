@@ -66,7 +66,7 @@ subprojects {
               "X-Build-JDK"           : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
               "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}",
 
-              "Automatic-Module-Name" : "${-> project.path.replaceFirst(":", "").replace(':', '.').replace("-", "_")}"
+              "Automatic-Module-Name" : "org.apache.${-> project.path.replaceFirst(":", "").replace(':', '.').replace("-", "_")}"
             ])
           }
 
