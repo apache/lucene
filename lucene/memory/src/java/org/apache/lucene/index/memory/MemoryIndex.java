@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.BiFunction;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -1710,20 +1711,21 @@ public class MemoryIndex {
           }
 
           @Override
-          public void visitDocIDs(IntersectVisitor visitor) throws IOException {
-            visitor.grow(info.pointValuesCount);
+          public void visitDocIDs(DocIdsVisitor docIdsVisitor) throws IOException {
             for (int i = 0; i < info.pointValuesCount; i++) {
-              visitor.visit(0);
+              docIdsVisitor.visit(0);
             }
           }
 
           @Override
-          public void visitDocValues(IntersectVisitor visitor) throws IOException {
+          public void visitDocValues(
+              BiFunction<byte[], byte[], Relation> compare,
+              DocIdsVisitor docIdsVisitor,
+              DocValuesVisitor docValuesVisitor)
+              throws IOException {
             BytesRef[] values = info.pointValues;
-
-            visitor.grow(info.pointValuesCount);
             for (int i = 0; i < info.pointValuesCount; i++) {
-              visitor.visit(0, values[i].bytes);
+              docValuesVisitor.visit(0, values[i].bytes);
             }
           }
         };

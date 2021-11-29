@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.cranky;
 
 import java.io.IOException;
 import java.util.Random;
+import java.util.function.BiFunction;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
@@ -162,22 +163,26 @@ class CrankyPointsFormat extends PointsFormat {
             }
 
             @Override
-            public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+            public void visitDocIDs(DocIdsVisitor docIdsVisitor) throws IOException {
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
-              pointTree.visitDocIDs(visitor);
+              pointTree.visitDocIDs(docIdsVisitor);
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
             }
 
             @Override
-            public void visitDocValues(IntersectVisitor visitor) throws IOException {
+            public void visitDocValues(
+                BiFunction<byte[], byte[], Relation> compare,
+                DocIdsVisitor docIdsVisitor,
+                DocValuesVisitor docValuesVisitor)
+                throws IOException {
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
-              pointTree.visitDocValues(visitor);
+              pointTree.visitDocValues(compare, docIdsVisitor, docValuesVisitor);
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }

@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.function.BiFunction;
 import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -427,7 +428,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     private final PointValues pointValues;
     private final PointValues.PointTree in;
-    private final ExitableIntersectVisitor exitableIntersectVisitor;
     private final QueryTimeout queryTimeout;
     private int calls;
 
@@ -436,7 +436,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       this.pointValues = pointValues;
       this.in = in;
       this.queryTimeout = queryTimeout;
-      this.exitableIntersectVisitor = new ExitableIntersectVisitor(queryTimeout);
     }
 
     /**
@@ -505,80 +504,29 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
+    public void visitDocIDs(PointValues.DocIdsVisitor docIdsVisitor) throws IOException {
       checkAndThrow();
-      in.visitDocIDs(visitor);
+      in.visitDocIDs(
+          docID -> {
+            checkAndThrowWithSampling();
+            docIdsVisitor.visit(docID);
+          });
     }
 
     @Override
-    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+    public void visitDocValues(
+        BiFunction<byte[], byte[], PointValues.Relation> compare,
+        PointValues.DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor)
+        throws IOException {
       checkAndThrow();
-      exitableIntersectVisitor.setIntersectVisitor(visitor);
-      in.visitDocValues(exitableIntersectVisitor);
-    }
-  }
-
-  private static class ExitableIntersectVisitor implements PointValues.IntersectVisitor {
-
-    private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 10;
-
-    private PointValues.IntersectVisitor in;
-    private final QueryTimeout queryTimeout;
-    private int calls;
-
-    private ExitableIntersectVisitor(QueryTimeout queryTimeout) {
-      this.queryTimeout = queryTimeout;
-    }
-
-    private void setIntersectVisitor(PointValues.IntersectVisitor in) {
-      this.in = in;
-    }
-
-    /**
-     * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
-     * if {@link Thread#interrupted()} returns true.
-     */
-    private void checkAndThrowWithSampling() {
-      if (calls++ % MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
-        checkAndThrow();
-      }
-    }
-
-    private void checkAndThrow() {
-      if (queryTimeout.shouldExit()) {
-        throw new ExitingReaderException(
-            "The request took too long to intersect point values. Timeout: "
-                + queryTimeout.toString()
-                + ", PointValues="
-                + in);
-      } else if (Thread.interrupted()) {
-        throw new ExitingReaderException(
-            "Interrupted while intersecting point values. PointValues=" + in);
-      }
-    }
-
-    @Override
-    public void visit(int docID) throws IOException {
-      checkAndThrowWithSampling();
-      in.visit(docID);
-    }
-
-    @Override
-    public void visit(int docID, byte[] packedValue) throws IOException {
-      checkAndThrowWithSampling();
-      in.visit(docID, packedValue);
-    }
-
-    @Override
-    public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-      checkAndThrow();
-      return in.compare(minPackedValue, maxPackedValue);
-    }
-
-    @Override
-    public void grow(int count) {
-      checkAndThrow();
-      in.grow(count);
+      in.visitDocValues(
+          compare,
+          docIdsVisitor,
+          (docID, packedValue) -> {
+            checkAndThrowWithSampling();
+            docValuesVisitor.visit(docID, packedValue);
+          });
     }
   }
 

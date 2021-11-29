@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.codecs;
 
-import org.apache.lucene.index.PointValues.IntersectVisitor;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.util.BytesRef;
 
@@ -80,7 +80,7 @@ public abstract class MutablePointTree implements PointTree {
   }
 
   @Override
-  public void visitDocIDs(IntersectVisitor visitor) {
+  public void visitDocIDs(PointValues.DocIdsVisitor docIdsVisitor) {
     throw new UnsupportedOperationException();
   }
 }

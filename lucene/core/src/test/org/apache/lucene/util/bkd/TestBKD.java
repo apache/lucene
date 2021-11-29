@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Random;
+import java.util.function.BiFunction;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.MergeState;
@@ -894,29 +895,12 @@ public class TestBKD extends LuceneTestCase {
     tree = rarely() ? clone : tree;
     final long[] visitDocIDSize = new long[] {0};
     final long[] visitDocValuesSize = new long[] {0};
-    final IntersectVisitor visitor =
-        new IntersectVisitor() {
-          @Override
-          public void visit(int docID) {
-            visitDocIDSize[0]++;
-          }
-
-          @Override
-          public void visit(int docID, byte[] packedValue) {
-            visitDocValuesSize[0]++;
-          }
-
-          @Override
-          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-            return Relation.CELL_CROSSES_QUERY;
-          }
-        };
     if (random().nextBoolean()) {
-      tree.visitDocIDs(visitor);
-      tree.visitDocValues(visitor);
+      tree.visitDocIDs((docID -> visitDocIDSize[0]++));
+      tree.visitDocValues((docID, packedValue) -> visitDocValuesSize[0]++);
     } else {
-      tree.visitDocValues(visitor);
-      tree.visitDocIDs(visitor);
+      tree.visitDocValues((docID, packedValue) -> visitDocValuesSize[0]++);
+      tree.visitDocIDs((docID -> visitDocIDSize[0]++));
     }
     assertEquals(visitDocIDSize[0], visitDocValuesSize[0]);
     assertEquals(visitDocIDSize[0], tree.size());
@@ -1495,10 +1479,10 @@ public class TestBKD extends LuceneTestCase {
         points.estimatePointCount(
             new IntersectVisitor() {
               @Override
-              public void visit(int docID, byte[] packedValue) throws IOException {}
+              public void visit(int docID, byte[] packedValue) {}
 
               @Override
-              public void visit(int docID) throws IOException {}
+              public void visit(int docID) {}
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -1515,7 +1499,7 @@ public class TestBKD extends LuceneTestCase {
               public void visit(int docID, byte[] packedValue) throws IOException {}
 
               @Override
-              public void visit(int docID) throws IOException {}
+              public void visit(int docID) {}
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -1529,10 +1513,10 @@ public class TestBKD extends LuceneTestCase {
         points.estimatePointCount(
             new IntersectVisitor() {
               @Override
-              public void visit(int docID, byte[] packedValue) throws IOException {}
+              public void visit(int docID, byte[] packedValue) {}
 
               @Override
-              public void visit(int docID) throws IOException {}
+              public void visit(int docID) {}
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -1611,9 +1595,13 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public void visitDocValues(IntersectVisitor visitor) throws IOException {
+          public void visitDocValues(
+              BiFunction<byte[], byte[], Relation> compare,
+              PointValues.DocIdsVisitor docIdsVisitor,
+              PointValues.DocValuesVisitor docValuesVisitor)
+              throws IOException {
             for (int i = 0; i < numPointsAdded; i++) {
-              visitor.visit(0, pointValue);
+              docValuesVisitor.visit(0, pointValue);
             }
           }
         };
@@ -1727,9 +1715,13 @@ public class TestBKD extends LuceneTestCase {
           }
 
           @Override
-          public void visitDocValues(IntersectVisitor visitor) throws IOException {
+          public void visitDocValues(
+              BiFunction<byte[], byte[], Relation> compare,
+              PointValues.DocIdsVisitor docIdsVisitor,
+              PointValues.DocValuesVisitor docValuesVisitor)
+              throws IOException {
             for (int i = 0; i < size(); i++) {
-              visitor.visit(i, pointValue[i]);
+              docValuesVisitor.visit(i, pointValue[i]);
             }
           }
         };

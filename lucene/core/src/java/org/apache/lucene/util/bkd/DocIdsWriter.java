@@ -17,7 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
+import org.apache.lucene.index.PointValues.DocIdsVisitor;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 
@@ -138,10 +138,9 @@ class DocIdsWriter {
   }
 
   /**
-   * Read {@code count} integers and feed the result directly to {@link
-   * IntersectVisitor#visit(int)}.
+   * Read {@code count} integers and feed the result directly to {@link DocIdsVisitor#visit(int)}.
    */
-  static void readInts(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+  static void readInts(IndexInput in, int count, DocIdsVisitor visitor) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case 0:
@@ -158,7 +157,7 @@ class DocIdsWriter {
     }
   }
 
-  private static void readDeltaVInts(IndexInput in, int count, IntersectVisitor visitor)
+  private static void readDeltaVInts(IndexInput in, int count, DocIdsVisitor visitor)
       throws IOException {
     int doc = 0;
     for (int i = 0; i < count; i++) {
@@ -167,14 +166,14 @@ class DocIdsWriter {
     }
   }
 
-  private static void readInts32(IndexInput in, int count, IntersectVisitor visitor)
+  private static void readInts32(IndexInput in, int count, DocIdsVisitor visitor)
       throws IOException {
     for (int i = 0; i < count; i++) {
       visitor.visit(in.readInt());
     }
   }
 
-  private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
+  private static void readInts24(IndexInput in, int count, DocIdsVisitor visitor)
       throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {

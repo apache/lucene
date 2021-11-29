@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -1097,6 +1098,12 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    protected IntersectVisitor wrapIntersectVisitor(IntersectVisitor visitor) throws IOException {
+      return new AssertingIntersectVisitor(
+          getNumDimensions(), getNumIndexDimensions(), getBytesPerDimension(), visitor);
+    }
+
+    @Override
     public byte[] getMinPackedValue() throws IOException {
       assertThread("Points", creationThread);
       return Objects.requireNonNull(in.getMinPackedValue());
@@ -1187,23 +1194,17 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public void visitDocIDs(IntersectVisitor visitor) throws IOException {
-      in.visitDocIDs(
-          new AssertingIntersectVisitor(
-              pointValues.getNumDimensions(),
-              pointValues.getNumIndexDimensions(),
-              pointValues.getBytesPerDimension(),
-              visitor));
+    public void visitDocIDs(PointValues.DocIdsVisitor docIdsVisitor) throws IOException {
+      in.visitDocIDs(docIdsVisitor);
     }
 
     @Override
-    public void visitDocValues(IntersectVisitor visitor) throws IOException {
-      in.visitDocValues(
-          new AssertingIntersectVisitor(
-              pointValues.getNumDimensions(),
-              pointValues.getNumIndexDimensions(),
-              pointValues.getBytesPerDimension(),
-              visitor));
+    public void visitDocValues(
+        BiFunction<byte[], byte[], Relation> compare,
+        PointValues.DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor)
+        throws IOException {
+      in.visitDocValues(compare, docIdsVisitor, docValuesVisitor);
     }
   }
 

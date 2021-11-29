@@ -18,6 +18,7 @@ package org.apache.lucene.util.bkd;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.function.BiFunction;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.util.ArrayUtil;
@@ -357,7 +358,10 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
     }
 
     @Override
-    public void visitDocValues(PointValues.IntersectVisitor visitor) {
+    public void visitDocValues(
+        BiFunction<byte[], byte[], PointValues.Relation> compare,
+        PointValues.DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor) {
       throw new UnsupportedOperationException();
     }
   }

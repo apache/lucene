@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.function.BiFunction;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -126,12 +127,10 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     private final PointValues.PointTree indexTree;
     private final Sorter.DocMap docMap;
-    private final SortingIntersectVisitor sortingIntersectVisitor;
 
     SortingPointTree(PointValues.PointTree indexTree, Sorter.DocMap docMap) {
       this.indexTree = indexTree;
       this.docMap = docMap;
-      this.sortingIntersectVisitor = new SortingIntersectVisitor(docMap);
     }
 
     @Override
@@ -170,45 +169,20 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
-      sortingIntersectVisitor.setIntersectVisitor(visitor);
-      indexTree.visitDocIDs(sortingIntersectVisitor);
+    public void visitDocIDs(PointValues.DocIdsVisitor docIdsVisitor) throws IOException {
+      indexTree.visitDocIDs(docMap::oldToNew);
     }
 
     @Override
-    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
-      sortingIntersectVisitor.setIntersectVisitor(visitor);
-      indexTree.visitDocValues(sortingIntersectVisitor);
-    }
-  }
-
-  private static class SortingIntersectVisitor implements PointValues.IntersectVisitor {
-
-    private final Sorter.DocMap docMap;
-
-    private PointValues.IntersectVisitor visitor;
-
-    SortingIntersectVisitor(Sorter.DocMap docMap) {
-      this.docMap = docMap;
-    }
-
-    private void setIntersectVisitor(PointValues.IntersectVisitor visitor) {
-      this.visitor = visitor;
-    }
-
-    @Override
-    public void visit(int docID) throws IOException {
-      visitor.visit(docMap.oldToNew(docID));
-    }
-
-    @Override
-    public void visit(int docID, byte[] packedValue) throws IOException {
-      visitor.visit(docMap.oldToNew(docID), packedValue);
-    }
-
-    @Override
-    public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-      return visitor.compare(minPackedValue, maxPackedValue);
+    public void visitDocValues(
+        BiFunction<byte[], byte[], PointValues.Relation> compare,
+        PointValues.DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor)
+        throws IOException {
+      indexTree.visitDocValues(
+          compare,
+          docMap::oldToNew,
+          (docID, packedValue) -> docValuesVisitor.visit(docMap.oldToNew(docID), packedValue));
     }
   }
 

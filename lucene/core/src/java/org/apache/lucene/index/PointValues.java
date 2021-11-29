@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.util.function.BiFunction;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
@@ -269,35 +270,47 @@ public abstract class PointValues {
     long size();
 
     /** Visit all the docs below the current node. */
-    void visitDocIDs(IntersectVisitor visitor) throws IOException;
+    void visitDocIDs(DocIdsVisitor docIdsVisitor) throws IOException;
 
     /** Visit all the docs and values below the current node. */
-    void visitDocValues(IntersectVisitor visitor) throws IOException;
+    default void visitDocValues(DocValuesVisitor docValuesVisitor) throws IOException {
+      visitDocValues((min, max) -> Relation.CELL_CROSSES_QUERY, docID -> {}, docValuesVisitor);
+    }
+
+    /**
+     * Similar to {@link #visitDocValues(DocValuesVisitor)} but in this case it allows adding a
+     * filter that works like {@link IntersectVisitor#compare(byte[], byte[])}.
+     */
+    void visitDocValues(
+        BiFunction<byte[], byte[], Relation> compare,
+        DocIdsVisitor docIdsVisitor,
+        DocValuesVisitor docValuesVisitor)
+        throws IOException;
   }
 
   /**
-   * We recurse the {@link PointTree}, using a provided instance of this to guide the recursion.
-   *
-   * @lucene.experimental
+   * Collects all documents below a tree node by calling {@link
+   * PointTree#visitDocIDs(DocIdsVisitor)}
    */
-  public interface IntersectVisitor {
-    /**
-     * Called for all documents in a leaf cell that's fully contained by the query. The consumer
-     * should blindly accept the docID.
-     */
+  @FunctionalInterface
+  public interface DocIdsVisitor {
+    /** Called for all documents below a tree node. */
     void visit(int docID) throws IOException;
+  }
 
-    /**
-     * Called for all documents in a leaf cell that crosses the query. The consumer should
-     * scrutinize the packedValue to decide whether to accept it. In the 1D case, values are visited
-     * in increasing order, and in the case of ties, in increasing docID order.
-     */
+  /**
+   * Collects all documents and values below a tree node by calling {@link
+   * PointTree#visitDocValues(DocValuesVisitor)} (DocIdsVisitor)}
+   */
+  @FunctionalInterface
+  public interface DocValuesVisitor {
+    /** Called for all documents and values below a tree node. */
     void visit(int docID, byte[] packedValue) throws IOException;
 
     /**
-     * Similar to {@link IntersectVisitor#visit(int, byte[])} but in this case the packedValue can
+     * Similar to {@link DocValuesVisitor#visit(int, byte[])} but in this case the packedValue can
      * have more than one docID associated to it. The provided iterator should not escape the scope
-     * of this method so that implementations of PointValues are free to reuse it,
+     * of this method so that implementations of PointValues are free to reuse it.
      */
     default void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
       int docID;
@@ -305,16 +318,35 @@ public abstract class PointValues {
         visit(docID, packedValue);
       }
     }
+  }
+
+  /**
+   * We recurse the {@link PointTree}, using a provided instance of this to guide the recursion.
+   *
+   * @lucene.experimental
+   */
+  public interface IntersectVisitor extends DocValuesVisitor, DocIdsVisitor {
 
     /**
      * Called for non-leaf cells to test how the cell relates to the query, to determine how to
      * further recurse down the tree.
+     *
+     * <ul>
+     *   <li>{@link Relation#CELL_OUTSIDE_QUERY}: Stop recursing down the current branch of the
+     *       tree.
+     *   <li>{@link Relation#CELL_INSIDE_QUERY}: All nodes below the current node are visited using
+     *       the underlying {@link DocIdsVisitor}. he consumer should generally blindly accept the
+     *       docID.
+     *   <li>{@link Relation#CELL_CROSSES_QUERY}: Keep recursing down the current branch of the
+     *       tree. If the current node is a leaf, visit all docs and values usinng the underlying
+     *       {@link DocValuesVisitor}. The consumer should scrutinize the packedValue to decide
+     *       whether to accept it.
+     * </ul>
      */
     Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
 
     /** Notifies the caller that this many documents are about to be visited */
     default void grow(int count) {}
-    ;
   }
 
   /**
@@ -323,8 +355,16 @@ public abstract class PointValues {
    */
   public final void intersect(IntersectVisitor visitor) throws IOException {
     final PointTree pointTree = getPointTree();
-    intersect(visitor, pointTree);
+    intersect(wrapIntersectVisitor(visitor), pointTree);
     assert pointTree.moveToParent() == false;
+  }
+
+  /**
+   * Adds the possibility of wrapping a provided {@link IntersectVisitor} in {@link
+   * #intersect(IntersectVisitor)}.
+   */
+  protected IntersectVisitor wrapIntersectVisitor(IntersectVisitor visitor) throws IOException {
+    return visitor;
   }
 
   private void intersect(IntersectVisitor visitor, PointTree pointTree) throws IOException {
@@ -336,7 +376,7 @@ public abstract class PointValues {
       case CELL_INSIDE_QUERY:
         // This cell is fully inside the query shape: recursively add all points in this cell
         // without filtering
-        pointTree.visitDocIDs(visitor);
+        visitDocIds(visitor, pointTree);
         break;
       case CELL_CROSSES_QUERY:
         // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
@@ -350,11 +390,26 @@ public abstract class PointValues {
           // TODO: we can assert that the first value here in fact matches what the pointTree
           // claimed?
           // Leaf node; scan and filter all points in this block:
-          pointTree.visitDocValues(visitor);
+          visitor.grow((int) pointTree.size());
+          pointTree.visitDocValues(visitor::compare, visitor, visitor);
         }
         break;
       default:
         throw new IllegalArgumentException("Unreachable code");
+    }
+  }
+
+  private void visitDocIds(IntersectVisitor visitor, PointTree pointTree) throws IOException {
+    final long size = pointTree.size();
+    if (size <= Integer.MAX_VALUE) {
+      visitor.grow((int) size);
+      pointTree.visitDocIDs(visitor::visit);
+    } else {
+      if (pointTree.moveToChild()) {
+        do {
+          visitDocIds(visitor, pointTree);
+        } while (pointTree.moveToSibling());
+      }
     }
   }
 
