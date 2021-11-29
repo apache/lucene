@@ -1,4 +1,5 @@
 import java.util.jar.JarFile
+import java.util.regex.Matcher
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -18,8 +19,6 @@ import java.util.jar.JarFile
  */
 
 // Configures JAR manifest entries
-
-import java.util.regex.Matcher
 
 subprojects {
     // Declare these inline for now. Don't know if it makes sense to declare them
