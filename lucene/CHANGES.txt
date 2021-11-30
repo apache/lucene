@@ -247,7 +247,7 @@ API Changes
 Improvements
 ---------------------
 
-* LUCENE-10234: Added Automatic-Module-Name to all JARs. This in a first step to enable full Java
+* LUCENE-10234: Added Automatic-Module-Name to all JARs. This is the first step to enable full Java
   module system (JMS) support in later Lucene versions. At the moment, the automatic names should
   not be considered stable. (Dawid Weiss, Uwe Schindler)
 
