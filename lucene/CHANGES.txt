@@ -74,7 +74,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10232: Fix MultiRangeQuery to confirm all dimensions for a given range match. (Greg Miller)
 
 Other
 ---------------------
