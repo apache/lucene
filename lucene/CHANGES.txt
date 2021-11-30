@@ -65,6 +65,11 @@ New Features
 * LUCENE-10243: StandardTokenizer, UAX29URLEmailTokenizer, and HTMLStripCharFilter have
   been upgraded to Unicode 12.1  (Robert Muir)
 
+* LUCENE-10245: MultiDoubleValues(Source) and MultiLongValues(Source) were added as multi-valued versions of
+  DoubleValues(Source) and LongValues(Source). LongValueFacetCounts, LongRangeFacetCounts and DoubleRangeFacetCounts
+  were augmented to support these new multi-valued abstractions instead of the single-valued versions (with the
+  single-valued versions marked as deprecated). (Greg Miller)
+
 Improvements
 ---------------------
 

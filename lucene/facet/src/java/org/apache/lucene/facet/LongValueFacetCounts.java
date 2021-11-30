@@ -34,6 +34,8 @@ import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.search.MultiLongValues;
+import org.apache.lucene.search.MultiLongValuesSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.PriorityQueue;
@@ -70,18 +72,39 @@ public class LongValueFacetCounts extends Facets {
    * been indexed).
    */
   public LongValueFacetCounts(String field, FacetsCollector hits) throws IOException {
-    this(field, null, hits);
+    this(field, (MultiLongValuesSource) null, hits);
   }
 
   /**
    * Create {@code LongValueFacetCounts}, using the provided {@link LongValuesSource} if non-null.
    * If {@code valueSource} is null, doc values from the provided {@code field} will be used.
+   *
+   * @deprecated This is being deprecated in favor of {@link #LongValueFacetCounts(String,
+   *     MultiLongValuesSource, FacetsCollector)}. See {@link
+   *     MultiLongValuesSource#fromSingleValued(LongValuesSource)} for a convenient way to convert a
+   *     {@code LongValuesSource} for use with the new ctor.
    */
+  @Deprecated
   public LongValueFacetCounts(String field, LongValuesSource valueSource, FacetsCollector hits)
       throws IOException {
     this.field = field;
     if (valueSource != null) {
-      count(valueSource, hits.getMatchingDocs());
+      doCount(valueSource, hits.getMatchingDocs());
+    } else {
+      count(field, hits.getMatchingDocs());
+    }
+  }
+
+  /**
+   * Create {@code LongValueFacetCounts}, using the provided {@link MultiLongValuesSource} if
+   * non-null. If {@code valuesSource} is null, doc values from the provided {@code field} will be
+   * used.
+   */
+  public LongValueFacetCounts(
+      String field, MultiLongValuesSource valuesSource, FacetsCollector hits) throws IOException {
+    this.field = field;
+    if (valuesSource != null) {
+      count(valuesSource, hits.getMatchingDocs());
     } else {
       count(field, hits.getMatchingDocs());
     }
@@ -92,7 +115,7 @@ public class LongValueFacetCounts extends Facets {
    * {@link org.apache.lucene.search.MatchAllDocsQuery}, but is more efficient.
    */
   public LongValueFacetCounts(String field, IndexReader reader) throws IOException {
-    this(field, null, reader);
+    this(field, (MultiLongValuesSource) null, reader);
   }
 
   /**
@@ -100,36 +123,95 @@ public class LongValueFacetCounts extends Facets {
    * valueSource} is null, doc values from the provided {@code field} will be used. This produces
    * the same result as computing facets on a {@link org.apache.lucene.search.MatchAllDocsQuery},
    * but is more efficient.
+   *
+   * @deprecated This is being deprecated in favor of {@link #LongValueFacetCounts(String,
+   *     MultiLongValuesSource, IndexReader)}. See {@link
+   *     MultiLongValuesSource#fromSingleValued(LongValuesSource)} for a convenient way to convert a
+   *     {@code LongValuesSource} for use with the new ctor.
    */
+  @Deprecated
   public LongValueFacetCounts(String field, LongValuesSource valueSource, IndexReader reader)
       throws IOException {
     this.field = field;
     if (valueSource != null) {
-      countAll(reader, valueSource);
+      doCountAll(reader, valueSource);
+    } else {
+      countAll(reader, field);
+    }
+  }
+
+  /**
+   * Counts all facet values for the provided {@link MultiLongValuesSource} if non-null. If {@code
+   * valueSource} is null, doc values from the provided {@code field} will be used. This produces
+   * the same result as computing facets on a {@link org.apache.lucene.search.MatchAllDocsQuery},
+   * but is more efficient.
+   */
+  public LongValueFacetCounts(String field, MultiLongValuesSource valuesSource, IndexReader reader)
+      throws IOException {
+    this.field = field;
+    if (valuesSource != null) {
+      countAll(reader, valuesSource);
     } else {
       countAll(reader, field);
     }
   }
 
   /** Counts from the provided valueSource. */
-  private void count(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
+  private void count(MultiLongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
+    LongValuesSource singleValues = MultiLongValuesSource.unwrapSingleton(valueSource);
+    if (singleValues != null) {
+      doCount(singleValues, matchingDocs);
+    } else {
+      doCount(valueSource, matchingDocs);
+    }
+  }
+
+  /** Optimized for the single-valued case. */
+  private void doCount(LongValuesSource valuesSource, List<MatchingDocs> matchingDocs)
+      throws IOException {
     for (MatchingDocs hits : matchingDocs) {
 
-      LongValues fv = valueSource.getValues(hits.context, null);
-
-      // NOTE: this is not as efficient as working directly with the doc values APIs in the sparse
-      // case
-      // because we are doing a linear scan across all hits, but this API is more flexible since a
-      // LongValuesSource can compute interesting values at query time
+      LongValues values = valuesSource.getValues(hits.context, null);
 
       DocIdSetIterator docs = hits.bits.iterator();
       for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
-        if (fv.advanceExact(doc)) {
-          increment(fv.longValue());
+        if (values.advanceExact(doc)) {
+          increment(values.longValue());
           totCount++;
+        }
+
+        doc = docs.nextDoc();
+      }
+    }
+  }
+
+  /** Multi-value implementation. */
+  private void doCount(MultiLongValuesSource valuesSource, List<MatchingDocs> matchingDocs)
+      throws IOException {
+    for (MatchingDocs hits : matchingDocs) {
+
+      MultiLongValues multiValues = valuesSource.getValues(hits.context, null);
+
+      DocIdSetIterator docs = hits.bits.iterator();
+      for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+        // Skip missing docs:
+        if (multiValues.advanceExact(doc)) {
+          long limit = multiValues.getValueCount();
+          if (limit > 0) {
+            totCount++;
+          }
+          long previousValue = 0;
+          for (int i = 0; i < limit; i++) {
+            long value = multiValues.nextValue();
+            // do not increment the count for duplicate values
+            if (i == 0 || value != previousValue) {
+              increment(value);
+              previousValue = value;
+            }
+          }
         }
 
         doc = docs.nextDoc();
@@ -178,17 +260,56 @@ public class LongValueFacetCounts extends Facets {
   }
 
   /** Count everything in the provided valueSource. */
-  private void countAll(IndexReader reader, LongValuesSource valueSource) throws IOException {
+  private void countAll(IndexReader reader, MultiLongValuesSource valueSource) throws IOException {
+    LongValuesSource singleValued = MultiLongValuesSource.unwrapSingleton(valueSource);
+    if (singleValued != null) {
+      doCountAll(reader, singleValued);
+    } else {
+      doCountAll(reader, valueSource);
+    }
+  }
+
+  /** Optimized for the single-valued case. */
+  private void doCountAll(IndexReader reader, LongValuesSource valueSource) throws IOException {
 
     for (LeafReaderContext context : reader.leaves()) {
-      LongValues fv = valueSource.getValues(context, null);
+      LongValues values = valueSource.getValues(context, null);
       int maxDoc = context.reader().maxDoc();
 
       for (int doc = 0; doc < maxDoc; doc++) {
         // Skip missing docs:
-        if (fv.advanceExact(doc)) {
-          increment(fv.longValue());
+        if (values.advanceExact(doc)) {
+          increment(values.longValue());
           totCount++;
+        }
+      }
+    }
+  }
+
+  /** Multi-valued implementation. */
+  private void doCountAll(IndexReader reader, MultiLongValuesSource valueSource)
+      throws IOException {
+
+    for (LeafReaderContext context : reader.leaves()) {
+      MultiLongValues multiValues = valueSource.getValues(context, null);
+      int maxDoc = context.reader().maxDoc();
+
+      for (int doc = 0; doc < maxDoc; doc++) {
+        // Skip missing docs:
+        if (multiValues.advanceExact(doc)) {
+          long limit = multiValues.getValueCount();
+          if (limit > 0) {
+            totCount++;
+          }
+          long previousValue = 0;
+          for (int i = 0; i < limit; i++) {
+            long value = multiValues.nextValue();
+            // do not increment the count for duplicate values
+            if (i == 0 || value != previousValue) {
+              increment(value);
+              previousValue = value;
+            }
+          }
         }
       }
     }

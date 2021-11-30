@@ -44,6 +44,7 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiDoubleValuesSource;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -118,6 +119,8 @@ public class DistanceFacetsExample implements Closeable {
     writer.close();
   }
 
+  // TODO: Would be nice to augment this example with documents containing multiple "locations",
+  // adding the ability to compute distance facets for the multi-valued case
   private DoubleValuesSource getDistanceValueSource() {
     Expression distance;
     try {
@@ -218,7 +221,7 @@ public class DistanceFacetsExample implements Closeable {
     Facets facets =
         new DoubleRangeFacetCounts(
             "field",
-            getDistanceValueSource(),
+            MultiDoubleValuesSource.fromSingleValued(getDistanceValueSource()),
             fc,
             getBoundingBoxQuery(ORIGIN_LATITUDE, ORIGIN_LONGITUDE, 10.0),
             ONE_KM,
@@ -238,7 +241,9 @@ public class DistanceFacetsExample implements Closeable {
     final DoubleValuesSource vs = getDistanceValueSource();
     q.add(
         "field",
-        range.getQuery(getBoundingBoxQuery(ORIGIN_LATITUDE, ORIGIN_LONGITUDE, range.max), vs));
+        range.getQuery(
+            getBoundingBoxQuery(ORIGIN_LATITUDE, ORIGIN_LONGITUDE, range.max),
+            MultiDoubleValuesSource.fromSingleValued(vs)));
     DrillSideways ds =
         new DrillSideways(searcher, config, (TaxonomyReader) null) {
           @Override
@@ -249,7 +254,13 @@ public class DistanceFacetsExample implements Closeable {
               throws IOException {
             assert drillSideways.length == 1;
             return new DoubleRangeFacetCounts(
-                "field", vs, drillSideways[0], ONE_KM, TWO_KM, FIVE_KM, TEN_KM);
+                "field",
+                MultiDoubleValuesSource.fromSingleValued(vs),
+                drillSideways[0],
+                ONE_KM,
+                TWO_KM,
+                FIVE_KM,
+                TEN_KM);
           }
         };
     return ds.search(q, 10).hits;

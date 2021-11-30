@@ -14,24 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.search;
 
 import java.io.IOException;
 
 /**
- * Per-segment, per-document long values, which can be calculated at search-time. See also {@link
- * MultiLongValues} for a multi-valued version.
+ * Per-segment, per-document long values, which can be calculated at search-time. Documents may
+ * produce multiple values. See also {@link LongValues} for a single-valued version.
  */
-public abstract class LongValues {
-
-  /** Get the long value for the current document */
-  public abstract long longValue() throws IOException;
+public abstract class MultiLongValues {
 
   /**
-   * Advance this instance to the given document id
-   *
-   * @return true if there is a value for this document
+   * Retrieves the number of values for the current document. This must always be greater than zero.
+   * It is illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
    */
+  public abstract long getValueCount();
+
+  /**
+   * Iterates to the next value in the current document. Do not call this more than {@link
+   * #getValueCount} times for the document.
+   */
+  public abstract long nextValue() throws IOException;
+
+  /** Advance to exactly {@code target} and return whether {@code target} has a value. */
   public abstract boolean advanceExact(int doc) throws IOException;
 }

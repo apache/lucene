@@ -26,6 +26,8 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MultiDoubleValues;
+import org.apache.lucene.search.MultiDoubleValuesSource;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -114,6 +116,7 @@ public final class DoubleRange extends Range {
     return Objects.hash(label, min, max);
   }
 
+  @Deprecated
   private static class ValueSourceQuery extends Query {
     private final DoubleRange range;
     private final Query fastMatchQuery;
@@ -211,6 +214,134 @@ public final class DoubleRange extends Range {
     }
   }
 
+  private static class MultiValueSourceQuery extends Query {
+    private final DoubleRange range;
+    private final Query fastMatchQuery;
+    private final MultiDoubleValuesSource valueSource;
+
+    MultiValueSourceQuery(
+        DoubleRange range, Query fastMatchQuery, MultiDoubleValuesSource valueSource) {
+      this.range = range;
+      this.fastMatchQuery = fastMatchQuery;
+      this.valueSource = valueSource;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return sameClassAs(other) && equalsTo(getClass().cast(other));
+    }
+
+    private boolean equalsTo(MultiValueSourceQuery other) {
+      return range.equals(other.range)
+          && Objects.equals(fastMatchQuery, other.fastMatchQuery)
+          && valueSource.equals(other.valueSource);
+    }
+
+    @Override
+    public int hashCode() {
+      return classHash() + 31 * Objects.hash(range, fastMatchQuery, valueSource);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "Filter(" + range.toString() + ")";
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      visitor.visitLeaf(this);
+    }
+
+    @Override
+    public Query rewrite(IndexReader reader) throws IOException {
+      if (fastMatchQuery != null) {
+        final Query fastMatchRewritten = fastMatchQuery.rewrite(reader);
+        if (fastMatchRewritten != fastMatchQuery) {
+          return new MultiValueSourceQuery(range, fastMatchRewritten, valueSource);
+        }
+      }
+      return super.rewrite(reader);
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      final Weight fastMatchWeight =
+          fastMatchQuery == null
+              ? null
+              : searcher.createWeight(fastMatchQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
+
+      return new ConstantScoreWeight(this, boost) {
+        @Override
+        public Scorer scorer(LeafReaderContext context) throws IOException {
+          final int maxDoc = context.reader().maxDoc();
+
+          final DocIdSetIterator approximation;
+          if (fastMatchWeight == null) {
+            approximation = DocIdSetIterator.all(maxDoc);
+          } else {
+            Scorer s = fastMatchWeight.scorer(context);
+            if (s == null) {
+              return null;
+            }
+            approximation = s.iterator();
+          }
+
+          final MultiDoubleValues values = valueSource.getValues(context, null);
+          final TwoPhaseIterator twoPhase =
+              new TwoPhaseIterator(approximation) {
+                @Override
+                public boolean matches() throws IOException {
+                  if (values.advanceExact(approximation.docID()) == false) {
+                    return false;
+                  }
+
+                  for (int i = 0; i < values.getValueCount(); i++) {
+                    if (range.accept(values.nextValue())) {
+                      return true;
+                    }
+                  }
+                  return false;
+                }
+
+                @Override
+                public float matchCost() {
+                  return 100; // TODO: use cost of range.accept()
+                }
+              };
+          return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return valueSource.isCacheable(ctx);
+        }
+      };
+    }
+  }
+
+  /**
+   * Create a Query that matches documents in this range
+   *
+   * <p>The query will check all documents that match the provided match query, or every document in
+   * the index if the match query is null.
+   *
+   * <p>If the value source is static, eg an indexed numeric field, it may be faster to use {@link
+   * org.apache.lucene.search.PointRangeQuery}
+   *
+   * @param fastMatchQuery a query to use as a filter
+   * @param valueSource the source of values for the range check
+   * @deprecated Counting from a user-provided DoubleValuesSource is being deprecated in favor of
+   *     counting from a MultiDoubleValuesSource. See {@link #getQuery(Query,
+   *     MultiDoubleValuesSource)} and {@link
+   *     MultiDoubleValuesSource#fromSingleValued(DoubleValuesSource)} for an easy way to use the
+   *     new method with a {@code DoubleValuesSource}.
+   */
+  @Deprecated
+  public Query getQuery(Query fastMatchQuery, DoubleValuesSource valueSource) {
+    return new ValueSourceQuery(this, fastMatchQuery, valueSource);
+  }
+
   /**
    * Create a Query that matches documents in this range
    *
@@ -223,7 +354,7 @@ public final class DoubleRange extends Range {
    * @param fastMatchQuery a query to use as a filter
    * @param valueSource the source of values for the range check
    */
-  public Query getQuery(Query fastMatchQuery, DoubleValuesSource valueSource) {
-    return new ValueSourceQuery(this, fastMatchQuery, valueSource);
+  public Query getQuery(Query fastMatchQuery, MultiDoubleValuesSource valueSource) {
+    return new MultiValueSourceQuery(this, fastMatchQuery, valueSource);
   }
 }

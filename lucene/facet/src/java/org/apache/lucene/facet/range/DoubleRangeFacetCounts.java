@@ -27,6 +27,8 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
+import org.apache.lucene.search.MultiDoubleValues;
+import org.apache.lucene.search.MultiDoubleValuesSource;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.NumericUtils;
 
@@ -50,13 +52,13 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
    *
    * <p>N.B This assumes that the field was indexed with {@link
    * org.apache.lucene.document.DoubleDocValuesField}. For float-valued fields, use {@link
-   * #DoubleRangeFacetCounts(String, DoubleValuesSource, FacetsCollector, DoubleRange...)}
+   * #DoubleRangeFacetCounts(String, MultiDoubleValuesSource, FacetsCollector, DoubleRange...)}
    *
    * <p>TODO: Extend multi-valued support to fields that have been indexed as float values
    */
   public DoubleRangeFacetCounts(String field, FacetsCollector hits, DoubleRange... ranges)
       throws IOException {
-    this(field, null, hits, ranges);
+    this(field, (MultiDoubleValuesSource) null, hits, ranges);
   }
 
   /**
@@ -66,11 +68,35 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
    * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
    * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
    * field is indexed.
+   *
+   * @deprecated Deprecated in favor of {@link #DoubleRangeFacetCounts(String,
+   *     MultiDoubleValuesSource, FacetsCollector, DoubleRange...)}. See {@link
+   *     MultiDoubleValuesSource#fromSingleValued(DoubleValuesSource)} for an easy way to wrap
+   *     {@code DoubleValuesSource} for use with the new ctor.
    */
+  @Deprecated
   public DoubleRangeFacetCounts(
       String field, DoubleValuesSource valueSource, FacetsCollector hits, DoubleRange... ranges)
       throws IOException {
     this(field, valueSource, hits, null, ranges);
+  }
+
+  /**
+   * Create {@code RangeFacetCounts}, using the provided {@link MultiDoubleValuesSource} if
+   * non-null. If {@code valuesSource} is null, doc values from the provided {@code field} will be
+   * used.
+   *
+   * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
+   * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
+   * field is indexed.
+   */
+  public DoubleRangeFacetCounts(
+      String field,
+      MultiDoubleValuesSource valuesSource,
+      FacetsCollector hits,
+      DoubleRange... ranges)
+      throws IOException {
+    this(field, valuesSource, hits, null, ranges);
   }
 
   /**
@@ -82,7 +108,13 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
    * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
    * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
    * field is indexed.
+   *
+   * @deprecated Deprecated in favor of {@link #DoubleRangeFacetCounts(String,
+   *     MultiDoubleValuesSource, FacetsCollector, Query, DoubleRange...)}. See {@link
+   *     MultiDoubleValuesSource#fromSingleValued(DoubleValuesSource)} for an easy way to wrap
+   *     {@code DoubleValuesSource} for use with the new ctor.
    */
+  @Deprecated
   public DoubleRangeFacetCounts(
       String field,
       DoubleValuesSource valueSource,
@@ -94,14 +126,52 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
     // use the provided valueSource if non-null, otherwise use the doc values associated with the
     // field
     if (valueSource != null) {
-      count(valueSource, hits.getMatchingDocs());
+      doCount(valueSource, hits.getMatchingDocs());
+    } else {
+      count(field, hits.getMatchingDocs());
+    }
+  }
+
+  /**
+   * Create {@code RangeFacetCounts}, using the provided {@link MultiDoubleValuesSource} if
+   * non-null. If {@code valuesSource} is null, doc values from the provided {@code field} will be
+   * used. Use the provided {@code Query} as a fastmatch: only documents matching the query are
+   * checked for the matching ranges.
+   *
+   * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
+   * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
+   * field is indexed.
+   */
+  public DoubleRangeFacetCounts(
+      String field,
+      MultiDoubleValuesSource valuesSource,
+      FacetsCollector hits,
+      Query fastMatchQuery,
+      DoubleRange... ranges)
+      throws IOException {
+    super(field, ranges, fastMatchQuery);
+    // use the provided valueSource if non-null, otherwise use the doc values associated with the
+    // field
+    if (valuesSource != null) {
+      count(valuesSource, hits.getMatchingDocs());
     } else {
       count(field, hits.getMatchingDocs());
     }
   }
 
   /** Counts from the provided valueSource. */
-  private void count(DoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
+  private void count(MultiDoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
+      throws IOException {
+    DoubleValuesSource singleValues = MultiDoubleValuesSource.unwrapSingleton(valueSource);
+    if (singleValues != null) {
+      doCount(singleValues, matchingDocs);
+    } else {
+      doCount(valueSource, matchingDocs);
+    }
+  }
+
+  /** Single-valued implementation. */
+  private void doCount(DoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
     LongRange[] longRanges = getLongRanges();
@@ -124,6 +194,55 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
           counter.addSingleValued(NumericUtils.doubleToSortableLong(fv.doubleValue()));
         } else {
           missingCount++;
+        }
+
+        doc = it.nextDoc();
+      }
+    }
+
+    missingCount += counter.finish();
+    totCount -= missingCount;
+  }
+
+  /** Multi-valued implementation. */
+  private void doCount(MultiDoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
+      throws IOException {
+
+    LongRange[] longRanges = getLongRanges();
+
+    LongRangeCounter counter = LongRangeCounter.create(longRanges, counts);
+
+    int missingCount = 0;
+    for (MatchingDocs hits : matchingDocs) {
+      MultiDoubleValues multiValues = valueSource.getValues(hits.context, null);
+
+      final DocIdSetIterator it = createIterator(hits);
+      if (it == null) {
+        continue;
+      }
+
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+        // Skip missing docs:
+        if (multiValues.advanceExact(doc)) {
+          long limit = multiValues.getValueCount();
+          // optimize single-valued case:
+          if (limit == 1) {
+            counter.addSingleValued(NumericUtils.doubleToSortableLong(multiValues.nextValue()));
+            totCount++;
+          } else {
+            counter.startMultiValuedDoc();
+            long previous = 0;
+            for (int i = 0; i < limit; i++) {
+              long val = NumericUtils.doubleToSortableLong(multiValues.nextValue());
+              if (i == 0 || val != previous) {
+                counter.addMultiValued(val);
+                previous = val;
+              }
+            }
+            if (counter.endMultiValuedDoc()) {
+              totCount++;
+            }
+          }
         }
 
         doc = it.nextDoc();
