@@ -77,8 +77,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-
-* LUCENE-10232: Fix MultiRangeQuery to confirm all dimensions for a given range match. (Greg Miller)
+(No changes)
 
 Other
 ---------------------
@@ -475,6 +474,8 @@ Changes in Backwards Compatibility Policy
   Further does lucene only support file-format compatibilty which enables reading of old indices while
   semantic changes like analysis or certain encoding on top of the file format are only supported on
   a best effort basis. (Simon Willnauer)
+
+* LUCENE-10232: Fix MultiRangeQuery to confirm all dimensions for a given range match. (Greg Miller)
 
 Build
 ---------------------
