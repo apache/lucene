@@ -17,6 +17,7 @@
 
 package org.apache.lucene.sandbox.search;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
@@ -29,13 +30,70 @@ import org.apache.lucene.sandbox.document.DoublePointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.FloatPointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.IntPointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.LongPointMultiRangeBuilder;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 
 public class TestMultiRangeQueries extends LuceneTestCase {
+
+  public void testDuelWithStandardDisjunction() throws IOException {
+    int iterations = LuceneTestCase.TEST_NIGHTLY ? atLeast(100) : 10;
+    for (int iter = 0; iter < iterations; iter++) {
+      Directory dir = newDirectory();
+      RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+      int dims = RandomNumbers.randomIntBetween(random(), 1, 8);
+
+      long[] scratch = new long[dims];
+      for (int i = 0; i < 100; i++) {
+        int numPoints = RandomNumbers.randomIntBetween(random(), 1, 10);
+        Document doc = new Document();
+        for (int j = 0; j < numPoints; j++) {
+          for (int v = 0; v < dims; v++) {
+            scratch[v] = RandomNumbers.randomLongBetween(random(), 0, 100);
+          }
+          doc.add(new LongPoint("point", scratch));
+        }
+        w.addDocument(doc);
+      }
+
+      IndexReader reader = w.getReader();
+      IndexSearcher searcher = newSearcher(reader);
+
+      int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
+      LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
+      BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
+      for (int i = 0; i < numRanges; i++) {
+        long[] lower = new long[dims];
+        long[] upper = new long[dims];
+        for (int j = 0; j < dims; j++) {
+          lower[j] = RandomNumbers.randomLongBetween(random(), -100, 200);
+          upper[j] = lower[j] + RandomNumbers.randomLongBetween(random(), 0, 100);
+        }
+        builder1.add(lower, upper);
+        builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
+      }
+
+      Query query1 = builder1.build();
+      Query query2 = builder2.build();
+      TopDocs result1 = searcher.search(query1, 10, Sort.INDEXORDER);
+      TopDocs result2 = searcher.search(query2, 10, Sort.INDEXORDER);
+      assertEquals(result2.totalHits, result1.totalHits);
+      assertEquals(result2.scoreDocs.length, result1.scoreDocs.length);
+      for (int i = 0; i < result2.scoreDocs.length; i++) {
+        assertEquals(result2.scoreDocs[i].doc, result1.scoreDocs[i].doc);
+      }
+
+      IOUtils.close(reader, w, dir);
+    }
+  }
 
   public void testDoubleRandomMultiRangeQuery() throws IOException {
     final int numDims = TestUtil.nextInt(random(), 1, 3);
@@ -123,9 +181,9 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     assertEquals(searcher.count(query), 2);
 
-    // None match
-    double[] nonMatchingFirstRangeLower = {1.3, 3.5, 2.7};
-    double[] nonMatchingFirstRangeUpper = {5.2, 8.3, 7.8};
+    // None match (one dimension is in range but the rest aren't)
+    double[] nonMatchingFirstRangeLower = {111.3, 3.5, 2.7};
+    double[] nonMatchingFirstRangeUpper = {117.3, 8.3, 7.8};
 
     double[] nonMatchingSecondRangeLower = {11246.3, 19388.7, 21248.4};
     double[] nonMatchingSecondRangeUpper = {13242.9, 20214.2, 23236.5};
@@ -244,9 +302,9 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     assertEquals(searcher.count(query), 2);
 
-    // None match
-    long[] nonMatchingFirstRangeLower = {1, 3, 2};
-    long[] nonMatchingFirstRangeUpper = {5, 8, 7};
+    // None match (one dimension is in range but the rest aren't)
+    long[] nonMatchingFirstRangeLower = {111, 3, 2};
+    long[] nonMatchingFirstRangeUpper = {117, 8, 7};
 
     long[] nonMatchingSecondRangeLower = {11246, 19388, 21248};
     long[] nonMatchingSecondRangeUpper = {13242, 20214, 23236};
@@ -365,9 +423,9 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     assertEquals(searcher.count(query), 2);
 
-    // None Match
-    float[] nonMatchingFirstRangeLower = {1.4f, 3.3f, 2.7f};
-    float[] nonMatchingFirstRangeUpper = {5.4f, 8.2f, 7.3f};
+    // None match (one dimension is in range but the rest aren't)
+    float[] nonMatchingFirstRangeLower = {111.3f, 3.3f, 2.7f};
+    float[] nonMatchingFirstRangeUpper = {117.3f, 8.2f, 7.3f};
 
     float[] nonMatchingSecondRangeLower = {11246.2f, 19388.6f, 21248.3f};
     float[] nonMatchingSecondRangeUpper = {13242.4f, 20214.7f, 23236.3f};
@@ -486,9 +544,9 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     assertEquals(searcher.count(query), 2);
 
-    // None match
-    int[] nonMatchingFirstRangeLower = {1, 3, 2};
-    int[] nonMatchingFirstRangeUpper = {5, 8, 7};
+    // None match (one dimension is in range but the rest aren't)
+    int[] nonMatchingFirstRangeLower = {111, 3, 2};
+    int[] nonMatchingFirstRangeUpper = {117, 8, 7};
 
     int[] nonMatchingSecondRangeLower = {11246, 19388, 21248};
     int[] nonMatchingSecondRangeUpper = {13242, 20214, 23236};
