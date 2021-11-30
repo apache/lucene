@@ -54,6 +54,9 @@ New Features
 * LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all 
   documents have the field.. (Alan Woodward)
 
+* LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
+  For more information, see https://s.apache.org/spanishplural  (Xavier Sanchez Loro)
+
 Improvements
 ---------------------
 
