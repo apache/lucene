@@ -293,7 +293,7 @@ The `Direct` doc-value format has been removed from the codebase.
 Caching everything is discouraged as it disables the ability to skip non-interesting documents.
 `ALWAYS_CACHE` can be replaced by a `UsageTrackingQueryCachingPolicy` with an appropriate config.
 
-### English stopwords are no longer removed by default in StandardAnalyzer (LUCENE_7444)
+### English stopwords are no longer removed by default in StandardAnalyzer (LUCENE-7444)
 
 To retain the old behaviour, pass `EnglishAnalyzer.ENGLISH_STOP_WORDS_SET` as an argument
 to the constructor
