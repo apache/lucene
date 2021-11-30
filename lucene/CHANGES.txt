@@ -51,6 +51,9 @@ New Features
   points are indexed.
   (Quentin Pradet, Adrien Grand)
 
+* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all 
+  documents have the field.. (Alan Woodward)
+
 Improvements
 ---------------------
 
