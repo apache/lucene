@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseTermVectorsFormatTestCase;
 
