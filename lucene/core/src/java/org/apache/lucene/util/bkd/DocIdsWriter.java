@@ -132,7 +132,7 @@ class DocIdsWriter {
     long currentWord = 0;
     int currentWordIndex = 0;
 
-    out.writeVInt(offsetBits);
+    out.writeVInt(offsetWords);
     out.writeVInt(totalWordCount);
     // build bit set streaming
     for (int i = 0; i < count; i++) {
@@ -176,12 +176,12 @@ class DocIdsWriter {
   }
 
   private static DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
-    int offset = in.readVInt();
+    int offsetWords = in.readVInt();
     int longLen = in.readVInt();
     long[] bits = new long[longLen];
     in.readLongs(bits, 0, longLen);
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
-    return new DocBaseBitSetIterator(bitSet, count, offset);
+    return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
   private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
