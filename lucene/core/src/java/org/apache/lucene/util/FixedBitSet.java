@@ -351,16 +351,34 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
-  /** this = this AND NOT other */
-  public void andNot(FixedBitSet other) {
-    andNot(other.bits, other.numWords);
+  public void andNot(DocIdSetIterator iter) throws IOException {
+    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
+      checkUnpositioned(iter);
+      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
+      andNot(bits);
+    } else if (iter instanceof DocBaseBitSetIterator) {
+      checkUnpositioned(iter);
+      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
+      andNot(baseIter.getDocBase() >> 6, baseIter.getBitSet());
+    } else {
+      super.or(iter);
+    }
   }
 
-  private void andNot(final long[] otherArr, final int otherNumWords) {
+  /** this = this AND NOT other */
+  public void andNot(FixedBitSet other) {
+    andNot(0, other.bits, other.numWords);
+  }
+
+  private void andNot(final int otherOffsetWords, FixedBitSet other) {
+    andNot(otherOffsetWords, other.bits, other.numWords);
+  }
+
+  private void andNot(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
-    int pos = Math.min(this.numWords, otherNumWords);
     while (--pos >= 0) {
-      thisArr[pos] &= ~otherArr[pos];
+      thisArr[pos + otherOffsetWords] &= ~otherArr[pos];
     }
   }
 
