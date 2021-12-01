@@ -59,7 +59,7 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
   }
 
   /**
-   * Get the doc base. It is guaranteed that doc base is a multiple of 64.
+   * Get the docBase. It is guaranteed that docBase is a multiple of 64.
    *
    * @return the docBase
    */
