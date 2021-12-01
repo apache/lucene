@@ -660,9 +660,9 @@ def testDemo(run_java, isSrc, version, jdk):
     # For binary release, set up classpath as modules.
     cp = "--module-path modules"
     docsDir = 'docs'
-    checkIndexCmd = 'java -ea %s --module lucene.core/org.apache.lucene.index.CheckIndex index' % cp
-    indexFilesCmd = 'java -Dsmoketester=true %s --module lucene.demo/org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
-    searchFilesCmd = 'java %s --module lucene.demo/org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
+    checkIndexCmd = 'java -ea %s --module org.apache.lucene.core/org.apache.lucene.index.CheckIndex index' % cp
+    indexFilesCmd = 'java -Dsmoketester=true %s --module org.apache.lucene.demo/org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
+    searchFilesCmd = 'java %s --module org.apache.lucene.demo/org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
       
   run_java(indexFilesCmd, 'index.log')
   run_java(searchFilesCmd, 'search.log')
