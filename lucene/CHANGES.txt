@@ -480,6 +480,12 @@ Changes in Backwards Compatibility Policy
 Build
 ---------------------
 
+* LUCENE-9077 LUCENE-9433: Support Gradle build, remove Ant support from trunk (Dawid Weiss, Erick Erickson, Uwe Schindler et.al.)
+
+* LUCENE-8768: Fix Javadocs build in Java 11. (Namgyu Kim)
+
+* LUCENE-9544: add regenerate gradle script for nori dictionary (Namgyu Kim)
+
 * LUCENE-10195: Add gradle cache option and make some tasks cacheable. (Jerome Prinet, Dawid Weiss)
 
 * LUCENE-10198: LUCENE-10198: Allow external JAVA_OPTS in gradlew scripts; use sane defaults
@@ -504,8 +510,6 @@ Other
 
 * LUCENE-10021: Upgrade HPPC to 0.9.0. Replace usage of ...ScatterMap to ...HashMap. (Patrick Zhai)
 
-* LUCENE-8768: Fix Javadocs build in Java 11. (Namgyu Kim)
-
 * LUCENE-9092: upgrade randomizedtesting to 2.7.5 (Dawid Weiss)
 
 * LUCENE-8656: Deprecations in FuzzyQuery and get compiler warnings out of
@@ -519,13 +523,9 @@ Other
 * LUCENE-9411: Fail compilation on warnings, 9x gradle-only (Erick Erickson, Dawid Weiss)
   Deserves mention here as well as Lucene CHANGES.txt since it affects both.
 
-* LUCENE-9077 LUCENE-9433: Support Gradle build, remove Ant support from trunk (Dawid Weiss, Erick Erickson, Uwe Schindler et.al.)
-
 * LUCENE-9215: Replace checkJavaDocs.py with doclet (Robert Muir, Dawid Weiss, Uwe Schindler)
 
 * LUCENE-9497: Integrate Error Prone, a static analysis tool during compilation (Dawid Weiss, Varun Thacker)
-
-* LUCENE-9544: add regenerate gradle script for nori dictionary (Namgyu Kim)
 
 * LUCENE-9627: Remove unused Lucene50FieldInfosFormat codec and small refactor some codecs
   to separate reading header/footer from reading content of the file. (Ignacio Vera)
