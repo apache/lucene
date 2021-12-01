@@ -103,24 +103,6 @@ class DocIdsWriter {
     }
   }
 
-  private static boolean isSorted(int[] docIds, int start, int count) {
-    for (int i = 1; i < count; ++i) {
-      if (docIds[start + i - 1] > docIds[start + i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private static boolean isStrictlySorted(int[] docIds, int start, int count) {
-    for (int i = 1; i < count; ++i) {
-      if (docIds[start + i - 1] >= docIds[start + i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out)
       throws IOException {
     int min = docIds[start];
