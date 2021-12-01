@@ -18,6 +18,8 @@ package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
@@ -53,6 +55,22 @@ public class TestDocIdsWriter extends LuceneTestCase {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
         Arrays.sort(docIDs);
+        test(dir, docIDs);
+      }
+    }
+  }
+
+  public void testBitSet() throws Exception {
+    int numIters = atLeast(100);
+    try (Directory dir = newDirectory()) {
+      for (int iter = 0; iter < numIters; ++iter) {
+        int size = random().nextInt(5000);
+        Set<Integer> set = new HashSet<>(size);
+        int small = random().nextInt(1000);
+        while (set.size() < size) {
+          set.add(small + random().nextInt(size * 16));
+        }
+        int[] docIDs = set.stream().mapToInt(t -> t).sorted().toArray();
         test(dir, docIDs);
       }
     }
