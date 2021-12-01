@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -106,6 +107,7 @@ import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -585,7 +587,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.10.0-cfs",
     "8.10.0-nocfs",
     "8.10.1-cfs",
-    "8.10.1-nocfs"
+    "8.10.1-nocfs",
+    "8.11.0-cfs",
+    "8.11.0-nocfs",
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
@@ -1015,11 +1019,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       searchIndex(oldIndexDirs.get(name), name, Version.MIN_SUPPORTED_MAJOR);
     }
 
-    for (String name : binarySupportedNames) {
-      Path oldIndexDir = createTempDir(name);
-      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
-      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-        searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+    if (TEST_NIGHTLY) {
+      for (String name : binarySupportedNames) {
+        Path oldIndexDir = createTempDir(name);
+        TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
+        try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
+          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+        }
       }
     }
   }
@@ -1640,17 +1646,26 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void testCommandLineArgs() throws Exception {
+  public void testIndexUpgraderCommandLineArgs() throws Exception {
 
     PrintStream savedSystemOut = System.out;
     System.setOut(new PrintStream(new ByteArrayOutputStream(), false, "UTF-8"));
     try {
       for (Map.Entry<String, Directory> entry : oldIndexDirs.entrySet()) {
         String name = entry.getKey();
+        Directory origDir = entry.getValue();
         int indexCreatedVersion =
-            SegmentInfos.readLatestCommit(entry.getValue()).getIndexCreatedVersionMajor();
+            SegmentInfos.readLatestCommit(origDir).getIndexCreatedVersionMajor();
         Path dir = createTempDir(name);
-        TestUtil.unzip(getDataInputStream("index." + name + ".zip"), dir);
+        try (FSDirectory fsDir = FSDirectory.open(dir)) {
+          // beware that ExtraFS might add extraXXX files
+          Set<String> extraFiles = Set.of(fsDir.listAll());
+          for (String file : origDir.listAll()) {
+            if (extraFiles.contains(file) == false) {
+              fsDir.copyFrom(origDir, file, file, IOContext.DEFAULT);
+            }
+          }
+        }
 
         String path = dir.toAbsolutePath().toString();
 
@@ -2080,6 +2095,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
+  @Nightly
   public void testReadNMinusTwoCommit() throws IOException {
     for (String name : binarySupportedNames) {
       Path oldIndexDir = createTempDir(name);

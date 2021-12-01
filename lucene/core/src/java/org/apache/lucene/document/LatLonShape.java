@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.document.ShapeField.QueryRelation; // javadoc
 import org.apache.lucene.document.ShapeField.Triangle;
@@ -45,6 +44,8 @@ import org.apache.lucene.search.Query;
  *
  * <ul>
  *   <li>{@link #createIndexableFields(String, Polygon)} for indexing a geo polygon.
+ *   <li>{@link #createIndexableFields(String, Polygon, boolean)} for indexing a geo polygon with
+ *       the possibility of checking for self-intersections.
  *   <li>{@link #createIndexableFields(String, Line)} for indexing a geo linestring.
  *   <li>{@link #createIndexableFields(String, double, double)} for indexing a lat, lon geo point.
  *   <li>{@link #newBoxQuery newBoxQuery()} for matching geo shapes that have some {@link
@@ -69,15 +70,25 @@ public class LatLonShape {
   // no instance:
   private LatLonShape() {}
 
-  /** create indexable fields for polygon geometry */
+  /** create indexable fields for polygon geometry. */
   public static Field[] createIndexableFields(String fieldName, Polygon polygon) {
+    return createIndexableFields(fieldName, polygon, false);
+  }
+
+  /**
+   * create indexable fields for polygon geometry. If {@code checkSelfIntersections} is set to true,
+   * the validity of the provided polygon is checked with a small performance penalty.
+   */
+  public static Field[] createIndexableFields(
+      String fieldName, Polygon polygon, boolean checkSelfIntersections) {
     // the lionshare of the indexing is done by the tessellator
-    List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon);
-    List<Triangle> fields = new ArrayList<>();
-    for (Tessellator.Triangle t : tessellation) {
-      fields.add(new Triangle(fieldName, t));
+    List<Tessellator.Triangle> tessellation =
+        Tessellator.tessellate(polygon, checkSelfIntersections);
+    Triangle[] fields = new Triangle[tessellation.size()];
+    for (int i = 0; i < tessellation.size(); i++) {
+      fields[i] = new Triangle(fieldName, tessellation.get(i));
     }
-    return fields.toArray(new Field[fields.size()]);
+    return fields;
   }
 
   /** create indexable fields for line geometry */

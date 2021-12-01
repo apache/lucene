@@ -35,16 +35,6 @@ import org.junit.Test;
 public class TestAnalysisImpl extends LuceneTestCase {
 
   @Test
-  public void testGetPresetAnalyzerTypes() throws Exception {
-    AnalysisImpl analysis = new AnalysisImpl();
-    Collection<Class<? extends Analyzer>> analyerTypes = analysis.getPresetAnalyzerTypes();
-    assertNotNull(analyerTypes);
-    for (Class<? extends Analyzer> clazz : analyerTypes) {
-      clazz.getConstructor().newInstance();
-    }
-  }
-
-  @Test
   public void testGetAvailableCharFilters() {
     AnalysisImpl analysis = new AnalysisImpl();
     Collection<String> charFilters = analysis.getAvailableCharFilters();
@@ -135,11 +125,11 @@ public class TestAnalysisImpl extends LuceneTestCase {
     assertNotNull(tokens);
   }
 
-  @Test(expected = LukeException.class)
-  public void testAnalyze_not_set() {
+  public void testAnalyze_default() {
     AnalysisImpl analysis = new AnalysisImpl();
-    String text = "This test must fail.";
-    analysis.analyze(text);
+    String text = "Apache Lucene";
+    List<Analysis.Token> tokens = analysis.analyze(text);
+    assertNotNull(tokens);
   }
 
   @Test(expected = LukeException.class)

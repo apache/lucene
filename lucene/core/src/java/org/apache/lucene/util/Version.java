@@ -16,8 +16,11 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.text.ParseException;
 import java.util.Locale;
+import java.util.jar.Manifest;
 
 /**
  * Use by certain classes to match version compatibility across releases of Lucene.
@@ -66,6 +69,9 @@ public final class Version {
    * version that initially created the index.
    */
   public static final int MIN_SUPPORTED_MAJOR = Version.LATEST.major - 1;
+
+  /** @see #getPackageImplementationVersion() */
+  private static String implementationVersion;
 
   /**
    * Parse a version number of the form {@code "major.minor.bugfix.prerelease"}.
@@ -301,5 +307,47 @@ public final class Version {
   @Override
   public int hashCode() {
     return encodedValue;
+  }
+
+  /**
+   * Return Lucene's full implementation version. This version is saved in Lucene's metadata at
+   * build time (JAR manifest, module info). If it is not available, an {@code unknown}
+   * implementation version is returned.
+   *
+   * @return Lucene implementation version string, never {@code null}.
+   */
+  public static String getPackageImplementationVersion() {
+    // Initialize the lazy value.
+    synchronized (Version.class) {
+      if (implementationVersion == null) {
+        String version;
+
+        Package p = Version.class.getPackage();
+        version = p.getImplementationVersion();
+
+        if (version == null) {
+          var module = Version.class.getModule();
+          if (module.isNamed()) {
+            // Running as a module? Try parsing the manifest manually.
+            try (var is = module.getResourceAsStream("/META-INF/MANIFEST.MF")) {
+              if (is != null) {
+                Manifest m = new Manifest(is);
+                version = m.getMainAttributes().getValue("Implementation-Version");
+              }
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          }
+        }
+
+        if (version == null) {
+          version = "unknown";
+        }
+
+        implementationVersion = version;
+      }
+
+      return implementationVersion;
+    }
   }
 }

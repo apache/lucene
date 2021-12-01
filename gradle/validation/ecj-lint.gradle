@@ -63,7 +63,9 @@ allprojects {
         args += [ "-d", "none" ]
 
         // Compilation environment.
-        args += [ "--release", project.java.targetCompatibility ]
+        // we use -source/-target as it is significantly faster than --release
+        args += [ "-source", project.java.sourceCompatibility ]
+        args += [ "-target", project.java.targetCompatibility ]
         args += [ "-encoding", "UTF-8"]
         args += [ "-proc:none" ]
         args += [ "-nowarn" ]

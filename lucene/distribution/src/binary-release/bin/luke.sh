@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #  Licensed to the Apache Software Foundation (ASF) under one or more
 #  contributor license agreements.  See the NOTICE file distributed with
@@ -15,5 +15,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-MODULES=$(cd $(dirname $0) && pwd)
-java --module-path $MODULES/modules;$MODULES/modules-thirdparty --add-modules org.apache.logging.log4j --module lucene.luke
+MODULES=`dirname "$0"`/..
+MODULES=`cd "$MODULES" && pwd`
+java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --add-modules org.apache.logging.log4j --module org.apache.lucene.luke
