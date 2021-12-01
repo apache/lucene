@@ -25,7 +25,12 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.en.EnglishMinimalStemFilter;
 
-/** Simple tests for {@link SpanishMinimalStemFilter} */
+/**
+ * Simple tests for {@link SpanishMinimalStemFilter}
+ *
+ * @deprecated Remove with SpanishMinimalStemFilter
+ */
+@Deprecated
 public class TestSpanishMinimalStemFilter extends BaseTokenStreamTestCase {
   private Analyzer analyzer;
 

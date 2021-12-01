@@ -86,7 +86,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* LUCENE-10273: Deprecate SpanishMinimalStemFilter in favor of SpanishPluralStemFilter. (Robert Muir)
 
 ======================= Lucene 9.0.0 =======================
 
