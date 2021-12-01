@@ -17,11 +17,11 @@
 
 /** Luke : Lucene toolbox project. */
 @SuppressWarnings({"requires-automatic"})
-module lucene.luke {
+module org.apache.lucene.luke {
   requires java.desktop;
   requires java.logging;
-  requires lucene.core;
-  requires lucene.analysis.common;
+  requires org.apache.lucene.core;
+  requires org.apache.lucene.analysis.common;
   requires org.apache.logging.log4j;
   requires org.apache.logging.log4j.core;
 }

@@ -16,7 +16,7 @@
  */
 
 /** Lucene Core. */
-module lucene.core {
+module org.apache.lucene.core {
   exports org.apache.lucene.analysis;
   exports org.apache.lucene.analysis.standard;
   exports org.apache.lucene.analysis.tokenattributes;
