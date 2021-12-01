@@ -46,8 +46,7 @@ class DocIdsWriter {
 
     if (strictlySorted && (docIds[start + count - 1] - docIds[start] + 1) <= (count << 4)) {
       // Only trigger this optimization when max - min + 1 <= 16 * count in order to avoid expanding
-      // too much
-      // storage.
+      // too much storage.
       // A field with lower cardinality will have higher probability to trigger this optimization.
       out.writeByte((byte) -1);
       writeIdsAsBitSet(docIds, start, count, out);
