@@ -149,6 +149,8 @@ public abstract class MultiRangeQuery extends Query {
   public final Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
 
+    final ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+
     // We don't use RandomAccessWeight here: it's no good to approximate with "match all docs".
     // This is an inverted structure and should be used in the first pass:
 
@@ -172,31 +174,21 @@ public abstract class MultiRangeQuery extends Query {
           @Override
           public void visit(int docID, byte[] packedValue) {
             // If a single OR clause has the value in range, the entire query accepts the value
+            continueRange:
             for (RangeClause rangeClause : rangeClauses) {
               for (int dim = 0; dim < numDims; dim++) {
                 int offset = dim * bytesPerDim;
-                if ((Arrays.compareUnsigned(
-                            packedValue,
-                            offset,
-                            offset + bytesPerDim,
-                            rangeClause.lowerValue,
-                            offset,
-                            offset + bytesPerDim)
-                        >= 0)
-                    && (Arrays.compareUnsigned(
-                            packedValue,
-                            offset,
-                            offset + bytesPerDim,
-                            rangeClause.upperValue,
-                            offset,
-                            offset + bytesPerDim)
-                        <= 0)) {
-                  // Doc is in-bounds. Add and short circuit
-                  adder.add(docID);
-                  return;
+                if (comparator.compare(packedValue, offset, rangeClause.lowerValue, offset) < 0) {
+                  // Doc value is too low in this dim:
+                  continue continueRange;
                 }
-                // Iterate till we have any OR clauses remaining
+                if (comparator.compare(packedValue, offset, rangeClause.upperValue, offset) > 0) {
+                  // Doc value is too high in this dim:
+                  continue continueRange;
+                }
               }
+              // Doc matched on all dimensions:
+              adder.add(docID);
             }
           }
 
@@ -211,46 +203,34 @@ public abstract class MultiRangeQuery extends Query {
              * as inside and atleast one range sees the point as CROSSES, return CROSSES 3) If none
              * of the above, return OUTSIDE
              */
+            continueRange:
             for (RangeClause rangeClause : rangeClauses) {
+              boolean rangeCrosses = false;
+
               for (int dim = 0; dim < numDims; dim++) {
                 int offset = dim * bytesPerDim;
 
-                if ((Arrays.compareUnsigned(
-                            minPackedValue,
-                            offset,
-                            offset + bytesPerDim,
-                            rangeClause.lowerValue,
-                            offset,
-                            offset + bytesPerDim)
-                        >= 0)
-                    && (Arrays.compareUnsigned(
-                            maxPackedValue,
-                            offset,
-                            offset + bytesPerDim,
-                            rangeClause.upperValue,
-                            offset,
-                            offset + bytesPerDim)
-                        <= 0)) {
-                  return PointValues.Relation.CELL_INSIDE_QUERY;
+                if (comparator.compare(minPackedValue, offset, rangeClause.upperValue, offset) > 0
+                    || comparator.compare(maxPackedValue, offset, rangeClause.lowerValue, offset)
+                        < 0) {
+                  continue continueRange;
                 }
 
-                crosses |=
-                    Arrays.compareUnsigned(
-                                minPackedValue,
-                                offset,
-                                offset + bytesPerDim,
-                                rangeClause.lowerValue,
-                                offset,
-                                offset + bytesPerDim)
-                            < 0
-                        || Arrays.compareUnsigned(
-                                maxPackedValue,
-                                offset,
-                                offset + bytesPerDim,
-                                rangeClause.upperValue,
-                                offset,
-                                offset + bytesPerDim)
+                rangeCrosses |=
+                    comparator.compare(minPackedValue, offset, rangeClause.lowerValue, offset) < 0
+                        || comparator.compare(
+                                maxPackedValue, offset, rangeClause.upperValue, offset)
                             > 0;
+              }
+
+              if (rangeCrosses == false) {
+                // At this point we know that the cell is fully inside the range clause, so we
+                // return early:
+                return PointValues.Relation.CELL_INSIDE_QUERY;
+              } else {
+                // This range clause crosses the cell, but we'll keep checking more ranges to see if
+                // one fully contains the cell:
+                crosses = true;
               }
             }
 
@@ -300,21 +280,8 @@ public abstract class MultiRangeQuery extends Query {
           for (RangeClause rangeClause : rangeClauses) {
             for (int i = 0; i < numDims; ++i) {
               int offset = i * bytesPerDim;
-              if (Arrays.compareUnsigned(
-                          rangeClause.lowerValue,
-                          offset,
-                          offset + bytesPerDim,
-                          fieldPackedLower,
-                          offset,
-                          offset + bytesPerDim)
-                      > 0
-                  || Arrays.compareUnsigned(
-                          rangeClause.upperValue,
-                          offset,
-                          offset + bytesPerDim,
-                          fieldPackedUpper,
-                          offset,
-                          offset + bytesPerDim)
+              if (comparator.compare(rangeClause.lowerValue, offset, fieldPackedLower, offset) > 0
+                  || comparator.compare(rangeClause.upperValue, offset, fieldPackedUpper, offset)
                       < 0) {
                 allDocsMatch = false;
                 break;

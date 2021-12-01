@@ -1,3 +1,6 @@
+import java.util.jar.JarFile
+import java.util.regex.Matcher
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -47,8 +50,7 @@ subprojects {
             }
           }
 
-          manifest {
-            attributes([
+          def manifestAttrs = [
               "Extension-Name"        : implementationTitle,
 
               "Implementation-Vendor" : "The Apache Software Foundation",
@@ -64,10 +66,17 @@ subprojects {
               "X-Compile-Target-JDK"  : "${-> project.targetCompatibility}",
 
               "X-Build-JDK"           : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
-              "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}",
+              "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
+          ]
 
-              "Automatic-Module-Name" : "${-> project.path.replaceFirst(":", "").replace(':', '.').replace("-", "_")}"
-            ])
+          // Only apply automatic module name to jar task.
+          if (task.name in ["jar"]) {
+            manifestAttrs["Automatic-Module-Name"] =
+              "${->  project.path.replaceFirst(/^:lucene/, Matcher.quoteReplacement(project.group)).replace(':', '.').replace('-', '_')}"
+          }
+
+          manifest {
+            attributes(manifestAttrs)
           }
 
           // Copy legalese into META-INF.
@@ -78,4 +87,30 @@ subprojects {
             })
           }
       }
+}
+
+configure(rootProject) {
+  tasks.register("showModuleNames", { showModuleTask ->
+    def allJarTasks = []
+
+    rootProject.subprojects.each { subproject ->
+      subproject.tasks.matching { it.name == 'jar' }.all {
+        allJarTasks.add it
+      }
+    }
+
+    dependsOn allJarTasks
+
+    doFirst {
+      allJarTasks.each { jarTask ->
+        File jarFile = jarTask.outputs.files.singleFile
+        try (def jar = new JarFile(jarFile)) {
+          logger.lifecycle(String.format(Locale.ROOT,
+              "%-50s -> %s",
+              jarFile.name,
+              jar.manifest.mainAttributes.getValue("Automatic-Module-Name")))
+        }
+      }
+    }
+  })
 }

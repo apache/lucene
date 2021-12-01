@@ -51,6 +51,12 @@ New Features
   points are indexed.
   (Quentin Pradet, Adrien Grand)
 
+* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all 
+  documents have the field.. (Alan Woodward)
+
+* LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
+  For more information, see https://s.apache.org/spanishplural  (Xavier Sanchez Loro)
+
 Improvements
 ---------------------
 
@@ -62,6 +68,8 @@ Improvements
 * LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree 
   added in LUCENE-9820 (Ignacio Vera)
 
+* LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
+  
 Optimizations
 ---------------------
 
@@ -245,7 +253,9 @@ API Changes
 Improvements
 ---------------------
 
-* LUCENE-10234: Added Automatic-Module-Name to all JARs. (Dawid Weiss)
+* LUCENE-10234: Added Automatic-Module-Name to all JARs. This is the first step to enable full Java
+  module system (JMS) support in later Lucene versions. At the moment, the automatic names should
+  not be considered stable. (Dawid Weiss, Uwe Schindler)
 
 * LUCENE-10182: TestRamUsageEstimator used RamUsageTester.sizeOf throughout, making some of the
   tests trivial. Now, it compares results from RamUsageEstimator with those from RamUsageTester.
@@ -464,6 +474,8 @@ Changes in Backwards Compatibility Policy
   Further does lucene only support file-format compatibilty which enables reading of old indices while
   semantic changes like analysis or certain encoding on top of the file format are only supported on
   a best effort basis. (Simon Willnauer)
+
+* LUCENE-10232: Fix MultiRangeQuery to confirm all dimensions for a given range match. (Greg Miller)
 
 Build
 ---------------------
