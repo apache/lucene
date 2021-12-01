@@ -255,7 +255,7 @@ configure(subprojects) {
   }
 }
 
-configure(project(':lucene:luke')) {
+configure([project(':lucene:luke'), project(":lucene:distribution-tests")]) {
   project.tasks.matching { it.name == 'renderSiteJavadoc' }.configureEach { it.enabled = false }
 }
 

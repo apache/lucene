@@ -167,6 +167,8 @@ allprojects {
           if (project.path == ":lucene:replicator") {
             systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/replicator-tests.policy")
+          } else if (project.path == ":lucene:distribution-tests") {
+            // Do not use security manager for distribution tests.
           } else if (project.path.startsWith(":lucene")) {
             systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")
