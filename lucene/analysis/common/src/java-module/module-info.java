@@ -16,9 +16,9 @@
  */
 
 /** Lucene Analysis Common. */
-module lucene.analysis.common {
+module org.apache.lucene.analysis.common {
   requires java.xml;
-  requires lucene.core;
+  requires org.apache.lucene.core;
 
   exports org.apache.lucene.analysis.ar;
   exports org.apache.lucene.analysis.bg;
@@ -91,7 +91,6 @@ module lucene.analysis.common {
       org.apache.lucene.analysis.cjk.CJKWidthCharFilterFactory,
       org.apache.lucene.analysis.fa.PersianCharFilterFactory,
       org.apache.lucene.analysis.pattern.PatternReplaceCharFilterFactory;
-
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.analysis.tr.ApostropheFilterFactory,
       org.apache.lucene.analysis.ar.ArabicNormalizationFilterFactory,
@@ -201,7 +200,6 @@ module lucene.analysis.common {
       org.apache.lucene.analysis.te.TeluguStemFilterFactory,
       org.apache.lucene.analysis.tr.TurkishLowerCaseFilterFactory,
       org.apache.lucene.analysis.util.ElisionFilterFactory;
-
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.classic.ClassicTokenizerFactory,
       org.apache.lucene.analysis.core.KeywordTokenizerFactory,
@@ -216,5 +214,4 @@ module lucene.analysis.common {
       org.apache.lucene.analysis.pattern.SimplePatternTokenizerFactory,
       org.apache.lucene.analysis.th.ThaiTokenizerFactory,
       org.apache.lucene.analysis.wikipedia.WikipediaTokenizerFactory;
-
 }

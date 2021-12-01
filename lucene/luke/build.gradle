@@ -116,7 +116,7 @@ task standaloneAssemble(type: Sync) {
         """
 Standalone Luke distribution assembled. You can run it with:
 java -jar "${standaloneDistDir}/${standaloneJar.archiveFileName.get()}"
-java --module-path "${standaloneDistDir}" -m lucene.luke
+java --module-path "${standaloneDistDir}" -m org.apache.lucene.luke
         """
     )
   }
