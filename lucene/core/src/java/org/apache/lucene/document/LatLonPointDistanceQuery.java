@@ -257,6 +257,11 @@ final class LatLonPointDistanceQuery extends Query {
           }
 
           @Override
+          public void visit(DocIdSetIterator iterator) throws IOException {
+            adder.add(iterator);
+          }
+
+          @Override
           public void visit(int docID, byte[] packedValue) {
             if (matches(packedValue)) {
               visit(docID);
