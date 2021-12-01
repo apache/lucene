@@ -49,6 +49,9 @@ Improvements
 Optimizations
 ---------------------
 
+* LUCENE-10233: Store BKD leaves' doc IDs as bitset in some cases (typically for low cardinality fields
+ or sorted indices) to speed up addAll. (Guo Feng, Adrien Grand)
+
 * LUCENE-10225: Improve IntroSelector with 3-ways partitioning. (Bruno Roustant, Adrien Grand)
 
 Bug Fixes
