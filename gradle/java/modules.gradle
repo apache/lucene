@@ -1,3 +1,5 @@
+import java.util.jar.JarFile
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -28,4 +30,31 @@ allprojects {
   }
 
   // TODO: remove the hacks excluding java-module source folder from ecjLint and javadoc rendering.
+}
+
+configure(rootProject) {
+  // Show all module names (for ease of debugging)
+  tasks.register("showModuleNames", { showModuleTask ->
+    def allJarTasks = []
+
+    rootProject.subprojects.each { subproject ->
+      subproject.tasks.matching { it.name == 'jar' }.all {
+        allJarTasks.add it
+      }
+    }
+
+    dependsOn allJarTasks
+
+    doFirst {
+      allJarTasks.each { jarTask ->
+        File jarFile = jarTask.outputs.files.singleFile
+        try (def jar = new JarFile(jarFile)) {
+          logger.lifecycle(String.format(Locale.ROOT,
+              "%-50s -> %s",
+              jarFile.name,
+              jar.manifest.mainAttributes.getValue("Automatic-Module-Name")))
+        }
+      }
+    }
+  })
 }

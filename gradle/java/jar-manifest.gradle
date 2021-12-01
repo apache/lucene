@@ -88,29 +88,3 @@ subprojects {
           }
       }
 }
-
-configure(rootProject) {
-  tasks.register("showModuleNames", { showModuleTask ->
-    def allJarTasks = []
-
-    rootProject.subprojects.each { subproject ->
-      subproject.tasks.matching { it.name == 'jar' }.all {
-        allJarTasks.add it
-      }
-    }
-
-    dependsOn allJarTasks
-
-    doFirst {
-      allJarTasks.each { jarTask ->
-        File jarFile = jarTask.outputs.files.singleFile
-        try (def jar = new JarFile(jarFile)) {
-          logger.lifecycle(String.format(Locale.ROOT,
-              "%-50s -> %s",
-              jarFile.name,
-              jar.manifest.mainAttributes.getValue("Automatic-Module-Name")))
-        }
-      }
-    }
-  })
-}
