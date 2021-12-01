@@ -749,11 +749,11 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
       IOUtils.close(writer, dir);
     }
   }
-  
+
   public void testMerge() throws IOException {
     doTestMerge(null, false);
   }
-  
+
   public void testMergeWithDeletes() throws IOException {
     doTestMerge(null, true);
   }
@@ -765,7 +765,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     }
     doTestMerge(new Sort(sortFields), false);
   }
-  
+
   public void testMergeWithIndexSortAndDeletes() throws IOException {
     SortField[] sortFields = new SortField[TestUtil.nextInt(random(), 1, 2)];
     for (int i = 0; i < sortFields.length; i++) {
