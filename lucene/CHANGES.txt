@@ -27,7 +27,9 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* LUCENE-10253: The @BadApple annotation has been removed from the test
+  framework. (Adrien Grand)
 
 ======================= Lucene 9.1.0 =======================
 
