@@ -1126,9 +1126,6 @@ def main():
 def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys, testArgs, downloadOnly=False):
   startTime = datetime.datetime.now()
 
-  # disable flakey tests for smoke-tester runs:
-  testArgs = '-Dtests.badapples=false %s' % testArgs
-
   # Tests annotated @Nightly are more resource-intensive but often cover
   # important code paths. They're disabled by default to preserve a good
   # developer experience, but we enable them for smoke tests where we want good
