@@ -21,6 +21,7 @@ module lucene.luke {
   requires java.desktop;
   requires java.logging;
   requires lucene.core;
+  requires lucene.analysis.common;
   requires org.apache.logging.log4j;
   requires org.apache.logging.log4j.core;
 }
