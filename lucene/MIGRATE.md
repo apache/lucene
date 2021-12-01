@@ -211,7 +211,7 @@ load the factory classes to be compatible with Java Module System changes (e.g.,
 In the future, extensions to Lucene developed on the Java Module System may expose the factories from their
 `module-info.java` file instead of `META-INF/services`.
 
-This constructor is never called by Lucene, so by default it throws a `UnsupportedOperationException`. User-defined
+This constructor is never called by Lucene, so by default it throws an `UnsupportedOperationException`. User-defined
 factory classes should implement it in the following way:
 
 ```java
@@ -225,7 +225,7 @@ factory classes should implement it in the following way:
 
 ### TermsEnum is now fully abstract (LUCENE-8292, LUCENE-8662)
 
-`TermsEnum` has been changed to be fully abstract, so non-abstract subclass must implement all it's methods.
+`TermsEnum` has been changed to be fully abstract, so non-abstract subclasses must implement all its methods.
 Non-Performance critical `TermsEnum`s can use `BaseTermsEnum` as a base class instead. The change was motivated
 by several performance issues with `FilterTermsEnum` that caused significant slowdowns and massive memory consumption due
 to not delegating all method from `TermsEnum`.
