@@ -44,8 +44,8 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
   }
 
   /**
-   * Get the fixed bit set. The docId exists in this {@link DocIdSetIterator} if the bitset contains
-   * (docId - {@link #getDocBase})
+   * Get the {@link FixedBitSet}. A docId will exist in this {@link DocIdSetIterator} if the bitset
+   * contains the (docId - {@link #getDocBase})
    *
    * @return the offset docId bitset
    */
@@ -61,7 +61,7 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
   /**
    * Get the doc base. It is guaranteed that doc base is a multiple of 64.
    *
-   * @return the docBase of {@link #getBitSet}
+   * @return the docBase
    */
   public int getDocBase() {
     return docBase;
