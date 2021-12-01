@@ -587,7 +587,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.10.0-cfs",
     "8.10.0-nocfs",
     "8.10.1-cfs",
-    "8.10.1-nocfs"
+    "8.10.1-nocfs",
+    "8.11.0-cfs",
+    "8.11.0-nocfs",
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
