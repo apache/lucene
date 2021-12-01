@@ -19,7 +19,7 @@ package org.apache.lucene.util;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * A @{@link DocIdSetIterator} like {@link BitSetIterator} but has a doc base in onder to avoid
+ * A {@link DocIdSetIterator} like {@link BitSetIterator} but has a doc base in onder to avoid
  * storing previous 0s.
  */
 public class DocBaseBitSetIterator extends DocIdSetIterator {
@@ -43,6 +43,12 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
     this.docBase = docBase;
   }
 
+  /**
+   * Get the fixed bit set. The docId exists in this {@link DocIdSetIterator} if the bitset contains
+   * (docId - {@link #getDocBase})
+   *
+   * @return the offset docId bitset
+   */
   public FixedBitSet getBitSet() {
     return bits;
   }
@@ -52,6 +58,11 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
     return doc;
   }
 
+  /**
+   * Get the doc base. It is guaranteed that doc base is a multiple of 64.
+   *
+   * @return the docBase of {@link #getBitSet}
+   */
   public int getDocBase() {
     return docBase;
   }

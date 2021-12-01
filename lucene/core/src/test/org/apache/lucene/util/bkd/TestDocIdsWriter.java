@@ -40,7 +40,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
-        test(dir, docIDs, false);
+        test(dir, docIDs);
       }
     }
   }
@@ -55,12 +55,12 @@ public class TestDocIdsWriter extends LuceneTestCase {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
         Arrays.sort(docIDs);
-        test(dir, docIDs, random().nextBoolean());
+        test(dir, docIDs);
       }
     }
   }
 
-  public void testDocBase() throws Exception {
+  public void testBitSet() throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
@@ -71,15 +71,15 @@ public class TestDocIdsWriter extends LuceneTestCase {
           set.add(small + random().nextInt(size * 16));
         }
         int[] docIDs = set.stream().mapToInt(t -> t).sorted().toArray();
-        test(dir, docIDs, true);
+        test(dir, docIDs);
       }
     }
   }
 
-  private void test(Directory dir, int[] ints, boolean consistentValue) throws Exception {
+  private void test(Directory dir, int[] ints) throws Exception {
     final long len;
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
-      DocIdsWriter.writeDocIds(ints, 0, ints.length, out, consistentValue);
+      DocIdsWriter.writeDocIds(ints, 0, ints.length, out);
       len = out.getFilePointer();
       if (random().nextBoolean()) {
         out.writeLong(0); // garbage

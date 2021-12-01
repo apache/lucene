@@ -783,7 +783,7 @@ public class BKDWriter implements Closeable {
           commonPrefixComparator.compare(
               leafValues, 0, leafValues, (leafCount - 1) * config.packedBytesLength);
 
-      writeLeafBlockDocs(dataOut, leafDocs, 0, leafCount, leafCardinality);
+      writeLeafBlockDocs(dataOut, leafDocs, 0, leafCount);
       writeCommonPrefixes(dataOut, commonPrefixLengths, leafValues);
 
       scratchBytesRef1.length = config.packedBytesLength;
@@ -1244,11 +1244,11 @@ public class BKDWriter implements Closeable {
     indexOut.writeBytes(packedIndex, 0, packedIndex.length);
   }
 
-  private void writeLeafBlockDocs(
-      DataOutput out, int[] docIDs, int start, int count, int leafCardinality) throws IOException {
+  private void writeLeafBlockDocs(DataOutput out, int[] docIDs, int start, int count)
+      throws IOException {
     assert count > 0 : "config.maxPointsInLeafNode=" + config.maxPointsInLeafNode;
     out.writeVInt(count);
-    DocIdsWriter.writeDocIds(docIDs, start, count, out, leafCardinality == 1);
+    DocIdsWriter.writeDocIds(docIDs, start, count, out);
   }
 
   private void writeLeafBlockPackedValues(
@@ -1667,7 +1667,7 @@ public class BKDWriter implements Closeable {
         docIDs[i - from] = reader.getDocID(i);
       }
       // System.out.println("writeLeafBlock pos=" + out.getFilePointer());
-      writeLeafBlockDocs(out, docIDs, 0, count, leafCardinality);
+      writeLeafBlockDocs(out, docIDs, 0, count);
 
       // Write the common prefixes:
       reader.getValue(from, scratchBytesRef1);
@@ -1922,7 +1922,7 @@ public class BKDWriter implements Closeable {
       for (int i = 0; i < count; i++) {
         docIDs[i] = heapSource.getPackedValueSlice(from + i).docID();
       }
-      writeLeafBlockDocs(out, docIDs, 0, count, leafCardinality);
+      writeLeafBlockDocs(out, docIDs, 0, count);
 
       // TODO: minor opto: we don't really have to write the actual common prefixes, because
       // BKDReader on recursing can regenerate it for us

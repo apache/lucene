@@ -28,22 +28,31 @@ class DocIdsWriter {
 
   private DocIdsWriter() {}
 
-  static void writeDocIds(
-      int[] docIds, int start, int count, DataOutput out, boolean consistentValue)
-      throws IOException {
-    if (consistentValue
-        && (docIds[start + count - 1] - docIds[start] + 1) <= (count << 4)
-        && isStrictlySorted(docIds, start, count)) {
-      // Only optimize it when max - min + 1 <= 16 * count in order to avoid expanding too much
+  static void writeDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
+    // docs can be sorted either when all docs in a block have the same value
+    // or when a segment is sorted
+    boolean sorted = true;
+    boolean strictlySorted = true;
+    for (int i = 1; i < count; ++i) {
+      int last = docIds[start + i - 1];
+      int current = docIds[start + i];
+      if (last > current) {
+        sorted = strictlySorted = false;
+        break;
+      } else if (last == current) {
+        strictlySorted = false;
+      }
+    }
+
+    if (strictlySorted && (docIds[start + count - 1] - docIds[start] + 1) <= (count << 4)) {
+      // Only trigger this optimization when max - min + 1 <= 16 * count in order to avoid expanding
+      // too much
       // storage.
       // A field with lower cardinality will have higher probability to trigger this optimization.
       out.writeByte((byte) -1);
       writeIdsAsBitSet(docIds, start, count, out);
       return;
     }
-    // docs can be sorted either when all docs in a block have the same value
-    // or when a segment is sorted
-    boolean sorted = consistentValue || isSorted(docIds, start, count);
     if (sorted) {
       out.writeByte((byte) 0);
       int previous = 0;
@@ -104,9 +113,8 @@ class DocIdsWriter {
   }
 
   private static boolean isStrictlySorted(int[] docIds, int start, int count) {
-    assert isSorted(docIds, start, count);
     for (int i = 1; i < count; ++i) {
-      if (docIds[start + i - 1] == docIds[start + i]) {
+      if (docIds[start + i - 1] >= docIds[start + i]) {
         return false;
       }
     }

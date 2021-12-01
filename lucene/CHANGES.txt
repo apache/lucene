@@ -51,7 +51,9 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10233: Store BKD leaves' doc IDs as bitset in some cases (typically for low cardinality fields
+ or sorted indices) to speed up addAll. (Guo Feng, Adrien Grand)
 
 Bug Fixes
 ---------------------
