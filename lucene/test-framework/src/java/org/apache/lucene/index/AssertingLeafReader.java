@@ -1097,9 +1097,11 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    protected IntersectVisitor wrapIntersectVisitor(IntersectVisitor visitor) throws IOException {
-      return new AssertingIntersectVisitor(
-          getNumDimensions(), getNumIndexDimensions(), getBytesPerDimension(), visitor);
+    public void intersect(IntersectVisitor visitor) throws IOException {
+      assertThread("Points", creationThread);
+      in.intersect(
+          new AssertingIntersectVisitor(
+              getNumDimensions(), getNumIndexDimensions(), getBytesPerDimension(), visitor));
     }
 
     @Override

@@ -375,18 +375,10 @@ public abstract class PointValues {
    * Finds all documents and points matching the provided visitor. This method does not enforce live
    * documents, so it's up to the caller to test whether each document is deleted, if necessary.
    */
-  public final void intersect(IntersectVisitor visitor) throws IOException {
+  public void intersect(IntersectVisitor visitor) throws IOException {
     final PointTree pointTree = getPointTree();
-    intersect(wrapIntersectVisitor(visitor), pointTree);
+    intersect(visitor, pointTree);
     assert pointTree.moveToParent() == false;
-  }
-
-  /**
-   * Adds the possibility of wrapping a provided {@link IntersectVisitor} in {@link
-   * #intersect(IntersectVisitor)}.
-   */
-  protected IntersectVisitor wrapIntersectVisitor(IntersectVisitor visitor) throws IOException {
-    return visitor;
   }
 
   private void intersect(IntersectVisitor visitor, PointTree pointTree) throws IOException {
