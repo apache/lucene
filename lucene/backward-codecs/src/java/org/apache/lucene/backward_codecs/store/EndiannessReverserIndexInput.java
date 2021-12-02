@@ -84,7 +84,8 @@ final class EndiannessReverserIndexInput extends IndexInput {
   public void readFloats(float[] dst, int offset, int length) throws IOException {
     in.readFloats(dst, offset, length);
     for (int i = 0; i < length; ++i) {
-      dst[offset + i] = Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(dst[offset + i])));
+      dst[offset + i] =
+          Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(dst[offset + i])));
     }
   }
 

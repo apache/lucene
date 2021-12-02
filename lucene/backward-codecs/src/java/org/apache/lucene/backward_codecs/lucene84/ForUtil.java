@@ -1155,5 +1155,4 @@ final class ForUtil {
       longs[longsIdx + 0] = l0;
     }
   }
-
 }
