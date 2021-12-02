@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.search;
 
 import java.util.ArrayList;
@@ -9,13 +25,22 @@ import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.SmallFloat;
 
 /**
  * Utils for merging impacts for SynonymQuery, CombinedFieldsQuery etc
  *
  * @lucene.internal
  */
-public class ImpactsMergingUtils {
+public final class ImpactsMergingUtils {
+  /** Cache of decoded norms. */
+  private static final float[] LENGTH_TABLE = new float[256];
+
+  static {
+    for (int i = 0; i < 256; i++) {
+      LENGTH_TABLE[i] = SmallFloat.byte4ToInt((byte) i);
+    }
+  }
 
   /**
    * Return the minimum level whose impacts are valid up to {@code docIdUpTo}, or {@code -1} if
@@ -50,12 +75,23 @@ public class ImpactsMergingUtils {
     }
   }
 
+  private static double normToLength(long norm) {
+    return LENGTH_TABLE[Byte.toUnsignedInt((byte) norm)];
+  }
+
   /**
-   * Merge impacts from multiple impactsEnum (terms matches) within the same field.
-   * The high level logic is to combine freqs that have the same norm from impacts.
+   * Merge impacts from multiple impactsEnum (terms matches) within the same field. The high level
+   * logic is to combine freqs that have the same norm from impacts.
    */
   public static List<Impact> mergeImpactsPerField(
-      ImpactsEnum[] impactsEnum, final Impacts[] impacts, float[] boosts, int docIdUpTo) {
+      ImpactsEnum[] impactsEnum,
+      Impacts[] impacts,
+      float[] termBoosts,
+      int docIdUpTo,
+      boolean combineMultiNorms) {
+    assert impactsEnum.length == impacts.length;
+    assert impactsEnum.length == termBoosts.length;
+
     List<List<Impact>> toMerge = new ArrayList<>();
 
     for (int i = 0; i < impactsEnum.length; ++i) {
@@ -67,11 +103,20 @@ public class ImpactsMergingUtils {
           return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
         }
         final List<Impact> impactList;
-        if (boosts[i] != 1f) {
-          float boost = boosts[i];
+        if (termBoosts[i] != 1f) {
+          float boost = termBoosts[i];
           impactList =
               impacts[i].getImpacts(impactsLevel).stream()
-                  .map(impact -> new Impact((int) Math.ceil(impact.freq * boost), impact.norm))
+                  .map(
+                      impact -> {
+                        int boostedFreq = (int) Math.ceil(impact.freq * boost);
+                        long boostedNorm =
+                            combineMultiNorms
+                                ? SmallFloat.intToByte4(
+                                    (int) Math.floor(normToLength(impact.norm) * boost))
+                                : impact.norm;
+                        return new Impact(boostedFreq, boostedNorm);
+                      })
                   .collect(Collectors.toList());
         } else {
           impactList = impacts[i].getImpacts(impactsLevel);

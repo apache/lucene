@@ -375,7 +375,7 @@ public final class SynonymQuery extends Query {
           public List<Impact> getImpacts(int level) {
             final int docIdUpTo = getDocIdUpTo(level);
             return ImpactsMergingUtils.mergeImpactsPerField(
-                impactsEnums, impacts, boosts, docIdUpTo);
+                impactsEnums, impacts, boosts, docIdUpTo, false);
           }
         };
       }
