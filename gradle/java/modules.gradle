@@ -1,4 +1,5 @@
 import java.util.jar.JarFile
+import java.util.stream.Collectors
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -67,10 +68,11 @@ allprojects {
       doFirst {
         var pkgNameSet = [] as Set<String>
         sourceSets.main.each { sourceSet ->
-          var dirs = sourceSet.allJava.srcDirTrees.collect { it.dir.path.toString() }
+          var dirs = sourceSet.allJava.srcDirTrees.collect { it.dir.toPath() }
           sourceSet.allJava.filter{ it.name != "module-info.java" && it.name != "package-info.java" }.each {srcFile ->
-            var dir = dirs.findAll { srcFile.path.matches("^${it}/.*\$") }.get(0)
-            var pkgName = srcFile.path.replaceFirst("${dir}/", "").replaceFirst("/${srcFile.name}\$", "").replace("/", ".")
+            var srcPath = srcFile.toPath()
+            var dir = dirs.find { srcPath.startsWith(it) }
+            var pkgName = srcPath.subpath(dir.nameCount, srcPath.nameCount).parent.stream().map(Object::toString).collect(Collectors.joining('.'))
             pkgNameSet.add(pkgName)
           }
         }
