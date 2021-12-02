@@ -127,6 +127,7 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.en.PorterStemFilterFactory,
       org.apache.lucene.analysis.es.SpanishLightStemFilterFactory,
       org.apache.lucene.analysis.es.SpanishMinimalStemFilterFactory,
+      org.apache.lucene.analysis.es.SpanishPluralStemFilterFactory,
       org.apache.lucene.analysis.fa.PersianNormalizationFilterFactory,
       org.apache.lucene.analysis.fi.FinnishLightStemFilterFactory,
       org.apache.lucene.analysis.fr.FrenchLightStemFilterFactory,
