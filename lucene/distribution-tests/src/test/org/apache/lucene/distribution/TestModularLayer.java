@@ -25,7 +25,6 @@ import java.util.Set;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /** Sanity checks concerning the distribution's binary artifacts (modules). */
@@ -99,7 +98,6 @@ public class TestModularLayer {
   }
 
   /** Ensure all modules have the same (expected) version. */
-  @Ignore("LUCENE-10267: Awaits fix or a workaround for gradle bug.")
   @Test
   public void testAllModulesHaveExpectedVersion() {
     String luceneBuildVersion = System.getProperty(VERSION_PROPERTY);
