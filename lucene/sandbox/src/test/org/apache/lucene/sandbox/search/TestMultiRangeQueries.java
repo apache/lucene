@@ -34,6 +34,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -648,5 +649,116 @@ public class TestMultiRangeQueries extends LuceneTestCase {
     assertEquals(
         "point:{[111 TO 117],[294 TO 301],[502 TO 514]},{[15 TO 200],[412 TO 567],[415 TO 642]}",
         query.toString());
+  }
+
+  public void testEqualsAndHashCode() {
+    {
+      double[] firstDoubleLowerRange = {111, 294.3, 502.4};
+      double[] firstDoubleUpperRange = {117.3, 301.8, 514.3};
+
+      double[] secondDoubleLowerRange = {15.3, 412.8, 415.1};
+      double[] secondDoubleUpperRange = {200.4, 567.4, 642.2};
+
+      DoublePointMultiRangeBuilder doublePointBuilder1 =
+          new DoublePointMultiRangeBuilder("point", 3);
+
+      doublePointBuilder1.add(firstDoubleLowerRange, firstDoubleUpperRange);
+      doublePointBuilder1.add(secondDoubleLowerRange, secondDoubleUpperRange);
+
+      Query query1 = doublePointBuilder1.build();
+
+      QueryUtils.check(query1);
+
+      DoublePointMultiRangeBuilder doublePointBuilder2 =
+          new DoublePointMultiRangeBuilder("point", 3);
+
+      doublePointBuilder2.add(firstDoubleLowerRange, firstDoubleUpperRange);
+      doublePointBuilder2.add(secondDoubleLowerRange, secondDoubleUpperRange);
+
+      Query query2 = doublePointBuilder2.build();
+
+      QueryUtils.checkEqual(query1, query2);
+      assertEquals(query1.hashCode(), query2.hashCode());
+
+      DoublePointMultiRangeBuilder doublePointBuilder3 =
+          new DoublePointMultiRangeBuilder("point", 3);
+
+      doublePointBuilder3.add(firstDoubleLowerRange, firstDoubleUpperRange);
+
+      Query query3 = doublePointBuilder3.build();
+
+      QueryUtils.checkUnequal(query1, query3);
+      assertNotEquals(query1.hashCode(), query3.hashCode());
+    }
+    {
+      long[] firstLongLowerRange = {111, 294, 502};
+      long[] firstLongUpperRange = {117, 301, 514};
+
+      long[] secondLongLowerRange = {15, 412, 415};
+      long[] secondLongUpperRange = {200, 567, 642};
+
+      LongPointMultiRangeBuilder longPointBuilder1 = new LongPointMultiRangeBuilder("point", 3);
+
+      longPointBuilder1.add(firstLongLowerRange, firstLongUpperRange);
+      longPointBuilder1.add(secondLongLowerRange, secondLongUpperRange);
+
+      Query query1 = longPointBuilder1.build();
+
+      QueryUtils.check(query1);
+
+      LongPointMultiRangeBuilder longPointBuilder2 = new LongPointMultiRangeBuilder("point", 3);
+
+      longPointBuilder2.add(firstLongLowerRange, firstLongUpperRange);
+      longPointBuilder2.add(secondLongLowerRange, secondLongUpperRange);
+
+      Query query2 = longPointBuilder2.build();
+
+      QueryUtils.checkEqual(query1, query2);
+      assertEquals(query1.hashCode(), query2.hashCode());
+
+      LongPointMultiRangeBuilder longPointBuilder3 = new LongPointMultiRangeBuilder("point", 3);
+
+      longPointBuilder3.add(firstLongLowerRange, firstLongUpperRange);
+
+      Query query3 = longPointBuilder3.build();
+
+      QueryUtils.checkUnequal(query1, query3);
+      assertNotEquals(query1.hashCode(), query3.hashCode());
+    }
+    {
+      float[] firstFloatUpperRange = {111.3f, 294.4f, 502.2f};
+      float[] firstLongUpperRange = {117.7f, 301.2f, 514.4f};
+
+      float[] secondFloatLowerRange = {111.3f, 294.4f, 502.2f};
+      float[] secondFloatUpperRange = {200.2f, 567.4f, 642.3f};
+
+      FloatPointMultiRangeBuilder floatPointBuilder1 = new FloatPointMultiRangeBuilder("point", 3);
+
+      floatPointBuilder1.add(firstFloatUpperRange, firstLongUpperRange);
+      floatPointBuilder1.add(secondFloatLowerRange, secondFloatUpperRange);
+
+      Query query1 = floatPointBuilder1.build();
+
+      QueryUtils.check(query1);
+
+      FloatPointMultiRangeBuilder floatPointBuilder2 = new FloatPointMultiRangeBuilder("point", 3);
+
+      floatPointBuilder2.add(firstFloatUpperRange, firstLongUpperRange);
+      floatPointBuilder2.add(secondFloatLowerRange, secondFloatUpperRange);
+
+      Query query2 = floatPointBuilder2.build();
+
+      QueryUtils.checkEqual(query1, query2);
+      assertEquals(query1.hashCode(), query2.hashCode());
+
+      FloatPointMultiRangeBuilder floatPointBuilder3 = new FloatPointMultiRangeBuilder("point", 3);
+
+      floatPointBuilder3.add(firstFloatUpperRange, firstLongUpperRange);
+
+      Query query3 = floatPointBuilder3.build();
+
+      QueryUtils.checkUnequal(query1, query3);
+      assertNotEquals(query1.hashCode(), query3.hashCode());
+    }
   }
 }
