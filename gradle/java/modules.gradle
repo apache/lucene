@@ -62,25 +62,53 @@ configure(rootProject) {
 
 allprojects {
   // Show all non-empty package names
-  // There should be a better way...
   plugins.withType(JavaPlugin) {
     tasks.register("showPackageNames", { task ->
       doFirst {
-        var pkgNameSet = [] as Set<String>
-        sourceSets.main.each { sourceSet ->
-          var dirs = sourceSet.allJava.srcDirTrees.collect { it.dir.toPath() }
-          sourceSet.allJava.filter{ it.name != "module-info.java" && it.name != "package-info.java" }.each {srcFile ->
-            var srcPath = srcFile.toPath()
-            var dir = dirs.find { srcPath.startsWith(it) }
-            var pkgName = srcPath.subpath(dir.nameCount, srcPath.nameCount).parent.stream().map(Object::toString).collect(Collectors.joining('.'))
-            pkgNameSet.add(pkgName)
-          }
-        }
-        var pkgNames = pkgNameSet as List<String>
-        pkgNames.sort()
-        pkgNames.each { println(it) }
+        listPackageNames(sourceSets).each { println(it) }
       }
     })
   }
+}
+
+allprojects {
+  plugins.withType(JavaPlugin) {
+    tasks.register("scaffoldModuleDescriptor", {
+      doFirst {
+        def moduleName = "org.apache" + project.path.replace('-', '_').replace(':', '.')
+        def pkgNames = listPackageNames(sourceSets)
+        def outFile = project.file("${getTemporaryDir()}/module-info.java")
+        outFile.withWriter("UTF-8", { writer ->
+          writer.write("module ${moduleName} {\n")
+          pkgNames.each {pkg ->
+            writer.write("  exports ")
+            writer.write(pkg)
+            writer.write(";\n")
+          }
+          writer.write("}\n")
+        })
+
+        logger.lifecycle("Output to: ${outFile}")
+        logger.lifecycle("NOTE: The generated module descriptor is not complete and won't work as is.")
+      }
+    })
+  }
+}
+
+/* Utility method to collect all package names in a source sets. */
+static def listPackageNames(SourceSetContainer sourceSets) {
+  var pkgNameSet = [] as Set<String>
+  sourceSets.main.each { sourceSet ->
+    var dirs = sourceSet.allJava.srcDirTrees.collect { it.dir.toPath() }
+    sourceSet.allJava.filter{ it.name != "module-info.java" && it.name != "package-info.java" }.each {srcFile ->
+      var srcPath = srcFile.toPath()
+      var dir = dirs.find { srcPath.startsWith(it) }
+      var pkgName = srcPath.subpath(dir.nameCount, srcPath.nameCount).parent.stream().map(Object::toString).collect(Collectors.joining('.'))
+      pkgNameSet.add(pkgName)
+    }
+  }
+  var pkgNames = pkgNameSet as List<String>
+  pkgNames.sort()
+  return pkgNames
 }
 
