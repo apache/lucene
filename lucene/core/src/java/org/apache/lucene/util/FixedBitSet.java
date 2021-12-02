@@ -355,6 +355,7 @@ public final class FixedBitSet extends BitSet {
     if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
       checkUnpositioned(iter);
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
+      assert bits != null;
       andNot(bits);
     } else if (iter instanceof DocBaseBitSetIterator) {
       checkUnpositioned(iter);
