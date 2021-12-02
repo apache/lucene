@@ -288,17 +288,6 @@ public abstract class PointValues {
     void visit(int docID) throws IOException;
 
     /**
-     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implements may have
-     * their optimizations.
-     */
-    default void visit(DocIdSetIterator iterator) throws IOException {
-      int docID;
-      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        visit(docID);
-      }
-    }
-
-    /**
      * Called for all documents in a leaf cell that crosses the query. The consumer should
      * scrutinize the packedValue to decide whether to accept it. In the 1D case, values are visited
      * in increasing order, and in the case of ties, in increasing docID order.

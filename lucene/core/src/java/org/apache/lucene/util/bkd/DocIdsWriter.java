@@ -18,11 +18,8 @@ package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.DocBaseBitSetIterator;
-import org.apache.lucene.util.FixedBitSet;
 
 class DocIdsWriter {
 
@@ -32,25 +29,11 @@ class DocIdsWriter {
     // docs can be sorted either when all docs in a block have the same value
     // or when a segment is sorted
     boolean sorted = true;
-    boolean strictlySorted = true;
     for (int i = 1; i < count; ++i) {
-      int last = docIds[start + i - 1];
-      int current = docIds[start + i];
-      if (last > current) {
-        sorted = strictlySorted = false;
+      if (docIds[start + i - 1] > docIds[start + i]) {
+        sorted = false;
         break;
-      } else if (last == current) {
-        strictlySorted = false;
       }
-    }
-
-    if (strictlySorted && (docIds[start + count - 1] - docIds[start] + 1) <= (count << 4)) {
-      // Only trigger this optimization when max - min + 1 <= 16 * count in order to avoid expanding
-      // too much storage.
-      // A field with lower cardinality will have higher probability to trigger this optimization.
-      out.writeByte((byte) -1);
-      writeIdsAsBitSet(docIds, start, count, out);
-      return;
     }
     if (sorted) {
       out.writeByte((byte) 0);
@@ -102,46 +85,10 @@ class DocIdsWriter {
     }
   }
 
-  private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out)
-      throws IOException {
-    int min = docIds[start];
-    int max = docIds[start + count - 1];
-
-    final int offsetWords = min >> 6;
-    final int offsetBits = offsetWords << 6;
-    final int totalWordCount = FixedBitSet.bits2words(max - offsetBits + 1);
-    long currentWord = 0;
-    int currentWordIndex = 0;
-
-    out.writeVInt(offsetWords);
-    out.writeVInt(totalWordCount);
-    // build bit set streaming
-    for (int i = 0; i < count; i++) {
-      final int index = docIds[start + i] - offsetBits;
-      final int nextWordIndex = index >> 6;
-      assert currentWordIndex <= nextWordIndex;
-      if (currentWordIndex < nextWordIndex) {
-        out.writeLong(currentWord);
-        currentWord = 0L;
-        currentWordIndex++;
-        while (currentWordIndex < nextWordIndex) {
-          currentWordIndex++;
-          out.writeLong(0L);
-        }
-      }
-      currentWord |= 1L << index;
-    }
-    out.writeLong(currentWord);
-    assert currentWordIndex + 1 == totalWordCount;
-  }
-
   /** Read {@code count} integers into {@code docIDs}. */
   static void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
-      case -1:
-        readBitSet(in, count, docIDs);
-        break;
       case 0:
         readDeltaVInts(in, count, docIDs);
         break;
@@ -154,24 +101,6 @@ class DocIdsWriter {
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
-  }
-
-  private static DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
-    int offsetWords = in.readVInt();
-    int longLen = in.readVInt();
-    long[] bits = new long[longLen];
-    in.readLongs(bits, 0, longLen);
-    FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
-    return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
-  }
-
-  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
-    DocIdSetIterator iterator = readBitSetIterator(in, count);
-    int docId, pos = 0;
-    while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      docIDs[pos++] = docId;
-    }
-    assert pos == count : "pos: " + pos + "count: " + count;
   }
 
   private static void readDeltaVInts(IndexInput in, int count, int[] docIDs) throws IOException {
@@ -215,9 +144,6 @@ class DocIdsWriter {
   static void readInts(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
-      case -1:
-        readBitSet(in, count, visitor);
-        break;
       case 0:
         readDeltaVInts(in, count, visitor);
         break;
@@ -267,11 +193,5 @@ class DocIdsWriter {
     for (; i < count; ++i) {
       visitor.visit((Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte()));
     }
-  }
-
-  private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
-    DocIdSetIterator bitSetIterator = readBitSetIterator(in, count);
-    visitor.visit(bitSetIterator);
   }
 }

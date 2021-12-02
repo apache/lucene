@@ -467,11 +467,6 @@ public abstract class RangeFieldQuery extends Query {
           }
 
           @Override
-          public void visit(DocIdSetIterator iterator) throws IOException {
-            adder.add(iterator);
-          }
-
-          @Override
           public void visit(int docID, byte[] leaf) throws IOException {
             if (queryType.matches(ranges, leaf, numDims, bytesPerDim)) {
               visit(docID);

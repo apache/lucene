@@ -86,11 +86,6 @@ final class XYPointInGeometryQuery extends Query {
       }
 
       @Override
-      public void visit(DocIdSetIterator iterator) throws IOException {
-        adder.add(iterator);
-      }
-
-      @Override
       public void visit(int docID, byte[] packedValue) {
         double x = XYEncodingUtils.decode(packedValue, 0);
         double y = XYEncodingUtils.decode(packedValue, Integer.BYTES);

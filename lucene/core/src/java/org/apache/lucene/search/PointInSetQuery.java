@@ -238,11 +238,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
 
     @Override
-    public void visit(DocIdSetIterator iterator) throws IOException {
-      adder.add(iterator);
-    }
-
-    @Override
     public void visit(int docID, byte[] packedValue) {
       if (matches(packedValue)) {
         visit(docID);
@@ -339,11 +334,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public void visit(int docID) {
       adder.add(docID);
-    }
-
-    @Override
-    public void visit(DocIdSetIterator iterator) throws IOException {
-      adder.add(iterator);
     }
 
     @Override

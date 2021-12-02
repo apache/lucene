@@ -423,11 +423,6 @@ abstract class SpatialQuery extends Query {
       }
 
       @Override
-      public void visit(DocIdSetIterator iterator) throws IOException {
-        adder.add(iterator);
-      }
-
-      @Override
       public void visit(int docID, byte[] t) {
         if (leafPredicate.test(t)) {
           visit(docID);
