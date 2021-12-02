@@ -33,6 +33,9 @@ allprojects {
   // TODO: remove the hacks excluding java-module source folder from ecjLint and javadoc rendering.
 }
 
+
+// Methods below are for debugging purposes.
+
 configure(rootProject) {
   // Show all module names (for ease of debugging)
   tasks.register("showModuleNames", { showModuleTask ->
@@ -61,19 +64,14 @@ configure(rootProject) {
 }
 
 allprojects {
-  // Show all non-empty package names
   plugins.withType(JavaPlugin) {
+    // Show all non-empty package names
     tasks.register("showPackageNames", { task ->
       doFirst {
         listPackageNames(sourceSets).each { println(it) }
       }
     })
-  }
-}
 
-allprojects {
-  // Show all service providers
-  plugins.withType(JavaPlugin) {
     tasks.register("showServiceProviders", { task ->
       doFirst {
         def services = listServices(sourceSets)
@@ -83,11 +81,7 @@ allprojects {
         }}
       }
     })
-  }
-}
 
-allprojects {
-  plugins.withType(JavaPlugin) {
     tasks.register("scaffoldModuleDescriptor", {
       doFirst {
         def moduleName = "org.apache" + project.path.replace('-', '_').replace(':', '.')
