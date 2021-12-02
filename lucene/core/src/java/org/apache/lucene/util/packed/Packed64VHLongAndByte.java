@@ -60,8 +60,11 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
     super(valueCount, bitsPerValue);
     final PackedInts.Format format = PackedInts.Format.PACKED;
     final long byteCount = format.byteCount(PackedInts.VERSION_CURRENT, valueCount, bitsPerValue);
+    if (bitsPerValue > 56) {
+      throw new IllegalArgumentException("Only bitsPerValue up to 56 allowed");
+    }
     if (byteCount > ArrayUtil.MAX_ARRAY_LENGTH) {
-      throw new IllegalArgumentException("Not yet supported");
+      throw new IllegalArgumentException("Too many values/bits to store");
     }
     this.blocks = new byte[(int) byteCount + Long.BYTES];
     maskRight = ~0L << (BLOCK_SIZE - bitsPerValue) >>> (BLOCK_SIZE - bitsPerValue);
@@ -80,15 +83,16 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
     final int elementPos = (int) (majorBitPos >>> BYTE_BITS); // BYTE_BLOCK
     // The number of bits already occupied from the previous position
     final int maskOffset = (int) majorBitPos & BYTE_BLOCK_MOD_MASK;
-    final int endBits = maskOffset + bpvMinusBlockSize;
+//    final int endBits = maskOffset + bpvMinusBlockSize;
     // Read the main long
-    final long packed = ((long) BitUtil.VH_LE_LONG.get(blocks, elementPos) >>> maskOffset) & maskRight;
+    //final long packed = ((long) BitUtil.VH_LE_LONG.get(blocks, elementPos) >>> maskOffset) & maskRight;
+    return ((long) BitUtil.VH_LE_LONG.get(blocks, elementPos) >>> maskOffset) & maskRight;
 
-    if (endBits <= 0) { // Single block
-      return packed;
-    }
-    // compute next mask
-    return packed | (blocks[elementPos + BYTE_BLOCK_SIZE] & ~(~0L << endBits)) << (BLOCK_SIZE - maskOffset);
+//    if (endBits <= 0) { // Single block
+//      return packed;
+//    }
+//    // compute next mask
+//    return packed | (blocks[elementPos + BYTE_BLOCK_SIZE] & ~(~0L << endBits)) << (BLOCK_SIZE - maskOffset);
   }
 
   @Override
@@ -104,12 +108,12 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
     final long packed = (long) BitUtil.VH_LE_LONG.get(blocks, elementPos);
     BitUtil.VH_LE_LONG.set(blocks, elementPos, packed & ~(maskRight << maskOffset) | (value << maskOffset));
 
-    if (endBits <= 0) { // Fits in single block, bail out
-      return;
-    }
-
-    // Extra read for the overflow bits
-    blocks[elementPos + BYTE_BLOCK_SIZE] = (byte) (blocks[elementPos + BYTE_BLOCK_SIZE] & (~0L << endBits) | (value >>> bitsPerValue - endBits));
+//    if (endBits <= 0) { // Fits in single block, bail out
+//      return;
+//    }
+//
+//    // Extra read for the overflow bits
+//    blocks[elementPos + BYTE_BLOCK_SIZE] = (byte) (blocks[elementPos + BYTE_BLOCK_SIZE] & (~0L << endBits) | (value >>> bitsPerValue - endBits));
   }
 
   @Override

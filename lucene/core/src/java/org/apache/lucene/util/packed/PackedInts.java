@@ -21,6 +21,7 @@ import java.util.Arrays;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -716,8 +717,12 @@ public class PackedInts {
       case PACKED_SINGLE_BLOCK:
         return Packed64SingleBlock.create(valueCount, bitsPerValue);
       case PACKED:
-        //return new Packed64(valueCount, bitsPerValue);
-        return new Packed64VHLongAndByte(valueCount, bitsPerValue);
+        if ((valueCount + 1) * Long.BYTES < ArrayUtil.MAX_ARRAY_LENGTH && bitsPerValue <= 56) {
+          return new Packed64VHLongAndByte(valueCount, bitsPerValue);
+        }
+        else {
+          return new Packed64(valueCount, bitsPerValue);
+        }
       default:
         throw new AssertionError();
     }
