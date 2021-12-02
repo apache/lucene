@@ -638,7 +638,7 @@ abstract class SpatialQuery extends Query {
       @Override
       public void visit(DocIdSetIterator iterator) throws IOException {
         result.andNot(iterator);
-        cost[0] = (int) Math.max(0, cost[0] - iterator.cost());
+        cost[0] = Math.max(0, cost[0] - iterator.cost());
       }
 
       @Override

@@ -379,6 +379,13 @@ public final class FixedBitSet extends BitSet {
   }
 
   private void andNot(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
+    assert otherNumWords + otherOffsetWords <= numWords
+        : "numWords="
+            + numWords
+            + ", otherNumWords="
+            + otherNumWords
+            + ", otherOffsetWords="
+            + otherOffsetWords;
     int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
     while (--pos >= 0) {
