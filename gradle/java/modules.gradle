@@ -113,11 +113,6 @@ allprojects {
             writer.write(providers)
             writer.write(";\n")
           }}
-          writer.write("\n")
-          // write uses statements
-          services.keySet().each { service ->
-            writer.write("  uses ${service};\n")
-          }
           writer.write("}\n")
         })
 
@@ -133,7 +128,11 @@ static def listPackageNames(SourceSetContainer sourceSets) {
   var pkgNameSet = [] as Set<String>
   sourceSets.main.each { sourceSet ->
     var dirs = sourceSet.allJava.srcDirTrees.collect { it.dir.toPath() }
-    sourceSet.allJava.filter{ it.name != "module-info.java" && it.name != "package-info.java" }.each {srcFile ->
+    var pattern = new PatternSet()
+      .include('**/*.java')
+      .exclude('module-info.java')
+      .exclude('package-info.java')
+    sourceSet.allJava.matching(pattern).each {srcFile ->
       var srcPath = srcFile.toPath()
       var dir = dirs.find { srcPath.startsWith(it) }
       var pkgName = srcPath.subpath(dir.nameCount, srcPath.nameCount).parent.stream().map(Object::toString).collect(Collectors.joining('.'))
@@ -149,7 +148,8 @@ static def listPackageNames(SourceSetContainer sourceSets) {
 static def listServices(SourceSetContainer sourceSets) {
   def services = [:] as Map<String, List<String>>
   sourceSets.main.each {sourceSet ->
-    sourceSet.resources.filter { file -> file.path.contains("META-INF/services/") }.each {file ->
+    var pattern = new PatternSet().include('META-INF/services/*')
+    sourceSet.resources.matching(pattern).each {file ->
       def serviceName = file.name
       def providers = []
       file.withReader { reader -> {
