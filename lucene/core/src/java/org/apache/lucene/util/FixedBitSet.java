@@ -361,7 +361,10 @@ public final class FixedBitSet extends BitSet {
       DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
       andNot(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
-      super.or(iter);
+      checkUnpositioned(iter);
+      for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
+        clear(doc);
+      }
     }
   }
 
