@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseTermVectorsFormatTestCase;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestSimpleTextTermVectorsFormat extends BaseTermVectorsFormatTestCase {
   @Override
@@ -30,19 +28,5 @@ public class TestSimpleTextTermVectorsFormat extends BaseTermVectorsFormatTestCa
   @Override
   protected Codec getCodec() {
     return new SimpleTextCodec();
-  }
-
-  // TODO: can we speed up the underlying base test?
-  @Override
-  @LuceneTestCase.Nightly
-  public void testMergeWithIndexSort() throws IOException {
-    super.testMergeWithIndexSort();
-  }
-
-  // TODO: can we speed up the underlying base test?
-  @Override
-  @LuceneTestCase.Nightly
-  public void testMergeWithoutIndexSort() throws IOException {
-    super.testMergeWithoutIndexSort();
   }
 }
