@@ -291,7 +291,7 @@ public abstract class PointValues {
   /**
    * Collects all documents below a tree node by calling {@link
    * PointTree#visitDocIDs(DocIdsVisitor)}
-   * 
+   *
    * @lucene.experimental
    */
   @FunctionalInterface
@@ -314,7 +314,7 @@ public abstract class PointValues {
   /**
    * Collects all documents and values below a tree node by calling {@link
    * PointTree#visitDocValues(DocValuesVisitor)} (DocIdsVisitor)}
-   * 
+   *
    * @lucene.experimental
    */
   @FunctionalInterface
