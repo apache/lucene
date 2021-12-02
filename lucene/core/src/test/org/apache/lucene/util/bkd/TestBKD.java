@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Random;
-import java.util.function.BiFunction;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.MergeState;
@@ -1596,7 +1595,7 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public void visitDocValues(
-              BiFunction<byte[], byte[], Relation> compare,
+              PointValues.NodeComparator nodeComparator,
               PointValues.DocIdsVisitor docIdsVisitor,
               PointValues.DocValuesVisitor docValuesVisitor)
               throws IOException {
@@ -1716,7 +1715,7 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public void visitDocValues(
-              BiFunction<byte[], byte[], Relation> compare,
+              PointValues.NodeComparator nodeComparator,
               PointValues.DocIdsVisitor docIdsVisitor,
               PointValues.DocValuesVisitor docValuesVisitor)
               throws IOException {

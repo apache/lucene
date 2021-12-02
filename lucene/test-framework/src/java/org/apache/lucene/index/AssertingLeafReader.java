@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -1200,11 +1199,11 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public void visitDocValues(
-        BiFunction<byte[], byte[], Relation> compare,
+        PointValues.NodeComparator nodeComparator,
         PointValues.DocIdsVisitor docIdsVisitor,
         PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
-      in.visitDocValues(compare, docIdsVisitor, docValuesVisitor);
+      in.visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor);
     }
   }
 

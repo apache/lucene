@@ -23,7 +23,6 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextPointsWriter.BLOCK_V
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.function.BiFunction;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
@@ -356,7 +355,7 @@ final class SimpleTextBKDReader extends PointValues {
 
     @Override
     public void visitDocValues(
-        BiFunction<byte[], byte[], Relation> compare,
+        NodeComparator nodeComparator,
         DocIdsVisitor docIdsVisitor,
         DocValuesVisitor docValuesVisitor)
         throws IOException {
@@ -381,10 +380,10 @@ final class SimpleTextBKDReader extends PointValues {
         }
       } else {
         pushLeft();
-        visitDocValues(compare, docIdsVisitor, docValuesVisitor);
+        visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor);
         pop(true);
         pushRight();
-        visitDocValues(compare, docIdsVisitor, docValuesVisitor);
+        visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor);
         pop(false);
       }
     }

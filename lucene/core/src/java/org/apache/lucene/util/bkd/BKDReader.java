@@ -17,7 +17,6 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-import java.util.function.BiFunction;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
@@ -521,36 +520,36 @@ public class BKDReader extends PointValues {
 
     @Override
     public void visitDocValues(
-        BiFunction<byte[], byte[], Relation> compare,
+        NodeComparator nodeComparator,
         DocIdsVisitor docIdsVisitor,
         PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
       resetNodeDataPosition();
-      visitLeavesOneByOne(compare, docIdsVisitor, docValuesVisitor);
+      visitLeavesOneByOne(nodeComparator, docIdsVisitor, docValuesVisitor);
     }
 
     private void visitLeavesOneByOne(
-        BiFunction<byte[], byte[], Relation> compare,
+        NodeComparator nodeComparator,
         DocIdsVisitor docIdsVisitor,
-        PointValues.DocValuesVisitor docValuesVisitor)
+        DocValuesVisitor docValuesVisitor)
         throws IOException {
       if (isLeafNode()) {
         // Leaf node
-        visitDocValues(compare, docIdsVisitor, docValuesVisitor, getLeafBlockFP());
+        visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor, getLeafBlockFP());
       } else {
         pushLeft();
-        visitLeavesOneByOne(compare, docIdsVisitor, docValuesVisitor);
+        visitLeavesOneByOne(nodeComparator, docIdsVisitor, docValuesVisitor);
         pop();
         pushRight();
-        visitLeavesOneByOne(compare, docIdsVisitor, docValuesVisitor);
+        visitLeavesOneByOne(nodeComparator, docIdsVisitor, docValuesVisitor);
         pop();
       }
     }
 
     private void visitDocValues(
-        BiFunction<byte[], byte[], Relation> compare,
+        NodeComparator nodeComparator,
         DocIdsVisitor docIdsVisitor,
-        PointValues.DocValuesVisitor docValuesVisitor,
+        DocValuesVisitor docValuesVisitor,
         long fp)
         throws IOException {
       // Leaf node; scan and filter all points in this block:
@@ -564,7 +563,7 @@ public class BKDReader extends PointValues {
             leafNodes,
             scratchIterator,
             count,
-            compare,
+            nodeComparator,
             docIdsVisitor,
             docValuesVisitor);
       } else {
@@ -576,7 +575,7 @@ public class BKDReader extends PointValues {
             leafNodes,
             scratchIterator,
             count,
-            compare,
+            nodeComparator,
             docIdsVisitor,
             docValuesVisitor);
       }
@@ -686,7 +685,7 @@ public class BKDReader extends PointValues {
         IndexInput in,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        BiFunction<byte[], byte[], Relation> compare,
+        NodeComparator nodeComparator,
         DocIdsVisitor docIdsVisitor,
         PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
@@ -706,7 +705,7 @@ public class BKDReader extends PointValues {
         // or does not match at all. This is especially more likely in the case that there are
         // multiple dimensions that have correlation, ie. splitting on one dimension also
         // significantly changes the range of values in another dimension.
-        PointValues.Relation r = compare.apply(minPackedValue, maxPackedValue);
+        PointValues.Relation r = nodeComparator.compare(minPackedValue, maxPackedValue);
         if (r == PointValues.Relation.CELL_OUTSIDE_QUERY) {
           return;
         }
@@ -742,7 +741,7 @@ public class BKDReader extends PointValues {
         IndexInput in,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        BiFunction<byte[], byte[], Relation> compare,
+        NodeComparator nodeComparator,
         DocIdsVisitor docIdsVisitor,
         PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
@@ -768,7 +767,7 @@ public class BKDReader extends PointValues {
           // or does not match at all. This is especially more likely in the case that there are
           // multiple dimensions that have correlation, ie. splitting on one dimension also
           // significantly changes the range of values in another dimension.
-          PointValues.Relation r = compare.apply(minPackedValue, maxPackedValue);
+          PointValues.Relation r = nodeComparator.compare(minPackedValue, maxPackedValue);
           if (r == PointValues.Relation.CELL_OUTSIDE_QUERY) {
             return;
           }

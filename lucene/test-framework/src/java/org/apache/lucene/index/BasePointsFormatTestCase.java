@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
-import java.util.function.BiFunction;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryPoint;
@@ -1334,7 +1333,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
 
           @Override
           public void visitDocValues(
-              BiFunction<byte[], byte[], Relation> compare,
+              NodeComparator nodeComparator,
               DocIdsVisitor docIdsVisitor,
               DocValuesVisitor docValuesVisitor) {
             throw new UnsupportedOperationException();

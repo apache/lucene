@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.function.BiFunction;
 import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -515,13 +514,13 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     @Override
     public void visitDocValues(
-        BiFunction<byte[], byte[], PointValues.Relation> compare,
+        PointValues.NodeComparator nodeComparator,
         PointValues.DocIdsVisitor docIdsVisitor,
         PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
       checkAndThrow();
       in.visitDocValues(
-          compare,
+          nodeComparator,
           docIdsVisitor,
           (docID, packedValue) -> {
             checkAndThrowWithSampling();

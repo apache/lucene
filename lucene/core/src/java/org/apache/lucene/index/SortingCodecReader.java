@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.function.BiFunction;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -175,12 +174,12 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public void visitDocValues(
-        BiFunction<byte[], byte[], PointValues.Relation> compare,
+        PointValues.NodeComparator nodeComparator,
         PointValues.DocIdsVisitor docIdsVisitor,
         PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
       indexTree.visitDocValues(
-          compare,
+          nodeComparator,
           docMap::oldToNew,
           (docID, packedValue) -> docValuesVisitor.visit(docMap.oldToNew(docID), packedValue));
     }

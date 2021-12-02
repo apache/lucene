@@ -18,7 +18,6 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.function.BiFunction;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
@@ -116,7 +115,7 @@ public abstract class PointsWriter implements Closeable {
 
                   @Override
                   public void visitDocValues(
-                      BiFunction<byte[], byte[], Relation> compare,
+                      NodeComparator nodeComparator,
                       DocIdsVisitor docIdsVisitor,
                       DocValuesVisitor mergedVisitor)
                       throws IOException {
@@ -146,7 +145,7 @@ public abstract class PointsWriter implements Closeable {
                       values
                           .getPointTree()
                           .visitDocValues(
-                              compare,
+                              nodeComparator,
                               docIdsVisitor,
                               (docID, packedValue) -> {
                                 int newDocID = docMap.get(docID);

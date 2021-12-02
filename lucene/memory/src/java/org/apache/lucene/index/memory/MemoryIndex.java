@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.function.BiFunction;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -1719,7 +1718,7 @@ public class MemoryIndex {
 
           @Override
           public void visitDocValues(
-              BiFunction<byte[], byte[], Relation> compare,
+              NodeComparator nodeComparator,
               DocIdsVisitor docIdsVisitor,
               DocValuesVisitor docValuesVisitor)
               throws IOException {

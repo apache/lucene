@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.function.BiFunction;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
@@ -111,7 +110,7 @@ class PointValuesWriter {
 
           @Override
           public void visitDocValues(
-              BiFunction<byte[], byte[], PointValues.Relation> compare,
+              PointValues.NodeComparator nodeComparator,
               PointValues.DocIdsVisitor docIdsVisitor,
               PointValues.DocValuesVisitor docValuesVisitor)
               throws IOException {
@@ -250,12 +249,12 @@ class PointValuesWriter {
 
     @Override
     public void visitDocValues(
-        BiFunction<byte[], byte[], PointValues.Relation> compare,
+        PointValues.NodeComparator nodeComparator,
         PointValues.DocIdsVisitor docIdsVisitor,
         PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
       in.visitDocValues(
-          compare,
+          nodeComparator,
           docIdsVisitor,
           (docID, packedValue) -> docValuesVisitor.visit(docMap.oldToNew(docID), packedValue));
     }

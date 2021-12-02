@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.util.function.BiFunction;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
@@ -279,13 +278,39 @@ public abstract class PointValues {
 
     /**
      * Similar to {@link #visitDocValues(DocValuesVisitor)} but in this case it allows adding a
-     * filter that works like {@link IntersectVisitor#compare(byte[], byte[])}.
+     * filter like {@link NodeComparator}.
      */
     void visitDocValues(
-        BiFunction<byte[], byte[], Relation> compare,
+        NodeComparator nodeComparator,
         DocIdsVisitor docIdsVisitor,
         DocValuesVisitor docValuesVisitor)
         throws IOException;
+  }
+
+  /**
+   * Provides information of how the current node needs to be processed.
+   *
+   * @lucene.experimental
+   */
+  @FunctionalInterface
+  public interface NodeComparator {
+    /**
+     * Called to test how a node relates to the query, to determine how to further recurse down the
+     * tree.
+     *
+     * <ul>
+     *   <li>{@link Relation#CELL_OUTSIDE_QUERY}: Stop recursing down the current branch of the
+     *       tree.
+     *   <li>{@link Relation#CELL_INSIDE_QUERY}: All nodes below the current node are visited using
+     *       the underlying {@link DocIdsVisitor}. he consumer should generally blindly accept the
+     *       docID.
+     *   <li>{@link Relation#CELL_CROSSES_QUERY}: Keep recursing down the current branch of the
+     *       tree. If the current node is a leaf, visit all docs and values usinng the underlying
+     *       {@link DocValuesVisitor}. The consumer should scrutinize the packedValue to decide
+     *       whether to accept it.
+     * </ul>
+     */
+    Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
   }
 
   /**
@@ -340,25 +365,7 @@ public abstract class PointValues {
    *
    * @lucene.experimental
    */
-  public interface IntersectVisitor extends DocValuesVisitor, DocIdsVisitor {
-
-    /**
-     * Called for non-leaf cells to test how the cell relates to the query, to determine how to
-     * further recurse down the tree.
-     *
-     * <ul>
-     *   <li>{@link Relation#CELL_OUTSIDE_QUERY}: Stop recursing down the current branch of the
-     *       tree.
-     *   <li>{@link Relation#CELL_INSIDE_QUERY}: All nodes below the current node are visited using
-     *       the underlying {@link DocIdsVisitor}. he consumer should generally blindly accept the
-     *       docID.
-     *   <li>{@link Relation#CELL_CROSSES_QUERY}: Keep recursing down the current branch of the
-     *       tree. If the current node is a leaf, visit all docs and values usinng the underlying
-     *       {@link DocValuesVisitor}. The consumer should scrutinize the packedValue to decide
-     *       whether to accept it.
-     * </ul>
-     */
-    Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
+  public interface IntersectVisitor extends NodeComparator, DocValuesVisitor, DocIdsVisitor {
 
     /** Notifies the caller that this many documents are about to be visited */
     default void grow(int count) {}
@@ -406,7 +413,7 @@ public abstract class PointValues {
           // claimed?
           // Leaf node; scan and filter all points in this block:
           visitor.grow((int) pointTree.size());
-          pointTree.visitDocValues(visitor::compare, visitor, visitor);
+          pointTree.visitDocValues(visitor, visitor, visitor);
         }
         break;
       default:
