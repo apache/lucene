@@ -41,7 +41,6 @@ public class SpanishPluralStemmer {
           "albricias",
           "aledaños",
           "alexis",
-          "aries",
           "alicates",
           "analisis",
           "andurriales",
