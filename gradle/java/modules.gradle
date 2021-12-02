@@ -58,3 +58,27 @@ configure(rootProject) {
     }
   })
 }
+
+allprojects {
+  // Show all non-empty package names
+  // There should be a better way...
+  plugins.withType(JavaPlugin) {
+    tasks.register("showPackageNames", { task ->
+      doFirst {
+        var pkgNameSet = [] as Set<String>
+        sourceSets.main.each { sourceSet ->
+          var dirs = sourceSet.allJava.srcDirTrees.collect { it.dir.path.toString() }
+          sourceSet.allJava.filter{ it.name != "module-info.java" && it.name != "package-info.java" }.each {srcFile ->
+            var dir = dirs.findAll { srcFile.path.matches("^${it}/.*\$") }.get(0)
+            var pkgName = srcFile.path.replaceFirst("${dir}/", "").replaceFirst("/${srcFile.name}\$", "").replace("/", ".")
+            pkgNameSet.add(pkgName)
+          }
+        }
+        var pkgNames = pkgNameSet as List<String>
+        pkgNames.sort()
+        pkgNames.each { println(it) }
+      }
+    })
+  }
+}
+
