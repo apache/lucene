@@ -14,8 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.analysis.es;
+
+import static org.apache.lucene.analysis.VocabularyAssert.assertVocabulary;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
@@ -23,15 +24,9 @@ import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
-import org.apache.lucene.analysis.en.EnglishMinimalStemFilter;
 
-/**
- * Simple tests for {@link SpanishMinimalStemFilter}
- *
- * @deprecated Remove with SpanishMinimalStemFilter
- */
-@Deprecated
-public class TestSpanishMinimalStemFilter extends BaseTokenStreamTestCase {
+/** Simple tests for {@link SpanishPluralStemFilter} */
+public class TestSpanishPluralStemFilter extends BaseTokenStreamTestCase {
   private Analyzer analyzer;
 
   @Override
@@ -42,7 +37,7 @@ public class TestSpanishMinimalStemFilter extends BaseTokenStreamTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer source = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-            return new TokenStreamComponents(source, new SpanishMinimalStemFilter(source));
+            return new TokenStreamComponents(source, new SpanishPluralStemFilter(source));
           }
         };
   }
@@ -53,19 +48,14 @@ public class TestSpanishMinimalStemFilter extends BaseTokenStreamTestCase {
     super.tearDown();
   }
 
-  /** Test some examples */
-  public void testExamples() throws IOException {
-    checkOneTerm(analyzer, "actrices", "actriz");
-    checkOneTerm(analyzer, "niños", "nino");
-    checkOneTerm(analyzer, "países", "pais");
-    checkOneTerm(analyzer, "caragodor", "caragodor");
-    checkOneTerm(analyzer, "móviles", "movil");
-    checkOneTerm(analyzer, "chicas", "chica");
+  /** Test against a vocabulary from the reference impl */
+  public void testVocabulary() throws IOException {
+    assertVocabulary(analyzer, getDataPath("espluraltestdata.zip"), "esplural.txt");
   }
 
   /** blast some random strings through the analyzer */
   public void testRandomStrings() throws Exception {
-    checkRandomData(random(), analyzer, 50 * RANDOM_MULTIPLIER);
+    checkRandomData(random(), analyzer, 200 * RANDOM_MULTIPLIER);
   }
 
   public void testEmptyTerm() throws IOException {
@@ -74,7 +64,7 @@ public class TestSpanishMinimalStemFilter extends BaseTokenStreamTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new KeywordTokenizer();
-            return new TokenStreamComponents(tokenizer, new EnglishMinimalStemFilter(tokenizer));
+            return new TokenStreamComponents(tokenizer, new SpanishPluralStemFilter(tokenizer));
           }
         };
     checkOneTerm(a, "", "");
