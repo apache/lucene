@@ -605,7 +605,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
 
   @Slow
   public void testLotsOfFields() throws IOException {
-    int fieldCount = TEST_NIGHTLY ? atLeast(10) : atLeast(100);
+    int fieldCount = TEST_NIGHTLY ? atLeast(100) : atLeast(10);
     final RandomDocumentFactory docFactory = new RandomDocumentFactory(fieldCount, 10);
     for (Options options : validOptions()) {
       final Directory dir = newDirectory();
