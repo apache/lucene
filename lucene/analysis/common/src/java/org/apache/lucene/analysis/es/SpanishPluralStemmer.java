@@ -119,7 +119,6 @@ public class SpanishPluralStemmer {
           "portamantas",
           "quinientas",
           "quinientos",
-          "quinientos",
           "quitamanchas",
           "recogepelotas",
           "rictus",
