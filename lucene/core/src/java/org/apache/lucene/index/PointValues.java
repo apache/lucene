@@ -412,6 +412,8 @@ public abstract class PointValues {
           // TODO: we can assert that the first value here in fact matches what the pointTree
           // claimed?
           // Leaf node; scan and filter all points in this block:
+          // The maximum number of points in a leaf are 'maxPointPerLeafNode' which is an int
+          // therefore casting to int is safe
           visitor.grow((int) pointTree.size());
           pointTree.visitDocValues(visitor, visitor, visitor);
         }
