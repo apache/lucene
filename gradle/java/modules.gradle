@@ -131,7 +131,7 @@ static def listPackageNames(SourceSetContainer sourceSets) {
     var pattern = new PatternSet()
       .include('**/*.java')
       .exclude('module-info.java')
-      .exclude('package-info.java')
+      .exclude('**/package-info.java')
     sourceSet.allJava.matching(pattern).each {srcFile ->
       var srcPath = srcFile.toPath()
       var dir = dirs.find { srcPath.startsWith(it) }
