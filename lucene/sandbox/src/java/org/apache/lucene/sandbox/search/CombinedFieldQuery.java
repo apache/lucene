@@ -520,7 +520,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
             fieldImpacts.put(field, impacts);
 
             if (field.equals(maxWeightField)) {
-              long minCost = Long.MAX_VALUE;
+//              long minCost = Long.MAX_VALUE;
               for (int i = 0; i < impactsEnums.length; ++i) {
                 ImpactsEnum impactsEnum = impactsEnums[i];
                 impacts[i] = impactsEnum.getImpacts();
@@ -530,15 +530,15 @@ public final class CombinedFieldQuery extends Query implements Accountable {
                 // this may have the result of getting larger upTo bound, as low doc freq (cost)
                 // term may
                 // also have large gap in doc ids
-                if (tmpLead == null || impactsEnum.cost() < minCost) {
-                  minCost = impactsEnum.cost();
+//                if (tmpLead == null || impactsEnum.cost() < minCost) {
+//                  minCost = impactsEnum.cost();
+//                  tmpLead = impacts[i];
+//                }
+
+                if (tmpLead == null || impacts[i].getDocIdUpTo(0) <
+                        tmpLead.getDocIdUpTo(0)) {
                   tmpLead = impacts[i];
                 }
-
-                //                if (tmpLead == null || impacts.getDocIdUpTo(0) <
-                // tmpLead.getDocIdUpTo(0)) {
-                //                  tmpLead = impacts[i];
-                //                }
               }
             } else {
               // find the impact that has the lowest next boundary for this field
