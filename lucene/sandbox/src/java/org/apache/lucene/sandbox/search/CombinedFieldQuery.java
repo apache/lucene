@@ -424,25 +424,30 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
       Map<String, List<ImpactsEnum>> fieldImpactsEnum = new HashMap<>(fieldAndWeights.size());
-      Map<String, List<Integer>> fieldTermDocFreq = new HashMap<>(fieldAndWeights.size());
       Map<String, List<Impacts>> fieldImpacts = new HashMap<>(fieldAndWeights.size());
 
+      float maxWeight = Float.MIN_VALUE;
+      String maxWeightField = "";
       for (int i = 0; i < fieldTerms.length; i++) {
         TermState state = termStates[i].get(context);
         if (state != null) {
           String fieldName = fieldTerms[i].field();
           fields.add(fieldAndWeights.get(fieldName));
           fieldImpactsEnum.putIfAbsent(fieldName, new ArrayList<>());
-          fieldTermDocFreq.putIfAbsent(fieldName, new ArrayList<>());
 
           TermsEnum termsEnum = context.reader().terms(fieldName).iterator();
           termsEnum.seekExact(fieldTerms[i].bytes(), state);
 
           if (scoreMode == ScoreMode.TOP_SCORES) {
+            float weight = fieldAndWeights.get(fieldName).weight;
+            if (maxWeight < weight) {
+              maxWeight = weight;
+              maxWeightField = fieldName;
+            }
+
             ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
             iterators.add(impactsEnum);
             fieldImpactsEnum.get(fieldName).add(impactsEnum);
-            fieldTermDocFreq.get(fieldName).add(termsEnum.docFreq());
           } else {
             PostingsEnum postingsEnum = termsEnum.postings(null, PostingsEnum.FREQS);
             iterators.add(postingsEnum);
@@ -482,7 +487,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
       if (scoreMode == ScoreMode.TOP_SCORES) {
         ImpactsSource impactsSource =
-            mergeImpacts(fieldImpactsEnum, fieldImpacts, fieldTermDocFreq, fieldWeights);
+            mergeImpacts(fieldImpactsEnum, fieldImpacts, fieldWeights, maxWeightField);
         iterator = impactsDisi = new ImpactsDISI(iterator, impactsSource, simWeight);
       }
 
@@ -499,8 +504,8 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   static ImpactsSource mergeImpacts(
       Map<String, List<ImpactsEnum>> fieldsWithImpactsEnums,
       Map<String, List<Impacts>> fieldsWithImpacts,
-      Map<String, List<Integer>> fieldTermDocFreq,
-      Map<String, Float> fieldWeights) {
+      Map<String, Float> fieldWeights,
+      String maxWeightField) {
     return new ImpactsSource() {
       Impacts leadingImpacts = null;
 
@@ -531,19 +536,6 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         // They collectively will decide on the number of levels and the block boundaries.
 
         if (leadingImpacts == null) {
-          float maxWeight = Float.MIN_VALUE;
-          String maxWeightField = "";
-
-          for (Map.Entry<String, Float> fieldWeightEntry : fieldWeights.entrySet()) {
-            String field = fieldWeightEntry.getKey();
-            float weight = fieldWeightEntry.getValue();
-
-            if (maxWeight < weight) {
-              maxWeight = weight;
-              maxWeightField = field;
-            }
-          }
-
           Impacts tmpLead = null;
           for (Map.Entry<String, List<ImpactsEnum>> fieldImpacts :
               fieldsWithImpactsEnums.entrySet()) {
@@ -553,24 +545,27 @@ public final class CombinedFieldQuery extends Query implements Accountable {
             fieldsWithImpacts.put(field, new ArrayList<>(impactsEnums.size()));
 
             if (field.equals(maxWeightField)) {
-              int minDocFreq = Integer.MAX_VALUE;
+              long minCost = Long.MAX_VALUE;
               for (int i = 0; i < impactsEnums.size(); ++i) {
-                Impacts impacts = impactsEnums.get(i).getImpacts();
+                ImpactsEnum impactsEnum = impactsEnums.get(i);
+                Impacts impacts = impactsEnum.getImpacts();
                 fieldsWithImpacts.get(field).add(impacts);
 
                 // use the impact of term within this mostly weighted field that has the least doc
-                // freq
-                // this may have the result of getting larger upTo bound, as low doc freq term may
+                // freq (cost)
+                // this may have the result of getting larger upTo bound, as low doc freq (cost)
+                // term may
                 // also have large gap in doc ids
-                //  int docFreq = docFreqs.get(i);
-                //                if (tmpLead == null || docFreq < minDocFreq) {
-                //                  minDocFreq = docFreq;
-                //                  tmpLead = impacts;
-                //                }
-
-                if (tmpLead == null || impacts.getDocIdUpTo(0) < tmpLead.getDocIdUpTo(0)) {
+                //                long currentCost = impactsEnums.get(i).cost();
+                if (tmpLead == null || impactsEnum.cost() < minCost) {
+                  minCost = impactsEnum.cost();
                   tmpLead = impacts;
                 }
+
+                //                if (tmpLead == null || impacts.getDocIdUpTo(0) <
+                // tmpLead.getDocIdUpTo(0)) {
+                //                  tmpLead = impacts;
+                //                }
               }
             } else {
               // find the impact that has the lowest next boundary for this field
