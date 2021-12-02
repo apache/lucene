@@ -72,18 +72,51 @@ allprojects {
 }
 
 allprojects {
+  // Show all service providers
+  plugins.withType(JavaPlugin) {
+    tasks.register("showServiceProviders", { task ->
+      doFirst {
+        def services = listServices(sourceSets)
+        services.each { entry -> {
+          println(entry.key)
+          entry.value.each { println("  ${it}") }
+        }}
+      }
+    })
+  }
+}
+
+allprojects {
   plugins.withType(JavaPlugin) {
     tasks.register("scaffoldModuleDescriptor", {
       doFirst {
         def moduleName = "org.apache" + project.path.replace('-', '_').replace(':', '.')
         def pkgNames = listPackageNames(sourceSets)
+        def services = listServices(sourceSets)
         def outFile = project.file("${getTemporaryDir()}/module-info.java")
         outFile.withWriter("UTF-8", { writer ->
           writer.write("module ${moduleName} {\n")
+          // write exports statements
           pkgNames.each {pkg ->
             writer.write("  exports ")
             writer.write(pkg)
             writer.write(";\n")
+          }
+          writer.write("\n")
+          // write provides statements
+          services.each { entry -> {
+            def service = entry.key
+            def providers = "      " + entry.value.join(",\n      ")
+            writer.write("  provides ")
+            writer.write(service)
+            writer.write(" with\n")
+            writer.write(providers)
+            writer.write(";\n")
+          }}
+          writer.write("\n")
+          // write uses statements
+          services.keySet().each { service ->
+            writer.write("  uses ${service};\n")
           }
           writer.write("}\n")
         })
@@ -110,5 +143,27 @@ static def listPackageNames(SourceSetContainer sourceSets) {
   var pkgNames = pkgNameSet as List<String>
   pkgNames.sort()
   return pkgNames
+}
+
+/* Utility method to collect all service providers in a source sets. */
+static def listServices(SourceSetContainer sourceSets) {
+  def services = [:] as Map<String, List<String>>
+  sourceSets.main.each {sourceSet ->
+    sourceSet.resources.filter { file -> file.path.contains("META-INF/services/") }.each {file ->
+      def serviceName = file.name
+      def providers = []
+      file.withReader { reader -> {
+        reader.lines().each { l ->
+          def line = l.trim()
+          if (line != "" && !line.startsWith("#")) {
+            def provider = line.replace('$', '.')
+            providers.add(provider)
+          }
+        }
+      }}
+      services.put(serviceName, providers)
+    }
+  }
+  return services
 }
 
