@@ -56,6 +56,26 @@ public abstract class MultiRangeQuery extends Query {
       this.lowerValue = lowerValue;
       this.upperValue = upperValue;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      RangeClause that = (RangeClause) o;
+      return Arrays.equals(lowerValue, that.lowerValue)
+          && Arrays.equals(upperValue, that.upperValue);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = Arrays.hashCode(lowerValue);
+      result = 31 * result + Arrays.hashCode(upperValue);
+      return result;
+    }
   }
 
   /** A builder for multirange queries. */
@@ -302,10 +322,7 @@ public abstract class MultiRangeQuery extends Query {
   public final int hashCode() {
     int hash = classHash();
     hash = 31 * hash + field.hashCode();
-    for (RangeClause rangeClause : rangeClauses) {
-      hash = 31 * hash + Arrays.hashCode(rangeClause.lowerValue);
-      hash = 31 * hash + Arrays.hashCode(rangeClause.lowerValue);
-    }
+    hash = 31 * hash + rangeClauses.hashCode();
     hash = 31 * hash + numDims;
     hash = 31 * hash + Objects.hashCode(bytesPerDim);
     return hash;
