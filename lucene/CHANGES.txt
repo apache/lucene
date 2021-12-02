@@ -81,7 +81,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
 Other
 ---------------------
