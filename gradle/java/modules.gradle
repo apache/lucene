@@ -1,4 +1,5 @@
 import java.util.jar.JarFile
+import java.util.stream.Collectors
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -58,3 +59,28 @@ configure(rootProject) {
     }
   })
 }
+
+allprojects {
+  // Show all non-empty package names
+  // There should be a better way...
+  plugins.withType(JavaPlugin) {
+    tasks.register("showPackageNames", { task ->
+      doFirst {
+        var pkgNameSet = [] as Set<String>
+        sourceSets.main.each { sourceSet ->
+          var dirs = sourceSet.allJava.srcDirTrees.collect { it.dir.toPath() }
+          sourceSet.allJava.filter{ it.name != "module-info.java" && it.name != "package-info.java" }.each {srcFile ->
+            var srcPath = srcFile.toPath()
+            var dir = dirs.find { srcPath.startsWith(it) }
+            var pkgName = srcPath.subpath(dir.nameCount, srcPath.nameCount).parent.stream().map(Object::toString).collect(Collectors.joining('.'))
+            pkgNameSet.add(pkgName)
+          }
+        }
+        var pkgNames = pkgNameSet as List<String>
+        pkgNames.sort()
+        pkgNames.each { println(it) }
+      }
+    })
+  }
+}
+
