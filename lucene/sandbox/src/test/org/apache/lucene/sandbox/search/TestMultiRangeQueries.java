@@ -34,6 +34,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -666,6 +667,8 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query1 = doublePointBuilder1.build();
 
+      QueryUtils.check(query1);
+
       DoublePointMultiRangeBuilder doublePointBuilder2 =
           new DoublePointMultiRangeBuilder("point", 3);
 
@@ -674,7 +677,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query2 = doublePointBuilder2.build();
 
-      assertEquals(query1, query2);
+      QueryUtils.checkEqual(query1, query2);
       assertEquals(query1.hashCode(), query2.hashCode());
 
       DoublePointMultiRangeBuilder doublePointBuilder3 =
@@ -684,7 +687,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query3 = doublePointBuilder3.build();
 
-      assertNotEquals(query1, query3);
+      QueryUtils.checkUnequal(query1, query3);
       assertNotEquals(query1.hashCode(), query3.hashCode());
     }
     {
@@ -701,6 +704,8 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query1 = longPointBuilder1.build();
 
+      QueryUtils.check(query1);
+
       LongPointMultiRangeBuilder longPointBuilder2 = new LongPointMultiRangeBuilder("point", 3);
 
       longPointBuilder2.add(firstLongLowerRange, firstLongUpperRange);
@@ -708,7 +713,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query2 = longPointBuilder2.build();
 
-      assertEquals(query1, query2);
+      QueryUtils.checkEqual(query1, query2);
       assertEquals(query1.hashCode(), query2.hashCode());
 
       LongPointMultiRangeBuilder longPointBuilder3 = new LongPointMultiRangeBuilder("point", 3);
@@ -717,7 +722,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query3 = longPointBuilder3.build();
 
-      assertNotEquals(query1, query3);
+      QueryUtils.checkUnequal(query1, query3);
       assertNotEquals(query1.hashCode(), query3.hashCode());
     }
     {
@@ -734,6 +739,8 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query1 = floatPointBuilder1.build();
 
+      QueryUtils.check(query1);
+
       FloatPointMultiRangeBuilder floatPointBuilder2 = new FloatPointMultiRangeBuilder("point", 3);
 
       floatPointBuilder2.add(firstFloatUpperRange, firstLongUpperRange);
@@ -741,7 +748,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query2 = floatPointBuilder2.build();
 
-      assertEquals(query1, query2);
+      QueryUtils.checkEqual(query1, query2);
       assertEquals(query1.hashCode(), query2.hashCode());
 
       FloatPointMultiRangeBuilder floatPointBuilder3 = new FloatPointMultiRangeBuilder("point", 3);
@@ -750,7 +757,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
       Query query3 = floatPointBuilder3.build();
 
-      assertNotEquals(query1, query3);
+      QueryUtils.checkUnequal(query1, query3);
       assertNotEquals(query1.hashCode(), query3.hashCode());
     }
   }
