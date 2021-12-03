@@ -15,16 +15,25 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
+/** Geospatial search */
+// @SuppressWarnings({"requires-automatic"})
+/*
+module org.apache.lucene.spatial_extras {
+  requires spatial4j;
+  requires s2.geometry.library.java;
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
-  requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+  requires org.apache.lucene.spatial3d;
+
+  exports org.apache.lucene.spatial;
+  exports org.apache.lucene.spatial.bbox;
+  exports org.apache.lucene.spatial.composite;
+  exports org.apache.lucene.spatial.prefix;
+  exports org.apache.lucene.spatial.prefix.tree;
+  exports org.apache.lucene.spatial.query;
+  exports org.apache.lucene.spatial.serialized;
+  exports org.apache.lucene.spatial.spatial4j;
+  exports org.apache.lucene.spatial.util;
+  exports org.apache.lucene.spatial.vector;
+
 }
+*/

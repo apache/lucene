@@ -15,16 +15,13 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
+/** Classification module for Lucene */
+module org.apache.lucene.classification {
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
   requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+  requires org.apache.lucene.grouping;
+
+  exports org.apache.lucene.classification;
+  exports org.apache.lucene.classification.document;
+  exports org.apache.lucene.classification.utils;
 }

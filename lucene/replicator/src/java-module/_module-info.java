@@ -15,16 +15,18 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
+/** Lucene index files replication utility */
+// @SuppressWarnings({"requires-automatic"})
+/*
+module org.apache.lucene.replicator {
+  requires javax.servlet.api;
+  requires org.apache.httpcomponents.httpclient;
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
-  requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+  requires org.apache.lucene.facet;
+
+  exports org.apache.lucene.replicator;
+  exports org.apache.lucene.replicator.http;
+  exports org.apache.lucene.replicator.nrt;
+
 }
+*/

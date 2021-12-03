@@ -15,16 +15,14 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
+/** Highlights search keywords in results */
+module org.apache.lucene.highlighter {
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
   requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+  requires org.apache.lucene.memory;
+
+  exports org.apache.lucene.search.highlight;
+  exports org.apache.lucene.search.matchhighlight;
+  exports org.apache.lucene.search.uhighlight;
+  exports org.apache.lucene.search.vectorhighlight;
 }

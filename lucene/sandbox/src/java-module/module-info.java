@@ -15,16 +15,17 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
+/** Various third party contributions and new ideas */
+module org.apache.lucene.sandbox {
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
   requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+
+  exports org.apache.lucene.payloads;
+  exports org.apache.lucene.sandbox.codecs.idversion;
+  exports org.apache.lucene.sandbox.document;
+  exports org.apache.lucene.sandbox.queries;
+  exports org.apache.lucene.sandbox.search;
+
+  provides org.apache.lucene.codecs.PostingsFormat with
+      org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
 }

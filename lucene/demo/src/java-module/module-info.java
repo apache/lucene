@@ -15,16 +15,20 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
+/** Simple example code for Apache Lucene */
+// TODO: The compiler complains about "requires-automatic" since "expressions" module is an
+// automatic module for now.
+// Once that is properly modularized, this line can be removed.
 @SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
+module org.apache.lucene.demo {
   requires org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
+  requires org.apache.lucene.facet;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+  requires org.apache.lucene.expressions;
+
+  exports org.apache.lucene.demo;
+  exports org.apache.lucene.demo.facet;
+  exports org.apache.lucene.demo.knn;
 }
