@@ -276,7 +276,7 @@ public abstract class PointValues {
       visitDocValues(
           (min, max) -> Relation.CELL_CROSSES_QUERY,
           docID -> {
-            throw new IllegalStateException("DocIdsVisitor illegally called");
+            throw new AssertionError("DocIdsVisitor illegally called");
           },
           docValuesVisitor);
     }
