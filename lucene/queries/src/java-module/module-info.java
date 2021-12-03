@@ -15,16 +15,16 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
+/** Filters and Queries that add to core Lucene */
+module org.apache.lucene.queries {
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
-  requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+
+  exports org.apache.lucene.queries;
+  exports org.apache.lucene.queries.function;
+  exports org.apache.lucene.queries.function.docvalues;
+  exports org.apache.lucene.queries.function.valuesource;
+  exports org.apache.lucene.queries.intervals;
+  exports org.apache.lucene.queries.mlt;
+  exports org.apache.lucene.queries.payloads;
+  exports org.apache.lucene.queries.spans;
 }

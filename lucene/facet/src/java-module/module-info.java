@@ -15,16 +15,17 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
+/** Faceted indexing and search capabilities */
 @SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
+module org.apache.lucene.facet {
   requires java.logging;
+  requires com.carrotsearch.hppc;
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
-  requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+
+  exports org.apache.lucene.facet;
+  exports org.apache.lucene.facet.range;
+  exports org.apache.lucene.facet.sortedset;
+  exports org.apache.lucene.facet.taxonomy;
+  exports org.apache.lucene.facet.taxonomy.directory;
+  exports org.apache.lucene.facet.taxonomy.writercache;
 }

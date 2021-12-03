@@ -15,16 +15,17 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
+// @SuppressWarnings({"requires-automatic"})
+/*
+module org.apache.lucene.expressions {
+  requires org.objectweb.asm;
+  requires org.objectweb.asm.commons;
+  requires antlr4.runtime;
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
-  requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
+  requires org.apache.lucene.codecs;
+
+  exports org.apache.lucene.expressions;
+  exports org.apache.lucene.expressions.js;
+
 }
+*/
