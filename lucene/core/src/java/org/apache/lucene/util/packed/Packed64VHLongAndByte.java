@@ -103,10 +103,10 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
     final int elementPos = (int) (majorBitPos >>> BYTE_BITS); // / BYTE_BLOCK
     // The number of bits already occupied from the previous position
     final int maskOffset = (int) majorBitPos & BYTE_BLOCK_MOD_MASK;
-    final int endBits = maskOffset + bpvMinusBlockSize;
+//    final int endBits = maskOffset + bpvMinusBlockSize;
     // Read the main long
     final long packed = (long) BitUtil.VH_LE_LONG.get(blocks, elementPos);
-    BitUtil.VH_LE_LONG.set(blocks, elementPos, packed & ~(maskRight << maskOffset) | (value << maskOffset));
+    BitUtil.VH_LE_LONG.set(blocks, elementPos, (packed & ~(maskRight << maskOffset)) | (value << maskOffset));
 
 //    if (endBits <= 0) { // Fits in single block, bail out
 //      return;

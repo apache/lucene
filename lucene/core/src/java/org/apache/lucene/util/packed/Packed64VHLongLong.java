@@ -107,17 +107,17 @@ class Packed64VHLongLong extends PackedInts.MutableImpl {
         long packed;
         if (endBits <= 0) { // Single block
             packed = (long) BitUtil.VH_LE_LONG.get(blocks, elementPos);
-            packed = packed & ~(maskRight << -endBits) | (value << -endBits);
+            packed = (packed & ~(maskRight << -endBits)) | (value << -endBits);
             BitUtil.VH_LE_LONG.set(blocks, elementPos, packed);
             return;
         }
         // Two blocks
         packed = (long) BitUtil.VH_LE_LONG.get(blocks, elementPos);
-        long newPacked = packed & ~(maskRight >>> endBits) | (value >>> endBits);
+        long newPacked = (packed & ~(maskRight >>> endBits)) | (value >>> endBits);
         BitUtil.VH_LE_LONG.set(blocks, elementPos, newPacked);
 
         long packed2 = (long) BitUtil.VH_LE_LONG.get(blocks, elementPos + 8);
-        long newPacked2 = packed2 & (~0L >>> endBits) | (value << (BLOCK_SIZE - endBits));
+        long newPacked2 = (packed2 & (~0L >>> endBits)) | (value << (BLOCK_SIZE - endBits));
         BitUtil.VH_LE_LONG.set(blocks, elementPos + 8, newPacked2);
     }
 
