@@ -104,6 +104,10 @@ public abstract class DocIdSetIterator {
     return new RangeDocIdSetIterator(minDoc, maxDoc);
   }
 
+  /**
+   * A {@link DocIdSetIterator} that matches a range documents from minDocID (inclusive) to maxDocID
+   * (exclusive).
+   */
   public static class RangeDocIdSetIterator extends DocIdSetIterator {
     private final int minDoc;
     private final int maxDoc;
