@@ -169,7 +169,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public void visitDocIDs(PointValues.DocIdsVisitor docIdsVisitor) throws IOException {
-      indexTree.visitDocIDs(docMap::oldToNew);
+      indexTree.visitDocIDs(docID -> docIdsVisitor.visit(docMap.oldToNew(docID)));
     }
 
     @Override
@@ -180,7 +180,7 @@ public final class SortingCodecReader extends FilterCodecReader {
         throws IOException {
       indexTree.visitDocValues(
           nodeComparator,
-          docMap::oldToNew,
+          docID -> docIdsVisitor.visit(docMap.oldToNew(docID)),
           (docID, packedValue) -> docValuesVisitor.visit(docMap.oldToNew(docID), packedValue));
     }
   }
