@@ -273,7 +273,12 @@ public abstract class PointValues {
 
     /** Visit all the docs and values below the current node. */
     default void visitDocValues(DocValuesVisitor docValuesVisitor) throws IOException {
-      visitDocValues((min, max) -> Relation.CELL_CROSSES_QUERY, docID -> {}, docValuesVisitor);
+      visitDocValues(
+          (min, max) -> Relation.CELL_CROSSES_QUERY,
+          docID -> {
+            throw new IllegalStateException("DocIdsVisitor illegally called");
+          },
+          docValuesVisitor);
     }
 
     /**
