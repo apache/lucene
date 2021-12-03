@@ -455,7 +455,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     int count1 = TestUtil.nextInt(random, 0, numBits1 - 1);
     int count2 = TestUtil.nextInt(random, 0, numBits2 - 1);
 
-    int min = TestUtil.nextInt(random, 0, count1);
+    int min = TestUtil.nextInt(random, 0, numBits1 - 1);
     int offSetWord1 = min >> 6;
     int offset1 = offSetWord1 << 6;
     int[] bits1 = makeIntArray(random, count1, min, numBits1 - 1);
