@@ -109,7 +109,7 @@ public abstract class DocIdSetIterator {
     public RangeDocIdSetIterator(int minDoc, int maxDoc) {
       if (minDoc >= maxDoc) {
         throw new IllegalArgumentException(
-                "minDoc must be < maxDoc but got minDoc=" + minDoc + " maxDoc=" + maxDoc);
+            "minDoc must be < maxDoc but got minDoc=" + minDoc + " maxDoc=" + maxDoc);
       }
       if (minDoc < 0) {
         throw new IllegalArgumentException("minDoc must be >= 0 but got minDoc=" + minDoc);
@@ -150,7 +150,7 @@ public abstract class DocIdSetIterator {
 
     @Override
     public long cost() {
-      return (long)maxDoc - minDoc;
+      return (long) maxDoc - minDoc;
     }
   }
 
