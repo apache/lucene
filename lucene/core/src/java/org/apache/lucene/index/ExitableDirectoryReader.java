@@ -22,6 +22,7 @@ import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.bkd.BKDConfig;
 
 /**
  * The {@link ExitableDirectoryReader} wraps a real index {@link DirectoryReader} and allows for a
@@ -428,6 +429,8 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     private final PointValues pointValues;
     private final PointValues.PointTree in;
     private final QueryTimeout queryTimeout;
+    private final ExitableDocIdsVisitor docIdsVisitor;
+    private final ExitableDocValuesVisitor docValuesVisitor;
     private int calls;
 
     private ExitablePointTree(
@@ -435,6 +438,8 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       this.pointValues = pointValues;
       this.in = in;
       this.queryTimeout = queryTimeout;
+      this.docIdsVisitor = new ExitableDocIdsVisitor(pointValues, queryTimeout);
+      this.docValuesVisitor = new ExitableDocValuesVisitor(pointValues, queryTimeout);
     }
 
     /**
@@ -504,12 +509,8 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     @Override
     public void visitDocIDs(PointValues.DocIdsVisitor docIdsVisitor) throws IOException {
-      checkAndThrow();
-      in.visitDocIDs(
-          docID -> {
-            checkAndThrowWithSampling();
-            docIdsVisitor.visit(docID);
-          });
+      this.docIdsVisitor.setDocIdsVisitor(docIdsVisitor);
+      in.visitDocIDs(this.docIdsVisitor);
     }
 
     @Override
@@ -518,14 +519,123 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
         PointValues.DocIdsVisitor docIdsVisitor,
         PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
-      checkAndThrow();
-      in.visitDocValues(
-          nodeComparator,
-          docIdsVisitor,
-          (docID, packedValue) -> {
-            checkAndThrowWithSampling();
-            docValuesVisitor.visit(docID, packedValue);
-          });
+      this.docIdsVisitor.setDocIdsVisitor(docIdsVisitor);
+      this.docValuesVisitor.setDocValuesVisitor(docValuesVisitor);
+      in.visitDocValues(nodeComparator, this.docIdsVisitor, this.docValuesVisitor);
+    }
+  }
+
+  private static class ExitableDocIdsVisitor implements PointValues.DocIdsVisitor {
+
+    private static final int MAX_POINTS_BEFORE_QUERY_TIMEOUT_CHECK =
+        BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+
+    private final PointValues pointValues;
+    private final QueryTimeout queryTimeout;
+    private long pointsSeen;
+    private PointValues.DocIdsVisitor visitor;
+
+    public ExitableDocIdsVisitor(PointValues pointValues, QueryTimeout queryTimeout) {
+      this.pointValues = pointValues;
+      this.queryTimeout = queryTimeout;
+    }
+
+    void setDocIdsVisitor(PointValues.DocIdsVisitor visitor) {
+      this.visitor = visitor;
+    }
+
+    /**
+     * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
+     * if {@link Thread#interrupted()} returns true.
+     */
+    private void checkAndThrowWithSampling() {
+      if (pointsSeen % MAX_POINTS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
+        checkAndThrow();
+      }
+    }
+
+    private void checkAndThrow() {
+      if (queryTimeout.shouldExit()) {
+        throw new ExitingReaderException(
+            "The request took too long to intersect point values. Timeout: "
+                + queryTimeout.toString()
+                + ", PointValues="
+                + pointValues);
+      } else if (Thread.interrupted()) {
+        throw new ExitingReaderException(
+            "Interrupted while intersecting point values. PointValues=" + pointValues);
+      }
+    }
+
+    @Override
+    public void visit(int docID) throws IOException {
+      visitor.visit(docID);
+      pointsSeen++;
+      checkAndThrowWithSampling();
+    }
+
+    @Override
+    public void visit(DocIdSetIterator iterator) throws IOException {
+      visitor.visit(iterator);
+      pointsSeen += iterator.cost();
+      checkAndThrowWithSampling();
+    }
+  }
+
+  private static class ExitableDocValuesVisitor implements PointValues.DocValuesVisitor {
+
+    private static final int MAX_POINTS_BEFORE_QUERY_TIMEOUT_CHECK =
+        BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+
+    private final PointValues pointValues;
+    private final QueryTimeout queryTimeout;
+    private long pointsSeen;
+    private PointValues.DocValuesVisitor visitor;
+
+    public ExitableDocValuesVisitor(PointValues pointValues, QueryTimeout queryTimeout) {
+      this.pointValues = pointValues;
+      this.queryTimeout = queryTimeout;
+    }
+
+    void setDocValuesVisitor(PointValues.DocValuesVisitor visitor) {
+      this.visitor = visitor;
+    }
+
+    /**
+     * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
+     * if {@link Thread#interrupted()} returns true.
+     */
+    private void checkAndThrowWithSampling() {
+      if (pointsSeen % MAX_POINTS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
+        checkAndThrow();
+      }
+    }
+
+    private void checkAndThrow() {
+      if (queryTimeout.shouldExit()) {
+        throw new ExitingReaderException(
+            "The request took too long to intersect point values. Timeout: "
+                + queryTimeout.toString()
+                + ", PointValues="
+                + pointValues);
+      } else if (Thread.interrupted()) {
+        throw new ExitingReaderException(
+            "Interrupted while intersecting point values. PointValues=" + pointValues);
+      }
+    }
+
+    @Override
+    public void visit(int docID, byte[] packedValue) throws IOException {
+      visitor.visit(docID, packedValue);
+      pointsSeen++;
+      checkAndThrowWithSampling();
+    }
+
+    @Override
+    public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+      visitor.visit(iterator, packedValue);
+      pointsSeen += iterator.cost();
+      checkAndThrowWithSampling();
     }
   }
 
