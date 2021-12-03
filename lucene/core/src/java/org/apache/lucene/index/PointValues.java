@@ -293,21 +293,14 @@ public abstract class PointValues {
   }
 
   /**
-   * Provides information of how many points inside a range matches a query.
+   * Check how a node, defined by its {@link PointTree#getMinPackedValue()} and {@link
+   * PointTree#getMaxPackedValue()}, compare to the query.
    *
    * @lucene.experimental
    */
   @FunctionalInterface
   public interface NodeComparator {
-    /**
-     * Compute how many points in the given range are matching.
-     *
-     * <ul>
-     *   <li>{@link Relation#CELL_OUTSIDE_QUERY}: None of the points match.
-     *   <li>{@link Relation#CELL_INSIDE_QUERY}: All points match.
-     *   <li>{@link Relation#CELL_CROSSES_QUERY}: At least one point but no all match.
-     * </ul>
-     */
+    /** Computes the {@link Relation} of the provided node. */
     Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
   }
 
