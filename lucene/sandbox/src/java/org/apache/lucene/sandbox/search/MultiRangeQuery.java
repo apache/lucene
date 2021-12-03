@@ -48,7 +48,7 @@ import org.apache.lucene.util.DocIdSetBuilder;
  */
 public abstract class MultiRangeQuery extends Query {
   /** Representation of a single clause in a MultiRangeQuery */
-  public static class RangeClause {
+  public static final class RangeClause {
     byte[] lowerValue;
     byte[] upperValue;
 
