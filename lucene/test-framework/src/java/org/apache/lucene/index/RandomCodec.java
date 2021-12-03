@@ -45,7 +45,6 @@ import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
 import org.apache.lucene.codecs.memory.DirectPostingsFormat;
 import org.apache.lucene.codecs.memory.FSTPostingsFormat;
 import org.apache.lucene.codecs.mockrandom.MockRandomPostingsFormat;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -124,25 +123,7 @@ public class RandomCodec extends AssertingCodec {
                         maxMBSortInHeap,
                         values.size(),
                         bkdSplitRandomSeed ^ fieldInfo.name.hashCode())) {
-                  values.visitDocValues(
-                      new IntersectVisitor() {
-                        @Override
-                        public void visit(int docID) {
-                          throw new IllegalStateException();
-                        }
-
-                        @Override
-                        public void visit(int docID, byte[] packedValue) throws IOException {
-                          writer.add(packedValue, docID);
-                        }
-
-                        @Override
-                        public PointValues.Relation compare(
-                            byte[] minPackedValue, byte[] maxPackedValue) {
-                          return PointValues.Relation.CELL_CROSSES_QUERY;
-                        }
-                      });
-
+                  values.visitDocValues(writer::add);
                   // We could have 0 points on merge since all docs with dimensional fields may be
                   // deleted:
                   Runnable finalizer = writer.finish(metaOut, indexOut, dataOut);

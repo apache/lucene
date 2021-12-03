@@ -57,7 +57,7 @@ public class TestBKD extends LuceneTestCase {
       byte[] scratch = new byte[4];
       for (int docID = 0; docID < 100; docID++) {
         NumericUtils.intToSortableBytes(docID, scratch, 0);
-        w.add(scratch, docID);
+        w.add(docID, scratch);
       }
 
       long indexFP;
@@ -128,7 +128,7 @@ public class TestBKD extends LuceneTestCase {
           }
         }
         docs[docID] = values;
-        w.add(scratch, docID);
+        w.add(docID, scratch);
       }
 
       long indexFP;
@@ -223,7 +223,7 @@ public class TestBKD extends LuceneTestCase {
           }
         }
         docs[docID] = values;
-        w.add(scratch, docID);
+        w.add(docID, scratch);
       }
 
       long indexFP;
@@ -724,7 +724,7 @@ public class TestBKD extends LuceneTestCase {
           }
           System.arraycopy(docValues[ord][dim], 0, scratch, dim * numBytesPerDim, numBytesPerDim);
         }
-        w.add(scratch, docID - lastDocIDBase);
+        w.add(docID - lastDocIDBase, scratch);
 
         segCount++;
 
@@ -1195,7 +1195,7 @@ public class TestBKD extends LuceneTestCase {
           new BKDWriter(
               numDocs + 1, dir, "tmp", new BKDConfig(1, 1, Integer.BYTES, 2), 0.01f, numDocs);
       for (int i = 0; i < numDocs; i++) {
-        w.add(new byte[Integer.BYTES], i);
+        w.add(i, new byte[Integer.BYTES]);
       }
 
       IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
@@ -1260,8 +1260,8 @@ public class TestBKD extends LuceneTestCase {
             maxMB,
             2 * numValues);
     for (int i = 0; i < numValues; ++i) {
-      w.add(pointValue1, i);
-      w.add(pointValue2, i);
+      w.add(i, pointValue1);
+      w.add(i, pointValue2);
     }
     final long indexFP;
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
@@ -1323,7 +1323,7 @@ public class TestBKD extends LuceneTestCase {
       byte[] buffer = new byte[2 * Integer.BYTES];
       for (int i = 0; i < numDocs; i++) {
         random().nextBytes(buffer);
-        w.add(buffer, i);
+        w.add(i, buffer);
       }
 
       IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
@@ -1390,7 +1390,7 @@ public class TestBKD extends LuceneTestCase {
         random.nextBytes(tmp);
         System.arraycopy(tmp, 0, buffer, dim * bytesPerDim + (bytesPerDim - bytesUsed), tmp.length);
       }
-      w.add(buffer, i);
+      w.add(i, buffer);
     }
 
     IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
@@ -1452,12 +1452,12 @@ public class TestBKD extends LuceneTestCase {
             numValues);
     for (int i = 0; i < numValues; ++i) {
       if (i == numValues / 2) {
-        w.add(uniquePointValue, i);
+        w.add(i, uniquePointValue);
       } else {
         do {
           random().nextBytes(pointValue);
         } while (Arrays.equals(pointValue, uniquePointValue));
-        w.add(pointValue, i);
+        w.add(i, pointValue);
       }
     }
     final long indexFP;
@@ -1640,14 +1640,14 @@ public class TestBKD extends LuceneTestCase {
             numValues);
     for (int i = 0; i < numValues; i++) {
       random().nextBytes(pointValue);
-      w.add(pointValue, i);
+      w.add(i, pointValue);
     }
     random().nextBytes(pointValue);
     IllegalStateException ex =
         expectThrows(
             IllegalStateException.class,
             () -> {
-              w.add(pointValue, numValues);
+              w.add(numValues, pointValue);
             });
     assertEquals(
         "totalPointCount=10 was passed when we were created, but we just hit 11 values",

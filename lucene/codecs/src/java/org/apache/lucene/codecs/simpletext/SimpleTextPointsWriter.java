@@ -24,8 +24,6 @@ import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
@@ -92,24 +90,7 @@ class SimpleTextPointsWriter extends PointsWriter {
             SimpleTextBKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
             values.size())) {
 
-      values.visitDocValues(
-          new IntersectVisitor() {
-            @Override
-            public void visit(int docID) {
-              throw new IllegalStateException();
-            }
-
-            @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
-              writer.add(packedValue, docID);
-            }
-
-            @Override
-            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              return Relation.CELL_CROSSES_QUERY;
-            }
-          });
-
+      values.visitDocValues(writer::add);
       // We could have 0 points on merge since all docs with points may be deleted:
       if (writer.getPointCount() > 0) {
         indexFPs.put(fieldInfo.name, writer.finish(dataOut));

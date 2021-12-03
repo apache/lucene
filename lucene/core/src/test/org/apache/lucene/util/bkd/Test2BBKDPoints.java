@@ -58,7 +58,7 @@ public class Test2BBKDPoints extends LuceneTestCase {
         NumericUtils.intToSortableBytes(random().nextInt(), packedBytes, 0);
         // then our counter, which will overflow a bit in the end:
         NumericUtils.intToSortableBytes(counter, packedBytes, Integer.BYTES);
-        w.add(packedBytes, docID);
+        w.add(docID, packedBytes);
         counter++;
       }
       if (VERBOSE && docID % 100000 == 0) {
@@ -107,7 +107,7 @@ public class Test2BBKDPoints extends LuceneTestCase {
         NumericUtils.intToSortableBytes(random().nextInt(), packedBytes, Long.BYTES);
         NumericUtils.intToSortableBytes(
             random().nextInt(), packedBytes, Long.BYTES + Integer.BYTES);
-        w.add(packedBytes, docID);
+        w.add(docID, packedBytes);
         counter++;
       }
       if (VERBOSE && docID % 100000 == 0) {

@@ -145,7 +145,7 @@ public class Lucene90PointsWriter extends PointsWriter {
         return;
       }
 
-      values.visitDocValues((docID, packedValue) -> writer.add(packedValue, docID));
+      values.visitDocValues(writer::add);
       // We could have 0 points on merge since all docs with dimensional fields may be deleted:
       Runnable finalizer = writer.finish(metaOut, indexOut, dataOut);
       if (finalizer != null) {
