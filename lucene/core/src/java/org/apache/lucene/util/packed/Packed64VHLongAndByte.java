@@ -47,7 +47,7 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
   /** A right-aligned mask of width BitsPerValue used by {@link #get(int)}. */
   private final long maskRight;
   /** Optimization: Saves one lookup in {@link #get(int)}. */
-  private final int bpvMinusBlockSize;
+  //private final int bpvMinusBlockSize;
 
   /**
    * Creates an array with the internal structures adjusted for the given limits and initialized to
@@ -68,7 +68,7 @@ class Packed64VHLongAndByte extends PackedInts.MutableImpl {
     }
     this.blocks = new byte[(int) byteCount + Long.BYTES];
     maskRight = ~0L << (BLOCK_SIZE - bitsPerValue) >>> (BLOCK_SIZE - bitsPerValue);
-    bpvMinusBlockSize = bitsPerValue - BLOCK_SIZE;
+    //bpvMinusBlockSize = bitsPerValue - BLOCK_SIZE;
   }
 
   /**
