@@ -299,6 +299,11 @@ class DocIdsWriter {
   private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
     int start = in.readVInt();
-    visitor.visit(DocIdSetIterator.range(start, start + count));
+    int extra = start & 63;
+    int offset = start - extra;
+    int numBits = count + extra;
+    FixedBitSet bitSet = new FixedBitSet(numBits);
+    bitSet.set(extra, numBits);
+    visitor.visit(new DocBaseBitSetIterator(bitSet, count, offset));
   }
 }

@@ -94,64 +94,43 @@ public abstract class DocIdSetIterator {
    * (exclusive).
    */
   public static final DocIdSetIterator range(int minDoc, int maxDoc) {
-    return new RangeDocIdSetIterator(minDoc, maxDoc);
-  }
+    if (minDoc >= maxDoc) {
+      throw new IllegalArgumentException(
+          "minDoc must be < maxDoc but got minDoc=" + minDoc + " maxDoc=" + maxDoc);
+    }
+    if (minDoc < 0) {
+      throw new IllegalArgumentException("minDoc must be >= 0 but got minDoc=" + minDoc);
+    }
+    return new DocIdSetIterator() {
+      private int doc = -1;
 
-  /**
-   * A {@link DocIdSetIterator} that matches a range documents from minDocID (inclusive) to maxDocID
-   * (exclusive).
-   */
-  public static class RangeDocIdSetIterator extends DocIdSetIterator {
-    private final int minDoc;
-    private final int maxDoc;
-    private int doc = -1;
-
-    public RangeDocIdSetIterator(int minDoc, int maxDoc) {
-      if (minDoc >= maxDoc) {
-        throw new IllegalArgumentException(
-            "minDoc must be < maxDoc but got minDoc=" + minDoc + " maxDoc=" + maxDoc);
+      @Override
+      public int docID() {
+        return doc;
       }
-      if (minDoc < 0) {
-        throw new IllegalArgumentException("minDoc must be >= 0 but got minDoc=" + minDoc);
+
+      @Override
+      public int nextDoc() throws IOException {
+        return advance(doc + 1);
       }
-      this.minDoc = minDoc;
-      this.maxDoc = maxDoc;
-    }
 
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target < minDoc) {
-        doc = minDoc;
-      } else if (target >= maxDoc) {
-        doc = NO_MORE_DOCS;
-      } else {
-        doc = target;
+      @Override
+      public int advance(int target) throws IOException {
+        if (target < minDoc) {
+          doc = minDoc;
+        } else if (target >= maxDoc) {
+          doc = NO_MORE_DOCS;
+        } else {
+          doc = target;
+        }
+        return doc;
       }
-      return doc;
-    }
 
-    public int getMinDoc() {
-      return minDoc;
-    }
-
-    public int getMaxDoc() {
-      return maxDoc;
-    }
-
-    @Override
-    public long cost() {
-      return (long) maxDoc - minDoc;
-    }
+      @Override
+      public long cost() {
+        return maxDoc - minDoc;
+      }
+    };
   }
 
   /**
