@@ -275,7 +275,8 @@ public final class FixedBitSet extends BitSet {
       or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else if (iter instanceof DocIdSetIterator.RangeDocIdSetIterator) {
       checkUnpositioned(iter);
-      DocIdSetIterator.RangeDocIdSetIterator rangeDocIdSetIterator = (DocIdSetIterator.RangeDocIdSetIterator) iter;
+      DocIdSetIterator.RangeDocIdSetIterator rangeDocIdSetIterator =
+          (DocIdSetIterator.RangeDocIdSetIterator) iter;
       set(rangeDocIdSetIterator.getMinDoc(), rangeDocIdSetIterator.getMaxDoc());
     } else {
       super.or(iter);

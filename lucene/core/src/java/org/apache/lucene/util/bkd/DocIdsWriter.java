@@ -52,7 +52,8 @@ class DocIdsWriter {
         out.writeVInt(docIds[start]);
         return;
       } else if (min2max <= (count << 4)) {
-        // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid expanding
+        // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid
+        // expanding
         // too much storage.
         // A field with lower cardinality will have higher probability to trigger this optimization.
         out.writeByte((byte) -1);
@@ -178,7 +179,7 @@ class DocIdsWriter {
 
   private static void readContinuousIds(IndexInput in, int count, int[] docIDs) throws IOException {
     int start = in.readVInt();
-    for (int i=0; i<count; i++) {
+    for (int i = 0; i < count; i++) {
       docIDs[i] = start + i;
     }
   }
@@ -296,7 +297,8 @@ class DocIdsWriter {
     visitor.visit(bitSetIterator);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+  private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor)
+      throws IOException {
     int start = in.readVInt();
     visitor.visit(DocIdSetIterator.range(start, start + count));
   }
