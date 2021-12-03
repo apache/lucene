@@ -469,6 +469,12 @@ abstract class SpatialQuery extends Query {
       }
 
       @Override
+      public void visit(DocIdSetIterator iterator) throws IOException {
+        result.or(iterator);
+        cost[0] += iterator.cost();
+      }
+
+      @Override
       public void visit(int docID, byte[] t) {
         if (result.get(docID) == false) {
           if (leafPredicate.test(t)) {
@@ -512,6 +518,12 @@ abstract class SpatialQuery extends Query {
       public void visit(int docID) {
         result.set(docID);
         cost[0]++;
+      }
+
+      @Override
+      public void visit(DocIdSetIterator iterator) throws IOException {
+        result.or(iterator);
+        cost[0] += iterator.cost();
       }
 
       @Override
@@ -562,6 +574,11 @@ abstract class SpatialQuery extends Query {
       @Override
       public void visit(int docID) {
         excluded.set(docID);
+      }
+
+      @Override
+      public void visit(DocIdSetIterator iterator) throws IOException {
+        excluded.or(iterator);
       }
 
       @Override
@@ -619,6 +636,12 @@ abstract class SpatialQuery extends Query {
       }
 
       @Override
+      public void visit(DocIdSetIterator iterator) throws IOException {
+        result.andNot(iterator);
+        cost[0] = Math.max(0, cost[0] - iterator.cost());
+      }
+
+      @Override
       public void visit(int docID, byte[] packedTriangle) {
         if (result.get(docID)) {
           if (leafPredicate.test(packedTriangle) == false) {
@@ -658,6 +681,11 @@ abstract class SpatialQuery extends Query {
       @Override
       public void visit(int docID) {
         result.clear(docID);
+      }
+
+      @Override
+      public void visit(DocIdSetIterator iterator) throws IOException {
+        result.andNot(iterator);
       }
 
       @Override
