@@ -449,6 +449,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
   public void testAndNot() throws IOException {
     Random random = random();
+
     int numBits2 = TestUtil.nextInt(random, 1000, 2000);
     int numBits1 = TestUtil.nextInt(random, 1000, numBits2);
 
