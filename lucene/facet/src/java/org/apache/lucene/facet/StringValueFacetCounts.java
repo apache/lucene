@@ -68,11 +68,13 @@ public class StringValueFacetCounts extends Facets {
   private final OrdinalMap ordinalMap;
   private final SortedSetDocValues docValues;
 
-  private final int[] denseCounts;
-  private final IntIntHashMap sparseCounts;
+  private int[] denseCounts;
+  private IntIntHashMap sparseCounts;
 
   private final int cardinality;
   private int totalDocCount;
+  private boolean maybeSparse;
+  private final int LOW_CARDINALITY_THRESHOLD = 1024;
 
   /**
    * Returns all facet counts for the field, same result as searching on {@link MatchAllDocsQuery}
@@ -98,28 +100,14 @@ public class StringValueFacetCounts extends Facets {
     cardinality = (int) valueCount;
 
     if (facetsCollector != null) {
-      if (cardinality < 1024) { // count densely for low cardinality
+      if (cardinality < LOW_CARDINALITY_THRESHOLD) { // count densely for low cardinality
         sparseCounts = null;
         denseCounts = new int[cardinality];
       } else {
-        int totalHits = 0;
-        int totalDocs = 0;
-        for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
-          totalHits += matchingDocs.totalHits;
-          totalDocs += matchingDocs.context.reader().maxDoc();
-        }
-
-        // If our result set is < 10% of the index, we collect sparsely (use hash map). This
-        // heuristic is borrowed from IntTaxonomyFacetCounts:
-        if (totalHits < totalDocs / 10) {
-          sparseCounts = new IntIntHashMap();
-          denseCounts = null;
-        } else {
-          sparseCounts = null;
-          denseCounts = new int[cardinality];
-        }
+        maybeSparse = true;
+        sparseCounts = new IntIntHashMap();
+        denseCounts = null;
       }
-
       count(facetsCollector);
     } else {
       // Since we're counting all ordinals, count densely:
@@ -449,10 +437,24 @@ public class StringValueFacetCounts extends Facets {
   }
 
   private void increment(int ordinal, int amount) {
-    if (sparseCounts != null) {
-      sparseCounts.addTo(ordinal, amount);
-    } else {
+    if (maybeSparse == false) {
       denseCounts[ordinal] += amount;
+    } else {
+      assert denseCounts == null;
+      assert cardinality >= LOW_CARDINALITY_THRESHOLD;
+      // If collected ordinal set is < 10% of cardinality , we collect sparsely (use hash map). This
+      // heuristic is borrowed from IntTaxonomyFacetCounts:
+      if (sparseCounts.size() > cardinality / 10) {
+        denseCounts = new int[cardinality];
+        for (IntIntCursor cursor : sparseCounts) {
+          denseCounts[cursor.key] = cursor.value;
+        }
+        denseCounts[ordinal] += amount;
+        sparseCounts = null;
+        maybeSparse = false;
+      } else {
+        sparseCounts.addTo(ordinal, amount);
+      }
     }
   }
 
