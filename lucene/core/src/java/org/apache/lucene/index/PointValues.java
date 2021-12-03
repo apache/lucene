@@ -293,26 +293,19 @@ public abstract class PointValues {
   }
 
   /**
-   * Provides information of how the current node needs to be processed.
+   * Provides information of how many points inside a range matches a query.
    *
    * @lucene.experimental
    */
   @FunctionalInterface
   public interface NodeComparator {
     /**
-     * Called to test how a node relates to the query, to determine how to further recurse down the
-     * tree.
+     * Compute how many points in the given range are matching.
      *
      * <ul>
-     *   <li>{@link Relation#CELL_OUTSIDE_QUERY}: Stop recursing down the current branch of the
-     *       tree.
-     *   <li>{@link Relation#CELL_INSIDE_QUERY}: All nodes below the current node are visited using
-     *       the underlying {@link DocIdsVisitor}. he consumer should generally blindly accept the
-     *       docID.
-     *   <li>{@link Relation#CELL_CROSSES_QUERY}: Keep recursing down the current branch of the
-     *       tree. If the current node is a leaf, visit all docs and values usinng the underlying
-     *       {@link DocValuesVisitor}. The consumer should scrutinize the packedValue to decide
-     *       whether to accept it.
+     *   <li>{@link Relation#CELL_OUTSIDE_QUERY}: None of the points match.
+     *   <li>{@link Relation#CELL_INSIDE_QUERY}: All points match.
+     *   <li>{@link Relation#CELL_CROSSES_QUERY}: At least one point but no all match.
      * </ul>
      */
     Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
@@ -367,6 +360,20 @@ public abstract class PointValues {
 
   /**
    * We recurse the {@link PointTree}, using a provided instance of this to guide the recursion.
+   *
+   * <p>{@link NodeComparator} is called to test how a node relates to the query, to determine how
+   * to further recurse down the tree:
+   *
+   * <ul>
+   *   <li>{@link Relation#CELL_OUTSIDE_QUERY}: Stop recursing down the current branch of the tree.
+   *   <li>{@link Relation#CELL_INSIDE_QUERY}: All nodes below the current node are visited using
+   *       the underlying {@link DocIdsVisitor}. The consumer should generally blindly accept the
+   *       docID.
+   *   <li>{@link Relation#CELL_CROSSES_QUERY}: Keep recursing down the current branch of the tree.
+   *       If the current node is a leaf, visit all docs and values using the underlying {@link
+   *       DocValuesVisitor}. The consumer should scrutinize the packedValue to decide whether to
+   *       accept it.
+   * </ul>
    *
    * @lucene.experimental
    */
