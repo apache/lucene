@@ -506,7 +506,7 @@ public class BKDReader extends PointValues {
         leafNodes.seek(getLeafBlockFP());
         // How many points are stored in this leaf cell:
         int count = leafNodes.readVInt();
-        // No need to call grow(), it has been called docIdVisitor-front
+        // read docs and feed them directly to the DocIdsVisitor
         DocIdsWriter.readInts(leafNodes, count, docIdsVisitor);
       } else {
         pushLeft();

@@ -343,7 +343,7 @@ public abstract class PointValues {
 
   /**
    * Collects all documents and values below a tree node by calling {@link
-   * PointTree#visitDocValues(DocValuesVisitor)} (DocIdsVisitor)}
+   * PointTree#visitDocValues(DocValuesVisitor)}
    *
    * @lucene.experimental
    */
@@ -406,8 +406,6 @@ public abstract class PointValues {
           } while (pointTree.moveToSibling());
           pointTree.moveToParent();
         } else {
-          // TODO: we can assert that the first value here in fact matches what the pointTree
-          // claimed?
           // Leaf node; scan and filter all points in this block:
           // The maximum number of points in a leaf are 'maxPointPerLeafNode' which is an int
           // therefore casting to int is safe
