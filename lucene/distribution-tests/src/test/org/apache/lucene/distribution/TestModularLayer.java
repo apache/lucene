@@ -151,7 +151,7 @@ public class TestModularLayer {
       // Compare services first so that the exception is shorter.
       Assertions.assertThat(modularProviders.keySet())
           .as("Modular services in module: " + module.descriptor().name())
-          .containsAll(classpathProviders.keySet());
+          .containsExactlyInAnyOrderElementsOf(classpathProviders.keySet());
 
       // We're sure the services correspond to each other. Now, for each service, compare the
       // providers.
@@ -162,7 +162,7 @@ public class TestModularLayer {
                     + service
                     + " in module: "
                     + module.descriptor().name())
-            .containsAll(classpathProviders.get(service));
+            .containsExactlyInAnyOrderElementsOf(classpathProviders.get(service));
       }
     }
   }
