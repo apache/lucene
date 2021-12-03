@@ -419,7 +419,7 @@ public abstract class PointValues {
     final long size = pointTree.size();
     if (size <= Integer.MAX_VALUE) {
       visitor.grow((int) size);
-      pointTree.visitDocIDs(visitor::visit);
+      pointTree.visitDocIDs(visitor);
     } else {
       if (pointTree.moveToChild()) {
         do {

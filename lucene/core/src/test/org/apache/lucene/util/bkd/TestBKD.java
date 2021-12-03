@@ -895,11 +895,11 @@ public class TestBKD extends LuceneTestCase {
     final long[] visitDocIDSize = new long[] {0};
     final long[] visitDocValuesSize = new long[] {0};
     if (random().nextBoolean()) {
-      tree.visitDocIDs((docID -> visitDocIDSize[0]++));
+      tree.visitDocIDs(docID -> visitDocIDSize[0]++);
       tree.visitDocValues((docID, packedValue) -> visitDocValuesSize[0]++);
     } else {
       tree.visitDocValues((docID, packedValue) -> visitDocValuesSize[0]++);
-      tree.visitDocIDs((docID -> visitDocIDSize[0]++));
+      tree.visitDocIDs(docID -> visitDocIDSize[0]++);
     }
     assertEquals(visitDocIDSize[0], visitDocValuesSize[0]);
     assertEquals(visitDocIDSize[0], tree.size());
