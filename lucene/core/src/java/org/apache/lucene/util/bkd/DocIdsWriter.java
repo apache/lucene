@@ -44,13 +44,21 @@ class DocIdsWriter {
       }
     }
 
-    if (strictlySorted && (docIds[start + count - 1] - docIds[start] + 1) <= (count << 4)) {
-      // Only trigger this optimization when max - min + 1 <= 16 * count in order to avoid expanding
-      // too much storage.
-      // A field with lower cardinality will have higher probability to trigger this optimization.
-      out.writeByte((byte) -1);
-      writeIdsAsBitSet(docIds, start, count, out);
-      return;
+    int min2max = docIds[start + count - 1] - docIds[start] + 1;
+    if (strictlySorted) {
+      if (min2max == count) {
+        // continuous ids, typically happens when segment is sorted
+        out.writeByte((byte) -2);
+        out.writeVInt(docIds[start]);
+        return;
+      } else if (min2max <= (count << 4)) {
+        // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid expanding
+        // too much storage.
+        // A field with lower cardinality will have higher probability to trigger this optimization.
+        out.writeByte((byte) -1);
+        writeIdsAsBitSet(docIds, start, count, out);
+        return;
+      }
     }
     if (sorted) {
       out.writeByte((byte) 0);
@@ -139,6 +147,9 @@ class DocIdsWriter {
   static void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
+      case -2:
+        readContinuousIds(in, count, docIDs);
+        break;
       case -1:
         readBitSet(in, count, docIDs);
         break;
@@ -163,6 +174,13 @@ class DocIdsWriter {
     in.readLongs(bits, 0, longLen);
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
+  }
+
+  private static void readContinuousIds(IndexInput in, int count, int[] docIDs) throws IOException {
+    int start = in.readVInt();
+    for (int i=0; i<count; i++) {
+      docIDs[i] = start + i;
+    }
   }
 
   private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
@@ -215,6 +233,9 @@ class DocIdsWriter {
   static void readInts(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
+      case -2:
+        readContinuousIds(in, count, visitor);
+        break;
       case -1:
         readBitSet(in, count, visitor);
         break;
@@ -273,5 +294,10 @@ class DocIdsWriter {
       throws IOException {
     DocIdSetIterator bitSetIterator = readBitSetIterator(in, count);
     visitor.visit(bitSetIterator);
+  }
+
+  private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+    int start = in.readVInt();
+    visitor.visit(DocIdSetIterator.range(start, start + count));
   }
 }

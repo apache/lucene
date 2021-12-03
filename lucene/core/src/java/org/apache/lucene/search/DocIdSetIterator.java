@@ -101,36 +101,53 @@ public abstract class DocIdSetIterator {
     if (minDoc < 0) {
       throw new IllegalArgumentException("minDoc must be >= 0 but got minDoc=" + minDoc);
     }
-    return new DocIdSetIterator() {
-      private int doc = -1;
+    return new RangeDocIdSetIterator(minDoc, maxDoc);
+  }
 
-      @Override
-      public int docID() {
-        return doc;
-      }
+  public static class RangeDocIdSetIterator extends DocIdSetIterator {
+    private final int minDoc;
+    private final int maxDoc;
+    private int doc = -1;
 
-      @Override
-      public int nextDoc() throws IOException {
-        return advance(doc + 1);
-      }
+    public RangeDocIdSetIterator(int minDoc, int maxDoc) {
+      this.minDoc = minDoc;
+      this.maxDoc = maxDoc;
+    }
 
-      @Override
-      public int advance(int target) throws IOException {
-        if (target < minDoc) {
-          doc = minDoc;
-        } else if (target >= maxDoc) {
-          doc = NO_MORE_DOCS;
-        } else {
-          doc = target;
-        }
-        return doc;
-      }
+    @Override
+    public int docID() {
+      return doc;
+    }
 
-      @Override
-      public long cost() {
-        return maxDoc - minDoc;
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(doc + 1);
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target < minDoc) {
+        doc = minDoc;
+      } else if (target >= maxDoc) {
+        doc = NO_MORE_DOCS;
+      } else {
+        doc = target;
       }
-    };
+      return doc;
+    }
+
+    public int getMinDoc() {
+      return minDoc;
+    }
+
+    public int getMaxDoc() {
+      return maxDoc;
+    }
+
+    @Override
+    public long cost() {
+      return maxDoc - minDoc;
+    }
   }
 
   /**
