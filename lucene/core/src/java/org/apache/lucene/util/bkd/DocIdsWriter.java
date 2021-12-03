@@ -52,6 +52,7 @@ class DocIdsWriter {
         out.writeVInt(docIds[start]);
         return;
       } else if (min2max <= (count << 4)) {
+        assert min2max > count : "min2max: " + min2max + ", count: " + count;
         // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid
         // expanding too much storage.
         // A field with lower cardinality will have higher probability to trigger this optimization.
