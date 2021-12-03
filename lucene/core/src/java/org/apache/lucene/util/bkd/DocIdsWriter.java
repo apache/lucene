@@ -53,8 +53,7 @@ class DocIdsWriter {
         return;
       } else if (min2max <= (count << 4)) {
         // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid
-        // expanding
-        // too much storage.
+        // expanding too much storage.
         // A field with lower cardinality will have higher probability to trigger this optimization.
         out.writeByte((byte) -1);
         writeIdsAsBitSet(docIds, start, count, out);
