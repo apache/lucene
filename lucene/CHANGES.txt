@@ -31,6 +31,9 @@ New Features
 * LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
   For more information, see https://s.apache.org/spanishplural  (Xavier Sanchez Loro)
 
+* LUCENE-10243: StandardTokenizer, UAX29URLEmailTokenizer, and HTMLStripCharFilter have
+  been upgraded to Unicode 12.1  (Robert Muir)
+
 Improvements
 ---------------------
 
