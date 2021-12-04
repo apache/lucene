@@ -16,12 +16,11 @@
  */
 
 /** Analyzer for dictionary stemming, built-in Polish dictionary */
-// @SuppressWarnings({"requires-automatic"})
-/*
+@SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.analysis.morfologik {
-  requires morfologik.stemming;
   requires org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
+  requires org.carrot2.morfologik.stemming;
 
   exports org.apache.lucene.analysis.morfologik;
   exports org.apache.lucene.analysis.uk;
@@ -29,4 +28,3 @@ module org.apache.lucene.analysis.morfologik {
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.analysis.morfologik.MorfologikFilterFactory;
 }
-*/
