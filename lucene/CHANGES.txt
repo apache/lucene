@@ -67,6 +67,8 @@ Other
 
 * LUCENE-10273: Deprecate SpanishMinimalStemFilter in favor of SpanishPluralStemFilter. (Robert Muir)
 
+* LUCENE-10284: Upgrade morfologik-stemming to 2.1.8. (Dawid Weiss)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
