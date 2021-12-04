@@ -676,7 +676,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
 
   private void doTestMerge(Sort indexSort, boolean allowDeletes) throws IOException {
     final RandomDocumentFactory docFactory = new RandomDocumentFactory(5, 20);
-    final int numDocs = atLeast(100);
+    final int numDocs = TEST_NIGHTLY ? atLeast(100) : atLeast(10);
     for (Options options : validOptions()) {
       Map<String, RandomDocument> docs = new HashMap<>();
       for (int i = 0; i < numDocs; ++i) {
@@ -750,18 +750,28 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     }
   }
 
+  public void testMerge() throws IOException {
+    doTestMerge(null, false);
+  }
+
+  public void testMergeWithDeletes() throws IOException {
+    doTestMerge(null, true);
+  }
+
   public void testMergeWithIndexSort() throws IOException {
     SortField[] sortFields = new SortField[TestUtil.nextInt(random(), 1, 2)];
     for (int i = 0; i < sortFields.length; i++) {
       sortFields[i] = new SortField("sort_field_" + i, SortField.Type.LONG);
     }
     doTestMerge(new Sort(sortFields), false);
-    doTestMerge(new Sort(sortFields), true);
   }
 
-  public void testMergeWithoutIndexSort() throws IOException {
-    doTestMerge(null, false);
-    doTestMerge(null, true);
+  public void testMergeWithIndexSortAndDeletes() throws IOException {
+    SortField[] sortFields = new SortField[TestUtil.nextInt(random(), 1, 2)];
+    for (int i = 0; i < sortFields.length; i++) {
+      sortFields[i] = new SortField("sort_field_" + i, SortField.Type.LONG);
+    }
+    doTestMerge(new Sort(sortFields), true);
   }
 
   // run random tests from different threads to make sure the per-thread clones

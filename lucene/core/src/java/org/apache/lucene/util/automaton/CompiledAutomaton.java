@@ -34,8 +34,8 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.UnicodeUtil;
 
 /**
- * Immutable class holding compiled details for a given Automaton. The Automaton is deterministic,
- * must not have dead states but is not necessarily minimal.
+ * Immutable class holding compiled details for a given Automaton. The Automaton must be
+ * deterministic, must not have dead states but is not necessarily minimal.
  *
  * @lucene.experimental
  */
@@ -131,24 +131,27 @@ public class CompiledAutomaton implements Accountable {
    * Create this. If finite is null, we use {@link Operations#isFinite} to determine whether it is
    * finite. If simplify is true, we run possibly expensive operations to determine if the automaton
    * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
    */
   public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify) {
-    this(automaton, finite, simplify, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false);
+    this(automaton, finite, simplify, false);
   }
 
   /**
    * Create this. If finite is null, we use {@link Operations#isFinite} to determine whether it is
    * finite. If simplify is true, we run possibly expensive operations to determine if the automaton
-   * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}. If simplify requires
-   * determinizing the automaton then at most determinizeWorkLimit effort will be spent. Any more
-   * than that will cause a TooComplexToDeterminizeException.
+   * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
    */
   public CompiledAutomaton(
-      Automaton automaton,
-      Boolean finite,
-      boolean simplify,
-      int determinizeWorkLimit,
-      boolean isBinary) {
+      Automaton automaton, Boolean finite, boolean simplify, boolean isBinary) {
+    // require DFA for input, as this class currently can't handle NFAs.
+    if (!automaton.isDeterministic()) {
+      throw new IllegalArgumentException("Automaton must be deterministic");
+    }
+
     if (automaton.getNumStates() == 0) {
       automaton = new Automaton();
       automaton.createState();
@@ -192,8 +195,6 @@ public class CompiledAutomaton implements Accountable {
         sinkState = -1;
         return;
       }
-
-      automaton = Operations.determinize(automaton, determinizeWorkLimit);
 
       IntsRef singleton = Operations.getSingleton(automaton);
 
@@ -250,8 +251,9 @@ public class CompiledAutomaton implements Accountable {
       }
     }
 
-    // This will determinize the binary automaton for us:
-    runAutomaton = new ByteRunAutomaton(binary, true, determinizeWorkLimit);
+    // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
+    binary = Operations.determinize(binary, Integer.MAX_VALUE);
+    runAutomaton = new ByteRunAutomaton(binary, true);
 
     this.automaton = runAutomaton.automaton;
 

@@ -19,9 +19,10 @@ package org.apache.lucene.backward_codecs.lucene50;
 import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseCompoundFormatTestCase;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene50CompoundFormat extends BaseCompoundFormatTestCase {
-  ;
 
   @Override
   protected Codec getCodec() {

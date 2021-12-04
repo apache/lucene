@@ -77,7 +77,7 @@ final class SimpleTextBKDReader extends PointValues {
 
   @Override
   public PointTree getPointTree() {
-    return new SimpleTextPointTree(1, 1, minPackedValue, maxPackedValue);
+    return new SimpleTextPointTree(in.clone(), 1, 1, minPackedValue, maxPackedValue);
   }
 
   private class SimpleTextPointTree implements PointTree {
@@ -87,7 +87,6 @@ final class SimpleTextBKDReader extends PointValues {
     int nodeID;
     int level;
     final int rootNode;
-    final int lastLeafNodeCount;
     // holds the min / max value of the current node.
     private final byte[] minPackedValue, maxPackedValue;
     // holds the previous value of the split dimension
@@ -95,8 +94,11 @@ final class SimpleTextBKDReader extends PointValues {
     // holds the splitDim for each level:
     private final int[] splitDims;
 
+    private final IndexInput in;
+
     private SimpleTextPointTree(
-        int nodeID, int level, byte[] minPackedValue, byte[] maxPackedValue) {
+        IndexInput in, int nodeID, int level, byte[] minPackedValue, byte[] maxPackedValue) {
+      this.in = in;
       this.scratchDocIDs = new int[config.maxPointsInLeafNode];
       this.scratchPackedValue = new byte[config.packedBytesLength];
       this.nodeID = nodeID;
@@ -107,9 +109,6 @@ final class SimpleTextBKDReader extends PointValues {
       int treeDepth = getTreeDepth(leafNodeOffset);
       splitDimValueStack = new byte[treeDepth + 1][];
       splitDims = new int[treeDepth + 1];
-      int lastLeafNodeCount = Math.toIntExact(pointCount % config.maxPointsInLeafNode);
-      this.lastLeafNodeCount =
-          lastLeafNodeCount == 0 ? config.maxPointsInLeafNode : lastLeafNodeCount;
     }
 
     private int getTreeDepth(int numLeaves) {
@@ -125,7 +124,7 @@ final class SimpleTextBKDReader extends PointValues {
     @Override
     public PointTree clone() {
       SimpleTextPointTree index =
-          new SimpleTextPointTree(nodeID, level, minPackedValue, maxPackedValue);
+          new SimpleTextPointTree(in.clone(), nodeID, level, minPackedValue, maxPackedValue);
       if (isLeafNode() == false) {
         // copy node data
         index.splitDims[level] = splitDims[level];
@@ -285,9 +284,39 @@ final class SimpleTextBKDReader extends PointValues {
         numLeaves = rightMostLeafNode - leftMostLeafNode + 1 + leafNodeOffset;
       }
       assert numLeaves == getNumLeavesSlow(nodeID) : numLeaves + " " + getNumLeavesSlow(nodeID);
-      return rightMostLeafNode == (1 << getTreeDepth(leafNodeOffset) - 1) - 1
-          ? (long) (numLeaves - 1) * config.maxPointsInLeafNode + lastLeafNodeCount
-          : (long) numLeaves * config.maxPointsInLeafNode;
+      return sizeFromBalancedTree(leftMostLeafNode, rightMostLeafNode);
+    }
+
+    private long sizeFromBalancedTree(int leftMostLeafNode, int rightMostLeafNode) {
+      // number of points that need to be distributed between leaves, one per leaf
+      final int extraPoints =
+          Math.toIntExact(((long) config.maxPointsInLeafNode * leafNodeOffset) - pointCount);
+      assert extraPoints < leafNodeOffset : "point excess should be lower than leafNodeOffset";
+      // offset where we stop adding one point to the leaves
+      final int nodeOffset = leafNodeOffset - extraPoints;
+      long count = 0;
+      for (int node = leftMostLeafNode; node <= rightMostLeafNode; node++) {
+        // offsetPosition provides which extra point will be added to this node
+        if (balanceTreeNodePosition(0, leafNodeOffset, node - leafNodeOffset, 0, 0) < nodeOffset) {
+          count += config.maxPointsInLeafNode;
+        } else {
+          count += config.maxPointsInLeafNode - 1;
+        }
+      }
+      return count;
+    }
+
+    private int balanceTreeNodePosition(
+        int minNode, int maxNode, int node, int position, int level) {
+      if (maxNode - minNode == 1) {
+        return position;
+      }
+      final int mid = (minNode + maxNode + 1) >>> 1;
+      if (mid > node) {
+        return balanceTreeNodePosition(minNode, mid, node, position, level + 1);
+      } else {
+        return balanceTreeNodePosition(mid, maxNode, node, position + (1 << level), level + 1);
+      }
     }
 
     private int getNumLeavesSlow(int node) {

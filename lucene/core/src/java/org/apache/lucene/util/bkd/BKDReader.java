@@ -132,6 +132,8 @@ public class BKDReader extends PointValues {
     private final IndexInput leafNodes;
     // holds the minimum (left most) leaf block file pointer for each level we've recursed to:
     private final long[] leafBlockFPStack;
+    // holds the address, in the off-heap index, after reading the node data of each level:
+    private final int[] readNodeDataPositions;
     // holds the address, in the off-heap index, of the right-node of each level:
     private final int[] rightNodePositions;
     // holds the splitDim position for each level:
@@ -154,6 +156,8 @@ public class BKDReader extends PointValues {
     private final int leafNodeOffset;
     // version of the index
     private final int version;
+    // total number of points
+    final long pointCount;
     // last node might not be fully populated
     private final int lastLeafNodePointCount;
     // right most leaf node ID
@@ -181,7 +185,7 @@ public class BKDReader extends PointValues {
           config,
           numLeaves,
           version,
-          Math.toIntExact(pointCount % config.maxPointsInLeafNode),
+          pointCount,
           1,
           1,
           minPackedValue,
@@ -201,7 +205,7 @@ public class BKDReader extends PointValues {
         BKDConfig config,
         int numLeaves,
         int version,
-        int lastLeafNodePointCount,
+        long pointCount,
         int nodeID,
         int level,
         byte[] minPackedValue,
@@ -227,11 +231,14 @@ public class BKDReader extends PointValues {
       splitValuesStack = new byte[treeDepth][];
       splitValuesStack[0] = new byte[config.packedIndexBytesLength];
       leafBlockFPStack = new long[treeDepth + 1];
+      readNodeDataPositions = new int[treeDepth + 1];
       rightNodePositions = new int[treeDepth];
       splitDimsPos = new int[treeDepth];
       negativeDeltas = new boolean[config.numIndexDims * treeDepth];
       // information about the unbalance of the tree so we can report the exact size below a node
+      this.pointCount = pointCount;
       rightMostLeafNode = (1 << treeDepth - 1) - 1;
+      int lastLeafNodePointCount = Math.toIntExact(pointCount % config.maxPointsInLeafNode);
       this.lastLeafNodePointCount =
           lastLeafNodePointCount == 0 ? config.maxPointsInLeafNode : lastLeafNodePointCount;
       // scratch objects, reused between clones so NN search are not creating those objects
@@ -252,7 +259,7 @@ public class BKDReader extends PointValues {
               config,
               leafNodeOffset,
               version,
-              lastLeafNodePointCount,
+              pointCount,
               nodeID,
               level,
               minPackedValue,
@@ -266,6 +273,7 @@ public class BKDReader extends PointValues {
       if (isLeafNode() == false) {
         // copy node data
         index.rightNodePositions[index.level] = rightNodePositions[level];
+        index.readNodeDataPositions[index.level] = readNodeDataPositions[level];
         index.splitValuesStack[index.level] = splitValuesStack[level].clone();
         System.arraycopy(
             negativeDeltas,
@@ -293,9 +301,16 @@ public class BKDReader extends PointValues {
       if (isLeafNode()) {
         return false;
       }
+      resetNodeDataPosition();
       pushBoundsLeft();
       pushLeft();
       return true;
+    }
+
+    private void resetNodeDataPosition() throws IOException {
+      // move position of the inner nodes index to visit the first child
+      assert readNodeDataPositions[level] <= innerNodes.getFilePointer();
+      innerNodes.seek(readNodeDataPositions[level]);
     }
 
     private void pushBoundsLeft() {
@@ -437,13 +452,51 @@ public class BKDReader extends PointValues {
         numLeaves = rightMostLeafNode - leftMostLeafNode + 1 + leafNodeOffset;
       }
       assert numLeaves == getNumLeavesSlow(nodeID) : numLeaves + " " + getNumLeavesSlow(nodeID);
+      if (version < BKDWriter.VERSION_META_FILE && config.numDims > 1) {
+        // before lucene 8.6, high dimensional trees were constructed as fully balanced trees.
+        return sizeFromBalancedTree(leftMostLeafNode, rightMostLeafNode);
+      }
+      // size for an unbalanced tree.
       return rightMostLeafNode == this.rightMostLeafNode
           ? (long) (numLeaves - 1) * config.maxPointsInLeafNode + lastLeafNodePointCount
           : (long) numLeaves * config.maxPointsInLeafNode;
     }
 
+    private long sizeFromBalancedTree(int leftMostLeafNode, int rightMostLeafNode) {
+      // number of points that need to be distributed between leaves, one per leaf
+      final int extraPoints =
+          Math.toIntExact(((long) config.maxPointsInLeafNode * this.leafNodeOffset) - pointCount);
+      assert extraPoints < leafNodeOffset : "point excess should be lower than leafNodeOffset";
+      // offset where we stop adding one point to the leaves
+      final int nodeOffset = leafNodeOffset - extraPoints;
+      long count = 0;
+      for (int node = leftMostLeafNode; node <= rightMostLeafNode; node++) {
+        // offsetPosition provides which extra point will be added to this node
+        if (balanceTreeNodePosition(0, leafNodeOffset, node - leafNodeOffset, 0, 0) < nodeOffset) {
+          count += config.maxPointsInLeafNode;
+        } else {
+          count += config.maxPointsInLeafNode - 1;
+        }
+      }
+      return count;
+    }
+
+    private int balanceTreeNodePosition(
+        int minNode, int maxNode, int node, int position, int level) {
+      if (maxNode - minNode == 1) {
+        return position;
+      }
+      final int mid = (minNode + maxNode + 1) >>> 1;
+      if (mid > node) {
+        return balanceTreeNodePosition(minNode, mid, node, position, level + 1);
+      } else {
+        return balanceTreeNodePosition(mid, maxNode, node, position + (1 << level), level + 1);
+      }
+    }
+
     @Override
     public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
+      resetNodeDataPosition();
       addAll(visitor, false);
     }
 
@@ -474,15 +527,20 @@ public class BKDReader extends PointValues {
 
     @Override
     public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+      resetNodeDataPosition();
+      visitLeavesOneByOne(visitor);
+    }
+
+    private void visitLeavesOneByOne(PointValues.IntersectVisitor visitor) throws IOException {
       if (isLeafNode()) {
         // Leaf node
         visitDocValues(visitor, getLeafBlockFP());
       } else {
         pushLeft();
-        visitDocValues(visitor);
+        visitLeavesOneByOne(visitor);
         pop();
         pushRight();
-        visitDocValues(visitor);
+        visitLeavesOneByOne(visitor);
         pop();
       }
     }
@@ -595,6 +653,7 @@ public class BKDReader extends PointValues {
           leftNumBytes = 0;
         }
         rightNodePositions[level] = Math.toIntExact(innerNodes.getFilePointer()) + leftNumBytes;
+        readNodeDataPositions[level] = Math.toIntExact(innerNodes.getFilePointer());
       }
     }
 

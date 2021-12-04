@@ -222,7 +222,7 @@ public class TestMockAnalyzer extends BaseTokenStreamTestCase {
     int iters = TEST_NIGHTLY ? atLeast(30) : atLeast(1);
     for (int i = 0; i < iters; i++) {
       final CharacterRunAutomaton dfa =
-          new CharacterRunAutomaton(AutomatonTestUtil.randomAutomaton(random()), Integer.MAX_VALUE);
+          new CharacterRunAutomaton(AutomatonTestUtil.randomAutomaton(random()));
       final boolean lowercase = random().nextBoolean();
       final int limit = TestUtil.nextInt(random(), 0, 500);
       Analyzer a =
