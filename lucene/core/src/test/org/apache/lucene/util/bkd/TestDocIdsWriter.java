@@ -35,7 +35,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int[] docIDs = new int[random().nextInt(5000)];
+        int[] docIDs = new int[1 + random().nextInt(5000)];
         final int bpv = TestUtil.nextInt(random(), 1, 32);
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
@@ -49,7 +49,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int[] docIDs = new int[random().nextInt(5000)];
+        int[] docIDs = new int[1 + random().nextInt(5000)];
         final int bpv = TestUtil.nextInt(random(), 1, 32);
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
@@ -64,7 +64,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int size = random().nextInt(5000);
+        int size = 1 + random().nextInt(5000);
         Set<Integer> set = new HashSet<>(size);
         int small = random().nextInt(1000);
         while (set.size() < size) {

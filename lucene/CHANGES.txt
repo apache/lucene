@@ -7,7 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10010: AutomatonQuery, CompiledAutomaton, and RunAutomaton
+  classes no longer determinize NFAs. Instead it is the responsibility
+  of the caller to determinize.  (Robert Muir)
 
 New Features
 ---------------------
@@ -59,6 +62,9 @@ New Features
 * LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
   For more information, see https://s.apache.org/spanishplural  (Xavier Sanchez Loro)
 
+* LUCENE-10243: StandardTokenizer, UAX29URLEmailTokenizer, and HTMLStripCharFilter have
+  been upgraded to Unicode 12.1  (Robert Muir)
+
 Improvements
 ---------------------
 
@@ -71,6 +77,8 @@ Improvements
   added in LUCENE-9820 (Ignacio Vera)
 
 * LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
+
+* LUCENE-10275: Speed up MultiRangeQuery by using an interval tree. (Ignacio Vera)
   
 Optimizations
 ---------------------
@@ -82,11 +90,15 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
 Other
 ---------------------
-(No changes)
+
+* LUCENE-10273: Deprecate SpanishMinimalStemFilter in favor of SpanishPluralStemFilter. (Robert Muir)
+
+* LUCENE-10284: Upgrade morfologik-stemming to 2.1.8. (Dawid Weiss)
 
 ======================= Lucene 9.0.0 =======================
 

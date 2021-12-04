@@ -32,7 +32,7 @@ import org.apache.lucene.analysis.util.OpenStringBuilder;
  */
 %%
 
-%unicode 9
+%unicode 12.1
 %apiprivate
 %type int
 %final
