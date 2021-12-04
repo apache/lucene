@@ -18,7 +18,11 @@ package org.apache.lucene.util.automaton;
 
 /** Automaton representation for matching char[]. */
 public class CharacterRunAutomaton extends RunAutomaton {
-  /** Construct from a DFA */
+  /**
+   * Construct from a DFA
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
+   */
   public CharacterRunAutomaton(Automaton a) {
     super(a, Character.MAX_CODE_POINT + 1);
   }

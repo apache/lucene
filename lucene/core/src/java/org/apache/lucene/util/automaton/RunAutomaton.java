@@ -56,6 +56,7 @@ public abstract class RunAutomaton implements Accountable {
    * Constructs a new <code>RunAutomaton</code> from a deterministic <code>Automaton</code>.
    *
    * @param a an automaton
+   * @throws IllegalArgumentException if the automaton is not deterministic
    */
   protected RunAutomaton(Automaton a, int alphabetSize) {
     this.alphabetSize = alphabetSize;

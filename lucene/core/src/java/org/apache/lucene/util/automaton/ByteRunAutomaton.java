@@ -19,12 +19,20 @@ package org.apache.lucene.util.automaton;
 /** Automaton representation for matching UTF-8 byte[]. */
 public class ByteRunAutomaton extends RunAutomaton {
 
-  /** Converts incoming automaton to byte-based (UTF32ToUTF8) first */
+  /**
+   * Converts incoming automaton to byte-based (UTF32ToUTF8) first
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
+   */
   public ByteRunAutomaton(Automaton a) {
     this(a, false);
   }
 
-  /** expert: if isBinary is true, the input is already byte-based */
+  /**
+   * expert: if isBinary is true, the input is already byte-based
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
+   */
   public ByteRunAutomaton(Automaton a, boolean isBinary) {
     super(isBinary ? a : convert(a), 256);
   }

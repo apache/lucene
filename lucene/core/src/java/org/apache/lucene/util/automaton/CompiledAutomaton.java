@@ -34,8 +34,8 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.UnicodeUtil;
 
 /**
- * Immutable class holding compiled details for a given Automaton. The Automaton is deterministic,
- * must not have dead states but is not necessarily minimal.
+ * Immutable class holding compiled details for a given Automaton. The Automaton must be
+ * deterministic, must not have dead states but is not necessarily minimal.
  *
  * @lucene.experimental
  */
@@ -131,6 +131,8 @@ public class CompiledAutomaton implements Accountable {
    * Create this. If finite is null, we use {@link Operations#isFinite} to determine whether it is
    * finite. If simplify is true, we run possibly expensive operations to determine if the automaton
    * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
    */
   public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify) {
     this(automaton, finite, simplify, false);
@@ -140,6 +142,8 @@ public class CompiledAutomaton implements Accountable {
    * Create this. If finite is null, we use {@link Operations#isFinite} to determine whether it is
    * finite. If simplify is true, we run possibly expensive operations to determine if the automaton
    * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
    */
   public CompiledAutomaton(
       Automaton automaton, Boolean finite, boolean simplify, boolean isBinary) {
