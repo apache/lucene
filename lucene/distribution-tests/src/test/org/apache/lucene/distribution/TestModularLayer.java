@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -211,5 +212,52 @@ public class TestModularLayer {
                   throw new RuntimeException();
                 },
                 TreeMap::new));
+  }
+
+  /** This tracks our progress of transition to modules. */
+  @Test
+  public void testAllJarsAreNamedModules() {
+    Assertions.assertThat(
+            allModules.stream()
+                .map(
+                    module ->
+                        String.format(
+                            Locale.ROOT,
+                            "%-10s %s",
+                            module.descriptor().isAutomatic() ? "AUTOMATIC" : "NAMED",
+                            module.descriptor().name()))
+                .sorted())
+        .containsExactly(
+            "AUTOMATIC  org.apache.lucene.benchmark",
+            "AUTOMATIC  org.apache.lucene.expressions",
+            "AUTOMATIC  org.apache.lucene.replicator",
+            "AUTOMATIC  org.apache.lucene.spatial_extras",
+            "NAMED      org.apache.lucene.analysis.common",
+            "NAMED      org.apache.lucene.analysis.icu",
+            "NAMED      org.apache.lucene.analysis.kuromoji",
+            "NAMED      org.apache.lucene.analysis.morfologik",
+            "NAMED      org.apache.lucene.analysis.nori",
+            "NAMED      org.apache.lucene.analysis.opennlp",
+            "NAMED      org.apache.lucene.analysis.phonetic",
+            "NAMED      org.apache.lucene.analysis.smartcn",
+            "NAMED      org.apache.lucene.analysis.stempel",
+            "NAMED      org.apache.lucene.backward_codecs",
+            "NAMED      org.apache.lucene.classification",
+            "NAMED      org.apache.lucene.codecs",
+            "NAMED      org.apache.lucene.core",
+            "NAMED      org.apache.lucene.demo",
+            "NAMED      org.apache.lucene.facet",
+            "NAMED      org.apache.lucene.grouping",
+            "NAMED      org.apache.lucene.highlighter",
+            "NAMED      org.apache.lucene.join",
+            "NAMED      org.apache.lucene.luke",
+            "NAMED      org.apache.lucene.memory",
+            "NAMED      org.apache.lucene.misc",
+            "NAMED      org.apache.lucene.monitor",
+            "NAMED      org.apache.lucene.queries",
+            "NAMED      org.apache.lucene.queryparser",
+            "NAMED      org.apache.lucene.sandbox",
+            "NAMED      org.apache.lucene.spatial3d",
+            "NAMED      org.apache.lucene.suggest");
   }
 }
