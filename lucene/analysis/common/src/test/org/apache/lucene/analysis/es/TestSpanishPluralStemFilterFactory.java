@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.analysis.es;
 
 import java.io.Reader;
@@ -24,19 +23,14 @@ import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-/**
- * Simple tests to ensure the spanish minimal stem factory is working.
- *
- * @deprecated Remove with SpanishMinimalStemFilterFactory
- */
-@Deprecated
-public class TestSpanishMinimalStemFilterFactory extends BaseTokenStreamFactoryTestCase {
+/** Simple tests to ensure the Spanish Plural stem factory is working. */
+public class TestSpanishPluralStemFilterFactory extends BaseTokenStreamFactoryTestCase {
   public void testStemming() throws Exception {
-    Reader reader = new StringReader("camisetas");
+    Reader reader = new StringReader("sociedades");
     TokenStream stream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
     ((Tokenizer) stream).setReader(reader);
-    stream = tokenFilterFactory("spanishMinimalStem").create(stream);
-    assertTokenStreamContents(stream, new String[] {"camiseta"});
+    stream = tokenFilterFactory("SpanishPluralStem").create(stream);
+    assertTokenStreamContents(stream, new String[] {"sociedad"});
   }
 
   /** Test that bogus arguments result in exception */
@@ -45,7 +39,7 @@ public class TestSpanishMinimalStemFilterFactory extends BaseTokenStreamFactoryT
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              tokenFilterFactory("spanishMinimalStem", "bogusArg", "bogusValue");
+              tokenFilterFactory("SpanishPluralStem", "bogusArg", "bogusValue");
             });
     assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
