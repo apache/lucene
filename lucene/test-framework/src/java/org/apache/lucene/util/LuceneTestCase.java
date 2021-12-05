@@ -216,7 +216,6 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_MONSTER = "tests.monster";
   public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
   public static final String SYSPROP_SLOW = "tests.slow";
-  public static final String SYSPROP_BADAPPLES = "tests.badapples";
 
   /** @see #ignoreAfterMaxFailures */
   public static final String SYSPROP_MAXFAILURES = "tests.maxfailures";
@@ -266,27 +265,6 @@ public abstract class LuceneTestCase extends Assert {
   @Retention(RetentionPolicy.RUNTIME)
   @TestGroup(enabled = true, sysProperty = SYSPROP_SLOW)
   public @interface Slow {}
-
-  /**
-   * Annotation for tests that fail frequently and are not executed in Jenkins builds to not spam
-   * mailing lists with false reports.
-   *
-   * <p>Tests are turned on for developers by default. If you want to disable them, set:
-   *
-   * <pre>
-   * -Dtests.badapples=false
-   * </pre>
-   *
-   * (or do this through {@code ~./lucene.build.properties}).
-   */
-  @Documented
-  @Inherited
-  @Retention(RetentionPolicy.RUNTIME)
-  @TestGroup(enabled = true, sysProperty = SYSPROP_BADAPPLES)
-  public @interface BadApple {
-    /** Point to JIRA entry. */
-    public String bugUrl();
-  }
 
   /**
    * Annotation for test classes that should avoid certain codec types (because they are expensive,
@@ -440,11 +418,6 @@ public abstract class LuceneTestCase extends Assert {
   public static final boolean TEST_AWAITSFIX =
       systemPropertyAsBoolean(
           SYSPROP_AWAITSFIX, AwaitsFix.class.getAnnotation(TestGroup.class).enabled());
-
-  /** Whether or not {@link BadApple} tests should run. */
-  public static final boolean TEST_BADAPPLES =
-      systemPropertyAsBoolean(
-          SYSPROP_BADAPPLES, BadApple.class.getAnnotation(TestGroup.class).enabled());
 
   /** Whether or not {@link Slow} tests should run. */
   public static final boolean TEST_SLOW =

@@ -55,7 +55,7 @@ public class TestDeterminizeLexicon extends LuceneTestCase {
     }
     if (TEST_NIGHTLY) {
       // TODO: very wasteful of RAM to do this without minimizing first.
-      final ByteRunAutomaton lexByte = new ByteRunAutomaton(lex, false, 1000000);
+      final ByteRunAutomaton lexByte = new ByteRunAutomaton(lex, false);
       for (String s : terms) {
         byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
         assertTrue(lexByte.run(bytes, 0, bytes.length));
