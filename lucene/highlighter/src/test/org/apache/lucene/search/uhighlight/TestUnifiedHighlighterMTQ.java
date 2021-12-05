@@ -117,8 +117,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     Query query = new WildcardQuery(new Term("body", "te*"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
@@ -155,9 +154,10 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
         searcher, indexAnalyzer, EnumSet.of(HighlightFlag.MULTI_TERM_QUERY), null);
   }
 
-  private UnifiedHighlighter randomUnifiedHighlighter(UnifiedHighlighter.Builder uhBuilder) {
+  private UnifiedHighlighter randomUnifiedHighlighter(
+      IndexSearcher searcher, Analyzer indexAnalyzer, UnifiedHighlighter.Builder uhBuilder) {
     return TestUnifiedHighlighter.randomUnifiedHighlighter(
-        uhBuilder, EnumSet.of(HighlightFlag.MULTI_TERM_QUERY), null);
+        searcher, indexAnalyzer, uhBuilder, EnumSet.of(HighlightFlag.MULTI_TERM_QUERY), null);
   }
 
   public void testOnePrefix() throws Exception {
@@ -176,9 +176,8 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer, uhBuilder);
     // wrap in a BoostQuery to also show we see inside it
     Query query = new BoostQuery(new PrefixQuery(new Term("body", "te")), 2.0f);
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
@@ -220,9 +219,8 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer, uhBuilder);
     Query query = new RegexpQuery(new Term("body", "te.*"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
@@ -263,9 +261,8 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer, uhBuilder);
     Query query = new FuzzyQuery(new Term("body", "tets"), 1);
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
@@ -324,9 +321,8 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer, uhBuilder);
     Query query = TermRangeQuery.newStringRange("body", "ta", "tf", true, true);
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits.value);
@@ -734,8 +730,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     // Default formatter just bolds each hit:
     assertEquals("<b>Test</b> a <b>one</b> <b>sentence</b> document.", snippets[0]);
 
-    UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
 
     // Now use our own formatter, that also stuffs the
     // matching term's text into the result:
@@ -821,11 +816,9 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer)
             .withMaxLength(25); // a little past first sentence
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer, uhBuilder);
 
     BooleanQuery query =
         new BooleanQuery.Builder()
@@ -859,11 +852,9 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer)
             .withMaxLength(32); // a little past first sentence
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer, uhBuilder);
 
     BooleanQuery query =
         new BooleanQuery.Builder()
@@ -914,14 +905,11 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(buggyAnalyzer)
-            .withHandleMultiTermQuery(true);
+        new UnifiedHighlighter.Builder(searcher, buggyAnalyzer).withHandleMultiTermQuery(true);
     if (rarely()) {
       uhBuilder = uhBuilder.withMaxLength(25); // a little past first sentence
     }
-    UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer, uhBuilder);
 
     boolean hasClauses = false;
     BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
@@ -1069,11 +1057,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
-            .build();
+    UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
 
     int docId = searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc;
 
@@ -1187,11 +1171,9 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
         try (IndexReader ir = iw.getReader()) {
           IndexSearcher searcher = newSearcher(ir);
           UnifiedHighlighter.Builder uhBuilder =
-              new UnifiedHighlighter.Builder()
-                  .withSearcher(searcher)
-                  .withIndexAnalyzer(analyzer)
+              new UnifiedHighlighter.Builder(searcher, analyzer)
                   .withBreakIterator(WholeBreakIterator::new);
-          UnifiedHighlighter highlighter = randomUnifiedHighlighter(uhBuilder);
+          UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, analyzer, uhBuilder);
 
           // Test PrefixQuery
           Query query = new PrefixQuery(new Term(field, UnicodeUtil.newString(valuePoints, 0, 1)));

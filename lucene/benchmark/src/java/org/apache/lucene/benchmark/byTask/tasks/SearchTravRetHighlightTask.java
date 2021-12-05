@@ -289,7 +289,7 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
       }
       lastSearcher = searcher;
       UnifiedHighlighter.Builder uhBuilder =
-          new UnifiedHighlighter.Builder()
+          new UnifiedHighlighter.Builder(searcher, analyzer)
               .withBreakIterator(() -> BreakIterator.getSentenceInstance(Locale.ENGLISH))
               .withMaxLength(maxDocCharsToAnalyze)
               .withHighlightPhrasesStrictly(true)

@@ -47,7 +47,7 @@ public class TestUnifiedHighlighterReanalysis extends LuceneTestCase {
             .build();
 
     UnifiedHighlighter highlighter =
-        UnifiedHighlighter.builder().withSearcher(null).withIndexAnalyzer(indexAnalyzer).build();
+        UnifiedHighlighter.builderWithoutSearcher(indexAnalyzer).build();
     String snippet = highlighter.highlightWithoutSearcher("body", query, text, 1).toString();
 
     assertEquals("Just a test <b>highlighting</b> without a searcher. ", snippet);
@@ -68,11 +68,7 @@ public class TestUnifiedHighlighterReanalysis extends LuceneTestCase {
         RandomIndexWriter indexWriter = new RandomIndexWriter(random(), directory);
         IndexReader indexReader = indexWriter.getReader()) {
       IndexSearcher searcher = newSearcher(indexReader);
-      UnifiedHighlighter highlighter =
-          UnifiedHighlighter.builder()
-              .withSearcher(searcher)
-              .withIndexAnalyzer(indexAnalyzer)
-              .build();
+      UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
       highlighter.highlightWithoutSearcher("body", query, text, 1); // should throw
     }
   }

@@ -112,21 +112,21 @@ public class UnifiedHighlighter {
   protected static final LabelledCharArrayMatcher[] ZERO_LEN_AUTOMATA_ARRAY =
       new LabelledCharArrayMatcher[0];
 
-  protected final IndexSearcher searcher;
+  protected final IndexSearcher searcher; // if null, can only use highlightWithoutSearcher
 
   protected final Analyzer indexAnalyzer;
 
   private final int maxLength;
 
-  private final Supplier<BreakIterator> defaultBreakIterator;
+  private final Supplier<BreakIterator> breakIterator;
 
-  private final Predicate<String> defaultFieldMatcher;
+  private final Predicate<String> fieldMatcher;
 
-  private final PassageScorer defaultScorer;
+  private final PassageScorer scorer;
 
-  private final PassageFormatter defaultFormatter;
+  private final PassageFormatter formatter;
 
-  private final int defaultMaxNoHighlightPassages;
+  private final int maxNoHighlightPassages;
 
   // lazy initialized with double-check locking; protected so subclass can init
   protected volatile FieldInfos fieldInfos;
@@ -140,7 +140,7 @@ public class UnifiedHighlighter {
     /** If null, can only use highlightWithoutSearcher. */
     private IndexSearcher searcher;
 
-    private Analyzer indexAnalyzer;
+    private final Analyzer indexAnalyzer;
     private boolean handleMultiTermQuery = true;
     private boolean highlightPhrasesStrictly = true;
     private boolean passageRelevancyOverSpeed = true;
@@ -159,21 +159,16 @@ public class UnifiedHighlighter {
     private Set<HighlightFlag> flags;
 
     /**
-     * Usually required, unless {@link #highlightWithoutSearcher(String, Query, String, int)} is
-     * used, in which case this needs to be null.
+     * Constructor for UH builder which accepts {@link IndexSearcher} and {@link Analyzer} objects.
+     * {@link IndexSearcher} object can only be null when {@link #highlightWithoutSearcher(String,
+     * Query, String, int)} is used.
+     *
+     * @param searcher - {@link IndexSearcher}
+     * @param indexAnalyzer - {@link Analyzer}
      */
-    public Builder withSearcher(IndexSearcher value) {
-      this.searcher = value;
-      return self();
-    }
-
-    /**
-     * This method sets the analyzer for the UH object. Required, even if in some circumstances it
-     * isn' used. The null check is performed in the constructor.
-     */
-    public Builder withIndexAnalyzer(Analyzer value) {
-      this.indexAnalyzer = value;
-      return self();
+    public Builder(IndexSearcher searcher, Analyzer indexAnalyzer) {
+      this.searcher = searcher;
+      this.indexAnalyzer = indexAnalyzer;
     }
 
     /**
@@ -181,11 +176,14 @@ public class UnifiedHighlighter {
      * #withHandleMultiTermQuery(boolean)}, {@link #withHighlightPhrasesStrictly(boolean)}, {@link
      * #withPassageRelevancyOverSpeed(boolean)} and {@link #withWeightMatches(boolean)}.
      *
+     * <p>Here the user can either specify the set of {@link HighlightFlag}s to be applied or use
+     * the boolean flags to populate final list of {@link HighlightFlag}s.
+     *
      * @param values - set of {@link HighlightFlag} values.
      */
     public Builder withFlags(Set<HighlightFlag> values) {
       this.flags = values;
-      return self();
+      return this;
     }
 
     /**
@@ -195,7 +193,7 @@ public class UnifiedHighlighter {
      */
     public Builder withHighlightPhrasesStrictly(boolean value) {
       this.highlightPhrasesStrictly = value;
-      return self();
+      return this;
     }
 
     /**
@@ -205,13 +203,13 @@ public class UnifiedHighlighter {
      */
     public Builder withHandleMultiTermQuery(boolean value) {
       this.handleMultiTermQuery = value;
-      return self();
+      return this;
     }
 
     /** Passage relevancy is more important than speed. True by default. */
     public Builder withPassageRelevancyOverSpeed(boolean value) {
       this.passageRelevancyOverSpeed = value;
-      return self();
+      return this;
     }
 
     /**
@@ -225,9 +223,10 @@ public class UnifiedHighlighter {
      */
     public Builder withWeightMatches(boolean value) {
       this.weightMatches = value;
-      return self();
+      return this;
     }
 
+    /** The text to be highlight is effectively truncated by this length. */
     public Builder withMaxLength(int value) {
       if (value < 0 || value == Integer.MAX_VALUE) {
         // two reasons: no overflow problems in BreakIterator.preceding(offset+1),
@@ -235,37 +234,37 @@ public class UnifiedHighlighter {
         throw new IllegalArgumentException("maxLength must be < Integer.MAX_VALUE");
       }
       this.maxLength = value;
-      return self();
+      return this;
     }
 
     public Builder withBreakIterator(Supplier<BreakIterator> value) {
       this.breakIterator = value;
-      return self();
+      return this;
     }
 
     public Builder withFieldMatcher(Predicate<String> value) {
       this.fieldMatcher = value;
-      return self();
+      return this;
     }
 
     public Builder withScorer(PassageScorer value) {
       this.scorer = value;
-      return self();
+      return this;
     }
 
     public Builder withFormatter(PassageFormatter value) {
       this.formatter = value;
-      return self();
+      return this;
     }
 
     public Builder withMaxNoHighlightPassages(int value) {
       this.maxNoHighlightPassages = value;
-      return self();
+      return this;
     }
 
     public Builder withCacheFieldValCharsThreshold(int value) {
       this.cacheFieldValCharsThreshold = value;
-      return self();
+      return this;
     }
 
     /**
@@ -277,7 +276,7 @@ public class UnifiedHighlighter {
      * @return a set of {@link HighlightFlag}s.
      */
     protected Set<HighlightFlag> evaluateFlags() {
-      if (Objects.nonNull(flags) && !flags.isEmpty()) {
+      if (Objects.nonNull(flags)) {
         return flags;
       }
 
@@ -306,17 +305,17 @@ public class UnifiedHighlighter {
       return highlightFlags;
     }
 
-    protected Builder self() {
-      return this;
-    }
-
     public UnifiedHighlighter build() {
       return new UnifiedHighlighter(this);
     }
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static Builder builder(IndexSearcher searcher, Analyzer indexAnalyzer) {
+    return new Builder(searcher, indexAnalyzer);
+  }
+
+  public static Builder builderWithoutSearcher(Analyzer indexAnalyzer) {
+    return new Builder(null, indexAnalyzer);
   }
 
   /** Extracts matching terms after rewriting against an empty index */
@@ -327,7 +326,7 @@ public class UnifiedHighlighter {
   }
 
   /**
-   * Constructs the highlighter with the given the {@link Builder}.
+   * Constructs the highlighter with the given {@link Builder}.
    *
    * @param builder - a {@link Builder} object.
    */
@@ -339,11 +338,11 @@ public class UnifiedHighlighter {
             "indexAnalyzer is required (even if in some circumstances it isn't used)");
     this.flags = builder.evaluateFlags();
     this.maxLength = builder.maxLength;
-    this.defaultBreakIterator = builder.breakIterator;
-    this.defaultFieldMatcher = builder.fieldMatcher;
-    this.defaultScorer = builder.scorer;
-    this.defaultFormatter = builder.formatter;
-    this.defaultMaxNoHighlightPassages = builder.maxNoHighlightPassages;
+    this.breakIterator = builder.breakIterator;
+    this.fieldMatcher = builder.fieldMatcher;
+    this.scorer = builder.scorer;
+    this.formatter = builder.formatter;
+    this.maxNoHighlightPassages = builder.maxNoHighlightPassages;
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
   }
 
@@ -352,8 +351,8 @@ public class UnifiedHighlighter {
    * only queries that target the current field are kept. (AKA requireFieldMatch)
    */
   protected Predicate<String> getFieldMatcher(String field) {
-    if (defaultFieldMatcher != null) {
-      return defaultFieldMatcher;
+    if (fieldMatcher != null) {
+      return fieldMatcher;
     } else {
       // requireFieldMatch = true
       return (qf) -> field.equals(qf);
@@ -378,7 +377,7 @@ public class UnifiedHighlighter {
    * preceding} performs poorly.
    */
   protected BreakIterator getBreakIterator(String field) {
-    return defaultBreakIterator.get();
+    return breakIterator.get();
   }
 
   /**
@@ -386,7 +385,7 @@ public class UnifiedHighlighter {
    * PassageScorer} by default; subclasses can override to customize.
    */
   protected PassageScorer getScorer(String field) {
-    return defaultScorer;
+    return scorer;
   }
 
   /**
@@ -394,7 +393,7 @@ public class UnifiedHighlighter {
    * This returns a new {@code PassageFormatter} by default; subclasses can override to customize.
    */
   protected PassageFormatter getFormatter(String field) {
-    return defaultFormatter;
+    return formatter;
   }
 
   /**
@@ -404,7 +403,7 @@ public class UnifiedHighlighter {
    * null (not formatted).
    */
   protected int getMaxNoHighlightPassages(String field) {
-    return defaultMaxNoHighlightPassages;
+    return maxNoHighlightPassages;
   }
 
   /**
@@ -943,11 +942,7 @@ public class UnifiedHighlighter {
     return filteredTerms.toArray(new BytesRef[filteredTerms.size()]);
   }
 
-  /**
-   * Customize the highlighting flags to use by field. Here the user can either specify the set of
-   * {@link HighlightFlag}s to be applied or use the boolean flags to populate final list of {@link
-   * HighlightFlag}s.
-   */
+  /** Returns the {@link HighlightFlag}s applicable for the current UH instance. */
   protected Set<HighlightFlag> getFlags(String field) {
     return flags;
   }
@@ -1272,16 +1267,16 @@ public class UnifiedHighlighter {
 
   /** Flags for controlling highlighting behavior. */
   public enum HighlightFlag {
-    /** Ref: {@link Builder#withHighlightPhrasesStrictly(boolean)} */
+    /** @see Builder#withHighlightPhrasesStrictly(boolean) */
     PHRASES,
 
-    /** Ref: {@link Builder#withHandleMultiTermQuery(boolean)} */
+    /** @see Builder#withHandleMultiTermQuery(boolean) */
     MULTI_TERM_QUERY,
 
-    /** Ref: {@link Builder#withPassageRelevancyOverSpeed(boolean)} */
+    /** @see Builder#withPassageRelevancyOverSpeed(boolean) */
     PASSAGE_RELEVANCY_OVER_SPEED,
 
-    /** Ref: {@link Builder#withWeightMatches(boolean)} */
+    /** @see Builder#withWeightMatches(boolean) */
     WEIGHT_MATCHES
 
     // TODO: useQueryBoosts

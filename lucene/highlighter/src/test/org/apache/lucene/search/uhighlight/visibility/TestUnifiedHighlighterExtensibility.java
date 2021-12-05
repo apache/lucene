@@ -98,9 +98,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
   public void testUnifiedHighlighterExtensibility() {
     final int maxLength = 1000;
     UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder()
-            .withSearcher(null)
-            .withIndexAnalyzer(new MockAnalyzer(random()));
+        new UnifiedHighlighter.Builder(null, new MockAnalyzer(random()));
     UnifiedHighlighter uh =
         new UnifiedHighlighter(uhBuilder) {
 

@@ -114,11 +114,14 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
   private void initReaderSearcherHighlighter() throws IOException {
     indexReader = indexWriter.getReader();
     searcher = newSearcher(indexReader);
-    uhBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     highlighter =
         TestUnifiedHighlighter.randomUnifiedHighlighter(
-            uhBuilder, EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.MULTI_TERM_QUERY), true);
+            searcher,
+            indexAnalyzer,
+            uhBuilder,
+            EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.MULTI_TERM_QUERY),
+            true);
     // intercept the formatter in order to check constraints on the passage.
     final PassageFormatter defaultFormatter = highlighter.getFormatter(null);
     highlighter =
@@ -319,9 +322,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
     // do again, this time with MTQ disabled.  We should only find "alpha bravo".
     highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
+        UnifiedHighlighter.builder(searcher, indexAnalyzer)
             .withHandleMultiTermQuery(false) // disable but leave phrase processing enabled
             .build();
 
@@ -369,9 +370,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
     // do again, this time with MTQ disabled.  We should only find "alpha bravo".
     highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
+        UnifiedHighlighter.builder(searcher, indexAnalyzer)
             .withHandleMultiTermQuery(false) // disable but leave phrase processing enabled
             .build();
 
@@ -420,9 +419,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
     // do again, this time with MTQ disabled.
     highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
+        UnifiedHighlighter.builder(searcher, indexAnalyzer)
             .withHandleMultiTermQuery(false) // disable but leave phrase processing enabled
             .build();
 
@@ -543,9 +540,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
   public void testMatchNoDocsQuery() throws IOException {
     highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(null)
-            .withIndexAnalyzer(indexAnalyzer)
+        UnifiedHighlighter.builderWithoutSearcher(indexAnalyzer)
             .withHighlightPhrasesStrictly(true)
             .build();
     String content = "whatever";
@@ -559,21 +554,13 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
             "There is no accord and satisfaction with this - Consideration of the accord is arbitrary."));
     initReaderSearcherHighlighter();
 
-    UnifiedHighlighter.Builder concreteBuilder =
-        new UnifiedHighlighter.Builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
-            .withHighlightPhrasesStrictly(true);
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer).withHighlightPhrasesStrictly(true);
     UnifiedHighlighter.Builder builder =
-        new UnifiedHighlighter.Builder() {
-          @Override
-          protected UnifiedHighlighter.Builder self() {
-            return concreteBuilder;
-          }
-
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer) {
           @Override
           public UnifiedHighlighter build() {
-            return new UnifiedHighlighter(concreteBuilder) {
+            return new UnifiedHighlighter(uhBuilder) {
               @Override
               protected Set<HighlightFlag> getFlags(String field) {
                 final Set<HighlightFlag> flags = super.getFlags(field);

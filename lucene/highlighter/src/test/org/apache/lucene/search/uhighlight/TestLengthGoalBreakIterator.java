@@ -219,9 +219,7 @@ public class TestLengthGoalBreakIterator extends LuceneTestCase {
       String content, Query query, int lengthGoal, float fragAlign, int maxPassages, char separator)
       throws IOException {
     UnifiedHighlighter highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(null)
-            .withIndexAnalyzer(analyzer)
+        UnifiedHighlighter.builderWithoutSearcher(analyzer)
             .withBreakIterator(
                 () ->
                     LengthGoalBreakIterator.createClosestToLength(
@@ -240,9 +238,7 @@ public class TestLengthGoalBreakIterator extends LuceneTestCase {
       throws IOException {
     // differs from above only by "createMinLength"
     UnifiedHighlighter highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(null)
-            .withIndexAnalyzer(analyzer)
+        UnifiedHighlighter.builderWithoutSearcher(analyzer)
             .withBreakIterator(
                 () ->
                     LengthGoalBreakIterator.createMinLength(

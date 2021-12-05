@@ -107,11 +107,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter highlighter =
-        UnifiedHighlighter.builder()
-            .withSearcher(searcher)
-            .withIndexAnalyzer(indexAnalyzer)
-            .build();
+    UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
     BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
     for (String field : fields) {
       queryBuilder.add(new TermQuery(new Term(field, "test")), BooleanClause.Occur.MUST);
@@ -196,8 +192,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighter =
         new UnifiedHighlighter(uhBuilder) {
           @Override

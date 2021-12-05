@@ -117,18 +117,18 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
       final FakePassageFormatter f1 = new FakePassageFormatter();
       UnifiedHighlighter p1 =
           creatUHObjectForCurrentTestSuite(
-              new UnifiedHighlighter.Builder()
-                  .withSearcher(is)
-                  .withIndexAnalyzer(indexAnalyzer)
+              is,
+              indexAnalyzer,
+              new UnifiedHighlighter.Builder(is, indexAnalyzer)
                   .withFormatter(f1)
                   .withMaxLength(Integer.MAX_VALUE - 1));
 
       final FakePassageFormatter f2 = new FakePassageFormatter();
       UnifiedHighlighter p2 =
           creatUHObjectForCurrentTestSuite(
-              new UnifiedHighlighter.Builder()
-                  .withSearcher(is)
-                  .withIndexAnalyzer(indexAnalyzer)
+              is,
+              indexAnalyzer,
+              new UnifiedHighlighter.Builder(is, indexAnalyzer)
                   .withFormatter(f2)
                   .withMaxLength(Integer.MAX_VALUE - 1));
 
@@ -274,10 +274,9 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder concreteBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(concreteBuilder) {
+        new UnifiedHighlighter(uhBuilder) {
           @Override
           protected Set<HighlightFlag> getFlags(String field) {
             if (random().nextBoolean()) {
@@ -329,10 +328,9 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
 
-    UnifiedHighlighter.Builder concreteBuilder =
-        new UnifiedHighlighter.Builder().withSearcher(searcher).withIndexAnalyzer(indexAnalyzer);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(concreteBuilder) {
+        new UnifiedHighlighter(uhBuilder) {
           @Override
           protected Set<HighlightFlag> getFlags(String field) {
             if (random().nextBoolean()) {
@@ -366,9 +364,9 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
   }
 
   private UnifiedHighlighter creatUHObjectForCurrentTestSuite(
-      UnifiedHighlighter.Builder uhBuilder) {
+      IndexSearcher searcher, Analyzer indexAnalyzer, UnifiedHighlighter.Builder uhBuilder) {
     UnifiedHighlighter.Builder builder =
-        new UnifiedHighlighter.Builder() {
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer) {
           @Override
           public UnifiedHighlighter build() {
             return new UnifiedHighlighter(uhBuilder) {
