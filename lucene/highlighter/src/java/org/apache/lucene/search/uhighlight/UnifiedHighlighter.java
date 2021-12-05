@@ -138,7 +138,7 @@ public class UnifiedHighlighter {
   /** Builder for UnifiedHighlighter. */
   public static class Builder {
     /** If null, can only use highlightWithoutSearcher. */
-    private IndexSearcher searcher;
+    private final IndexSearcher searcher;
 
     private final Analyzer indexAnalyzer;
     private boolean handleMultiTermQuery = true;
@@ -310,10 +310,24 @@ public class UnifiedHighlighter {
     }
   }
 
+  /**
+   * Creates a {@link Builder} object where {@link IndexSearcher} and {@link Analyzer} are not null.
+   *
+   * @param searcher - a {@link IndexSearcher} object.
+   * @param indexAnalyzer - a {@link Analyzer} object.
+   * @return a {@link Builder} object
+   */
   public static Builder builder(IndexSearcher searcher, Analyzer indexAnalyzer) {
     return new Builder(searcher, indexAnalyzer);
   }
 
+  /**
+   * Creates a {@link Builder} object where {@link IndexSearcher} in null and {@link Analyzer} is
+   * not.
+   *
+   * @param indexAnalyzer - a {@link Analyzer} object.
+   * @return a {@link Builder} object
+   */
   public static Builder builderWithoutSearcher(Analyzer indexAnalyzer) {
     return new Builder(null, indexAnalyzer);
   }
