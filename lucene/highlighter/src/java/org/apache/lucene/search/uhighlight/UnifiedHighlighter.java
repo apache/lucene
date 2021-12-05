@@ -308,6 +308,16 @@ public class UnifiedHighlighter {
     public UnifiedHighlighter build() {
       return new UnifiedHighlighter(this);
     }
+
+    /** ... as passed in from the Builder constructor. */
+    public IndexSearcher getIndexSearcher() {
+      return searcher;
+    }
+
+    /** ... as passed in from the Builder constructor. */
+    public Analyzer getIndexAnalyzer() {
+      return indexAnalyzer;
+    }
   }
 
   /**
@@ -322,8 +332,8 @@ public class UnifiedHighlighter {
   }
 
   /**
-   * Creates a {@link Builder} object where {@link IndexSearcher} in null and {@link Analyzer} is
-   * not.
+   * Creates a {@link Builder} object in which you can only use {@link
+   * UnifiedHighlighter#highlightWithoutSearcher(String, Query, String, int)} for highlighting.
    *
    * @param indexAnalyzer - a {@link Analyzer} object.
    * @return a {@link Builder} object

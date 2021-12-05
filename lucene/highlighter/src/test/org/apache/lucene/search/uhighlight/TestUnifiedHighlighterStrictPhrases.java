@@ -117,11 +117,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
     uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     highlighter =
         TestUnifiedHighlighter.randomUnifiedHighlighter(
-            searcher,
-            indexAnalyzer,
-            uhBuilder,
-            EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.MULTI_TERM_QUERY),
-            true);
+            uhBuilder, EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.MULTI_TERM_QUERY), true);
     // intercept the formatter in order to check constraints on the passage.
     final PassageFormatter defaultFormatter = highlighter.getFormatter(null);
     highlighter =
