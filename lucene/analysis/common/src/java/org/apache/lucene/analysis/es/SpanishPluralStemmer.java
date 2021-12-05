@@ -41,7 +41,6 @@ public class SpanishPluralStemmer {
           "albricias",
           "aledaños",
           "alexis",
-          "aries",
           "alicates",
           "analisis",
           "andurriales",
@@ -119,7 +118,6 @@ public class SpanishPluralStemmer {
           "portamantas",
           "quinientas",
           "quinientos",
-          "quinientos",
           "quitamanchas",
           "recogepelotas",
           "rictus",
@@ -148,7 +146,7 @@ public class SpanishPluralStemmer {
   static {
     final CharArraySet invariantSet = new CharArraySet(invariantsList, true);
     invariants = CharArraySet.unmodifiableSet(invariantSet);
-
+    assert invariants.size() == invariantsList.size();
     final List<String> specialCasesList =
         Arrays.asList(
             "yoes",
