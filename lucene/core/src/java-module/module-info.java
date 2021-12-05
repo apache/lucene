@@ -17,6 +17,8 @@
 
 /** Lucene Core. */
 module org.apache.lucene.core {
+  requires jdk.unsupported; // this is needed for MMapDirectory to unmap
+
   exports org.apache.lucene.analysis;
   exports org.apache.lucene.analysis.standard;
   exports org.apache.lucene.analysis.tokenattributes;
