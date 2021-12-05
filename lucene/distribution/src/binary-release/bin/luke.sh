@@ -17,4 +17,4 @@
 
 MODULES=`dirname "$0"`/..
 MODULES=`cd "$MODULES" && pwd`
-java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --add-modules org.apache.logging.log4j --module lucene.luke
+java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --add-modules org.apache.logging.log4j --module org.apache.lucene.luke

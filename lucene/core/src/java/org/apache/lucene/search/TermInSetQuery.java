@@ -140,13 +140,17 @@ public class TermInSetQuery extends Query implements Accountable {
     }
   }
 
+  // TODO: this is extremely slow. we should not be doing this.
   private ByteRunAutomaton asByteRunAutomaton() {
     TermIterator iterator = termData.iterator();
     List<Automaton> automata = new ArrayList<>();
     for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
       automata.add(Automata.makeBinary(term));
     }
-    return new CompiledAutomaton(Operations.union(automata)).runAutomaton;
+    Automaton automaton =
+        Operations.determinize(
+            Operations.union(automata), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    return new CompiledAutomaton(automaton).runAutomaton;
   }
 
   @Override
