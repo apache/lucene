@@ -22,7 +22,97 @@ import java.util.stream.Collectors
 
 allprojects {
   plugins.withType(JavaPlugin) {
-    // Configure the version attribute.
+    //
+    // We declare separate configurations that explicitly provide modular
+    // dependencies. The "normal" java plugin configurations extend from these modular
+    // configurations (api extends from apiModule, etc.) so all dependencies
+    // end up on classpath by default for backward compatibility but we can
+    // manipulate and separate classpath vs. module path for javac and other tasks that need it.
+    //
+    // At the same time, we also know which dependencies
+    // should be treated as modules: this opens up the possibility of automatically
+    // validating whether gradle dependency configuration is consistent with the information in
+    // the module-info descriptor (don't know if it's useful), for example:
+    //
+    // apiModules - these would correspond to 'requires transitive' directive in module-info,
+    // implementationModules - 'requires',
+    // compileOnly - 'requires static'.
+    //
+    configurations {
+      apiModule
+      api.extendsFrom(apiModule)
+
+      implementationModule
+      implementation.extendsFrom(implementationModule)
+
+      // This is for internal needs, a combination of the above.
+      compileModulePath
+      compileModulePath.extendsFrom(apiModule, implementationModule)
+
+      // All these configurations are for resolution only and have a preference to see 'classes'
+      // folder instead of JARs for inter-project references.
+      [apiModule, implementationModule, compileModulePath].each { conf ->
+        conf.canBeConsumed(false)
+        conf.canBeResolved(true)
+        conf.attributes {
+          attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
+        }
+      }
+    }
+
+    // TODO, NOCOMMIT: Experiment on the morfologik subproject only, for now.
+    if (project.path == ":lucene:analysis:morfologik") {
+      // We won't be using gradle's built-in automatic module finder (because there is no way
+      // to put non-modular JARs on classpath).
+      java {
+        modularity.inferModulePath.set(false)
+      }
+
+      // Configure a custom hook in JavaCompile which will separate modules and non-modules prior
+      // to the task execution. Note that this would have to be done
+      // for each convention task separately because their configuration is different.
+      tasks.named("compileJava").configure { JavaCompile task ->
+        def modulePath = task.project.configurations.compileModulePath
+        task.dependsOn modulePath
+
+        // Add module path to compiler arguments.
+        task.options.compilerArgumentProviders.add(new CommandLineArgumentProvider() {
+          @Override
+          Iterable<String> asArguments() {
+            return ["--module-path", modulePath.files.join(File.pathSeparator)]
+          }
+        })
+
+        // Modify the default classpath: remove anything already placed on module path. We use
+        // a lazy file collection for this (maybe it's terribly inefficient, didn't check).
+        task.classpath = files({
+          sourceSets.main.compileClasspath.filter { file -> !modulePath.contains(file) }
+        })
+      }
+
+      // This is for debugging classpath vs. module path only.
+      // TODO, NOCOMMIT: remove this.
+      task showCompilationPaths() {
+        dependsOn configurations.compileModulePath
+        dependsOn sourceSets.main.compileClasspath
+
+        doFirst {
+          Set<File> modulePath = configurations.compileModulePath.files
+          Set<File> classpath = sourceSets.main.compileClasspath.files
+          classpath = classpath - modulePath
+
+          def transformName = { File f ->
+            if (f.name.endsWith(".jar")) return f.name
+            return f.toString()
+          }
+
+          println "Classpath:\n  " + classpath.collect(transformName).sort().join("\n  ")
+          println "Module path:\n  " + modulePath.collect(transformName).sort().join("\n  ")
+        }
+      }
+    }
+
+    // Configure module versions.
     tasks.withType(JavaCompile).configureEach{ task ->
       // TODO: LUCENE-10267: workaround for gradle bug. Remove when the corresponding issue is fixed.
       task.options.compilerArgumentProviders.add(new CommandLineArgumentProvider() {

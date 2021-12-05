@@ -21,6 +21,8 @@ module org.apache.lucene.analysis.morfologik {
   requires org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
   requires org.carrot2.morfologik.stemming;
+  requires org.carrot2.morfologik.polish;
+  requires morfologik.ukrainian.search;
 
   exports org.apache.lucene.analysis.morfologik;
   exports org.apache.lucene.analysis.uk;
