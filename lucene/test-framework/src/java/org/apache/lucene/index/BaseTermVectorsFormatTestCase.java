@@ -605,13 +605,13 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
 
   @Slow
   public void testLotsOfFields() throws IOException {
-    int fieldCount = atLeast(100);
+    int fieldCount = TEST_NIGHTLY ? atLeast(100) : atLeast(10);
     final RandomDocumentFactory docFactory = new RandomDocumentFactory(fieldCount, 10);
     for (Options options : validOptions()) {
       final Directory dir = newDirectory();
       final RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
       final RandomDocument doc =
-          docFactory.newDocument(TestUtil.nextInt(random(), 20, fieldCount), 5, options);
+          docFactory.newDocument(TestUtil.nextInt(random(), 5, fieldCount), 5, options);
       writer.addDocument(doc.toDocument());
       final IndexReader reader = writer.getReader();
       assertEquals(doc, reader.getTermVectors(0));
