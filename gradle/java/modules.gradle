@@ -18,7 +18,9 @@ import java.util.stream.Collectors
  * limitations under the License.
  */
 
-// Configure other things required for the java module system layer.
+// Configure miscellaneous aspects required for supporting the java module system layer.
+
+// TODO: remove the hacks excluding java-module source folder from ecjLint and javadoc rendering.
 
 allprojects {
   plugins.withType(JavaPlugin) {
@@ -82,8 +84,7 @@ allprojects {
       }
 
       // This is for debugging classpath vs. module path only.
-      // TODO, NOCOMMIT: remove this.
-      task showCompilationPaths() {
+      tasks.register("showCompilationPaths", {
         dependsOn sourceSets.main.compileClasspath
 
         doFirst {
@@ -93,7 +94,7 @@ allprojects {
                 return name + (shouldBeOnModulePath(f) ? "  <module-path>" : "")
               }.sort().join("\n"))
         }
-      }
+      })
     }
 
     // Configure module versions.
@@ -114,8 +115,6 @@ allprojects {
         return project.version.toString()
       })
     }
-
-  // TODO: remove the hacks excluding java-module source folder from ecjLint and javadoc rendering.
 }
 
 
