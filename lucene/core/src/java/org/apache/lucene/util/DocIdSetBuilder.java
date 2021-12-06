@@ -187,8 +187,8 @@ public final class DocIdSetBuilder {
   public BulkAdder grow(long numDocs) {
     if (bitSet == null) {
       if ((long) totalAllocated + checkTotalAllocatedOverflow(numDocs) <= threshold) {
-        // threshold is an int, cast is safe
-        ensureBufferCapacity((int) numDocs);
+        // For extra safety we use toIntExact
+        ensureBufferCapacity(Math.toIntExact(numDocs));
       } else {
         upgradeToBitSet();
         counter += checkCounterOverflow(numDocs);
