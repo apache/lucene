@@ -166,9 +166,9 @@ public final class DocIdSetBuilder {
       bitSet.or(iter);
       return;
     }
-    int cost = (int) Math.min(Integer.MAX_VALUE, iter.cost());
+    long cost = iter.cost();
     BulkAdder adder = grow(cost);
-    for (int i = 0; i < cost; ++i) {
+    for (long i = 0; i < cost; ++i) {
       int doc = iter.nextDoc();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
         return;
@@ -184,10 +184,11 @@ public final class DocIdSetBuilder {
    * Reserve space and return a {@link BulkAdder} object that can be used to add up to {@code
    * numDocs} documents.
    */
-  public BulkAdder grow(int numDocs) {
+  public BulkAdder grow(long numDocs) {
     if (bitSet == null) {
       if ((long) totalAllocated + numDocs <= threshold) {
-        ensureBufferCapacity(numDocs);
+        // threshold is an int, cast is safe
+        ensureBufferCapacity((int) numDocs);
       } else {
         upgradeToBitSet();
         counter += numDocs;
