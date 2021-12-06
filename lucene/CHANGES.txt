@@ -100,6 +100,8 @@ Other
 
 * LUCENE-10284: Upgrade morfologik-stemming to 2.1.8. (Dawid Weiss)
 
+LUCENE-10289: DocIdSetBuilder#grow() takes now a long instead of an int. (Ignacio Vera)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
