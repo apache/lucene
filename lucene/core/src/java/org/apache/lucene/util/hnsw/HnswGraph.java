@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.SplittableRandom;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -102,28 +101,24 @@ public final class HnswGraph extends KnnGraphValues {
    *
    * @param query search query vector
    * @param topK the number of nodes to be returned
-   * @param numSeed the size of the queue maintained while searching
    * @param vectors vector values
    * @param graphValues the graph values. May represent the entire graph, or a level in a
    *     hierarchical graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
-   * @param random a source of randomness, used for generating entry points to the graph
    * @return a priority queue holding the closest neighbors found
    */
   public static NeighborQueue search(
       float[] query,
       int topK,
-      int numSeed,
       RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
-      Bits acceptOrds,
-      SplittableRandom random)
+      Bits acceptOrds)
       throws IOException {
 
     int size = graphValues.size();
-    int boundedNumSeed = Math.max(topK, Math.min(numSeed, 2 * size));
+    int queueSize = Math.min(topK, 2 * size);
     NeighborQueue results;
 
     int[] eps = new int[] {graphValues.entryNode()};
@@ -132,11 +127,7 @@ public final class HnswGraph extends KnnGraphValues {
       eps[0] = results.pop();
     }
     results =
-        searchLevel(
-            query, boundedNumSeed, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
-    while (results.size() > topK) {
-      results.pop();
-    }
+        searchLevel(query, queueSize, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
     return results;
   }
 

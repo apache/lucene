@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.SplittableRandom;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
@@ -63,12 +62,10 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   private final IndexInput vectorData;
   private final IndexInput graphIndex;
   private final IndexInput graphData;
-  private final long checksumSeed;
 
   Lucene90HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
-    long[] checksumRef = new long[1];
     boolean success = false;
     try {
       vectorData =
@@ -76,22 +73,19 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
               state,
               versionMeta,
               Lucene90HnswVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene90HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              checksumRef);
+              Lucene90HnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
       graphIndex =
           openDataInput(
               state,
               versionMeta,
               Lucene90HnswVectorsFormat.GRAPH_LEVELS_EXTENSION,
-              Lucene90HnswVectorsFormat.GRAPH_LEVELS_CODEC_NAME,
-              checksumRef);
+              Lucene90HnswVectorsFormat.GRAPH_LEVELS_CODEC_NAME);
       graphData =
           openDataInput(
               state,
               versionMeta,
               Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_EXTENSION,
-              Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_CODEC_NAME,
-              checksumRef);
+              Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_CODEC_NAME);
       // TODO: should graph data be off-heap?
       fillGraphNodesAndOffsetsByLevel();
       success = true;
@@ -100,7 +94,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         IOUtils.closeWhileHandlingException(this);
       }
     }
-    checksumSeed = checksumRef[0];
   }
 
   private int readMetadata(SegmentReadState state) throws IOException {
@@ -130,11 +123,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   private static IndexInput openDataInput(
-      SegmentReadState state,
-      int versionMeta,
-      String fileExtension,
-      String codecName,
-      long[] checksumRef)
+      SegmentReadState state, int versionMeta, String fileExtension, String codecName)
       throws IOException {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
@@ -157,7 +146,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
               + versionVectorData,
           in);
     }
-    checksumRef[0] = CodecUtil.retrieveChecksum(in);
     return in;
   }
 
@@ -293,17 +281,14 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
     // use a seed that is fixed for the index so we get reproducible results for the same query
-    final SplittableRandom random = new SplittableRandom(checksumSeed);
     NeighborQueue results =
         HnswGraph.search(
             target,
             k,
-            k,
             vectorValues,
             fieldEntry.similarityFunction,
             getGraphValues(fieldEntry),
-            getAcceptOrds(acceptDocs, fieldEntry),
-            random);
+            getAcceptOrds(acceptDocs, fieldEntry));
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {

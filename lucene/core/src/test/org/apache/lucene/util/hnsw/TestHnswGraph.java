@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import java.util.SplittableRandom;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
@@ -167,12 +166,10 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraph.search(
             new float[] {1, 0},
             10,
-            10,
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
-            null,
-            new SplittableRandom(random().nextLong()));
+            null);
 
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
@@ -208,12 +205,10 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraph.search(
             new float[] {1, 0},
             10,
-            10,
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
-            acceptOrds,
-            new SplittableRandom(random().nextLong()));
+            acceptOrds);
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
@@ -356,15 +351,7 @@ public class TestHnswGraph extends LuceneTestCase {
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
-          HnswGraph.search(
-              query,
-              topK,
-              100,
-              vectors,
-              similarityFunction,
-              hnsw,
-              acceptOrds,
-              new SplittableRandom(random().nextLong()));
+          HnswGraph.search(query, topK, vectors, similarityFunction, hnsw, acceptOrds);
       NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
@@ -379,7 +366,7 @@ public class TestHnswGraph extends LuceneTestCase {
     }
     double overlap = totalMatches / (double) (100 * topK);
     System.out.println("overlap=" + overlap + " totalMatches=" + totalMatches);
-    assertTrue("overlap=" + overlap, overlap > 0.9);
+    assertTrue("overlap=" + overlap, overlap > 0.8);
   }
 
   private int computeOverlap(int[] a, int[] b) {
