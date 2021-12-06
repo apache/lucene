@@ -256,6 +256,23 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     assertEquals(1, result.iterator().cost());
   }
 
+  public void testLongOverflow() throws IOException {
+    {
+      DocIdSetBuilder builder = new DocIdSetBuilder(100);
+      builder.grow(1L);
+      Exception ex = expectThrows(ArithmeticException.class, () -> builder.grow(Long.MAX_VALUE));
+      assertEquals("long overflow", ex.getMessage());
+    }
+    {
+      DocIdSetBuilder builder = new DocIdSetBuilder(100);
+      builder.grow((long) Integer.MAX_VALUE + 1);
+      Exception ex =
+          expectThrows(
+              ArithmeticException.class, () -> builder.grow(Long.MAX_VALUE - Integer.MAX_VALUE));
+      assertEquals("long overflow", ex.getMessage());
+    }
+  }
+
   private static class DummyTerms extends Terms {
 
     private final int docCount;

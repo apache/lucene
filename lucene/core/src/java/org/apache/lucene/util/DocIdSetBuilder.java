@@ -186,17 +186,31 @@ public final class DocIdSetBuilder {
    */
   public BulkAdder grow(long numDocs) {
     if (bitSet == null) {
-      if ((long) totalAllocated + numDocs <= threshold) {
+      if ((long) totalAllocated + checkTotalAllocatedOverflow(numDocs) <= threshold) {
         // threshold is an int, cast is safe
         ensureBufferCapacity((int) numDocs);
       } else {
         upgradeToBitSet();
-        counter += numDocs;
+        counter += checkCounterOverflow(numDocs);
       }
     } else {
-      counter += numDocs;
+      counter += checkCounterOverflow(numDocs);
     }
     return adder;
+  }
+
+  private long checkTotalAllocatedOverflow(long numDocs) {
+    if ((long) totalAllocated + numDocs < totalAllocated) {
+      throw new ArithmeticException("long overflow");
+    }
+    return numDocs;
+  }
+
+  private long checkCounterOverflow(long numDocs) {
+    if (counter + numDocs < counter) {
+      throw new ArithmeticException("long overflow");
+    }
+    return numDocs;
   }
 
   private void ensureBufferCapacity(int numDocs) {
