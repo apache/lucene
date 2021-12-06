@@ -228,10 +228,6 @@ public class TestModularLayer {
                             module.descriptor().name()))
                 .sorted())
         .containsExactly(
-            "AUTOMATIC  org.apache.lucene.benchmark",
-            "AUTOMATIC  org.apache.lucene.expressions",
-            "AUTOMATIC  org.apache.lucene.replicator",
-            "AUTOMATIC  org.apache.lucene.spatial_extras",
             "NAMED      org.apache.lucene.analysis.common",
             "NAMED      org.apache.lucene.analysis.icu",
             "NAMED      org.apache.lucene.analysis.kuromoji",
@@ -242,10 +238,12 @@ public class TestModularLayer {
             "NAMED      org.apache.lucene.analysis.smartcn",
             "NAMED      org.apache.lucene.analysis.stempel",
             "NAMED      org.apache.lucene.backward_codecs",
+            "NAMED      org.apache.lucene.benchmark",
             "NAMED      org.apache.lucene.classification",
             "NAMED      org.apache.lucene.codecs",
             "NAMED      org.apache.lucene.core",
             "NAMED      org.apache.lucene.demo",
+            "NAMED      org.apache.lucene.expressions",
             "NAMED      org.apache.lucene.facet",
             "NAMED      org.apache.lucene.grouping",
             "NAMED      org.apache.lucene.highlighter",
@@ -256,8 +254,10 @@ public class TestModularLayer {
             "NAMED      org.apache.lucene.monitor",
             "NAMED      org.apache.lucene.queries",
             "NAMED      org.apache.lucene.queryparser",
+            "NAMED      org.apache.lucene.replicator",
             "NAMED      org.apache.lucene.sandbox",
             "NAMED      org.apache.lucene.spatial3d",
+            "NAMED      org.apache.lucene.spatial_extras",
             "NAMED      org.apache.lucene.suggest");
   }
 }

@@ -22,8 +22,6 @@ import java.util.stream.Collectors
 
 allprojects {
   plugins.withType(JavaPlugin) {
-    // TODO, NOCOMMIT: Experiment on the morfologik subproject only, for now.
-    if (project.path == ":lucene:analysis:morfologik") {
       // We won't be using gradle's built-in automatic module finder (because there is no way
       // to put non-modular JARs on classpath).
       java {
@@ -116,7 +114,6 @@ allprojects {
         return project.version.toString()
       })
     }
-  }
 
   // TODO: remove the hacks excluding java-module source folder from ecjLint and javadoc rendering.
 }
