@@ -36,19 +36,60 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.docvalues.FloatDocValues;
-import org.apache.lucene.queries.function.valuesource.*;
+import org.apache.lucene.queries.function.valuesource.BytesRefFieldSource;
+import org.apache.lucene.queries.function.valuesource.ConstValueSource;
+import org.apache.lucene.queries.function.valuesource.DivFloatFunction;
+import org.apache.lucene.queries.function.valuesource.DocFreqValueSource;
+import org.apache.lucene.queries.function.valuesource.DoubleConstValueSource;
+import org.apache.lucene.queries.function.valuesource.DoubleFieldSource;
+import org.apache.lucene.queries.function.valuesource.FloatFieldSource;
+import org.apache.lucene.queries.function.valuesource.IDFValueSource;
+import org.apache.lucene.queries.function.valuesource.IfFunction;
+import org.apache.lucene.queries.function.valuesource.IntFieldSource;
+import org.apache.lucene.queries.function.valuesource.JoinDocFreqValueSource;
+import org.apache.lucene.queries.function.valuesource.LinearFloatFunction;
+import org.apache.lucene.queries.function.valuesource.LiteralValueSource;
+import org.apache.lucene.queries.function.valuesource.LongFieldSource;
+import org.apache.lucene.queries.function.valuesource.MaxDocValueSource;
+import org.apache.lucene.queries.function.valuesource.MaxFloatFunction;
+import org.apache.lucene.queries.function.valuesource.MinFloatFunction;
+import org.apache.lucene.queries.function.valuesource.MultiBoolFunction;
+import org.apache.lucene.queries.function.valuesource.MultiFloatFunction;
+import org.apache.lucene.queries.function.valuesource.MultiFunction;
+import org.apache.lucene.queries.function.valuesource.MultiValuedDoubleFieldSource;
+import org.apache.lucene.queries.function.valuesource.MultiValuedFloatFieldSource;
+import org.apache.lucene.queries.function.valuesource.MultiValuedIntFieldSource;
+import org.apache.lucene.queries.function.valuesource.MultiValuedLongFieldSource;
+import org.apache.lucene.queries.function.valuesource.NormValueSource;
+import org.apache.lucene.queries.function.valuesource.NumDocsValueSource;
+import org.apache.lucene.queries.function.valuesource.PowFloatFunction;
+import org.apache.lucene.queries.function.valuesource.ProductFloatFunction;
+import org.apache.lucene.queries.function.valuesource.QueryValueSource;
+import org.apache.lucene.queries.function.valuesource.RangeMapFloatFunction;
+import org.apache.lucene.queries.function.valuesource.ReciprocalFloatFunction;
+import org.apache.lucene.queries.function.valuesource.ScaleFloatFunction;
+import org.apache.lucene.queries.function.valuesource.SumFloatFunction;
+import org.apache.lucene.queries.function.valuesource.SumTotalTermFreqValueSource;
+import org.apache.lucene.queries.function.valuesource.TFValueSource;
+import org.apache.lucene.queries.function.valuesource.TermFreqValueSource;
+import org.apache.lucene.queries.function.valuesource.TotalTermFreqValueSource;
 import org.apache.lucene.search.CheckHits;
 import org.apache.lucene.search.DoubleValuesSource;
+import org.apache.lucene.search.FilterScorer;
+import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSelector.Type;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
@@ -674,14 +715,75 @@ public class TestValueSources extends LuceneTestCase {
     }
   }
 
-  public void testWrappingAsDoubleValues() throws IOException {
+  public void testWrappingAsDoubleValues() throws Exception {
+
+    class AssertScoreComputedOnceQuery extends Query {
+
+      private final Query in;
+
+      public AssertScoreComputedOnceQuery(Query query) {
+        in = query;
+      }
+
+      @Override
+      public String toString(String field) {
+        return in.toString(field);
+      }
+
+      @Override
+      public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+          throws IOException {
+        return new FilterWeight(in.createWeight(searcher, scoreMode, boost)) {
+          @Override
+          public Scorer scorer(LeafReaderContext context) throws IOException {
+            return new FilterScorer(super.scorer(context)) {
+              int lastDocId = -1;
+
+              @Override
+              public float score() throws IOException {
+                assertTrue("shouldn't re-compute score", lastDocId != docID());
+                this.lastDocId = docID();
+                return super.score();
+              }
+
+              @Override
+              public float getMaxScore(int upTo) throws IOException {
+                return in.getMaxScore(upTo);
+              }
+            };
+          }
+        };
+      }
+
+      @Override
+      public Query rewrite(IndexReader reader) throws IOException {
+        var rewrite = in.rewrite(reader);
+        return rewrite == in ? this : new AssertScoreComputedOnceQuery(rewrite);
+      }
+
+      @Override
+      public void visit(QueryVisitor visitor) {
+        in.visit(visitor);
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int hashCode() {
+        return in.hashCode();
+      }
+    }
 
     FunctionScoreQuery q =
         FunctionScoreQuery.boostByValue(
-            new TermQuery(new Term("f", "t")),
+            new AssertScoreComputedOnceQuery(new TermQuery(new Term("text", "test"))),
             new DoubleFieldSource("double").asDoubleValuesSource());
 
-    searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
+    var topFieldDocs = searcher.search(q, 1, Sort.RELEVANCE);
+    assertTrue(topFieldDocs.scoreDocs.length > 0);
 
     // assert that the query has not cached a reference to the IndexSearcher
     FunctionScoreQuery.MultiplicativeBoostValuesSource source1 =
