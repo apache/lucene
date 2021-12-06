@@ -105,7 +105,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
       // AutomatonTestUtil.minimizeSimple(alternate);
       // System.out.println("minimize done");
       AutomatonQuery a1 = new AutomatonQuery(new Term("field", ""), automaton);
-      AutomatonQuery a2 = new AutomatonQuery(new Term("field", ""), alternate, Integer.MAX_VALUE);
+      AutomatonQuery a2 = new AutomatonQuery(new Term("field", ""), alternate);
 
       ScoreDoc[] origHits = searcher.search(a1, 25).scoreDocs;
       ScoreDoc[] newHits = searcher.search(a2, 25).scoreDocs;

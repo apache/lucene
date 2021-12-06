@@ -2115,6 +2115,8 @@ public final class CheckIndex implements Closeable {
 
         if (fieldInfo.hasNorms() && isVectors == false) {
           final NumericDocValues norms = normsProducer.getNorms(fieldInfo);
+          // count of valid norm values found for the field
+          int actualCount = 0;
           // Cross-check terms with norms
           for (int doc = norms.nextDoc();
               doc != DocIdSetIterator.NO_MORE_DOCS;
@@ -2126,18 +2128,40 @@ public final class CheckIndex implements Closeable {
               continue;
             }
             final long norm = norms.longValue();
-            if (norm != 0 && visitedDocs.get(doc) == false) {
-              throw new CheckIndexException(
-                  "Document "
-                      + doc
-                      + " doesn't have terms according to postings but has a norm value that is not zero: "
-                      + Long.toUnsignedString(norm));
+            if (norm != 0) {
+              actualCount++;
+              if (visitedDocs.get(doc) == false) {
+                throw new CheckIndexException(
+                    "Document "
+                        + doc
+                        + " doesn't have terms according to postings but has a norm value that is not zero: "
+                        + Long.toUnsignedString(norm));
+              }
             } else if (norm == 0 && visitedDocs.get(doc)) {
               throw new CheckIndexException(
                   "Document "
                       + doc
                       + " has terms according to postings but its norm value is 0, which may only be used on documents that have no terms");
             }
+          }
+          int expectedCount = 0;
+          for (int doc = visitedDocs.nextSetBit(0);
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc =
+                  doc + 1 >= visitedDocs.length()
+                      ? DocIdSetIterator.NO_MORE_DOCS
+                      : visitedDocs.nextSetBit(doc + 1)) {
+            if (liveDocs != null && liveDocs.get(doc) == false) {
+              // Norms may only be out of sync with terms on deleted documents.
+              // This happens when a document fails indexing and in that case it
+              // should be immediately marked as deleted by the IndexWriter.
+              continue;
+            }
+            expectedCount++;
+          }
+          if (expectedCount != actualCount) {
+            throw new CheckIndexException(
+                "actual norm count: " + actualCount + " but expected: " + expectedCount);
           }
         }
 

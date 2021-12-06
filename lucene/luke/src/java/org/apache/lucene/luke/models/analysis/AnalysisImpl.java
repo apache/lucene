@@ -41,6 +41,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.TokenizerFactory;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.luke.models.LukeException;
 import org.apache.lucene.util.AttributeImpl;
@@ -50,7 +51,7 @@ import org.apache.lucene.util.IOUtils;
 /** Default implementation of {@link AnalysisImpl} */
 public final class AnalysisImpl implements Analysis {
 
-  private Analyzer analyzer;
+  private Analyzer analyzer = defaultAnalyzer();
 
   @Override
   public void addExternalJars(List<String> jarFiles) {
@@ -150,6 +151,10 @@ public final class AnalysisImpl implements Analysis {
       throw new LukeException(
           String.format(Locale.ENGLISH, "Failed to instantiate class: %s", analyzerType), e);
     }
+  }
+
+  private Analyzer defaultAnalyzer() {
+    return new StandardAnalyzer();
   }
 
   @Override
