@@ -57,7 +57,12 @@ allprojects {
           .anyMatch(file -> file.exists())
 
         if (!hasModuleDescriptor) {
-          // Do nothing. Stay with classpath mode only.
+          // We could return here to force classpath mode. But...
+          // compile even non-modular projects with modular references.
+        }
+
+        if (task.project.path == ":lucene:test-framework") {
+          // Split packages. Stay with classpath mode only.
           return
         }
 
@@ -68,10 +73,17 @@ allprojects {
           @Override
           Iterable<String> asArguments() {
             def entries = cp.filter(shouldBeOnModulePath)
+            def extraArgs = []
             if (entries.size() == 0) {
-              return []
+              return extraArgs
             } else {
-              return ["--module-path", entries.files.join(File.pathSeparator)]
+              if (!hasModuleDescriptor) {
+                // We're compiling a non-module so we'll bring everything on module path in
+                // otherwise things wouldn't be part of the resolved module graph.
+                extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+              }
+              extraArgs += ["--module-path", entries.files.join(File.pathSeparator) ]
+              return extraArgs
             }
           }
         })

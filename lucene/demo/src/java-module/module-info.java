@@ -16,10 +16,6 @@
  */
 
 /** Simple example code for Apache Lucene */
-// TODO: The compiler complains about "requires-automatic" since "expressions" module is an
-// automatic module for now.
-// Once that is properly modularized, this line can be removed.
-@SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.demo {
   requires org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
