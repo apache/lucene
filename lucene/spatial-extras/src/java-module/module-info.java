@@ -15,17 +15,23 @@
  * limitations under the License.
  */
 
-// @SuppressWarnings({"requires-automatic"})
-/*
-module org.apache.lucene.expressions {
-  requires org.objectweb.asm;
-  requires org.objectweb.asm.commons;
-  requires antlr4.runtime;
+/** Geospatial search */
+@SuppressWarnings({"requires-automatic"})
+module org.apache.lucene.spatial_extras {
+  requires java.logging;
+  requires spatial4j;
+  requires s2.geometry.library.java;
   requires org.apache.lucene.core;
-  requires org.apache.lucene.codecs;
+  requires org.apache.lucene.spatial3d;
 
-  exports org.apache.lucene.expressions;
-  exports org.apache.lucene.expressions.js;
-
+  exports org.apache.lucene.spatial;
+  exports org.apache.lucene.spatial.bbox;
+  exports org.apache.lucene.spatial.composite;
+  exports org.apache.lucene.spatial.prefix;
+  exports org.apache.lucene.spatial.prefix.tree;
+  exports org.apache.lucene.spatial.query;
+  exports org.apache.lucene.spatial.serialized;
+  exports org.apache.lucene.spatial.spatial4j;
+  exports org.apache.lucene.spatial.util;
+  exports org.apache.lucene.spatial.vector;
 }
-*/
