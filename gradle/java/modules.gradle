@@ -22,7 +22,6 @@ import java.util.stream.Collectors
 
 allprojects {
   plugins.withType(JavaPlugin) {
-    // TODO, NOCOMMIT: Experiment on the morfologik subproject only, for now.
       // We won't be using gradle's built-in automatic module finder (because there is no way
       // to put non-modular JARs on classpath).
       java {
