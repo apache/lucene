@@ -7,7 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+* LUCENE-10197: UnifiedHighlighter now has a mandatory Builder to construct it. The UH is now
+  immutable. (Animesh Pandey, David Smiley)
 
 New Features
 ---------------------
