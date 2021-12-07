@@ -24,89 +24,102 @@ import java.util.stream.Collectors
 
 allprojects {
   plugins.withType(JavaPlugin) {
-      // We won't be using gradle's built-in automatic module finder (because there is no way
-      // to put non-modular JARs on classpath).
+      // We won't be using gradle's built-in automatic module finder.
       java {
         modularity.inferModulePath.set(false)
       }
 
-      Spec<? extends File> shouldBeOnModulePath = { File file ->
-        if (file.name.endsWithIgnoreCase(".jar")) {
-          // All JAR files, whether they're named modules or not (they'll become automatic modules).
-          return true
-        }
+      if (project.path == ":lucene:test-framework") {
+        // Split packages. Stay with classpath mode only.
+        return
+      }
 
-        if (file.isDirectory()) {
-          // If it's a directory, check for the presence of module-info.class (expanded module).
-          if (new File(file, "module-info.class").exists()) {
-            return true
+      //
+      // We declare explicit configurations for declaring modular
+      // dependencies. Gradle's java plugin "convention" configurations extend from these
+      // so all dependencies end up on classpath by default for backward compatibility with other
+      // tasks and gradle infrastructure.
+      //
+      // At the same time, we also know which dependencies (and their transitive graph of dependencies!)
+      // should be placed on module-path only.
+      //
+      // Note that an explicit configuration of modular dependencies also opens up the possibility of automatically
+      // validating whether the dependency configuration for a gradle project is consistent with the information in
+      // the module-info descriptor because there is direct correspondence between the two:
+      //
+      // moduleApi            - 'requires transitive'
+      // moduleImplementation - 'requires'
+      // moduleCompileOnly    - 'requires static'
+      //
+      configurations {
+        moduleApi
+        api.extendsFrom moduleApi
+
+        moduleImplementation
+        implementation.extendsFrom(moduleImplementation)
+
+        // TODO: add others if we need them (compileOnly, runtimeOnly)?
+
+        // This is for internal needs, a combination of the above.
+        moduleCompilePath
+        moduleCompilePath.extendsFrom(moduleApi, moduleImplementation)
+
+        // All these configurations are for resolution only and have a preference to see 'classes'
+        // folder instead of JARs for inter-project references.
+        [ moduleApi,
+          moduleImplementation,
+          moduleCompilePath
+        ].each { conf ->
+          conf.canBeConsumed(false)
+          conf.canBeResolved(true)
+          conf.attributes {
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
           }
         }
-
-        // Anything else is not recognized as a module, ignore.
-        return false
       }
 
       // Configure a custom hook in JavaCompile which will separate automatic modules, modules
       // and non-modules (unpacked folders without module-info) prior
       // to the task execution.
       tasks.named("compileJava").configure { JavaCompile task ->
-        SourceSet sourceSet = sourceSets.main
-        boolean hasModuleDescriptor = sourceSet.allJava.srcDirs.stream()
-          .map(dir -> new File(dir, "module-info.java"))
-          .anyMatch(file -> file.exists())
+        Configuration modulePath = task.project.configurations.moduleCompilePath
+        task.dependsOn modulePath
 
-        if (!hasModuleDescriptor) {
-          // We could return here to force classpath mode. But...
-          // compile even non-modular projects with modular references.
-        }
+        SourceSet sourceSet = task.project.sourceSets.main
 
-        if (task.project.path == ":lucene:test-framework") {
-          // Split packages. Stay with classpath mode only.
-          return
-        }
-
-        FileCollection cp = sourceSets.main.compileClasspath
-
-        // Add module path to compiler arguments.
+        // Add modular dependencies and their transitive dependencies to module path.
         task.options.compilerArgumentProviders.add(new CommandLineArgumentProvider() {
           @Override
           Iterable<String> asArguments() {
-            def entries = cp.filter(shouldBeOnModulePath)
             def extraArgs = []
-            if (entries.size() == 0) {
-              return extraArgs
-            } else {
+            if (!modulePath.isEmpty()) {
+              boolean hasModuleDescriptor = sourceSet.allJava.srcDirs.stream()
+                  .map(dir -> new File(dir, "module-info.java"))
+                  .anyMatch(file -> file.exists())
+
               if (!hasModuleDescriptor) {
                 // We're compiling a non-module so we'll bring everything on module path in
                 // otherwise things wouldn't be part of the resolved module graph.
                 extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
               }
-              extraArgs += ["--module-path", entries.files.join(File.pathSeparator) ]
-              return extraArgs
+              extraArgs += ["--module-path", modulePath.files.join(File.pathSeparator) ]
             }
+
+            task.logger.info("Module path for ${task.path}:\n  " + modulePath.files.sort().join("\n  "))
+
+            return extraArgs
           }
         })
 
-        // Modify the default classpath: remove anything already placed on module path. We use
-        // a lazy file collection for this (maybe it's terribly inefficient, didn't check).
-        task.classpath = files({
-          cp.filter({ file -> !shouldBeOnModulePath(file) })
+        // Modify the default classpath by removing anything already placed on module path.
+        // This could be done in a fancier way but a set difference is just fine for us here. Use a lazy
+        // provider to delay computation of the actual path.
+        task.classpath = files({ ->
+          def trimmedClasspath = sourceSet.compileClasspath - modulePath
+          task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
+          return trimmedClasspath
         })
       }
-
-      // This is for debugging classpath vs. module path only.
-      tasks.register("showCompilationPaths", {
-        dependsOn sourceSets.main.compileClasspath
-
-        doFirst {
-          logger.lifecycle(
-              sourceSets.main.compileClasspath.collect { File f ->
-                def name = f.name.endsWith(".jar") ? f.name : f.toString()
-                return name + (shouldBeOnModulePath(f) ? "  <module-path>" : "")
-              }.sort().join("\n"))
-        }
-      })
     }
 
     // Configure module versions.

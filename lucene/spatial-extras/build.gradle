@@ -20,11 +20,11 @@ apply plugin: 'java-library'
 description = 'Geospatial search'
 
 dependencies {
-  api project(':lucene:core')
-  api project(':lucene:spatial3d')
+  moduleApi project(':lucene:core')
+  moduleApi project(':lucene:spatial3d')
 
-  api 'org.locationtech.spatial4j:spatial4j'
-  api 'io.sgr:s2-geometry-library-java'
+  moduleApi 'org.locationtech.spatial4j:spatial4j'
+  moduleApi 'io.sgr:s2-geometry-library-java'
 
   testImplementation project(':lucene:test-framework')
   testImplementation testFixtures(project(':lucene:spatial3d'))

@@ -20,14 +20,14 @@ apply plugin: 'java-library'
 description = 'Dynamically computed values to sort/facet/search on based on a pluggable grammar'
 
 dependencies {
-  api project(':lucene:core')
+  moduleApi project(':lucene:core')
 
-  implementation project(':lucene:codecs')
+  moduleImplementation project(':lucene:codecs')
 
-  implementation 'org.antlr:antlr4-runtime'
+  moduleImplementation 'org.antlr:antlr4-runtime'
 
-  implementation 'org.ow2.asm:asm'
-  implementation('org.ow2.asm:asm-commons')
+  moduleImplementation 'org.ow2.asm:asm'
+  moduleImplementation 'org.ow2.asm:asm-commons'
 
   testImplementation project(':lucene:test-framework')
 }
