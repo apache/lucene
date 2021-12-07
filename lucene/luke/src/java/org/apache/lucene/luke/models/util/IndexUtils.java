@@ -47,6 +47,8 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.LockFactory;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -106,6 +108,17 @@ public final class IndexUtils {
     } else {
       return new MultiReader(readers.toArray(new IndexReader[readers.size()]));
     }
+  }
+
+  /**
+   * Returns supported {@link Directory} implementations.
+   *
+   * @return class names of supported directory implementation
+   */
+  public static String[] supportedDirectoryImpls() {
+    return new String[] {
+      FSDirectory.class.getName(), MMapDirectory.class.getName(), NIOFSDirectory.class.getName()
+    };
   }
 
   /**

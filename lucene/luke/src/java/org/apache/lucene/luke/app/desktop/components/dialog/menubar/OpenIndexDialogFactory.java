@@ -55,9 +55,8 @@ import org.apache.lucene.luke.app.desktop.util.FontUtils;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 import org.apache.lucene.luke.app.desktop.util.StyleConstants;
 import org.apache.lucene.luke.models.LukeException;
+import org.apache.lucene.luke.models.util.IndexUtils;
 import org.apache.lucene.luke.util.LoggerFactory;
-import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -127,7 +126,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
         Executors.newFixedThreadPool(1, new NamedThreadFactory("load-directory-types"));
     executorService.execute(
         () -> {
-          for (String clazzName : supportedDirImpls()) {
+          for (String clazzName : IndexUtils.supportedDirectoryImpls()) {
             dirImplCombo.addItem(clazzName);
           }
         });
@@ -252,10 +251,6 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
     panel.add(keepCommits);
 
     return panel;
-  }
-
-  private String[] supportedDirImpls() {
-    return new String[] {MMapDirectory.class.getName(), NIOFSDirectory.class.getName()};
   }
 
   private JPanel buttons() {
