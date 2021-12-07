@@ -18,10 +18,13 @@ package org.apache.lucene.distribution;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.module.Configuration;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,9 +32,11 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -58,6 +63,9 @@ public class TestModularLayer {
 
   /** Resolved modules from {@link #MODULES_PROPERTY}. */
   private static Set<ModuleReference> allModules;
+
+  /** {@link ModuleFinder} resolving {@link #MODULES_PROPERTY}. */
+  private static ModuleFinder allModulesFinder;
 
   /** Ensure Lucene classes are not visible. */
   @BeforeClass
@@ -89,7 +97,8 @@ public class TestModularLayer {
               + modulesPath.toAbsolutePath());
     }
 
-    allModules = ModuleFinder.of(modulesPath).findAll();
+    allModulesFinder = ModuleFinder.of(modulesPath);
+    allModules = allModulesFinder.findAll();
   }
 
   /** Make sure all module names remain constant, even if we reorganize the build. */
@@ -259,5 +268,36 @@ public class TestModularLayer {
             "NAMED      org.apache.lucene.spatial3d",
             "NAMED      org.apache.lucene.spatial_extras",
             "NAMED      org.apache.lucene.suggest");
+  }
+
+  /** Tries to actually load/ resolve the modules and verify runtime modular checks. */
+  @Test
+  public void testRuntimeModuleCheckAssertions() throws Exception {
+    String luceneCoreModule = "org.apache.lucene.core";
+
+    ModuleLayer parent = ModuleLayer.boot();
+    Configuration configuration =
+        parent
+            .configuration()
+            .resolve(allModulesFinder, ModuleFinder.of(), Set.of(luceneCoreModule));
+    ClassLoader classLoader = new URLClassLoader(new URL[] {}, ClassLoader.getSystemClassLoader());
+    ModuleLayer layer = parent.defineModulesWithOneLoader(configuration, classLoader);
+    Module luceneCore = layer.findModule(luceneCoreModule).get();
+
+    @SuppressWarnings("unchecked")
+    Supplier<Map<String, String>> instance =
+        (Supplier<Map<String, String>>)
+            Class.forName(luceneCore, "org.apache.lucene.internal.ModuleCheck")
+                .getDeclaredConstructor()
+                .newInstance();
+
+    Assertions.assertThat(instance.get())
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.ofEntries(
+                Map.entry("hello", "world"),
+                // I assume all test platforms will actually be able to support unmap... We could
+                // replace this with a more direct test trying to access Unsafe but it seems less
+                // obvious.
+                Map.entry("unmap.supported", "true")));
   }
 }

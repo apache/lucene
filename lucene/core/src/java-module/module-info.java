@@ -46,6 +46,10 @@ module org.apache.lucene.core {
   exports org.apache.lucene.util.mutable;
   exports org.apache.lucene.util.packed;
 
+  // TODO: These should be exported to the distribution-test only but
+  // in order to do this, the tests there have to be compiled/ run as a module.
+  exports org.apache.lucene.internal;
+
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
   provides org.apache.lucene.codecs.Codec with
