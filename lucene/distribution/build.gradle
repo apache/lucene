@@ -134,15 +134,17 @@ task prepareSonatypeBundle(type: Zip) {
   destinationDirectory = file("${buildDir}/sonatype")
   archiveFileName = "artifact-bundle-lucene.zip"
 
-  def releaseDir = propertyOrDefault("release.dir", null)
-  if (releaseDir == null) {
-    throw new GradleException("Pass an explicit release directory path with -Prelease.dir=...")
-  }
-  if (!file("${releaseDir}/.gitrev").exists()) {
-    throw new GradleException("Something is wrong, this is not a release directory: " + releaseDir)
-  }
+  from({ ->
+    def releaseDir = propertyOrDefault("release.dir", null)
+    if (releaseDir == null) {
+      throw new GradleException("Pass an explicit release directory path with -Prelease.dir=...")
+    }
+    if (!file("${releaseDir}/.gitrev").exists()) {
+      throw new GradleException("Something is wrong, this is not a release directory: " + releaseDir)
+    }
 
-  from(file("${releaseDir}/maven"), {
+    return file("${releaseDir}/maven")
+  }, {
     exclude "**/maven-metadata.*"
     eachFile { FileCopyDetails details ->
       details.path = details.name
