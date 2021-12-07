@@ -38,8 +38,7 @@ dependencies {
     exclude module: "xml-apis"
   })
 
-  // TODO - no corresponding module configuration yet.
-  runtimeOnly project(':lucene:analysis:icu')
+  moduleRuntimeOnly project(':lucene:analysis:icu')
 
   testImplementation project(':lucene:test-framework')
 }

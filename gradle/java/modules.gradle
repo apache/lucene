@@ -53,16 +53,22 @@ allprojects {
         moduleImplementation
         implementation.extendsFrom(moduleImplementation)
 
-        // TODO: add others if we need them (compileOnly, runtimeOnly)?
+        moduleRuntimeOnly
+        runtimeOnly.extendsFrom(moduleRuntimeOnly)
+
+        moduleCompileOnly
+        compileOnly.extendsFrom(moduleCompileOnly)
 
         // This is for internal needs, a combination of the above.
         moduleCompilePath
-        moduleCompilePath.extendsFrom(moduleApi, moduleImplementation)
+        moduleCompilePath.extendsFrom(moduleApi, moduleImplementation, moduleCompileOnly)
 
         // All these configurations are for resolution only and have a preference to see 'classes'
         // folder instead of JARs for inter-project references.
         [ moduleApi,
           moduleImplementation,
+          moduleRuntimeOnly,
+          moduleCompileOnly,
           moduleCompilePath
         ].each { conf ->
           conf.canBeConsumed(false)
