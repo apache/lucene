@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util.automaton;
 
+import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.util.LuceneTestCase;
 
 /**
@@ -74,6 +77,42 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testCaseInsensitiveCharUpper() {
+    RegExp re = new RegExp("C", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    assertEquals("\\C", re.toString());
+    assertEquals("REGEXP_CHAR char=C\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected = Operations.union(Automata.makeChar('c'), Automata.makeChar('C'));
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testCaseInsensitiveCharNotSensitive() {
+    RegExp re = new RegExp("4", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    assertEquals("\\4", re.toString());
+    assertEquals("REGEXP_CHAR char=4\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected = Automata.makeChar('4');
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testCaseInsensitiveCharNonAscii() {
+    RegExp re = new RegExp("Ж", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    assertEquals("\\Ж", re.toString());
+    assertEquals("REGEXP_CHAR char=Ж\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected = Automata.makeChar('Ж');
+    assertSameLanguage(expected, actual);
+  }
+
   public void testNegatedChar() {
     RegExp re = new RegExp("[^c]");
     // TODO: would be nice to emit negated class rather than this
@@ -128,6 +167,14 @@ public class TestRegExpParsing extends LuceneTestCase {
         Operations.union(
             Automata.makeCharRange(0, 'a'), Automata.makeCharRange('e', Integer.MAX_VALUE));
     assertSameLanguage(expected, actual);
+  }
+
+  public void testIllegalCharRange() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("[z-a]");
+        });
   }
 
   public void testCharClassDigit() {
@@ -236,6 +283,46 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testTruncatedCharClass() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("[b-d");
+        });
+  }
+
+  public void testBogusCharClass() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("[\\q]");
+        });
+  }
+
+  public void testExcapedNotCharClass() {
+    RegExp re = new RegExp("[\\?]");
+    assertEquals("\\?", re.toString());
+    assertEquals("REGEXP_CHAR char=?\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected = Automata.makeChar('?');
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testExcapedSlashNotCharClass() {
+    RegExp re = new RegExp("[\\\\]");
+    assertEquals("\\\\", re.toString());
+    assertEquals("REGEXP_CHAR char=\\\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected = Automata.makeChar('\\');
+    assertSameLanguage(expected, actual);
+  }
+
   public void testEmpty() {
     RegExp re = new RegExp("#", RegExp.EMPTY);
     assertEquals("#", re.toString());
@@ -258,6 +345,42 @@ public class TestRegExpParsing extends LuceneTestCase {
 
     Automaton expected = Automata.makeDecimalInterval(5, 40, 0);
     assertSameLanguage(expected, actual);
+  }
+
+  public void testBackwardsInterval() {
+    RegExp re = new RegExp("<40-5>");
+    assertEquals("<5-40>", re.toString());
+    assertEquals("REGEXP_INTERVAL<5-40>\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    // TODO: numeric intervals are NFAs
+
+    Automaton expected = Automata.makeDecimalInterval(5, 40, 0);
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testTruncatedInterval() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("<1-");
+        });
+  }
+
+  public void testTruncatedInterval2() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("<1");
+        });
+  }
+
+  public void testEmptyInterval() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("<->");
+        });
   }
 
   public void testOptional() {
@@ -338,6 +461,22 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testTruncatedRepeat() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("a{5,8");
+        });
+  }
+
+  public void testBogusRepeat() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("a{Z}");
+        });
+  }
+
   public void testString() {
     RegExp re = new RegExp("boo");
     assertEquals("\"boo\"", re.toString());
@@ -364,6 +503,26 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton expected = Operations.concatenate(c1, c2);
     expected = Operations.concatenate(expected, c2);
     assertSameLanguage(expected, actual);
+  }
+
+  public void testExplicitString() {
+    RegExp re = new RegExp("\"boo\"");
+    assertEquals("\"boo\"", re.toString());
+    assertEquals("REGEXP_STRING string=boo\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected = Automata.makeString("boo");
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testNotTerminatedString() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("\"boo");
+        });
   }
 
   public void testConcatenation() {
@@ -404,6 +563,22 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testTruncatedIntersection() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("a&");
+        });
+  }
+
+  public void testTruncatedIntersectionParens() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("(a)&(");
+        });
+  }
+
   public void testUnion() {
     RegExp re = new RegExp("[b-c]|[e-f]");
     assertEquals("([\\b-\\c]|[\\e-\\f])", re.toString());
@@ -423,24 +598,101 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testTruncatedUnion() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("a|");
+        });
+  }
+
+  public void testTruncatedUnionParens() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("(a)|(");
+        });
+  }
+
   public void testAutomaton() {
     AutomatonProvider myProvider =
         new AutomatonProvider() {
           @Override
           public Automaton getAutomaton(String name) {
-            if (name.equals("myletter")) return Automata.makeChar('z');
-            else return null;
+            return Automata.makeChar('z');
           }
         };
     RegExp re = new RegExp("<myletter>", RegExp.ALL);
     assertEquals("<myletter>", re.toString());
     assertEquals("REGEXP_AUTOMATON\n", re.toStringTree());
+    assertEquals(Set.of("myletter"), re.getIdentifiers());
 
     Automaton actual = re.toAutomaton(myProvider);
     assertTrue(actual.isDeterministic());
 
     Automaton expected = Automata.makeChar('z');
     assertSameLanguage(expected, actual);
+  }
+
+  public void testAutomatonMap() {
+    RegExp re = new RegExp("<myletter>", RegExp.ALL);
+    assertEquals("<myletter>", re.toString());
+    assertEquals("REGEXP_AUTOMATON\n", re.toStringTree());
+    assertEquals(Set.of("myletter"), re.getIdentifiers());
+
+    Automaton actual = re.toAutomaton(Map.of("myletter", Automata.makeChar('z')));
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected = Automata.makeChar('z');
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testAutomatonIOException() {
+    AutomatonProvider myProvider =
+        new AutomatonProvider() {
+          @Override
+          public Automaton getAutomaton(String name) throws IOException {
+            throw new IOException("fake ioexception");
+          }
+        };
+    RegExp re = new RegExp("<myletter>", RegExp.ALL);
+    assertEquals("<myletter>", re.toString());
+    assertEquals("REGEXP_AUTOMATON\n", re.toStringTree());
+    assertEquals(Set.of("myletter"), re.getIdentifiers());
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          re.toAutomaton(myProvider);
+        });
+  }
+
+  public void testAutomatonNotFound() {
+    RegExp re = new RegExp("<bogus>", RegExp.ALL);
+    assertEquals("<bogus>", re.toString());
+    assertEquals("REGEXP_AUTOMATON\n", re.toStringTree());
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          re.toAutomaton(Map.of("myletter", Automata.makeChar('z')));
+        });
+  }
+
+  public void testIllegalSyntaxFlags() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("bogus", Integer.MAX_VALUE);
+        });
+  }
+
+  public void testIllegalMatchFlags() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new RegExp("bogus", RegExp.ALL, 1);
+        });
   }
 
   private void assertSameLanguage(Automaton expected, Automaton actual) {
