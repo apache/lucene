@@ -139,7 +139,7 @@ task prepareSonatypeBundle(type: Zip) {
     if (releaseDir == null) {
       throw new GradleException("Pass an explicit release directory path with -Prelease.dir=...")
     }
-    if (!file("${releaseDir}/.gitrev").exists()) {
+    if (!file("${releaseDir}/maven").exists()) {
       throw new GradleException("Something is wrong, this is not a release directory: " + releaseDir)
     }
 
