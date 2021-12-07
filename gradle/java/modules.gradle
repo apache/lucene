@@ -29,11 +29,6 @@ allprojects {
         modularity.inferModulePath.set(false)
       }
 
-      if (project.path == ":lucene:test-framework") {
-        // Split packages. Stay with classpath mode only.
-        return
-      }
-
       //
       // We declare explicit configurations for declaring modular
       // dependencies. Gradle's java plugin "convention" configurations extend from these
