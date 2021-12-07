@@ -713,13 +713,14 @@ public class TestMatchHighlighter extends LuceneTestCase {
                       "fn:nonOverlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
                       "0. %s: The quick brown >fox< jumps over the lazy dog"
                     },
-                    /*
-                    The test cases below does not work for fields enabled with offset yet:
-                    mainly "extend" and "atLeast"
                     {
                       "fn:atLeast(2 fn:unordered(furry dog) fn:unordered(brown dog) lazy quick)",
                       "0. %s: The >quick >brown fox jumps over the lazy<<> dog<"
                     },
+                    /*
+                    The test cases below does not work for fields enabled with offset yet:
+                    mainly "extend"
+
                     {"fn:extend(fox 1 2)", "0. %s: The quick >brown fox jumps over< the lazy dog"},
                     {
                       "fn:extend(fn:or(dog fox) 2 0)",
