@@ -61,9 +61,6 @@ public class TestModularLayer {
   /** The expected distribution version of Lucene modules. */
   private static final String VERSION_PROPERTY = "lucene.distribution.version";
 
-  /** All resolved modules from {@link #DISTRIBUTION_PROPERTY} (core and thirdparty). */
-  private static Set<ModuleReference> allModules;
-
   /**
    * {@link ModuleFinder} resolving both {@link #coreModulesFinder} and {@link
    * #thirdPartyModulesFinder}.
@@ -123,7 +120,6 @@ public class TestModularLayer {
     thirdPartyModulesFinder = ModuleFinder.of(thirdPartyModulesPath);
 
     allModulesFinder = ModuleFinder.compose(coreModulesFinder, thirdPartyModulesFinder);
-    allModules = allModulesFinder.findAll();
   }
 
   /** Make sure all module names remain constant, even if we reorganize the build. */
