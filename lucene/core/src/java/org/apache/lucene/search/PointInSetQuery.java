@@ -228,7 +228,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
 
     @Override
-    public void grow(int count) {
+    public void grow(long count) {
       adder = result.grow(count);
     }
 
@@ -332,7 +332,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
 
     @Override
-    public void grow(int count) {
+    public void grow(long count) {
       adder = result.grow(count);
     }
 

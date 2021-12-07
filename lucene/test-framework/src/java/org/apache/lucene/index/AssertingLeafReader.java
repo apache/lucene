@@ -1223,7 +1223,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     final byte[] lastMaxPackedValue;
     private Relation lastCompareResult;
     private int lastDocID = -1;
-    private int docBudget;
+    private long docBudget;
 
     AssertingIntersectVisitor(
         int numDataDims, int numIndexDims, int bytesPerDim, IntersectVisitor in) {
@@ -1304,7 +1304,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public void grow(int count) {
+    public void grow(long count) {
       in.grow(count);
       docBudget = count;
     }

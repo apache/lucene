@@ -169,7 +169,7 @@ public abstract class PointRangeQuery extends Query {
           DocIdSetBuilder.BulkAdder adder;
 
           @Override
-          public void grow(int count) {
+          public void grow(long count) {
             adder = result.grow(count);
           }
 
