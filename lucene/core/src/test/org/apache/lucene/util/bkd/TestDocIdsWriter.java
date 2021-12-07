@@ -73,6 +73,21 @@ public class TestDocIdsWriter extends LuceneTestCase {
     }
   }
 
+  public void testContinuousIds() throws Exception {
+    int numIters = atLeast(100);
+    try (Directory dir = newDirectory()) {
+      for (int iter = 0; iter < numIters; ++iter) {
+        int size = 1 + random().nextInt(5000);
+        int[] docIDs = new int[size];
+        int start = random().nextInt(1000000);
+        for (int i = 0; i < docIDs.length; i++) {
+          docIDs[i] = start + i;
+        }
+        test(dir, docIDs);
+      }
+    }
+  }
+
   private void test(Directory dir, int[] ints) throws Exception {
     final long len;
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
