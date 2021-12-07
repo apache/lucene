@@ -55,17 +55,29 @@ import org.junit.Test;
  * JUnit, for example).
  */
 public class TestModularLayer {
-  /** A path to a directory with Lucene distribution's modules. */
-  private static final String MODULES_PROPERTY = "lucene.distribution.modules";
+  /** A path to a directory with an expanded Lucene distribution. */
+  private static final String DISTRIBUTION_PROPERTY = "lucene.distribution.dir";
 
   /** The expected distribution version of Lucene modules. */
   private static final String VERSION_PROPERTY = "lucene.distribution.version";
 
-  /** Resolved modules from {@link #MODULES_PROPERTY}. */
+  /** All resolved modules from {@link #DISTRIBUTION_PROPERTY} (core and thirdparty). */
   private static Set<ModuleReference> allModules;
 
-  /** {@link ModuleFinder} resolving {@link #MODULES_PROPERTY}. */
+  /**
+   * {@link ModuleFinder} resolving both {@link #coreModulesFinder} and {@link
+   * #thirdPartyModulesFinder}.
+   */
   private static ModuleFinder allModulesFinder;
+
+  /** Only core Lucene modules, no third party modules. */
+  private static Set<ModuleReference> allCoreModules;
+
+  /** {@link ModuleFinder} resolving only the Lucene modules. */
+  private static ModuleFinder coreModulesFinder;
+
+  /** {@link ModuleFinder} resolving only the third party modules. */
+  private static ModuleFinder thirdPartyModulesFinder;
 
   /** Ensure Lucene classes are not visible. */
   @BeforeClass
@@ -84,27 +96,41 @@ public class TestModularLayer {
    */
   @BeforeClass
   public static void checkModulePathProvided() {
-    String modulesPropertyValue = System.getProperty(MODULES_PROPERTY);
+    String modulesPropertyValue = System.getProperty(DISTRIBUTION_PROPERTY);
     if (modulesPropertyValue == null) {
-      throw new AssertionError(MODULES_PROPERTY + " property is required for this test.");
+      throw new AssertionError(DISTRIBUTION_PROPERTY + " property is required for this test.");
     }
 
-    Path modulesPath = Paths.get(modulesPropertyValue);
+    Path modulesPath = Paths.get(modulesPropertyValue).resolve("modules");
     if (!Files.isDirectory(modulesPath)) {
       throw new AssertionError(
-          MODULES_PROPERTY
-              + " property does not point to a directory: "
+          DISTRIBUTION_PROPERTY
+              + " property does not point to a directory where this path is present: "
               + modulesPath.toAbsolutePath());
     }
 
-    allModulesFinder = ModuleFinder.of(modulesPath);
+    Path thirdPartyModulesPath = Paths.get(modulesPropertyValue).resolve("modules-thirdparty");
+    if (!Files.isDirectory(thirdPartyModulesPath)) {
+      throw new AssertionError(
+          DISTRIBUTION_PROPERTY
+              + " property does not point to a directory where this path is present: "
+              + thirdPartyModulesPath.toAbsolutePath());
+    }
+
+    coreModulesFinder = ModuleFinder.of(modulesPath);
+    allCoreModules = coreModulesFinder.findAll();
+
+    thirdPartyModulesFinder = ModuleFinder.of(thirdPartyModulesPath);
+
+    allModulesFinder = ModuleFinder.compose(coreModulesFinder, thirdPartyModulesFinder);
     allModules = allModulesFinder.findAll();
   }
 
   /** Make sure all module names remain constant, even if we reorganize the build. */
   @Test
   public void testExpectedDistributionModuleNames() {
-    Assertions.assertThat(allModules.stream().map(module -> module.descriptor().name()).sorted())
+    Assertions.assertThat(
+            allCoreModules.stream().map(module -> module.descriptor().name()).sorted())
         .containsExactly(
             "org.apache.lucene.analysis.common",
             "org.apache.lucene.analysis.icu",
@@ -144,7 +170,7 @@ public class TestModularLayer {
   public void testAllModulesHaveExpectedVersion() {
     String luceneBuildVersion = System.getProperty(VERSION_PROPERTY);
     Assumptions.assumeThat(luceneBuildVersion).isNotNull();
-    for (var module : allModules) {
+    for (var module : allCoreModules) {
       Assertions.assertThat(module.descriptor().rawVersion().orElse(null))
           .as("Version of module: " + module.descriptor().name())
           .isEqualTo(luceneBuildVersion);
@@ -154,7 +180,7 @@ public class TestModularLayer {
   /** Ensure SPIs are equal for the module and classpath layer. */
   @Test
   public void testModularAndClasspathProvidersAreConsistent() throws IOException {
-    for (var module : allModules) {
+    for (var module : allCoreModules) {
       TreeMap<String, TreeSet<String>> modularProviders = getModularServiceProviders(module);
       TreeMap<String, TreeSet<String>> classpathProviders = getClasspathServiceProviders(module);
 
@@ -227,7 +253,7 @@ public class TestModularLayer {
   @Test
   public void testAllJarsAreNamedModules() {
     Assertions.assertThat(
-            allModules.stream()
+            allCoreModules.stream()
                 .map(
                     module ->
                         String.format(

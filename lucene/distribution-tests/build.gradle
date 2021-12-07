@@ -20,7 +20,10 @@ plugins {
 }
 
 configurations {
-  distributionModules
+  // This is a configuration that references an 'expanded' binary distribution
+  // all tests will run against. The distribution is slightly trimmed (no docs, licenses)
+  // but could be complete. It's just a matter of taste (and speed of collecting the required data).
+  binaryDistribution
 }
 
 dependencies {
@@ -34,23 +37,25 @@ dependencies {
 
   implementation "org.assertj:assertj-core"
 
-  distributionModules project(path: ":lucene:distribution", configuration: "jars")
-}
-
-// Configure the test task so that it collects Lucene distribution modules and passes
-// their location to the integration tests.
-ext {
-  distributionModulesDir = file("${buildDir}/distributionModules")
-}
-
-task assembleDistributionModules(type: Sync) {
-  destinationDir distributionModulesDir
-  from configurations.distributionModules
+  binaryDistribution project(path: ":lucene:distribution", configuration: "binaryDirForTests")
 }
 
 test {
-  dependsOn assembleDistributionModules
+  dependsOn configurations.binaryDistribution
 
-  systemProperty "lucene.distribution.modules", assembleDistributionModules.destinationDir
-  systemProperty "lucene.distribution.version", "${project.version}"
+  // We need to pass the system property using a lazy provider, not supported at the moment:
+  // https://github.com/gradle/gradle/issues/12247
+  jvmArgumentProviders.add(new CommandLineArgumentProvider() {
+    @Override
+    Iterable<String> asArguments() {
+      return [
+          "-Dlucene.distribution.dir=${configurations.binaryDistribution.singleFile.absolutePath }",
+          "-Dlucene.distribution.version=${project.version}"
+      ]
+    }
+  })
+
+  doFirst {
+    logger.lifecycle("Testing binary distribution at: ${configurations.binaryDistribution.singleFile}")
+  }
 }
