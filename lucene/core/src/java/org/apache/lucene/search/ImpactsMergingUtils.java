@@ -124,7 +124,13 @@ public final class ImpactsMergingUtils {
         toMerge.add(impactList);
       }
     }
-    assert toMerge.size() > 0; // otherwise it would mean the docID is > docIdUpTo, which is wrong
+
+    // all impactEnums for this field were positioned beyond docIdUpTo, which is possible when
+    // 1. there are multiple fields involved.
+    // 2. docIdUpTo was taken from minimum from all impactEnums across fields
+    if (toMerge.size() == 0) {
+      return new ArrayList<>();
+    }
 
     if (toMerge.size() == 1) {
       // common if one synonym is common and the other one is rare

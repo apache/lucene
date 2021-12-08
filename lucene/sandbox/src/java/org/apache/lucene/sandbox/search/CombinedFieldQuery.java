@@ -415,7 +415,6 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       Map<String, List<ImpactsEnum>> tempFieldImpactsEnums = new HashMap<>(fieldAndWeights.size());
 
       float maxWeight = Float.MIN_VALUE;
-      String maxWeightField = "";
       for (int i = 0; i < fieldTerms.length; i++) {
         TermState state = termStates[i].get(context);
         if (state != null) {
@@ -427,12 +426,6 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           termsEnum.seekExact(fieldTerms[i].bytes(), state);
 
           if (scoreMode == ScoreMode.TOP_SCORES) {
-            float weight = fieldAndWeights.get(fieldName).weight;
-            if (maxWeight < weight) {
-              maxWeight = weight;
-              maxWeightField = fieldName;
-            }
-
             ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
             iterators.add(impactsEnum);
             tempFieldImpactsEnums.get(fieldName).add(impactsEnum);
@@ -480,7 +473,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           fieldWeights.put(e.getKey(), weights);
         }
 
-        ImpactsSource impactsSource = mergeImpacts(fieldImpactsEnums, fieldWeights, maxWeightField);
+        ImpactsSource impactsSource = mergeImpacts(fieldImpactsEnums, fieldWeights);
         iterator = impactsDisi = new ImpactsDISI(iterator, impactsSource, simWeight);
       }
 
@@ -495,13 +488,11 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
   /** Merge impacts for combined field. */
   static ImpactsSource mergeImpacts(
-      Map<String, ImpactsEnum[]> fieldImpactsEnum,
-      Map<String, float[]> fieldWeights,
-      String maxWeightField) {
+      Map<String, ImpactsEnum[]> fieldImpactsEnum, Map<String, float[]> fieldWeights) {
 
     return new ImpactsSource() {
       final Map<String, Impacts[]> fieldImpacts = new HashMap<>();
-      Impacts leadingImpacts = null;
+      Map<String, Impacts> leadingImpactsPerField = null;
 
       @Override
       public Impacts getImpacts() throws IOException {
@@ -509,57 +500,57 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         // each field
         // They collectively will decide on the number of levels and the block boundaries.
 
-        if (leadingImpacts == null) {
+        if (leadingImpactsPerField == null) {
+          leadingImpactsPerField = new HashMap<>(fieldImpactsEnum.size());
           fieldImpacts.clear();
 
-          Impacts tmpLead = null;
           for (Map.Entry<String, ImpactsEnum[]> e : fieldImpactsEnum.entrySet()) {
             String field = e.getKey();
             ImpactsEnum[] impactsEnums = e.getValue();
             Impacts[] impacts = new Impacts[impactsEnums.length];
             fieldImpacts.put(field, impacts);
 
-            if (field.equals(maxWeightField)) {
-//              long minCost = Long.MAX_VALUE;
-              for (int i = 0; i < impactsEnums.length; ++i) {
-                ImpactsEnum impactsEnum = impactsEnums[i];
-                impacts[i] = impactsEnum.getImpacts();
+            Impacts tmpLead = null;
+            // find the impact that has the lowest next boundary for this field
+            for (int i = 0; i < impactsEnums.length; ++i) {
+              Impacts currentImpacts = impactsEnums[i].getImpacts();
+              impacts[i] = currentImpacts;
 
-                // use the impact of term within this mostly weighted field that has the least doc
-                // freq (cost)
-                // this may have the result of getting larger upTo bound, as low doc freq (cost)
-                // term may
-                // also have large gap in doc ids
-//                if (tmpLead == null || impactsEnum.cost() < minCost) {
-//                  minCost = impactsEnum.cost();
-//                  tmpLead = impacts[i];
-//                }
-
-                if (tmpLead == null || impacts[i].getDocIdUpTo(0) <
-                        tmpLead.getDocIdUpTo(0)) {
-                  tmpLead = impacts[i];
-                }
-              }
-            } else {
-              // find the impact that has the lowest next boundary for this field
-              for (int i = 0; i < impactsEnums.length; ++i) {
-                impacts[i] = impactsEnums[i].getImpacts();
+              if (tmpLead == null || currentImpacts.getDocIdUpTo(0) < tmpLead.getDocIdUpTo(0)) {
+                tmpLead = currentImpacts;
               }
             }
+
+            leadingImpactsPerField.put(field, tmpLead);
           }
-          leadingImpacts = tmpLead;
         }
 
         return new Impacts() {
 
           @Override
           public int numLevels() {
-            return leadingImpacts.numLevels();
+            // max of levels across fields' impactEnums
+            int result = 0;
+
+            for (Impacts impacts : leadingImpactsPerField.values()) {
+              result = Math.max(result, impacts.numLevels());
+            }
+
+            return result;
           }
 
           @Override
           public int getDocIdUpTo(int level) {
-            return leadingImpacts.getDocIdUpTo(level);
+            // min of docIdUpTo across fields' impactEnums
+            int result = Integer.MAX_VALUE;
+
+            for (Impacts impacts : leadingImpactsPerField.values()) {
+              if (impacts.numLevels() > level) {
+                result = Math.min(result, impacts.getDocIdUpTo(level));
+              }
+            }
+
+            return result;
           }
 
           @Override
@@ -637,7 +628,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
             }
           }
         }
-        leadingImpacts = null;
+        leadingImpactsPerField = null;
       }
     };
   }
