@@ -244,7 +244,7 @@ def main():
                        and (c.version.major > 6 or (c.version.major == 6 and c.version.minor >= 2))
   if should_make_sorted:
     create_and_add_index(source, 'sorted', c.version, current_version, c.temp_dir)
-  if c.version.minor == 0 and c.version.bugfix == 0  and current_version.is_back_compat_with(c.version):
+  if c.version.minor == 0 and c.version.bugfix == 0 and current_version.is_back_compat_with(c.version):
     create_and_add_index(source, 'moreterms', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'dvupdates', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'emptyIndex', c.version, current_version, c.temp_dir)
