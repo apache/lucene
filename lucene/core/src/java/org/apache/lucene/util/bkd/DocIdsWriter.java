@@ -197,7 +197,7 @@ class DocIdsWriter {
         readDelta16(in, count, docIDs, scratch);
         break;
       case 32:
-        readInts32BE(in, count, docIDs);
+        readInts32(in, count, docIDs);
         break;
       case 24:
         readInts24(in, count, docIDs, scratch);
@@ -260,7 +260,7 @@ class DocIdsWriter {
     }
   }
 
-  private static void readInts32BE(IndexInput in, int count, int[] docIDs) throws IOException {
+  private static void readInts32(IndexInput in, int count, int[] docIDs) throws IOException {
     for (int i = 0; i < count; i++) {
       docIDs[i] = in.readInt();
     }
@@ -313,7 +313,7 @@ class DocIdsWriter {
         readDelta16(in, count, visitor, scratch);
         break;
       case 32:
-        readInts32BE(in, count, visitor);
+        readInts32(in, count, visitor);
         break;
       case 24:
         readInts24(in, count, visitor, scratch);
@@ -332,7 +332,7 @@ class DocIdsWriter {
     }
   }
 
-  private static void readInts32BE(IndexInput in, int count, IntersectVisitor visitor)
+  private static void readInts32(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
     for (int i = 0; i < count; i++) {
       visitor.visit(in.readInt());
