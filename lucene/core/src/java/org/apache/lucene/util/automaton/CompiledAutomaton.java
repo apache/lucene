@@ -36,10 +36,9 @@ import org.apache.lucene.util.UnicodeUtil;
 
 /**
  * Immutable class holding compiled details for a given Automaton. The Automaton could either be
- * deterministic or non-deterministic,
- * For deterministic automaton, it must not have dead states but is not necessarily minimal. And will
- * be executed using {@link ByteRunAutomaton}
- * For non-deterministic automaton, it will be executed using {@link NFARunAutomaton}
+ * deterministic or non-deterministic, For deterministic automaton, it must not have dead states but
+ * is not necessarily minimal. And will be executed using {@link ByteRunAutomaton} For
+ * non-deterministic automaton, it will be executed using {@link NFARunAutomaton}
  *
  * @lucene.experimental
  */
