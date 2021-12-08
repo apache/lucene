@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 
+/** encode ints 8/16/32 and decode them with auto-vectorization optimization */
 public class IntCodecHelper {
 
   private static final int BLOCK_SIZE = 128;
