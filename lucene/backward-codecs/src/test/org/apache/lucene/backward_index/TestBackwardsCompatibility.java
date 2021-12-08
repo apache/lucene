@@ -334,13 +334,18 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  static final String[] oldNames = {};
+  static final String[] oldNames = {
+    "9.0.0-cfs",
+    "9.0.0-nocfs"
+  };
 
   public static String[] getOldNames() {
     return oldNames;
   }
 
-  static final String[] oldSortedNames = {};
+  static final String[] oldSortedNames = {
+    "sorted.9.0.0"
+  };
 
   public static String[] getOldSortedNames() {
     return oldSortedNames;
@@ -994,7 +999,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
                 IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w, reader));
         assertEquals(
             e.getMessage(),
-            "Cannot merge a segment that has been created with major version 8 into this index which has been created by major version 9");
+            "Cannot merge a segment that has been created with major version 9 into this index which has been created by major version 10");
         w.close();
         targetDir2.close();
 
