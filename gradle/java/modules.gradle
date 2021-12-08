@@ -121,6 +121,82 @@ allprojects {
           return trimmedClasspath
         })
       }
+
+      configurations {
+        moduleTestApi
+        testApi.extendsFrom moduleTestApi
+
+        moduleTestImplementation
+        testImplementation.extendsFrom(moduleTestImplementation)
+
+        moduleTestRuntimeOnly
+        testRuntimeOnly.extendsFrom(moduleTestRuntimeOnly)
+
+        moduleTestCompileOnly
+        testCompileOnly.extendsFrom(moduleTestCompileOnly)
+
+        // This is for internal needs, a combination of the above.
+        moduleTestCompilePath
+        moduleTestCompilePath.extendsFrom(moduleTestApi, moduleTestImplementation, moduleTestCompileOnly)
+
+        // All these configurations are for resolution only and have a preference to see 'classes'
+        // folder instead of JARs for inter-project references.
+        [ moduleTestApi,
+          moduleTestImplementation,
+          moduleTestRuntimeOnly,
+          moduleTestCompileOnly,
+          moduleTestCompilePath
+        ].each { conf ->
+          conf.canBeConsumed(false)
+          conf.canBeResolved(true)
+          conf.attributes {
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
+          }
+        }
+      }
+
+      // Configure a custom hook in JavaCompile which will separate automatic modules, modules
+      // and non-modules (unpacked folders without module-info) prior
+      // to the task execution.
+      tasks.named("compileTestJava").configure { JavaCompile task ->
+        Configuration modulePath = task.project.configurations.moduleTestCompilePath
+        task.dependsOn modulePath
+
+        SourceSet sourceSet = task.project.sourceSets.test
+
+        // Add modular dependencies and their transitive dependencies to module path.
+        task.options.compilerArgumentProviders.add(new CommandLineArgumentProvider() {
+          @Override
+          Iterable<String> asArguments() {
+            def extraArgs = []
+            if (!modulePath.isEmpty()) {
+              boolean hasModuleDescriptor = sourceSet.allJava.srcDirs.stream()
+                  .map(dir -> new File(dir, "module-info.java"))
+                  .anyMatch(file -> file.exists())
+
+              if (!hasModuleDescriptor) {
+                // We're compiling a non-module so we'll bring everything on module path in
+                // otherwise things wouldn't be part of the resolved module graph.
+                extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+              }
+              extraArgs += ["--module-path", modulePath.files.join(File.pathSeparator) ]
+            }
+
+            task.logger.info("Module path for ${task.path}:\n  " + modulePath.files.sort().join("\n  "))
+
+            return extraArgs
+          }
+        })
+
+        // Modify the default classpath by removing anything already placed on module path.
+        // This could be done in a fancier way but a set difference is just fine for us here. Use a lazy
+        // provider to delay computation of the actual path.
+        task.classpath = files({ ->
+          def trimmedClasspath = sourceSet.compileClasspath - modulePath
+          task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
+          return trimmedClasspath
+        })
+      }
     }
 
     // Configure module versions.

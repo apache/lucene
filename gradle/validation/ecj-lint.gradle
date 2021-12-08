@@ -31,6 +31,11 @@ def resources = scriptResources(buildscript)
 
 allprojects {
   plugins.withType(JavaPlugin) {
+    // Skip modular test projects for now.
+    if (project.path.endsWith(".tests")) {
+      return
+    }
+
     // Create a [sourceSetName]EcjLint task for each source set
     // with a non-empty java.srcDirs. These tasks are then
     // attached to project's "ecjLint" task.

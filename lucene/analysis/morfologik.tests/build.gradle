@@ -17,20 +17,12 @@
 
 apply plugin: 'java-library'
 
-description = 'Geospatial search'
+description = 'Module-path tests for morfologik'
 
 dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:spatial3d')
-
-  moduleApi 'org.locationtech.spatial4j:spatial4j'
-  moduleApi 'io.sgr:s2-geometry-library-java'
-
-  testImplementation project(':lucene:test-framework')
-  testImplementation testFixtures(project(':lucene:spatial3d'))
-
-  moduleTestImplementation 'org.locationtech.jts:jts-core'
-  testImplementation 'org.locationtech.spatial4j:spatial4j::tests'
+  moduleTestImplementation project(':lucene:analysis:morfologik')
+  moduleTestImplementation("junit:junit", {
+    exclude group: "org.hamcrest"
+  })
+  moduleTestImplementation "org.hamcrest:hamcrest"
 }
-
-

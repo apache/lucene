@@ -15,22 +15,13 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+/** Analyzer for dictionary stemming, built-in Polish dictionary */
+@SuppressWarnings({"requires-automatic"})
+module org.apache.lucene.analysis.morfologik.tests {
+  requires org.apache.lucene.core;
+  requires org.apache.lucene.analysis.common;
+  requires org.apache.lucene.analysis.morfologik;
+  requires junit;
 
-description = 'Geospatial search'
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:spatial3d')
-
-  moduleApi 'org.locationtech.spatial4j:spatial4j'
-  moduleApi 'io.sgr:s2-geometry-library-java'
-
-  testImplementation project(':lucene:test-framework')
-  testImplementation testFixtures(project(':lucene:spatial3d'))
-
-  moduleTestImplementation 'org.locationtech.jts:jts-core'
-  testImplementation 'org.locationtech.spatial4j:spatial4j::tests'
+  exports org.apache.lucene.analysis.morfologik.tests;
 }
-
-
