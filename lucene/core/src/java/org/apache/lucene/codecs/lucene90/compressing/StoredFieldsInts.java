@@ -16,11 +16,12 @@
  */
 package org.apache.lucene.codecs.lucene90.compressing;
 
+import static org.apache.lucene.util.IntCodecHelper.*;
+
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
-import static org.apache.lucene.util.IntCodecHelper.*;
 
 public class StoredFieldsInts {
 
