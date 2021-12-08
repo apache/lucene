@@ -93,6 +93,10 @@ public class TestDocIdsWriter extends LuceneTestCase {
 
   private void test(Directory dir, int[] ints) throws Exception {
     final long len;
+    final long[] scratch = new long[ints.length];
+    for (int i=0;i<scratch.length;i++) {
+      scratch[i] = random().nextLong();
+    }
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
       DocIdsWriter.writeDocIds(ints, 0, ints.length, out);
       len = out.getFilePointer();
@@ -102,7 +106,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      DocIdsWriter.readInts(in, ints.length, read);
+      DocIdsWriter.readInts(in, ints.length, read, scratch);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }
@@ -128,7 +132,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
             public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               throw new UnsupportedOperationException();
             }
-          });
+          }, scratch);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }

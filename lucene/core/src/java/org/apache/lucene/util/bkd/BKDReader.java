@@ -168,6 +168,7 @@ public class BKDReader extends PointValues {
         scratchMaxIndexPackedValue;
     private final int[] commonPrefixLengths;
     private final BKDReaderDocIDSetIterator scratchIterator;
+    private final long[] scratch;
 
     private BKDPointTree(
         IndexInput innerNodes,
@@ -248,6 +249,7 @@ public class BKDReader extends PointValues {
       this.scratchDataPackedValue = scratchDataPackedValue;
       this.scratchMinIndexPackedValue = scratchMinIndexPackedValue;
       this.scratchMaxIndexPackedValue = scratchMaxIndexPackedValue;
+      this.scratch = scratchIterator.scratch;
     }
 
     @Override
@@ -514,7 +516,7 @@ public class BKDReader extends PointValues {
         // How many points are stored in this leaf cell:
         int count = leafNodes.readVInt();
         // No need to call grow(), it has been called up-front
-        DocIdsWriter.readInts(leafNodes, count, visitor);
+        DocIdsWriter.readInts(leafNodes, count, visitor, scratch);
       } else {
         pushLeft();
         addAll(visitor, grown);
@@ -577,7 +579,7 @@ public class BKDReader extends PointValues {
       // How many points are stored in this leaf cell:
       int count = in.readVInt();
 
-      DocIdsWriter.readInts(in, count, iterator.docIDs);
+      DocIdsWriter.readInts(in, count, iterator.docIDs, iterator.scratch);
 
       return count;
     }
@@ -946,9 +948,11 @@ public class BKDReader extends PointValues {
     private int offset;
     private int docID;
     final int[] docIDs;
+    final long[] scratch;
 
     public BKDReaderDocIDSetIterator(int maxPointsInLeafNode) {
       this.docIDs = new int[maxPointsInLeafNode];
+      this.scratch = new long[maxPointsInLeafNode];
     }
 
     @Override
