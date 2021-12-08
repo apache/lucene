@@ -334,18 +334,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  static final String[] oldNames = {
-    "9.0.0-cfs",
-    "9.0.0-nocfs"
-  };
+  static final String[] oldNames = {"9.0.0-cfs", "9.0.0-nocfs"};
 
   public static String[] getOldNames() {
     return oldNames;
   }
 
-  static final String[] oldSortedNames = {
-    "sorted.9.0.0"
-  };
+  static final String[] oldSortedNames = {"sorted.9.0.0"};
 
   public static String[] getOldSortedNames() {
     return oldSortedNames;
