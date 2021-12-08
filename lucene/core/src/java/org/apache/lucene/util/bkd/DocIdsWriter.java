@@ -200,7 +200,7 @@ class DocIdsWriter {
         readInts32(in, count, docIDs);
         break;
       case 24:
-        readInts24(in, count, docIDs, scratch);
+        readInts24(in, count, docIDs);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
@@ -266,15 +266,13 @@ class DocIdsWriter {
     }
   }
 
-  private static void readInts24(IndexInput in, int count, int[] docIDs, long[] scratch)
+  private static void readInts24(IndexInput in, int count, int[] docIDs)
       throws IOException {
-    in.readLongs(scratch, 0, (count >> 3) * 3);
     int i;
-    int pos = 0;
     for (i = 0; i < count - 7; i += 8) {
-      long l1 = scratch[pos++];
-      long l2 = scratch[pos++];
-      long l3 = scratch[pos++];
+      long l1 = in.readLong();
+      long l2 = in.readLong();
+      long l3 = in.readLong();
       docIDs[i] = (int) (l1 >>> 40);
       docIDs[i + 1] = (int) (l1 >>> 16) & 0xffffff;
       docIDs[i + 2] = (int) (((l1 & 0xffff) << 8) | (l2 >>> 56));
@@ -316,7 +314,7 @@ class DocIdsWriter {
         readInts32(in, count, visitor);
         break;
       case 24:
-        readInts24(in, count, visitor, scratch);
+        readInts24(in, count, visitor);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
@@ -339,15 +337,13 @@ class DocIdsWriter {
     }
   }
 
-  private static void readInts24(IndexInput in, int count, IntersectVisitor visitor, long[] scratch)
+  private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
-    in.readLongs(scratch, 0, (count >> 3) * 3);
     int i;
-    int pos = 0;
     for (i = 0; i < count - 7; i += 8) {
-      long l1 = scratch[pos++];
-      long l2 = scratch[pos++];
-      long l3 = scratch[pos++];
+      long l1 = in.readLong();
+      long l2 = in.readLong();
+      long l3 = in.readLong();
       visitor.visit((int) (l1 >>> 40));
       visitor.visit((int) (l1 >>> 16) & 0xffffff);
       visitor.visit((int) (((l1 & 0xffff) << 8) | (l2 >>> 56)));
