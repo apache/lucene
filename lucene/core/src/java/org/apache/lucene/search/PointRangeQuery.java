@@ -208,13 +208,19 @@ public abstract class PointRangeQuery extends Query {
       }
 
       /** Create a visitor that clears documents that do NOT match the range. */
-      private IntersectVisitor getInverseIntersectVisitor(FixedBitSet result, int[] cost) {
+      private IntersectVisitor getInverseIntersectVisitor(FixedBitSet result, long[] cost) {
         return new IntersectVisitor() {
 
           @Override
           public void visit(int docID) {
             result.clear(docID);
             cost[0]--;
+          }
+
+          @Override
+          public void visit(DocIdSetIterator iterator) throws IOException {
+            result.andNot(iterator);
+            cost[0] = Math.max(0, cost[0] - iterator.cost());
           }
 
           @Override
@@ -330,7 +336,7 @@ public abstract class PointRangeQuery extends Query {
                 // by computing the set of documents that do NOT match the range
                 final FixedBitSet result = new FixedBitSet(reader.maxDoc());
                 result.set(0, reader.maxDoc());
-                int[] cost = new int[] {reader.maxDoc()};
+                long[] cost = new long[] {reader.maxDoc()};
                 values.intersect(getInverseIntersectVisitor(result, cost));
                 final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
                 return new ConstantScoreScorer(weight, score(), scoreMode, iterator);

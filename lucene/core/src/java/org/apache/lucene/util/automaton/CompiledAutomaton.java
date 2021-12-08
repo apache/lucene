@@ -35,8 +35,11 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.UnicodeUtil;
 
 /**
- * Immutable class holding compiled details for a given Automaton. The Automaton is deterministic,
- * must not have dead states but is not necessarily minimal.
+ * Immutable class holding compiled details for a given Automaton. The Automaton could either be
+ * deterministic or non-deterministic,
+ * For deterministic automaton, it must not have dead states but is not necessarily minimal. And will
+ * be executed using {@link ByteRunAutomaton}
+ * For non-deterministic automaton, it will be executed using {@link NFARunAutomaton}
  *
  * @lucene.experimental
  */
@@ -140,62 +143,24 @@ public class CompiledAutomaton implements Accountable {
    * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
    */
   public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify) {
-    this(automaton, finite, simplify, RunAutomatonMode.DFA);
-  }
-
-  /**
-   * Similar to {@link #CompiledAutomaton(Automaton, Boolean, boolean)} but allow using NFA version
-   * by specify the runAutomatonMode parameter
-   */
-  public CompiledAutomaton(
-      Automaton automaton, Boolean finite, boolean simplify, RunAutomatonMode runAutomatonMode) {
-    this(
-        automaton,
-        finite,
-        simplify,
-        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-        false,
-        runAutomatonMode);
-  }
-
-  /**
-   * A DFA version ctor, see {@link #CompiledAutomaton(Automaton, Boolean, boolean, int, boolean,
-   * RunAutomatonMode)}
-   */
-  public CompiledAutomaton(
-      Automaton automaton,
-      Boolean finite,
-      boolean simplify,
-      int determinizeWorkLimit,
-      boolean isBinary) {
-    this(automaton, finite, simplify, determinizeWorkLimit, isBinary, RunAutomatonMode.DFA);
+    this(automaton, finite, simplify, false);
   }
 
   /**
    * Create this. If finite is null, we use {@link Operations#isFinite} to determine whether it is
    * finite. If simplify is true, we run possibly expensive operations to determine if the automaton
-   * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}. If simplify requires
-   * determinizing the automaton then at most determinizeWorkLimit effort will be spent. Any more
-   * than that will cause a TooComplexToDeterminizeException.
-   *
-   * <p>If we decide to use NFA to run, the {@link NFARunAutomaton} will be created iff the
-   * automaton is NOT determinized yet
+   * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
    */
   public CompiledAutomaton(
-      Automaton automaton,
-      Boolean finite,
-      boolean simplify,
-      int determinizeWorkLimit,
-      boolean isBinary,
-      RunAutomatonMode runAutomatonMode) {
+      Automaton automaton, Boolean finite, boolean simplify, boolean isBinary) {
+
     if (automaton.getNumStates() == 0) {
       automaton = new Automaton();
       automaton.createState();
     }
 
-    // to determine whether we could simplify we need to determinize the automaton, so we
-    // need to make sure RunAutomatonMode is DFA
-    if (simplify && runAutomatonMode == RunAutomatonMode.DFA) {
+    // simplify requires a DFA
+    if (simplify && automaton.isDeterministic()) {
 
       // Test whether the automaton is a "simple" form and
       // if so, don't create a runAutomaton.  Note that on a
@@ -235,8 +200,6 @@ public class CompiledAutomaton implements Accountable {
         nfaRunAutomaton = null;
         return;
       }
-
-      automaton = Operations.determinize(automaton, determinizeWorkLimit);
 
       IntsRef singleton = Operations.getSingleton(automaton);
 
@@ -294,14 +257,15 @@ public class CompiledAutomaton implements Accountable {
       }
     }
 
-    if (automaton.isDeterministic() == false && runAutomatonMode == RunAutomatonMode.NFA) {
+    if (automaton.isDeterministic() == false && binary.isDeterministic() == false) {
       this.automaton = null;
       this.runAutomaton = null;
       this.sinkState = -1;
       this.nfaRunAutomaton = new NFARunAutomaton(binary, 0xff);
     } else {
-      // This will determinize the binary automaton for us:
-      runAutomaton = new ByteRunAutomaton(binary, true, determinizeWorkLimit);
+      // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
+      binary = Operations.determinize(binary, Integer.MAX_VALUE);
+      runAutomaton = new ByteRunAutomaton(binary, true);
 
       this.automaton = runAutomaton.automaton;
 

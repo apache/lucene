@@ -49,12 +49,12 @@ public class TestNFARunAutomaton extends LuceneTestCase {
           ignoreException(e);
         }
       }
-      Automaton nfa = regExp.toNFA();
+      Automaton nfa = regExp.toAutomaton();
       if (nfa.isDeterministic()) {
         i--;
         continue;
       }
-      Automaton dfa = regExp.toAutomaton();
+      Automaton dfa = Operations.determinize(nfa, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
       NFARunAutomaton candidate = new NFARunAutomaton(nfa);
       AutomatonTestUtil.RandomAcceptedStrings randomStringGen;
       try {
@@ -79,14 +79,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     }
   }
 
-  public void testWithRandomAutomatonQuery() throws IOException {
-    final int n = 5;
-    for (int i = 0; i < n; i++) {
-      randomAutomatonQueryTest();
-    }
-  }
-
-  private void randomAutomatonQueryTest() throws IOException {
+  public void testRandomAutomatonQuery() throws IOException {
     final int docNum = 50;
     final int automatonNum = 50;
     Directory directory = newDirectory();
@@ -149,8 +142,8 @@ public class TestNFARunAutomaton extends LuceneTestCase {
         i--;
         continue;
       }
-      AutomatonQuery dfaQuery = new AutomatonQuery(new Term(FIELD), a);
-      AutomatonQuery nfaQuery = new AutomatonQuery(new Term(FIELD), a, RunAutomatonMode.NFA);
+      AutomatonQuery dfaQuery = new AutomatonQuery(new Term(FIELD), Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+      AutomatonQuery nfaQuery = new AutomatonQuery(new Term(FIELD), a);
       assertNotNull(nfaQuery.getCompiled().nfaRunAutomaton);
       assertEquals(searcher.count(dfaQuery), searcher.count(nfaQuery));
     }

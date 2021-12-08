@@ -155,21 +155,6 @@ import java.util.Set;
  * </tr>
  *
  * <tr>
- * <td><i>complexp</i></td>
- * <td>::=</td>
- * <td><code><b>~</b></code>&nbsp;<i>complexp</i></td>
- * <td>(complement)</td>
- * <td><small>[OPTIONAL]</small></td>
- * </tr>
- * <tr>
- * <td></td>
- * <td>|</td>
- * <td><i>charclassexp</i></td>
- * <td></td>
- * <td></td>
- * </tr>
- *
- * <tr>
  * <td><i>charclassexp</i></td>
  * <td>::=</td>
  * <td><code><b>[</b></code>&nbsp;<i>charclasses</i>&nbsp;<code><b>]</b></code></td>
@@ -407,9 +392,6 @@ public class RegExp {
   /** Syntax flag, enables intersection (<code>&amp;</code>). */
   public static final int INTERSECTION = 0x0001;
 
-  /** Syntax flag, enables complement (<code>~</code>). */
-  public static final int COMPLEMENT = 0x0002;
-
   /** Syntax flag, enables empty language (<code>#</code>). */
   public static final int EMPTY = 0x0004;
 
@@ -552,202 +534,88 @@ public class RegExp {
   }
 
   /**
-   * Return an <code>Automaton</code> from this <code>RegExp</code> that will skip the determinize
-   * and minimize step
-   *
-   * @return {@link Automaton} most likely non-deterministic
-   */
-  public Automaton toNFA() {
-    return toAutomaton(null, null, 0, false);
-  }
-
-  /**
    * Constructs new <code>Automaton</code> from this <code>RegExp</code>. Same as <code>
    * toAutomaton(null)</code> (empty automaton map).
    */
   public Automaton toAutomaton() {
-    return toAutomaton(null, null, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, true);
+    return toAutomaton(null, null);
   }
 
   /**
-   * Constructs new <code>Automaton</code> from this <code>RegExp</code>. The constructed automaton
-   * is minimal and deterministic and has no transitions to dead states.
-   *
-   * @param determinizeWorkLimit maximum effort to spend while determinizing the automata. If
-   *     determinizing the automata would require more than this effort,
-   *     TooComplexToDeterminizeException is thrown. Higher numbers require more space but can
-   *     process more complex regexes. Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a
-   *     decent default if you don't otherwise know what to specify.
-   * @exception IllegalArgumentException if this regular expression uses a named identifier that is
-   *     not available from the automaton provider
-   * @exception TooComplexToDeterminizeException if determinizing this regexp requires more effort
-   *     than determinizeWorkLimit states
-   */
-  public Automaton toAutomaton(int determinizeWorkLimit)
-      throws IllegalArgumentException, TooComplexToDeterminizeException {
-    return toAutomaton(null, null, determinizeWorkLimit, true);
-  }
-
-  /**
-   * Constructs new <code>Automaton</code> from this <code>RegExp</code>. The constructed automaton
-   * is minimal and deterministic and has no transitions to dead states.
+   * Constructs new <code>Automaton</code> from this <code>RegExp</code>.
    *
    * @param automaton_provider provider of automata for named identifiers
-   * @param determinizeWorkLimit maximum effort to spend while determinizing the automata. If
-   *     determinizing the automata would require more than this effort,
-   *     TooComplexToDeterminizeException is thrown. Higher numbers require more space but can
-   *     process more complex regexes. Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a
-   *     decent default if you don't otherwise know what to specify.
    * @exception IllegalArgumentException if this regular expression uses a named identifier that is
    *     not available from the automaton provider
-   * @exception TooComplexToDeterminizeException if determinizing this regexp requires more effort
-   *     than determinizeWorkLimit states
    */
-  public Automaton toAutomaton(AutomatonProvider automaton_provider, int determinizeWorkLimit)
+  public Automaton toAutomaton(AutomatonProvider automaton_provider)
       throws IllegalArgumentException, TooComplexToDeterminizeException {
-    return toAutomaton(null, automaton_provider, determinizeWorkLimit, true);
+    return toAutomaton(null, automaton_provider);
   }
 
   /**
-   * Constructs new <code>Automaton</code> from this <code>RegExp</code>. The constructed automaton
-   * is minimal and deterministic and has no transitions to dead states.
+   * Constructs new <code>Automaton</code> from this <code>RegExp</code>.
    *
    * @param automata a map from automaton identifiers to automata (of type <code>Automaton</code>).
-   * @param determinizeWorkLimit maximum effort to spend while determinizing the automata. If
-   *     determinizing the automata would require more than this effort,
-   *     TooComplexToDeterminizeException is thrown. Higher numbers require more space but can
-   *     process more complex regexes.
    * @exception IllegalArgumentException if this regular expression uses a named identifier that
    *     does not occur in the automaton map
-   * @exception TooComplexToDeterminizeException if determinizing this regexp requires more effort
-   *     than determinizeWorkLimit states
    */
-  public Automaton toAutomaton(Map<String, Automaton> automata, int determinizeWorkLimit)
+  public Automaton toAutomaton(Map<String, Automaton> automata)
       throws IllegalArgumentException, TooComplexToDeterminizeException {
-    return toAutomaton(automata, null, determinizeWorkLimit, true);
+    return toAutomaton(automata, null);
   }
 
   private Automaton toAutomaton(
-      Map<String, Automaton> automata,
-      AutomatonProvider automaton_provider,
-      int determinizeWorkLimit,
-      boolean buildDFA)
-      throws IllegalArgumentException, TooComplexToDeterminizeException {
-    try {
-      return toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit, buildDFA);
-    } catch (TooComplexToDeterminizeException e) {
-      throw new TooComplexToDeterminizeException(this, e);
-    }
-  }
-
-  private Automaton toAutomatonInternal(
-      Map<String, Automaton> automata,
-      AutomatonProvider automaton_provider,
-      int determinizeWorkLimit,
-      boolean buildDFA)
+      Map<String, Automaton> automata, AutomatonProvider automaton_provider)
       throws IllegalArgumentException {
     List<Automaton> list;
     Automaton a = null;
     switch (kind) {
       case REGEXP_PRE_CLASS:
         RegExp expanded = expandPredefined();
-        a =
-            expanded.toAutomatonInternal(
-                automata, automaton_provider, determinizeWorkLimit, buildDFA);
+        a = expanded.toAutomaton(automata, automaton_provider);
         break;
       case REGEXP_UNION:
         list = new ArrayList<>();
-        findLeaves(
-            exp1,
-            Kind.REGEXP_UNION,
-            list,
-            automata,
-            automaton_provider,
-            determinizeWorkLimit,
-            buildDFA);
-        findLeaves(
-            exp2,
-            Kind.REGEXP_UNION,
-            list,
-            automata,
-            automaton_provider,
-            determinizeWorkLimit,
-            buildDFA);
+        findLeaves(exp1, Kind.REGEXP_UNION, list, automata, automaton_provider);
+        findLeaves(exp2, Kind.REGEXP_UNION, list, automata, automaton_provider);
         a = Operations.union(list);
-        a = minimizeIfBuildDFA(a, determinizeWorkLimit, buildDFA);
         break;
       case REGEXP_CONCATENATION:
         list = new ArrayList<>();
-        findLeaves(
-            exp1,
-            Kind.REGEXP_CONCATENATION,
-            list,
-            automata,
-            automaton_provider,
-            determinizeWorkLimit,
-            buildDFA);
-        findLeaves(
-            exp2,
-            Kind.REGEXP_CONCATENATION,
-            list,
-            automata,
-            automaton_provider,
-            determinizeWorkLimit,
-            buildDFA);
+        findLeaves(exp1, Kind.REGEXP_CONCATENATION, list, automata, automaton_provider);
+        findLeaves(exp2, Kind.REGEXP_CONCATENATION, list, automata, automaton_provider);
         a = Operations.concatenate(list);
-        a = minimizeIfBuildDFA(a, determinizeWorkLimit, buildDFA);
         break;
       case REGEXP_INTERSECTION:
         a =
             Operations.intersection(
-                exp1.toAutomatonInternal(
-                    automata, automaton_provider, determinizeWorkLimit, buildDFA),
-                exp2.toAutomatonInternal(
-                    automata, automaton_provider, determinizeWorkLimit, buildDFA));
-        a = minimizeIfBuildDFA(a, determinizeWorkLimit, buildDFA);
+                exp1.toAutomaton(automata, automaton_provider),
+                exp2.toAutomaton(automata, automaton_provider));
         break;
       case REGEXP_OPTIONAL:
-        a =
-            Operations.optional(
-                exp1.toAutomatonInternal(
-                    automata, automaton_provider, determinizeWorkLimit, buildDFA));
-        a = minimizeIfBuildDFA(a, determinizeWorkLimit, buildDFA);
+        a = Operations.optional(exp1.toAutomaton(automata, automaton_provider));
         break;
       case REGEXP_REPEAT:
-        a =
-            Operations.repeat(
-                exp1.toAutomatonInternal(
-                    automata, automaton_provider, determinizeWorkLimit, buildDFA));
-        a = minimizeIfBuildDFA(a, determinizeWorkLimit, buildDFA);
+        a = Operations.repeat(exp1.toAutomaton(automata, automaton_provider));
         break;
       case REGEXP_REPEAT_MIN:
-        a = exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit, buildDFA);
-        int minNumStates = (a.getNumStates() - 1) * min;
-        if (determinizeWorkLimit > 0 && minNumStates > determinizeWorkLimit) {
-          throw new TooComplexToDeterminizeException(a, minNumStates);
-        }
+        a = exp1.toAutomaton(automata, automaton_provider);
         a = Operations.repeat(a, min);
-        a = minimizeIfBuildDFA(a, determinizeWorkLimit, buildDFA);
         break;
       case REGEXP_REPEAT_MINMAX:
-        a = exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit, buildDFA);
-        int minMaxNumStates = (a.getNumStates() - 1) * max;
-        if (determinizeWorkLimit > 0 && minMaxNumStates > determinizeWorkLimit) {
-          throw new TooComplexToDeterminizeException(a, minMaxNumStates);
-        }
+        a = exp1.toAutomaton(automata, automaton_provider);
         a = Operations.repeat(a, min, max);
         break;
       case REGEXP_COMPLEMENT:
-        a =
-            Operations.complement(
-                exp1.toAutomatonInternal(
-                    automata, automaton_provider, determinizeWorkLimit, buildDFA),
-                determinizeWorkLimit);
-        a = minimizeIfBuildDFA(a, determinizeWorkLimit, buildDFA);
+        // we don't support arbitrary complement, just "negated character class"
+        // this is just a list of characters (e.g. "a") or ranges (e.g. "b-d")
+        a = exp1.toAutomaton(automata, automaton_provider);
+        a = Operations.complement(a, Integer.MAX_VALUE);
         break;
       case REGEXP_CHAR:
         if (check(ASCII_CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveChar(c, determinizeWorkLimit, buildDFA);
+          a = toCaseInsensitiveChar(c);
         } else {
           a = Automata.makeChar(c);
         }
@@ -763,7 +631,7 @@ public class RegExp {
         break;
       case REGEXP_STRING:
         if (check(ASCII_CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveString(determinizeWorkLimit, buildDFA);
+          a = toCaseInsensitiveString();
         } else {
           a = Automata.makeString(s);
         }
@@ -795,8 +663,7 @@ public class RegExp {
     return a;
   }
 
-  private Automaton toCaseInsensitiveChar(
-      int codepoint, int determinizeWorkLimit, boolean buildDFA) {
+  private Automaton toCaseInsensitiveChar(int codepoint) {
     Automaton case1 = Automata.makeChar(codepoint);
     // For now we only work with ASCII characters
     if (codepoint > 128) {
@@ -809,23 +676,20 @@ public class RegExp {
     Automaton result;
     if (altCase != codepoint) {
       result = Operations.union(case1, Automata.makeChar(altCase));
-      result = minimizeIfBuildDFA(result, determinizeWorkLimit, buildDFA);
     } else {
       result = case1;
     }
     return result;
   }
 
-  private Automaton toCaseInsensitiveString(int determinizeWorkLimit, boolean buildDFA) {
+  private Automaton toCaseInsensitiveString() {
     List<Automaton> list = new ArrayList<>();
 
     Iterator<Integer> iter = s.codePoints().iterator();
     while (iter.hasNext()) {
-      list.add(toCaseInsensitiveChar(iter.next(), determinizeWorkLimit, buildDFA));
+      list.add(toCaseInsensitiveChar(iter.next()));
     }
-    Automaton a = Operations.concatenate(list);
-    a = minimizeIfBuildDFA(a, determinizeWorkLimit, buildDFA);
-    return a;
+    return Operations.concatenate(list);
   }
 
   private void findLeaves(
@@ -833,17 +697,12 @@ public class RegExp {
       Kind kind,
       List<Automaton> list,
       Map<String, Automaton> automata,
-      AutomatonProvider automaton_provider,
-      int determinizeWorkLimit,
-      boolean buildDFA) {
+      AutomatonProvider automaton_provider) {
     if (exp.kind == kind) {
-      findLeaves(
-          exp.exp1, kind, list, automata, automaton_provider, determinizeWorkLimit, buildDFA);
-      findLeaves(
-          exp.exp2, kind, list, automata, automaton_provider, determinizeWorkLimit, buildDFA);
+      findLeaves(exp.exp1, kind, list, automata, automaton_provider);
+      findLeaves(exp.exp2, kind, list, automata, automaton_provider);
     } else {
-      list.add(
-          exp.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit, buildDFA));
+      list.add(exp.toAutomaton(automata, automaton_provider));
     }
   }
 
@@ -975,11 +834,11 @@ public class RegExp {
         b.append(" min=");
         b.append(min);
         b.append('\n');
+        exp1.toStringTree(b, indent + "  ");
         break;
       case REGEXP_REPEAT_MINMAX:
         b.append(indent);
         b.append(kind);
-        exp1.toStringTree(b, indent + "  ");
         b.append(" min=");
         b.append(min);
         b.append(" max=");
@@ -1252,8 +1111,7 @@ public class RegExp {
   }
 
   final RegExp parseComplExp() throws IllegalArgumentException {
-    if (check(COMPLEMENT) && match('~')) return makeComplement(flags, parseComplExp());
-    else return parseCharClassExp();
+    return parseCharClassExp();
   }
 
   final RegExp parseCharClassExp() throws IllegalArgumentException {
@@ -1386,13 +1244,5 @@ public class RegExp {
   final int parseCharExp() throws IllegalArgumentException {
     match('\\');
     return next();
-  }
-
-  private static Automaton minimizeIfBuildDFA(
-      Automaton in, int determinizeWorkLimit, boolean buildDFA) {
-    if (buildDFA) {
-      return MinimizationOperations.minimize(in, determinizeWorkLimit);
-    }
-    return in;
   }
 }

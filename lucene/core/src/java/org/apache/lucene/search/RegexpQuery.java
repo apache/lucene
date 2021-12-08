@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.AutomatonProvider;
+import org.apache.lucene.util.automaton.MinimizationOperations;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
@@ -139,9 +140,9 @@ public class RegexpQuery extends AutomatonQuery {
       int determinizeWorkLimit) {
     super(
         term,
-        new RegExp(term.text(), syntax_flags, match_flags)
-            .toAutomaton(provider, determinizeWorkLimit),
-        determinizeWorkLimit);
+        MinimizationOperations.minimize(
+            new RegExp(term.text(), syntax_flags, match_flags).toAutomaton(provider),
+            determinizeWorkLimit));
   }
 
   /** Returns the regexp of this query wrapped in a Term. */

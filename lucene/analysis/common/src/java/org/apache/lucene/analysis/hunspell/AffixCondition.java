@@ -21,6 +21,8 @@ import static org.apache.lucene.analysis.hunspell.AffixKind.SUFFIX;
 
 import java.util.regex.PatternSyntaxException;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.MinimizationOperations;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
@@ -153,7 +155,10 @@ interface AffixCondition {
   private static AffixCondition regexpCondition(AffixKind kind, String condition, int charCount) {
     boolean forSuffix = kind == AffixKind.SUFFIX;
     CharacterRunAutomaton automaton =
-        new CharacterRunAutomaton(new RegExp(escapeDash(condition), RegExp.NONE).toAutomaton());
+        new CharacterRunAutomaton(
+            MinimizationOperations.minimize(
+                new RegExp(escapeDash(condition), RegExp.NONE).toAutomaton(),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
     return (word, offset, length) ->
         length >= charCount
             && automaton.run(word, forSuffix ? offset + length - charCount : offset, charCount);

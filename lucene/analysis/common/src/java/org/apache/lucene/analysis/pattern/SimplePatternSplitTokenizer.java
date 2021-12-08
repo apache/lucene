@@ -24,6 +24,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.MinimizationOperations;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
@@ -74,7 +75,9 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
   /** See {@link RegExp} for the accepted syntax. */
   public SimplePatternSplitTokenizer(
       AttributeFactory factory, String regexp, int determinizeWorkLimit) {
-    this(factory, new RegExp(regexp).toAutomaton(determinizeWorkLimit));
+    this(
+        factory,
+        MinimizationOperations.minimize(new RegExp(regexp).toAutomaton(), determinizeWorkLimit));
   }
 
   /** Runs a pre-built automaton. */
@@ -88,7 +91,7 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
       throw new IllegalArgumentException("please determinize the incoming automaton first");
     }
 
-    runDFA = new CharacterRunAutomaton(dfa, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    runDFA = new CharacterRunAutomaton(dfa);
   }
 
   private void fillToken(int offsetStart) {

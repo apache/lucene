@@ -7,7 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10010: AutomatonQuery, CompiledAutomaton, RunAutomaton, RegExp
+  classes no longer determinize NFAs. Instead it is the responsibility
+  of the caller to determinize.  (Robert Muir)
 
 New Features
 ---------------------
@@ -38,6 +41,8 @@ API Changes
 
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
+  
+* LUCENE-10289: DocIdSetBuilder#grow() takes now a long instead of an int. (Ignacio Vera)  
 
 New Features
 ---------------------
@@ -61,6 +66,9 @@ New Features
 * LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
   For more information, see https://s.apache.org/spanishplural  (Xavier Sanchez Loro)
 
+* LUCENE-10243: StandardTokenizer, UAX29URLEmailTokenizer, and HTMLStripCharFilter have
+  been upgraded to Unicode 12.1  (Robert Muir)
+
 Improvements
 ---------------------
 
@@ -79,6 +87,8 @@ Improvements
 Optimizations
 ---------------------
 
+* LUCENE-10280: Optimize BKD leaves' doc IDs codec when they are continuous. (Guo Feng)
+
 * LUCENE-10233: Store BKD leaves' doc IDs as bitset in some cases (typically for low cardinality fields
  or sorted indices) to speed up addAll. (Guo Feng, Adrien Grand)
 
@@ -86,12 +96,18 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
+
+* LUCENE-10287: Fix Luke startup script to add jdk.unsupported module so
+  MMapDirectory is used when opening indexes. (Uwe Schindler)
 
 Other
 ---------------------
 
 * LUCENE-10273: Deprecate SpanishMinimalStemFilter in favor of SpanishPluralStemFilter. (Robert Muir)
+
+* LUCENE-10284: Upgrade morfologik-stemming to 2.1.8. (Dawid Weiss)
 
 ======================= Lucene 9.0.0 =======================
 

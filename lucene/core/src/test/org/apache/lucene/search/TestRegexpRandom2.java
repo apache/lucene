@@ -41,6 +41,7 @@ import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
@@ -110,7 +111,8 @@ public class TestRegexpRandom2 extends LuceneTestCase {
     DumbRegexpQuery(Term term, int flags) {
       super(term.field());
       RegExp re = new RegExp(term.text(), flags);
-      automaton = re.toAutomaton();
+      automaton =
+          Operations.determinize(re.toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     }
 
     @Override

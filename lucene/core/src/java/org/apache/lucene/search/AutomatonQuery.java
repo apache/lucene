@@ -25,8 +25,6 @@ import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.Operations;
-import org.apache.lucene.util.automaton.RunAutomatonMode;
 
 /**
  * A {@link Query} that will match terms against a finite-state machine.
@@ -36,10 +34,9 @@ import org.apache.lucene.util.automaton.RunAutomatonMode;
  * Alternatively, it can be created from a regular expression with {@link RegexpQuery} or from the
  * standard Lucene wildcard syntax with {@link WildcardQuery}.
  *
- * <p>When the query is executed, it will create an equivalent DFA of the finite-state machine, and
- * will enumerate the term dictionary in an intelligent way to reduce the number of comparisons. For
- * example: the regular expression of <code>[dl]og?</code> will make approximately four comparisons:
- * do, dog, lo, and log.
+ * <p>When the query is executed, it will will enumerate the term dictionary in an intelligent way
+ * to reduce the number of comparisons. For example: the regular expression of <code>[dl]og?</code>
+ * will make approximately four comparisons: do, dog, lo, and log.
  *
  * @lucene.experimental
  */
@@ -59,61 +56,14 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
   private final long ramBytesUsed; // cache
 
   /**
-   * Create a new AutomatonQuery from an {@link Automaton}. Using {@link RunAutomatonMode#DFA} mode
-   * to run by default
+   * Create a new AutomatonQuery from an {@link Automaton}.
    *
    * @param term Term containing field and possibly some pattern structure. The term text is
    *     ignored.
    * @param automaton Automaton to run, terms that are accepted are considered a match.
    */
   public AutomatonQuery(final Term term, Automaton automaton) {
-    this(term, automaton, RunAutomatonMode.DFA);
-  }
-
-  /**
-   * Create a new AutomatonQuery from an {@link Automaton}. Using specific type of RunAutomaton
-   *
-   * @param term Term containing field and possibly some pattern structure. The term text is
-   *     ignored.
-   * @param automaton Automaton to run, terms that are accepted are considered a match.
-   * @param runAutomatonMode NFA or DFA. See {@link RunAutomatonMode} for difference between NFA and
-   *     DFA. Also note that NFA has uncertain performance impact
-   */
-  public AutomatonQuery(final Term term, Automaton automaton, RunAutomatonMode runAutomatonMode) {
-    this(term, automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, false, runAutomatonMode);
-  }
-
-  /**
-   * Create a new AutomatonQuery from an {@link Automaton}. Using {@link RunAutomatonMode#DFA} mode
-   * to run by default
-   *
-   * @param term Term containing field and possibly some pattern structure. The term text is
-   *     ignored.
-   * @param automaton Automaton to run, terms that are accepted are considered a match.
-   * @param determinizeWorkLimit maximum effort to spend determinizing the automaton. If the
-   *     automaton would need more than this much effort, TooComplexToDeterminizeException is
-   *     thrown. Higher numbers require more space but can process more complex automata.
-   */
-  public AutomatonQuery(final Term term, Automaton automaton, int determinizeWorkLimit) {
-    this(term, automaton, determinizeWorkLimit, false, RunAutomatonMode.DFA);
-  }
-
-  /**
-   * Create a new AutomatonQuery from an {@link Automaton}. Using {@link RunAutomatonMode#DFA} mode
-   * to run by default
-   *
-   * @param term Term containing field and possibly some pattern structure. The term text is
-   *     ignored.
-   * @param automaton Automaton to run, terms that are accepted are considered a match.
-   * @param determinizeWorkLimit maximum effort to spend determinizing the automaton. If the
-   *     automaton will need more than this much effort, TooComplexToDeterminizeException is thrown.
-   *     Higher numbers require more space but can process more complex automata.
-   * @param isBinary if true, this automaton is already binary and will not go through the
-   *     UTF32ToUTF8 conversion
-   */
-  public AutomatonQuery(
-      final Term term, Automaton automaton, int determinizeWorkLimit, boolean isBinary) {
-    this(term, automaton, determinizeWorkLimit, isBinary, RunAutomatonMode.DFA);
+    this(term, automaton, false);
   }
 
   /**
@@ -122,28 +72,16 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    * @param term Term containing field and possibly some pattern structure. The term text is
    *     ignored.
    * @param automaton Automaton to run, terms that are accepted are considered a match.
-   * @param determinizeWorkLimit maximum effort to spend determinizing the automaton. If the
-   *     automaton will need more than this much effort, TooComplexToDeterminizeException is thrown.
-   *     Higher numbers require more space but can process more complex automata.
    * @param isBinary if true, this automaton is already binary and will not go through the
    *     UTF32ToUTF8 conversion
-   * @param runAutomatonMode NFA or DFA. See {@link RunAutomatonMode} for difference between NFA and
-   *     DFA. Also note that NFA has uncertain performance impact
    */
-  public AutomatonQuery(
-      final Term term,
-      Automaton automaton,
-      int determinizeWorkLimit,
-      boolean isBinary,
-      RunAutomatonMode runAutomatonMode) {
+  public AutomatonQuery(final Term term, Automaton automaton, boolean isBinary) {
     super(term.field());
     this.term = term;
     this.automaton = automaton;
     this.automatonIsBinary = isBinary;
     // TODO: we could take isFinite too, to save a bit of CPU in CompiledAutomaton ctor?:
-    this.compiled =
-        new CompiledAutomaton(
-            automaton, null, true, determinizeWorkLimit, isBinary, runAutomatonMode);
+    this.compiled = new CompiledAutomaton(automaton, null, true, isBinary);
 
     this.ramBytesUsed =
         BASE_RAM_BYTES + term.ramBytesUsed() + automaton.ramBytesUsed() + compiled.ramBytesUsed();

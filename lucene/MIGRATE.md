@@ -17,6 +17,14 @@
 
 # Apache Lucene Migration Guide
 
+## Migration from Lucene 9.x to Lucene 10.0
+
+### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
+
+These classes no longer take a `determinizeWorkLimit` and no longer determinize
+behind the scenes. It is the responsibility of the caller to to call
+`Operations.determinize()` for DFA execution.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Minor syntactical changes in StandardQueryParser (LUCENE-10223)
