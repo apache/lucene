@@ -19,7 +19,7 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
-### AutomatonQuery/CompiledAutomaton/RunAutomaton no longer determinize (LUCENE-10010)
+### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
 
 These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to to call

@@ -166,9 +166,9 @@ public final class DocIdSetBuilder {
       bitSet.or(iter);
       return;
     }
-    int cost = (int) Math.min(Integer.MAX_VALUE, iter.cost());
+    long cost = iter.cost();
     BulkAdder adder = grow(cost);
-    for (int i = 0; i < cost; ++i) {
+    for (long i = 0; i < cost; ++i) {
       int doc = iter.nextDoc();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
         return;
@@ -184,18 +184,33 @@ public final class DocIdSetBuilder {
    * Reserve space and return a {@link BulkAdder} object that can be used to add up to {@code
    * numDocs} documents.
    */
-  public BulkAdder grow(int numDocs) {
+  public BulkAdder grow(long numDocs) {
     if (bitSet == null) {
-      if ((long) totalAllocated + numDocs <= threshold) {
-        ensureBufferCapacity(numDocs);
+      if ((long) totalAllocated + checkTotalAllocatedOverflow(numDocs) <= threshold) {
+        // For extra safety we use toIntExact
+        ensureBufferCapacity(Math.toIntExact(numDocs));
       } else {
         upgradeToBitSet();
-        counter += numDocs;
+        counter += checkCounterOverflow(numDocs);
       }
     } else {
-      counter += numDocs;
+      counter += checkCounterOverflow(numDocs);
     }
     return adder;
+  }
+
+  private long checkTotalAllocatedOverflow(long numDocs) {
+    if ((long) totalAllocated + numDocs < totalAllocated) {
+      throw new ArithmeticException("long overflow");
+    }
+    return numDocs;
+  }
+
+  private long checkCounterOverflow(long numDocs) {
+    if (counter + numDocs < counter) {
+      throw new ArithmeticException("long overflow");
+    }
+    return numDocs;
   }
 
   private void ensureBufferCapacity(int numDocs) {
