@@ -23,7 +23,7 @@ import java.util.Arrays;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 
-public class StoredFieldsInts {
+class StoredFieldsInts {
 
   private StoredFieldsInts() {}
 
