@@ -378,7 +378,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.10.1-cfs",
     "8.10.1-nocfs",
     "8.11.0-cfs",
-    "8.11.0-nocfs"
+    "8.11.0-nocfs",
+    "9.0.0-cfs",
+    "9.0.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -408,7 +410,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.8.8.2",
     "sorted.8.9.0",
     "sorted.8.10.1",
-    "sorted.8.11.0"
+    "sorted.8.11.0",
+    "sorted.9.0.0"
   };
 
   public static String[] getOldSortedNames() {
@@ -1768,7 +1771,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public static final String emptyIndex = "empty.8.0.0.zip";
+  public static final String emptyIndex = "empty.9.0.0.zip";
 
   public void testUpgradeEmptyOldIndex() throws Exception {
     Path oldIndexDir = createTempDir("emptyIndex");
@@ -1777,12 +1780,12 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     newIndexUpgrader(dir).upgrade();
 
-    checkAllSegmentsUpgraded(dir, 8);
+    checkAllSegmentsUpgraded(dir, 9);
 
     dir.close();
   }
 
-  public static final String moreTermsIndex = "moreterms.8.0.0.zip";
+  public static final String moreTermsIndex = "moreterms.9.0.0.zip";
 
   public void testMoreTerms() throws Exception {
     Path oldIndexDir = createTempDir("moreterms");
@@ -1798,7 +1801,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  public static final String dvUpdatesIndex = "dvupdates.8.0.0.zip";
+  public static final String dvUpdatesIndex = "dvupdates.9.0.0.zip";
 
   private void assertNumericDocValues(LeafReader r, String f, String cf) throws IOException {
     NumericDocValues ndvf = r.getNumericDocValues(f);
@@ -2083,16 +2086,23 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     for (String name : oldNames) {
       Directory directory = oldIndexDirs.get(name);
       IndexCommit commit = DirectoryReader.listCommits(directory).get(0);
-      IndexFormatTooOldException ex =
-          expectThrows(
-              IndexFormatTooOldException.class,
-              () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
-      assertTrue(
-          ex.getMessage()
-              .contains(
-                  "only supports reading from version " + Version.LATEST.major + " upwards."));
-      // now open with allowed min version
-      StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null).close();
+
+      final int createdMajor;
+      // No exception when opening with the allowed min version
+      try (IndexReader reader = StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null)) {
+        createdMajor = reader.leaves().get(0).reader().getMetaData().getCreatedVersionMajor();
+      }
+
+      if (createdMajor < Version.LATEST.major) {
+        IndexFormatTooOldException ex =
+            expectThrows(
+                IndexFormatTooOldException.class,
+                () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
+        assertTrue(
+            ex.getMessage()
+                .contains(
+                    "only supports reading from version " + Version.LATEST.major + " upwards."));
+      }
     }
   }
 
