@@ -1766,9 +1766,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public static final String emptyIndex = "empty.8.0.0.zip";
+  public static final String emptyIndex = "empty.9.0.0.zip";
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testUpgradeEmptyOldIndex() throws Exception {
     Path oldIndexDir = createTempDir("emptyIndex");
     TestUtil.unzip(getDataInputStream(emptyIndex), oldIndexDir);
@@ -1776,14 +1775,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     newIndexUpgrader(dir).upgrade();
 
-    checkAllSegmentsUpgraded(dir, 8);
+    checkAllSegmentsUpgraded(dir, 9);
 
     dir.close();
   }
 
   public static final String moreTermsIndex = "moreterms.9.0.0.zip";
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testMoreTerms() throws Exception {
     Path oldIndexDir = createTempDir("moreterms");
     TestUtil.unzip(getDataInputStream(moreTermsIndex), oldIndexDir);
@@ -1832,7 +1830,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     reader.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDocValuesUpdates() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1861,7 +1858,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDeletes() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1885,7 +1881,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testSoftDeletes() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1907,7 +1902,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDocValuesUpdatesWithNewField() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
