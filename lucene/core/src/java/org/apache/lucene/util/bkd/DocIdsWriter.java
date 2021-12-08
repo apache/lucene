@@ -291,8 +291,7 @@ class DocIdsWriter {
    * Read {@code count} integers and feed the result directly to {@link
    * IntersectVisitor#visit(int)}.
    */
-  static void readInts(IndexInput in, int count, IntersectVisitor visitor, long[] scratch)
-      throws IOException {
+  static void readInts(IndexInput in, int count, IntersectVisitor visitor, long[] scratch) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case -2:
@@ -337,8 +336,7 @@ class DocIdsWriter {
     }
   }
 
-  private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
+  private static void readInts24(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
       long l1 = in.readLong();
