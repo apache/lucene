@@ -57,6 +57,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.SynonymImpactsSource;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermScorer;
 import org.apache.lucene.search.TermStatistics;
@@ -491,49 +492,32 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       Map<String, ImpactsEnum[]> fieldImpactsEnum, Map<String, float[]> fieldWeights) {
 
     return new ImpactsSource() {
-      final Map<String, Impacts[]> fieldImpacts = new HashMap<>();
-      Map<String, Impacts> leadingImpactsPerField = null;
+      Map<String, SynonymImpactsSource> fieldImpactsSource = null;
 
       @Override
       public Impacts getImpacts() throws IOException {
-        // Use the impacts that have the lower next boundary (doc id in skip entry) as a lead for
-        // each field
-        // They collectively will decide on the number of levels and the block boundaries.
-
-        if (leadingImpactsPerField == null) {
-          leadingImpactsPerField = new HashMap<>(fieldImpactsEnum.size());
-          fieldImpacts.clear();
-
+        if (fieldImpactsSource == null) {
+          fieldImpactsSource = new HashMap<>();
           for (Map.Entry<String, ImpactsEnum[]> e : fieldImpactsEnum.entrySet()) {
-            String field = e.getKey();
-            ImpactsEnum[] impactsEnums = e.getValue();
-            Impacts[] impacts = new Impacts[impactsEnums.length];
-            fieldImpacts.put(field, impacts);
-
-            Impacts tmpLead = null;
-            // find the impact that has the lowest next boundary for this field
-            for (int i = 0; i < impactsEnums.length; ++i) {
-              Impacts currentImpacts = impactsEnums[i].getImpacts();
-              impacts[i] = currentImpacts;
-
-              if (tmpLead == null || currentImpacts.getDocIdUpTo(0) < tmpLead.getDocIdUpTo(0)) {
-                tmpLead = currentImpacts;
-              }
-            }
-
-            leadingImpactsPerField.put(field, tmpLead);
+            SynonymImpactsSource source =
+                new SynonymImpactsSource(e.getValue(), fieldWeights.get(e.getKey()));
+            fieldImpactsSource.put(e.getKey(), source);
           }
         }
 
         return new Impacts() {
-
           @Override
           public int numLevels() {
             // max of levels across fields' impactEnums
             int result = 0;
 
-            for (Impacts impacts : leadingImpactsPerField.values()) {
-              result = Math.max(result, impacts.numLevels());
+            for (SynonymImpactsSource s : fieldImpactsSource.values()) {
+              try {
+                result = Math.max(result, s.getImpacts().numLevels());
+              } catch (IOException e) {
+                // nocommit to be handled
+                e.printStackTrace();
+              }
             }
 
             return result;
@@ -544,15 +528,26 @@ public final class CombinedFieldQuery extends Query implements Accountable {
             // min of docIdUpTo across fields' impactEnums
             int result = Integer.MAX_VALUE;
 
-            for (Impacts impacts : leadingImpactsPerField.values()) {
-              if (impacts.numLevels() > level) {
-                result = Math.min(result, impacts.getDocIdUpTo(level));
+            for (SynonymImpactsSource s : fieldImpactsSource.values()) {
+              Impacts impacts;
+              try {
+                impacts = s.getImpacts();
+                if (impacts.numLevels() > level) {
+                  result = Math.min(result, impacts.getDocIdUpTo(level));
+                }
+              } catch (IOException e) {
+                // nocommit to be handled
+                e.printStackTrace();
               }
             }
 
             return result;
           }
 
+          // this can't loop over each field's SynonymImpactsSource.getImpacts().getImpacts(level)
+          // and then combine impacts,
+          // as docIdUpTo of each SynonymImpactsSource.getImpacts().getImpacts(level) might be
+          // different for the same level
           @Override
           public List<Impact> getImpacts(int level) {
             final int docIdUpTo = getDocIdUpTo(level);
@@ -571,7 +566,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
               List<Impact> mergedImpacts =
                   ImpactsMergingUtils.mergeImpactsPerField(
                       impactsEnums,
-                      fieldImpacts.get(field),
+                      fieldImpactsSource.get(field).impacts(),
                       fieldWeights.get(field),
                       docIdUpTo,
                       true);
@@ -628,7 +623,8 @@ public final class CombinedFieldQuery extends Query implements Accountable {
             }
           }
         }
-        leadingImpactsPerField = null;
+
+        fieldImpactsSource = null;
       }
     };
   }

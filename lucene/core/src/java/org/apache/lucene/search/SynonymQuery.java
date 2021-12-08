@@ -24,8 +24,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import org.apache.lucene.index.Impact;
-import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.IndexReader;
@@ -342,53 +340,7 @@ public final class SynonymQuery extends Query {
   /** Merge impacts for multiple synonyms. */
   static ImpactsSource mergeImpacts(ImpactsEnum[] impactsEnums, float[] boosts) {
     assert impactsEnums.length == boosts.length;
-    return new ImpactsSource() {
-
-      @Override
-      public Impacts getImpacts() throws IOException {
-        final Impacts[] impacts = new Impacts[impactsEnums.length];
-        // Use the impacts that have the lower next boundary as a lead.
-        // It will decide on the number of levels and the block boundaries.
-        Impacts tmpLead = null;
-        for (int i = 0; i < impactsEnums.length; ++i) {
-          impacts[i] = impactsEnums[i].getImpacts();
-          if (tmpLead == null || impacts[i].getDocIdUpTo(0) < tmpLead.getDocIdUpTo(0)) {
-            tmpLead = impacts[i];
-          }
-        }
-        final Impacts lead = tmpLead;
-        return new Impacts() {
-
-          @Override
-          public int numLevels() {
-            // Delegate to the lead
-            return lead.numLevels();
-          }
-
-          @Override
-          public int getDocIdUpTo(int level) {
-            // Delegate to the lead
-            return lead.getDocIdUpTo(level);
-          }
-
-          @Override
-          public List<Impact> getImpacts(int level) {
-            final int docIdUpTo = getDocIdUpTo(level);
-            return ImpactsMergingUtils.mergeImpactsPerField(
-                impactsEnums, impacts, boosts, docIdUpTo, false);
-          }
-        };
-      }
-
-      @Override
-      public void advanceShallow(int target) throws IOException {
-        for (ImpactsEnum impactsEnum : impactsEnums) {
-          if (impactsEnum.docID() < target) {
-            impactsEnum.advanceShallow(target);
-          }
-        }
-      }
-    };
+    return new SynonymImpactsSource(impactsEnums, boosts);
   }
 
   private static class SynonymScorer extends Scorer {
