@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -2402,7 +2403,12 @@ public final class CheckIndex implements Closeable {
         infoStream.print("    test: terms, freq, prox...");
       }
 
-      final Fields fields = reader.getPostingsReader().getMergeInstance();
+      FieldsProducer fields = reader.getPostingsReader();
+      if (fields != null) {
+        fields = fields.getMergeInstance();
+      } else {
+        return new Status.TermIndexStatus();
+      }
       final FieldInfos fieldInfos = reader.getFieldInfos();
       NormsProducer normsProducer = reader.getNormsReader();
       if (normsProducer != null) {
@@ -3535,10 +3541,13 @@ public final class CheckIndex implements Closeable {
 
       final Bits liveDocs = reader.getLiveDocs();
 
-      final Fields postingsFields;
+      FieldsProducer postingsFields;
       // TODO: testTermsIndex
       if (doSlowChecks) {
-        postingsFields = reader.getPostingsReader().getMergeInstance();
+        postingsFields = reader.getPostingsReader();
+        if (postingsFields != null) {
+          postingsFields = postingsFields.getMergeInstance();
+        }
       } else {
         postingsFields = null;
       }
@@ -3592,6 +3601,10 @@ public final class CheckIndex implements Closeable {
                 final boolean postingsHasPayload = fieldInfo.hasPayloads();
                 final boolean vectorsHasPayload = terms.hasPayloads();
 
+                if (postingsFields == null) {
+                  throw new CheckIndexException(
+                      "vector field=" + field + " does not exist in postings; doc=" + j);
+                }
                 Terms postingsTerms = postingsFields.terms(field);
                 if (postingsTerms == null) {
                   throw new CheckIndexException(
