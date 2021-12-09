@@ -79,11 +79,11 @@ class DocIdsWriter {
       if (max <= 0xff) {
         out.writeByte((byte) 1);
         out.writeVInt(docIds[start]);
-        writeInts8(out, count, delta, start);
+        writeInts8(out, count, delta, 0);
       } else if (max <= 0xffff) {
         out.writeByte((byte) 2);
         out.writeVInt(docIds[start]);
-        writeInts16(out, count, delta, start);
+        writeInts16(out, count, delta, 0);
       } else {
         out.writeByte((byte) 0);
         out.writeVInt(docIds[start]);
