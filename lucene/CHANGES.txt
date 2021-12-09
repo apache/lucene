@@ -41,8 +41,6 @@ API Changes
 
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
-  
-* LUCENE-10289: DocIdSetBuilder#grow() takes now a long instead of an int. (Ignacio Vera)  
 
 New Features
 ---------------------
@@ -81,6 +79,9 @@ Improvements
 * LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
 
 * LUCENE-10275: Speed up MultiRangeQuery by using an interval tree. (Ignacio Vera)
+
+* LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
+  with or without offsets enabled. (Patrick Zhai)
   
 Optimizations
 ---------------------
