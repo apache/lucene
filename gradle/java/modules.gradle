@@ -1,7 +1,3 @@
-import java.util.function.Predicate
-import java.util.jar.JarFile
-import java.util.stream.Collectors
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,8 @@ import java.util.stream.Collectors
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import java.util.function.Predicate
 
 // Configure miscellaneous aspects required for supporting the java module system layer.
 
@@ -227,105 +225,3 @@ allprojects {
     }
   }
 }
-
-
-// Methods below are for debugging purposes.
-
-allprojects {
-  plugins.withType(JavaPlugin) {
-    // Show all non-empty package names
-    tasks.register("showPackageNames", { task ->
-      doFirst {
-        listPackageNames(sourceSets).each { println(it) }
-      }
-    })
-
-    tasks.register("showServiceProviders", { task ->
-      doFirst {
-        def services = listServices(sourceSets)
-        services.each { entry -> {
-          println(entry.key)
-          entry.value.each { println("  ${it}") }
-        }}
-      }
-    })
-
-    tasks.register("scaffoldModuleDescriptor", {
-      doFirst {
-        def moduleName = "org.apache" + project.path.replace('-', '_').replace(':', '.')
-        def pkgNames = listPackageNames(sourceSets)
-        def services = listServices(sourceSets)
-        def outFile = project.file("${getTemporaryDir()}/module-info.java")
-        outFile.withWriter("UTF-8", { writer ->
-          writer.write("module ${moduleName} {\n")
-          // write exports statements
-          pkgNames.each {pkg ->
-            writer.write("  exports ")
-            writer.write(pkg)
-            writer.write(";\n")
-          }
-          writer.write("\n")
-          // write provides statements
-          services.each { entry -> {
-            def service = entry.key
-            def providers = "      " + entry.value.join(",\n      ")
-            writer.write("  provides ")
-            writer.write(service)
-            writer.write(" with\n")
-            writer.write(providers)
-            writer.write(";\n")
-          }}
-          writer.write("}\n")
-        })
-
-        logger.lifecycle("Output to: ${outFile}")
-        logger.lifecycle("NOTE: The generated module descriptor is not complete and won't work as is.")
-      }
-    })
-  }
-}
-
-/* Utility method to collect all package names in a source sets. */
-static def listPackageNames(SourceSetContainer sourceSets) {
-  var pkgNameSet = [] as Set<String>
-  sourceSets.main.each { sourceSet ->
-    var dirs = sourceSet.allJava.srcDirTrees.collect { it.dir.toPath() }
-    var pattern = new PatternSet()
-      .include('**/*.java')
-      .exclude('module-info.java')
-      .exclude('**/package-info.java')
-    sourceSet.allJava.matching(pattern).each {srcFile ->
-      var srcPath = srcFile.toPath()
-      var dir = dirs.find { srcPath.startsWith(it) }
-      var pkgName = srcPath.subpath(dir.nameCount, srcPath.nameCount).parent.stream().map(Object::toString).collect(Collectors.joining('.'))
-      pkgNameSet.add(pkgName)
-    }
-  }
-  var pkgNames = pkgNameSet as List<String>
-  pkgNames.sort()
-  return pkgNames
-}
-
-/* Utility method to collect all service providers in a source sets. */
-static def listServices(SourceSetContainer sourceSets) {
-  def services = [:] as Map<String, List<String>>
-  sourceSets.main.each {sourceSet ->
-    var pattern = new PatternSet().include('META-INF/services/*')
-    sourceSet.resources.matching(pattern).each {file ->
-      def serviceName = file.name
-      def providers = []
-      file.withReader { reader -> {
-        reader.lines().each { l ->
-          def line = l.trim()
-          if (line != "" && !line.startsWith("#")) {
-            def provider = line.replace('$', '.')
-            providers.add(provider)
-          }
-        }
-      }}
-      services.put(serviceName, providers)
-    }
-  }
-  return services
-}
-
