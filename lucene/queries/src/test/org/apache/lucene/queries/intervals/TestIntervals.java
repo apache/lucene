@@ -619,17 +619,13 @@ public class TestIntervals extends LuceneTestCase {
     checkIntervals(
         source, "field1", 3, new int[][] {{}, {4, 4, 7, 7}, {1, 1, 7, 7}, {}, {4, 4}, {}});
     MatchesIterator mi = getMatches(source, 1, "field1");
-    assertMatch(mi, 4, 4, 20, 39);
+    assertMatch(mi, 4, 4, 26, 34);
     MatchesIterator subs = mi.getSubMatches();
-    assertMatch(subs, 3, 3, 20, 25);
     assertMatch(subs, 4, 4, 26, 34);
-    assertMatch(subs, 5, 5, 35, 39);
     assertFalse(subs.next());
-    assertMatch(mi, 7, 7, 41, 118);
+    assertMatch(mi, 7, 7, 47, 55);
     subs = mi.getSubMatches();
-    assertMatch(subs, 6, 6, 41, 46);
     assertMatch(subs, 7, 7, 47, 55);
-    assertMatch(subs, 21, 21, 114, 118);
     assertFalse(subs.next());
     assertFalse(mi.next());
     assertEquals(1, source.minExtent());
@@ -786,6 +782,30 @@ public class TestIntervals extends LuceneTestCase {
     assertEquals(3, source.minExtent());
   }
 
+  public void testMinShouldMatch2() throws IOException {
+    IntervalsSource source =
+        Intervals.atLeast(
+            2,
+            Intervals.unordered(Intervals.term("alph"), Intervals.term("ran")),
+            Intervals.term("where"),
+            Intervals.term("river"));
+    MatchesIterator mi = getMatches(source, 1, "field2");
+    assertMatch(mi, 0, 4, 0, 27); // contains "where" and "river"
+    MatchesIterator subs = mi.getSubMatches();
+    assertNotNull(subs);
+    assertMatch(subs, 0, 0, 0, 5);
+    assertMatch(subs, 4, 4, 22, 27);
+    assertFalse(subs.next());
+    assertMatch(mi, 1, 5, 6, 31); // contains "river" and unordered("alph", "run")
+    subs = mi.getSubMatches();
+    assertNotNull(subs);
+    assertMatch(subs, 1, 1, 6, 10);
+    assertMatch(subs, 4, 4, 22, 27);
+    assertMatch(subs, 5, 5, 28, 31);
+    assertFalse(subs.next());
+    assertFalse(mi.next());
+  }
+
   public void testDegenerateMinShouldMatch() throws IOException {
     IntervalsSource source =
         Intervals.ordered(
@@ -849,11 +869,9 @@ public class TestIntervals extends LuceneTestCase {
     checkIntervals(source, "field1", 3, new int[][] {{}, {7, 7}, {4, 4, 7, 7}, {}, {7, 7}, {}});
 
     MatchesIterator mi = getMatches(source, 1, "field1");
-    assertMatch(mi, 7, 7, 20, 55);
+    assertMatch(mi, 7, 7, 47, 55);
     MatchesIterator sub = mi.getSubMatches();
     assertNotNull(sub);
-    assertMatch(sub, 3, 3, 20, 25);
-    assertMatch(sub, 5, 5, 35, 39);
     assertMatch(sub, 7, 7, 47, 55);
     assertFalse(sub.next());
 
@@ -888,15 +906,13 @@ public class TestIntervals extends LuceneTestCase {
 
     MatchesIterator mi = getMatches(source, 1, "field1");
     assertNotNull(mi);
-    assertMatch(mi, 2, 4, 15, 39);
+    assertMatch(mi, 2, 4, 15, 34);
     MatchesIterator sub = mi.getSubMatches();
     assertNotNull(sub);
     assertMatch(sub, 2, 2, 15, 18);
-    assertMatch(sub, 3, 3, 20, 25);
     assertMatch(sub, 4, 4, 26, 34);
-    assertMatch(sub, 5, 5, 35, 39);
     assertFalse(sub.next());
-    assertMatch(mi, 7, 17, 41, 118);
+    assertMatch(mi, 7, 17, 47, 99);
 
     assertEquals(2, source.minExtent());
   }
