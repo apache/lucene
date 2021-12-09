@@ -2089,7 +2089,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
       final int createdMajor;
       // No exception when opening with the allowed min version
-      try (IndexReader reader = StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null)) {
+      try (IndexReader reader =
+          StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null)) {
         createdMajor = reader.leaves().get(0).reader().getMetaData().getCreatedVersionMajor();
       }
 
