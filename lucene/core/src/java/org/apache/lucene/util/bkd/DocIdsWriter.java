@@ -49,8 +49,48 @@ class DocIdsWriter {
       }
     }
 
+    int min2max = docIds[start + count - 1] - docIds[start] + 1;
+    if (strictlySorted) {
+      if (min2max == count) {
+        // continuous ids, typically happens when segment is sorted
+        out.writeByte((byte) -2);
+        out.writeVInt(docIds[start]);
+        return;
+      } else if (min2max <= (count << 4)) {
+        assert min2max > count : "min2max: " + min2max + ", count: " + count;
+        // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid
+        // expanding too much storage.
+        // A field with lower cardinality will have higher probability to trigger this optimization.
+        out.writeByte((byte) -1);
+        writeIdsAsBitSet(docIds, start, count, out);
+        return;
+      }
+    }
+
     if (sorted) {
-      writeSorted(docIds, start, count, out, strictlySorted);
+      int[] delta = new int[count];
+      int previous = docIds[start];
+      for (int i = 1; i < count; ++i) {
+        int doc = docIds[start + i];
+        delta[i] = doc - previous;
+        previous = doc;
+      }
+      long max = getMax(delta, 0, count);
+      if (max <= 0xff) {
+        out.writeByte((byte) 1);
+        out.writeVInt(docIds[start]);
+        writeInts8(out, count, delta, start);
+      } else if (max <= 0xffff) {
+        out.writeByte((byte) 2);
+        out.writeVInt(docIds[start]);
+        writeInts16(out, count, delta, start);
+      } else {
+        out.writeByte((byte) 0);
+        out.writeVInt(docIds[start]);
+        for (int i = 1; i < count; i++) {
+          out.writeVInt(delta[i]);
+        }
+      }
     } else {
       long max = getMax(docIds, start, count);
       if (max <= 0xffffff) {
@@ -86,52 +126,6 @@ class DocIdsWriter {
         for (int i = 0; i < count; ++i) {
           out.writeInt(docIds[start + i]);
         }
-      }
-    }
-  }
-
-  private static void writeSorted(
-      int[] docIds, int start, int count, DataOutput out, boolean strictlySorted)
-      throws IOException {
-    int min2max = docIds[start + count - 1] - docIds[start] + 1;
-    if (strictlySorted) {
-      if (min2max == count) {
-        // continuous ids, typically happens when segment is sorted
-        out.writeByte((byte) -2);
-        out.writeVInt(docIds[start]);
-        return;
-      } else if (min2max <= (count << 4)) {
-        assert min2max > count : "min2max: " + min2max + ", count: " + count;
-        // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid
-        // expanding too much storage.
-        // A field with lower cardinality will have higher probability to trigger this optimization.
-        out.writeByte((byte) -1);
-        writeIdsAsBitSet(docIds, start, count, out);
-        return;
-      }
-    }
-
-    int[] delta = new int[count];
-    int previous = docIds[start];
-    for (int i = 1; i < count; ++i) {
-      int doc = docIds[start + i];
-      delta[i] = doc - previous;
-      previous = doc;
-    }
-    long max = getMax(delta, 0, count);
-    if (max <= 0xff) {
-      out.writeByte((byte) 1);
-      out.writeVInt(docIds[start]);
-      writeInts8(out, count, delta, start);
-    } else if (max <= 0xffff) {
-      out.writeByte((byte) 2);
-      out.writeVInt(docIds[start]);
-      writeInts16(out, count, delta, start);
-    } else {
-      out.writeByte((byte) 0);
-      out.writeVInt(docIds[start]);
-      for (int i = 1; i < count; i++) {
-        out.writeVInt(delta[i]);
       }
     }
   }
