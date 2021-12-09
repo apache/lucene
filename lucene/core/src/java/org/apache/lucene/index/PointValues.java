@@ -407,9 +407,8 @@ public abstract class PointValues {
           pointTree.moveToParent();
         } else {
           // Leaf node; scan and filter all points in this block:
-          // The maximum number of points in a leaf are 'maxPointPerLeafNode' which is an int
-          // therefore casting to int is safe
-          visitor.grow((int) pointTree.size());
+          // We cannot have more than Integer.MAX_VALUE points in a leaf
+          visitor.grow(Math.toIntExact(pointTree.size()));
           pointTree.visitDocValues(visitor, visitor, visitor);
         }
         break;
@@ -428,6 +427,10 @@ public abstract class PointValues {
         do {
           visitDocIds(visitor, pointTree);
         } while (pointTree.moveToSibling());
+        pointTree.moveToParent();
+      } else {
+        // We cannot have more than Integer.MAX_VALUE points in a leaf
+        throw new ArithmeticException("integer overflow");
       }
     }
   }
