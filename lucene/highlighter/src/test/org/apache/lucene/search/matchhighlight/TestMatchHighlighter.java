@@ -720,7 +720,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                     /*
                     The test cases below do not work for fields enabled with offset yet:
                     mainly "extend"
-                    TODO: Fix them!
+                    TODO: LUCENE-10229: fix these remaining cases.
 
                     {"fn:extend(fox 1 2)", "0. %s: The quick >brown fox jumps over< the lazy dog"},
                     {
