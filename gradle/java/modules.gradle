@@ -1,3 +1,4 @@
+import java.util.function.Predicate
 import java.util.jar.JarFile
 import java.util.stream.Collectors
 
@@ -197,6 +198,67 @@ allprojects {
           return trimmedClasspath
         })
       }
+    }
+
+    // Configure the test task.
+    tasks.matching { it.name == "test" }.all { Test task ->
+      Configuration modulePath = task.project.configurations.maybeCreate("moduleTestCompilePath")
+      task.dependsOn modulePath
+
+      SourceSet sourceSet = task.project.sourceSets.test
+
+      Predicate<SourceSet> hasModuleDescriptor = { SourceSet ss ->
+        ss.allJava.srcDirs.stream()
+            .map(dir -> new File(dir, "module-info.java"))
+            .anyMatch(file -> file.exists())
+      }
+
+      // Add modular dependencies and their transitive dependencies to module path.
+      task.jvmArgumentProviders.add(new CommandLineArgumentProvider() {
+        @Override
+        Iterable<String> asArguments() {
+          def extraArgs = []
+
+          // Determine whether the source set classes themselves should be appended to classpath
+          // or module path.
+          boolean sourceSetIsAModule = hasModuleDescriptor.test(sourceSet)
+
+          if (!modulePath.isEmpty() || sourceSetIsAModule) {
+            if (sourceSetIsAModule) {
+              // Add source set outputs to module path.
+              extraArgs += ["--module-path", (modulePath + sourceSet.output.classesDirs).files.join(File.pathSeparator) ]
+              // TODO: we should only initially add the sourceset's module? Everything else would be resolved via the
+              // module descriptor?
+              extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+            } else {
+              extraArgs += ["--module-path", modulePath.files.join(File.pathSeparator) ]
+              // We're running a non-module against things on the module path so let's bring in
+              // everything on module path into the resolution graph.
+              extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+            }
+          }
+
+          task.logger.info("Module path for ${task.path}:\n  " + modulePath.files.sort().join("\n  "))
+
+          return extraArgs
+        }
+      })
+
+      // Modify the default classpath by removing anything already placed on module path.
+      // This could be done in a fancier way but a set difference is just fine for us here. Use a lazy
+      // provider to delay computation of the actual path.
+      task.classpath = files({ ->
+        def trimmedClasspath = sourceSet.runtimeClasspath - modulePath
+
+        boolean sourceSetIsAModule = hasModuleDescriptor.test(sourceSet)
+        if (sourceSetIsAModule) {
+          // also subtract the sourceSet's output directories.
+          trimmedClasspath = trimmedClasspath - sourceSet.output.classesDirs
+        }
+
+        task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
+        return trimmedClasspath
+      })
     }
 
     // Configure module versions.
