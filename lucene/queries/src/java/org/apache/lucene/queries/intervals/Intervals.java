@@ -275,7 +275,10 @@ public final class Intervals {
   }
 
   /**
-   * Create an unordered {@link IntervalsSource}
+   * Create an unordered {@link IntervalsSource}. Note that if there are multiple intervals ends at
+   * the same position are eligible, only the narrowest one will be returned. For example if asking
+   * for <code>unordered(term("apple"), term("banana"))</code> on field of "apple wolf apple orange
+   * banana", only the "apple orange banana" will be returned.
    *
    * <p>Returns intervals in which all the subsources appear. The subsources may overlap
    *

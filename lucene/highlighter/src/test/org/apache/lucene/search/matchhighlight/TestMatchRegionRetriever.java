@@ -379,7 +379,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                           Intervals.containedBy(
                               Intervals.term("foo"),
                               Intervals.unordered(Intervals.term("foo"), Intervals.term("bar"))))),
-                  containsInAnyOrder(fmt("2: (field_text_offs: '>bar baz foo< xyz')", field)));
+                  containsInAnyOrder(fmt("2: (field_text_offs: 'bar baz >foo< xyz')", field)));
 
               MatcherAssert.assertThat(
                   highlights(
@@ -387,9 +387,9 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                       new IntervalQuery(
                           field,
                           Intervals.overlapping(
-                              Intervals.unordered(Intervals.term("foo"), Intervals.term("bar")),
-                              Intervals.term("foo")))),
-                  containsInAnyOrder(fmt("2: (field_text_offs: '>bar baz foo< xyz')", field)));
+                              Intervals.term("foo"),
+                              Intervals.unordered(Intervals.term("foo"), Intervals.term("bar"))))),
+                  containsInAnyOrder(fmt("2: (field_text_offs: 'bar baz >foo< xyz')", field)));
             });
   }
 
