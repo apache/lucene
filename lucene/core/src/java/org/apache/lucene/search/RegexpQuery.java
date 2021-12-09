@@ -140,8 +140,7 @@ public class RegexpQuery extends AutomatonQuery {
     super(
         term,
         Operations.determinize(
-            new RegExp(term.text(), syntax_flags, match_flags)
-                .toAutomaton(provider, determinizeWorkLimit),
+            new RegExp(term.text(), syntax_flags, match_flags).toAutomaton(provider),
             determinizeWorkLimit));
   }
 

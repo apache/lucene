@@ -35,7 +35,7 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
       throw new IllegalArgumentException("cost must be >= 0, got " + cost);
     }
     if ((docBase & 63) != 0) {
-      throw new IllegalArgumentException("docBase need to be a multiple of 64");
+      throw new IllegalArgumentException("docBase need to be a multiple of 64, got " + docBase);
     }
     this.bits = bits;
     this.length = bits.length() + docBase;

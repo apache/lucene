@@ -70,6 +70,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
@@ -994,7 +995,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(2, termsEnum.ord());
 
     // NORMAL automaton
-    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp(".*l.*").toAutomaton()));
+    termsEnum =
+        dv.intersect(
+            new CompiledAutomaton(
+                Operations.determinize(
+                    new RegExp(".*l.*").toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT)));
     assertEquals("hello", termsEnum.next().utf8ToString());
     assertEquals(1, termsEnum.ord());
     assertEquals("world", termsEnum.next().utf8ToString());
@@ -2191,7 +2196,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(2, termsEnum.ord());
 
     // NORMAL automaton
-    termsEnum = dv.intersect(new CompiledAutomaton(new RegExp(".*l.*").toAutomaton()));
+    termsEnum =
+        dv.intersect(
+            new CompiledAutomaton(
+                Operations.determinize(
+                    new RegExp(".*l.*").toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT)));
     assertEquals("hello", termsEnum.next().utf8ToString());
     assertEquals(1, termsEnum.ord());
     assertEquals("world", termsEnum.next().utf8ToString());

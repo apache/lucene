@@ -8,7 +8,7 @@ http://s.apache.org/luceneversions
 API Changes
 ---------------------
 
-* LUCENE-10010: AutomatonQuery, CompiledAutomaton, and RunAutomaton
+* LUCENE-10010: AutomatonQuery, CompiledAutomaton, RunAutomaton, RegExp
   classes no longer determinize NFAs. Instead it is the responsibility
   of the caller to determinize.  (Robert Muir)
 
@@ -41,6 +41,8 @@ API Changes
 
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
+  
+* LUCENE-10289: DocIdSetBuilder#grow() takes now a long instead of an int. (Ignacio Vera)  
 
 New Features
 ---------------------
@@ -82,6 +84,8 @@ Improvements
   
 Optimizations
 ---------------------
+
+* LUCENE-10280: Optimize BKD leaves' doc IDs codec when they are continuous. (Guo Feng)
 
 * LUCENE-10233: Store BKD leaves' doc IDs as bitset in some cases (typically for low cardinality fields
  or sorted indices) to speed up addAll. (Guo Feng, Adrien Grand)
