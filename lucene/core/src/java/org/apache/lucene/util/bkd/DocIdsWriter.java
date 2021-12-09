@@ -296,7 +296,7 @@ class DocIdsWriter {
     visitor.visit(bitSetIterator);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, DocIdsVisitor visitor)
+  private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
     int start = in.readVInt();
     int extra = start & 63;

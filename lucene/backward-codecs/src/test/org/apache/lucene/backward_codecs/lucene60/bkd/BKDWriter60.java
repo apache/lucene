@@ -419,10 +419,10 @@ public class BKDWriter60 implements Closeable {
     }
 
     @Override
-    public void grow(long count) {
+    public void grow(int count) {
       assert docsInBlock == 0;
       if (docIDs.length < count) {
-        docIDs = ArrayUtil.grow(docIDs, Math.toIntExact(count));
+        docIDs = ArrayUtil.grow(docIDs, count);
         int packedValuesSize = Math.toIntExact(docIDs.length * (long) packedBytesLength);
         if (packedValuesSize > ArrayUtil.MAX_ARRAY_LENGTH) {
           throw new IllegalStateException(

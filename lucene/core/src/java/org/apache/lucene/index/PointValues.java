@@ -373,7 +373,7 @@ public abstract class PointValues {
   public interface IntersectVisitor extends NodeComparator, DocValuesVisitor, DocIdsVisitor {
 
     /** Notifies the caller that this many documents are about to be visited */
-    default void grow(long count) {}
+    default void grow(int count) {}
   }
 
   /**
@@ -395,8 +395,7 @@ public abstract class PointValues {
       case CELL_INSIDE_QUERY:
         // This cell is fully inside the query shape: recursively add all points in this cell
         // without filtering
-        visitor.grow(pointTree.size());
-        pointTree.visitDocIDs(visitor);
+        visitDocIds(visitor, pointTree);
         break;
       case CELL_CROSSES_QUERY:
         // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
@@ -408,12 +407,28 @@ public abstract class PointValues {
           pointTree.moveToParent();
         } else {
           // Leaf node; scan and filter all points in this block:
-          visitor.grow(pointTree.size());
+          // The maximum number of points in a leaf are 'maxPointPerLeafNode' which is an int
+          // therefore casting to int is safe
+          visitor.grow((int) pointTree.size());
           pointTree.visitDocValues(visitor, visitor, visitor);
         }
         break;
       default:
         throw new IllegalArgumentException("Unreachable code");
+    }
+  }
+
+  private void visitDocIds(IntersectVisitor visitor, PointTree pointTree) throws IOException {
+    final long size = pointTree.size();
+    if (size <= Integer.MAX_VALUE) {
+      visitor.grow((int) size);
+      pointTree.visitDocIDs(visitor);
+    } else {
+      if (pointTree.moveToChild()) {
+        do {
+          visitDocIds(visitor, pointTree);
+        } while (pointTree.moveToSibling());
+      }
     }
   }
 

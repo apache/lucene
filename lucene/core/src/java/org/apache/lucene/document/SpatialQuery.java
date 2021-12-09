@@ -413,7 +413,7 @@ abstract class SpatialQuery extends Query {
       DocIdSetBuilder.BulkAdder adder;
 
       @Override
-      public void grow(long count) {
+      public void grow(int count) {
         adder = result.grow(count);
       }
 
