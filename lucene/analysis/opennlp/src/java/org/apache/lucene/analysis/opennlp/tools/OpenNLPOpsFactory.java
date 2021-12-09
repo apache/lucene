@@ -158,23 +158,10 @@ public class OpenNLPOpsFactory {
       String dictionaryFile, ResourceLoader loader) throws IOException {
     DictionaryLemmatizer dictionaryLemmatizer = lemmaDictionaries.get(dictionaryFile);
     if (dictionaryLemmatizer == null) {
-      try (Reader reader =
-          new InputStreamReader(loader.openResource(dictionaryFile), StandardCharsets.UTF_8)) {
-        StringBuilder builder = new StringBuilder();
-        char[] chars = new char[8092];
-        int numRead = 0;
-        do {
-          numRead = reader.read(chars, 0, chars.length);
-          if (numRead > 0) {
-            builder.append(chars, 0, numRead);
-          }
-        } while (numRead > 0);
-        String dictionary = builder.toString();
-        InputStream dictionaryInputStream =
-            new ByteArrayInputStream(dictionary.getBytes(StandardCharsets.UTF_8));
-        dictionaryLemmatizer = new DictionaryLemmatizer(dictionaryInputStream);
-        lemmaDictionaries.put(dictionaryFile, dictionaryLemmatizer);
-      }
+      // TODO: Note that OpenNLP's DictionaryLemmatizer gets the target platform's system encoding by default,
+      //  with no way to specify a custom encoding on the resource file, so make sure they both match
+      dictionaryLemmatizer = new DictionaryLemmatizer(loader.openResource(dictionaryFile));
+      lemmaDictionaries.put(dictionaryFile, dictionaryLemmatizer);
     }
     return dictionaryLemmatizer;
   }
