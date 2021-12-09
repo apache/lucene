@@ -8,7 +8,7 @@ http://s.apache.org/luceneversions
 API Changes
 ---------------------
 
-* LUCENE-10010: AutomatonQuery, CompiledAutomaton, and RunAutomaton
+* LUCENE-10010: AutomatonQuery, CompiledAutomaton, RunAutomaton, RegExp
   classes no longer determinize NFAs. Instead it is the responsibility
   of the caller to determinize.  (Robert Muir)
 
@@ -41,8 +41,6 @@ API Changes
 
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
-  
-* LUCENE-10289: DocIdSetBuilder#grow() takes now a long instead of an int. (Ignacio Vera)  
 
 New Features
 ---------------------
