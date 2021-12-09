@@ -69,12 +69,6 @@ subprojects {
               "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
           ]
 
-          // Only apply automatic module name to jar task.
-          if (task.name in ["jar"]) {
-            manifestAttrs["Automatic-Module-Name"] =
-              "${->  project.path.replaceFirst(/^:lucene/, Matcher.quoteReplacement(project.group)).replace(':', '.').replace('-', '_')}"
-          }
-
           manifest {
             attributes(manifestAttrs)
           }
