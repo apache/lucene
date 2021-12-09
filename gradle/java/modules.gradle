@@ -25,60 +25,77 @@ import java.util.stream.Collectors
 
 allprojects {
   plugins.withType(JavaPlugin) {
-      // We won't be using gradle's built-in automatic module finder.
-      java {
-        modularity.inferModulePath.set(false)
+    // We won't be using gradle's built-in automatic module finder.
+    java {
+      modularity.inferModulePath.set(false)
+    }
+
+    //
+    // For each source set, create explicit configurations for declaring modular dependencies.
+    // These "modular" configurations correspond 1:1 to Gradle's conventions but have a 'module' prefix
+    // and a capitalized remaining part of the conventional name. For example, an 'api' configuration in
+    // the main source set would have a corresponding 'moduleApi' configuration for declaring modular
+    // dependencies.
+    //
+    // Gradle's java plugin "convention" configurations extend from their modular counterparts
+    // so all dependencies end up on classpath by default for backward compatibility with other
+    // tasks and gradle infrastructure.
+    //
+    // At the same time, we also know which dependencies (and their transitive graph of dependencies!)
+    // should be placed on module-path only.
+    //
+    // Note that an explicit configuration of modular dependencies also opens up the possibility of automatically
+    // validating whether the dependency configuration for a gradle project is consistent with the information in
+    // the module-info descriptor because there is a (nearly?) direct correspondence between the two:
+    //
+    // moduleApi            - 'requires transitive'
+    // moduleImplementation - 'requires'
+    // moduleCompileOnly    - 'requires static'
+    //
+    project.sourceSets.all { SourceSet sourceSet ->
+      ConfigurationContainer configurations = project.configurations
+
+      // Create modular configurations for convention configurations.
+      Closure<Configuration> createModuleConfigurationForConvention = { String configurationName ->
+        Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+        Configuration moduleConfiguration = configurations.maybeCreate("module" + configurationName.capitalize())
+        moduleConfiguration.canBeConsumed(false)
+        moduleConfiguration.canBeResolved(false)
+        conventionConfiguration.extendsFrom(moduleConfiguration)
+
+        project.logger.info("Created module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
+        return moduleConfiguration
       }
 
-      //
-      // We declare explicit configurations for declaring modular
-      // dependencies. Gradle's java plugin "convention" configurations extend from these
-      // so all dependencies end up on classpath by default for backward compatibility with other
-      // tasks and gradle infrastructure.
-      //
-      // At the same time, we also know which dependencies (and their transitive graph of dependencies!)
-      // should be placed on module-path only.
-      //
-      // Note that an explicit configuration of modular dependencies also opens up the possibility of automatically
-      // validating whether the dependency configuration for a gradle project is consistent with the information in
-      // the module-info descriptor because there is direct correspondence between the two:
-      //
-      // moduleApi            - 'requires transitive'
-      // moduleImplementation - 'requires'
-      // moduleCompileOnly    - 'requires static'
-      //
-      configurations {
-        moduleApi
-        api.extendsFrom moduleApi
+      Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
+      Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
+      moduleImplementation.extendsFrom(moduleApi)
+      Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
+      Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
+      // sourceSet.compileOnlyApiConfigurationName  // This seems like a very esoteric use case, leave out.
 
-        moduleImplementation
-        implementation.extendsFrom(moduleImplementation)
-
-        moduleRuntimeOnly
-        runtimeOnly.extendsFrom(moduleRuntimeOnly)
-
-        moduleCompileOnly
-        compileOnly.extendsFrom(moduleCompileOnly)
-
-        // This is for internal needs, a combination of the above.
-        moduleCompilePath
-        moduleCompilePath.extendsFrom(moduleApi, moduleImplementation, moduleCompileOnly)
-
-        // All these configurations are for resolution only and have a preference to see 'classes'
-        // folder instead of JARs for inter-project references.
-        [ moduleApi,
-          moduleImplementation,
-          moduleRuntimeOnly,
-          moduleCompileOnly,
-          moduleCompilePath
-        ].each { conf ->
-          conf.canBeConsumed(false)
-          conf.canBeResolved(true)
-          conf.attributes {
-            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
-          }
+      // Set up compilation module path configuration combining corresponding convention configurations.
+      Closure<Configuration> createResolvableModuleConfiguration = { String configurationName ->
+        Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+        Configuration moduleConfiguration = configurations.maybeCreate(
+            "module" + conventionConfiguration.name.capitalize().replace("Classpath", "Path"))
+        // Make these configurations resolvable, prefer classes folder over JARs.
+        moduleConfiguration.canBeConsumed(false)
+        moduleConfiguration.canBeResolved(true)
+        moduleConfiguration.attributes {
+          attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
         }
+
+        project.logger.info("Created resolvable module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
+        return moduleConfiguration
       }
+
+      Configuration compileModulePathConfiguration = createResolvableModuleConfiguration(sourceSet.compileClasspathConfigurationName)
+      compileModulePathConfiguration.extendsFrom(moduleCompileOnly, moduleImplementation)
+
+      Configuration runtimeModulePathConfiguration = createResolvableModuleConfiguration(sourceSet.runtimeClasspathConfigurationName)
+      runtimeModulePathConfiguration.extendsFrom(moduleRuntimeOnly, moduleImplementation)
+    }
 
       // Configure a custom hook in JavaCompile which will separate automatic modules, modules
       // and non-modules (unpacked folders without module-info) prior
@@ -121,39 +138,6 @@ allprojects {
           task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
           return trimmedClasspath
         })
-      }
-
-      configurations {
-        moduleTestApi
-        testApi.extendsFrom moduleTestApi
-
-        moduleTestImplementation
-        testImplementation.extendsFrom(moduleTestImplementation)
-
-        moduleTestRuntimeOnly
-        testRuntimeOnly.extendsFrom(moduleTestRuntimeOnly)
-
-        moduleTestCompileOnly
-        testCompileOnly.extendsFrom(moduleTestCompileOnly)
-
-        // This is for internal needs, a combination of the above.
-        moduleTestCompilePath
-        moduleTestCompilePath.extendsFrom(moduleTestApi, moduleTestImplementation, moduleTestCompileOnly)
-
-        // All these configurations are for resolution only and have a preference to see 'classes'
-        // folder instead of JARs for inter-project references.
-        [ moduleTestApi,
-          moduleTestImplementation,
-          moduleTestRuntimeOnly,
-          moduleTestCompileOnly,
-          moduleTestCompilePath
-        ].each { conf ->
-          conf.canBeConsumed(false)
-          conf.canBeResolved(true)
-          conf.attributes {
-            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
-          }
-        }
       }
 
       // Configure a custom hook in JavaCompile which will separate automatic modules, modules
