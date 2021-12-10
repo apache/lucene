@@ -134,14 +134,18 @@ allprojects {
           return extraArgs
         })
 
-        // Modify the default classpath by removing anything already placed on module path.
-        // This could be done in a fancier way but a set difference is just fine for us here. Use a lazy
-        // provider to delay computation of the actual path.
-        task.classpath = files({ ->
-          def trimmedClasspath = sourceSet.compileClasspath - compileModulePathConfiguration
-          task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
-          return trimmedClasspath
-        })
+        // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
+        // dependencies, don't know why.
+        if (!rootProject.ext.isIdea) {
+          // Modify the default classpath by removing anything already placed on module path.
+          // This could be done in a fancier way but a set difference is just fine for us here. Use a lazy
+          // provider to delay computation of the actual path.
+          task.classpath = files({ ->
+            def trimmedClasspath = sourceSet.compileClasspath - compileModulePathConfiguration
+            task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
+            return trimmedClasspath
+          })
+        }
       })
     }
 

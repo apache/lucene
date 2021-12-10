@@ -110,6 +110,10 @@ apply from: file('buildSrc/scriptDepVersions.gradle')
 
 apply from: file('gradle/generation/local-settings.gradle')
 
+// IDE support, settings and specials.
+apply from: file('gradle/ide/intellij-idea.gradle')
+apply from: file('gradle/ide/eclipse.gradle')
+
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
 apply from: file('gradle/java/folder-layout.gradle')
@@ -123,10 +127,6 @@ apply from: file('gradle/java/modules.gradle')
 
 // Maven artifact publishing.
 apply from: file('gradle/maven/publications.gradle')
-
-// IDE support, settings and specials.
-apply from: file('gradle/ide/intellij-idea.gradle')
-apply from: file('gradle/ide/eclipse.gradle')
 
 // Validation tasks
 apply from: file('gradle/validation/measure-task-times.gradle')
