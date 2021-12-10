@@ -89,11 +89,16 @@ allprojects {
         Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
         Configuration moduleConfiguration = configurations.maybeCreate(
             moduleConfigurationNameFor(conventionConfiguration.name))
-        // Make these configurations resolvable, prefer classes folder over JARs.
         moduleConfiguration.canBeConsumed(false)
         moduleConfiguration.canBeResolved(true)
         moduleConfiguration.attributes {
-          attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
+          // Prefer class folders over JARs. The exception is made for tests projects which require a composition
+          // of classes and resources, otherwise split into two folders.
+          if (project.name.endsWith(".tests")) {
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
+          } else {
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
+          }
         }
 
         project.logger.info("Created resolvable module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
