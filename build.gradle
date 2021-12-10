@@ -119,6 +119,7 @@ apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/testing/alternative-jdk-support.gradle')
 apply from: file('gradle/java/jar-manifest.gradle')
+apply from: file('gradle/java/modules.gradle')
 
 // Maven artifact publishing.
 apply from: file('gradle/maven/publications.gradle')

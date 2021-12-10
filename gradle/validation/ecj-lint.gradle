@@ -35,7 +35,9 @@ allprojects {
     // with a non-empty java.srcDirs. These tasks are then
     // attached to project's "ecjLint" task.
     def lintTasks = sourceSets.collect { sourceSet ->
-      def srcDirs = sourceSet.java.srcDirs.findAll { dir -> dir.exists() }
+      def srcDirs = sourceSet.java.sourceDirectories
+          .findAll { dir -> dir.exists() }
+          .findAll { dir -> dir.name != "java-module" }
 
       tasks.create(sourceSet.getTaskName("ecjLint", null), JavaExec, {task ->
         // This dependency is on a configuration; technically it causes

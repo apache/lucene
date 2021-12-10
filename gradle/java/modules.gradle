@@ -1,0 +1,227 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import java.util.function.Predicate
+
+// Configure miscellaneous aspects required for supporting the java module system layer.
+
+// TODO: remove the hacks excluding java-module source folder from ecjLint and javadoc rendering.
+
+allprojects {
+  plugins.withType(JavaPlugin) {
+    // We won't be using gradle's built-in automatic module finder.
+    java {
+      modularity.inferModulePath.set(false)
+    }
+
+    // Utility method that detects whether a source set contains a module-info descriptor.
+    Predicate<SourceSet> hasModuleDescriptor = { SourceSet ss ->
+      ss.allJava.srcDirs.stream()
+          .map(dir -> new File(dir, "module-info.java"))
+          .anyMatch(file -> file.exists())
+    }
+
+    // Map convention configuration names to "modular" corresponding configurations.
+    Closure<String> moduleConfigurationNameFor = { String configurationName ->
+      return "module" + configurationName.capitalize().replace("Classpath", "Path")
+    }
+
+    //
+    // For each source set, create explicit configurations for declaring modular dependencies.
+    // These "modular" configurations correspond 1:1 to Gradle's conventions but have a 'module' prefix
+    // and a capitalized remaining part of the conventional name. For example, an 'api' configuration in
+    // the main source set would have a corresponding 'moduleApi' configuration for declaring modular
+    // dependencies.
+    //
+    // Gradle's java plugin "convention" configurations extend from their modular counterparts
+    // so all dependencies end up on classpath by default for backward compatibility with other
+    // tasks and gradle infrastructure.
+    //
+    // At the same time, we also know which dependencies (and their transitive graph of dependencies!)
+    // should be placed on module-path only.
+    //
+    // Note that an explicit configuration of modular dependencies also opens up the possibility of automatically
+    // validating whether the dependency configuration for a gradle project is consistent with the information in
+    // the module-info descriptor because there is a (nearly?) direct correspondence between the two:
+    //
+    // moduleApi            - 'requires transitive'
+    // moduleImplementation - 'requires'
+    // moduleCompileOnly    - 'requires static'
+    //
+    project.sourceSets.all { SourceSet sourceSet ->
+      ConfigurationContainer configurations = project.configurations
+
+      // Create modular configurations for convention configurations.
+      Closure<Configuration> createModuleConfigurationForConvention = { String configurationName ->
+        Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+        Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
+        moduleConfiguration.canBeConsumed(false)
+        moduleConfiguration.canBeResolved(false)
+        conventionConfiguration.extendsFrom(moduleConfiguration)
+
+        project.logger.info("Created module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
+        return moduleConfiguration
+      }
+
+      Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
+      Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
+      moduleImplementation.extendsFrom(moduleApi)
+      Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
+      Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
+      // sourceSet.compileOnlyApiConfigurationName  // This seems like a very esoteric use case, leave out.
+
+      // Set up compilation module path configuration combining corresponding convention configurations.
+      Closure<Configuration> createResolvableModuleConfiguration = { String configurationName ->
+        Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+        Configuration moduleConfiguration = configurations.maybeCreate(
+            moduleConfigurationNameFor(conventionConfiguration.name))
+        // Make these configurations resolvable, prefer classes folder over JARs.
+        moduleConfiguration.canBeConsumed(false)
+        moduleConfiguration.canBeResolved(true)
+        moduleConfiguration.attributes {
+          attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.CLASSES))
+        }
+
+        project.logger.info("Created resolvable module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
+        return moduleConfiguration
+      }
+
+      Configuration compileModulePathConfiguration = createResolvableModuleConfiguration(sourceSet.compileClasspathConfigurationName)
+      compileModulePathConfiguration.extendsFrom(moduleCompileOnly, moduleImplementation)
+
+      Configuration runtimeModulePathConfiguration = createResolvableModuleConfiguration(sourceSet.runtimeClasspathConfigurationName)
+      runtimeModulePathConfiguration.extendsFrom(moduleRuntimeOnly, moduleImplementation)
+
+      // Customized the JavaCompile for this source set so that it has proper module path.
+      tasks.named(sourceSet.getCompileJavaTaskName()).configure({ JavaCompile task ->
+        task.dependsOn compileModulePathConfiguration
+
+        // Add modular dependencies and their transitive dependencies to module path.
+        task.options.compilerArgumentProviders.add((CommandLineArgumentProvider) {
+          def extraArgs = []
+          if (!compileModulePathConfiguration.isEmpty()) {
+            if (!hasModuleDescriptor.test(sourceSet)) {
+              // We're compiling a non-module so we'll bring everything on module path in
+              // otherwise things wouldn't be part of the resolved module graph.
+              extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+            }
+
+            extraArgs += ["--module-path", compileModulePathConfiguration.files.join(File.pathSeparator)]
+          }
+
+          task.logger.info("Module path for ${task.path}:\n  "
+              + compileModulePathConfiguration.files.sort().join("\n  "))
+
+          return extraArgs
+        })
+
+        // Modify the default classpath by removing anything already placed on module path.
+        // This could be done in a fancier way but a set difference is just fine for us here. Use a lazy
+        // provider to delay computation of the actual path.
+        task.classpath = files({ ->
+          def trimmedClasspath = sourceSet.compileClasspath - compileModulePathConfiguration
+          task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
+          return trimmedClasspath
+        })
+      })
+    }
+
+    //
+    // Configure the (default) test task to use module paths.
+    //
+    // There is no explicit connection between source sets and test tasks so there is no way (?)
+    // to do this automatically, convention-style.
+
+    // This closure can be used to configure a different task, with a different source set, should we
+    // have the need for it.
+    Closure<Void> configureTestTaskForSourceSet = { Test task, SourceSet sourceSet ->
+      task.configure {
+        Configuration modulePath = task.project.configurations.maybeCreate(
+            moduleConfigurationNameFor(sourceSet.getRuntimeClasspathConfigurationName()))
+
+        task.dependsOn modulePath
+
+        // Add modular dependencies and their transitive dependencies to module path.
+        task.jvmArgumentProviders.add((CommandLineArgumentProvider) {
+          def extraArgs = []
+
+          // Determine whether the source set classes themselves should be appended
+          // to classpath or module path.
+          boolean sourceSetIsAModule = hasModuleDescriptor.test(sourceSet)
+
+          if (!modulePath.isEmpty() || sourceSetIsAModule) {
+            if (sourceSetIsAModule) {
+              // Add source set outputs to module path.
+              extraArgs += ["--module-path", (modulePath + sourceSet.output.classesDirs).files.join(File.pathSeparator)]
+              // Ideally, we should only add the sourceset's module here, everything else would be resolved via the
+              // module descriptor. But this would require parsing the module descriptor and may cause JVM version conflicts
+              // so keeping it simple.
+              extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+            } else {
+              extraArgs += ["--module-path", modulePath.files.join(File.pathSeparator)]
+              // In this case we're running a non-module against things on the module path so let's bring in
+              // everything on module path into the resolution graph.
+              extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+            }
+          }
+
+          task.logger.info("Module path for ${task.path}:\n  " + modulePath.files.sort().join("\n  "))
+
+          return extraArgs
+        })
+
+
+        // Modify the default classpath by removing anything already placed on module path.
+        // This could be done in a fancier way but a set difference is just fine for us here. Use a lazy
+        // provider to delay computation of the actual path.
+        task.classpath = files({ ->
+          def trimmedClasspath = sourceSet.runtimeClasspath - modulePath
+
+          boolean sourceSetIsAModule = hasModuleDescriptor.test(sourceSet)
+          if (sourceSetIsAModule) {
+            // also subtract the sourceSet's output directories.
+            trimmedClasspath = trimmedClasspath - sourceSet.output.classesDirs
+          }
+
+          task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
+          return trimmedClasspath
+        })
+      }
+    }
+
+    // Configure (tasks.test, sourceSets.test)
+    tasks.matching { it.name == "test" }.all { Test task ->
+      configureTestTaskForSourceSet(task, task.project.sourceSets.test)
+    }
+
+    // Configure module versions.
+    tasks.withType(JavaCompile).configureEach { task ->
+      // TODO: LUCENE-10267: workaround for gradle bug. Remove when the corresponding issue is fixed.
+      task.options.compilerArgumentProviders.add((CommandLineArgumentProvider) { ->
+        if (task.getClasspath().isEmpty()) {
+          return ["--module-version", project.version.toString()]
+        } else {
+          return []
+        }
+      })
+
+      task.options.javaModuleVersion.set(provider {
+        return project.version.toString()
+      })
+    }
+  }
+}
