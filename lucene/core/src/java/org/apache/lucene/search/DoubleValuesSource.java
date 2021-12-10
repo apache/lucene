@@ -326,7 +326,13 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     }
   }
 
-  /** Returns a DoubleValues instance that wraps scores returned by a Scorer */
+  /**
+   * Returns a DoubleValues instance that wraps scores returned by a Scorer.
+   *
+   * <p>Note: If you intend to call {@link Scorable#score()} on the provided {@code scorer}
+   * separately, you may want to consider wrapping it with {@link
+   * ScoreCachingWrappingScorer#wrap(Scorable)} to avoid computing the actual score multiple times.
+   */
   public static DoubleValues fromScorer(Scorable scorer) {
     return new DoubleValues() {
       @Override

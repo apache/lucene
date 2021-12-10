@@ -63,6 +63,14 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   @Override
+  protected IntervalMatchesIterator createMatchesIterator(
+      IntervalIterator it, List<IntervalMatchesIterator> subs) {
+    assert subs.size() == 2;
+    // the only sub source we care is the "real" source
+    return new ConjunctionMatchesIterator(it, List.of(subs.get(0)));
+  }
+
+  @Override
   public int minExtent() {
     return source.minExtent();
   }

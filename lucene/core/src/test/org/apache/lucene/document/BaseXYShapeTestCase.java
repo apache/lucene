@@ -226,7 +226,7 @@ public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
         while (true) {
           XYPolygon p = ShapeTestUtil.nextPolygon();
           try {
-            Tessellator.tessellate(p);
+            Tessellator.tessellate(p, random().nextBoolean());
             return p;
           } catch (
               @SuppressWarnings("unused")

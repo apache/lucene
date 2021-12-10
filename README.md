@@ -33,6 +33,7 @@ comprehensive documentation, visit:
 - Nightly: <https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/javadoc/>
 - Build System Documentation: [help/](./help/)
 - Developer Documentation: [dev-docs/](./dev-docs/)
+- Migration Guide: [lucene/MIGRATE.md](./lucene/MIGRATE.md)
 
 ## Building with Gradle
 
