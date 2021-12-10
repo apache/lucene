@@ -244,4 +244,43 @@ public class TestModularLayer {
                 },
                 TreeMap::new));
   }
+
+  /** Ensure all open packages in the descriptor are in sync with the module's actual content. */
+  @Test
+  public void testAllOpenPackagesInSync() throws IOException {
+    for (var module : allCoreModules) {
+      Set<String> modulePackages = getExportedModulePackages(module);
+      Set<String> jarPackages = getJarPackages(module);
+
+      Assertions.assertThat(modulePackages)
+          .as("Exported packages in module: " + module.descriptor().name())
+          .containsExactlyInAnyOrderElementsOf(jarPackages);
+    }
+  }
+
+  private Set<String> getJarPackages(ModuleReference module) throws IOException {
+    try (ModuleReader reader = module.open()) {
+      return reader
+          .list()
+          .filter(
+              entry ->
+                  !entry.startsWith("META-INF/")
+                      && !entry.equals("module-info.class")
+                      && !entry.endsWith("/"))
+          .map(entry -> entry.replaceAll("/[^/]+$", ""))
+          .map(entry -> entry.replace('/', '.'))
+          .filter(
+              entry -> {
+                // Filter out luke's packages. They're not exported.
+                return !entry.startsWith("org.apache.lucene.luke");
+              })
+          .collect(Collectors.toCollection(TreeSet::new));
+    }
+  }
+
+  private Set<String> getExportedModulePackages(ModuleReference module) {
+    return module.descriptor().exports().stream()
+        .map(export -> export.toString())
+        .collect(Collectors.toCollection(TreeSet::new));
+  }
 }
