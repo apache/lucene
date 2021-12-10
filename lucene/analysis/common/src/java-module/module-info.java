@@ -31,6 +31,7 @@ module org.apache.lucene.analysis.common {
   exports org.apache.lucene.analysis.ckb;
   exports org.apache.lucene.analysis.classic;
   exports org.apache.lucene.analysis.commongrams;
+  exports org.apache.lucene.analysis.compound.hyphenation;
   exports org.apache.lucene.analysis.compound;
   exports org.apache.lucene.analysis.core;
   exports org.apache.lucene.analysis.custom;
@@ -83,7 +84,10 @@ module org.apache.lucene.analysis.common {
   exports org.apache.lucene.analysis.tr;
   exports org.apache.lucene.analysis.util;
   exports org.apache.lucene.analysis.wikipedia;
+  exports org.apache.lucene.collation.tokenattributes;
   exports org.apache.lucene.collation;
+  exports org.tartarus.snowball.ext;
+  exports org.tartarus.snowball;
 
   provides org.apache.lucene.analysis.CharFilterFactory with
       org.apache.lucene.analysis.charfilter.HTMLStripCharFilterFactory,

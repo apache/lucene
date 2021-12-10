@@ -245,15 +245,35 @@ public class TestModularLayer {
                 TreeMap::new));
   }
 
-  /** Ensure all open packages in the descriptor are in sync with the module's actual content. */
+  /**
+   * Ensure all exported packages in the descriptor are in sync with the module's Java classes.
+   *
+   * <p>This test should be progressively tuned so that certain internal packages are hidden in the
+   * module layer.
+   */
   @Test
   public void testAllOpenPackagesInSync() throws IOException {
     for (var module : allCoreModules) {
-      Set<String> modulePackages = getExportedModulePackages(module);
       Set<String> jarPackages = getJarPackages(module);
 
-      Assertions.assertThat(modulePackages)
+      if (module.descriptor().name().equals("org.apache.lucene.luke")) {
+        jarPackages.removeIf(
+            entry -> {
+              // Luke's packages are not exported.
+              return entry.startsWith("org.apache.lucene.luke");
+            });
+      }
+
+      Set<ModuleDescriptor.Exports> moduleExports = module.descriptor().exports();
+      Assertions.assertThat(moduleExports)
           .as("Exported packages in module: " + module.descriptor().name())
+          .allSatisfy(
+              export -> {
+                Assertions.assertThat(export.targets())
+                    .as("We only support unqualified exports for now?")
+                    .isEmpty();
+              })
+          .map(ModuleDescriptor.Exports::source)
           .containsExactlyInAnyOrderElementsOf(jarPackages);
     }
   }
@@ -269,18 +289,7 @@ public class TestModularLayer {
                       && !entry.endsWith("/"))
           .map(entry -> entry.replaceAll("/[^/]+$", ""))
           .map(entry -> entry.replace('/', '.'))
-          .filter(
-              entry -> {
-                // Filter out luke's packages. They're not exported.
-                return !entry.startsWith("org.apache.lucene.luke");
-              })
           .collect(Collectors.toCollection(TreeSet::new));
     }
-  }
-
-  private Set<String> getExportedModulePackages(ModuleReference module) {
-    return module.descriptor().exports().stream()
-        .map(export -> export.toString())
-        .collect(Collectors.toCollection(TreeSet::new));
   }
 }
