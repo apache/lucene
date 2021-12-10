@@ -20,7 +20,6 @@ import org.apache.lucene.analysis.morfologik.MorfologikAnalyzer;
 import org.apache.lucene.analysis.uk.UkrainianMorfologikAnalyzer;
 import org.apache.lucene.index.IndexWriter;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestMorfologikAnalyzer {
@@ -31,7 +30,6 @@ public class TestMorfologikAnalyzer {
   }
 
   @Test
-  @Ignore("LUCENE-10300: Awaits fix - does not work in module mode.")
   public void testUkrainianMorfologikAnalyzerLoads() {
     var analyzer = new UkrainianMorfologikAnalyzer();
     Assert.assertNotNull(analyzer);
