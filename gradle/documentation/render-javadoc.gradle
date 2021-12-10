@@ -57,7 +57,9 @@ allprojects {
       outputDir = project.javadoc.destinationDir
     }
 
-    if (project.path != ':lucene:luke') {
+    if (project.path == ':lucene:luke' || project.path.endsWith(".tests")) {
+      // Do nothing, these projects are not part of the public API.
+    } else {
       task renderSiteJavadoc(type: RenderJavadocTask) {
         description "Generates Javadoc API documentation for the site (relative links)."
         group "documentation"
