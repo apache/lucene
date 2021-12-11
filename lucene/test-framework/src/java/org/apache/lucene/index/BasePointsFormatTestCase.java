@@ -822,7 +822,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
         if (dimValues == null) {
           continue;
         }
-
+        assertSize(dimValues.getPointTree());
         byte[] leafMinValues = dimValues.getMinPackedValue();
         byte[] leafMaxValues = dimValues.getMaxPackedValue();
         for (int dim = 0; dim < numIndexDims; dim++) {
@@ -1063,6 +1063,65 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
     }
   }
 
+  private void assertSize(PointValues.PointTree tree) throws IOException {
+    final PointValues.PointTree clone = tree.clone();
+    assertEquals(clone.size(), tree.size());
+    // rarely continue with the clone tree
+    tree = rarely() ? clone : tree;
+    final long[] visitDocIDSize = new long[] {0};
+    final long[] visitDocValuesSize = new long[] {0};
+    final IntersectVisitor visitor =
+        new IntersectVisitor() {
+          @Override
+          public void visit(int docID) {
+            visitDocIDSize[0]++;
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) {
+            visitDocValuesSize[0]++;
+          }
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_CROSSES_QUERY;
+          }
+        };
+    if (random().nextBoolean()) {
+      tree.visitDocIDs(visitor);
+      tree.visitDocValues(visitor);
+    } else {
+      tree.visitDocValues(visitor);
+      tree.visitDocIDs(visitor);
+    }
+    assertEquals(visitDocIDSize[0], visitDocValuesSize[0]);
+    assertEquals(visitDocIDSize[0], tree.size());
+    if (tree.moveToChild()) {
+      do {
+        randomPointTreeNavigation(tree);
+        assertSize(tree);
+      } while (tree.moveToSibling());
+      tree.moveToParent();
+    }
+  }
+
+  private void randomPointTreeNavigation(PointValues.PointTree tree) throws IOException {
+    byte[] minPackedValue = tree.getMinPackedValue().clone();
+    byte[] maxPackedValue = tree.getMaxPackedValue().clone();
+    long size = tree.size();
+    if (random().nextBoolean() && tree.moveToChild()) {
+      randomPointTreeNavigation(tree);
+      if (random().nextBoolean() && tree.moveToSibling()) {
+        randomPointTreeNavigation(tree);
+      }
+      tree.moveToParent();
+    }
+    // we always finish on the same node we started
+    assertArrayEquals(minPackedValue, tree.getMinPackedValue());
+    assertArrayEquals(maxPackedValue, tree.getMaxPackedValue());
+    assertEquals(size, tree.size());
+  }
+
   public void testAddIndexes() throws IOException {
     Directory dir1 = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir1);
@@ -1185,20 +1244,33 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
   }
 
   public void testDocCountEdgeCases() {
+    IntersectVisitor visitor =
+        new IntersectVisitor() {
+          @Override
+          public void visit(int docID) {}
+
+          @Override
+          public void visit(int docID, byte[] packedValue) {}
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_INSIDE_QUERY;
+          }
+        };
     PointValues values = getPointValues(Long.MAX_VALUE, 1, Long.MAX_VALUE);
-    long docs = values.estimateDocCount(null);
+    long docs = values.estimateDocCount(visitor);
     assertEquals(1, docs);
     values = getPointValues(Long.MAX_VALUE, 1, 1);
-    docs = values.estimateDocCount(null);
+    docs = values.estimateDocCount(visitor);
     assertEquals(1, docs);
     values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, Long.MAX_VALUE);
-    docs = values.estimateDocCount(null);
+    docs = values.estimateDocCount(visitor);
     assertEquals(Integer.MAX_VALUE, docs);
     values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, Long.MAX_VALUE / 2);
-    docs = values.estimateDocCount(null);
+    docs = values.estimateDocCount(visitor);
     assertEquals(Integer.MAX_VALUE, docs);
     values = getPointValues(Long.MAX_VALUE, Integer.MAX_VALUE, 1);
-    docs = values.estimateDocCount(null);
+    docs = values.estimateDocCount(visitor);
     assertEquals(1, docs);
   }
 
@@ -1209,7 +1281,20 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       int docCount = TestUtil.nextInt(random(), 1, maxDoc);
       long estimatedPointCount = TestUtil.nextLong(random(), 0, size);
       PointValues values = getPointValues(size, docCount, estimatedPointCount);
-      long docs = values.estimateDocCount(null);
+      long docs =
+          values.estimateDocCount(
+              new IntersectVisitor() {
+                @Override
+                public void visit(int docID) {}
+
+                @Override
+                public void visit(int docID, byte[] packedValue) {}
+
+                @Override
+                public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                  return Relation.CELL_INSIDE_QUERY;
+                }
+              });
       assertTrue(docs <= estimatedPointCount);
       assertTrue(docs <= maxDoc);
       assertTrue(docs >= estimatedPointCount / (size / docCount));
@@ -1219,13 +1304,54 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
   private PointValues getPointValues(long size, int docCount, long estimatedPointCount) {
     return new PointValues() {
       @Override
-      public void intersect(IntersectVisitor visitor) {
-        throw new UnsupportedOperationException();
-      }
+      public PointTree getPointTree() {
+        return new PointTree() {
 
-      @Override
-      public long estimatePointCount(IntersectVisitor visitor) {
-        return estimatedPointCount;
+          @Override
+          public PointTree clone() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public boolean moveToChild() {
+            return false;
+          }
+
+          @Override
+          public boolean moveToSibling() {
+            return false;
+          }
+
+          @Override
+          public boolean moveToParent() {
+            return false;
+          }
+
+          @Override
+          public byte[] getMinPackedValue() {
+            return new byte[0];
+          }
+
+          @Override
+          public byte[] getMaxPackedValue() {
+            return new byte[0];
+          }
+
+          @Override
+          public long size() {
+            return estimatedPointCount;
+          }
+
+          @Override
+          public void visitDocIDs(IntersectVisitor visitor) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void visitDocValues(IntersectVisitor visitor) {
+            throw new UnsupportedOperationException();
+          }
+        };
       }
 
       @Override

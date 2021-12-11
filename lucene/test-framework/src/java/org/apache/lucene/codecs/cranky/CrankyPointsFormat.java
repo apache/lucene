@@ -123,19 +123,66 @@ class CrankyPointsFormat extends PointsFormat {
       return new PointValues() {
 
         @Override
-        public void intersect(IntersectVisitor visitor) throws IOException {
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
-          delegate.intersect(visitor);
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
-        }
+        public PointTree getPointTree() throws IOException {
+          PointTree pointTree = delegate.getPointTree();
+          return new PointTree() {
+            @Override
+            public PointTree clone() {
+              return pointTree.clone();
+            }
 
-        @Override
-        public long estimatePointCount(IntersectVisitor visitor) {
-          return delegate.estimatePointCount(visitor);
+            @Override
+            public boolean moveToChild() throws IOException {
+              return pointTree.moveToChild();
+            }
+
+            @Override
+            public boolean moveToSibling() throws IOException {
+              return pointTree.moveToSibling();
+            }
+
+            @Override
+            public boolean moveToParent() throws IOException {
+              return pointTree.moveToParent();
+            }
+
+            @Override
+            public byte[] getMinPackedValue() {
+              return pointTree.getMinPackedValue();
+            }
+
+            @Override
+            public byte[] getMaxPackedValue() {
+              return pointTree.getMaxPackedValue();
+            }
+
+            @Override
+            public long size() {
+              return pointTree.size();
+            }
+
+            @Override
+            public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+              if (random.nextInt(100) == 0) {
+                throw new IOException("Fake IOException");
+              }
+              pointTree.visitDocIDs(visitor);
+              if (random.nextInt(100) == 0) {
+                throw new IOException("Fake IOException");
+              }
+            }
+
+            @Override
+            public void visitDocValues(IntersectVisitor visitor) throws IOException {
+              if (random.nextInt(100) == 0) {
+                throw new IOException("Fake IOException");
+              }
+              pointTree.visitDocValues(visitor);
+              if (random.nextInt(100) == 0) {
+                throw new IOException("Fake IOException");
+              }
+            }
+          };
         }
 
         @Override

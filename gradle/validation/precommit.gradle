@@ -36,7 +36,6 @@ configure(rootProject) {
           task.name in [
           "forbiddenApis",
           "licenses",
-          "javadoc",
           "rat",
           "ecjLint",
           "validateSourcePatterns",

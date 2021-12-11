@@ -660,9 +660,9 @@ def testDemo(run_java, isSrc, version, jdk):
     # For binary release, set up classpath as modules.
     cp = "--module-path modules"
     docsDir = 'docs'
-    checkIndexCmd = 'java -ea %s --module lucene.core/org.apache.lucene.index.CheckIndex index' % cp
-    indexFilesCmd = 'java -Dsmoketester=true %s --module lucene.demo/org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
-    searchFilesCmd = 'java %s --module lucene.demo/org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
+    checkIndexCmd = 'java -ea %s --module org.apache.lucene.core/org.apache.lucene.index.CheckIndex index' % cp
+    indexFilesCmd = 'java -Dsmoketester=true %s --module org.apache.lucene.demo/org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
+    searchFilesCmd = 'java %s --module org.apache.lucene.demo/org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
       
   run_java(indexFilesCmd, 'index.log')
   run_java(searchFilesCmd, 'search.log')
@@ -1126,8 +1126,11 @@ def main():
 def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys, testArgs, downloadOnly=False):
   startTime = datetime.datetime.now()
 
-  # disable flakey tests for smoke-tester runs:
-  testArgs = '-Dtests.badapples=false %s' % testArgs
+  # Tests annotated @Nightly are more resource-intensive but often cover
+  # important code paths. They're disabled by default to preserve a good
+  # developer experience, but we enable them for smoke tests where we want good
+  # coverage.
+  testArgs = '-Dtests.nigthly=true %s' % testArgs
 
   if FORCE_CLEAN:
     if os.path.exists(tmpDir):

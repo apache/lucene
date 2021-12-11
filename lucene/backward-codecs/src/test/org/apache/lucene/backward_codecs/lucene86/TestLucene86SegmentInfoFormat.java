@@ -20,9 +20,10 @@ package org.apache.lucene.backward_codecs.lucene86;
 import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.Version;
 
-@SuppressWarnings("deprecation")
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene86SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
 
   @Override

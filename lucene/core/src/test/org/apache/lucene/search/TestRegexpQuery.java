@@ -142,10 +142,9 @@ public class TestRegexpQuery extends LuceneTestCase {
     assertEquals(1, caseInsensitiveRegexQueryNrHits("Quick"));
   }
 
-  public void testRegexComplement() throws IOException {
-    assertEquals(1, regexQueryNrHits("4934~[3]"));
-    // not the empty lang, i.e. match all docs
-    assertEquals(1, regexQueryNrHits("~#"));
+  public void testRegexNegatedCharacterClass() throws IOException {
+    assertEquals(1, regexQueryNrHits("[^a-z]"));
+    assertEquals(1, regexQueryNrHits("[^03ad]"));
   }
 
   public void testCustomProvider() throws IOException {
