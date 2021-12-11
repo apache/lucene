@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
+import org.apache.lucene.index.EmptyKnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValues;
@@ -40,7 +41,8 @@ public abstract class KnnVectorsWriter implements Closeable {
   protected KnnVectorsWriter() {}
 
   /** Write all values contained in the provided reader */
-  public abstract void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException;
+  public abstract void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorReader)
+      throws IOException;
 
   /** Called once at the end before close */
   public abstract void finish() throws IOException;
@@ -107,7 +109,15 @@ public abstract class KnnVectorsWriter implements Closeable {
     }
     // Create a new VectorValues by iterating over the sub vectors, mapping the resulting
     // docids using docMaps in the mergeState.
-    writeField(mergeFieldInfo, new VectorValuesMerger(subs, mergeState));
+    writeField(
+        mergeFieldInfo,
+        new EmptyKnnVectorsReader() {
+          @Override
+          public VectorValues getVectorValues(String field) throws IOException {
+            return new VectorValuesMerger(subs, mergeState);
+          }
+        });
+
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
     }

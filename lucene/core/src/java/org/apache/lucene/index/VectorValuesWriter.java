@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
@@ -109,11 +110,15 @@ class VectorValuesWriter {
   public void flush(Sorter.DocMap sortMap, KnnVectorsWriter knnVectorsWriter) throws IOException {
     VectorValues vectorValues =
         new BufferedVectorValues(docsWithField, vectors, fieldInfo.getVectorDimension());
-    if (sortMap != null) {
-      knnVectorsWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
-    } else {
-      knnVectorsWriter.writeField(fieldInfo, vectorValues);
-    }
+    KnnVectorsReader vectorsReader =
+        new EmptyKnnVectorsReader() {
+          @Override
+          public VectorValues getVectorValues(String field) throws IOException {
+            return sortMap != null ? new SortingVectorValues(vectorValues, sortMap) : vectorValues;
+          }
+        };
+
+    knnVectorsWriter.writeField(fieldInfo, vectorsReader);
   }
 
   static class SortingVectorValues extends VectorValues

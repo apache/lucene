@@ -57,10 +57,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorReader)
+        throws IOException {
       assert fieldInfo != null;
-      assert values != null;
-      delegate.writeField(fieldInfo, values);
+      assert knnVectorReader != null;
+      delegate.writeField(fieldInfo, knnVectorReader);
     }
 
     @Override
