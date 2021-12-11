@@ -45,7 +45,7 @@ import org.apache.lucene.util.hnsw.NeighborArray;
 public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
-  private final IndexOutput meta, vectorData, graphIndex, graphData;
+  private final IndexOutput meta, vectorData, vectorIndex;
 
   private final int maxConn;
   private final int beamWidth;
@@ -69,24 +69,17 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
             state.segmentSuffix,
             Lucene90HnswVectorsFormat.VECTOR_DATA_EXTENSION);
 
-    String graphIndexFileName =
+    String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90HnswVectorsFormat.GRAPH_LEVELS_EXTENSION);
-
-    String graphDataFileName =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name,
-            state.segmentSuffix,
-            Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_EXTENSION);
+            Lucene90HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
 
     boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
-      graphIndex = state.directory.createOutput(graphIndexFileName, state.context);
-      graphData = state.directory.createOutput(graphDataFileName, state.context);
+      vectorIndex = state.directory.createOutput(indexDataFileName, state.context);
 
       CodecUtil.writeIndexHeader(
           meta,
@@ -101,14 +94,8 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
-          graphIndex,
-          Lucene90HnswVectorsFormat.GRAPH_LEVELS_CODEC_NAME,
-          Lucene90HnswVectorsFormat.VERSION_CURRENT,
-          state.segmentInfo.getId(),
-          state.segmentSuffix);
-      CodecUtil.writeIndexHeader(
-          graphData,
-          Lucene90HnswVectorsFormat.GRAPH_NEIGHBOURS_CODEC_NAME,
+          vectorIndex,
+          Lucene90HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
           Lucene90HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
@@ -122,6 +109,12 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
+    if ((vectors instanceof RandomAccessVectorValuesProducer) == false) {
+      throw new IllegalArgumentException(
+          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
+    }
+
+    // write vectors' values into the vectorDate file
     long pos = vectorData.getFilePointer();
     // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
     // CFS is not used, eg for larger indexes
@@ -140,59 +133,67 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    int numLevels;
-    long graphIndexOffset = graphIndex.getFilePointer();
-    long graphDataOffset = graphData.getFilePointer();
-    if (vectors instanceof RandomAccessVectorValuesProducer) {
-      numLevels =
-          writeGraph(
-              (RandomAccessVectorValuesProducer) vectors, fieldInfo.getVectorSimilarityFunction());
-    } else {
-      throw new IllegalArgumentException(
-          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
-    }
-    long graphIndexLength = graphIndex.getFilePointer() - graphIndexOffset;
-    long graphDataLength = graphData.getFilePointer() - graphDataOffset;
+    long vectorIndexOffset = vectorIndex.getFilePointer();
+    HnswGraph graph =
+        writeGraph(
+            (RandomAccessVectorValuesProducer) vectors,
+            fieldInfo.getVectorSimilarityFunction(),
+            count);
+    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
         fieldInfo,
         vectorDataOffset,
         vectorDataLength,
-        graphIndexOffset,
-        graphIndexLength,
-        graphDataOffset,
-        graphDataLength,
-        numLevels,
+        vectorIndexOffset,
+        vectorIndexLength,
         count,
-        docIds);
+        docIds,
+        graph);
   }
 
   private void writeMeta(
       FieldInfo field,
       long vectorDataOffset,
       long vectorDataLength,
-      long graphIndexOffset,
-      long graphIndexLength,
-      long graphDataOffset,
-      long graphDataLength,
-      int numLevels,
+      long vectorIndexOffset,
+      long vectorIndexLength,
       int size,
-      int[] docIds)
+      int[] docIds,
+      HnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
-    meta.writeVLong(graphIndexOffset);
-    meta.writeVLong(graphIndexLength);
-    meta.writeVLong(graphDataOffset);
-    meta.writeVLong(graphDataLength);
-    meta.writeInt(numLevels);
+    meta.writeVLong(vectorIndexOffset);
+    meta.writeVLong(vectorIndexLength);
     meta.writeInt(field.getVectorDimension());
     meta.writeInt(size);
     for (int i = 0; i < size; i++) {
       // TODO: delta-encode, or write as bitset
       meta.writeVInt(docIds[i]);
+    }
+
+    meta.writeInt(maxConn);
+
+    // write graph nodes on each level
+    if (graph == null) {
+      meta.writeInt(0);
+    } else {
+      meta.writeInt(graph.numLevels());
+      for (int level = 0; level < graph.numLevels(); level++) {
+        DocIdSetIterator nodesOnLevel = graph.getAllNodesOnLevel(level);
+        int countOnLevel = (int) nodesOnLevel.cost();
+        meta.writeInt(countOnLevel); // number of nodes on a level
+        if (level > 0) {
+          for (int node = nodesOnLevel.nextDoc();
+              node != DocIdSetIterator.NO_MORE_DOCS;
+              node = nodesOnLevel.nextDoc()) {
+            meta.writeVInt(node); // list of nodes on a level
+          }
+        }
+      }
     }
   }
 
@@ -203,9 +204,13 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     vectorData.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
   }
 
-  private int writeGraph(
-      RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
+  private HnswGraph writeGraph(
+      RandomAccessVectorValuesProducer vectorValues,
+      VectorSimilarityFunction similarityFunction,
+      int count)
       throws IOException {
+
+    if (count == 0) return null;
 
     // build graph
     HnswGraphBuilder hnswGraphBuilder =
@@ -214,53 +219,32 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
-    graphIndex.writeInt(graph.numLevels()); // number of levels
-    for (int level = 0; level < graph.numLevels(); level++) {
-      DocIdSetIterator nodesOnLevel = graph.getAllNodesOnLevel(level);
-      int countOnLevel = (int) nodesOnLevel.cost();
-      // write graph nodes on the level into the graphIndex file
-      graphIndex.writeInt(countOnLevel); // number of nodes on a level
-      if (level > 0) {
-        for (int node = nodesOnLevel.nextDoc();
-            node != DocIdSetIterator.NO_MORE_DOCS;
-            node = nodesOnLevel.nextDoc()) {
-          graphIndex.writeVInt(node); // list of nodes on a level
-        }
-      }
-    }
-
-    long lastOffset = 0;
+    // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
-    long graphDataOffset = graphData.getFilePointer();
     for (int level = 0; level < graph.numLevels(); level++) {
       DocIdSetIterator nodesOnLevel = graph.getAllNodesOnLevel(level);
       for (int node = nodesOnLevel.nextDoc();
           node != DocIdSetIterator.NO_MORE_DOCS;
           node = nodesOnLevel.nextDoc()) {
-        // write graph offsets on the level into the graphIndex file
-        long offset = graphData.getFilePointer() - graphDataOffset;
-        graphIndex.writeVLong(offset - lastOffset);
-        lastOffset = offset;
-
-        // write neighbours on the level into the graphData file
         NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
-        graphData.writeInt(size);
+        vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
         int[] nnodes = neighbors.node();
         Arrays.sort(nnodes, 0, size);
-        int lastNode = -1; // to make the assertion work?
         for (int i = 0; i < size; i++) {
           int nnode = nnodes[i];
-          assert nnode > lastNode : "nodes out of order: " + lastNode + "," + nnode;
           assert nnode < countOnLevel0 : "node too large: " + nnode + ">=" + countOnLevel0;
-          graphData.writeVInt(nnode - lastNode);
-          lastNode = nnode;
+          vectorIndex.writeInt(nnode);
+        }
+        // if number of connections < maxConn, add bogus values up to maxConn to have predictable
+        // offsets
+        for (int i = size; i < maxConn; i++) {
+          vectorIndex.writeInt(0);
         }
       }
     }
-
-    return graph.numLevels();
+    return graph;
   }
 
   @Override
@@ -277,13 +261,12 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     }
     if (vectorData != null) {
       CodecUtil.writeFooter(vectorData);
-      CodecUtil.writeFooter(graphIndex);
-      CodecUtil.writeFooter(graphData);
+      CodecUtil.writeFooter(vectorIndex);
     }
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(meta, vectorData, graphIndex, graphData);
+    IOUtils.close(meta, vectorData, vectorIndex);
   }
 }
