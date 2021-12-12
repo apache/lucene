@@ -154,7 +154,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
     this.tableHeaderRenderer =
         new HelpHeaderRenderer(
             "About Flags",
-            "Format: IdfpoNPSB#txxVDtxxxxTx/xKx/x",
+            "Format: IdfpoNPSB#txxVDtxxxxTx/xKxxxx/xxx",
             createFlagsHelpDialog(),
             helpDialogFactory);
 
