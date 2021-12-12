@@ -154,7 +154,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
     this.tableHeaderRenderer =
         new HelpHeaderRenderer(
             "About Flags",
-            "Format: IdfpoNPSB#txxVDtxxxxTx/x",
+            "Format: IdfpoNPSB#txxVDtxxxxTx/xKx/x",
             createFlagsHelpDialog(),
             helpDialogFactory);
 
@@ -173,7 +173,8 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
           "#txx - numeric stored values(type, precision)",
           "V - term vectors",
           "Dtxxxxx - doc values(type)",
-          "Tx/x - point values(num bytes/dimension)"
+          "Tx/x - point values(num bytes/dimension)",
+          "Kxxxx/xxx - knn vector values(dimension/similarity)"
         };
     JList<String> list = new JList<>(values);
     return new JScrollPane(list);
@@ -1049,7 +1050,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
 
     enum Column implements TableColumnInfo {
       FIELD("Field", 0, String.class, 150),
-      FLAGS("Flags", 1, String.class, 200),
+      FLAGS("Flags", 1, String.class, 220),
       NORM("Norm", 2, Long.class, 80),
       VALUE("Value", 3, String.class, 500);
 
@@ -1226,6 +1227,27 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
         sb.append(f.getPointNumBytes());
         sb.append("/");
         sb.append(f.getPointDimensionCount());
+      }
+      // knn vector values
+      if (f.getVectorDimension() == 0) {
+        sb.append("---------");
+      } else {
+        sb.append("K");
+        sb.append(String.format("%04d", f.getVectorDimension()));
+        sb.append("/");
+        switch (f.getVectorSimilarity()) {
+          case COSINE:
+            sb.append("cos");
+            break;
+          case DOT_PRODUCT:
+            sb.append("dot");
+            break;
+          case EUCLIDEAN:
+            sb.append("euc");
+            break;
+          default:
+            sb.append("???");
+        }
       }
       return sb.toString();
     }
