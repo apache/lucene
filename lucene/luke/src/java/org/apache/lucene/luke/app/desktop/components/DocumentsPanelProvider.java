@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import javax.swing.BorderFactory;
@@ -1233,7 +1234,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
         sb.append("---------");
       } else {
         sb.append("K");
-        sb.append(String.format("%04d", f.getVectorDimension()));
+        sb.append(String.format(Locale.ENGLISH, "%04d", f.getVectorDimension()));
         sb.append("/");
         switch (f.getVectorSimilarity()) {
           case COSINE:
