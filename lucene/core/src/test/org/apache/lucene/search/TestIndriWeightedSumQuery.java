@@ -109,8 +109,10 @@ public class TestIndriWeightedSumQuery extends LuceneTestCase {
 
   public void testSimpleQuery1() throws Exception {
 
-    BooleanClause clause1 = new BooleanClause(tq("body", "george"), Occur.SHOULD);
-    BooleanClause clause2 = new BooleanClause(tq("body", "washington"), Occur.SHOULD);
+    BooleanClause clause1 =
+        new BooleanClause(new BoostQuery(tq("body", "george"), 1.0f), Occur.SHOULD);
+    BooleanClause clause2 =
+        new BooleanClause(new BoostQuery(tq("body", "washington"), 2.0f), Occur.SHOULD);
 
     IndriWeightedSumQuery q = new IndriWeightedSumQuery(Arrays.asList(clause1, clause2));
 

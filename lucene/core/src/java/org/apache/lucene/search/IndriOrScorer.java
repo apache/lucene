@@ -42,30 +42,20 @@ public class IndriOrScorer extends IndriDisjunctionScorer {
   }
 
   private float scoreDoc(List<Scorer> subScorers, int docId) throws IOException {
-    double score = 1;
-    double boostSum = 0.0;
+    float score = 1;
     for (Scorer scorer : subScorers) {
-      if (scorer instanceof IndriScorer) {
-        IndriScorer indriScorer = (IndriScorer) scorer;
-        int scorerDocId = indriScorer.docID();
-        // If the query exists in the document, score the document
-        // Otherwise, compute a smoothing score, which acts like an idf
-        // for subqueries/terms
-        double tempScore = 0;
-        if (docId == scorerDocId) {
-          tempScore = (1 - Math.exp(indriScorer.score()));
-        } else {
-          tempScore = (1 - Math.exp(indriScorer.smoothingScore(docId)));
-        }
-        tempScore *= indriScorer.getBoost();
-        score *= tempScore;
-        boostSum += indriScorer.getBoost();
+      int scorerDocId = scorer.docID();
+      // If the query exists in the document, score the document
+      // Otherwise, compute a smoothing score, which acts like an idf
+      // for subqueries/terms
+      double tempScore = 0;
+      if (docId == scorerDocId) {
+        tempScore = (1 - Math.exp(scorer.score()));
+      } else {
+        tempScore = (1 - Math.exp(scorer.smoothingScore(docId)));
       }
+      score *= tempScore;
     }
-    if (boostSum == 0) {
-      return 0;
-    } else {
-      return (float) (score / boostSum);
-    }
+    return (float) (Math.log(1.0 - score));
   }
 }

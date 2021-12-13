@@ -42,29 +42,17 @@ public class IndriWeightedSumScorer extends IndriDisjunctionScorer {
   }
 
   private float scoreDoc(List<Scorer> subScorers, int docId) throws IOException {
-    double score = 0;
-    double boostSum = 0.0;
+    float score = 0;
     for (Scorer scorer : subScorers) {
-      if (scorer instanceof IndriScorer) {
-        IndriScorer indriScorer = (IndriScorer) scorer;
-        int scorerDocId = indriScorer.docID();
-        double subScore = 0;
-        if (docId == scorerDocId) {
-          score += indriScorer.getBoost() * Math.exp(indriScorer.score());
-        } else {
-          double smoothingScore =
-              indriScorer.getBoost() * Math.exp(indriScorer.smoothingScore(docId));
-          score += smoothingScore;
-        }
-        subScore *= indriScorer.getBoost();
-        score += subScore;
-        boostSum += indriScorer.getBoost();
+      int scorerDocId = scorer.docID();
+      double subScore = 0;
+      if (docId == scorerDocId) {
+        subScore += Math.exp(scorer.score());
+      } else {
+        subScore += Math.exp(scorer.smoothingScore(docId));
       }
+      score += subScore;
     }
-    if (boostSum == 0) {
-      return 0;
-    } else {
-      return (float) (Math.log((score / boostSum)));
-    }
+    return (float) (Math.log(score));
   }
 }

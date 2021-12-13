@@ -62,7 +62,7 @@ public class IndriDirichletSimilarity extends LMSimilarity {
   protected double score(BasicStats stats, double freq, double docLen) {
     double collectionProbability = ((LMStats) stats).getCollectionProbability();
     double score = (freq + (mu * collectionProbability)) / (docLen + mu);
-    return (Math.log(score));
+    return (stats.getBoost() * Math.log(score));
   }
 
   @Override
