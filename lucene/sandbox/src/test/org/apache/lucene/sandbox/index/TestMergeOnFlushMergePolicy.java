@@ -27,61 +27,29 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NullInfoStream;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.junit.Ignore;
 
-/** Test for {@link MergeOnFlushTieredMergePolicy}. */
-public class TestMergeOnFlushTieredMergePolicy extends BaseMergePolicyTestCase {
-
-  private static long getIndexSize(SegmentInfos segmentInfos) throws IOException {
-    long totalBytes = 0;
-    for (SegmentCommitInfo sci : segmentInfos) {
-      totalBytes += sci.sizeInBytes();
-    }
-    return totalBytes;
-  }
-
-  private static long estimateMergeSize(
-      MergePolicy.OneMerge merge, MergePolicy.MergeContext mergeContext) throws IOException {
-    long estimatedMergeBytes = 0;
-    for (SegmentCommitInfo info : merge.segments) {
-      if (info.info.maxDoc() > 0) {
-        final int delCount = mergeContext.numDeletedDocs(info);
-        assert delCount <= info.info.maxDoc();
-        final double delRatio = ((double) delCount) / info.info.maxDoc();
-        estimatedMergeBytes += info.sizeInBytes() * (1.0 - delRatio);
-      }
-    }
-    return estimatedMergeBytes;
-  }
+/** Test for {@link MergeOnFlushMergePolicy}. */
+public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
 
   @Override
   protected MergePolicy mergePolicy() {
     Random r = random();
-    TieredMergePolicy tieredMergePolicy = newTieredMergePolicy(r);
-    MergeOnFlushTieredMergePolicy mergePolicy = new MergeOnFlushTieredMergePolicy();
-    mergePolicy.setDeletesPctAllowed(tieredMergePolicy.getDeletesPctAllowed());
-    mergePolicy.setFloorSegmentMB(tieredMergePolicy.getFloorSegmentMB());
-    mergePolicy.setForceMergeDeletesPctAllowed(tieredMergePolicy.getForceMergeDeletesPctAllowed());
-    mergePolicy.setMaxCFSSegmentSizeMB(tieredMergePolicy.getMaxCFSSegmentSizeMB());
-    mergePolicy.setMaxMergeAtOnce(tieredMergePolicy.getMaxMergeAtOnce());
-    mergePolicy.setMaxMergedSegmentMB(tieredMergePolicy.getMaxMergedSegmentMB());
-    mergePolicy.setSegmentsPerTier(tieredMergePolicy.getSegmentsPerTier());
-    mergePolicy.setNoCFSRatio(tieredMergePolicy.getNoCFSRatio());
-    mergePolicy.setSmallSegmentThresholdMB(TestUtil.nextInt(r, 1, 100));
-    return mergePolicy;
+    MergePolicy mergePolicy = newMergePolicy();
+    MergeOnFlushMergePolicy mergeOnFlushPolicy = new MergeOnFlushMergePolicy(mergePolicy);
+    mergeOnFlushPolicy.setMaxCFSSegmentSizeMB(mergePolicy.getMaxCFSSegmentSizeMB());
+    mergeOnFlushPolicy.setNoCFSRatio(mergePolicy.getNoCFSRatio());
+    mergeOnFlushPolicy.setSmallSegmentThresholdMB(TestUtil.nextInt(r, 1, 100));
+    return mergeOnFlushPolicy;
   }
 
   @Override
   protected void assertSegmentInfos(MergePolicy policy, SegmentInfos infos) {}
 
-  // BaseMergePolicyTestCase#testForceMergeNotNeeded() calls #mergePolicy()
-  // which will eventually use MergeOnCommitTieredMergePolicy for running the test
-  // but MergeOnCommitTieredMergePolicy expects TreeMetrics to be set
   @Override
   public void testForceMergeNotNeeded() throws IOException {
     super.testForceMergeNotNeeded();
@@ -90,20 +58,20 @@ public class TestMergeOnFlushTieredMergePolicy extends BaseMergePolicyTestCase {
   @Override
   protected void assertMerge(MergePolicy policy, MergePolicy.MergeSpecification merge)
       throws IOException {
-    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) policy;
+    MergeOnFlushMergePolicy mergePolicy = (MergeOnFlushMergePolicy) policy;
     for (MergePolicy.OneMerge oneMerge : merge.merges) {
       for (SegmentCommitInfo sci : oneMerge.segments) {
         assertTrue(
             "Basic merge should not merge small segments",
             sci.sizeInBytes()
-                >= MergeOnFlushTieredMergePolicy.Units.mbToBytes(
+                >= MergeOnFlushMergePolicy.Units.mbToBytes(
                     mergePolicy.getSmallSegmentThresholdMB()));
       }
     }
   }
 
   public void testRegularMerge() throws IOException {
-    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) mergePolicy();
+    MergeOnFlushMergePolicy mergePolicy = (MergeOnFlushMergePolicy) mergePolicy();
     double smallSegmentThresholdMB = mergePolicy.getSmallSegmentThresholdMB();
     Random r = random();
 
@@ -120,8 +88,7 @@ public class TestMergeOnFlushTieredMergePolicy extends BaseMergePolicyTestCase {
                 r.nextInt(10),
                 r.nextDouble() * 2.0 * smallSegmentThresholdMB,
                 IndexWriter.SOURCE_FLUSH);
-        if (sci.sizeInBytes()
-            < MergeOnFlushTieredMergePolicy.Units.mbToBytes(smallSegmentThresholdMB)) {
+        if (sci.sizeInBytes() < MergeOnFlushMergePolicy.Units.mbToBytes(smallSegmentThresholdMB)) {
           smallSegments.add(sci);
         }
         if (r.nextBoolean()) {
@@ -143,7 +110,7 @@ public class TestMergeOnFlushTieredMergePolicy extends BaseMergePolicyTestCase {
   }
 
   public void testOnlySmallSegmentsInRegularMerge() throws IOException {
-    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) mergePolicy();
+    MergeOnFlushMergePolicy mergePolicy = (MergeOnFlushMergePolicy) mergePolicy();
     double smallSegmentThresholdMB = mergePolicy.getSmallSegmentThresholdMB();
     SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
     Random r = random();
@@ -164,7 +131,7 @@ public class TestMergeOnFlushTieredMergePolicy extends BaseMergePolicyTestCase {
   }
 
   public void testFindCommitMerges() throws IOException {
-    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) mergePolicy();
+    MergeOnFlushMergePolicy mergePolicy = (MergeOnFlushMergePolicy) mergePolicy();
     double smallSegmentThresholdMB = mergePolicy.getSmallSegmentThresholdMB();
     Random r = random();
 
@@ -181,8 +148,7 @@ public class TestMergeOnFlushTieredMergePolicy extends BaseMergePolicyTestCase {
                 r.nextInt(10),
                 r.nextDouble() * 2.0 * smallSegmentThresholdMB,
                 IndexWriter.SOURCE_FLUSH);
-        if (sci.sizeInBytes()
-            < MergeOnFlushTieredMergePolicy.Units.mbToBytes(smallSegmentThresholdMB)) {
+        if (sci.sizeInBytes() < MergeOnFlushMergePolicy.Units.mbToBytes(smallSegmentThresholdMB)) {
           smallSegments.add(sci);
         }
         if (r.nextBoolean()) {
@@ -231,38 +197,6 @@ public class TestMergeOnFlushTieredMergePolicy extends BaseMergePolicyTestCase {
   @Ignore // This test takes > 2 minutes on a 2015 Macbook Pro
   public void testSimulateAppendOnly() throws IOException {
     super.testSimulateAppendOnly();
-  }
-
-  public void testMaxSegmentSizeAsProportionOfIndexSize() throws IOException {
-    Random r = random();
-    MergeOnFlushTieredMergePolicy mergePolicy = (MergeOnFlushTieredMergePolicy) mergePolicy();
-    final double maxSegmentSizeAsProportionOfIndex = r.nextDouble();
-    mergePolicy.setMaxSegmentSizeAsProportionOfIndex(maxSegmentSizeAsProportionOfIndex);
-    mergePolicy.setMaxMergedSegmentMB(r.nextInt(20) + 1);
-    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
-
-    int numSegs = random().nextInt(20);
-    for (int i = 0; i < numSegs; i++) {
-      segmentInfos.add(
-          makeSegmentCommitInfo(
-              "_" + i,
-              TestUtil.nextInt(r, 10, 100),
-              r.nextInt(10),
-              r.nextInt(30),
-              IndexWriter.SOURCE_FLUSH));
-    }
-    long indexSize = getIndexSize(segmentInfos);
-    MergePolicy.MergeContext context = new MockMergeContext(s -> 0);
-
-    MergePolicy.MergeSpecification mergeSpecification =
-        mergePolicy.findMerges(MergeTrigger.EXPLICIT, segmentInfos, context);
-
-    if (mergeSpecification != null) {
-      for (MergePolicy.OneMerge oneMerge : mergeSpecification.merges) {
-        assertTrue(
-            estimateMergeSize(oneMerge, context) <= maxSegmentSizeAsProportionOfIndex * indexSize);
-      }
-    }
   }
 
   /** Mock merge context that can have merging segments. */

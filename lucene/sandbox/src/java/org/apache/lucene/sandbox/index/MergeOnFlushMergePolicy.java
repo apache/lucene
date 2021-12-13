@@ -20,26 +20,22 @@ package org.apache.lucene.sandbox.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.MergeTrigger;
-import org.apache.lucene.index.SegmentCommitInfo;
-import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.index.*;
 
 /**
  * A simple extension to {@link TieredMergePolicy} to merge all tiny segments (or at least segments
  * smaller than specified in setSmallSegmentThresholdMB) into one segment on commit.
  */
-public class MergeOnFlushTieredMergePolicy extends TieredMergePolicy {
-  private double maxSegmentSizeAsProportionOfIndex = 1.0;
+public class MergeOnFlushMergePolicy extends FilterMergePolicy {
   private long smallSegmentThresholdBytes = Units.mbToBytes(100.0);
-  private long hardMaxSegmentSizeBytes = 5 * 1024 * 1024 * 1024L;
 
-  private static long indexSize(SegmentInfos infos) throws IOException {
-    long totalSize = 0;
-    for (SegmentCommitInfo sci : infos) {
-      totalSize += sci.sizeInBytes();
-    }
-    return totalSize;
+  /**
+   * Creates a MergeOnFlushMergePolicy merge policy instance wrapping another.
+   *
+   * @param mergePolicy the wrapped {@link MergePolicy}
+   */
+  public MergeOnFlushMergePolicy(MergePolicy mergePolicy) {
+    super(mergePolicy);
   }
 
   public double getSmallSegmentThresholdMB() {
@@ -54,36 +50,9 @@ public class MergeOnFlushTieredMergePolicy extends TieredMergePolicy {
     this.smallSegmentThresholdBytes = Units.mbToBytes(smallSegmentThresholdMB);
   }
 
-  public double getMaxSegmentSizeAsProportionOfIndex() {
-    return maxSegmentSizeAsProportionOfIndex;
-  }
-
-  public void setMaxSegmentSizeAsProportionOfIndex(double maxSegmentSizeAsProportionOfIndex) {
-    if (maxSegmentSizeAsProportionOfIndex < 0.0 || maxSegmentSizeAsProportionOfIndex > 1.0) {
-      throw new IllegalArgumentException(
-          "maxSegmentSizeAsProportionOfIndex must be between 0 and 1; got: "
-              + maxSegmentSizeAsProportionOfIndex);
-    }
-    this.maxSegmentSizeAsProportionOfIndex = maxSegmentSizeAsProportionOfIndex;
-  }
-
-  @Override
-  public MergeOnFlushTieredMergePolicy setMaxMergedSegmentMB(double v) {
-    this.hardMaxSegmentSizeBytes = Units.mbToBytes(v);
-    return this;
-  }
-
   @Override
   public MergeSpecification findMerges(
       MergeTrigger mergeTrigger, SegmentInfos infos, MergeContext mergeContext) throws IOException {
-    double maxSegmentSizeMB =
-        Units.bytesToMB(
-            Math.min(
-                hardMaxSegmentSizeBytes,
-                Math.max(
-                    Units.mbToBytes(getFloorSegmentMB()),
-                    (long) (getMaxSegmentSizeAsProportionOfIndex() * indexSize(infos)))));
-    super.setMaxMergedSegmentMB(maxSegmentSizeMB);
     return super.findMerges(mergeTrigger, excludeSmallSegments(infos), mergeContext);
   }
 
@@ -126,7 +95,7 @@ public class MergeOnFlushTieredMergePolicy extends TieredMergePolicy {
     return null;
   }
   /** Utility class to handle conversion between megabytes and bytes */
-  protected static class Units {
+  static class Units {
 
     private Units() {}
 
