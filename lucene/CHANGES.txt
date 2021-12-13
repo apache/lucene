@@ -110,6 +110,9 @@ Other
 
 * LUCENE-10303: Upgrade log4j to 2.15.0. (Tomoko Uchida)
 
+* LUCENE-10310: TestXYDocValuesQueries#doRandomDistanceTest does not produce random circles with radius
+  with '0' value any longer.
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
