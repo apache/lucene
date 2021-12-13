@@ -39,19 +39,19 @@ public class IndriAndWeight extends Weight {
     this.scoreMode = scoreMode;
     weights = new ArrayList<>();
     // Calculate total boost score so that boost can be normalized
-    //    float boostSum = 0;
-    //    for (BooleanClause c : query) {
-    //    	if (c.getQuery() instanceof BoostQuery) {
-    //    		boostSum += ((BoostQuery)c.getQuery()).getBoost();
-    //    	} else {
-    //    		boostSum++;
-    //    	}
-    //    }
+    float boostSum = 0;
+    for (BooleanClause c : query) {
+      if (c.getQuery() instanceof BoostQuery) {
+        boostSum += ((BoostQuery) c.getQuery()).getBoost();
+      } else {
+        boostSum++;
+      }
+    }
     for (BooleanClause c : query) {
       float subBoost = 1.0f;
-      //    	if (c.getQuery() instanceof BoostQuery) {
-      //    		subBoost = ((BoostQuery)c.getQuery()).getBoost()/boostSum;
-      //    	}
+      if (c.getQuery() instanceof BoostQuery) {
+        subBoost = ((BoostQuery) c.getQuery()).getBoost() / boostSum;
+      }
       Weight w = searcher.createWeight(c.getQuery(), scoreMode, subBoost);
       weights.add(w);
     }
