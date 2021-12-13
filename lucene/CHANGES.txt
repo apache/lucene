@@ -113,8 +113,6 @@ Other
 * LUCENE-10310: TestXYDocValuesQueries#doRandomDistanceTest does not produce random circles with radius
   with '0' value any longer.
 
-
-
 ======================= Lucene 9.0.0 =======================
 
 New Features
