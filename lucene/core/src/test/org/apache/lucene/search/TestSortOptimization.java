@@ -708,7 +708,8 @@ public class TestSortOptimization extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     List<Long> seqNos = new ArrayList<>();
-    int iterations = 10000 + random().nextInt(10000);
+    int limit = TEST_NIGHTLY ? 10000 : 1000;
+    int iterations = limit + random().nextInt(limit);
     long seqNoGenerator = random().nextInt(1000);
     for (long i = 0; i < iterations; i++) {
       int copies = random().nextInt(100) <= 5 ? 1 : 1 + random().nextInt(5);

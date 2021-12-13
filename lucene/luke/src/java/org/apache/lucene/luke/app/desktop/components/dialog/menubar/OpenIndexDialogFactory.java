@@ -29,12 +29,9 @@ import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
@@ -58,9 +55,8 @@ import org.apache.lucene.luke.app.desktop.util.FontUtils;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 import org.apache.lucene.luke.app.desktop.util.StyleConstants;
 import org.apache.lucene.luke.models.LukeException;
+import org.apache.lucene.luke.models.util.IndexUtils;
 import org.apache.lucene.luke.util.LoggerFactory;
-import org.apache.lucene.luke.util.reflection.ClassScanner;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -130,7 +126,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
         Executors.newFixedThreadPool(1, new NamedThreadFactory("load-directory-types"));
     executorService.execute(
         () -> {
-          for (String clazzName : supportedDirImpls()) {
+          for (String clazzName : IndexUtils.supportedDirectoryImpls()) {
             dirImplCombo.addItem(clazzName);
           }
         });
@@ -255,19 +251,6 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
     panel.add(keepCommits);
 
     return panel;
-  }
-
-  private String[] supportedDirImpls() {
-    // supports FS-based built-in implementations
-    ClassScanner scanner = new ClassScanner("org.apache.lucene.store", getClass().getClassLoader());
-    Set<Class<? extends FSDirectory>> clazzSet = scanner.scanSubTypes(FSDirectory.class);
-
-    List<String> clazzNames = new ArrayList<>();
-    clazzNames.add(FSDirectory.class.getName());
-    clazzNames.addAll(clazzSet.stream().map(Class::getName).collect(Collectors.toList()));
-
-    String[] result = new String[clazzNames.size()];
-    return clazzNames.toArray(result);
   }
 
   private JPanel buttons() {

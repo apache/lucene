@@ -303,6 +303,8 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: can we make this test more efficient so it doesn't need to be nightly?
+  @LuceneTestCase.Nightly
   public void testDocsStuckInRAMForever() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));

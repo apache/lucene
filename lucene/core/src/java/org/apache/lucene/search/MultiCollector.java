@@ -150,7 +150,7 @@ public class MultiCollector implements Collector {
   }
 
   /** Provides access to the wrapped {@code Collector}s for advanced use-cases */
-  Collector[] getCollectors() {
+  public Collector[] getCollectors() {
     return collectors;
   }
 
