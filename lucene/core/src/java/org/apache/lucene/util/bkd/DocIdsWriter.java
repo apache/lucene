@@ -34,6 +34,15 @@ class DocIdsWriter {
     }
   }
 
+  private static final byte CONTINUOUS_IDS = (byte) -2;
+  private static final byte BITSET_IDS = (byte) -1;
+  private static final byte DELTA_VINT = (byte) 0;
+  private static final byte DELTA_FOR_UTIL = (byte) 1;
+  private static final byte BPV_24 = (byte) 24;
+  private static final byte BPV_24_FOR_UTIL = (byte) 25;
+  private static final byte BPV_32 = (byte) 32;
+  private static final byte BPV_32_FOR_UTIL = (byte) 33;
+
   private final ForUtil forUtil = new ForUtil();
   private final long[] scratch;
 
@@ -61,7 +70,7 @@ class DocIdsWriter {
     if (strictlySorted) {
       if (min2max == count) {
         // continuous ids, typically happens when segment is sorted
-        out.writeByte((byte) -2);
+        out.writeByte(CONTINUOUS_IDS);
         out.writeVInt(docIds[start]);
         return;
       } else if (min2max <= (count << 4)) {
@@ -69,7 +78,7 @@ class DocIdsWriter {
         // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid
         // expanding too much storage.
         // A field with lower cardinality will have higher probability to trigger this optimization.
-        out.writeByte((byte) -1);
+        out.writeByte(BITSET_IDS);
         writeIdsAsBitSet(docIds, start, count, out);
         return;
       }
@@ -78,7 +87,7 @@ class DocIdsWriter {
     // special optimization when count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE (common case)
     if (count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
       if (sorted) {
-        out.writeByte((byte) 1);
+        out.writeByte(DELTA_FOR_UTIL);
         long max = 0;
         long[] delta = new long[count];
         int previous = docIds[start];
@@ -101,10 +110,10 @@ class DocIdsWriter {
         }
         int bitsPerValue = PackedInts.bitsRequired(max);
         if (bitsPerValue <= 24) {
-          out.writeByte((byte) 25);
+          out.writeByte(BPV_24_FOR_UTIL);
           forUtil.encode(longs, 24, out);
         } else {
-          out.writeByte((byte) 33);
+          out.writeByte(BPV_32_FOR_UTIL);
           forUtil.encode(longs, 32, out);
         }
       }
@@ -112,7 +121,7 @@ class DocIdsWriter {
     }
 
     if (sorted) {
-      out.writeByte((byte) 0);
+      out.writeByte(DELTA_VINT);
       int previous = 0;
       for (int i = 0; i < count; ++i) {
         int doc = docIds[start + i];
@@ -125,7 +134,7 @@ class DocIdsWriter {
         max |= Integer.toUnsignedLong(docIds[start + i]);
       }
       if (max <= 0xffffff) {
-        out.writeByte((byte) 24);
+        out.writeByte(BPV_24);
         // write them the same way we are reading them.
         int i;
         for (i = 0; i < count - 7; i += 8) {
@@ -153,7 +162,7 @@ class DocIdsWriter {
           out.writeByte((byte) docIds[start + i]);
         }
       } else {
-        out.writeByte((byte) 32);
+        out.writeByte(BPV_32);
         for (int i = 0; i < count; ++i) {
           out.writeInt(docIds[start + i]);
         }
@@ -198,28 +207,28 @@ class DocIdsWriter {
   void readInts(IndexInput in, int count, long[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
-      case -2:
+      case CONTINUOUS_IDS:
         readContinuousIds(in, count, docIDs);
         break;
-      case -1:
+      case BITSET_IDS:
         readBitSet(in, count, docIDs);
         break;
-      case 0:
+      case DELTA_VINT:
         readDeltaVInts(in, count, docIDs);
         break;
-      case 1:
+      case DELTA_FOR_UTIL:
         readForUtilDelta(in, count, docIDs);
         break;
-      case 32:
+      case BPV_32:
         readInts32(in, count, docIDs);
         break;
-      case 33:
+      case BPV_32_FOR_UTIL:
         readForUtil32(in, count, docIDs);
         break;
-      case 24:
+      case BPV_24:
         readInts24(in, count, docIDs);
         break;
-      case 25:
+      case BPV_24_FOR_UTIL:
         readForUtil24(in, count, docIDs);
         break;
       default:
@@ -314,28 +323,28 @@ class DocIdsWriter {
   void readInts(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
-      case -2:
+      case CONTINUOUS_IDS:
         readContinuousIds(in, count, visitor);
         break;
-      case -1:
+      case BITSET_IDS:
         readBitSet(in, count, visitor);
         break;
-      case 0:
+      case DELTA_VINT:
         readDeltaVInts(in, count, visitor);
         break;
-      case 1:
+      case DELTA_FOR_UTIL:
         readForUtilDelta(in, count, visitor);
         break;
-      case 32:
+      case BPV_32:
         readInts32(in, count, visitor);
         break;
-      case 33:
+      case BPV_32_FOR_UTIL:
         readForUtil32(in, count, visitor);
         break;
-      case 24:
+      case BPV_24:
         readInts24(in, count, visitor);
         break;
-      case 25:
+      case BPV_24_FOR_UTIL:
         readForUtil24(in, count, visitor);
         break;
       default:
