@@ -27,13 +27,6 @@ import org.apache.lucene.util.packed.PackedInts;
 
 class DocIdsWriter {
 
-  static {
-    if (ForUtil.BLOCK_SIZE != BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
-      throw new RuntimeException(
-          "ForUtils size need to be the same as BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE");
-    }
-  }
-
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_VINT = (byte) 0;
@@ -85,7 +78,7 @@ class DocIdsWriter {
     }
 
     // special optimization when count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE (common case)
-    if (count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
+    if (count == ForUtil.BLOCK_SIZE) {
       if (sorted) {
         out.writeByte(DELTA_FOR_UTIL);
         long max = 0;
