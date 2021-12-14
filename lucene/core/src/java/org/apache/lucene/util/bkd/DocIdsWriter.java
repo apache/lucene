@@ -27,6 +27,12 @@ import org.apache.lucene.util.packed.PackedInts;
 
 class DocIdsWriter {
 
+  static {
+    if (ForUtil.BLOCK_SIZE != BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
+      throw new RuntimeException("ForUtils size need to be the same as BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE");
+    }
+  }
+
   private final ForUtil forUtil = new ForUtil();
   private final long[] scratch;
 
