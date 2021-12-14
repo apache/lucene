@@ -29,7 +29,8 @@ class DocIdsWriter {
 
   static {
     if (ForUtil.BLOCK_SIZE != BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
-      throw new RuntimeException("ForUtils size need to be the same as BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE");
+      throw new RuntimeException(
+          "ForUtils size need to be the same as BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE");
     }
   }
 
@@ -94,7 +95,7 @@ class DocIdsWriter {
       } else {
         long[] longs = new long[count];
         long max = 0;
-        for (int i=0; i<count; i++) {
+        for (int i = 0; i < count; i++) {
           longs[i] = docIds[i];
           max |= longs[i] & 0xffffffffL;
         }
@@ -255,7 +256,8 @@ class DocIdsWriter {
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, long[] docIDs) throws IOException {
+  private static void readContinuousIds(IndexInput in, int count, long[] docIDs)
+      throws IOException {
     int start = in.readVInt();
     for (int i = 0; i < count; i++) {
       docIDs[i] = start + i;
@@ -395,8 +397,8 @@ class DocIdsWriter {
     visitor.visit(new DocBaseBitSetIterator(bitSet, count, offset));
   }
 
-
-  private void readForUtilDelta(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+  private void readForUtilDelta(IndexInput in, int count, IntersectVisitor visitor)
+      throws IOException {
     assert count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
     int previous = in.readVInt();
     int bitsPerValue = in.readVInt();
@@ -408,7 +410,8 @@ class DocIdsWriter {
     }
   }
 
-  private void readForUtil24(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+  private void readForUtil24(IndexInput in, int count, IntersectVisitor visitor)
+      throws IOException {
     assert count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
     forUtil.decode(24, in, scratch);
     for (long l : scratch) {
@@ -416,7 +419,8 @@ class DocIdsWriter {
     }
   }
 
-  private void readForUtil32(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+  private void readForUtil32(IndexInput in, int count, IntersectVisitor visitor)
+      throws IOException {
     assert count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
     forUtil.decode(32, in, scratch);
     for (long l : scratch) {
