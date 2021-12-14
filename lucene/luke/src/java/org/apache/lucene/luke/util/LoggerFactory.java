@@ -17,54 +17,35 @@
 
 package org.apache.lucene.luke.util;
 
-import java.nio.charset.StandardCharsets;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.appender.FileAppender;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
-import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
-import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.apache.lucene.luke.app.desktop.util.TextAreaAppender;
+import java.util.logging.Handler;
+import java.util.logging.LogManager;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
-/** Logger factory. This programmatically configurates logger context (Appenders etc.) */
+/** Logger factory. This configures log interceptors for the GUI. */
 public class LoggerFactory {
 
-  public static void initGuiLogging(String logFile) {
-    ConfigurationBuilder<BuiltConfiguration> builder =
-        ConfigurationBuilderFactory.newConfigurationBuilder();
-    builder.add(builder.newRootLogger(Level.INFO));
-    LoggerContext context = Configurator.initialize(builder.build());
+  public static void initGuiLogging() {
+    var rootLogger = LogManager.getLogManager().getLogger("");
 
-    PatternLayout layout =
-        PatternLayout.newBuilder()
-            .withPattern("[%d{ISO8601}] %5p (%F:%L) - %m%n")
-            .withCharset(StandardCharsets.UTF_8)
-            .build();
+    rootLogger.addHandler(
+        new Handler() {
+          @Override
+          public void publish(LogRecord record) {}
 
-    Appender fileAppender =
-        FileAppender.newBuilder()
-            .setName("File")
-            .setLayout(layout)
-            .withFileName(logFile)
-            .withAppend(false)
-            .build();
-    fileAppender.start();
+          @Override
+          public void flush() {
+            // Ignore.
+          }
 
-    Appender textAreaAppender =
-        TextAreaAppender.newBuilder().setName("TextArea").setLayout(layout).build();
-    textAreaAppender.start();
-
-    context.getRootLogger().addAppender(fileAppender);
-    context.getRootLogger().addAppender(textAreaAppender);
-    context.updateLoggers();
+          @Override
+          public void close() throws SecurityException {
+            // Ignore.
+          }
+        });
   }
 
   public static Logger getLogger(Class<?> clazz) {
-    return LogManager.getLogger(clazz);
+    return LogManager.getLogManager().getLogger(clazz.getName());
   }
 }

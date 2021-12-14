@@ -24,7 +24,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import org.apache.lucene.luke.app.desktop.LukeMain;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 
 /** Provider of the Logs panel */
@@ -45,7 +44,7 @@ public final class LogsPanelProvider {
     header.setOpaque(false);
     header.add(new JLabel(MessageUtils.getLocalizedMessage("logs.label.see_also")));
 
-    JLabel logPathLabel = new JLabel(LukeMain.LOG_FILE);
+    JLabel logPathLabel = new JLabel("Luke logs");
     header.add(logPathLabel);
 
     panel.add(header, BorderLayout.PAGE_START);
