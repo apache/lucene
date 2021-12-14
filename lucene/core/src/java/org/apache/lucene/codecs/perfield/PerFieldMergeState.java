@@ -106,7 +106,7 @@ final class PerFieldMergeState {
     // Copy of the private fields from FieldInfos
     // Renamed so as to be less confusing about which fields we're referring to
     private final boolean filteredHasVectors;
-    private final boolean filteredHasIndexed;
+    private final boolean filteredHasPostings;
     private final boolean filteredHasProx;
     private final boolean filteredHasPayloads;
     private final boolean filteredHasOffsets;
@@ -120,7 +120,7 @@ final class PerFieldMergeState {
       super(toArray(src));
 
       boolean hasVectors = false;
-      boolean hasIndexed = false;
+      boolean hasPostings = false;
       boolean hasProx = false;
       boolean hasPayloads = false;
       boolean hasOffsets = false;
@@ -135,7 +135,7 @@ final class PerFieldMergeState {
         if (this.filteredNames.contains(fi.name)) {
           this.filtered.add(fi);
           hasVectors |= fi.hasVectors();
-          hasIndexed |= fi.getIndexOptions() != IndexOptions.NONE;
+          hasPostings |= fi.getIndexOptions() != IndexOptions.NONE;
           hasProx |= fi.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
           hasFreq |= fi.getIndexOptions() != IndexOptions.DOCS;
           hasOffsets |=
@@ -149,7 +149,7 @@ final class PerFieldMergeState {
       }
 
       this.filteredHasVectors = hasVectors;
-      this.filteredHasIndexed = hasIndexed;
+      this.filteredHasPostings = hasPostings;
       this.filteredHasProx = hasProx;
       this.filteredHasPayloads = hasPayloads;
       this.filteredHasOffsets = hasOffsets;
@@ -179,8 +179,8 @@ final class PerFieldMergeState {
     }
 
     @Override
-    public boolean hasIndexed() {
-      return filteredHasIndexed;
+    public boolean hasPostings() {
+      return filteredHasPostings;
     }
 
     @Override

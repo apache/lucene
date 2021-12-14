@@ -204,7 +204,7 @@ final class SegmentMerger {
         normsMergeInstance = norms.getMergeInstance();
       }
       try (FieldsConsumer consumer =
-          mergeState.mergeFieldInfos.hasIndexed()
+          mergeState.mergeFieldInfos.hasPostings()
               ? codec.postingsFormat().fieldsConsumer(segmentWriteState)
               : null) {
         if (consumer != null) {

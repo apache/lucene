@@ -112,7 +112,7 @@ final class SegmentCoreReaders {
 
       final SegmentReadState segmentReadState =
           new SegmentReadState(cfsDir, si.info, coreFieldInfos, context);
-      if (coreFieldInfos.hasIndexed()) {
+      if (coreFieldInfos.hasPostings()) {
         final PostingsFormat format = codec.postingsFormat();
         // Ask codec for its Fields
         fields = format.fieldsProducer(segmentReadState);

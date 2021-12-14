@@ -99,7 +99,7 @@ final class FreqProxTermsWriter extends TermsHash {
       }
     }
 
-    if (!state.fieldInfos.hasIndexed()) {
+    if (!state.fieldInfos.hasPostings()) {
       assert allFields.isEmpty();
       return;
     }
