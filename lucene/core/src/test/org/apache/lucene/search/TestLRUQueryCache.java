@@ -564,10 +564,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
       final Query query = new AccountableDummyQuery();
       searcher.count(query);
     }
-    long queryRamBytesUsed =
-        numQueries * (10 * QUERY_DEFAULT_RAM_BYTES_USED + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY);
-    // allow 10% error for other ram bytes used estimation inside query cache
-    assertEquals(queryRamBytesUsed, queryCache.ramBytesUsed(), 10 * queryRamBytesUsed / 100);
+    long queryRamBytesUsed = numQueries * (10 * QUERY_DEFAULT_RAM_BYTES_USED);
+    // make sure the query cache reflects the big queries
+    assertTrue(queryCache.ramBytesUsed() > queryRamBytesUsed);
 
     reader.close();
     w.close();
