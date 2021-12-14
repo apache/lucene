@@ -86,7 +86,6 @@ class DocIdsWriter {
         out.writeVInt(bitsPerValue);
         forUtil.encode(delta, PackedInts.bitsRequired(max), out);
       } else {
-        out.writeByte((byte) 2);
         long[] longs = new long[count];
         long max = 0;
         for (int i=0; i<count; i++) {
@@ -94,8 +93,13 @@ class DocIdsWriter {
           max |= longs[i] & 0xffffffffL;
         }
         int bitsPerValue = PackedInts.bitsRequired(max);
-        out.writeVInt(bitsPerValue);
-        forUtil.encode(longs, bitsPerValue, out);
+        if (bitsPerValue <= 24) {
+          out.writeByte((byte) 25);
+          forUtil.encode(longs, 24, out);
+        } else {
+          out.writeByte((byte) 33);
+          forUtil.encode(longs, 32, out);
+        }
       }
       return;
     }
@@ -199,14 +203,17 @@ class DocIdsWriter {
       case 1:
         readForUtilDelta(in, count, docIDs);
         break;
-      case 2:
-        readForUtil(in, count, docIDs);
-        break;
       case 32:
         readInts32(in, count, docIDs);
         break;
+      case 33:
+        readForUtil32(in, count, docIDs);
+        break;
       case 24:
         readInts24(in, count, docIDs);
+        break;
+      case 25:
+        readForUtil24(in, count, docIDs);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
@@ -223,10 +230,14 @@ class DocIdsWriter {
     }
   }
 
-  private void readForUtil(IndexInput in, int count, long[] docIDs) throws IOException {
+  private void readForUtil24(IndexInput in, int count, long[] docIDs) throws IOException {
     assert count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
-    int bitsPerValue = in.readVInt();
-    forUtil.decode(bitsPerValue, in, docIDs);
+    forUtil.decode(24, in, docIDs);
+  }
+
+  private void readForUtil32(IndexInput in, int count, long[] docIDs) throws IOException {
+    assert count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+    forUtil.decode(32, in, docIDs);
   }
 
   private static DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
@@ -307,14 +318,17 @@ class DocIdsWriter {
       case 1:
         readForUtilDelta(in, count, visitor);
         break;
-      case 2:
-        readForUtil(in, count, visitor);
-        break;
       case 32:
         readInts32(in, count, visitor);
         break;
+      case 33:
+        readForUtil32(in, count, visitor);
+        break;
       case 24:
         readInts24(in, count, visitor);
+        break;
+      case 25:
+        readForUtil24(in, count, visitor);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
@@ -388,10 +402,17 @@ class DocIdsWriter {
     }
   }
 
-  private void readForUtil(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+  private void readForUtil24(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     assert count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
-    int bitsPerValue = in.readVInt();
-    forUtil.decode(bitsPerValue, in, scratch);
+    forUtil.decode(24, in, scratch);
+    for (long l : scratch) {
+      visitor.visit((int) l);
+    }
+  }
+
+  private void readForUtil32(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+    assert count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+    forUtil.decode(32, in, scratch);
     for (long l : scratch) {
       visitor.visit((int) l);
     }
