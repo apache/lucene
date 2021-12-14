@@ -70,12 +70,13 @@ class DocIdsWriter {
     if (sorted) {
       int[] delta = new int[count];
       int previous = docIds[start];
+      long max = 0;
       for (int i = 1; i < count; ++i) {
         int doc = docIds[start + i];
         delta[i] = doc - previous;
+        max |= Integer.toUnsignedLong(delta[i]);
         previous = doc;
       }
-      long max = getMax(delta, 0, count);
       if (max <= 0xff) {
         out.writeByte((byte) 1);
         out.writeVInt(docIds[start]);
@@ -92,7 +93,10 @@ class DocIdsWriter {
         }
       }
     } else {
-      long max = getMax(docIds, start, count);
+      long max = 0;
+      for (int i = 0; i < count; ++i) {
+        max |= Integer.toUnsignedLong(docIds[start + i]);
+      }
       if (max <= 0xffffff) {
         out.writeByte((byte) 24);
         // write them the same way we are reading them.
@@ -128,14 +132,6 @@ class DocIdsWriter {
         }
       }
     }
-  }
-
-  private static long getMax(int[] arr, int start, int count) {
-    long max = 0;
-    for (int i = 0; i < count; ++i) {
-      max |= Integer.toUnsignedLong(arr[start + i]);
-    }
-    return max;
   }
 
   private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out)
