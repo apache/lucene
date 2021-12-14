@@ -17,32 +17,28 @@
 
 package org.apache.lucene.luke.util;
 
-import java.util.logging.Handler;
-import java.util.logging.LogManager;
-import java.util.logging.LogRecord;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** Logger factory. This configures log interceptors for the GUI. */
 public class LoggerFactory {
+  public static CircularLogBufferHandler circularBuffer;
 
   public static void initGuiLogging() {
-    var rootLogger = LogManager.getLogManager().getLogger("");
+    if (circularBuffer != null) {
+      throw new RuntimeException("Double-initialization?");
+    }
 
-    rootLogger.addHandler(
-        new Handler() {
-          @Override
-          public void publish(LogRecord record) {}
+    circularBuffer = new CircularLogBufferHandler();
 
-          @Override
-          public void flush() {
-            // Ignore.
-          }
+    var rootLogger = Logger.getGlobal();
+    rootLogger.addHandler(circularBuffer);
 
-          @Override
-          public void close() throws SecurityException {
-            // Ignore.
-          }
-        });
+    // NOCOMMIT: test.
+    rootLogger.info("Hello.");
+    var e = new RuntimeException();
+    e.fillInStackTrace();
+    rootLogger.log(Level.SEVERE, "Oops.", e);
   }
 
   public static Logger getLogger(Class<?> clazz) {

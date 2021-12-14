@@ -44,7 +44,6 @@ import org.apache.lucene.luke.app.desktop.PreferencesFactory;
 import org.apache.lucene.luke.app.desktop.util.FontUtils;
 import org.apache.lucene.luke.app.desktop.util.ImageUtils;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
-import org.apache.lucene.luke.app.desktop.util.TextAreaAppender;
 import org.apache.lucene.util.Version;
 
 /** Provider of the root window */
@@ -77,7 +76,11 @@ public final class LukeWindowProvider implements LukeWindowOperator {
     // prepare log4j appender for Logs tab.
     JTextArea logTextArea = new JTextArea();
     logTextArea.setEditable(false);
-    TextAreaAppender.setTextArea(logTextArea);
+
+    // NOCOMMIT, TODO: hook into CircularLogBufferHandler
+    // and display the history of N last log messages, perhaps scrolling to the bottom (or in
+    // reverse order?).
+    // hook into live updates while the component is shown?
 
     this.prefs = PreferencesFactory.getInstance();
     this.menuBar = new MenuBarProvider().get();
