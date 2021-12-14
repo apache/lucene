@@ -23,7 +23,7 @@ import java.util.List;
 import org.apache.lucene.index.*;
 
 /**
- * A simple extension to {@link TieredMergePolicy} to merge all tiny segments (or at least segments
+ * A simple extension to wrap {@link MergePolicy} to merge all tiny segments (or at least segments
  * smaller than specified in setSmallSegmentThresholdMB) into one segment on commit.
  */
 public class MergeOnFlushMergePolicy extends FilterMergePolicy {
