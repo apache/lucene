@@ -108,8 +108,9 @@ class DocIdsWriter {
           longs[i] = docIds[i];
           max |= longs[i] & 0xffffffffL;
         }
-        int bitsPerValue = PackedInts.bitsRequired(max);
-        if (bitsPerValue <= 24) {
+        // The 24/32 bit judgment is kept without calculating the bitsPerValue of max, thus
+        // ensuring the high efficiency of decoding.
+        if (max <= 0xffffff) {
           out.writeByte(BPV_24_FOR_UTIL);
           forUtil.encode(longs, 24, out);
         } else {
