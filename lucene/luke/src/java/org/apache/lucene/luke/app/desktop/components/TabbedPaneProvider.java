@@ -35,7 +35,7 @@ public final class TabbedPaneProvider implements TabSwitcherProxy.TabSwitcher {
 
   private final MessageBroker messageBroker;
 
-  private final JTabbedPane tabbedPane = new JTabbedPane();
+  private final JTabbedPane tabbedPane;
 
   private final JPanel overviewPanel;
 
@@ -50,6 +50,8 @@ public final class TabbedPaneProvider implements TabSwitcherProxy.TabSwitcher {
   private final JPanel logsPanel;
 
   public TabbedPaneProvider(JTextArea logTextArea) throws IOException {
+    this.tabbedPane = new JTabbedPane();
+
     this.overviewPanel = new OverviewPanelProvider().get();
     this.documentsPanel = new DocumentsPanelProvider().get();
     this.searchPanel = new SearchPanelProvider().get();

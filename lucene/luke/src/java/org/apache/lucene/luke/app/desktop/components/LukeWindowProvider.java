@@ -25,14 +25,10 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.io.IOException;
-import javax.swing.BorderFactory;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JMenuBar;
-import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextArea;
-import javax.swing.WindowConstants;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import javax.swing.*;
 import org.apache.lucene.luke.app.DirectoryHandler;
 import org.apache.lucene.luke.app.DirectoryObserver;
 import org.apache.lucene.luke.app.IndexHandler;
@@ -44,6 +40,8 @@ import org.apache.lucene.luke.app.desktop.PreferencesFactory;
 import org.apache.lucene.luke.app.desktop.util.FontUtils;
 import org.apache.lucene.luke.app.desktop.util.ImageUtils;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
+import org.apache.lucene.luke.util.CircularLogBufferHandler;
+import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.util.Version;
 
 /** Provider of the root window */
@@ -77,10 +75,18 @@ public final class LukeWindowProvider implements LukeWindowOperator {
     JTextArea logTextArea = new JTextArea();
     logTextArea.setEditable(false);
 
-    // NOCOMMIT, TODO: hook into CircularLogBufferHandler
-    // and display the history of N last log messages, perhaps scrolling to the bottom (or in
-    // reverse order?).
-    // hook into live updates while the component is shown?
+    // Hook into live data from CircularLogBufferHandler and update initial state.
+    Consumer<CircularLogBufferHandler> updater =
+        circularBuffer -> {
+          String logContent = circularBuffer.getLogEntries().collect(Collectors.joining("\n"));
+          SwingUtilities.invokeLater(
+              () -> {
+                logTextArea.setText(logContent);
+              });
+        };
+
+    Objects.requireNonNull(LoggerFactory.circularBuffer).addUpdateListener(updater);
+    updater.accept(LoggerFactory.circularBuffer);
 
     this.prefs = PreferencesFactory.getInstance();
     this.menuBar = new MenuBarProvider().get();

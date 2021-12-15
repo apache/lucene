@@ -30,15 +30,12 @@ public class LoggerFactory {
     }
 
     circularBuffer = new CircularLogBufferHandler();
+    circularBuffer.setLevel(Level.FINEST);
 
-    var rootLogger = Logger.getGlobal();
-    rootLogger.addHandler(circularBuffer);
-
-    // NOCOMMIT: test.
-    rootLogger.info("Hello.");
-    var e = new RuntimeException();
-    e.fillInStackTrace();
-    rootLogger.log(Level.SEVERE, "Oops.", e);
+    // Only capture events from Lucene logger hierarchy.
+    var luceneRoot = Logger.getLogger("org.apache.lucene");
+    luceneRoot.setLevel(Level.FINEST);
+    luceneRoot.addHandler(circularBuffer);
   }
 
   public static Logger getLogger(Class<?> clazz) {

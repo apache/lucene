@@ -22,7 +22,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.stream.Stream;
@@ -32,12 +35,16 @@ public class CircularLogBufferHandler extends Handler {
   // preformatted, no need to complicate things.
   private final ArrayDeque<String> buffer = new ArrayDeque<>();
 
+  private final List<Consumer<CircularLogBufferHandler>> listeners = new CopyOnWriteArrayList<>();
+
   @Override
   public void publish(LogRecord record) {
     synchronized (buffer) {
       var formatted = format(record);
       buffer.addLast(formatted);
     }
+
+    listeners.forEach(c -> c.accept(this));
   }
 
   private String format(LogRecord record) {
@@ -76,5 +83,9 @@ public class CircularLogBufferHandler extends Handler {
       var asList = new ArrayList<>(buffer);
       return asList.stream();
     }
+  }
+
+  public void addUpdateListener(Consumer<CircularLogBufferHandler> listener) {
+    listeners.add(listener);
   }
 }
