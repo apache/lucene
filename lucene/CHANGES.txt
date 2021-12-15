@@ -42,6 +42,9 @@ API Changes
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
 
+* LUCENE-10183: KnnVectorsWriter#writeField to take KnnVectorsReader instead of VectorValues.
+  (Zach Chen, Michael Sokolov, Julie Tibshirani, Adrien Grand)
+
 New Features
 ---------------------
 

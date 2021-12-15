@@ -108,8 +108,9 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader vectorsReader) throws IOException {
-    VectorValues vectors = vectorsReader.getVectorValues(fieldInfo.name);
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     long pos = vectorData.getFilePointer();
     // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
     // CFS is not used, eg for larger indexes

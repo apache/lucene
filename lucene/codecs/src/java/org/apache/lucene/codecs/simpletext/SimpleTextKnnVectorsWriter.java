@@ -75,8 +75,9 @@ public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader vectorsReader) throws IOException {
-    VectorValues vectors = vectorsReader.getVectorValues(fieldInfo.name);
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     int docV;

@@ -98,9 +98,9 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorReader)
+    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
         throws IOException {
-      getInstance(fieldInfo).writeField(fieldInfo, knnVectorReader);
+      getInstance(fieldInfo).writeField(fieldInfo, knnVectorsReader);
     }
 
     @Override

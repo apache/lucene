@@ -171,10 +171,10 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       KnnVectorsWriter writer = delegate.fieldsWriter(state);
       return new KnnVectorsWriter() {
         @Override
-        public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorReader)
+        public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
             throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.writeField(fieldInfo, knnVectorReader);
+          writer.writeField(fieldInfo, knnVectorsReader);
         }
 
         @Override

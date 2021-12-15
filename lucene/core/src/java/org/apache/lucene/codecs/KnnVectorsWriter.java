@@ -25,13 +25,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
-import org.apache.lucene.index.EmptyKnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
@@ -41,7 +42,7 @@ public abstract class KnnVectorsWriter implements Closeable {
   protected KnnVectorsWriter() {}
 
   /** Write all values contained in the provided reader */
-  public abstract void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorReader)
+  public abstract void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException;
 
   /** Called once at the end before close */
@@ -111,10 +112,31 @@ public abstract class KnnVectorsWriter implements Closeable {
     // docids using docMaps in the mergeState.
     writeField(
         mergeFieldInfo,
-        new EmptyKnnVectorsReader() {
+        new KnnVectorsReader() {
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
+
+          @Override
+          public void close() throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void checkIntegrity() throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
           @Override
           public VectorValues getVectorValues(String field) throws IOException {
             return new VectorValuesMerger(subs, mergeState);
+          }
+
+          @Override
+          public TopDocs search(String field, float[] target, int k, Bits acceptDocs)
+              throws IOException {
+            throw new UnsupportedOperationException();
           }
         });
 
