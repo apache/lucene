@@ -30,6 +30,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
+/** A {@link Handler} with a bounded buffer of recent log messages. */
 public class CircularLogBufferHandler extends Handler {
   // Keep a bounded buffer of messages logged so far. We'll keep them
   // preformatted, no need to complicate things.
