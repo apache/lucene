@@ -80,8 +80,7 @@ public class CircularLogBufferHandler extends Handler {
 
   public Stream<String> getLogEntries() {
     synchronized (buffer) {
-      var asList = new ArrayList<>(buffer);
-      return asList.stream();
+      return new ArrayList<>(buffer).stream();
     }
   }
 
