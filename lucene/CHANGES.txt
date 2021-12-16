@@ -577,6 +577,12 @@ Other
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
 
+======================= Lucene 8.11.1 =======================
+
+Bug Fixes
+---------------------
+* SOLR-15843: Update Log4J to 2.16 (Mike Drob, janhoy)
+
 ======================= Lucene 8.11.0 =======================
 
 API Changes
