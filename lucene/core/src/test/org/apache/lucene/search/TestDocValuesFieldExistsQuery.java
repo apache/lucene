@@ -19,15 +19,22 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
 
 public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
@@ -204,6 +211,55 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     assertEquals(1, searcher.count(new DocValuesFieldExistsQuery("f")));
     reader.close();
     dir.close();
+  }
+
+  public void testQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
+    int numMatchingDocs = 0;
+
+    for (int i = 0; i < randomNumDocs; i++) {
+      Document doc = new Document();
+      // ensure we index at least a document with long between 0 and 10
+      if (i == 0 || random().nextBoolean()) {
+        doc.add(new LongPoint("long", i));
+        doc.add(new NumericDocValuesField("long", i));
+        doc.add(new StringField("string", "value", Store.NO));
+        doc.add(new SortedDocValuesField("string", new BytesRef("value")));
+        numMatchingDocs++;
+      }
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+
+    DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+
+    assertSameCount(reader, searcher, "long", numMatchingDocs);
+    assertSameCount(reader, searcher, "string", numMatchingDocs);
+    assertSameCount(reader, searcher, "doesNotExist", 0);
+
+    // Test that we can't count in O(1) when there are deleted documents
+    w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    w.deleteDocuments(LongPoint.newRangeQuery("long", 0L, 10L));
+    DirectoryReader reader2 = w.getReader();
+    final IndexSearcher searcher2 = new IndexSearcher(reader2);
+    final Query testQuery = new DocValuesFieldExistsQuery("long");
+    final Weight weight2 = searcher2.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(weight2.count(reader2.leaves().get(0)), -1);
+
+    IOUtils.close(reader, reader2, w, dir);
+  }
+
+  private void assertSameCount(
+      IndexReader reader, IndexSearcher searcher, String field, int numMatchingDocs)
+      throws IOException {
+    final Query testQuery = new DocValuesFieldExistsQuery(field);
+    assertEquals(searcher.count(testQuery), numMatchingDocs);
+    final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
   }
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)

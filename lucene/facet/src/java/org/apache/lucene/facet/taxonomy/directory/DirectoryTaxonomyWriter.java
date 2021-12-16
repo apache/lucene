@@ -153,9 +153,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       indexEpoch = 1;
     } else {
       String epochStr = null;
-
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
-
       Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
         epochStr = commitData.get(INDEX_EPOCH);

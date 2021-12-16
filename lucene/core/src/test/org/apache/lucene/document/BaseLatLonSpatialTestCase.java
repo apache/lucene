@@ -200,7 +200,7 @@ public abstract class BaseLatLonSpatialTestCase extends BaseSpatialTestCase {
         while (true) {
           Polygon p = GeoTestUtil.nextPolygon();
           try {
-            Tessellator.tessellate(p);
+            Tessellator.tessellate(p, random().nextBoolean());
             return p;
           } catch (
               @SuppressWarnings("unused")

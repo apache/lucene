@@ -16,19 +16,20 @@
  */
 package org.apache.lucene.codecs;
 
-import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValues.IntersectVisitor;
+import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * {@link PointValues} whose order of points can be changed. This class is useful for codecs to
- * optimize flush.
+ * One leaf {@link PointTree} whose order of points can be changed. This class is useful for codecs
+ * to optimize flush.
  *
  * @lucene.internal
  */
-public abstract class MutablePointValues extends PointValues {
+public abstract class MutablePointTree implements PointTree {
 
   /** Sole constructor. */
-  protected MutablePointValues() {}
+  protected MutablePointTree() {}
 
   /** Set {@code packedValue} with a reference to the packed bytes of the i-th value. */
   public abstract void getValue(int i, BytesRef packedValue);
@@ -47,4 +48,39 @@ public abstract class MutablePointValues extends PointValues {
 
   /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
   public abstract void restore(int i, int j);
+
+  @Override
+  public final PointTree clone() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public final boolean moveToChild() {
+    return false;
+  }
+
+  @Override
+  public final boolean moveToSibling() {
+    return false;
+  }
+
+  @Override
+  public final boolean moveToParent() {
+    return false;
+  }
+
+  @Override
+  public byte[] getMinPackedValue() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public byte[] getMaxPackedValue() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void visitDocIDs(IntersectVisitor visitor) {
+    throw new UnsupportedOperationException();
+  }
 }
