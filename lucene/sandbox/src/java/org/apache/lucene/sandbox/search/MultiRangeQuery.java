@@ -178,7 +178,7 @@ public abstract class MultiRangeQuery extends Query {
     return new ConstantScoreWeight(this, boost) {
 
       private PointValues.IntersectVisitor getIntersectVisitor(
-          DocIdSetBuilder result, Range range) {
+          DocIdSetBuilder result, Relatable range) {
         return new PointValues.IntersectVisitor() {
 
           DocIdSetBuilder.BulkAdder adder;
@@ -241,7 +241,13 @@ public abstract class MultiRangeQuery extends Query {
                   + bytesPerDim);
         }
 
-        Range range = create(rangeClauses, numDims, bytesPerDim, comparator);
+        Relatable range;
+        if (rangeClauses.size() == 1) {
+          range = getRange(rangeClauses.get(0), numDims, bytesPerDim, comparator);
+        } else {
+          range = create(rangeClauses, numDims, bytesPerDim, comparator);
+        }
+
         boolean allDocsMatch;
         if (values.getDocCount() == reader.maxDoc()) {
           final byte[] fieldPackedLower = values.getMinPackedValue();
@@ -399,25 +405,30 @@ public abstract class MultiRangeQuery extends Query {
   protected abstract String toString(int dimension, byte[] value);
 
   /**
-   * A range represents anything with a min/max value that can compute its relation with another
-   * range and can compute if a point is inside it
+   * Represents a range that can compute its relation with another range and can compute if a point
+   * is inside it
    */
-  private interface Range {
-    /** min value of this range */
-    byte[] getMinPackedValue();
-    /** max value of this range */
-    byte[] getMaxPackedValue();
+  private interface Relatable {
     /** return true if the provided point is inside the range */
     boolean matches(byte[] packedValue);
     /** return the relation between this range and the provided range */
     PointValues.Relation relate(byte[] minPackedValue, byte[] maxPackedValue);
   }
 
+  /**
+   * A range represents anything with a min/max value that can compute its relation with another
+   * range and can compute if a point is inside it
+   */
+  private interface Range extends Relatable {
+    /** min value of this range */
+    byte[] getMinPackedValue();
+    /** max value of this range */
+    byte[] getMaxPackedValue();
+  }
+
   /** An interval tree of Ranges for speeding up computations */
-  private static class RangeTree implements Range {
-    /** minimum value of this Range and its children */
-    private final byte[] minPackedValue;
-    /** maximum value of this Range and its children */
+  private static class RangeTree implements Relatable {
+    /** maximum value contained in this range sub-tree */
     private final byte[] maxPackedValue;
 
     /** Left child, it can be null */
@@ -439,23 +450,12 @@ public abstract class MultiRangeQuery extends Query {
         ArrayUtil.ByteArrayComparator comparator,
         int numIndexDim,
         int bytesPerDim) {
-      this.minPackedValue = component.getMinPackedValue().clone();
       this.maxPackedValue = component.getMaxPackedValue().clone();
       this.component = component;
       this.split = split;
       this.comparator = comparator;
       this.numIndexDim = numIndexDim;
       this.bytesPerDim = bytesPerDim;
-    }
-
-    @Override
-    public byte[] getMinPackedValue() {
-      return minPackedValue;
-    }
-
-    @Override
-    public byte[] getMaxPackedValue() {
-      return maxPackedValue;
     }
 
     @Override
@@ -479,7 +479,10 @@ public abstract class MultiRangeQuery extends Query {
         }
         if (right != null
             && comparator.compare(
-                    packedValue, split * bytesPerDim, minPackedValue, split * bytesPerDim)
+                    packedValue,
+                    split * bytesPerDim,
+                    component.getMinPackedValue(),
+                    split * bytesPerDim)
                 >= 0) {
           if (right.matches(packedValue)) {
             return true;
@@ -512,7 +515,10 @@ public abstract class MultiRangeQuery extends Query {
         }
         if (right != null
             && comparator.compare(
-                    maxPackedValue, split * bytesPerDim, this.minPackedValue, split * bytesPerDim)
+                    maxPackedValue,
+                    split * bytesPerDim,
+                    component.getMinPackedValue(),
+                    split * bytesPerDim)
                 >= 0) {
           relation = right.relate(minPackedValue, maxPackedValue);
           if (relation != PointValues.Relation.CELL_OUTSIDE_QUERY) {
@@ -525,37 +531,17 @@ public abstract class MultiRangeQuery extends Query {
   }
 
   /** Creates a tree from provided clauses */
-  static Range create(
+  static RangeTree create(
       List<RangeClause> clauses,
       int numIndexDim,
       int bytesPerDim,
       ArrayUtil.ByteArrayComparator comparator) {
-    if (clauses.size() == 1) {
-      return getRange(clauses.get(0), numIndexDim, bytesPerDim, comparator);
-    }
     Range[] ranges = new Range[clauses.size()];
     for (int i = 0; i < clauses.size(); i++) {
       ranges[i] = getRange(clauses.get(i), numIndexDim, bytesPerDim, comparator);
     }
-    RangeTree root =
-        createTree(ranges, 0, ranges.length - 1, 0, numIndexDim, bytesPerDim, comparator);
-    // pull up min values for the root node so it contains a consistent bounding box
-    for (Range range : ranges) {
-      for (int i = 0; i < numIndexDim; i++) {
-        int offset = i * bytesPerDim;
-        if (comparator.compare(root.minPackedValue, offset, range.getMinPackedValue(), offset)
-            > 0) {
-          System.arraycopy(
-              range.getMinPackedValue(), offset, root.minPackedValue, offset, bytesPerDim);
-        }
-        if (comparator.compare(root.maxPackedValue, offset, range.getMaxPackedValue(), offset)
-            < 0) {
-          System.arraycopy(
-              range.getMaxPackedValue(), offset, root.maxPackedValue, offset, bytesPerDim);
-        }
-      }
-    }
-    return root;
+
+    return createTree(ranges, 0, ranges.length - 1, 0, numIndexDim, bytesPerDim, comparator);
   }
 
   /** Creates tree from sorted ranges (with range low and high inclusive) */
@@ -602,30 +588,20 @@ public abstract class MultiRangeQuery extends Query {
     if (newNode.left != null) {
       for (int i = 0; i < numIndexDim; i++) {
         int offset = i * bytesPerDim;
-        if (comparator.compare(
-                newNode.maxPackedValue, offset, newNode.left.getMaxPackedValue(), offset)
+        if (comparator.compare(newNode.maxPackedValue, offset, newNode.left.maxPackedValue, offset)
             < 0) {
           System.arraycopy(
-              newNode.left.getMaxPackedValue(),
-              offset,
-              newNode.maxPackedValue,
-              offset,
-              bytesPerDim);
+              newNode.left.maxPackedValue, offset, newNode.maxPackedValue, offset, bytesPerDim);
         }
       }
     }
     if (newNode.right != null) {
       for (int i = 0; i < numIndexDim; i++) {
         int offset = i * bytesPerDim;
-        if (comparator.compare(
-                newNode.maxPackedValue, offset, newNode.right.getMaxPackedValue(), offset)
+        if (comparator.compare(newNode.maxPackedValue, offset, newNode.right.maxPackedValue, offset)
             < 0) {
           System.arraycopy(
-              newNode.right.getMaxPackedValue(),
-              offset,
-              newNode.maxPackedValue,
-              offset,
-              bytesPerDim);
+              newNode.right.maxPackedValue, offset, newNode.maxPackedValue, offset, bytesPerDim);
         }
       }
     }
