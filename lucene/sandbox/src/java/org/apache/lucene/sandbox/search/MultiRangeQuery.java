@@ -245,7 +245,7 @@ public abstract class MultiRangeQuery extends Query {
         if (rangeClauses.size() == 1) {
           range = getRange(rangeClauses.get(0), numDims, bytesPerDim, comparator);
         } else {
-          range = create(rangeClauses, numDims, bytesPerDim, comparator);
+          range = createTree(rangeClauses, numDims, bytesPerDim, comparator);
         }
 
         boolean allDocsMatch;
@@ -531,7 +531,7 @@ public abstract class MultiRangeQuery extends Query {
   }
 
   /** Creates a tree from provided clauses */
-  static RangeTree create(
+  static RangeTree createTree(
       List<RangeClause> clauses,
       int numIndexDim,
       int bytesPerDim,
