@@ -191,7 +191,6 @@ public final class Version {
    * @deprecated Use latest
    * @deprecated (8.11.1) Use latest
    */
-  @Deprecated
   @Deprecated public static final Version LUCENE_8_11_0 = new Version(8, 11, 0);
 
   /**
