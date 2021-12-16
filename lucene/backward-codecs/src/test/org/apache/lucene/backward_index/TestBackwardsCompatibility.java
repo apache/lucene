@@ -334,13 +334,18 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  static final String[] oldNames = {"9.0.0-cfs", "9.0.0-nocfs"};
+  static final String[] oldNames = {
+    "9.0.0-cfs", // Force on separate lines
+    "9.0.0-nocfs",
+  };
 
   public static String[] getOldNames() {
     return oldNames;
   }
 
-  static final String[] oldSortedNames = {"sorted.9.0.0"};
+  static final String[] oldSortedNames = {
+    "sorted.9.0.0", // Force on separate lines
+  };
 
   public static String[] getOldSortedNames() {
     return oldSortedNames;
@@ -590,6 +595,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.10.1-nocfs",
     "8.11.0-cfs",
     "8.11.0-nocfs",
+    "8.11.1-cfs",
+    "8.11.1-nocfs"
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
