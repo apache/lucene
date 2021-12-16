@@ -353,9 +353,7 @@ class RenderJavadocTask extends DefaultTask {
 
   @TaskAction
   public void render() {
-    def srcDirs = srcDirSet.sourceDirectories
-        .findAll { dir -> dir.exists() }
-        .findAll { dir -> dir.name != "java-module" }
+    def srcDirs = srcDirSet.sourceDirectories.filter { dir -> dir.exists() }
 
     def optionsFile = project.file("${getTemporaryDir()}/javadoc-options.txt")
     
@@ -363,9 +361,10 @@ class RenderJavadocTask extends DefaultTask {
     outputDir.mkdirs();
     
     def opts = []
-    opts << [ '-overview', project.file("${srcDirs[0]}/overview.html") ]
-    opts << [ '-sourcepath', srcDirs.join(File.pathSeparator) ]
-    opts << [ '-subpackages', 'org.apache.lucene' ]
+
+    def overviewSourceSetDir = srcDirs.filter { dir -> project.file("${dir}/overview.html").exists() }.singleFile
+    opts << [ '-overview', project.file("${overviewSourceSetDir}/overview.html") ]
+
     opts << [ '-d', outputDir ]
     opts << '-protected'
     opts << [ '-encoding', 'UTF-8' ]
@@ -456,6 +455,24 @@ class RenderJavadocTask extends DefaultTask {
     // -J options have to be passed on command line, they are not interpreted if passed via args file.
     def jOpts = opts.findAll { opt -> opt instanceof String && opt.startsWith("-J") }
     opts.removeAll(jOpts)
+
+    // Collect all source files, for now excluding module descriptors.
+    opts.addAll(
+        srcDirs.collectMany { dir ->
+          project.fileTree(dir: dir, include: "**/*.java", exclude: "**/module-info.java").files
+        }.collect { it.toString() }
+    )
+
+    // handle doc-files manually since in explicit source file mode javadoc does not copy them.
+    srcDirs.each { File dir ->
+      project.copy {
+        into outputDir
+
+        from(dir, {
+          include "**/doc-files/**"
+        })
+      }
+    }
 
     // Temporary file that holds all javadoc options for the current task (except jOpts)
     optionsFile.withWriter("UTF-8", { writer ->

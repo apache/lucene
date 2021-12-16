@@ -15,24 +15,13 @@
  * limitations under the License.
  */
 
-import java.util.function.Predicate
-
 // Configure miscellaneous aspects required for supporting the java module system layer.
-
-// TODO: remove the hacks excluding java-module source folder from ecjLint and javadoc rendering.
 
 allprojects {
   plugins.withType(JavaPlugin) {
     // We won't be using gradle's built-in automatic module finder.
     java {
       modularity.inferModulePath.set(false)
-    }
-
-    // Utility method that detects whether a source set contains a module-info descriptor.
-    Predicate<SourceSet> hasModuleDescriptor = { SourceSet ss ->
-      ss.allJava.srcDirs.stream()
-          .map(dir -> new File(dir, "module-info.java"))
-          .anyMatch(file -> file.exists())
     }
 
     // Map convention configuration names to "modular" corresponding configurations.
@@ -111,25 +100,31 @@ allprojects {
       Configuration runtimeModulePathConfiguration = createResolvableModuleConfiguration(sourceSet.runtimeClasspathConfigurationName)
       runtimeModulePathConfiguration.extendsFrom(moduleRuntimeOnly, moduleImplementation)
 
+      // Create and register a source set extension for manipulating classpath/ module-path
+      ModularPathsExtension modularPaths = new ModularPathsExtension(project, sourceSet,
+          compileModulePathConfiguration,
+          runtimeModulePathConfiguration)
+      sourceSet.extensions.add("modularPaths", modularPaths)
+
       // Customized the JavaCompile for this source set so that it has proper module path.
       tasks.named(sourceSet.getCompileJavaTaskName()).configure({ JavaCompile task ->
-        task.dependsOn compileModulePathConfiguration
+        task.dependsOn modularPaths.compileModulePathConfiguration
 
         // Add modular dependencies and their transitive dependencies to module path.
         task.options.compilerArgumentProviders.add((CommandLineArgumentProvider) {
+          def modularPathFiles = modularPaths.compileModulePathConfiguration.files
           def extraArgs = []
-          if (!compileModulePathConfiguration.isEmpty()) {
-            if (!hasModuleDescriptor.test(sourceSet)) {
+          if (!modularPathFiles.isEmpty()) {
+            if (!modularPaths.hasModuleDescriptor()) {
               // We're compiling a non-module so we'll bring everything on module path in
               // otherwise things wouldn't be part of the resolved module graph.
               extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
             }
 
-            extraArgs += ["--module-path", compileModulePathConfiguration.files.join(File.pathSeparator)]
+            extraArgs += ["--module-path", modularPathFiles.join(File.pathSeparator)]
           }
 
-          task.logger.info("Module path for ${task.path}:\n  "
-              + compileModulePathConfiguration.files.sort().join("\n  "))
+          task.logger.info("Module path for ${task.path}:\n  " + modularPathFiles.sort().join("\n  "))
 
           return extraArgs
         })
@@ -141,7 +136,7 @@ allprojects {
           // This could be done in a fancier way but a set difference is just fine for us here. Use a lazy
           // provider to delay computation of the actual path.
           task.classpath = files({ ->
-            def trimmedClasspath = sourceSet.compileClasspath - compileModulePathConfiguration
+            def trimmedClasspath = sourceSet.compileClasspath - modularPaths.compileModulePathConfiguration
             task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
             return trimmedClasspath
           })
@@ -170,7 +165,7 @@ allprojects {
 
           // Determine whether the source set classes themselves should be appended
           // to classpath or module path.
-          boolean sourceSetIsAModule = hasModuleDescriptor.test(sourceSet)
+          boolean sourceSetIsAModule = sourceSet.modularPaths.hasModuleDescriptor()
 
           if (!modulePath.isEmpty() || sourceSetIsAModule) {
             if (sourceSetIsAModule) {
@@ -200,7 +195,7 @@ allprojects {
         task.classpath = files({ ->
           def trimmedClasspath = sourceSet.runtimeClasspath - modulePath
 
-          boolean sourceSetIsAModule = hasModuleDescriptor.test(sourceSet)
+          boolean sourceSetIsAModule = sourceSet.modularPaths.hasModuleDescriptor()
           if (sourceSetIsAModule) {
             // also subtract the sourceSet's output directories.
             trimmedClasspath = trimmedClasspath - sourceSet.output.classesDirs
@@ -232,5 +227,28 @@ allprojects {
         return project.version.toString()
       })
     }
+  }
+}
+
+
+class ModularPathsExtension {
+  Project project
+  SourceSet sourceSet
+  Configuration compileModulePathConfiguration
+  Configuration runtimeModulePathConfiguration
+
+  ModularPathsExtension(Project project, SourceSet sourceSet,
+                        Configuration compileModulePathConfiguration,
+                        Configuration runtimeModulePathConfiguration) {
+    this.project =  project
+    this.sourceSet = sourceSet
+    this.compileModulePathConfiguration = compileModulePathConfiguration
+    this.runtimeModulePathConfiguration = runtimeModulePathConfiguration
+  }
+
+  boolean hasModuleDescriptor() {
+    return sourceSet.allJava.srcDirs.stream()
+        .map(dir -> new File(dir, "module-info.java"))
+        .anyMatch(file -> file.exists())
   }
 }
