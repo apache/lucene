@@ -603,16 +603,6 @@ public abstract class MultiRangeQuery extends Query {
       for (int i = 0; i < numIndexDim; i++) {
         int offset = i * bytesPerDim;
         if (comparator.compare(
-                newNode.minPackedValue, offset, newNode.left.getMinPackedValue(), offset)
-            > 0) {
-          System.arraycopy(
-              newNode.left.getMinPackedValue(),
-              offset,
-              newNode.minPackedValue,
-              offset,
-              bytesPerDim);
-        }
-        if (comparator.compare(
                 newNode.maxPackedValue, offset, newNode.left.getMaxPackedValue(), offset)
             < 0) {
           System.arraycopy(
@@ -627,16 +617,6 @@ public abstract class MultiRangeQuery extends Query {
     if (newNode.right != null) {
       for (int i = 0; i < numIndexDim; i++) {
         int offset = i * bytesPerDim;
-        if (comparator.compare(
-                newNode.minPackedValue, offset, newNode.right.getMinPackedValue(), offset)
-            > 0) {
-          System.arraycopy(
-              newNode.right.getMinPackedValue(),
-              offset,
-              newNode.minPackedValue,
-              offset,
-              bytesPerDim);
-        }
         if (comparator.compare(
                 newNode.maxPackedValue, offset, newNode.right.getMaxPackedValue(), offset)
             < 0) {
