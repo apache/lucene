@@ -339,7 +339,7 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
                   }
 
                   log.log(Level.SEVERE, "Cannot create index", ex);
-                  String message = "See Logs tab or log file for more details.";
+                  String message = "See Logs tab for more details.";
                   JOptionPane.showMessageDialog(
                       dialog, message, "Cannot create index", JOptionPane.ERROR_MESSAGE);
                 } finally {
