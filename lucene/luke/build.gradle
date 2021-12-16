@@ -27,8 +27,6 @@ ext {
 dependencies {
   moduleApi project(':lucene:core')
 
-  moduleImplementation 'org.apache.logging.log4j:log4j-core'
-
   moduleImplementation project(':lucene:codecs')
   moduleImplementation project(':lucene:backward-codecs')
   moduleImplementation project(':lucene:analysis:common')

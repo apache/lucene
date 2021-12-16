@@ -32,6 +32,8 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
@@ -45,7 +47,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JSeparator;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.luke.app.DirectoryHandler;
 import org.apache.lucene.luke.app.IndexHandler;
 import org.apache.lucene.luke.app.desktop.Preferences;
@@ -336,7 +337,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
         closeDialog();
       } catch (LukeException ex) {
         String message =
-            ex.getMessage() + System.lineSeparator() + "See Logs tab or log file for more details.";
+            ex.getMessage() + System.lineSeparator() + "See Logs tab for more details.";
         JOptionPane.showMessageDialog(
             dialog, message, "Invalid index path", JOptionPane.ERROR_MESSAGE);
       } catch (Throwable cause) {
@@ -345,7 +346,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
             MessageUtils.getLocalizedMessage("message.error.unknown"),
             "Unknown Error",
             JOptionPane.ERROR_MESSAGE);
-        log.error("Error opening index or directory", cause);
+        log.log(Level.SEVERE, "Error opening index or directory", cause);
       }
     }
 

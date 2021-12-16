@@ -16,7 +16,6 @@
  */
 
 /** Luke : Lucene toolbox project. */
-@SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.luke {
   requires java.desktop;
   requires java.logging;
@@ -25,6 +24,4 @@ module org.apache.lucene.luke {
   requires org.apache.lucene.queries;
   requires org.apache.lucene.queryparser;
   requires org.apache.lucene.misc;
-  requires org.apache.logging.log4j;
-  requires org.apache.logging.log4j.core;
 }

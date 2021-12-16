@@ -1341,9 +1341,10 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     for (int i = 0; i < numQueries; i++) {
-      float x = nextX();
-      float y = nextY();
-      float radius = (Float.MAX_VALUE / 2) * random().nextFloat();
+      XYCircle circle = ShapeTestUtil.nextCircle();
+      float x = circle.getX();
+      float y = circle.getY();
+      float radius = circle.getRadius();
 
       BitSet expected = new BitSet();
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
