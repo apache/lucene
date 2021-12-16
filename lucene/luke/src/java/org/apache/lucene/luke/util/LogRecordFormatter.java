@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.function.Function;
 
+/** Formats {@link CircularLogBufferHandler.ImmutableLogRecord} to string. */
 public class LogRecordFormatter
     implements Function<CircularLogBufferHandler.ImmutableLogRecord, String> {
   @Override
