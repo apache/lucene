@@ -106,9 +106,9 @@ public class CircularLogBufferHandler extends Handler {
   }
 
   /** @return Return a clone of the buffered records so far. */
-  public Collection<ImmutableLogRecord> getLogRecords() {
+  public List<ImmutableLogRecord> getLogRecords() {
     synchronized (buffer) {
-      return new ArrayDeque<>(buffer);
+      return List.copyOf(buffer);
     }
   }
 }
