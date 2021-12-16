@@ -21,6 +21,7 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.MathUtil;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
 // Encodes multiple integers in a long to get SIMD-like speedups.
@@ -30,8 +31,22 @@ import org.apache.lucene.store.DataOutput;
 final class ForUtil {
 
   static final int BLOCK_SIZE = 128;
-  private static final int BLOCK_SIZE_LOG2 = 7;
-
+  static final int BLOCK_SIZE_DIV_2 = BLOCK_SIZE >> 1;
+  static final int BLOCK_SIZE_DIV_2_MASK = BLOCK_SIZE_DIV_2 - 1;
+  private static final int BLOCK_SIZE_DIV_4 = BLOCK_SIZE >> 2;
+  private static final int BLOCK_SIZE_DIV_8 = BLOCK_SIZE >> 3;
+  private static final int BLOCK_SIZE_DIV_64 = BLOCK_SIZE >> 6;
+  private static final int BLOCK_SIZE_DIV_8_MUL_1 = BLOCK_SIZE_DIV_8;
+  private static final int BLOCK_SIZE_DIV_8_MUL_2 = BLOCK_SIZE_DIV_8 * 2;
+  private static final int BLOCK_SIZE_DIV_8_MUL_3 = BLOCK_SIZE_DIV_8 * 3;
+  private static final int BLOCK_SIZE_DIV_8_MUL_4 = BLOCK_SIZE_DIV_8 * 4;
+  private static final int BLOCK_SIZE_DIV_8_MUL_5 = BLOCK_SIZE_DIV_8 * 5;
+  private static final int BLOCK_SIZE_DIV_8_MUL_6 = BLOCK_SIZE_DIV_8 * 6;
+  private static final int BLOCK_SIZE_DIV_8_MUL_7 = BLOCK_SIZE_DIV_8 * 7;
+  private static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
+  private static final int BLOCK_SIZE_LOG2_MIN_3 = BLOCK_SIZE_LOG2 - 3;
+  static final int BLOCK_SIZE_LOG2_MIN_1 = BLOCK_SIZE_LOG2 - 1;
+  
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
   }
@@ -57,82 +72,82 @@ final class ForUtil {
   }
 
   private static void expand8(long[] arr) {
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 56) & 0xFFL;
-      arr[16 + i] = (l >>> 48) & 0xFFL;
-      arr[32 + i] = (l >>> 40) & 0xFFL;
-      arr[48 + i] = (l >>> 32) & 0xFFL;
-      arr[64 + i] = (l >>> 24) & 0xFFL;
-      arr[80 + i] = (l >>> 16) & 0xFFL;
-      arr[96 + i] = (l >>> 8) & 0xFFL;
-      arr[112 + i] = l & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 48) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 40) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = (l >>> 32) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = (l >>> 24) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_5 + i] = (l >>> 16) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_6 + i] = (l >>> 8) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_7 + i] = l & 0xFFL;
     }
   }
 
   private static void expand8To32(long[] arr) {
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 24) & 0x000000FF000000FFL;
-      arr[16 + i] = (l >>> 16) & 0x000000FF000000FFL;
-      arr[32 + i] = (l >>> 8) & 0x000000FF000000FFL;
-      arr[48 + i] = l & 0x000000FF000000FFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 16) & 0x000000FF000000FFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 8) & 0x000000FF000000FFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = l & 0x000000FF000000FFL;
     }
   }
 
   private static void collapse8(long[] arr) {
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
       arr[i] =
           (arr[i] << 56)
-              | (arr[16 + i] << 48)
-              | (arr[32 + i] << 40)
-              | (arr[48 + i] << 32)
-              | (arr[64 + i] << 24)
-              | (arr[80 + i] << 16)
-              | (arr[96 + i] << 8)
-              | arr[112 + i];
+              | (arr[BLOCK_SIZE_DIV_8_MUL_1 + i] << 48)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 40)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_3 + i] << 32)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 24)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_5 + i] << 16)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_6 + i] << 8)
+              | arr[BLOCK_SIZE_DIV_8_MUL_7 + i];
     }
   }
 
   private static void expand16(long[] arr) {
-    for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 48) & 0xFFFFL;
-      arr[32 + i] = (l >>> 32) & 0xFFFFL;
-      arr[64 + i] = (l >>> 16) & 0xFFFFL;
-      arr[96 + i] = l & 0xFFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 32) & 0xFFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = (l >>> 16) & 0xFFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_6 + i] = l & 0xFFFFL;
     }
   }
 
   private static void expand16To32(long[] arr) {
-    for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 16) & 0x0000FFFF0000FFFFL;
-      arr[32 + i] = l & 0x0000FFFF0000FFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = l & 0x0000FFFF0000FFFFL;
     }
   }
 
   private static void collapse16(long[] arr) {
-    for (int i = 0; i < 32; ++i) {
-      arr[i] = (arr[i] << 48) | (arr[32 + i] << 32) | (arr[64 + i] << 16) | arr[96 + i];
+    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
+      arr[i] = (arr[i] << 48) | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 32) | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 16) | arr[BLOCK_SIZE_DIV_8_MUL_6 + i];
     }
   }
 
   private static void expand32(long[] arr) {
-    for (int i = 0; i < 64; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
       long l = arr[i];
       arr[i] = l >>> 32;
-      arr[64 + i] = l & 0xFFFFFFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = l & 0xFFFFFFFFL;
     }
   }
 
   private static void collapse32(long[] arr) {
-    for (int i = 0; i < 64; ++i) {
-      arr[i] = (arr[i] << 32) | arr[64 + i];
+    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
+      arr[i] = (arr[i] << 32) | arr[BLOCK_SIZE_DIV_8_MUL_4 + i];
     }
   }
 
-  private final long[] tmp = new long[BLOCK_SIZE / 2];
+  private final long[] tmp = new long[BLOCK_SIZE_DIV_2];
 
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
@@ -140,19 +155,19 @@ final class ForUtil {
     final int numLongs;
     if (bitsPerValue <= 8) {
       nextPrimitive = 8;
-      numLongs = BLOCK_SIZE / 8;
+      numLongs = BLOCK_SIZE_DIV_8;
       collapse8(longs);
     } else if (bitsPerValue <= 16) {
       nextPrimitive = 16;
-      numLongs = BLOCK_SIZE / 4;
+      numLongs = BLOCK_SIZE_DIV_4;
       collapse16(longs);
     } else {
       nextPrimitive = 32;
-      numLongs = BLOCK_SIZE / 2;
+      numLongs = BLOCK_SIZE_DIV_2;
       collapse32(longs);
     }
 
-    final int numLongsPerShift = bitsPerValue * 2;
+    final int numLongsPerShift = bitsPerValue * BLOCK_SIZE_DIV_64;
     int idx = 0;
     int shift = nextPrimitive - bitsPerValue;
     for (int i = 0; i < numLongsPerShift; ++i) {
@@ -209,12 +224,12 @@ final class ForUtil {
 
   /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
   int numBytes(int bitsPerValue) {
-    return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
+    return bitsPerValue << BLOCK_SIZE_LOG2_MIN_3;
   }
 
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
       throws IOException {
-    final int numLongs = bitsPerValue << 1;
+    final int numLongs = bitsPerValue * BLOCK_SIZE_DIV_64;
     in.readLongs(tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
     int longsIdx = 0;
@@ -227,7 +242,7 @@ final class ForUtil {
     final long mask32RemainingBitsPerLong = MASKS32[remainingBitsPerLong];
     int tmpIdx = 0;
     int remainingBits = remainingBitsPerLong;
-    for (; longsIdx < BLOCK_SIZE / 2; ++longsIdx) {
+    for (; longsIdx < BLOCK_SIZE_DIV_2; ++longsIdx) {
       int b = bitsPerValue - remainingBits;
       long l = (tmp[tmpIdx++] & MASKS32[remainingBits]) << b;
       while (b >= remainingBitsPerLong) {
@@ -1050,5 +1065,77 @@ final class ForUtil {
       l0 |= tmp[tmpIdx + 2] << 0;
       longs[longsIdx + 0] = l0;
     }
+  }
+
+  /**
+   * Unrolled "inner" prefix sum logic where the values are packed two-per-long in {@code longs}.
+   * After this method, the final values will be correct for all high-order bits (values [0..63])
+   * but a final prefix loop will still need to run to "correct" the values of [64..127] in the
+   * low-order bits, which need the 64th value added to all of them.
+   */
+  static void innerPrefixSum32(long[] longs) {
+    longs[1] += longs[0];
+    longs[2] += longs[1];
+    longs[3] += longs[2];
+    longs[4] += longs[3];
+    longs[5] += longs[4];
+    longs[6] += longs[5];
+    longs[7] += longs[6];
+    longs[8] += longs[7];
+    longs[9] += longs[8];
+    longs[10] += longs[9];
+    longs[11] += longs[10];
+    longs[12] += longs[11];
+    longs[13] += longs[12];
+    longs[14] += longs[13];
+    longs[15] += longs[14];
+    longs[16] += longs[15];
+    longs[17] += longs[16];
+    longs[18] += longs[17];
+    longs[19] += longs[18];
+    longs[20] += longs[19];
+    longs[21] += longs[20];
+    longs[22] += longs[21];
+    longs[23] += longs[22];
+    longs[24] += longs[23];
+    longs[25] += longs[24];
+    longs[26] += longs[25];
+    longs[27] += longs[26];
+    longs[28] += longs[27];
+    longs[29] += longs[28];
+    longs[30] += longs[29];
+    longs[31] += longs[30];
+    longs[32] += longs[31];
+    longs[33] += longs[32];
+    longs[34] += longs[33];
+    longs[35] += longs[34];
+    longs[36] += longs[35];
+    longs[37] += longs[36];
+    longs[38] += longs[37];
+    longs[39] += longs[38];
+    longs[40] += longs[39];
+    longs[41] += longs[40];
+    longs[42] += longs[41];
+    longs[43] += longs[42];
+    longs[44] += longs[43];
+    longs[45] += longs[44];
+    longs[46] += longs[45];
+    longs[47] += longs[46];
+    longs[48] += longs[47];
+    longs[49] += longs[48];
+    longs[50] += longs[49];
+    longs[51] += longs[50];
+    longs[52] += longs[51];
+    longs[53] += longs[52];
+    longs[54] += longs[53];
+    longs[55] += longs[54];
+    longs[56] += longs[55];
+    longs[57] += longs[56];
+    longs[58] += longs[57];
+    longs[59] += longs[58];
+    longs[60] += longs[59];
+    longs[61] += longs[60];
+    longs[62] += longs[61];
+    longs[63] += longs[62];
   }
 }

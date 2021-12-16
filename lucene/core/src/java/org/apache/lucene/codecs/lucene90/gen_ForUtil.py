@@ -19,6 +19,7 @@ from fractions import gcd
 
 """Code generation for ForUtil.java"""
 
+BLOCK_SIZE = 128
 MAX_SPECIALIZED_BITS_PER_VALUE = 24
 OUTPUT_FILE = "ForUtil.java"
 PRIMITIVE_SIZE = [8, 16, 32]
@@ -45,6 +46,7 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.MathUtil;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
 // Encodes multiple integers in a long to get SIMD-like speedups.
@@ -53,9 +55,23 @@ import org.apache.lucene.store.DataOutput;
 // else we pack 2 ints per long
 final class ForUtil {
 
-  static final int BLOCK_SIZE = 128;
-  private static final int BLOCK_SIZE_LOG2 = 7;
-
+  static final int BLOCK_SIZE = """ + str(BLOCK_SIZE) + """;
+  static final int BLOCK_SIZE_DIV_2 = BLOCK_SIZE >> 1;
+  static final int BLOCK_SIZE_DIV_2_MASK = BLOCK_SIZE_DIV_2 - 1;
+  private static final int BLOCK_SIZE_DIV_4 = BLOCK_SIZE >> 2;
+  private static final int BLOCK_SIZE_DIV_8 = BLOCK_SIZE >> 3;
+  private static final int BLOCK_SIZE_DIV_64 = BLOCK_SIZE >> 6;
+  private static final int BLOCK_SIZE_DIV_8_MUL_1 = BLOCK_SIZE_DIV_8;
+  private static final int BLOCK_SIZE_DIV_8_MUL_2 = BLOCK_SIZE_DIV_8 * 2;
+  private static final int BLOCK_SIZE_DIV_8_MUL_3 = BLOCK_SIZE_DIV_8 * 3;
+  private static final int BLOCK_SIZE_DIV_8_MUL_4 = BLOCK_SIZE_DIV_8 * 4;
+  private static final int BLOCK_SIZE_DIV_8_MUL_5 = BLOCK_SIZE_DIV_8 * 5;
+  private static final int BLOCK_SIZE_DIV_8_MUL_6 = BLOCK_SIZE_DIV_8 * 6;
+  private static final int BLOCK_SIZE_DIV_8_MUL_7 = BLOCK_SIZE_DIV_8 * 7;
+  private static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
+  private static final int BLOCK_SIZE_LOG2_MIN_3 = BLOCK_SIZE_LOG2 - 3;
+  static final int BLOCK_SIZE_LOG2_MIN_1 = BLOCK_SIZE_LOG2 - 1;
+  
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
   }
@@ -81,82 +97,82 @@ final class ForUtil {
   }
 
   private static void expand8(long[] arr) {
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 56) & 0xFFL;
-      arr[16 + i] = (l >>> 48) & 0xFFL;
-      arr[32 + i] = (l >>> 40) & 0xFFL;
-      arr[48 + i] = (l >>> 32) & 0xFFL;
-      arr[64 + i] = (l >>> 24) & 0xFFL;
-      arr[80 + i] = (l >>> 16) & 0xFFL;
-      arr[96 + i] = (l >>> 8) & 0xFFL;
-      arr[112 + i] = l & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 48) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 40) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = (l >>> 32) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = (l >>> 24) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_5 + i] = (l >>> 16) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_6 + i] = (l >>> 8) & 0xFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_7 + i] = l & 0xFFL;
     }
   }
 
   private static void expand8To32(long[] arr) {
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 24) & 0x000000FF000000FFL;
-      arr[16 + i] = (l >>> 16) & 0x000000FF000000FFL;
-      arr[32 + i] = (l >>> 8) & 0x000000FF000000FFL;
-      arr[48 + i] = l & 0x000000FF000000FFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 16) & 0x000000FF000000FFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 8) & 0x000000FF000000FFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = l & 0x000000FF000000FFL;
     }
   }
 
   private static void collapse8(long[] arr) {
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
       arr[i] =
           (arr[i] << 56)
-              | (arr[16 + i] << 48)
-              | (arr[32 + i] << 40)
-              | (arr[48 + i] << 32)
-              | (arr[64 + i] << 24)
-              | (arr[80 + i] << 16)
-              | (arr[96 + i] << 8)
-              | arr[112 + i];
+              | (arr[BLOCK_SIZE_DIV_8_MUL_1 + i] << 48)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 40)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_3 + i] << 32)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 24)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_5 + i] << 16)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_6 + i] << 8)
+              | arr[BLOCK_SIZE_DIV_8_MUL_7 + i];
     }
   }
 
   private static void expand16(long[] arr) {
-    for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 48) & 0xFFFFL;
-      arr[32 + i] = (l >>> 32) & 0xFFFFL;
-      arr[64 + i] = (l >>> 16) & 0xFFFFL;
-      arr[96 + i] = l & 0xFFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 32) & 0xFFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = (l >>> 16) & 0xFFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_6 + i] = l & 0xFFFFL;
     }
   }
 
   private static void expand16To32(long[] arr) {
-    for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 16) & 0x0000FFFF0000FFFFL;
-      arr[32 + i] = l & 0x0000FFFF0000FFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = l & 0x0000FFFF0000FFFFL;
     }
   }
 
   private static void collapse16(long[] arr) {
-    for (int i = 0; i < 32; ++i) {
-      arr[i] = (arr[i] << 48) | (arr[32 + i] << 32) | (arr[64 + i] << 16) | arr[96 + i];
+    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
+      arr[i] = (arr[i] << 48) | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 32) | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 16) | arr[BLOCK_SIZE_DIV_8_MUL_6 + i];
     }
   }
 
   private static void expand32(long[] arr) {
-    for (int i = 0; i < 64; ++i) {
+    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
       long l = arr[i];
       arr[i] = l >>> 32;
-      arr[64 + i] = l & 0xFFFFFFFFL;
+      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = l & 0xFFFFFFFFL;
     }
   }
 
   private static void collapse32(long[] arr) {
-    for (int i = 0; i < 64; ++i) {
-      arr[i] = (arr[i] << 32) | arr[64 + i];
+    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
+      arr[i] = (arr[i] << 32) | arr[BLOCK_SIZE_DIV_8_MUL_4 + i];
     }
   }
 
-  private final long[] tmp = new long[BLOCK_SIZE / 2];
+  private final long[] tmp = new long[BLOCK_SIZE_DIV_2];
 
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
@@ -164,19 +180,19 @@ final class ForUtil {
     final int numLongs;
     if (bitsPerValue <= 8) {
       nextPrimitive = 8;
-      numLongs = BLOCK_SIZE / 8;
+      numLongs = BLOCK_SIZE_DIV_8;
       collapse8(longs);
     } else if (bitsPerValue <= 16) {
       nextPrimitive = 16;
-      numLongs = BLOCK_SIZE / 4;
+      numLongs = BLOCK_SIZE_DIV_4;
       collapse16(longs);
     } else {
       nextPrimitive = 32;
-      numLongs = BLOCK_SIZE / 2;
+      numLongs = BLOCK_SIZE_DIV_2;
       collapse32(longs);
     }
 
-    final int numLongsPerShift = bitsPerValue * 2;
+    final int numLongsPerShift = bitsPerValue * BLOCK_SIZE_DIV_64;
     int idx = 0;
     int shift = nextPrimitive - bitsPerValue;
     for (int i = 0; i < numLongsPerShift; ++i) {
@@ -227,21 +243,18 @@ final class ForUtil {
     }
 
     for (int i = 0; i < numLongsPerShift; ++i) {
-      // Java longs are big endian and we want to read little endian longs, so we need to reverse
-      // bytes
-      long l = tmp[i];
-      out.writeLong(l);
+      out.writeLong(tmp[i]);
     }
   }
 
   /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
   int numBytes(int bitsPerValue) {
-    return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
+    return bitsPerValue << BLOCK_SIZE_LOG2_MIN_3;
   }
 
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
       throws IOException {
-    final int numLongs = bitsPerValue << 1;
+    final int numLongs = bitsPerValue * BLOCK_SIZE_DIV_64;
     in.readLongs(tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
     int longsIdx = 0;
@@ -254,7 +267,7 @@ final class ForUtil {
     final long mask32RemainingBitsPerLong = MASKS32[remainingBitsPerLong];
     int tmpIdx = 0;
     int remainingBits = remainingBitsPerLong;
-    for (; longsIdx < BLOCK_SIZE / 2; ++longsIdx) {
+    for (; longsIdx < BLOCK_SIZE_DIV_2; ++longsIdx) {
       int b = bitsPerValue - remainingBits;
       long l = (tmp[tmpIdx++] & MASKS32[remainingBits]) << b;
       while (b >= remainingBitsPerLong) {
@@ -304,7 +317,7 @@ def writeRemainderWithSIMDOptimize(bpv, next_primitive, remaining_bits_per_long,
     tmp_idx += 1
   f.write('      longs[longsIdx + 0] = l0;\n')
   f.write('    }\n')
-  
+
 
 def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, f):
   iteration = 1
@@ -335,7 +348,7 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
       remaining_bits = remaining_bits_per_long-b
     f.write('      longs[longsIdx + %d] = l%d;\n' %(i, i))
   f.write('    }\n')
-  
+
 
 def writeDecode(bpv, f):
   next_primitive = 32
@@ -346,20 +359,20 @@ def writeDecode(bpv, f):
   f.write('  private static void decode%d(DataInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
   num_values_per_long = 64 / next_primitive
   if bpv == next_primitive:
-    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
+    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*(BLOCK_SIZE / 64)))
   else:
-    f.write('    in.readLongs(tmp, 0, %d);\n' %(bpv*2))
+    f.write('    in.readLongs(tmp, 0, %d);\n' %(bpv*(BLOCK_SIZE / 64)))
     shift = next_primitive - bpv
     o = 0
     while shift >= 0:
-      f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*2, o, shift, next_primitive, bpv))
-      o += bpv*2
+      f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*(BLOCK_SIZE / 64), o, shift, next_primitive, bpv))
+      o += bpv*(BLOCK_SIZE / 64)
       shift -= bpv
     if shift + bpv > 0:
       if bpv % (next_primitive % bpv) == 0:
-        writeRemainderWithSIMDOptimize(bpv, next_primitive, shift + bpv, o, 128/num_values_per_long - o, f)
+        writeRemainderWithSIMDOptimize(bpv, next_primitive, shift + bpv, o, BLOCK_SIZE/num_values_per_long - o, f)
       else:
-        writeRemainder(bpv, next_primitive, shift + bpv, o, 128/num_values_per_long - o, f)
+        writeRemainder(bpv, next_primitive, shift + bpv, o, BLOCK_SIZE/num_values_per_long - o, f)
   f.write('  }\n')
 
 
@@ -439,4 +452,14 @@ if __name__ == '__main__':
     if i < MAX_SPECIALIZED_BITS_PER_VALUE:
       f.write('\n')
 
+  f.write("""\n  /**
+   * Unrolled "inner" prefix sum logic where the values are packed two-per-long in {@code longs}.
+   * After this method, the final values will be correct for all high-order bits (values [0..63])
+   * but a final prefix loop will still need to run to "correct" the values of [64..127] in the
+   * low-order bits, which need the 64th value added to all of them.
+   */\n""")
+  f.write("  static void innerPrefixSum32(long[] longs) {\n")
+  for i in range(1, BLOCK_SIZE/2):
+    f.write('    longs[%d] += longs[%d];\n' % (i, i-1))
+  f.write('  }\n')
   f.write('}\n')

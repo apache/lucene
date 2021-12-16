@@ -27,7 +27,6 @@ import org.apache.lucene.util.packed.PackedInts;
 final class PForUtil {
 
   private static final int MAX_EXCEPTIONS = 7;
-  private static final int HALF_BLOCK_SIZE = ForUtil.BLOCK_SIZE / 2;
 
   // IDENTITY_PLUS_ONE[i] == i + 1
   private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil.BLOCK_SIZE];
@@ -207,7 +206,7 @@ final class PForUtil {
    */
   private static void fillSameValue32(long[] longs, long val) {
     final long token = val << 32 | val;
-    Arrays.fill(longs, 0, HALF_BLOCK_SIZE, token);
+    Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE_DIV_2, token);
   }
 
   /** Apply the exceptions where the values are packed two-per-long in {@code longs}. */
@@ -218,10 +217,10 @@ final class PForUtil {
       final int exceptionPos = Byte.toUnsignedInt(exceptionBuff[i * 2]);
       final long exception = Byte.toUnsignedLong(exceptionBuff[i * 2 + 1]);
       // note that we pack two values per long, so the index is [0..63] for 128 values
-      final int idx = exceptionPos & 0x3f; // mod 64
+      final int idx = exceptionPos & (ForUtil.BLOCK_SIZE_DIV_2_MASK); // mod 64
       // we need to shift by 1) the bpv, and 2) 32 for positions [0..63] (and no 32 shift for
       // [64..127])
-      final int shift = bitsPerValue + ((1 ^ (exceptionPos >>> 6)) << 5);
+      final int shift = bitsPerValue + ((1 ^ (exceptionPos >>> (ForUtil.BLOCK_SIZE_LOG2_MIN_1))) << 5);
       longs[idx] |= exception << shift;
     }
   }
@@ -229,10 +228,10 @@ final class PForUtil {
   /** Apply prefix sum logic where the values are packed two-per-long in {@code longs}. */
   private static void prefixSum32(long[] longs, long base) {
     longs[0] += base << 32;
-    innerPrefixSum32(longs);
+    ForUtil.innerPrefixSum32(longs);
     expand32(longs);
-    final long l = longs[HALF_BLOCK_SIZE - 1];
-    for (int i = HALF_BLOCK_SIZE; i < ForUtil.BLOCK_SIZE; ++i) {
+    final long l = longs[ForUtil.BLOCK_SIZE_DIV_2_MASK];
+    for (int i = ForUtil.BLOCK_SIZE_DIV_2; i < ForUtil.BLOCK_SIZE; ++i) {
       longs[i] += l;
     }
   }
@@ -242,82 +241,10 @@ final class PForUtil {
    * back into {@code longs}.
    */
   private static void expand32(long[] longs) {
-    for (int i = 0; i < 64; ++i) {
+    for (int i = 0; i < ForUtil.BLOCK_SIZE_DIV_2; ++i) {
       final long l = longs[i];
       longs[i] = l >>> 32;
-      longs[64 + i] = l & 0xFFFFFFFFL;
+      longs[ForUtil.BLOCK_SIZE_DIV_2 + i] = l & 0xFFFFFFFFL;
     }
-  }
-
-  /**
-   * Unrolled "inner" prefix sum logic where the values are packed two-per-long in {@code longs}.
-   * After this method, the final values will be correct for all high-order bits (values [0..63])
-   * but a final prefix loop will still need to run to "correct" the values of [64..127] in the
-   * low-order bits, which need the 64th value added to all of them.
-   */
-  private static void innerPrefixSum32(long[] longs) {
-    longs[1] += longs[0];
-    longs[2] += longs[1];
-    longs[3] += longs[2];
-    longs[4] += longs[3];
-    longs[5] += longs[4];
-    longs[6] += longs[5];
-    longs[7] += longs[6];
-    longs[8] += longs[7];
-    longs[9] += longs[8];
-    longs[10] += longs[9];
-    longs[11] += longs[10];
-    longs[12] += longs[11];
-    longs[13] += longs[12];
-    longs[14] += longs[13];
-    longs[15] += longs[14];
-    longs[16] += longs[15];
-    longs[17] += longs[16];
-    longs[18] += longs[17];
-    longs[19] += longs[18];
-    longs[20] += longs[19];
-    longs[21] += longs[20];
-    longs[22] += longs[21];
-    longs[23] += longs[22];
-    longs[24] += longs[23];
-    longs[25] += longs[24];
-    longs[26] += longs[25];
-    longs[27] += longs[26];
-    longs[28] += longs[27];
-    longs[29] += longs[28];
-    longs[30] += longs[29];
-    longs[31] += longs[30];
-    longs[32] += longs[31];
-    longs[33] += longs[32];
-    longs[34] += longs[33];
-    longs[35] += longs[34];
-    longs[36] += longs[35];
-    longs[37] += longs[36];
-    longs[38] += longs[37];
-    longs[39] += longs[38];
-    longs[40] += longs[39];
-    longs[41] += longs[40];
-    longs[42] += longs[41];
-    longs[43] += longs[42];
-    longs[44] += longs[43];
-    longs[45] += longs[44];
-    longs[46] += longs[45];
-    longs[47] += longs[46];
-    longs[48] += longs[47];
-    longs[49] += longs[48];
-    longs[50] += longs[49];
-    longs[51] += longs[50];
-    longs[52] += longs[51];
-    longs[53] += longs[52];
-    longs[54] += longs[53];
-    longs[55] += longs[54];
-    longs[56] += longs[55];
-    longs[57] += longs[56];
-    longs[58] += longs[57];
-    longs[59] += longs[58];
-    longs[60] += longs[59];
-    longs[61] += longs[60];
-    longs[62] += longs[61];
-    longs[63] += longs[62];
   }
 }
