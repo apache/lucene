@@ -17,12 +17,13 @@
 package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.OrdRange;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -36,6 +37,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Default implementation of {@link SortedSetDocValuesFacetCounts}. You must ensure the original
@@ -46,12 +48,17 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   private final String field;
   private final int valueCount;
 
+  // denotes whether next ord is child or not
+  private FixedBitSet children;
+  // maps an ord to its first sibling
+  private int[] siblings;
+
+  private List<DimAndOrd> dims;
+
   /** {@link IndexReader} passed to the constructor. */
   public final IndexReader reader;
 
   private final Map<String, OrdinalMap> cachedOrdMaps = new HashMap<>();
-
-  private final Map<String, OrdRange> prefixToOrdRange = new HashMap<>();
 
   /**
    * Creates this, pulling doc values from the default {@link
@@ -79,37 +86,78 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     }
     valueCount = (int) dv.getValueCount();
 
-    // TODO: we can make this more efficient if eg we can be
-    // "involved" when OrdinalMap is being created?  Ie see
-    // each term/ord it's assigning as it goes...
-    String lastDim = null;
-    int startOrd = -1;
+    // keeps track of last path with length i where the path has an unfilled sibling
+    Map<Integer, OrdAndComponent> pathsWithUnfilledSiblings = new HashMap<>();
 
-    // TODO: this approach can work for full hierarchy?;
-    // TaxoReader can't do this since ords are not in
-    // "sorted order" ... but we should generalize this to
-    // support arbitrary hierarchy:
+    BytesRef nextTerm = null;
+    String[] nextComponents = null;
+
     for (int ord = 0; ord < valueCount; ord++) {
-      final BytesRef term = dv.lookupOrd(ord);
-      String[] components = FacetsConfig.stringToPath(term.utf8ToString());
-      if (components.length != 2) {
-        throw new IllegalArgumentException(
-            "this class can only handle 2 level hierarchy (dim/value); got: "
-                + Arrays.toString(components)
-                + " "
-                + term.utf8ToString());
+      if (children == null) {
+        children = new FixedBitSet(valueCount);
+        siblings = new int[valueCount];
       }
-      if (!components[0].equals(lastDim)) {
-        if (lastDim != null) {
-          prefixToOrdRange.put(lastDim, new OrdRange(startOrd, ord - 1));
+
+      String[] components;
+
+      if (nextTerm == null) {
+        BytesRef term = dv.lookupOrd(ord);
+        components = FacetsConfig.stringToPath(term.utf8ToString());
+      } else {
+        components = nextComponents;
+      }
+
+      if (components.length == 1) {
+        // current ord is a dim
+        if (dims == null) {
+          dims = new ArrayList<>();
         }
-        startOrd = ord;
-        lastDim = components[0];
+        dims.add(new DimAndOrd(components[0], ord));
+      }
+
+      if (pathsWithUnfilledSiblings.containsKey(components.length - 1)) {
+        OrdAndComponent possibleSibling = pathsWithUnfilledSiblings.get(components.length - 1);
+        boolean isSibling = true;
+        for (int i = 0; i < possibleSibling.component.length - 1; i++) {
+          if (!possibleSibling.component[i].equals(components[i])) {
+            isSibling = false;
+            break;
+          }
+        }
+        if (isSibling) {
+          siblings[possibleSibling.ord] = ord;
+        } else {
+          siblings[possibleSibling.ord] = INVALID_ORDINAL;
+        }
+        pathsWithUnfilledSiblings.remove(components.length - 1);
+      }
+
+      if (ord + 1 == valueCount) {
+        // last value, cannot have children or links to more siblings
+        siblings[ord] = INVALID_ORDINAL;
+        break;
+      }
+
+      nextTerm = dv.lookupOrd(ord + 1);
+      nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
+
+      if (components.length < nextComponents.length) {
+        // next ord must be a direct child of current ord
+        children.set(ord);
+        // we don't know if this ord has a sibling or where it's sibling could be yet
+        pathsWithUnfilledSiblings.put(components.length - 1, new OrdAndComponent(ord, components));
+      } else if (components.length == nextComponents.length) {
+        // next ord must be a sibling of current and there are no direct children or current
+        siblings[ord] = ord + 1;
+      } else {
+        // components.length > nextComponents.length
+        // next ord is neither sibling nor child
+        siblings[ord] = INVALID_ORDINAL;
       }
     }
 
-    if (lastDim != null) {
-      prefixToOrdRange.put(lastDim, new OrdRange(startOrd, valueCount - 1));
+    for (OrdAndComponent path : pathsWithUnfilledSiblings.values()) {
+      siblings[path.ord] = INVALID_ORDINAL;
     }
   }
 
@@ -194,18 +242,6 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     return new MultiSortedSetDocValues(values, starts, map, cost);
   }
 
-  /** Returns mapping from prefix to {@link OrdRange}. */
-  @Override
-  public Map<String, OrdRange> getPrefixToOrdRange() {
-    return prefixToOrdRange;
-  }
-
-  /** Returns the {@link OrdRange} for this dimension. */
-  @Override
-  public OrdRange getOrdRange(String dim) {
-    return prefixToOrdRange.get(dim);
-  }
-
   /** Indexed field we are reading. */
   @Override
   public String getField() {
@@ -221,5 +257,60 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   @Override
   public int getSize() {
     return valueCount;
+  }
+
+  @Override
+  public Iterable<Integer> childOrds(int pathOrd) {
+    return () ->
+        new Iterator<>() {
+
+          boolean atStart = true;
+          int currentOrd = pathOrd;
+
+          @Override
+          public boolean hasNext() {
+            if (atStart) {
+              if (currentOrd < 0 || currentOrd >= children.length()) {
+                return false;
+              }
+              return children.get(currentOrd);
+            } else {
+              return siblings[currentOrd] != INVALID_ORDINAL;
+            }
+          }
+
+          @Override
+          public Integer next() {
+            if (atStart) {
+              if (currentOrd < 0 || currentOrd >= children.length()) {
+                return INVALID_ORDINAL;
+              }
+              atStart = false;
+              if (children.get(currentOrd)) {
+                return ++currentOrd;
+              } else {
+                return INVALID_ORDINAL;
+              }
+            } else {
+              currentOrd = siblings[currentOrd];
+              return currentOrd;
+            }
+          }
+        };
+  }
+
+  @Override
+  public Iterable<DimAndOrd> getDims() {
+    return dims;
+  }
+
+  private static class OrdAndComponent {
+    int ord;
+    String[] component;
+
+    public OrdAndComponent(int ord, String[] component) {
+      this.ord = ord;
+      this.component = component;
+    }
   }
 }

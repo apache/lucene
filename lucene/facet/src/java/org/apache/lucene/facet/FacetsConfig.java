@@ -471,19 +471,24 @@ public class FacetsConfig {
 
   private void processSSDVFacetFields(
       Map<String, List<SortedSetDocValuesFacetField>> byField, Document doc) {
+    Set<String> addedPaths = new HashSet<>();
+
     for (Map.Entry<String, List<SortedSetDocValuesFacetField>> ent : byField.entrySet()) {
 
       String indexFieldName = ent.getKey();
 
       for (SortedSetDocValuesFacetField facetField : ent.getValue()) {
-        FacetLabel facetLabel = new FacetLabel(facetField.dim, facetField.label);
-        String fullPath = pathToString(facetLabel.components, facetLabel.length);
+        FacetLabel facetLabel = new FacetLabel(facetField.dim, facetField.path);
+        for (int i = 0; i < facetLabel.length; i++) {
+          String fullPath = pathToString(facetLabel.components, i + 1);
+          if (addedPaths.add(fullPath)) {
+            // For facet counts:
+            doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
 
-        // For facet counts:
-        doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
-
-        // For drill-down:
-        indexDrillDownTerms(doc, indexFieldName, getDimConfig(facetField.dim), facetLabel);
+            // For drill-down:
+            indexDrillDownTerms(doc, indexFieldName, getDimConfig(facetField.dim), facetLabel);
+          }
+        }
       }
     }
   }

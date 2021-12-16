@@ -19,10 +19,7 @@ package org.apache.lucene.facet.sortedset;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.Facets;
@@ -31,7 +28,7 @@ import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
-import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.OrdRange;
+import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.DimAndOrd;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -95,29 +92,31 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     if (topN <= 0) {
       throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
     }
-    if (path.length > 0) {
-      throw new IllegalArgumentException("path should be 0 length");
+
+    int pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
+    if (pathOrd == -1) {
+      // path was never indexed
+      return null;
     }
-    OrdRange ordRange = state.getOrdRange(dim);
-    if (ordRange == null) {
-      return null; // means dimension was never indexed
-    }
-    return getDim(dim, ordRange, topN);
+
+    Iterable<Integer> childOrds = state.childOrds(pathOrd);
+
+    return getDim(dim, path, pathOrd, childOrds, topN);
   }
 
-  private FacetResult getDim(String dim, OrdRange ordRange, int topN) throws IOException {
+  private FacetResult getDim(
+      String dim, String[] path, int pathOrd, Iterable<Integer> childOrds, int topN)
+      throws IOException {
 
     TopOrdAndIntQueue q = null;
 
     int bottomCount = 0;
 
-    int dimCount = 0;
     int childCount = 0;
 
     TopOrdAndIntQueue.OrdAndValue reuse = null;
-    for (int ord = ordRange.start; ord <= ordRange.end; ord++) {
+    for (int ord : childOrds) {
       if (counts[ord] > 0) {
-        dimCount += counts[ord];
         childCount++;
         if (counts[ord] > bottomCount) {
           if (reuse == null) {
@@ -145,12 +144,13 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     for (int i = labelValues.length - 1; i >= 0; i--) {
       TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
+      assert ordAndValue != null;
       final BytesRef term = dv.lookupOrd(ordAndValue.ord);
       String[] parts = FacetsConfig.stringToPath(term.utf8ToString());
-      labelValues[i] = new LabelAndValue(parts[1], ordAndValue.value);
+      labelValues[i] = new LabelAndValue(parts[parts.length - 1], ordAndValue.value);
     }
 
-    return new FacetResult(dim, new String[0], dimCount, labelValues, childCount);
+    return new FacetResult(dim, path, counts[pathOrd], labelValues, childCount);
   }
 
   private void countOneSegment(
@@ -317,26 +317,23 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   public List<FacetResult> getAllDims(int topN) throws IOException {
 
     List<FacetResult> results = new ArrayList<>();
-    for (Map.Entry<String, OrdRange> ent : state.getPrefixToOrdRange().entrySet()) {
-      FacetResult fr = getDim(ent.getKey(), ent.getValue(), topN);
+    for (DimAndOrd dim : state.getDims()) {
+      Iterable<Integer> childOrds = state.childOrds(dim.ord);
+      FacetResult fr = getDim(dim.dim, new String[0], dim.ord, childOrds, topN);
       if (fr != null) {
         results.add(fr);
       }
     }
 
     // Sort by highest count:
-    Collections.sort(
-        results,
-        new Comparator<FacetResult>() {
-          @Override
-          public int compare(FacetResult a, FacetResult b) {
-            if (a.value.intValue() > b.value.intValue()) {
-              return -1;
-            } else if (b.value.intValue() > a.value.intValue()) {
-              return 1;
-            } else {
-              return a.dim.compareTo(b.dim);
-            }
+    results.sort(
+        (a, b) -> {
+          if (a.value.intValue() > b.value.intValue()) {
+            return -1;
+          } else if (b.value.intValue() > a.value.intValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
           }
         });
 

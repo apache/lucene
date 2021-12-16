@@ -17,7 +17,6 @@
 package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
-import java.util.Map;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.Accountable;
@@ -36,22 +35,20 @@ import org.apache.lucene.util.Accountable;
  */
 public abstract class SortedSetDocValuesReaderState implements Accountable {
 
-  /**
-   * Holds start/end range of ords, which maps to one dimension (someday we may generalize it to map
-   * to hierarchies within one dimension).
-   */
-  public static final class OrdRange {
-    /** Start of range, inclusive: */
-    public final int start;
-    /** End of range, inclusive: */
-    public final int end;
+  /** Holder class for a dimension along with it's corresponding ordinal */
+  public static class DimAndOrd {
+    String dim;
+    int ord;
 
-    /** Start and end are inclusive. */
-    public OrdRange(int start, int end) {
-      this.start = start;
-      this.end = end;
+    /** sole constructor */
+    public DimAndOrd(String dim, int ord) {
+      this.dim = dim;
+      this.ord = ord;
     }
   }
+
+  /** Invalid ordinal const */
+  public static int INVALID_ORDINAL = -1;
 
   /** Sole constructor. */
   protected SortedSetDocValuesReaderState() {}
@@ -62,15 +59,15 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
   /** Indexed field we are reading. */
   public abstract String getField();
 
-  /** Returns the {@link OrdRange} for this dimension. */
-  public abstract OrdRange getOrdRange(String dim);
-
-  /** Returns mapping from prefix to {@link OrdRange}. */
-  public abstract Map<String, OrdRange> getPrefixToOrdRange();
-
   /** Returns top-level index reader. */
   public abstract IndexReader getReader();
 
   /** Number of unique labels. */
   public abstract int getSize();
+
+  /** Gets all child ords for a given path ordinal */
+  public abstract Iterable<Integer> childOrds(int pathOrd);
+
+  /** Returns a list of all dimensions and their respective ordinals */
+  public abstract Iterable<DimAndOrd> getDims();
 }

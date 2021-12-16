@@ -19,6 +19,7 @@ package org.apache.lucene.facet.sortedset;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.facet.FacetField;
+import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.IndexOptions;
 
 /**
@@ -41,19 +42,25 @@ public class SortedSetDocValuesFacetField extends Field {
   public final String dim;
 
   /** Label. */
-  public final String label;
+  public final String[] path;
 
   /** Sole constructor. */
-  public SortedSetDocValuesFacetField(String dim, String label) {
+  public SortedSetDocValuesFacetField(String dim, String... path) {
     super("dummy", TYPE);
-    FacetField.verifyLabel(label);
+    for (String label : path) {
+      FacetField.verifyLabel(label);
+    }
     FacetField.verifyLabel(dim);
     this.dim = dim;
-    this.label = label;
+    this.path = path;
   }
 
   @Override
   public String toString() {
-    return "SortedSetDocValuesFacetField(dim=" + dim + " label=" + label + ")";
+    return "SortedSetDocValuesFacetField(dim="
+        + dim
+        + " path="
+        + FacetsConfig.pathToString(path)
+        + ")";
   }
 }
