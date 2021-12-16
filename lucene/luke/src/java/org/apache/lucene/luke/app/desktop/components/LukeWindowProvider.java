@@ -17,17 +17,8 @@
 
 package org.apache.lucene.luke.app.desktop.components;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
+import java.awt.*;
 import java.io.IOException;
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import javax.swing.*;
 import org.apache.lucene.luke.app.DirectoryHandler;
 import org.apache.lucene.luke.app.DirectoryObserver;
@@ -40,8 +31,6 @@ import org.apache.lucene.luke.app.desktop.PreferencesFactory;
 import org.apache.lucene.luke.app.desktop.util.FontUtils;
 import org.apache.lucene.luke.app.desktop.util.ImageUtils;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
-import org.apache.lucene.luke.util.CircularLogBufferHandler;
-import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.util.Version;
 
 /** Provider of the root window */
@@ -71,26 +60,9 @@ public final class LukeWindowProvider implements LukeWindowOperator {
   private JFrame frame = new JFrame();
 
   public LukeWindowProvider() throws IOException {
-    // prepare log4j appender for Logs tab.
-    JTextArea logTextArea = new JTextArea();
-    logTextArea.setEditable(false);
-
-    // Hook into live data from CircularLogBufferHandler and update initial state.
-    Consumer<CircularLogBufferHandler> updater =
-        circularBuffer -> {
-          String logContent = circularBuffer.getLogEntries().collect(Collectors.joining("\n"));
-          SwingUtilities.invokeLater(
-              () -> {
-                logTextArea.setText(logContent);
-              });
-        };
-
-    Objects.requireNonNull(LoggerFactory.circularBuffer).addUpdateListener(updater);
-    updater.accept(LoggerFactory.circularBuffer);
-
     this.prefs = PreferencesFactory.getInstance();
     this.menuBar = new MenuBarProvider().get();
-    this.tabbedPane = new TabbedPaneProvider(logTextArea).get();
+    this.tabbedPane = new TabbedPaneProvider().get();
     this.messageBroker = MessageBroker.getInstance();
     this.tabSwitcher = TabSwitcherProxy.getInstance();
 
