@@ -220,7 +220,8 @@ final class PForUtil {
       final int idx = exceptionPos & (ForUtil.BLOCK_SIZE_DIV_2_MASK); // mod 64
       // we need to shift by 1) the bpv, and 2) 32 for positions [0..63] (and no 32 shift for
       // [64..127])
-      final int shift = bitsPerValue + ((1 ^ (exceptionPos >>> (ForUtil.BLOCK_SIZE_LOG2_MIN_1))) << 5);
+      final int shift =
+          bitsPerValue + ((1 ^ (exceptionPos >>> (ForUtil.BLOCK_SIZE_LOG2_MIN_1))) << 5);
       longs[idx] |= exception << shift;
     }
   }

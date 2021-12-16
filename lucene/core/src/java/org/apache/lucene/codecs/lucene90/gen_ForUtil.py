@@ -71,7 +71,7 @@ final class ForUtil {
   private static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
   private static final int BLOCK_SIZE_LOG2_MIN_3 = BLOCK_SIZE_LOG2 - 3;
   static final int BLOCK_SIZE_LOG2_MIN_1 = BLOCK_SIZE_LOG2 - 1;
-  
+
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
   }
@@ -154,7 +154,11 @@ final class ForUtil {
 
   private static void collapse16(long[] arr) {
     for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
-      arr[i] = (arr[i] << 48) | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 32) | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 16) | arr[BLOCK_SIZE_DIV_8_MUL_6 + i];
+      arr[i] =
+          (arr[i] << 48)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 32)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 16)
+              | arr[BLOCK_SIZE_DIV_8_MUL_6 + i];
     }
   }
 
