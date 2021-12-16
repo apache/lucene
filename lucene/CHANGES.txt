@@ -68,6 +68,10 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-10313: use java util logging in Luke. Add dynamic log filtering. Drop
+  the persistent log previously written to ~/.luke.d/luke.log. Configure Java's default
+  logging handlers to persist Luke logs according to your needs. (Tomoko Uchida, Dawid Weiss)
+
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
 * LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
