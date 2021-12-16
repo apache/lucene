@@ -18,21 +18,19 @@
 package org.apache.lucene.luke.app.desktop.components;
 
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.HierarchyEvent;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import javax.swing.*;
+import org.apache.lucene.luke.app.desktop.util.FontUtils;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 import org.apache.lucene.luke.util.CircularLogBufferHandler;
+import org.apache.lucene.luke.util.LogRecordFormatter;
 import org.apache.lucene.luke.util.LoggerFactory;
 
 /** Provider of the Logs panel */
@@ -67,6 +65,18 @@ public final class LogsPanelProvider {
 
     var logTextArea = createLogPanel(logFilter);
 
+    JButton copyBtn =
+        new JButton(
+            FontUtils.elegantIconHtml("&#xe0e6;", MessageUtils.getLocalizedMessage("button.copy")));
+    copyBtn.setMargin(new Insets(3, 3, 3, 3));
+    copyBtn.addActionListener(
+        e -> {
+          Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+          StringSelection selection = new StringSelection(logTextArea.getText());
+          clipboard.setContents(selection, null);
+        });
+    header.add(copyBtn);
+
     panel.add(header, BorderLayout.PAGE_START);
     panel.add(new JScrollPane(logTextArea), BorderLayout.CENTER);
     return panel;
@@ -76,33 +86,6 @@ public final class LogsPanelProvider {
   private JTextArea createLogPanel(JComboBox<Level> logFilter) {
     JTextArea logTextArea = new JTextArea();
     logTextArea.setEditable(false);
-
-    class LogRecordFormatter
-        implements Function<CircularLogBufferHandler.ImmutableLogRecord, String> {
-      @Override
-      public String apply(CircularLogBufferHandler.ImmutableLogRecord record) {
-        return String.format(
-            Locale.ROOT,
-            "%s [%s] %s: %s",
-            DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT)
-                .format(record.getInstant().atZone(ZoneId.systemDefault())),
-            record.getLevel(),
-            record.getLoggerName(),
-            record.getMessage()
-                + (record.getThrown() == null ? "" : "\n" + toString(record.getThrown())));
-      }
-
-      private String toString(Throwable t) {
-        try (StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw)) {
-          t.printStackTrace(pw);
-          pw.flush();
-          return sw.toString();
-        } catch (IOException e) {
-          return "Could not dump stack trace: " + e.getMessage();
-        }
-      }
-    }
 
     // Hook into live data from the circular log buffer and update the initial state.
     Function<CircularLogBufferHandler.ImmutableLogRecord, String> formatter =
@@ -118,7 +101,7 @@ public final class LogsPanelProvider {
 
                 String logContent =
                     clonedCopy.stream()
-                        .filter(record -> record.getLevel().intValue() > level.intValue())
+                        .filter(record -> record.getLevel().intValue() >= level.intValue())
                         .map(formatter::apply)
                         .collect(Collectors.joining("\n"));
 

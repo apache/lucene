@@ -337,7 +337,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
         closeDialog();
       } catch (LukeException ex) {
         String message =
-            ex.getMessage() + System.lineSeparator() + "See Logs tab or log file for more details.";
+            ex.getMessage() + System.lineSeparator() + "See Logs tab for more details.";
         JOptionPane.showMessageDialog(
             dialog, message, "Invalid index path", JOptionPane.ERROR_MESSAGE);
       } catch (Throwable cause) {
