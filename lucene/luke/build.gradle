@@ -27,8 +27,6 @@ ext {
 dependencies {
   api project(':lucene:core')
 
-  implementation 'org.apache.logging.log4j:log4j-core'
-
   implementation project(':lucene:codecs')
   implementation project(':lucene:backward-codecs')
   implementation project(':lucene:analysis:common')
