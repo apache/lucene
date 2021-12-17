@@ -65,12 +65,15 @@ allprojects {
         // limits. We could pass a directory but ecj seems to be buggy: when it
         // encounters a module-info.java file it no longer compiles other source files.
         def inputsFile = file("${tmpDst}/ecj-inputs.txt")
-        def escapeOption = { String s -> (s =~ /[ '"]/) ? ('"' + s.replaceAll(/[\\'"]/, /\\$0/) + '"') : s }
+        // escape filename accoring to ECJ's rules:
+        // https://github.com/eclipse/aspectj.eclipse.jdt.core/blob/a05312e746b9bc2b48b4b039f6e7b5e061b5b393/org.eclipse.jdt.core/batch/org/eclipse/jdt/internal/compiler/batch/Main.java#L1533-L1537
+        // Basically surround all whitespace by quotes:
+        def escapeFileName = { String s -> s.replaceAll(/ +/, /"$0"/) }
         inputsFile.setText(
             srcDirs.collectMany { dir ->
               project.fileTree(dir: dir, include: "**/*.java" ).files
             }
-            .collect {file -> escapeOption(file.absolutePath.toString())}.join("\n"), "UTF-8")
+            .collect {file -> escapeFileName(file.absolutePath.toString())}.join("\n"), "UTF-8")
 
         args += [ "-d", "none" ]
 
