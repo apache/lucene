@@ -65,11 +65,12 @@ allprojects {
         // limits. We could pass a directory but ecj seems to be buggy: when it
         // encounters a module-info.java file it no longer compiles other source files.
         def inputsFile = file("${tmpDst}/ecj-inputs.txt")
+        def escapeOption = { String s -> (s =~ /[ '"]/) ? ('"' + s.replaceAll(/[\\'"]/, /\\$0/) + '"') : s }
         inputsFile.setText(
             srcDirs.collectMany { dir ->
               project.fileTree(dir: dir, include: "**/*.java" ).files
             }
-            .collect {file -> file.absolutePath.toString()}.join("\n"), "UTF-8")
+            .collect {file -> escapeOption(file.absolutePath.toString())}.join("\n"), "UTF-8")
 
         args += [ "-d", "none" ]
 
