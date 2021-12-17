@@ -22,10 +22,10 @@ import static org.apache.lucene.luke.app.desktop.util.ExceptionHandler.handle;
 import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.nio.file.FileSystems;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFrame;
 import javax.swing.UIManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.luke.app.desktop.components.LukeWindowProvider;
 import org.apache.lucene.luke.app.desktop.components.dialog.menubar.OpenIndexDialogFactory;
 import org.apache.lucene.luke.app.desktop.util.DialogOpener;
@@ -36,15 +36,8 @@ import org.apache.lucene.luke.util.LoggerFactory;
 /** Entry class for desktop Luke */
 public class LukeMain {
 
-  public static final String LOG_FILE =
-      System.getProperty("user.home")
-          + FileSystems.getDefault().getSeparator()
-          + ".luke.d"
-          + FileSystems.getDefault().getSeparator()
-          + "luke.log";
-
   static {
-    LoggerFactory.initGuiLogging(LOG_FILE);
+    LoggerFactory.initGuiLogging();
   }
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -77,7 +70,7 @@ public class LukeMain {
               (factory) -> {});
     } catch (IOException e) {
       messageBroker.showUnknownErrorMessage();
-      log.error("Cannot initialize components.", e);
+      log.log(Level.SEVERE, "Cannot initialize components.", e);
     }
   }
 

@@ -68,6 +68,10 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-10313: use java util logging in Luke. Add dynamic log filtering. Drop
+  the persistent log previously written to ~/.luke.d/luke.log. Configure Java's default
+  logging handlers to persist Luke logs according to your needs. (Tomoko Uchida, Dawid Weiss)
+
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
 * LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
@@ -108,7 +112,8 @@ Other
 
 * LUCENE-10284: Upgrade morfologik-stemming to 2.1.8. (Dawid Weiss)
 
-* LUCENE-10303: Upgrade log4j to 2.15.0. (Tomoko Uchida)
+* LUCENE-10310: TestXYDocValuesQueries#doRandomDistanceTest does not produce random circles with radius
+  with '0' value any longer.
 
 ======================= Lucene 9.0.0 =======================
 
@@ -571,6 +576,12 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.1 =======================
+
+Bug Fixes
+---------------------
+* SOLR-15843: Update Log4J to 2.16 (Mike Drob, janhoy)
 
 ======================= Lucene 8.11.0 =======================
 
