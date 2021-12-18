@@ -33,11 +33,13 @@ module org.apache.lucene.backward_codecs {
   exports org.apache.lucene.backward_codecs.store;
 
   provides org.apache.lucene.codecs.DocValuesFormat with
+      org.apache.lucene.backward_codecs.lucene70.Lucene70DocValuesFormat,
       org.apache.lucene.backward_codecs.lucene80.Lucene80DocValuesFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat,
       org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat;
   provides org.apache.lucene.codecs.Codec with
+      org.apache.lucene.backward_codecs.lucene70.Lucene70Codec,
       org.apache.lucene.backward_codecs.lucene80.Lucene80Codec,
       org.apache.lucene.backward_codecs.lucene84.Lucene84Codec,
       org.apache.lucene.backward_codecs.lucene86.Lucene86Codec,
