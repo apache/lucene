@@ -17,4 +17,4 @@
 
 MODULES=`dirname "$0"`/..
 MODULES=`cd "$MODULES" && pwd`
-java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --add-modules jdk.unsupported --module org.apache.lucene.luke
+java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke
