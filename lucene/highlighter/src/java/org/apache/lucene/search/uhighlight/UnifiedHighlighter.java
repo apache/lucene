@@ -97,6 +97,23 @@ public class UnifiedHighlighter {
 
   public static final int DEFAULT_CACHE_CHARS_THRESHOLD = 524288; // ~ 1 MB (2 byte chars)
 
+  public static final boolean DEFAULT_ENABLE_MULTI_TERM_QUERY = true;
+
+  public static final boolean DEFAULT_ENABLE_HIGHLIGHT_PHRASES_STRICTLY = true;
+
+  public static final boolean DEFAULT_ENABLE_WEIGHT_MATCHES = true;
+
+  public static final boolean DEFAULT_ENABLE_RELEVANCY_OVER_SPEED = true;
+
+  public static final Supplier<BreakIterator> DEFAULT_BREAK_ITERATOR =
+      () -> BreakIterator.getSentenceInstance(Locale.ROOT);
+
+  public static final PassageScorer DEFAULT_PASSAGE_SCORER = new PassageScorer();
+
+  public static final PassageFormatter DEFAULT_PASSAGE_FORMATTER = new DefaultPassageFormatter();
+
+  public static final int DEFAULT_MAX_HIGHLIGHT_PASSAGES = -1;
+
   static final IndexSearcher EMPTY_INDEXSEARCHER;
 
   static {
@@ -116,24 +133,140 @@ public class UnifiedHighlighter {
 
   protected final Analyzer indexAnalyzer;
 
-  private final int maxLength;
-
-  private final Supplier<BreakIterator> breakIterator;
-
-  private final Predicate<String> fieldMatcher;
-
-  private final PassageScorer scorer;
-
-  private final PassageFormatter formatter;
-
-  private final int maxNoHighlightPassages;
-
   // lazy initialized with double-check locking; protected so subclass can init
   protected volatile FieldInfos fieldInfos;
 
-  private final int cacheFieldValCharsThreshold;
+  private Predicate<String> fieldMatcher;
 
-  private final Set<HighlightFlag> flags;
+  private Set<HighlightFlag> flags;
+
+  /** This flag is set to True when UH object is initialized using the {@link Builder}. */
+  private boolean initByBuilder = false;
+
+  // e.g. wildcards
+  private boolean handleMultiTermQuery = DEFAULT_ENABLE_MULTI_TERM_QUERY;
+
+  // AKA "accuracy" or "query debugging"
+  private boolean highlightPhrasesStrictly = DEFAULT_ENABLE_HIGHLIGHT_PHRASES_STRICTLY;
+
+  private boolean weightMatches = DEFAULT_ENABLE_WEIGHT_MATCHES;
+
+  // For analysis, prefer MemoryIndexOffsetStrategy
+  private boolean passageRelevancyOverSpeed = DEFAULT_ENABLE_RELEVANCY_OVER_SPEED;
+
+  private int maxLength = DEFAULT_MAX_LENGTH;
+
+  // BreakIterator is stateful so we use a Supplier factory method
+  private Supplier<BreakIterator> breakIterator = DEFAULT_BREAK_ITERATOR;
+
+  private PassageScorer scorer = DEFAULT_PASSAGE_SCORER;
+
+  private PassageFormatter formatter = DEFAULT_PASSAGE_FORMATTER;
+
+  private int maxNoHighlightPassages = DEFAULT_MAX_HIGHLIGHT_PASSAGES;
+
+  private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
+
+  /**
+   * Constructs the highlighter with the given index searcher and analyzer.
+   *
+   * @param indexSearcher Usually required, unless {@link #highlightWithoutSearcher(String, Query,
+   *     String, int)} is used, in which case this needs to be null.
+   * @param indexAnalyzer Required, even if in some circumstances it isn't used.
+   */
+  @Deprecated
+  public UnifiedHighlighter(IndexSearcher indexSearcher, Analyzer indexAnalyzer) {
+    this.searcher = indexSearcher; // TODO: make non nullable
+    this.indexAnalyzer =
+        Objects.requireNonNull(
+            indexAnalyzer,
+            "indexAnalyzer is required" + " (even if in some circumstances it isn't used)");
+  }
+
+  @Deprecated
+  public void setHandleMultiTermQuery(boolean handleMtq) {
+    this.handleMultiTermQuery = handleMtq;
+  }
+
+  @Deprecated
+  public void setHighlightPhrasesStrictly(boolean highlightPhrasesStrictly) {
+    this.highlightPhrasesStrictly = highlightPhrasesStrictly;
+  }
+
+  @Deprecated
+  public void setPassageRelevancyOverSpeed(boolean passageRelevancyOverSpeed) {
+    this.passageRelevancyOverSpeed = passageRelevancyOverSpeed;
+  }
+
+  @Deprecated
+  public void setMaxLength(int maxLength) {
+    if (maxLength < 0 || maxLength == Integer.MAX_VALUE) {
+      // two reasons: no overflow problems in BreakIterator.preceding(offset+1),
+      // our sentinel in the offsets queue uses this value to terminate.
+      throw new IllegalArgumentException("maxLength must be < Integer.MAX_VALUE");
+    }
+    this.maxLength = maxLength;
+  }
+
+  @Deprecated
+  public void setBreakIterator(Supplier<BreakIterator> breakIterator) {
+    this.breakIterator = breakIterator;
+  }
+
+  @Deprecated
+  public void setScorer(PassageScorer scorer) {
+    this.scorer = scorer;
+  }
+
+  @Deprecated
+  public void setFormatter(PassageFormatter formatter) {
+    this.formatter = formatter;
+  }
+
+  @Deprecated
+  public void setMaxNoHighlightPassages(int defaultMaxNoHighlightPassages) {
+    this.maxNoHighlightPassages = defaultMaxNoHighlightPassages;
+  }
+
+  @Deprecated
+  public void setCacheFieldValCharsThreshold(int cacheFieldValCharsThreshold) {
+    this.cacheFieldValCharsThreshold = cacheFieldValCharsThreshold;
+  }
+
+  @Deprecated
+  public void setFieldMatcher(Predicate<String> predicate) {
+    this.fieldMatcher = predicate;
+  }
+
+  @Deprecated
+  public void setWeightMatches(boolean weightMatches) {
+    this.weightMatches = weightMatches;
+  }
+
+  /**
+   * Returns whether {@link org.apache.lucene.search.MultiTermQuery} derivatives will be
+   * highlighted. By default it's enabled. MTQ highlighting can be expensive, particularly when
+   * using offsets in postings.
+   */
+  @Deprecated
+  protected boolean shouldHandleMultiTermQuery(String field) {
+    return handleMultiTermQuery;
+  }
+
+  /**
+   * Returns whether position sensitive queries (e.g. phrases and {@link SpanQuery}ies) should be
+   * highlighted strictly based on query matches (slower) versus any/all occurrences of the
+   * underlying terms. By default it's enabled, but there's no overhead if such queries aren't used.
+   */
+  @Deprecated
+  protected boolean shouldHighlightPhrasesStrictly(String field) {
+    return highlightPhrasesStrictly;
+  }
+
+  @Deprecated
+  protected boolean shouldPreferPassageRelevancyOverSpeed(String field) {
+    return passageRelevancyOverSpeed;
+  }
 
   /** Builder for UnifiedHighlighter. */
   public static class Builder {
@@ -141,22 +274,21 @@ public class UnifiedHighlighter {
     private final IndexSearcher searcher;
 
     private final Analyzer indexAnalyzer;
-    private boolean handleMultiTermQuery = true;
-    private boolean highlightPhrasesStrictly = true;
-    private boolean passageRelevancyOverSpeed = true;
-    private boolean weightMatches = true;
+    private Predicate<String> fieldMatcher;
+    private Set<HighlightFlag> flags;
+    private boolean handleMultiTermQuery = DEFAULT_ENABLE_MULTI_TERM_QUERY;
+    private boolean highlightPhrasesStrictly = DEFAULT_ENABLE_HIGHLIGHT_PHRASES_STRICTLY;
+    private boolean passageRelevancyOverSpeed = DEFAULT_ENABLE_RELEVANCY_OVER_SPEED;
+    private boolean weightMatches = DEFAULT_ENABLE_WEIGHT_MATCHES;
     private int maxLength = DEFAULT_MAX_LENGTH;
 
     /** BreakIterator is stateful so we use a Supplier factory method. */
-    private Supplier<BreakIterator> breakIterator =
-        () -> BreakIterator.getSentenceInstance(Locale.ROOT);
+    private Supplier<BreakIterator> breakIterator = DEFAULT_BREAK_ITERATOR;
 
-    private Predicate<String> fieldMatcher;
-    private PassageScorer scorer = new PassageScorer();
-    private PassageFormatter formatter = new DefaultPassageFormatter();
-    private int maxNoHighlightPassages = -1;
+    private PassageScorer scorer = DEFAULT_PASSAGE_SCORER;
+    private PassageFormatter formatter = DEFAULT_PASSAGE_FORMATTER;
+    private int maxNoHighlightPassages = DEFAULT_MAX_HIGHLIGHT_PASSAGES;
     private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
-    private Set<HighlightFlag> flags;
 
     /**
      * Constructor for UH builder which accepts {@link IndexSearcher} and {@link Analyzer} objects.
@@ -267,44 +399,6 @@ public class UnifiedHighlighter {
       return this;
     }
 
-    /**
-     * This method returns the set of of {@link HighlightFlag}s, which will be applied to the UH
-     * object. The output depends on the values provided to {@link
-     * #withHandleMultiTermQuery(boolean)}, {@link #withHighlightPhrasesStrictly(boolean)}, {@link
-     * #withPassageRelevancyOverSpeed(boolean)} and {@link #withWeightMatches(boolean)}.
-     *
-     * @return a set of {@link HighlightFlag}s.
-     */
-    protected Set<HighlightFlag> evaluateFlags() {
-      if (Objects.nonNull(flags)) {
-        return flags;
-      }
-
-      Set<HighlightFlag> highlightFlags = EnumSet.noneOf(HighlightFlag.class);
-      if (handleMultiTermQuery) {
-        highlightFlags.add(HighlightFlag.MULTI_TERM_QUERY);
-      }
-      if (highlightPhrasesStrictly) {
-        highlightFlags.add(HighlightFlag.PHRASES);
-      }
-      if (passageRelevancyOverSpeed) {
-        highlightFlags.add(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED);
-      }
-
-      // Evaluate if WEIGHT_MATCHES can be added as a flag.
-      final boolean applyWeightMatches =
-          highlightFlags.contains(HighlightFlag.MULTI_TERM_QUERY)
-              && highlightFlags.contains(HighlightFlag.PHRASES)
-              && highlightFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
-              // User can also opt-out of WEIGHT_MATCHES.
-              && weightMatches;
-
-      if (applyWeightMatches) {
-        highlightFlags.add(HighlightFlag.WEIGHT_MATCHES);
-      }
-      return highlightFlags;
-    }
-
     public UnifiedHighlighter build() {
       return new UnifiedHighlighter(this);
     }
@@ -317,6 +411,10 @@ public class UnifiedHighlighter {
     /** ... as passed in from the Builder constructor. */
     public Analyzer getIndexAnalyzer() {
       return indexAnalyzer;
+    }
+
+    public Set<HighlightFlag> getFlags() {
+      return flags;
     }
   }
 
@@ -342,13 +440,6 @@ public class UnifiedHighlighter {
     return new Builder(null, indexAnalyzer);
   }
 
-  /** Extracts matching terms after rewriting against an empty index */
-  protected static Set<Term> extractTerms(Query query) throws IOException {
-    Set<Term> queryTerms = new HashSet<>();
-    EMPTY_INDEXSEARCHER.rewrite(query).visit(QueryVisitor.termCollector(queryTerms));
-    return queryTerms;
-  }
-
   /**
    * Constructs the highlighter with the given {@link Builder}.
    *
@@ -360,7 +451,7 @@ public class UnifiedHighlighter {
         Objects.requireNonNull(
             builder.indexAnalyzer,
             "indexAnalyzer is required (even if in some circumstances it isn't used)");
-    this.flags = builder.evaluateFlags();
+    this.flags = evaluateFlags(builder);
     this.maxLength = builder.maxLength;
     this.breakIterator = builder.breakIterator;
     this.fieldMatcher = builder.fieldMatcher;
@@ -368,6 +459,96 @@ public class UnifiedHighlighter {
     this.formatter = builder.formatter;
     this.maxNoHighlightPassages = builder.maxNoHighlightPassages;
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
+    this.initByBuilder = true;
+  }
+
+  /** Extracts matching terms after rewriting against an empty index */
+  protected static Set<Term> extractTerms(Query query) throws IOException {
+    Set<Term> queryTerms = new HashSet<>();
+    EMPTY_INDEXSEARCHER.rewrite(query).visit(QueryVisitor.termCollector(queryTerms));
+    return queryTerms;
+  }
+
+  /**
+   * This method returns the set of of {@link HighlightFlag}s, which will be applied to the UH
+   * object. The output depends on the values provided to {@link
+   * Builder#withHandleMultiTermQuery(boolean)}, {@link
+   * Builder#withHighlightPhrasesStrictly(boolean)}, {@link
+   * Builder#withPassageRelevancyOverSpeed(boolean)} and {@link Builder#withWeightMatches(boolean)}
+   * OR {@link #setHandleMultiTermQuery(boolean)}, {@link #setHighlightPhrasesStrictly(boolean)},
+   * {@link #setPassageRelevancyOverSpeed(boolean)} and {@link #setWeightMatches(boolean)}
+   *
+   * @param shouldHandleMultiTermQuery - flag for adding Multi-term query
+   * @param shouldHighlightPhrasesStrictly - flag for adding phrase highlighting
+   * @param shouldPassageRelevancyOverSpeed - flag for adding passage relevancy
+   * @param shouldEnableWeightMatches - flag for enabling weight matches
+   * @return a set of {@link HighlightFlag}s.
+   */
+  protected Set<HighlightFlag> evaluateFlags(
+      final boolean shouldHandleMultiTermQuery,
+      final boolean shouldHighlightPhrasesStrictly,
+      final boolean shouldPassageRelevancyOverSpeed,
+      final boolean shouldEnableWeightMatches) {
+    Set<HighlightFlag> highlightFlags = EnumSet.noneOf(HighlightFlag.class);
+    if (shouldHandleMultiTermQuery) {
+      highlightFlags.add(HighlightFlag.MULTI_TERM_QUERY);
+    }
+    if (shouldHighlightPhrasesStrictly) {
+      highlightFlags.add(HighlightFlag.PHRASES);
+    }
+    if (shouldPassageRelevancyOverSpeed) {
+      highlightFlags.add(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED);
+    }
+
+    // Evaluate if WEIGHT_MATCHES can be added as a flag.
+    final boolean applyWeightMatches =
+        highlightFlags.contains(HighlightFlag.MULTI_TERM_QUERY)
+            && highlightFlags.contains(HighlightFlag.PHRASES)
+            && highlightFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
+            // User can also opt-out of WEIGHT_MATCHES.
+            && shouldEnableWeightMatches;
+
+    if (applyWeightMatches) {
+      highlightFlags.add(HighlightFlag.WEIGHT_MATCHES);
+    }
+    return highlightFlags;
+  }
+
+  /**
+   * Evaluate the highlight flags and set the {@link #flags} variable. This is called only once when
+   * the Builder object is used to create a UH object.
+   *
+   * @param uhBuilder - {@link Builder} object.
+   * @return {@link HighlightFlag}s.
+   */
+  protected Set<HighlightFlag> evaluateFlags(Builder uhBuilder) {
+    if (Objects.nonNull(flags)) {
+      return flags;
+    }
+    return flags =
+        evaluateFlags(
+            uhBuilder.handleMultiTermQuery,
+            uhBuilder.highlightPhrasesStrictly,
+            uhBuilder.passageRelevancyOverSpeed,
+            uhBuilder.weightMatches);
+  }
+
+  /**
+   * Evaluate the highlight flags and set the {@link #flags} variable. This is called every time
+   * {@link #getFlags(String)} method is called. This is used in the builder and has been marked
+   * deprecated since it is used only the mutable initialization of a UH object.
+   *
+   * @param uh - {@link UnifiedHighlighter} object.
+   * @return {@link HighlightFlag}s.
+   */
+  @Deprecated
+  protected Set<HighlightFlag> evaluateFlags(UnifiedHighlighter uh) {
+    return flags =
+        evaluateFlags(
+            uh.handleMultiTermQuery,
+            uh.highlightPhrasesStrictly,
+            uh.passageRelevancyOverSpeed,
+            uh.weightMatches);
   }
 
   /**
@@ -381,6 +562,15 @@ public class UnifiedHighlighter {
       // requireFieldMatch = true
       return (qf) -> field.equals(qf);
     }
+  }
+
+  /** Returns the {@link HighlightFlag}s applicable for the current UH instance. */
+  protected Set<HighlightFlag> getFlags(String field) {
+    if (initByBuilder) {
+      return flags;
+    }
+    // When not using builder, you have to reevaluate the flags.
+    return evaluateFlags(this);
   }
 
   /**
@@ -964,11 +1154,6 @@ public class UnifiedHighlighter {
       }
     }
     return filteredTerms.toArray(new BytesRef[filteredTerms.size()]);
-  }
-
-  /** Returns the {@link HighlightFlag}s applicable for the current UH instance. */
-  protected Set<HighlightFlag> getFlags(String field) {
-    return flags;
   }
 
   protected PhraseHelper getPhraseHelper(

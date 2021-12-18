@@ -155,16 +155,16 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
       Set<HighlightFlag> flags;
 
       @Override
-      protected Set<HighlightFlag> evaluateFlags() {
-        if (Objects.nonNull(flags)) {
-          return flags;
-        }
-        return flags = generateRandomHighlightFlags(mandatoryFlags);
-      }
-
-      @Override
       public UnifiedHighlighter build() {
-        return new UnifiedHighlighter(uhBuilder);
+        return new UnifiedHighlighter(uhBuilder) {
+          @Override
+          protected Set<HighlightFlag> evaluateFlags(Builder uhBuilder) {
+            if (Objects.nonNull(flags)) {
+              return flags;
+            }
+            return flags = generateRandomHighlightFlags(mandatoryFlags);
+          }
+        };
       }
     };
   }
