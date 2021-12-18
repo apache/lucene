@@ -20,7 +20,7 @@ apply plugin: 'java-library'
 
 description = 'Codecs for older versions of Lucene'
 
-dependencies {
-  moduleApi project(':lucene:core')
+dependencies { 
+  api project(':lucene:core')
   testImplementation project(':lucene:test-framework')
 }

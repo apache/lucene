@@ -31,19 +31,15 @@
 configure(rootProject) {
   ext {
     mavenProjects = project(":lucene").subprojects.findAll {subproject ->
-      def excluded = [
-          // Exclude distribution assembly, tests & documentation.
+      return !(subproject.path in [
+          // Exclude distribution assembly & documentation.
           ":lucene:distribution",
           ":lucene:documentation",
           // Exclude the parent container project for analysis modules (no artifacts).
           ":lucene:analysis",
           // Exclude the native module.
           ":lucene:misc:native"
-      ]
-
-      // Exclude all subprojects that are modular test projects and those explicitly
-      // excluded above.
-      return !(subproject.path.endsWith(".tests") || subproject.path in excluded)
+      ])
     }
   }
 }

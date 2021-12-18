@@ -20,10 +20,10 @@ apply plugin: 'java-library'
 description = 'Analyzer for indexing phonetic signatures (for sounds-alike search)'
 
 dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:analysis:common')
+  api project(':lucene:core')
+  api project(':lucene:analysis:common')
 
-  moduleImplementation 'commons-codec:commons-codec'
+  implementation 'commons-codec:commons-codec'
 
   testImplementation project(':lucene:test-framework')
 } 

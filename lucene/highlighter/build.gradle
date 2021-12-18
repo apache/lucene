@@ -21,10 +21,10 @@ apply plugin: 'java-library'
 description = 'Highlights search keywords in results'
 
 dependencies {
-  moduleApi project(':lucene:core')
+  api project(':lucene:core')
 
-  moduleImplementation project(':lucene:queries')
-  moduleImplementation project(':lucene:memory')
+  implementation project(':lucene:queries')
+  implementation project(':lucene:memory')
 
   testImplementation project(':lucene:test-framework')
   testImplementation project(':lucene:analysis:common')
