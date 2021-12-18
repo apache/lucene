@@ -20,10 +20,10 @@ apply plugin: 'java-library'
 description = 'Analysis integration with ICU (International Components for Unicode)'
 
 dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:analysis:common')
+  api project(':lucene:core')
+  api project(':lucene:analysis:common')
 
-  moduleApi 'com.ibm.icu:icu4j'
+  api 'com.ibm.icu:icu4j'
 
   testImplementation project(':lucene:test-framework')
 }

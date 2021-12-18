@@ -20,10 +20,10 @@ apply plugin: 'java-library'
 
 description = 'Faceted indexing and search capabilities'
 
-dependencies {
-  moduleApi project(':lucene:core')
+dependencies { 
+  api project(':lucene:core')
 
-  moduleImplementation 'com.carrotsearch:hppc'
+  implementation 'com.carrotsearch:hppc'
 
   testImplementation project(':lucene:test-framework')
   testImplementation project(':lucene:queries')

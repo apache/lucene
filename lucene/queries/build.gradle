@@ -20,7 +20,7 @@ apply plugin: 'java-library'
 description = 'Filters and Queries that add to core Lucene'
 
 dependencies {
-  moduleApi project(':lucene:core')
+  api project(':lucene:core')
 
   testImplementation project(':lucene:test-framework')
   testImplementation project(':lucene:expressions')

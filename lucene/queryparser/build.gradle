@@ -20,9 +20,9 @@ apply plugin: 'java-library'
 description = 'Query parsers and parsing framework'
 
 dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:sandbox')
+  api project(':lucene:core')
+  api project(':lucene:queries')
+  api project(':lucene:sandbox')
 
   testImplementation project(':lucene:test-framework')
 }
