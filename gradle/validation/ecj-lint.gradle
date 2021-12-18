@@ -73,6 +73,10 @@ allprojects {
             srcDirs.collectMany { dir ->
               project.fileTree(dir: dir, include: "**/*.java" ).files
             }
+            // Try to sort all input files; a side-effect of this should be that module-info.java
+            // is placed first on the list, which works around ECJ bug:
+            // https://bugs.eclipse.org/bugs/show_bug.cgi?id=569833
+            .sort()
             .collect {file -> escapeFileName(file.absolutePath.toString())}.join("\n"), "UTF-8")
 
         args += [ "-d", "none" ]
