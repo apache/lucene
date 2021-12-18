@@ -33,24 +33,24 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
  * @see SetKeywordMarkerFilter
  */
 public final class PersianStemFilter extends TokenFilter {
-    private final PersianStemmer stemmer = new PersianStemmer();
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    private final KeywordAttribute keywordAttr = addAttribute(KeywordAttribute.class);
+  private final PersianStemmer stemmer = new PersianStemmer();
+  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final KeywordAttribute keywordAttr = addAttribute(KeywordAttribute.class);
 
-    public PersianStemFilter(TokenStream input) {
-        super(input);
-    }
+  public PersianStemFilter(TokenStream input) {
+    super(input);
+  }
 
-    @Override
-    public boolean incrementToken() throws IOException {
-        if (input.incrementToken()) {
-            if (!keywordAttr.isKeyword()) {
-                final int newlen = stemmer.stem(termAtt.buffer(), termAtt.length());
-                termAtt.setLength(newlen);
-            }
-            return true;
-        } else {
-            return false;
-        }
+  @Override
+  public boolean incrementToken() throws IOException {
+    if (input.incrementToken()) {
+      if (!keywordAttr.isKeyword()) {
+        final int newlen = stemmer.stem(termAtt.buffer(), termAtt.length());
+        termAtt.setLength(newlen);
+      }
+      return true;
+    } else {
+      return false;
     }
+  }
 }

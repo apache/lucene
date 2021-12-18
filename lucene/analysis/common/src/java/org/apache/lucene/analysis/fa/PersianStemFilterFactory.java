@@ -37,24 +37,24 @@ import org.apache.lucene.analysis.TokenStream;
  */
 public class PersianStemFilterFactory extends TokenFilterFactory {
 
-    /** SPI name */
-    public static final String NAME = "persianStem";
+  /** SPI name */
+  public static final String NAME = "persianStem";
 
-    /** Creates a new PersianStemFilterFactory */
-    public PersianStemFilterFactory(Map<String, String> args) {
-        super(args);
-        if (!args.isEmpty()) {
-            throw new IllegalArgumentException("Unknown parameters: " + args);
-        }
+  /** Creates a new PersianStemFilterFactory */
+  public PersianStemFilterFactory(Map<String, String> args) {
+    super(args);
+    if (!args.isEmpty()) {
+      throw new IllegalArgumentException("Unknown parameters: " + args);
     }
+  }
 
-    /** Default ctor for compatibility with SPI */
-    public PersianStemFilterFactory() {
-        throw defaultCtorException();
-    }
+  /** Default ctor for compatibility with SPI */
+  public PersianStemFilterFactory() {
+    throw defaultCtorException();
+  }
 
-    @Override
-    public PersianStemFilter create(TokenStream input) {
-        return new PersianStemFilter(input);
-    }
+  @Override
+  public PersianStemFilter create(TokenStream input) {
+    return new PersianStemFilter(input);
+  }
 }
