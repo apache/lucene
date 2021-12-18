@@ -19,6 +19,8 @@ package org.apache.lucene.distribution;
 import com.carrotsearch.procfork.ForkedProcess;
 import com.carrotsearch.procfork.Launcher;
 import com.carrotsearch.procfork.ProcessBuilderLauncher;
+import com.carrotsearch.randomizedtesting.LifecycleScope;
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -36,7 +38,17 @@ import org.junit.Test;
 public class TestScripts extends AbstractLuceneDistributionTest {
   @Test
   public void testLukeCanBeLaunched() throws Exception {
-    Path lukeScript = resolveScript(getDistributionPath().resolve("bin").resolve("luke"));
+    Path distributionPath;
+    if (randomBoolean()) {
+      // Occasionally, be evil: put the distribution in a folder with a space inside. For Uwe.
+      distributionPath = RandomizedTest.newTempDir(LifecycleScope.TEST).resolve("uh oh");
+      Files.createDirectory(distributionPath);
+      new Sync().sync(getDistributionPath(), distributionPath);
+    } else {
+      distributionPath = getDistributionPath();
+    }
+
+    Path lukeScript = resolveScript(distributionPath.resolve("bin").resolve("luke"));
 
     Launcher launcher =
         new ProcessBuilderLauncher()
@@ -44,7 +56,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
             // tweak Windows launcher scripts so that they don't fork asynchronous java.
             .envvar("DISTRIBUTION_TESTING", "true")
             .viaShellLauncher()
-            .cwd(getDistributionPath())
+            .cwd(distributionPath)
             .args("--sanity-check");
 
     execute(

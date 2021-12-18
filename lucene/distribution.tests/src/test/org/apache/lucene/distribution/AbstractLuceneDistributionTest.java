@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.distribution;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -34,7 +36,8 @@ import org.junit.BeforeClass;
  * the default {@code LuceneTestCase} configuration setup is not used (you have to annotate test for
  * JUnit, for example).
  */
-public abstract class AbstractLuceneDistributionTest {
+@ThreadLeakScope(ThreadLeakScope.Scope.NONE)
+public abstract class AbstractLuceneDistributionTest extends RandomizedTest {
   /** A path to a directory with an expanded Lucene distribution. */
   public static final String DISTRIBUTION_PROPERTY = "lucene.distribution.dir";
 
