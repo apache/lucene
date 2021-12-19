@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.snowball;
 
-import static org.apache.lucene.analysis.VocabularyAssert.*;
+import static org.apache.lucene.tests.analysis.VocabularyAssert.*;
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -17,8 +17,8 @@
 package org.apache.lucene.analysis.th;
 
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure the Thai word filter factory is working. */
 public class TestThaiTokenizerFactory extends BaseTokenStreamFactoryTestCase {

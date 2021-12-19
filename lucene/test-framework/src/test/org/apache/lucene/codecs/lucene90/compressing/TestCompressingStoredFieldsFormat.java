@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene90.compressing;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.compressing.CompressingCodec;
 import org.apache.lucene.document.Document;
@@ -37,6 +36,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 
 public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTestCase {
 

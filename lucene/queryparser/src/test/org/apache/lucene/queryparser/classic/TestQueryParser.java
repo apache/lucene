@@ -18,11 +18,6 @@ package org.apache.lucene.queryparser.classic;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockBytesAnalyzer;
-import org.apache.lucene.analysis.MockLowerCaseFilter;
-import org.apache.lucene.analysis.MockSynonymAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -51,6 +46,11 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockBytesAnalyzer;
+import org.apache.lucene.tests.analysis.MockLowerCaseFilter;
+import org.apache.lucene.tests.analysis.MockSynonymAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 /** Tests QueryParser. */

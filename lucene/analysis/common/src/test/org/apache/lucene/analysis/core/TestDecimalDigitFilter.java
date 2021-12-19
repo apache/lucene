@@ -18,10 +18,10 @@ package org.apache.lucene.analysis.core;
 
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.junit.AfterClass;

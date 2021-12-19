@@ -19,7 +19,6 @@ package org.apache.lucene.queries.spans;
 import static org.apache.lucene.queries.spans.SpanTestUtil.assertFinished;
 import static org.apache.lucene.queries.spans.SpanTestUtil.assertNext;
 
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
@@ -34,6 +33,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestNewestSegment extends LuceneTestCase {
