@@ -17,7 +17,6 @@
 
 /** Lucene Core. */
 module org.apache.lucene.core {
-  requires jdk.unsupported; // this is needed for MMapDirectory to unmap
   requires jdk.incubator.foreign;
 
   exports org.apache.lucene.analysis;
