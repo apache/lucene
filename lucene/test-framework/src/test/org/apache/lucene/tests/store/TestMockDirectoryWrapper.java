@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.tests.store;
 
 import java.io.EOFException;
 import java.io.FileNotFoundException;
@@ -23,6 +23,13 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
 // machines occasionally

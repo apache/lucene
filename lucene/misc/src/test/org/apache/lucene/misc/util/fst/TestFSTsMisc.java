@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.misc.util.fst.UpToTwoPositiveIntOutputs.TwoLongs;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.fst.FSTTester;

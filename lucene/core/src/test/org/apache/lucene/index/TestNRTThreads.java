@@ -20,7 +20,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.junit.Before;
 

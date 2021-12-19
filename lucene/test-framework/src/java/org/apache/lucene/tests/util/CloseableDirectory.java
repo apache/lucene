@@ -17,7 +17,7 @@
 package org.apache.lucene.tests.util;
 
 import java.io.Closeable;
-import org.apache.lucene.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.junit.Assert;
 
 /**

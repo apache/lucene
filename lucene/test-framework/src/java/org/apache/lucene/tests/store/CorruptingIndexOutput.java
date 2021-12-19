@@ -15,9 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.store;
+package org.apache.lucene.tests.store;
 
 import java.io.IOException;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 
 /** Corrupts on bit of a file after close */
 public class CorruptingIndexOutput extends IndexOutput {

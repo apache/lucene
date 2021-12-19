@@ -14,31 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
-
-import java.io.IOException;
-import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
- * hangs onto files a little bit longer (50ms in close). MockDirectoryWrapper acts like windows: you
- * can't delete files open elsewhere. so the idea is to make race conditions for tiny files (like
- * segments) easier to reproduce.
+ * Support for testing store mechanisms.
+ *
+ * <p>The primary class is {@link org.apache.lucene.tests.store.MockDirectoryWrapper}, which wraps
+ * any Directory implementation and provides additional checks.
  */
-class SlowClosingMockIndexInputWrapper extends MockIndexInputWrapper {
-
-  public SlowClosingMockIndexInputWrapper(
-      MockDirectoryWrapper dir, String name, IndexInput delegate) {
-    super(dir, name, delegate, null);
-  }
-
-  @Override
-  public void close() throws IOException {
-    try {
-      Thread.sleep(50);
-    } catch (InterruptedException ie) {
-      throw new ThreadInterruptedException(ie);
-    } finally {
-      super.close();
-    }
-  }
-}
+package org.apache.lucene.tests.store;

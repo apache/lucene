@@ -27,6 +27,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.util.Set;
 import org.apache.lucene.mockfile.FilterFileSystemProvider;
 import org.apache.lucene.mockfile.FilterPath;
+import org.apache.lucene.tests.store.BaseLockFactoryTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 

@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.lucene.mockfile.FilterFileChannel;
 import org.apache.lucene.mockfile.FilterPath;
 import org.apache.lucene.mockfile.LeakFS;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 
 /** Tests NIOFSDirectory */
 public class TestNIOFSDirectory extends BaseDirectoryTestCase {

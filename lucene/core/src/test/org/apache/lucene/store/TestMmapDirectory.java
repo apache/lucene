@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.junit.Ignore;
 
 /** Tests MMapDirectory */

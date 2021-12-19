@@ -14,20 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.misc.store;
+package org.apache.lucene.tests.store;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.ThreadInterruptedException;
 
-/** Tests RAFDirectory */
-// See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
-// machines occasionally
-public class TestRAFDirectory extends BaseDirectoryTestCase {
+/**
+ * Takes a while to open files: gives testThreadInterruptDeadlock a chance to find file leaks if
+ * opening an input throws exception
+ */
+class SlowOpeningMockIndexInputWrapper extends MockIndexInputWrapper {
 
-  @Override
-  protected Directory getDirectory(Path path) throws IOException {
-    return new RAFDirectory(path);
+  public SlowOpeningMockIndexInputWrapper(
+      MockDirectoryWrapper dir, String name, IndexInput delegate) throws IOException {
+    super(dir, name, delegate, null);
+    try {
+      Thread.sleep(50);
+    } catch (InterruptedException ie) {
+      try {
+        super.close();
+      } catch (
+          @SuppressWarnings("unused")
+          Throwable ignore) {
+        // we didnt open successfully
+      }
+      throw new ThreadInterruptedException(ie);
+    }
   }
 }

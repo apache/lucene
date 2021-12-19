@@ -27,7 +27,6 @@ import java.util.Collections;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.mockfile.FilterPath;
 import org.apache.lucene.mockfile.WindowsFS;
-import org.apache.lucene.store.BaseDirectoryTestCase;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
@@ -36,6 +35,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 

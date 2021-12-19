@@ -14,9 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.tests.store;
 
 import java.io.IOException;
+import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 
 /**
  * Delegates all operations, even optional ones, to the wrapped directory.
@@ -39,10 +42,5 @@ public final class RawDirectoryWrapper extends BaseDirectoryWrapper {
   @Override
   public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
     return in.openChecksumInput(name, context);
-  }
-
-  @Override
-  protected void ensureOpen() throws AlreadyClosedException {
-    in.ensureOpen();
   }
 }
