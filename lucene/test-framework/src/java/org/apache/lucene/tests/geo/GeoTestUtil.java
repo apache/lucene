@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.geo;
+package org.apache.lucene.tests.geo;
 
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import java.io.BufferedReader;
@@ -28,6 +28,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.zip.GZIPInputStream;
+import org.apache.lucene.geo.Circle;
+import org.apache.lucene.geo.GeoUtils;
+import org.apache.lucene.geo.Line;
+import org.apache.lucene.geo.Point;
+import org.apache.lucene.geo.Polygon;
+import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;

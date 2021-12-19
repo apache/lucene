@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.geo;
+package org.apache.lucene.tests.geo;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -38,6 +38,12 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.geo.Circle;
+import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.GeoUtils;
+import org.apache.lucene.geo.LatLonGeometry;
+import org.apache.lucene.geo.Polygon;
+import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -83,23 +89,23 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
   // TODO: remove these hooks once all subclasses can pass with new random!
 
   protected double nextLongitude() {
-    return org.apache.lucene.geo.GeoTestUtil.nextLongitude();
+    return GeoTestUtil.nextLongitude();
   }
 
   protected double nextLatitude() {
-    return org.apache.lucene.geo.GeoTestUtil.nextLatitude();
+    return GeoTestUtil.nextLatitude();
   }
 
   protected Rectangle nextBox() {
-    return org.apache.lucene.geo.GeoTestUtil.nextBox();
+    return GeoTestUtil.nextBox();
   }
 
   protected Circle nextCircle() {
-    return org.apache.lucene.geo.GeoTestUtil.nextCircle();
+    return GeoTestUtil.nextCircle();
   }
 
   protected Polygon nextPolygon() {
-    return org.apache.lucene.geo.GeoTestUtil.nextPolygon();
+    return GeoTestUtil.nextPolygon();
   }
 
   protected LatLonGeometry[] nextGeometry() {

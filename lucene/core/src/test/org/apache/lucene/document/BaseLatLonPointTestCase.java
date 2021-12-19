@@ -20,7 +20,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.util.Arrays;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Circle;
-import org.apache.lucene.geo.GeoTestUtil;
 import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
@@ -31,6 +30,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**

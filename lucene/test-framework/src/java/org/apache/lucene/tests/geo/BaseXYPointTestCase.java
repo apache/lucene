@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.geo;
+package org.apache.lucene.tests.geo;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -38,6 +38,12 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.XYCircle;
+import org.apache.lucene.geo.XYGeometry;
+import org.apache.lucene.geo.XYPoint;
+import org.apache.lucene.geo.XYPolygon;
+import org.apache.lucene.geo.XYRectangle;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;

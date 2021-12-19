@@ -15,8 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.geo;
+package org.apache.lucene.tests.geo;
 
+import org.apache.lucene.geo.Polygon;
+import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.util.SloppyMath;
 
 /**

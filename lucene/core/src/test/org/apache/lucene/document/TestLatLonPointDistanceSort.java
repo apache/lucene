@@ -23,7 +23,6 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.geo.GeoTestUtil;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.RandomIndexWriter;
@@ -35,6 +34,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SloppyMath;
