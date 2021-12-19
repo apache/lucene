@@ -17,7 +17,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseTermVectorsFormatTestCase;
+import org.apache.lucene.tests.index.BaseTermVectorsFormatTestCase;
 
 /** Test AssertingTermVectorsFormat directly */
 public class TestAssertingTermVectorsFormat extends BaseTermVectorsFormatTestCase {

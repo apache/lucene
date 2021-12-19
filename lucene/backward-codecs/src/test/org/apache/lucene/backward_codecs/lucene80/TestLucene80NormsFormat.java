@@ -18,7 +18,7 @@ package org.apache.lucene.backward_codecs.lucene80;
 
 import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseNormsFormatTestCase;
+import org.apache.lucene.tests.index.BaseNormsFormatTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 
 /** Tests Lucene80NormsFormat */

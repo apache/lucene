@@ -17,7 +17,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseStoredFieldsFormatTestCase;
+import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 
 /** Test AssertingStoredFieldsFormat directly */
 public class TestAssertingStoredFieldsFormat extends BaseStoredFieldsFormatTestCase {

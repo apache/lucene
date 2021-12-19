@@ -17,7 +17,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BasePostingsFormatTestCase;
+import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 
 /** Test AssertingPostingsFormat directly */
 public class TestAssertingPostingsFormat extends BasePostingsFormatTestCase {

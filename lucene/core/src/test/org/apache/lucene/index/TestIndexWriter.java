@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.index.DocHelper.TEXT_TYPE_STORED_WITH_TVS;
+import static org.apache.lucene.tests.index.DocHelper.TEXT_TYPE_STORED_WITH_TVS;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
@@ -97,6 +97,8 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.index.SuppressingConcurrentMergeScheduler;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.WindowsFS;

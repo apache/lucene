@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseNormsFormatTestCase;
+import org.apache.lucene.tests.index.BaseNormsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests Lucene90NormsFormat */

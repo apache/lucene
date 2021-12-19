@@ -17,8 +17,8 @@
 package org.apache.lucene.codecs.bloom;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.codecs.bloom.TestBloomFilteredLucenePostings;
+import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Basic tests for BloomPostingsFormat */

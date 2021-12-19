@@ -24,8 +24,8 @@ import org.apache.lucene.document.FloatRangeDocValuesField;
 import org.apache.lucene.document.IntRangeDocValuesField;
 import org.apache.lucene.document.LongRangeDocValuesField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestRangeFieldsDocValuesQuery extends LuceneTestCase {

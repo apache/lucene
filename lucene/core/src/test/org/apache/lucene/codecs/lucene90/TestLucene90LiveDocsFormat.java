@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseLiveDocsFormatTestCase;
+import org.apache.lucene.tests.index.BaseLiveDocsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene90LiveDocsFormat extends BaseLiveDocsFormatTestCase {

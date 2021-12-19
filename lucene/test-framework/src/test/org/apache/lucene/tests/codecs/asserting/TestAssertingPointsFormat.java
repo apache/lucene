@@ -17,7 +17,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BasePointsFormatTestCase;
+import org.apache.lucene.tests.index.BasePointsFormatTestCase;
 
 /** Test AssertingPointsFormat directly */
 public class TestAssertingPointsFormat extends BasePointsFormatTestCase {
