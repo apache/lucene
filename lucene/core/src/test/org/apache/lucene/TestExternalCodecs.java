@@ -17,7 +17,6 @@
 package org.apache.lucene;
 
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -27,6 +26,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;

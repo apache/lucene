@@ -14,22 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.asserting;
+package org.apache.lucene.tests.codecs.asserting;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BasePostingsFormatTestCase;
+import org.apache.lucene.index.BaseDocValuesFormatTestCase;
 
-/** Test AssertingPostingsFormat directly */
-public class TestAssertingPostingsFormat extends BasePostingsFormatTestCase {
+/** Test AssertingDocValuesFormat directly */
+public class TestAssertingDocValuesFormat extends BaseDocValuesFormatTestCase {
   private final Codec codec = new AssertingCodec();
 
   @Override
   protected Codec getCodec() {
     return codec;
-  }
-
-  @Override
-  protected boolean isPostingsEnumReuseImplemented() {
-    return false;
   }
 }

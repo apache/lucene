@@ -14,13 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.asserting;
+package org.apache.lucene.tests.codecs.asserting;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseDocValuesFormatTestCase;
+import org.apache.lucene.index.BasePointsFormatTestCase;
 
-/** Test AssertingDocValuesFormat directly */
-public class TestAssertingDocValuesFormat extends BaseDocValuesFormatTestCase {
+/** Test AssertingPointsFormat directly */
+public class TestAssertingPointsFormat extends BasePointsFormatTestCase {
   private final Codec codec = new AssertingCodec();
 
   @Override

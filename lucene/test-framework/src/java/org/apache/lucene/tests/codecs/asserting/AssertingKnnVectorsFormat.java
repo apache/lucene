@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.asserting;
+package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;

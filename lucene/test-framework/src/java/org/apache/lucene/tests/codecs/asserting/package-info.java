@@ -14,17 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.asserting;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseStoredFieldsFormatTestCase;
-
-/** Test AssertingStoredFieldsFormat directly */
-public class TestAssertingStoredFieldsFormat extends BaseStoredFieldsFormatTestCase {
-  private final Codec codec = new AssertingCodec();
-
-  @Override
-  protected Codec getCodec() {
-    return codec;
-  }
-}
+/** Codec for testing that asserts various contracts of the codec apis. */
+package org.apache.lucene.tests.codecs.asserting;
