@@ -97,23 +97,6 @@ public class UnifiedHighlighter {
 
   public static final int DEFAULT_CACHE_CHARS_THRESHOLD = 524288; // ~ 1 MB (2 byte chars)
 
-  public static final boolean DEFAULT_ENABLE_MULTI_TERM_QUERY = true;
-
-  public static final boolean DEFAULT_ENABLE_HIGHLIGHT_PHRASES_STRICTLY = true;
-
-  public static final boolean DEFAULT_ENABLE_WEIGHT_MATCHES = true;
-
-  public static final boolean DEFAULT_ENABLE_RELEVANCY_OVER_SPEED = true;
-
-  public static final Supplier<BreakIterator> DEFAULT_BREAK_ITERATOR =
-      () -> BreakIterator.getSentenceInstance(Locale.ROOT);
-
-  public static final PassageScorer DEFAULT_PASSAGE_SCORER = new PassageScorer();
-
-  public static final PassageFormatter DEFAULT_PASSAGE_FORMATTER = new DefaultPassageFormatter();
-
-  public static final int DEFAULT_MAX_HIGHLIGHT_PASSAGES = -1;
-
   static final IndexSearcher EMPTY_INDEXSEARCHER;
 
   static {
@@ -129,6 +112,17 @@ public class UnifiedHighlighter {
   protected static final LabelledCharArrayMatcher[] ZERO_LEN_AUTOMATA_ARRAY =
       new LabelledCharArrayMatcher[0];
 
+  // All the private defaults will be removed once non-builder based UH is removed.
+  private static final boolean DEFAULT_ENABLE_MULTI_TERM_QUERY = true;
+  private static final boolean DEFAULT_ENABLE_HIGHLIGHT_PHRASES_STRICTLY = true;
+  private static final boolean DEFAULT_ENABLE_WEIGHT_MATCHES = true;
+  private static final boolean DEFAULT_ENABLE_RELEVANCY_OVER_SPEED = true;
+  private static final Supplier<BreakIterator> DEFAULT_BREAK_ITERATOR =
+      () -> BreakIterator.getSentenceInstance(Locale.ROOT);
+  private static final PassageScorer DEFAULT_PASSAGE_SCORER = new PassageScorer();
+  private static final PassageFormatter DEFAULT_PASSAGE_FORMATTER = new DefaultPassageFormatter();
+  private static final int DEFAULT_MAX_HIGHLIGHT_PASSAGES = -1;
+
   protected final IndexSearcher searcher; // if null, can only use highlightWithoutSearcher
 
   protected final Analyzer indexAnalyzer;
@@ -139,9 +133,6 @@ public class UnifiedHighlighter {
   private Predicate<String> fieldMatcher;
 
   private Set<HighlightFlag> flags;
-
-  /** This flag is set to True when UH object is initialized using the {@link Builder}. */
-  private boolean initByBuilder = false;
 
   // e.g. wildcards
   private boolean handleMultiTermQuery = DEFAULT_ENABLE_MULTI_TERM_QUERY;
@@ -459,7 +450,6 @@ public class UnifiedHighlighter {
     this.formatter = builder.formatter;
     this.maxNoHighlightPassages = builder.maxNoHighlightPassages;
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
-    this.initByBuilder = true;
   }
 
   /** Extracts matching terms after rewriting against an empty index */
@@ -522,7 +512,7 @@ public class UnifiedHighlighter {
    * @return {@link HighlightFlag}s.
    */
   protected Set<HighlightFlag> evaluateFlags(Builder uhBuilder) {
-    if (Objects.nonNull(flags)) {
+    if (flags != null) {
       return flags;
     }
     return flags =
@@ -536,19 +526,18 @@ public class UnifiedHighlighter {
   /**
    * Evaluate the highlight flags and set the {@link #flags} variable. This is called every time
    * {@link #getFlags(String)} method is called. This is used in the builder and has been marked
-   * deprecated since it is used only the mutable initialization of a UH object.
+   * deprecated since it is used only for the mutable initialization of a UH object.
    *
    * @param uh - {@link UnifiedHighlighter} object.
    * @return {@link HighlightFlag}s.
    */
   @Deprecated
   protected Set<HighlightFlag> evaluateFlags(UnifiedHighlighter uh) {
-    return flags =
-        evaluateFlags(
-            uh.handleMultiTermQuery,
-            uh.highlightPhrasesStrictly,
-            uh.passageRelevancyOverSpeed,
-            uh.weightMatches);
+    return evaluateFlags(
+        uh.handleMultiTermQuery,
+        uh.highlightPhrasesStrictly,
+        uh.passageRelevancyOverSpeed,
+        uh.weightMatches);
   }
 
   /**
@@ -566,7 +555,9 @@ public class UnifiedHighlighter {
 
   /** Returns the {@link HighlightFlag}s applicable for the current UH instance. */
   protected Set<HighlightFlag> getFlags(String field) {
-    if (initByBuilder) {
+    // If a builder is used for initializing a UH object, then flags will never be null.
+    // Once the setters are removed, this method can just return the flags.
+    if (flags != null) {
       return flags;
     }
     // When not using builder, you have to reevaluate the flags.
