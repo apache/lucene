@@ -33,6 +33,7 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.search.similarities.BaseSimilarityTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
 

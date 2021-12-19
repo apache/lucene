@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.util.Random;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.tests.search.SearchEquivalenceTestBase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** random sloppy phrase query tests */

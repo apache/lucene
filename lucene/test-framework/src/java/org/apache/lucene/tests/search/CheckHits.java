@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import static org.junit.Assert.*;
 
@@ -26,6 +26,23 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Matches;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldDocs;
+import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Utility class for asserting expected hits in tests. */
@@ -641,8 +658,8 @@ public class CheckHits {
       }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();
       TwoPhaseIterator twoPhase2 = s2.twoPhaseIterator();
-      DocIdSetIterator approx1 = twoPhase1 == null ? s1.iterator() : twoPhase1.approximation;
-      DocIdSetIterator approx2 = twoPhase2 == null ? s2.iterator() : twoPhase2.approximation;
+      DocIdSetIterator approx1 = twoPhase1 == null ? s1.iterator() : twoPhase1.approximation();
+      DocIdSetIterator approx2 = twoPhase2 == null ? s2.iterator() : twoPhase2.approximation();
       int upTo = -1;
       float maxScore = 0;
       float minScore = 0;
@@ -689,8 +706,8 @@ public class CheckHits {
       }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();
       TwoPhaseIterator twoPhase2 = s2.twoPhaseIterator();
-      DocIdSetIterator approx1 = twoPhase1 == null ? s1.iterator() : twoPhase1.approximation;
-      DocIdSetIterator approx2 = twoPhase2 == null ? s2.iterator() : twoPhase2.approximation;
+      DocIdSetIterator approx1 = twoPhase1 == null ? s1.iterator() : twoPhase1.approximation();
+      DocIdSetIterator approx2 = twoPhase2 == null ? s2.iterator() : twoPhase2.approximation();
 
       int upTo = -1;
       float minScore = 0;

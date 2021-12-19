@@ -15,9 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import java.io.IOException;
+import org.apache.lucene.search.MatchesIterator;
+import org.apache.lucene.search.Query;
 
 class AssertingMatchesIterator implements MatchesIterator {
 

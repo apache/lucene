@@ -15,9 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterScorable;
+import org.apache.lucene.search.FilterScorer;
+import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.Scorer;
 
 /** Wraps another Scorable and asserts that scores are reasonable and only called when positioned */
 public class AssertingScorable extends FilterScorable {
@@ -79,7 +84,7 @@ public class AssertingScorable extends FilterScorable {
     while (true) {
       if (in instanceof AssertingScorable) in = ((AssertingScorable) in).in;
       else if (in instanceof AssertingScorer) in = ((AssertingScorer) in).in;
-      else if (in instanceof WrappedScorer) in = ((WrappedScorer) in).in;
+      else if (in instanceof WrappedScorer) in = ((WrappedScorer) in).unwrap();
       else return in;
     }
   }

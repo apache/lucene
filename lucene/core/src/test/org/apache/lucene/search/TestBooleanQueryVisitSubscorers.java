@@ -38,6 +38,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.search.ScorerIndexSearcher;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 // TODO: refactor to a base class, that collects freqs from the scorer tree

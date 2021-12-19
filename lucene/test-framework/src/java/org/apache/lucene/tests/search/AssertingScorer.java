@@ -14,12 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Random;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.TwoPhaseIterator;
 
 /** Wraps a Scorer with additional checks */
 public class AssertingScorer extends Scorer {
@@ -48,7 +52,7 @@ public class AssertingScorer extends Scorer {
   int lastShallowTarget = -1;
 
   private AssertingScorer(Random random, Scorer in, ScoreMode scoreMode) {
-    super(in.weight);
+    super(in.getWeight());
     this.random = random;
     this.in = in;
     this.scoreMode = scoreMode;

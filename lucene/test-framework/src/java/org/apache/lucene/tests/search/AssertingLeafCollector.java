@@ -14,9 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterLeafCollector;
+import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.Scorable;
 
 /** Wraps another Collector and checks that order is respected. */
 class AssertingLeafCollector extends FilterLeafCollector {

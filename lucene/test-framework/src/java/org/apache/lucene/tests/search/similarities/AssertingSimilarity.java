@@ -14,12 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.similarities;
+package org.apache.lucene.tests.search.similarities;
 
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.similarities.Similarity;
 
 /** wraps a similarity with checks for testing */
 public class AssertingSimilarity extends Similarity {

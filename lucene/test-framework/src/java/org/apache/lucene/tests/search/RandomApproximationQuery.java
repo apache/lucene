@@ -14,13 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterWeight;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.search.Weight;
 
 /** A {@link Query} that adds random approximations to its scorers. */
 public class RandomApproximationQuery extends Query {
@@ -111,7 +120,7 @@ public class RandomApproximationQuery extends Query {
 
     @Override
     public int advanceShallow(int target) throws IOException {
-      if (scorer.docID() > target && twoPhaseView.approximation.docID() != scorer.docID()) {
+      if (scorer.docID() > target && twoPhaseView.approximation().docID() != scorer.docID()) {
         // The random approximation can return doc ids that are not present in the underlying
         // scorer. These additional doc ids are always *before* the next matching doc so we
         // cannot use them to shallow advance the main scorer which is already ahead.

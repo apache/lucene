@@ -14,15 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.similarities;
 
-import java.util.Random;
-import org.apache.lucene.tests.search.similarities.BaseSimilarityTestCase;
-
-public class TestIndependenceSaturated extends BaseSimilarityTestCase {
-
-  @Override
-  protected final Similarity getSimilarity(Random random) {
-    return new DFISimilarity(new IndependenceSaturated());
-  }
-}
+/**
+ * Support for testing search components.
+ *
+ * <p>The primary classes are:
+ *
+ * <ul>
+ *   <li>{@link org.apache.lucene.tests.search.QueryUtils}: Useful methods for testing Query
+ *       classes.
+ *   <li>{@link org.apache.lucene.tests.search.ShardSearchingTestBase}: Base class for simulating
+ *       distributed search.
+ * </ul>
+ */
+package org.apache.lucene.tests.search;

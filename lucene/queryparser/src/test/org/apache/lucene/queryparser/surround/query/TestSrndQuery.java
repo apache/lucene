@@ -18,7 +18,7 @@ package org.apache.lucene.queryparser.surround.query;
 
 import org.apache.lucene.queryparser.surround.parser.QueryParser;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryUtils;
+import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 

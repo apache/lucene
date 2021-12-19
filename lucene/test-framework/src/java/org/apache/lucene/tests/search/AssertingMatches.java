@@ -15,18 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import org.apache.lucene.search.Matches;
+import org.apache.lucene.search.MatchesIterator;
 
-class AssertingMatches implements Matches {
+/** An implementation of {@link Matches} with additional consistency checks. */
+public class AssertingMatches implements Matches {
 
   private final Matches in;
 
-  AssertingMatches(Matches matches) {
+  public AssertingMatches(Matches matches) {
     this.in = matches;
   }
 

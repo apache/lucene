@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.similarities;
+package org.apache.lucene.tests.search.similarities;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +22,43 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import org.apache.lucene.search.similarities.AfterEffect;
+import org.apache.lucene.search.similarities.AfterEffectB;
+import org.apache.lucene.search.similarities.AfterEffectL;
+import org.apache.lucene.search.similarities.AxiomaticF1EXP;
+import org.apache.lucene.search.similarities.AxiomaticF1LOG;
+import org.apache.lucene.search.similarities.AxiomaticF2EXP;
+import org.apache.lucene.search.similarities.AxiomaticF2LOG;
+import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.BasicModel;
+import org.apache.lucene.search.similarities.BasicModelG;
+import org.apache.lucene.search.similarities.BasicModelIF;
+import org.apache.lucene.search.similarities.BasicModelIn;
+import org.apache.lucene.search.similarities.BasicModelIne;
+import org.apache.lucene.search.similarities.BooleanSimilarity;
+import org.apache.lucene.search.similarities.ClassicSimilarity;
+import org.apache.lucene.search.similarities.DFISimilarity;
+import org.apache.lucene.search.similarities.DFRSimilarity;
+import org.apache.lucene.search.similarities.Distribution;
+import org.apache.lucene.search.similarities.DistributionLL;
+import org.apache.lucene.search.similarities.DistributionSPL;
+import org.apache.lucene.search.similarities.IBSimilarity;
+import org.apache.lucene.search.similarities.Independence;
+import org.apache.lucene.search.similarities.IndependenceChiSquared;
+import org.apache.lucene.search.similarities.IndependenceSaturated;
+import org.apache.lucene.search.similarities.IndependenceStandardized;
+import org.apache.lucene.search.similarities.LMDirichletSimilarity;
+import org.apache.lucene.search.similarities.LMJelinekMercerSimilarity;
+import org.apache.lucene.search.similarities.Lambda;
+import org.apache.lucene.search.similarities.LambdaDF;
+import org.apache.lucene.search.similarities.LambdaTTF;
+import org.apache.lucene.search.similarities.Normalization;
+import org.apache.lucene.search.similarities.NormalizationH1;
+import org.apache.lucene.search.similarities.NormalizationH2;
+import org.apache.lucene.search.similarities.NormalizationH3;
+import org.apache.lucene.search.similarities.NormalizationZ;
+import org.apache.lucene.search.similarities.PerFieldSimilarityWrapper;
+import org.apache.lucene.search.similarities.Similarity;
 
 /**
  * Similarity implementation that randomizes Similarity implementations per-field.

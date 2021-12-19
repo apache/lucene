@@ -15,12 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -35,6 +36,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Matches;
+import org.apache.lucene.search.MatchesIterator;
+import org.apache.lucene.search.NamedMatches;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -120,8 +128,8 @@ public abstract class MatchesTestBase extends LuceneTestCase {
   protected void checkMatches(Query q, String field, int[][] expected) throws IOException {
     Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
     for (int i = 0; i < expected.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(expected[i][0], searcher.leafContexts));
+      List<LeafReaderContext> leafContexts = searcher.getLeafContexts();
+      LeafReaderContext ctx = leafContexts.get(ReaderUtil.subIndex(expected[i][0], leafContexts));
       int doc = expected[i][0] - ctx.docBase;
       Matches matches = w.matches(ctx, doc);
       if (matches == null) {
@@ -148,8 +156,8 @@ public abstract class MatchesTestBase extends LuceneTestCase {
   protected void checkLabelCount(Query q, String field, int[] expected) throws IOException {
     Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
     for (int i = 0; i < expected.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
+      List<LeafReaderContext> leafContexts = searcher.getLeafContexts();
+      LeafReaderContext ctx = leafContexts.get(ReaderUtil.subIndex(i, leafContexts));
       int doc = i - ctx.docBase;
       Matches matches = w.matches(ctx, doc);
       if (matches == null) {
@@ -204,8 +212,8 @@ public abstract class MatchesTestBase extends LuceneTestCase {
       throws IOException {
     Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
     for (int i = 0; i < expected.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
+      List<LeafReaderContext> leafContexts = searcher.getLeafContexts();
+      LeafReaderContext ctx = leafContexts.get(ReaderUtil.subIndex(i, leafContexts));
       int doc = i - ctx.docBase;
       Matches matches = w.matches(ctx, doc);
       if (expected[i]) {
@@ -231,8 +239,8 @@ public abstract class MatchesTestBase extends LuceneTestCase {
   protected void checkSubMatches(Query q, String[][] expectedNames) throws IOException {
     Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE_NO_SCORES, 1);
     for (int i = 0; i < expectedNames.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
+      List<LeafReaderContext> leafContexts = searcher.getLeafContexts();
+      LeafReaderContext ctx = leafContexts.get(ReaderUtil.subIndex(i, leafContexts));
       int doc = i - ctx.docBase;
       Matches matches = w.matches(ctx, doc);
       if (matches == null) {
@@ -262,9 +270,9 @@ public abstract class MatchesTestBase extends LuceneTestCase {
    */
   protected void assertIsLeafMatch(Query q, String field) throws IOException {
     Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
-    for (int i = 0; i < searcher.reader.maxDoc(); i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
+    for (int i = 0; i < searcher.getIndexReader().maxDoc(); i++) {
+      List<LeafReaderContext> leafContexts = searcher.getLeafContexts();
+      LeafReaderContext ctx = leafContexts.get(ReaderUtil.subIndex(i, leafContexts));
       int doc = i - ctx.docBase;
       Matches matches = w.matches(ctx, doc);
       if (matches == null) {
@@ -291,8 +299,8 @@ public abstract class MatchesTestBase extends LuceneTestCase {
       throws IOException {
     Weight w = searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
     for (int i = 0; i < expected.length; i++) {
-      LeafReaderContext ctx =
-          searcher.leafContexts.get(ReaderUtil.subIndex(i, searcher.leafContexts));
+      List<LeafReaderContext> leafContexts = searcher.getLeafContexts();
+      LeafReaderContext ctx = leafContexts.get(ReaderUtil.subIndex(i, leafContexts));
       int doc = i - ctx.docBase;
       Matches matches = w.matches(ctx, doc);
       if (matches == null) {

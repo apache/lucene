@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -30,6 +30,17 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
+import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SearcherLifetimeManager;
+import org.apache.lucene.search.SearcherManager;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -607,7 +618,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
 
   protected NodeState[] nodes;
   int maxSearcherAgeSeconds;
-  long endTimeNanos;
+  public long endTimeNanos;
   private Thread changeIndicesThread;
 
   protected void start(int numNodes, double runTimeSec, int maxSearcherAgeSeconds)
