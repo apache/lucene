@@ -15,9 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.uniformsplit;
+package org.apache.lucene.tests.codecs.uniformsplit;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.uniformsplit.BlockDecoder;
+import org.apache.lucene.codecs.uniformsplit.BlockEncoder;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BytesRef;

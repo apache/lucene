@@ -18,7 +18,6 @@ package org.apache.lucene.codecs.lucene90.compressing;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.compressing.CompressingCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -37,6 +36,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
 import org.apache.lucene.util.BytesRef;
 
 public class TestCompressingTermVectorsFormat extends BaseTermVectorsFormatTestCase {

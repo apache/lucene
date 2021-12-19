@@ -15,5 +15,8 @@
  * limitations under the License.
  */
 
-/** Dummy CompressingCodec implementation used for testing. */
-package org.apache.lucene.codecs.compressing.dummy;
+/**
+ * Support for testing {@link
+ * org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat}.
+ */
+package org.apache.lucene.tests.codecs.compressing;

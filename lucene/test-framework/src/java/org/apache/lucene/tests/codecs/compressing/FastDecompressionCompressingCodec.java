@@ -14,27 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.compressing;
+package org.apache.lucene.tests.codecs.compressing;
 
-/** CompressionCodec that uses {@link CompressionMode#HIGH_COMPRESSION} */
-public class HighCompressionCompressingCodec extends CompressingCodec {
+import org.apache.lucene.codecs.compressing.CompressionMode;
+
+/** CompressionCodec that uses {@link CompressionMode#FAST_DECOMPRESSION} */
+public class FastDecompressionCompressingCodec extends CompressingCodec {
 
   /** Constructor that allows to configure the chunk size. */
-  public HighCompressionCompressingCodec(
-      int chunkSize, int maxDocsPerChunk, boolean withSegmentSuffix, int blockShift) {
+  public FastDecompressionCompressingCodec(
+      int chunkSize, int maxDocsPerChunk, boolean withSegmentSuffix, int blockSize) {
     super(
-        "HighCompressionCompressingStoredFieldsData",
-        withSegmentSuffix ? "HighCompressionCompressingStoredFields" : "",
-        CompressionMode.HIGH_COMPRESSION,
+        "FastDecompressionCompressingStoredFieldsData",
+        withSegmentSuffix ? "FastDecompressionCompressingStoredFields" : "",
+        CompressionMode.FAST_DECOMPRESSION,
         chunkSize,
         maxDocsPerChunk,
-        blockShift);
+        blockSize);
   }
 
   /** Default constructor. */
-  public HighCompressionCompressingCodec() {
-    // we don't worry about zlib block overhead as it's
-    // not bad and try to save space instead:
-    this(61440, 512, false, 10);
+  public FastDecompressionCompressingCodec() {
+    this(1 << 14, 256, false, 10);
   }
 }

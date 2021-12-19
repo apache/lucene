@@ -14,27 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.compressing;
+package org.apache.lucene.tests.codecs.compressing;
 
-import org.apache.lucene.codecs.lucene90.DeflateWithPresetDictCompressionMode;
+import org.apache.lucene.codecs.lucene90.LZ4WithPresetDictCompressionMode;
 
-/** CompressionCodec that uses {@link DeflateWithPresetDictCompressionMode}. */
-public class DeflateWithPresetCompressingCodec extends CompressingCodec {
+/** CompressionCodec that uses {@link LZ4WithPresetDictCompressionMode}. */
+public class LZ4WithPresetCompressingCodec extends CompressingCodec {
 
   /** Constructor that allows to configure the chunk size. */
-  public DeflateWithPresetCompressingCodec(
+  public LZ4WithPresetCompressingCodec(
       int chunkSize, int maxDocsPerChunk, boolean withSegmentSuffix, int blockSize) {
     super(
-        "DeflateWithPresetCompressingStoredFieldsData",
+        "LZ4WithPresetCompressingStoredFieldsData",
         withSegmentSuffix ? "DeflateWithPresetCompressingStoredFields" : "",
-        new DeflateWithPresetDictCompressionMode(),
+        new LZ4WithPresetDictCompressionMode(),
         chunkSize,
         maxDocsPerChunk,
         blockSize);
   }
 
   /** No-arg constructor. */
-  public DeflateWithPresetCompressingCodec() {
+  public LZ4WithPresetCompressingCodec() {
     this(1 << 18, 512, false, 10);
   }
 }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.uniformsplit.sharedterms;
+package org.apache.lucene.tests.codecs.uniformsplit.sharedterms;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -23,11 +23,14 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.uniformsplit.IndexDictionary;
-import org.apache.lucene.codecs.uniformsplit.UniformSplitRot13PostingsFormat;
 import org.apache.lucene.codecs.uniformsplit.UniformSplitTermsWriter;
+import org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat;
+import org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitTermsReader;
+import org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitTermsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.tests.codecs.uniformsplit.UniformSplitRot13PostingsFormat;
 
 /** {@link STUniformSplitPostingsFormat} with block encoding using ROT13 cypher. */
 public class STUniformSplitRot13PostingsFormat extends UniformSplitRot13PostingsFormat {

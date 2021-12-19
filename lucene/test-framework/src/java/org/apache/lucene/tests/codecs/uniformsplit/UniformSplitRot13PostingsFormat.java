@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.uniformsplit;
+package org.apache.lucene.tests.codecs.uniformsplit;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -25,6 +25,12 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
+import org.apache.lucene.codecs.uniformsplit.BlockDecoder;
+import org.apache.lucene.codecs.uniformsplit.BlockEncoder;
+import org.apache.lucene.codecs.uniformsplit.IndexDictionary;
+import org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat;
+import org.apache.lucene.codecs.uniformsplit.UniformSplitTermsReader;
+import org.apache.lucene.codecs.uniformsplit.UniformSplitTermsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.ByteBuffersDataOutput;

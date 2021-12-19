@@ -14,25 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.compressing;
 
-/** CompressionCodec that uses {@link CompressionMode#FAST_DECOMPRESSION} */
-public class FastDecompressionCompressingCodec extends CompressingCodec {
-
-  /** Constructor that allows to configure the chunk size. */
-  public FastDecompressionCompressingCodec(
-      int chunkSize, int maxDocsPerChunk, boolean withSegmentSuffix, int blockSize) {
-    super(
-        "FastDecompressionCompressingStoredFieldsData",
-        withSegmentSuffix ? "FastDecompressionCompressingStoredFields" : "",
-        CompressionMode.FAST_DECOMPRESSION,
-        chunkSize,
-        maxDocsPerChunk,
-        blockSize);
-  }
-
-  /** Default constructor. */
-  public FastDecompressionCompressingCodec() {
-    this(1 << 14, 256, false, 10);
-  }
-}
+/**
+ * Test {@link org.apache.lucene.codecs.PostingsFormat} for testing {@link
+ * org.apache.lucene.codecs.uniformsplit.sharedterms} with block encryption using basic ROT13.
+ */
+package org.apache.lucene.tests.codecs.uniformsplit.sharedterms;

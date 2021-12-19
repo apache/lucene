@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.tests.codecs.uniformsplit.Rot13CypherTestUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
