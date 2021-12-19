@@ -14,19 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.bloom;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BasePostingsFormatTestCase;
-import org.apache.lucene.tests.codecs.bloom.TestBloomFilteredLucenePostings;
-import org.apache.lucene.tests.util.TestUtil;
-
-/** Basic tests for BloomPostingsFormat */
-public class TestBloomPostingsFormat extends BasePostingsFormatTestCase {
-  private final Codec codec = TestUtil.alwaysPostingsFormat(new TestBloomFilteredLucenePostings());
-
-  @Override
-  protected Codec getCodec() {
-    return codec;
-  }
-}
+/**
+ * Support for generating test indexes using the {@link
+ * org.apache.lucene.codecs.bloom.BloomFilteringPostingsFormat}.
+ */
+package org.apache.lucene.tests.codecs.bloom;

@@ -15,5 +15,8 @@
  * limitations under the License.
  */
 
-/** Codec for testing that throws random IOExceptions */
-package org.apache.lucene.codecs.cranky;
+/**
+ * Codec that unreasonably tries to use as little RAM as possible. For testing, benchmarking, API
+ * purposes only!
+ */
+package org.apache.lucene.tests.codecs.cheapbastard;

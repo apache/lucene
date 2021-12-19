@@ -14,12 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.bloom;
+package org.apache.lucene.tests.codecs.bloom;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.bloom.BloomFilterFactory;
+import org.apache.lucene.codecs.bloom.BloomFilteringPostingsFormat;
+import org.apache.lucene.codecs.bloom.FuzzySet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;

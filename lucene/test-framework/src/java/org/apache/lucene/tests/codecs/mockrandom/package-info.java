@@ -15,8 +15,5 @@
  * limitations under the License.
  */
 
-/**
- * Codec that unreasonably tries to use as little RAM as possible. For testing, benchmarking, API
- * purposes only!
- */
-package org.apache.lucene.codecs.cheapbastard;
+/** Frankenstein codec for testing that pieces together random components. */
+package org.apache.lucene.tests.codecs.mockrandom;

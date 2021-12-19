@@ -15,5 +15,5 @@
  * limitations under the License.
  */
 
-/** Frankenstein codec for testing that pieces together random components. */
-package org.apache.lucene.codecs.mockrandom;
+/** Codec for testing that throws random IOExceptions */
+package org.apache.lucene.tests.codecs.cranky;

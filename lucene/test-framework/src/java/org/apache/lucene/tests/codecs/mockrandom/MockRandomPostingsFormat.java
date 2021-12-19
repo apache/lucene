@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.mockrandom;
+package org.apache.lucene.tests.codecs.mockrandom;
 
 import java.io.IOException;
 import java.util.Random;

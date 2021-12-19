@@ -14,36 +14,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.cranky;
+package org.apache.lucene.tests.codecs.cranky;
 
 import java.io.IOException;
 import java.util.Random;
-import org.apache.lucene.codecs.SegmentInfoFormat;
+import org.apache.lucene.codecs.CompoundDirectory;
+import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 
-class CrankySegmentInfoFormat extends SegmentInfoFormat {
-  final SegmentInfoFormat delegate;
-  final Random random;
+class CrankyCompoundFormat extends CompoundFormat {
+  CompoundFormat delegate;
+  Random random;
 
-  CrankySegmentInfoFormat(SegmentInfoFormat delegate, Random random) {
+  CrankyCompoundFormat(CompoundFormat delegate, Random random) {
     this.delegate = delegate;
     this.random = random;
   }
 
   @Override
-  public SegmentInfo read(
-      Directory directory, String segmentName, byte[] segmentID, IOContext context)
+  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si, IOContext context)
       throws IOException {
-    return delegate.read(directory, segmentName, segmentID, context);
+    return delegate.getCompoundReader(dir, si, context);
   }
 
   @Override
-  public void write(Directory dir, SegmentInfo info, IOContext ioContext) throws IOException {
+  public void write(Directory dir, SegmentInfo si, IOContext context) throws IOException {
     if (random.nextInt(100) == 0) {
-      throw new IOException("Fake IOException from SegmentInfoFormat.write()");
+      throw new IOException("Fake IOException from CompoundFormat.write()");
     }
-    delegate.write(dir, info, ioContext);
+    delegate.write(dir, si, context);
   }
 }
