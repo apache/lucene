@@ -40,7 +40,7 @@ public class TestNRTReaderWithThreads extends LuceneTestCase {
                 newIndexWriterConfig(new MockAnalyzer(random()))
                     .setMaxBufferedDocs(10)
                     .setMergePolicy(newLogMergePolicy(false, 2))));
-    IndexReader reader = writer.getReader(); // start pooling readers
+    IndexReader reader = DirectoryReader.open(writer); // start pooling readers
     reader.close();
     int numThreads = TEST_NIGHTLY ? 4 : 2;
     int numIterations = TEST_NIGHTLY ? 2000 : 50;
@@ -94,7 +94,7 @@ public class TestNRTReaderWithThreads extends LuceneTestCase {
           } else if (type == 1) {
             // we may or may not delete because the term may not exist,
             // however we're opening and closing the reader rapidly
-            IndexReader reader = writer.getReader();
+            IndexReader reader = DirectoryReader.open(writer);
             int id = r.nextInt(seq.intValue());
             Term term = new Term("id", Integer.toString(id));
             int count = TestIndexWriterReader.count(term, reader);

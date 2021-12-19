@@ -153,7 +153,7 @@ public class TestTermVectors extends LuceneTestCase {
         writer.addDocument(doc);
       }
 
-      IndexReader reader1 = writer.getReader();
+      IndexReader reader1 = DirectoryReader.open(writer);
       assertEquals(2, reader1.leaves().size());
       assertEquals(
           hasPayloads,
@@ -163,7 +163,7 @@ public class TestTermVectors extends LuceneTestCase {
           reader1.leaves().get(1).reader().getFieldInfos().fieldInfo("c").hasPayloads());
 
       writer.forceMerge(1);
-      IndexReader reader2 = writer.getReader();
+      IndexReader reader2 = DirectoryReader.open(writer);
       assertEquals(1, reader2.leaves().size());
       // assert that in the merged segments payloads set up for the field
       assertTrue(reader2.leaves().get(0).reader().getFieldInfos().fieldInfo("c").hasPayloads());

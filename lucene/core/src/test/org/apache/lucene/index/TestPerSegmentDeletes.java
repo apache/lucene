@@ -75,7 +75,7 @@ public class TestPerSegmentDeletes extends LuceneTestCase {
 
     // get reader flushes pending deletes
     // so there should not be anymore
-    IndexReader r1 = writer.getReader();
+    IndexReader r1 = DirectoryReader.open(writer);
     assertFalse(writer.hasChangesInRam());
     r1.close();
 
@@ -94,7 +94,7 @@ public class TestPerSegmentDeletes extends LuceneTestCase {
 
     // id:2 shouldn't exist anymore because
     // it's been applied in the merge and now it's gone
-    IndexReader r2 = writer.getReader();
+    IndexReader r2 = DirectoryReader.open(writer);
     int[] id2docs = toDocsArray(new Term("id", "2"), null, r2);
     assertTrue(id2docs == null);
     r2.close();

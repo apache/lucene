@@ -876,7 +876,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     Document d = new Document();
     d.add(newTextField("f", "a a b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls totalTermFreq (eg PreFlex doesn't)
@@ -899,7 +899,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -920,7 +920,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "a", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -941,7 +941,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "a a b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -965,7 +965,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     writer.addDocument(new Document());
     writer.commit();
-    final DirectoryReader reader = writer.getReader();
+    final DirectoryReader reader = DirectoryReader.open(writer);
     final int[] closeCount = new int[1];
     final IndexReader.ClosedListener listener =
         new IndexReader.ClosedListener() {
@@ -996,7 +996,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     writer.addDocument(new Document());
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     r.document(0);
     expectThrows(

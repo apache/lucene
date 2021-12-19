@@ -448,10 +448,6 @@ public class IndexWriter
         }
       };
 
-  DirectoryReader getReader() throws IOException {
-    return getReader(true, false);
-  }
-
   /**
    * Expert: returns a readonly reader, covering all committed as well as un-committed changes to
    * the index. This provides "near real-time" searching, in that changes made during an IndexWriter

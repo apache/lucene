@@ -384,7 +384,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     assertEquals(1, mergedReader.leaves().size());
     mergedReader.close();
 
-    try (IndexReader reader = writerWithMergePolicy.getReader()) {
+    try (IndexReader reader = DirectoryReader.open(writerWithMergePolicy)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       assertEquals(6, reader.numDocs());
       assertEquals(6, searcher.count(new MatchAllDocsQuery()));
@@ -593,7 +593,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
                   boolean success = false;
                   try {
                     if (useGetReader) {
-                      writer.getReader().close();
+                      DirectoryReader.open(writer).close();
                     } else {
                       writer.commit();
                     }
@@ -650,7 +650,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         Thread t =
             new Thread(
                 () -> {
-                  try (DirectoryReader reader = writer.getReader()) {
+                  try (DirectoryReader reader = DirectoryReader.open(writer)) {
                     assertEquals(2, reader.maxDoc());
                   } catch (IOException e) {
                     throw new AssertionError(e);
@@ -696,7 +696,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         writer.addDocument(d2);
         writer.flush();
         mergeAndFail.set(true);
-        try (DirectoryReader reader = writer.getReader()) {
+        try (DirectoryReader reader = DirectoryReader.open(writer)) {
           assertNotNull(reader); // make compiler happy and use the reader
           fail();
         } catch (RuntimeException e) {
@@ -832,7 +832,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     }
 
     TestIndexWriter.addDoc(writerWithMergePolicy);
-    try (DirectoryReader mergedReader = writerWithMergePolicy.getReader()) {
+    try (DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy)) {
       // Doc added, do merge on getReader.
       assertEquals(1, mergedReader.leaves().size());
     }

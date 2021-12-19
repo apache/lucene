@@ -104,7 +104,7 @@ public class TestStressDeletes extends LuceneTestCase {
       thread.join();
     }
 
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     IndexSearcher s = newSearcher(r);
     for (Map.Entry<Integer, Boolean> ent : exists.entrySet()) {
       int id = ent.getKey();

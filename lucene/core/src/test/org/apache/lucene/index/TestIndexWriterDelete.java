@@ -451,7 +451,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     }
     modifier.commit();
 
-    IndexReader reader = modifier.getReader();
+    IndexReader reader = DirectoryReader.open(modifier);
     assertEquals(7, reader.numDocs());
     reader.close();
 
@@ -461,7 +461,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     // Delete all
     modifier.deleteAll();
 
-    reader = modifier.getReader();
+    reader = DirectoryReader.open(modifier);
     assertEquals(0, reader.numDocs());
     reader.close();
 

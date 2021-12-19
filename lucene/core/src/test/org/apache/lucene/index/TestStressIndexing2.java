@@ -64,7 +64,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
 
     // TODO: verify equals using IW.getReader
     DocsAndWriter dw = indexRandomIWReader(5, 3, 100, dir);
-    DirectoryReader reader = dw.writer.getReader();
+    DirectoryReader reader = DirectoryReader.open(dw.writer);
     dw.writer.commit();
     verifyEquals(random(), reader, dir, "id");
     reader.close();

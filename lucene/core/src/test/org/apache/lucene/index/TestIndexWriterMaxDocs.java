@@ -528,7 +528,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
       w.addDocument(new Document());
-      w.getReader().close();
+      DirectoryReader.open(w).close();
       w.addDocument(new Document());
       expectThrows(
           IllegalArgumentException.class,

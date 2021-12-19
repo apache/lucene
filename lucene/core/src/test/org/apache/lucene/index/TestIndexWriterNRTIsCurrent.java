@@ -90,7 +90,7 @@ public class TestIndexWriterNRTIsCurrent extends LuceneTestCase {
         Document doc = new Document();
         doc.add(new TextField("id", "1", Field.Store.NO));
         writer.addDocument(doc);
-        holder.reader = currentReader = writer.getReader();
+        holder.reader = currentReader = DirectoryReader.open(writer);
         Term term = new Term("id");
         for (int i = 0; i < numOps && !holder.stop; i++) {
           float nextOp = random.nextFloat();

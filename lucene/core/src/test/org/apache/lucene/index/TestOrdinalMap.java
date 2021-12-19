@@ -135,7 +135,7 @@ public class TestOrdinalMap extends LuceneTestCase {
     }
     iw.commit();
 
-    DirectoryReader r = iw.getReader();
+    DirectoryReader r = DirectoryReader.open(iw);
     SortedDocValues sdv = MultiDocValues.getSortedValues(r, "sdv");
     assertNotNull(sdv);
     assertTrue(sdv instanceof MultiDocValues.MultiSortedDocValues);

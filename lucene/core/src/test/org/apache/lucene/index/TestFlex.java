@@ -53,7 +53,7 @@ public class TestFlex extends LuceneTestCase {
         w.forceMerge(1);
       }
 
-      IndexReader r = w.getReader();
+      IndexReader r = DirectoryReader.open(w);
 
       TermsEnum terms = MultiTerms.getTerms(r, "field3").iterator();
       assertEquals(TermsEnum.SeekStatus.END, terms.seekCeil(new BytesRef("abc")));
@@ -75,7 +75,7 @@ public class TestFlex extends LuceneTestCase {
     doc.add(newTextField("f", "a b c", Field.Store.NO));
     w.addDocument(doc);
     w.forceMerge(1);
-    DirectoryReader r = w.getReader();
+    DirectoryReader r = DirectoryReader.open(w);
     TermsEnum terms = getOnlyLeafReader(r).terms("f").iterator();
     assertTrue(terms.next() != null);
     try {

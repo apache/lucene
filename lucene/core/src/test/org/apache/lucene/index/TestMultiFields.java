@@ -126,7 +126,7 @@ public class TestMultiFields extends LuceneTestCase {
         }
       }
 
-      IndexReader reader = w.getReader();
+      IndexReader reader = DirectoryReader.open(w);
       w.close();
       if (VERBOSE) {
         System.out.println("TEST: reader=" + reader);
@@ -182,7 +182,7 @@ public class TestMultiFields extends LuceneTestCase {
     w.addDocument(d);
     w.commit();
     w.addDocument(d);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     w.close();
     PostingsEnum d1 = TestUtil.docs(random(), r, "f", new BytesRef("j"), null, PostingsEnum.NONE);
     PostingsEnum d2 = TestUtil.docs(random(), r, "f", new BytesRef("j"), null, PostingsEnum.NONE);
@@ -200,7 +200,7 @@ public class TestMultiFields extends LuceneTestCase {
     w.addDocument(d);
     w.commit();
     w.addDocument(d);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     w.close();
     PostingsEnum de =
         MultiTerms.getTermPostingsEnum(r, "f", new BytesRef("j"), (int) PostingsEnum.FREQS);

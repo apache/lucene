@@ -645,7 +645,7 @@ public class TestPointValues extends LuceneTestCase {
     w.deleteDocuments(new Term("id", "0"));
 
     w.forceMerge(1);
-    DirectoryReader r = w.getReader();
+    DirectoryReader r = DirectoryReader.open(w);
     assertNull(r.leaves().get(0).reader().getPointValues("int"));
     w.close();
     r.close();

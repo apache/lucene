@@ -234,7 +234,7 @@ public class TestIndexWriterUnicode extends LuceneTestCase {
     doc = new Document();
     doc.add(newTextField("field", "a", Field.Store.NO));
     w.addDocument(doc);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     assertEquals(1, r.docFreq(new Term("field", "a\uffffb")));
     r.close();
     w.close();

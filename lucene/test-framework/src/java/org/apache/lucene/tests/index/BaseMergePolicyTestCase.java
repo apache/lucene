@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToIntFunction;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterMergePolicy;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -110,7 +111,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
         for (int j = 0; j < numDocs; ++j) {
           writer.addDocument(new Document());
         }
-        writer.getReader().close();
+        DirectoryReader.open(writer).close();
       }
       for (int i = 5; i >= 0; --i) {
         final int segmentCount = writer.getSegmentCount();

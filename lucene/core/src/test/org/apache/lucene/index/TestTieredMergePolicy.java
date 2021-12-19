@@ -242,7 +242,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     }
 
     w.forceMerge(1);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     assertEquals(numDocs, r.maxDoc());
     assertEquals(numDocs, r.numDocs());
     r.close();
@@ -253,14 +253,14 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     w.deleteDocuments(new Term("id", "" + (42 + 17)));
 
-    r = w.getReader();
+    r = DirectoryReader.open(w);
     assertEquals(numDocs, r.maxDoc());
     assertEquals(numDocs - 1, r.numDocs());
     r.close();
 
     w.forceMergeDeletes();
 
-    r = w.getReader();
+    r = DirectoryReader.open(w);
     assertEquals(numDocs - 1, r.maxDoc());
     assertEquals(numDocs - 1, r.numDocs());
     r.close();

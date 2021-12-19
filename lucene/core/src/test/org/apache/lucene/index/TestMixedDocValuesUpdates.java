@@ -469,7 +469,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
         writer,
         new NumericDocValuesField("numericId", doc + 1),
         new BinaryDocValuesField("binaryId", new BytesRef(new byte[] {(byte) (doc + 1)})));
-    IndexReader reader = writer.getReader();
+    IndexReader reader = DirectoryReader.open(writer);
     NumericDocValues numericIdValues = null;
     BinaryDocValues binaryIdValues = null;
     for (LeafReaderContext c : reader.leaves()) {
@@ -556,7 +556,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     for (Thread t : threads) {
       t.join();
     }
-    try (DirectoryReader reader = writer.getReader()) {
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
       for (int i = 0; i < locks.length; i++) {
         locks[i].lock();
         try {
@@ -588,7 +588,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
   static void doUpdate(Term doc, IndexWriter writer, Field... fields) throws IOException {
     long seqId = -1;
     do { // retry if we just committing a merge
-      try (DirectoryReader reader = writer.getReader()) {
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
         TopDocs topDocs = new IndexSearcher(reader).search(new TermQuery(doc), 10);
         assertEquals(1, topDocs.totalHits.value);
         int theDoc = topDocs.scoreDocs[0].doc;
@@ -610,7 +610,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     if (random().nextBoolean()) {
       writer.commit();
     }
-    try (DirectoryReader reader = writer.getReader()) {
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
       assertEquals(1, reader.leaves().size());
       LeafReader r = reader.leaves().get(0).reader();
       NumericDocValues ndv = r.getNumericDocValues("val");
@@ -625,7 +625,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     }
 
     writer.updateDocValues(new Term("id", "0"), new BinaryDocValuesField("val-bin", null));
-    try (DirectoryReader reader = writer.getReader()) {
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
       assertEquals(1, reader.leaves().size());
       LeafReader r = reader.leaves().get(0).reader();
       NumericDocValues ndv = r.getNumericDocValues("val");
@@ -671,7 +671,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
         numHits++;
       }
     }
-    try (DirectoryReader reader = writer.getReader()) {
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
       IndexSearcher searcher = new IndexSearcher(reader);
 
       TopDocs is_live = searcher.search(new DocValuesFieldExistsQuery("is_live"), 5);
@@ -733,7 +733,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
       doc.add(new StringField("id", "1", Store.YES));
       writer.addDocument(doc);
       if (random().nextBoolean()) {
-        try (DirectoryReader reader = writer.getReader()) {
+        try (DirectoryReader reader = DirectoryReader.open(writer)) {
           NumericDocValues id = reader.leaves().get(0).reader().getNumericDocValues("id");
           assertNull(id);
         }

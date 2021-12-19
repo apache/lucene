@@ -91,7 +91,7 @@ public class TestForceMergeForever extends LuceneTestCase {
                 w.updateDocument(
                     new Term("docid", "" + random().nextInt(numStartDocs)), docs.nextDoc());
                 // Force deletes to apply
-                w.getReader().close();
+                DirectoryReader.open(w).close();
               }
             } catch (Throwable t) {
               throw new RuntimeException(t);

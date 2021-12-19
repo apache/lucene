@@ -208,7 +208,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     doc.add(newField("aaa", "a b c", customType));
     doc.add(newField("zzz", "1 2 3", customType));
     w.addDocument(doc);
-    IndexReader r = maybeWrapWithMergingReader(w.getReader());
+    IndexReader r = maybeWrapWithMergingReader(DirectoryReader.open(w));
     Document doc2 = r.document(0);
     Iterator<IndexableField> it = doc2.getFields().iterator();
     assertTrue(it.hasNext());

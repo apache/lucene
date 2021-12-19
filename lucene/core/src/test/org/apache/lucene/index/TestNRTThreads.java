@@ -112,7 +112,7 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
     // Force writer to do reader pooling, always, so that
     // all merged segments, even for merges before
     // doSearching is called, are warmed:
-    writer.getReader().close();
+    DirectoryReader.open(writer).close();
   }
 
   private IndexSearcher fixedSearcher;
@@ -135,13 +135,13 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
     final IndexReader r2;
     if (useNonNrtReaders) {
       if (random().nextBoolean()) {
-        r2 = writer.getReader();
+        r2 = DirectoryReader.open(writer);
       } else {
         writer.commit();
         r2 = DirectoryReader.open(dir);
       }
     } else {
-      r2 = writer.getReader();
+      r2 = DirectoryReader.open(writer);
     }
     return newSearcher(r2);
   }
