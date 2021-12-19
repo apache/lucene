@@ -17,5 +17,5 @@
 
 SETLOCAL
 SET MODULES=%~dp0..
-start javaw --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --add-modules jdk.unsupported --module org.apache.lucene.luke
+start javaw --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --module org.apache.lucene.luke
 ENDLOCAL

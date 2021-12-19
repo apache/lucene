@@ -45,6 +45,9 @@ API Changes
 New Features
 ---------------------
 
+* LUCENE-10255: Lucene JARs are now proper modules, with module descriptors and dependency information.
+  (Chris Hegarty, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
+
 * LUCENE-10223: Add interval function support to StandardQueryParser. Add min-should-match operator
   support to StandardQueryParser. Update and clean up package documentation in flexible query parser
   module. (Dawid Weiss, Alan Woodward)
