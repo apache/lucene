@@ -10,6 +10,9 @@ API Changes
 
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
+  
+* LUCENE-10197: UnifiedHighlighter now has a Builder to construct it.  The UH's setters are now
+  deprecated.  (Animesh Pandey, David Smiley)
 
 New Features
 ---------------------
