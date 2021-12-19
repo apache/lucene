@@ -61,6 +61,8 @@ public class TestMinimize extends LuceneTestCase {
   /** n^2 space usage in Hopcroft minimization? */
   @Nightly
   public void testMinimizeHuge() {
-    new RegExp("+-*(A|.....|BC)*]", RegExp.NONE).toAutomaton(1000000);
+    Automaton a = new RegExp("+-*(A|.....|BC)*]", RegExp.NONE).toAutomaton();
+    Automaton b = MinimizationOperations.minimize(a, 1000000);
+    assertTrue(b.isDeterministic());
   }
 }

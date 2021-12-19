@@ -135,8 +135,10 @@ import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.store.MockDirectoryWrapper.Throttling;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.store.RawDirectoryWrapper;
+import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -2113,8 +2115,9 @@ public abstract class LuceneTestCase extends Assert {
       int numIntersections = atLeast(3);
       for (int i = 0; i < numIntersections; i++) {
         String re = AutomatonTestUtil.randomRegexp(random());
-        CompiledAutomaton automaton =
-            new CompiledAutomaton(new RegExp(re, RegExp.NONE).toAutomaton());
+        Automaton a = new RegExp(re, RegExp.NONE).toAutomaton();
+        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        CompiledAutomaton automaton = new CompiledAutomaton(a);
         if (automaton.type == CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
           // TODO: test start term too
           TermsEnum leftIntersection = leftTerms.intersect(automaton, null);

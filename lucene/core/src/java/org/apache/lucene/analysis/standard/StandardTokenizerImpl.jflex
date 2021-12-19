@@ -48,15 +48,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 %char
 %buffer 255
 
-
-//////////////////////////////////////////////////////////////////////////
-// Begin Emoji Macros - see documentation below, near the EMOJI_TYPE rule
-
-Emoji = \p{Emoji}
-Emoji_Modifier = \p{Emoji_Modifier}
-Emoji_Modifier_Base = \p{Emoji_Modifier_Base}
-Extended_Pictographic = \p{Extended_Pictographic}
-
 // UAX#29 WB4.  X (Extend | Format | ZWJ)* --> X
 //
 //   \uFE0E (Text Presentation Selector) and \uFE0F (Emoji Presentation Selector) - included in \p{WB:Extend}
@@ -71,18 +62,14 @@ KeyCapEx = {KeyCap} {ExtFmtZwjSansPresSel}
 
 // # \u3030 = WAVY DASH; \u303D = PART ALTERNATION MARK
 AccidentalEmoji = [©®™\u3030\u303D]
-EmojiRKAM = ( \p{WB:Regional_Indicator} | {KeyCapBaseChar} | {AccidentalEmoji} | {Emoji_Modifier} )
+EmojiRKAM = [\p{WB:Regional_Indicator}{KeyCapBaseChar}{AccidentalEmoji}\p{Emoji_Modifier}]
+EmojiSansRKAM = [\p{Emoji}--{EmojiRKAM}]
 
-// Unlike Unicode properties, macros are not allowed in character classes, so we achieve set difference
-// by applying DeMorgan: the expression that matches everything of 'a' not matched by 'b' is: !(!a|b)
-// TODO: Convert this expression to character class difference when JFlex supports the properties directly (in Unicode 11.0+)
-EmojiSansRKAM = !( ! {Emoji} | {EmojiRKAM} )
+EmojiChar = ( \p{Extended_Pictographic} | {EmojiSansRKAM} )
 
-EmojiChar = ( {Extended_Pictographic} | {EmojiSansRKAM} )
-
-EmojiCharEx         = {EmojiChar}           {ExtFmtZwjSansPresSel}
-EmojiModifierBaseEx = {Emoji_Modifier_Base} {ExtFmtZwjSansPresSel}
-EmojiModifierEx     = {Emoji_Modifier}      {ExtFmtZwjSansPresSel}
+EmojiCharEx         = {EmojiChar}             {ExtFmtZwjSansPresSel}
+EmojiModifierBaseEx = \p{Emoji_Modifier_Base} {ExtFmtZwjSansPresSel}
+EmojiModifierEx     = \p{Emoji_Modifier}      {ExtFmtZwjSansPresSel}
 
 EmojiPresentationSelector = \uFE0F
 EmojiCharOrPresSeqOrModSeq = ( \p{WB:ZWJ}* {EmojiCharEx} {EmojiPresentationSelector}? ) | ( ( \p{WB:ZWJ}* {EmojiModifierBaseEx} )? {EmojiModifierEx} )

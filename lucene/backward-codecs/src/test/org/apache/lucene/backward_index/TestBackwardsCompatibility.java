@@ -334,13 +334,18 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  static final String[] oldNames = {};
+  static final String[] oldNames = {
+    "9.0.0-cfs", // Force on separate lines
+    "9.0.0-nocfs",
+  };
 
   public static String[] getOldNames() {
     return oldNames;
   }
 
-  static final String[] oldSortedNames = {};
+  static final String[] oldSortedNames = {
+    "sorted.9.0.0", // Force on separate lines
+  };
 
   public static String[] getOldSortedNames() {
     return oldSortedNames;
@@ -590,6 +595,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.10.1-nocfs",
     "8.11.0-cfs",
     "8.11.0-nocfs",
+    "8.11.1-cfs",
+    "8.11.1-nocfs"
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
@@ -994,7 +1001,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
                 IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w, reader));
         assertEquals(
             e.getMessage(),
-            "Cannot merge a segment that has been created with major version 8 into this index which has been created by major version 9");
+            "Cannot merge a segment that has been created with major version 9 into this index which has been created by major version 10");
         w.close();
         targetDir2.close();
 
@@ -1761,9 +1768,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public static final String emptyIndex = "empty.8.0.0.zip";
+  public static final String emptyIndex = "empty.9.0.0.zip";
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testUpgradeEmptyOldIndex() throws Exception {
     Path oldIndexDir = createTempDir("emptyIndex");
     TestUtil.unzip(getDataInputStream(emptyIndex), oldIndexDir);
@@ -1771,14 +1777,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     newIndexUpgrader(dir).upgrade();
 
-    checkAllSegmentsUpgraded(dir, 8);
+    checkAllSegmentsUpgraded(dir, 9);
 
     dir.close();
   }
 
   public static final String moreTermsIndex = "moreterms.9.0.0.zip";
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testMoreTerms() throws Exception {
     Path oldIndexDir = createTempDir("moreterms");
     TestUtil.unzip(getDataInputStream(moreTermsIndex), oldIndexDir);
@@ -1827,7 +1832,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     reader.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDocValuesUpdates() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1856,7 +1860,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDeletes() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1880,7 +1883,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testSoftDeletes() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1902,7 +1904,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDocValuesUpdatesWithNewField() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);

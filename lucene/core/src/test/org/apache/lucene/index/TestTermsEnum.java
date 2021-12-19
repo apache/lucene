@@ -42,6 +42,7 @@ import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 @SuppressCodecs({"SimpleText", "Direct"})
@@ -827,6 +828,7 @@ public class TestTermsEnum extends LuceneTestCase {
     Terms terms = sub.terms("field");
 
     Automaton automaton = new RegExp(".*d", RegExp.NONE).toAutomaton();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CompiledAutomaton ca = new CompiledAutomaton(automaton, false, false);
     TermsEnum te;
 
