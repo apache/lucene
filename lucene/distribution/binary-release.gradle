@@ -28,6 +28,8 @@ configure(project(":lucene:distribution")) {
     jars
     jarsTestFramework
     jarsThirdParty
+
+    binaryDirForTests
   }
 
   dependencies { DependencyHandler handler ->
@@ -63,7 +65,6 @@ configure(project(":lucene:distribution")) {
     }
   }
 
-
   task assembleBinaryTgz(type: Tar) {
     description "Assemble binary Lucene artifact as a .tgz file."
 
@@ -73,6 +74,26 @@ configure(project(":lucene:distribution")) {
     reproducibleFileOrder = true
     compression = Compression.GZIP
 
+    // Internal archive folder for all files.
+    into "lucene-${rootProject.version}/"
+  }
+
+  task assembleBinaryDirForTests(type: Sync) {
+    description "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
+
+    destinationDir file("${packageBaseName}-itests")
+  }
+
+  artifacts {
+    binaryDirForTests tasks.assembleBinaryDirForTests.destinationDir, {
+      builtBy tasks.assembleBinaryDirForTests
+    }
+  }
+
+  // Configure distribution content for archives and stand-alone directories.
+  // This is split into binaries and other artifacts to speed up distribution
+  // tests.
+  Closure<Void> distributionBinaryContent = { AbstractCopyTask task ->
     // Manually correct posix permissions (matters when assembling archives on Windows).
     filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
       copy.setMode(0755)
@@ -83,6 +104,21 @@ configure(project(":lucene:distribution")) {
       filteringCharset = 'UTF-8'
     })
 
+    // Binary modules (Lucene).
+    from(configurations.jars, {
+      into 'modules'
+    })
+    from(configurations.jarsTestFramework, {
+      into 'modules-test-framework'
+    })
+
+    // Binary modules (with dependencies). Don't duplicate project artifacts.
+    from((configurations.jarsThirdParty - configurations.jars), {
+      into 'modules-thirdparty'
+    })
+  }
+
+  Closure<Void> distributionOtherContent = { AbstractCopyTask task ->
     // Cherry-pick certain files from the root.
     from(project(':').projectDir, {
       include "LICENSE.txt"
@@ -102,21 +138,14 @@ configure(project(":lucene:distribution")) {
     from(configurations.docs, {
       into 'docs'
     })
+  }
 
-    // Binary modules (Lucene).
-    from(configurations.jars, {
-      into 'modules'
-    })
-    from(configurations.jarsTestFramework, {
-      into 'modules-test-framework'
-    })
+  [tasks.assembleBinaryTgz].each { Task task ->
+    task.configure distributionBinaryContent
+    task.configure distributionOtherContent
+  }
 
-    // Binary modules (with dependencies). Don't duplicate project artifacts.
-    from((configurations.jarsThirdParty - configurations.jars), {
-      into 'modules-thirdparty'
-    })
-
-    // Internal archive folder for all files.
-    into "lucene-${rootProject.version}/"
+  [tasks.assembleBinaryDirForTests].each { Task task ->
+    task.configure distributionBinaryContent
   }
 }

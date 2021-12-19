@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
-import org.apache.logging.log4j.Logger;
+import java.util.logging.Logger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -80,7 +80,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
   @Override
   public List<DocumentField> getDocumentFields(int docid) {
     if (!isLive(docid)) {
-      log.info("Doc #{} was deleted", docid);
+      log.info("Doc #" + docid + " was deleted");
       return Collections.emptyList();
     }
 
@@ -126,7 +126,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
         // no such field?
         resetCurrentField();
         resetTermsIterator();
-        log.warn("Terms not available for field: {}.", field);
+        log.warning("Terms not available for field: " + field);
         return Optional.empty();
       } else {
         setCurrentField(field);
@@ -135,7 +135,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
         if (tenum.next() == null) {
           // no term available for this field
           resetTermsIterator();
-          log.warn("No term available for field: {}.", field);
+          log.warning("No term available for field: " + field);
           return Optional.empty();
         } else {
           return Optional.of(new Term(curField, tenum.term()));
@@ -156,7 +156,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
   public Optional<Term> nextTerm() {
     if (tenum == null) {
       // terms enum not initialized
-      log.warn("Terms enum un-positioned.");
+      log.warning("Terms enum un-positioned.");
       return Optional.empty();
     }
 
@@ -164,7 +164,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
       if (tenum.next() == null) {
         // end of the iterator
         resetTermsIterator();
-        log.info("Reached the end of the term iterator for field: {}.", curField);
+        log.info("Reached the end of the term iterator for field: " + curField);
         return Optional.empty();
 
       } else {
@@ -186,7 +186,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
 
     if (curField == null) {
       // field is not selected
-      log.warn("Field not selected.");
+      log.warning("Field not selected.");
       return Optional.empty();
     }
 
@@ -197,7 +197,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
       if (tenum.seekCeil(new BytesRef(termText)) == TermsEnum.SeekStatus.END) {
         // reached to the end of the iterator
         resetTermsIterator();
-        log.info("Reached the end of the term iterator for field: {}.", curField);
+        log.info("Reached the end of the term iterator for field: " + curField);
         return Optional.empty();
       } else {
         return Optional.of(new Term(curField, tenum.term()));
@@ -216,7 +216,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
   public Optional<Integer> firstTermDoc() {
     if (tenum == null) {
       // terms enum is not set
-      log.warn("Terms enum un-positioned.");
+      log.warning("Terms enum un-positioned.");
       return Optional.empty();
     }
 
@@ -226,10 +226,11 @@ public final class DocumentsImpl extends LukeModel implements Documents {
       if (penum.nextDoc() == PostingsEnum.NO_MORE_DOCS) {
         // no docs available for this term
         resetPostingsIterator();
-        log.warn(
-            "No docs available for term: {} in field: {}.",
-            BytesRefUtils.decode(tenum.term()),
-            curField);
+        log.warning(
+            "No docs available for term: "
+                + BytesRefUtils.decode(tenum.term())
+                + " in field: "
+                + curField);
         return Optional.empty();
       } else {
         return Optional.of(penum.docID());
@@ -245,7 +246,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
   public Optional<Integer> nextTermDoc() {
     if (penum == null) {
       // postings enum is not initialized
-      log.warn("Postings enum un-positioned for field: {}.", curField);
+      log.warning("Postings enum un-positioned for field: " + curField);
       return Optional.empty();
     }
 
@@ -253,12 +254,11 @@ public final class DocumentsImpl extends LukeModel implements Documents {
       if (penum.nextDoc() == PostingsEnum.NO_MORE_DOCS) {
         // end of the iterator
         resetPostingsIterator();
-        if (log.isInfoEnabled()) {
-          log.info(
-              "Reached the end of the postings iterator for term: {} in field: {}",
-              BytesRefUtils.decode(tenum.term()),
-              curField);
-        }
+        log.info(
+            "Reached the end of the postings iterator for term: "
+                + BytesRefUtils.decode(tenum.term())
+                + " in field: "
+                + curField);
         return Optional.empty();
       } else {
         return Optional.of(penum.docID());
@@ -274,7 +274,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
   public List<TermPosting> getTermPositions() {
     if (penum == null) {
       // postings enum is not initialized
-      log.warn("Postings enum un-positioned for field: {}.", curField);
+      log.warning("Postings enum un-positioned for field: " + curField);
       return Collections.emptyList();
     }
 
@@ -305,7 +305,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
   public Optional<Integer> getDocFreq() {
     if (tenum == null) {
       // terms enum is not initialized
-      log.warn("Terms enum un-positioned for field: {}.", curField);
+      log.warning("Terms enum un-positioned for field: " + curField);
       return Optional.empty();
     }
 

@@ -41,11 +41,12 @@ API Changes
 
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
-  
-* LUCENE-10289: DocIdSetBuilder#grow() takes now a long instead of an int. (Ignacio Vera)  
 
 New Features
 ---------------------
+
+* LUCENE-10255: Lucene JARs are now proper modules, with module descriptors and dependency information.
+  (Chris Hegarty, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
 
 * LUCENE-10223: Add interval function support to StandardQueryParser. Add min-should-match operator
   support to StandardQueryParser. Update and clean up package documentation in flexible query parser
@@ -70,6 +71,10 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-10313: use java util logging in Luke. Add dynamic log filtering. Drop
+  the persistent log previously written to ~/.luke.d/luke.log. Configure Java's default
+  logging handlers to persist Luke logs according to your needs. (Tomoko Uchida, Dawid Weiss)
+
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
 * LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
@@ -81,6 +86,9 @@ Improvements
 * LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
 
 * LUCENE-10275: Speed up MultiRangeQuery by using an interval tree. (Ignacio Vera)
+
+* LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
+  with or without offsets enabled. (Patrick Zhai)
   
 Optimizations
 ---------------------
@@ -91,6 +99,8 @@ Optimizations
  or sorted indices) to speed up addAll. (Guo Feng, Adrien Grand)
 
 * LUCENE-10225: Improve IntroSelector with 3-ways partitioning. (Bruno Roustant, Adrien Grand)
+
+* LUCENE-10321: Tweak MultiRangeQuery interval tree creation to skip "pulling up" mins. (Greg Miller)
 
 Bug Fixes
 ---------------------
@@ -106,6 +116,9 @@ Other
 * LUCENE-10273: Deprecate SpanishMinimalStemFilter in favor of SpanishPluralStemFilter. (Robert Muir)
 
 * LUCENE-10284: Upgrade morfologik-stemming to 2.1.8. (Dawid Weiss)
+
+* LUCENE-10310: TestXYDocValuesQueries#doRandomDistanceTest does not produce random circles with radius
+  with '0' value any longer.
 
 ======================= Lucene 9.0.0 =======================
 
@@ -568,6 +581,12 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.1 =======================
+
+Bug Fixes
+---------------------
+* SOLR-15843: Update Log4J to 2.16 (Mike Drob, janhoy)
 
 ======================= Lucene 8.11.0 =======================
 

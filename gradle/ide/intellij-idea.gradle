@@ -16,7 +16,7 @@
  */
 
 // Try to detect IntelliJ model loader ("reimport") early.
-def isIdea = System.getProperty("idea.active") != null ||
+rootProject.ext.isIdea = System.getProperty("idea.active") != null ||
     gradle.startParameter.taskNames.contains('idea') ||
     gradle.startParameter.taskNames.contains('cleanIdea')
 

@@ -222,7 +222,8 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
     for (int i = 0; i < randomNumDocs; i++) {
       Document doc = new Document();
-      if (random().nextBoolean()) {
+      // ensure we index at least a document with long between 0 and 10
+      if (i == 0 || random().nextBoolean()) {
         doc.add(new LongPoint("long", i));
         doc.add(new NumericDocValuesField("long", i));
         doc.add(new StringField("string", "value", Store.NO));

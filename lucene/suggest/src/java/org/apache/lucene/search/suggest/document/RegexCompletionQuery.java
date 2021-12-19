@@ -25,7 +25,6 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.suggest.BitsProducer;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.MinimizationOperations;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
@@ -75,7 +74,7 @@ public class RegexCompletionQuery extends CompletionQuery {
    * @param term query is run against {@link Term#field()} and {@link Term#text()} is interpreted as
    *     a regular expression
    * @param flags used as syntax_flag in {@link RegExp#RegExp(String, int)}
-   * @param determinizeWorkLimit used in {@link MinimizationOperations#minimize(Automaton, int)}
+   * @param determinizeWorkLimit used in {@link Operations#determinize(Automaton, int)}
    * @param filter used to query on a sub set of documents
    */
   public RegexCompletionQuery(Term term, int flags, int determinizeWorkLimit, BitsProducer filter) {
@@ -92,7 +91,7 @@ public class RegexCompletionQuery extends CompletionQuery {
     Automaton automaton =
         getTerm().text().isEmpty()
             ? Automata.makeEmpty()
-            : MinimizationOperations.minimize(
+            : Operations.determinize(
                 new RegExp(getTerm().text(), flags).toAutomaton(), determinizeWorkLimit);
     return new CompletionWeight(this, automaton);
   }
