@@ -25,7 +25,8 @@ import java.util.function.Predicate;
  * runner itself is allowed to exit the JVM. All other security checks are handled by the default
  * security policy.
  *
- * <p>Use this with {@code -Djava.security.manager=org.apache.lucene.util.TestSecurityManager}.
+ * <p>Use this with {@code
+ * -Djava.security.manager=org.apache.lucene.tests.util.TestSecurityManager}.
  */
 public final class TestSecurityManager extends SecurityManager {
 
@@ -41,7 +42,7 @@ public final class TestSecurityManager extends SecurityManager {
 
   /**
    * Creates a new TestSecurityManager. This ctor is called on JVM startup, when {@code
-   * -Djava.security.manager=org.apache.lucene.util.TestSecurityManager} is passed to JVM.
+   * -Djava.security.manager=org.apache.lucene.tests.util.TestSecurityManager} is passed to JVM.
    */
   public TestSecurityManager() {
     super();
