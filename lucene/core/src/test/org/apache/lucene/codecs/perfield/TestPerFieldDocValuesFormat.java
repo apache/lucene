@@ -53,8 +53,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TestUtil;
 
 /** Basic tests of PerFieldDocValuesFormat */
 public class TestPerFieldDocValuesFormat extends BaseDocValuesFormatTestCase {

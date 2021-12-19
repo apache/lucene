@@ -18,7 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Calls check index on close. */
 // do NOT make any methods in this class synchronized, volatile

@@ -26,7 +26,7 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Utility class for asserting expected hits in tests. */
 public class CheckHits {

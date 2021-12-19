@@ -24,8 +24,8 @@ import static org.apache.lucene.geo.GeoTestUtil.nextPolygon;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Test Polygon2D impl */
 public class TestPolygon2D extends LuceneTestCase {

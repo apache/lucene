@@ -19,7 +19,7 @@ package org.apache.lucene.analysis;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Random;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Wraps a Reader, and can throw random or fixed exceptions, and spoon feed read chars. */
 public class MockReaderWrapper extends Reader {

@@ -34,8 +34,8 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestBlockJoinScorer extends LuceneTestCase {
   public void testScoreNone() throws IOException {

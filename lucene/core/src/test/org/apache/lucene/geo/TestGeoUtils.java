@@ -18,7 +18,7 @@ package org.apache.lucene.geo;
 
 import java.util.Locale;
 import java.util.Random;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.SloppyMath;
 
 /**

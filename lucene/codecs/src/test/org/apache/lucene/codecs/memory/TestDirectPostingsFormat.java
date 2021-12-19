@@ -18,7 +18,7 @@ package org.apache.lucene.codecs.memory;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BasePostingsFormatTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests DirectPostingsFormat */
 public class TestDirectPostingsFormat extends BasePostingsFormatTestCase {

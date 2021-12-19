@@ -27,8 +27,8 @@ import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.LuceneTestCase;
 
 /**
  * Test class to illustrate using IndexDeletionPolicy to provide multi-level rollback capability.

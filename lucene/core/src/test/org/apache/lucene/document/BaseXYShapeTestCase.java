@@ -33,7 +33,7 @@ import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.geo.XYPolygon;
 import org.apache.lucene.geo.XYRectangle;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Base test case for testing indexing and search functionality of cartesian geometry * */
 public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {

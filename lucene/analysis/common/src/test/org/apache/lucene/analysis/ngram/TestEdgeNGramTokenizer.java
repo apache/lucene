@@ -23,7 +23,7 @@ import java.util.Arrays;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests {@link EdgeNGramTokenizer} for correctness. */
 public class TestEdgeNGramTokenizer extends BaseTokenStreamTestCase {

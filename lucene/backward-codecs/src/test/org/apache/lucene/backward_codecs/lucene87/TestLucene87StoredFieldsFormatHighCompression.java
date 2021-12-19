@@ -25,7 +25,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 
 @Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene87StoredFieldsFormatHighCompression extends BaseStoredFieldsFormatTestCase {

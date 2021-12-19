@@ -43,7 +43,7 @@ import java.io.IOException;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.CannedTokenStream;
 import org.apache.lucene.analysis.Token;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestIntervalBuilder extends LuceneTestCase {
   public void testSimpleTerm() throws IOException {

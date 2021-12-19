@@ -20,7 +20,8 @@ import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.*;
-import org.apache.lucene.util.*;
+import org.apache.lucene.tests.util.English;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestStressIndexing extends LuceneTestCase {
   private abstract static class TimedThread extends Thread {

@@ -26,7 +26,7 @@ import org.apache.lucene.document.LongRangeDocValuesField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestRangeFieldsDocValuesQuery extends LuceneTestCase {
   public void testDoubleRangeDocValuesIntersectsQuery() throws IOException {

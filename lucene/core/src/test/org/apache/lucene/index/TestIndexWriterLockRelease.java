@@ -22,7 +22,7 @@ import java.nio.file.NoSuchFileException;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * This tests the patch for issue #LUCENE-715 (IndexWriter does not release its write lock when

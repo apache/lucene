@@ -26,7 +26,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Some tests for {@link ParallelLeafReader}s with empty indexes */
 public class TestParallelReaderEmptyIndex extends LuceneTestCase {

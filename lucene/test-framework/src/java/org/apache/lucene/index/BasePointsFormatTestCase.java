@@ -38,12 +38,12 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.Rethrow;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.Rethrow;
-import org.apache.lucene.util.TestUtil;
 
 /**
  * Abstract class to do basic tests for a points format. NOTE: This test focuses on the points impl,

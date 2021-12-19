@@ -22,7 +22,7 @@ import org.apache.lucene.document.IntRange;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Random testing for IntRange Queries. */
 public class TestIntRangeFieldQueries extends BaseRangeFieldQueryTestCase {

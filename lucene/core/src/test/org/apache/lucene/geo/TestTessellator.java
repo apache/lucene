@@ -20,7 +20,7 @@ import static org.apache.lucene.geo.GeoTestUtil.nextBoxNotCrossingDateline;
 
 import java.text.ParseException;
 import java.util.List;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Test case for the Polygon {@link Tessellator} class */
 public class TestTessellator extends LuceneTestCase {

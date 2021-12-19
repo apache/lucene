@@ -39,7 +39,7 @@ import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.geo.Tessellator;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Base test case for testing geospatial indexing and search functionality * */
 public abstract class BaseLatLonSpatialTestCase extends BaseSpatialTestCase {

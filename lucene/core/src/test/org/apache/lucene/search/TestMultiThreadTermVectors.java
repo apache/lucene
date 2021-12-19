@@ -26,8 +26,8 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.English;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.English;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMultiThreadTermVectors extends LuceneTestCase {
   private Directory directory;

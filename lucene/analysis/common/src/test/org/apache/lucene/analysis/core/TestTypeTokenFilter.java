@@ -26,7 +26,7 @@ import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
-import org.apache.lucene.util.English;
+import org.apache.lucene.tests.util.English;
 
 public class TestTypeTokenFilter extends BaseTokenStreamTestCase {
 

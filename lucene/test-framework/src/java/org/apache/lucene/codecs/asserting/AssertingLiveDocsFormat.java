@@ -22,8 +22,8 @@ import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.TestUtil;
 
 /** Just like the default live docs format but with additional asserts. */
 public class AssertingLiveDocsFormat extends LiveDocsFormat {

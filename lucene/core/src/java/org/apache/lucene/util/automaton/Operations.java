@@ -1223,7 +1223,7 @@ public final class Operations {
   }
 
   /** Reverses the automaton, returning the new initial states. */
-  static Automaton reverse(Automaton a, Set<Integer> initialStates) {
+  public static Automaton reverse(Automaton a, Set<Integer> initialStates) {
 
     if (Operations.isEmpty(a)) {
       return new Automaton();

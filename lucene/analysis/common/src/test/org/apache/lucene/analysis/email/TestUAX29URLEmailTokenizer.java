@@ -37,8 +37,8 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.standard.EmojiTokenizationTestUnicode_12_1;
 import org.apache.lucene.analysis.standard.WordBreakTestUnicode_12_1_0;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
 

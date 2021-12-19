@@ -18,7 +18,7 @@
 package org.apache.lucene.geo;
 
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestLine2D extends LuceneTestCase {
 

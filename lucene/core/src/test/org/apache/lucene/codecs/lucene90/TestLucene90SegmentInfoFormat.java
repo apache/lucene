@@ -19,7 +19,7 @@ package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestLucene90SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {

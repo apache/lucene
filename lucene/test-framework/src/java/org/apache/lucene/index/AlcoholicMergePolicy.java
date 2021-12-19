@@ -22,7 +22,7 @@ import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.Random;
 import java.util.TimeZone;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /**
  * Merge policy for testing, it is like an alcoholic. It drinks (merges) at night, and randomly

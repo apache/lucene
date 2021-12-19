@@ -31,8 +31,8 @@ import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.TestUtil;
 
 public class TestRemoveDuplicatesTokenFilter extends BaseTokenStreamTestCase {
 

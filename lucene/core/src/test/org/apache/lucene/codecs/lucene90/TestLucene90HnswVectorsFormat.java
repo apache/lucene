@@ -23,7 +23,7 @@ import static org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat.DEFAUL
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override

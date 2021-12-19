@@ -28,9 +28,9 @@ import static org.apache.lucene.geo.GeoUtils.MIN_LAT_INCL;
 import static org.apache.lucene.geo.GeoUtils.MIN_LON_INCL;
 
 import java.util.Random;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.TestUtil;
 
 /** Tests methods in {@link GeoEncodingUtils} */
 public class TestGeoEncodingUtils extends LuceneTestCase {

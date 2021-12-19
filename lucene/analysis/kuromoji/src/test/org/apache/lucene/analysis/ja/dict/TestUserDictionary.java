@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ja.dict;
 import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.analysis.ja.TestJapaneseTokenizer;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestUserDictionary extends LuceneTestCase {

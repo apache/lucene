@@ -34,8 +34,8 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase.Nightly;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests Lucene60PointsFormat */
 @Nightly // N-2 formats are only tested on nightly runs

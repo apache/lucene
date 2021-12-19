@@ -26,11 +26,11 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
-import org.apache.lucene.util.LuceneTestCase.SuppressFileSystems;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressFileSystems;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Test that the default codec detects bit flips at open or checkIntegrity time. */
 @SuppressFileSystems("ExtrasFS")

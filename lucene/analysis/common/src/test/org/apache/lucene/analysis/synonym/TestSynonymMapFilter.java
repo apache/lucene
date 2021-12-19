@@ -35,8 +35,8 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.tokenattributes.*;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.CharsRefBuilder;
-import org.apache.lucene.util.TestUtil;
 
 @Deprecated
 public class TestSynonymMapFilter extends BaseTokenStreamTestCase {

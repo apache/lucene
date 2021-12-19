@@ -29,7 +29,7 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.util.English;
+import org.apache.lucene.tests.util.English;
 
 public class TestStopFilter extends BaseTokenStreamTestCase {
 

@@ -32,8 +32,8 @@ import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestPKIndexSplitter extends LuceneTestCase {
 

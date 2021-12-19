@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.mockfile.FilterFileSystemProvider;
 import org.apache.lucene.mockfile.FilterPath;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple test methods for IOUtils */
 public class TestIOUtils extends LuceneTestCase {

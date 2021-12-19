@@ -18,7 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * Used to create an output stream that will throw an IOException on fake disk full, track max disk

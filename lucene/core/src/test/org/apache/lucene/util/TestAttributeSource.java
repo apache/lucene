@@ -22,6 +22,7 @@ import java.util.List;
 import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.*;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestAttributeSource extends LuceneTestCase {
 

@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.util.fst;
 
-import static org.apache.lucene.util.fst.FSTTester.getRandomString;
-import static org.apache.lucene.util.fst.FSTTester.simpleRandomString;
-import static org.apache.lucene.util.fst.FSTTester.toIntsRef;
+import static org.apache.lucene.tests.util.fst.FSTTester.getRandomString;
+import static org.apache.lucene.tests.util.fst.FSTTester.simpleRandomString;
+import static org.apache.lucene.tests.util.fst.FSTTester.toIntsRef;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -61,14 +61,15 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.fst.FSTTester;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;

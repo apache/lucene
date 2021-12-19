@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.util.LuceneTestCase.usually;
+import static org.apache.lucene.tests.util.LuceneTestCase.usually;
 
 import java.io.IOException;
 import java.util.Random;

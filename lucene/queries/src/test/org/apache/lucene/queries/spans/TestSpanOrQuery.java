@@ -18,7 +18,7 @@ package org.apache.lucene.queries.spans;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.QueryUtils;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Basic tests for SpanOrQuery */
 public class TestSpanOrQuery extends LuceneTestCase {

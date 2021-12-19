@@ -32,10 +32,10 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LongBitSet;
-import org.apache.lucene.util.TestUtil;
 
 /** Just like the default but with additional asserts. */
 public class AssertingDocValuesFormat extends DocValuesFormat {

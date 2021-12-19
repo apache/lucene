@@ -35,9 +35,9 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SloppyMath;
-import org.apache.lucene.util.TestUtil;
 
 /** Simple tests for {@link LatLonDocValuesField#newDistanceSort} */
 public class TestLatLonPointDistanceSort extends LuceneTestCase {

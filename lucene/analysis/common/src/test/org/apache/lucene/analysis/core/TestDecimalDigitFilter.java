@@ -22,8 +22,8 @@ import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SparseFixedBitSet;
-import org.apache.lucene.util.TestUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 

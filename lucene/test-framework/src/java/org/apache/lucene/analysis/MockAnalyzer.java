@@ -19,7 +19,7 @@ package org.apache.lucene.analysis;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 
 /**

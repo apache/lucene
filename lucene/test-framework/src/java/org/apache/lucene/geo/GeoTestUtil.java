@@ -28,9 +28,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.zip.GZIPInputStream;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;
-import org.apache.lucene.util.TestUtil;
 
 /** static methods for testing geo */
 public class GeoTestUtil {
