@@ -69,12 +69,6 @@ subprojects {
               "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
           ]
 
-          // Only apply automatic module name to jar task.
-          if (task.name in ["jar"]) {
-            manifestAttrs["Automatic-Module-Name"] =
-              "${->  project.path.replaceFirst(/^:lucene/, Matcher.quoteReplacement(project.group)).replace(':', '.').replace('-', '_')}"
-          }
-
           manifest {
             attributes(manifestAttrs)
           }
@@ -87,30 +81,4 @@ subprojects {
             })
           }
       }
-}
-
-configure(rootProject) {
-  tasks.register("showModuleNames", { showModuleTask ->
-    def allJarTasks = []
-
-    rootProject.subprojects.each { subproject ->
-      subproject.tasks.matching { it.name == 'jar' }.all {
-        allJarTasks.add it
-      }
-    }
-
-    dependsOn allJarTasks
-
-    doFirst {
-      allJarTasks.each { jarTask ->
-        File jarFile = jarTask.outputs.files.singleFile
-        try (def jar = new JarFile(jarFile)) {
-          logger.lifecycle(String.format(Locale.ROOT,
-              "%-50s -> %s",
-              jarFile.name,
-              jar.manifest.mainAttributes.getValue("Automatic-Module-Name")))
-        }
-      }
-    }
-  })
 }
