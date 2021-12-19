@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.blockterms;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.BasePostingsFormatTestCase;
+import org.apache.lucene.tests.codecs.blockterms.LuceneFixedGap;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Basic tests of a PF using FixedGap terms dictionary */

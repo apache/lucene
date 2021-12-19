@@ -14,22 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.blockterms;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BasePostingsFormatTestCase;
-import org.apache.lucene.tests.codecs.blockterms.LuceneVarGapDocFreqInterval;
-import org.apache.lucene.tests.util.TestUtil;
-
-/** Basic tests of a PF using VariableGap terms dictionary (fixed interval, docFreq threshold) */
-public class TestVarGapFixedIntervalPostingsFormat extends BasePostingsFormatTestCase {
-  private final Codec codec =
-      TestUtil.alwaysPostingsFormat(
-          new LuceneVarGapDocFreqInterval(
-              TestUtil.nextInt(random(), 1, 100), TestUtil.nextInt(random(), 1, 1000)));
-
-  @Override
-  protected Codec getCodec() {
-    return codec;
-  }
-}
+/** Codecs for testing that support {@link org.apache.lucene.codecs.blockterms}. */
+package org.apache.lucene.tests.codecs.blockterms;
