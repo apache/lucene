@@ -91,7 +91,7 @@ configure(project(":lucene:core")) {
     tasks.named('compileJava').configure {
       sourceCompatibility = 18
       targetCompatibility = 18
-      options.compilerArgs += ["--release", 18 as String,  "--add-modules", "jdk.incubator.foreign"]
+      options.compilerArgs += ["--release", 18 as String]
       options.compilerArgs -= "-Werror"
     }
   }
