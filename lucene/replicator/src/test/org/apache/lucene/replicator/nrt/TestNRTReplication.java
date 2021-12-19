@@ -43,7 +43,6 @@ import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.TestRuleIgnoreTestSuites;
 import org.apache.lucene.util.TestUtil;
 
-@AwaitsFix(bugUrl = "TODO: does not work with incubating JDK module")
 // MockRandom's .sd file has no index header/footer:
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
