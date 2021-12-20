@@ -167,7 +167,7 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   /** Get lower/upper bounds for the value at a given index without hitting the direct reader. */
   private long[] getBounds(long index) {
     final int block = Math.toIntExact(index >>> blockShift);
-    final long blockIndex = index & ((1 << blockShift) - 1);
+    final long blockIndex = index & blockMask;
     final long lowerBound = mins[block] + (long) (avgs[block] * blockIndex);
     final long upperBound = lowerBound + (1L << bpvs[block]) - 1;
     if (bpvs[block] == 64 || upperBound < lowerBound) { // overflow
