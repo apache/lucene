@@ -18,6 +18,7 @@ package org.apache.lucene.internal.tests;
 
 import java.io.IOException;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentCommitInfo;
 
 /**
@@ -25,27 +26,19 @@ import org.apache.lucene.index.SegmentCommitInfo;
  *
  * @lucene.internal
  */
-public abstract class IndexWriterSecrets {
-  static final Object PRIVATE_ACCESS_TOKEN = new Object();
+public interface IndexWriterAccess {
+  String segString(IndexWriter iw);
 
-  protected IndexWriterSecrets(Object accessToken) {
-    if (accessToken != PRIVATE_ACCESS_TOKEN) {
-      throw new RuntimeException("Use static factory methods to instantiate the secrets accessor.");
-    }
-  }
+  int getSegmentCount(IndexWriter iw);
 
-  public abstract String segString();
+  boolean isClosed(IndexWriter iw);
 
-  public abstract int getSegmentCount();
-
-  public abstract boolean isClosed();
-
-  public abstract DirectoryReader getReader(boolean applyDeletions, boolean writeAllDeletes)
+  DirectoryReader getReader(IndexWriter iw, boolean applyDeletions, boolean writeAllDeletes)
       throws IOException;
 
-  public abstract int getDocWriterThreadPoolSize();
+  int getDocWriterThreadPoolSize(IndexWriter iw);
 
-  public abstract boolean isDeleterClosed();
+  boolean isDeleterClosed(IndexWriter iw);
 
-  public abstract SegmentCommitInfo newestSegment();
+  SegmentCommitInfo newestSegment(IndexWriter iw);
 }

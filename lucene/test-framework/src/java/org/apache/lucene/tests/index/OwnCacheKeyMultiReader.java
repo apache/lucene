@@ -31,7 +31,7 @@ public final class OwnCacheKeyMultiReader extends MultiReader {
 
   private final CacheHelper cacheHelper =
       new CacheHelper() {
-        private final CacheKey cacheKey = TestSecrets.getIndexPackageSecrets().newCacheKey();
+        private final CacheKey cacheKey = TestSecrets.getIndexPackageAccess().newCacheKey();
 
         @Override
         public CacheKey getKey() {

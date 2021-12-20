@@ -2290,7 +2290,7 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.internal
    */
-  public static void checkImpacts(Impacts impacts, int lastTarget) {
+  static void checkImpacts(Impacts impacts, int lastTarget) {
     final int numLevels = impacts.numLevels();
     if (numLevels < 1) {
       throw new CheckIndexException("The number of levels must be >= 1, got " + numLevels);

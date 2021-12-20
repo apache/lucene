@@ -22,7 +22,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -43,6 +42,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -518,7 +518,8 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert docID() >= 0 || lastShallowTarget >= 0
           : "Cannot get impacts until the iterator is positioned or advanceShallow has been called";
       Impacts impacts = in.getImpacts();
-      CheckIndex.checkImpacts(impacts, Math.max(docID(), lastShallowTarget));
+      TestSecrets.getIndexPackageAccess()
+          .checkImpacts(impacts, Math.max(docID(), lastShallowTarget));
       return new AssertingImpacts(impacts, this);
     }
 

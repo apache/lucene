@@ -253,7 +253,7 @@ public class RandomIndexWriter implements Closeable {
       System.out.println(
           "RIW.add/updateDocument: now flushing the largest writer at docCount=" + docCount);
     }
-    int threadPoolSize = TestSecrets.getSecrets(w).getDocWriterThreadPoolSize();
+    int threadPoolSize = TestSecrets.getIndexWriterAccess().getDocWriterThreadPoolSize(w);
     int numFlushes = Math.min(1, r.nextInt(threadPoolSize + 1));
     for (int i = 0; i < numFlushes; i++) {
       if (w.flushNextBuffer() == false) {
@@ -440,8 +440,8 @@ public class RandomIndexWriter implements Closeable {
 
   private void doRandomForceMerge() throws IOException {
     if (doRandomForceMerge) {
-      var indexWriterSecrets = TestSecrets.getSecrets(w);
-      final int segCount = indexWriterSecrets.getSegmentCount();
+      var indexWriterSecrets = TestSecrets.getIndexWriterAccess();
+      final int segCount = indexWriterSecrets.getSegmentCount(w);
       if (r.nextBoolean() || segCount == 0) {
         // full forceMerge
         if (LuceneTestCase.VERBOSE) {
@@ -456,8 +456,8 @@ public class RandomIndexWriter implements Closeable {
         }
         w.forceMerge(limit);
         if (limit == 1 || (config.getMergePolicy() instanceof TieredMergePolicy) == false) {
-          assert !doRandomForceMergeAssert || indexWriterSecrets.getSegmentCount() <= limit
-              : "limit=" + limit + " actual=" + indexWriterSecrets.getSegmentCount();
+          assert !doRandomForceMergeAssert || indexWriterSecrets.getSegmentCount(w) <= limit
+              : "limit=" + limit + " actual=" + indexWriterSecrets.getSegmentCount(w);
         }
       } else {
         if (LuceneTestCase.VERBOSE) {
@@ -483,7 +483,7 @@ public class RandomIndexWriter implements Closeable {
       if (r.nextInt(5) == 1) {
         w.commit();
       }
-      return TestSecrets.getSecrets(w).getReader(applyDeletions, writeAllDeletes);
+      return TestSecrets.getIndexWriterAccess().getReader(w, applyDeletions, writeAllDeletes);
     } else {
       if (LuceneTestCase.VERBOSE) {
         System.out.println("RIW.getReader: open new reader");
@@ -497,7 +497,7 @@ public class RandomIndexWriter implements Closeable {
           return reader;
         }
       } else {
-        return TestSecrets.getSecrets(w).getReader(applyDeletions, writeAllDeletes);
+        return TestSecrets.getIndexWriterAccess().getReader(w, applyDeletions, writeAllDeletes);
       }
     }
   }
@@ -511,13 +511,15 @@ public class RandomIndexWriter implements Closeable {
   public void close() throws IOException {
     boolean success = false;
     try {
-      var indexWriterSecrets = TestSecrets.getSecrets(w);
-      if (indexWriterSecrets.isClosed() == false) {
+      var indexWriterSecrets = TestSecrets.getIndexWriterAccess();
+      if (indexWriterSecrets.isClosed(w) == false) {
         LuceneTestCase.maybeChangeLiveIndexWriterConfig(r, config);
       }
       // if someone isn't using getReader() API, we want to be sure to
       // forceMerge since presumably they might open a reader on the dir.
-      if (getReaderCalled == false && r.nextInt(8) == 2 && indexWriterSecrets.isClosed() == false) {
+      if (getReaderCalled == false
+          && r.nextInt(8) == 2
+          && indexWriterSecrets.isClosed(w) == false) {
         doRandomForceMerge();
         if (config.getCommitOnClose() == false) {
           // index may have changed, must commit the changes, or otherwise they are discarded by the

@@ -16,36 +16,90 @@
  */
 package org.apache.lucene.internal.tests;
 
+import java.util.Objects;
+import java.util.function.Consumer;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentReader;
 
-/** A set of static methods returning test secret accessors. */
+/**
+ * A set of static methods returning accessors for internal, package-private functionality in
+ * Lucene.
+ */
 public final class TestSecrets {
-  private TestSecrets() {}
+  /*
+   * The JDK uses unsafe to ensure the secrets-initializing classes have their static blocks
+   * invoked. We could just leverage the JLS and invoke a static method (or a constructor) on the
+   * class but the method below seems simpler and has no side-effects.
+   */
+  static {
+    Consumer<Class<?>> ensureInitialized =
+        clazz -> {
+          try {
+            // A no-op forName call has a side-effect of initializing the class. This only happens
+            // once and has no side-effects.
+            Class.forName(clazz.getName());
+          } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+          }
+        };
 
-  /** Return the accessor to internal secrets for an {@link IndexWriter}. */
-  public static IndexWriterSecrets getSecrets(IndexWriter writer) {
-    return (IndexWriterSecrets) writer.getTestSecrets(IndexWriterSecrets.PRIVATE_ACCESS_TOKEN);
+    ensureInitialized.accept(ConcurrentMergeScheduler.class);
+    ensureInitialized.accept(SegmentReaderAccess.class);
+    ensureInitialized.accept(IndexWriter.class);
   }
 
+  private static IndexPackageAccess indexPackageAccess;
+  private static ConcurrentMergeSchedulerAccess cmsAccess;
+  private static SegmentReaderAccess segmentReaderAccess;
+  private static IndexWriterAccess indexWriterAccess;
+
+  private TestSecrets() {}
+
   /** Return the accessor to internal secrets for an {@link IndexReader}. */
-  public static IndexPackageSecrets getIndexPackageSecrets() {
-    return (IndexPackageSecrets)
-        org.apache.lucene.index.PackageSecrets.getTestSecrets(
-            IndexPackageSecrets.PRIVATE_ACCESS_TOKEN);
+  public static IndexPackageAccess getIndexPackageAccess() {
+    return Objects.requireNonNull(indexPackageAccess);
+  }
+
+  /** Return the accessor to internal secrets for an {@link ConcurrentMergeScheduler}. */
+  public static ConcurrentMergeSchedulerAccess getConcurrentMergeSchedulerAccess() {
+    return Objects.requireNonNull(cmsAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link SegmentReader}. */
-  public static SegmentReaderSecrets getSecrets(SegmentReader segmentReader) {
-    return (SegmentReaderSecrets)
-        segmentReader.getTestSecrets(SegmentReaderSecrets.PRIVATE_ACCESS_TOKEN);
+  public static SegmentReaderAccess getSegmentReaderAccess() {
+    return Objects.requireNonNull(segmentReaderAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link IndexWriter}. */
-  public static ConcurrentMergeSchedulerSecrets getSecrets(ConcurrentMergeScheduler scheduler) {
-    return (ConcurrentMergeSchedulerSecrets)
-        scheduler.getTestSecrets(ConcurrentMergeSchedulerSecrets.PRIVATE_ACCESS_TOKEN);
+  public static IndexWriterAccess getIndexWriterAccess() {
+    return Objects.requireNonNull(indexWriterAccess);
+  }
+
+  public static void setIndexWriterAccess(IndexWriterAccess indexWriterAccess) {
+    ensureNull(TestSecrets.indexWriterAccess);
+    TestSecrets.indexWriterAccess = indexWriterAccess;
+  }
+
+  public static void setIndexPackageAccess(IndexPackageAccess indexPackageAccess) {
+    ensureNull(TestSecrets.indexPackageAccess);
+    TestSecrets.indexPackageAccess = indexPackageAccess;
+  }
+
+  public static void setConcurrentMergeSchedulerAccess(ConcurrentMergeSchedulerAccess cmsAccess) {
+    ensureNull(TestSecrets.cmsAccess);
+    TestSecrets.cmsAccess = cmsAccess;
+  }
+
+  public static void setSegmentReaderAccess(SegmentReaderAccess segmentReaderAccess) {
+    ensureNull(TestSecrets.segmentReaderAccess);
+    TestSecrets.segmentReaderAccess = segmentReaderAccess;
+  }
+
+  private static void ensureNull(Object ob) {
+    if (ob != null) {
+      throw new AssertionError("The accessor is already set.");
+    }
   }
 }

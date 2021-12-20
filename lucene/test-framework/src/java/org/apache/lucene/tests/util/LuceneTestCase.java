@@ -736,12 +736,12 @@ public abstract class LuceneTestCase extends Assert {
    * one index; call {@link #restoreIndexWriterMaxDocs} once your test is done.
    */
   public void setIndexWriterMaxDocs(int limit) {
-    TestSecrets.getIndexPackageSecrets().setIndexWriterMaxDocs(limit);
+    TestSecrets.getIndexPackageAccess().setIndexWriterMaxDocs(limit);
   }
 
   /** Returns to the default {@link IndexWriter#MAX_DOCS} limit. */
   public void restoreIndexWriterMaxDocs() {
-    TestSecrets.getIndexPackageSecrets().setIndexWriterMaxDocs(IndexWriter.MAX_DOCS);
+    TestSecrets.getIndexPackageAccess().setIndexWriterMaxDocs(IndexWriter.MAX_DOCS);
   }
 
   // -----------------------------------------------------------------

@@ -42,7 +42,6 @@ import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.internal.tests.IndexWriterSecrets;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
@@ -78,7 +77,6 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
   protected Directory dir;
   protected IndexWriter writer;
-  protected IndexWriterSecrets writerSecrets;
 
   private static class SubDocs {
     public final String packID;
@@ -410,7 +408,8 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                                 + " si="
                                 + segReader.getSegmentInfo(),
                             !assertMergedSegmentsWarmed
-                                || warmed.containsKey(TestSecrets.getSecrets(segReader).getCore()));
+                                || warmed.containsKey(
+                                    TestSecrets.getSegmentReaderAccess().getCore(segReader)));
                       }
                     }
                     if (s.getIndexReader().numDocs() > 0) {
@@ -516,7 +515,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           if (VERBOSE) {
             System.out.println("TEST: now warm merged reader=" + reader);
           }
-          var core = TestSecrets.getSecrets((SegmentReader) reader).getCore();
+          var core = TestSecrets.getSegmentReaderAccess().getCore((SegmentReader) reader);
           warmed.put(core, Boolean.TRUE);
           final int maxDoc = reader.maxDoc();
           final Bits liveDocs = reader.getLiveDocs();
@@ -550,7 +549,6 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           });
     }
     writer = new IndexWriter(dir, conf);
-    writerSecrets = TestSecrets.getSecrets(writer);
     TestUtil.reduceOpenFiles(writer);
 
     final ExecutorService es =
@@ -717,7 +715,12 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     assertFalse(doFail);
 
     assertEquals(
-        "index=" + writerSecrets.segString() + " addCount=" + addCount + " delCount=" + delCount,
+        "index="
+            + TestSecrets.getIndexWriterAccess().segString(writer)
+            + " addCount="
+            + addCount
+            + " delCount="
+            + delCount,
         addCount.get() - delCount.get(),
         s.getIndexReader().numDocs());
     releaseSearcher(s);
@@ -725,7 +728,12 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     writer.commit();
 
     assertEquals(
-        "index=" + writerSecrets.segString() + " addCount=" + addCount + " delCount=" + delCount,
+        "index="
+            + TestSecrets.getIndexWriterAccess().segString(writer)
+            + " addCount="
+            + addCount
+            + " delCount="
+            + delCount,
         addCount.get() - delCount.get(),
         writer.getDocStats().numDocs);
 

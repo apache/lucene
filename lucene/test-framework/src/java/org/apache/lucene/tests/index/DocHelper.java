@@ -298,7 +298,7 @@ public class DocHelper {
     // writer.setNoCFSRatio(0.0);
     writer.addDocument(doc);
     writer.commit();
-    SegmentCommitInfo info = TestSecrets.getSecrets(writer).newestSegment();
+    SegmentCommitInfo info = TestSecrets.getIndexWriterAccess().newestSegment(writer);
     writer.close();
     return info;
   }

@@ -65,7 +65,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     addAttributes(fi);
 
     FieldInfos infos =
-        TestSecrets.getIndexPackageSecrets().newFieldInfosBuilder(null).add(fi).finish();
+        TestSecrets.getIndexPackageAccess().newFieldInfosBuilder(null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -94,7 +94,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     fi.putAttribute("bar", "baz");
 
     FieldInfos infos =
-        TestSecrets.getIndexPackageSecrets().newFieldInfosBuilder(null).add(fi).finish();
+        TestSecrets.getIndexPackageAccess().newFieldInfosBuilder(null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -135,7 +135,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     addAttributes(fi);
 
     FieldInfos infos =
-        TestSecrets.getIndexPackageSecrets().newFieldInfosBuilder(null).add(fi).finish();
+        TestSecrets.getIndexPackageAccess().newFieldInfosBuilder(null).add(fi).finish();
 
     fail.setDoFail();
     expectThrows(
@@ -171,7 +171,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     addAttributes(fi);
 
     FieldInfos infos =
-        TestSecrets.getIndexPackageSecrets().newFieldInfosBuilder(null).add(fi).finish();
+        TestSecrets.getIndexPackageAccess().newFieldInfosBuilder(null).add(fi).finish();
 
     fail.setDoFail();
     expectThrows(
@@ -207,7 +207,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     addAttributes(fi);
 
     FieldInfos infos =
-        TestSecrets.getIndexPackageSecrets().newFieldInfosBuilder(null).add(fi).finish();
+        TestSecrets.getIndexPackageAccess().newFieldInfosBuilder(null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -245,7 +245,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     addAttributes(fi);
 
     FieldInfos infos =
-        TestSecrets.getIndexPackageSecrets().newFieldInfosBuilder(null).add(fi).finish();
+        TestSecrets.getIndexPackageAccess().newFieldInfosBuilder(null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -278,7 +278,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     String softDeletesField =
         random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
 
-    var builder = TestSecrets.getIndexPackageSecrets().newFieldInfosBuilder(softDeletesField);
+    var builder = TestSecrets.getIndexPackageAccess().newFieldInfosBuilder(softDeletesField);
 
     for (String field : fieldNames) {
       IndexableFieldType fieldType = randomFieldType(random());

@@ -16,23 +16,29 @@
  */
 package org.apache.lucene.internal.tests;
 
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Impacts;
+import org.apache.lucene.index.IndexReader;
+
 /**
- * Access to {@link org.apache.lucene.index.SegmentReader} internals exposed to the test framework.
+ * Access to {@link org.apache.lucene.index} package internals exposed to the test framework.
  *
  * @lucene.internal
  */
-public abstract class SegmentReaderSecrets {
-  static final Object PRIVATE_ACCESS_TOKEN = new Object();
+public interface IndexPackageAccess {
+  IndexReader.CacheKey newCacheKey();
 
-  protected SegmentReaderSecrets(Object accessToken) {
-    if (accessToken != PRIVATE_ACCESS_TOKEN) {
-      throw new RuntimeException("Use static factory methods to instantiate the secrets accessor.");
-    }
+  void setIndexWriterMaxDocs(int limit);
+
+  FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName);
+
+  void checkImpacts(Impacts impacts, int max);
+
+  /** Public type exposing {@link FieldInfo} internal builders. */
+  interface FieldInfosBuilder {
+    FieldInfosBuilder add(FieldInfo fi);
+
+    FieldInfos finish();
   }
-
-  /**
-   * @return Returns the package-private {@code SegmentCoreReaders} associated with the segment
-   *     reader.
-   */
-  public abstract Object getCore();
 }

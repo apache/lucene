@@ -654,7 +654,8 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
     if (expectExceptions) {
       MergeScheduler ms = iwc.getMergeScheduler();
       if (ms instanceof ConcurrentMergeScheduler) {
-        TestSecrets.getSecrets(((ConcurrentMergeScheduler) ms)).setSuppressExceptions();
+        TestSecrets.getConcurrentMergeSchedulerAccess()
+            .setSuppressExceptions((ConcurrentMergeScheduler) ms);
       }
     }
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
@@ -703,7 +704,8 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       if (expectExceptions) {
         MergeScheduler ms = iwc.getMergeScheduler();
         if (ms instanceof ConcurrentMergeScheduler) {
-          TestSecrets.getSecrets(((ConcurrentMergeScheduler) ms)).setSuppressExceptions();
+          TestSecrets.getConcurrentMergeSchedulerAccess()
+              .setSuppressExceptions((ConcurrentMergeScheduler) ms);
         }
       }
       w = new RandomIndexWriter(random(), dir, iwc);

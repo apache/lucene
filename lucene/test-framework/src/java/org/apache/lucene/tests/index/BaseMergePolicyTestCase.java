@@ -115,7 +115,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
         DirectoryReader.open(writer).close();
       }
       for (int i = 5; i >= 0; --i) {
-        final int segmentCount = TestSecrets.getSecrets(writer).getSegmentCount();
+        final int segmentCount = TestSecrets.getIndexWriterAccess().getSegmentCount(writer);
         final int maxNumSegments = i == 0 ? 1 : TestUtil.nextInt(random(), 1, 10);
         mayMerge.set(segmentCount > maxNumSegments);
         if (VERBOSE) {

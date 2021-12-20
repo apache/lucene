@@ -16,20 +16,18 @@
  */
 package org.apache.lucene.internal.tests;
 
+import org.apache.lucene.index.SegmentReader;
+
 /**
- * Access to {@link org.apache.lucene.index.ConcurrentMergeScheduler} internals exposed to the test
- * framework.
+ * Access to {@link org.apache.lucene.index.SegmentReader} internals exposed to the test framework.
  *
  * @lucene.internal
  */
-public abstract class ConcurrentMergeSchedulerSecrets {
-  static final Object PRIVATE_ACCESS_TOKEN = new Object();
-
-  protected ConcurrentMergeSchedulerSecrets(Object accessToken) {
-    if (accessToken != PRIVATE_ACCESS_TOKEN) {
-      throw new RuntimeException("Use static factory methods to instantiate the secrets accessor.");
-    }
-  }
-
-  public abstract void setSuppressExceptions();
+public interface SegmentReaderAccess {
+  /**
+   * @return Returns the package-private {@code SegmentCoreReaders} associated with the segment
+   *     reader. We don't use the actual type anywhere, so just return it as an object, without
+   *     type.
+   */
+  Object getCore(SegmentReader segmentReader);
 }

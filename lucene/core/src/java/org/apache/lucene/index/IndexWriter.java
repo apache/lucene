@@ -55,7 +55,9 @@ import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
 import org.apache.lucene.index.DocValuesUpdate.NumericDocValuesUpdate;
 import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.internal.tests.IndexWriterSecrets;
+import org.apache.lucene.internal.tests.IndexPackageAccess;
+import org.apache.lucene.internal.tests.IndexWriterAccess;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -6275,56 +6277,83 @@ public class IndexWriter
     }
   }
 
-  /**
-   * This method returns a test accessor that exposes some of index writer internals to test
-   * infrastructure. Everything here is internal, subject to change without notice and not publicly
-   * accessible.
-   *
-   * <p>Within the test infrastructure, do not call this method directly, instead use the static
-   * factory methods on the corresponding {@code TestSecrets} class.
-   *
-   * @param accessToken A secret token to only permit instantiation via the corresponding secrets
-   *     class.
-   * @return An instance of the secrets class; the return type is hidden from the public API.
-   * @lucene.internal
-   */
-  public final Object getTestSecrets(Object accessToken) {
-    return new IndexWriterSecrets(accessToken) {
-      @Override
-      public String segString() {
-        return IndexWriter.this.segString();
-      }
+  static {
+    TestSecrets.setIndexWriterAccess(
+        new IndexWriterAccess() {
+          @Override
+          public String segString(IndexWriter iw) {
+            return iw.segString();
+          }
 
-      @Override
-      public int getSegmentCount() {
-        return IndexWriter.this.getSegmentCount();
-      }
+          @Override
+          public int getSegmentCount(IndexWriter iw) {
+            return iw.getSegmentCount();
+          }
 
-      @Override
-      public boolean isClosed() {
-        return IndexWriter.this.isClosed();
-      }
+          @Override
+          public boolean isClosed(IndexWriter iw) {
+            return iw.isClosed();
+          }
 
-      @Override
-      public DirectoryReader getReader(boolean applyDeletions, boolean writeAllDeletes)
-          throws IOException {
-        return IndexWriter.this.getReader(applyDeletions, writeAllDeletes);
-      }
+          @Override
+          public DirectoryReader getReader(
+              IndexWriter iw, boolean applyDeletions, boolean writeAllDeletes) throws IOException {
+            return iw.getReader(applyDeletions, writeAllDeletes);
+          }
 
-      @Override
-      public int getDocWriterThreadPoolSize() {
-        return IndexWriter.this.docWriter.perThreadPool.size();
-      }
+          @Override
+          public int getDocWriterThreadPoolSize(IndexWriter iw) {
+            return iw.docWriter.perThreadPool.size();
+          }
 
-      @Override
-      public boolean isDeleterClosed() {
-        return IndexWriter.this.isDeleterClosed();
-      }
+          @Override
+          public boolean isDeleterClosed(IndexWriter iw) {
+            return iw.isDeleterClosed();
+          }
 
-      @Override
-      public SegmentCommitInfo newestSegment() {
-        return IndexWriter.this.newestSegment();
-      }
-    };
+          @Override
+          public SegmentCommitInfo newestSegment(IndexWriter iw) {
+            return iw.newestSegment();
+          }
+        });
+
+    // Piggyback general package-scope accessors.
+    TestSecrets.setIndexPackageAccess(
+        new IndexPackageAccess() {
+
+          @Override
+          public IndexReader.CacheKey newCacheKey() {
+            return new IndexReader.CacheKey();
+          }
+
+          @Override
+          public void setIndexWriterMaxDocs(int limit) {
+            IndexWriter.setMaxDocs(limit);
+          }
+
+          @Override
+          public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
+            return new FieldInfosBuilder() {
+              private FieldInfos.Builder builder =
+                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+
+              @Override
+              public FieldInfosBuilder add(FieldInfo fi) {
+                builder.add(fi);
+                return this;
+              }
+
+              @Override
+              public FieldInfos finish() {
+                return builder.finish();
+              }
+            };
+          }
+
+          @Override
+          public void checkImpacts(Impacts impacts, int max) {
+            CheckIndex.checkImpacts(impacts, max);
+          }
+        });
   }
 }

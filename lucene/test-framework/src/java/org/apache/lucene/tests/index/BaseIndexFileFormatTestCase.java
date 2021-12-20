@@ -626,7 +626,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           // OK: writer was closed by abort; we just reopen now:
           dir.setRandomIOExceptionRateOnOpen(
               0.0); // disable exceptions on openInput until next iteration
-          assertTrue(TestSecrets.getSecrets(iw).isDeleterClosed());
+          assertTrue(TestSecrets.getIndexWriterAccess().isDeleterClosed(iw));
           assertTrue(allowAlreadyClosed);
           allowAlreadyClosed = false;
           conf = newIndexWriterConfig(analyzer);
@@ -667,7 +667,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             // OK: writer was closed by abort; we just reopen now:
             dir.setRandomIOExceptionRateOnOpen(
                 0.0); // disable exceptions on openInput until next iteration
-            assertTrue(TestSecrets.getSecrets(iw).isDeleterClosed());
+            assertTrue(TestSecrets.getIndexWriterAccess().isDeleterClosed(iw));
             assertTrue(allowAlreadyClosed);
             allowAlreadyClosed = false;
             conf = newIndexWriterConfig(analyzer);
