@@ -33,6 +33,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
@@ -297,7 +298,7 @@ public class DocHelper {
     // writer.setNoCFSRatio(0.0);
     writer.addDocument(doc);
     writer.commit();
-    SegmentCommitInfo info = writer.newestSegment();
+    SegmentCommitInfo info = TestSecrets.getSecrets(writer).newestSegment();
     writer.close();
     return info;
   }

@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.internal.tests.SegmentReaderSecrets;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
@@ -311,7 +312,7 @@ public final class SegmentReader extends CodecReader {
   private final Set<ClosedListener> readerClosedListeners = new CopyOnWriteArraySet<>();
 
   @Override
-  void notifyReaderClosedListeners() throws IOException {
+  protected void notifyReaderClosedListeners() throws IOException {
     synchronized (readerClosedListeners) {
       IOUtils.applyToAll(readerClosedListeners, l -> l.onClose(readerCacheHelper.getKey()));
     }
@@ -392,5 +393,26 @@ public final class SegmentReader extends CodecReader {
     if (core.cfsReader != null) {
       core.cfsReader.checkIntegrity();
     }
+  }
+
+  /**
+   * This method returns a test accessor that exposes class internals to test infrastructure.
+   * Everything here is internal, subject to change without notice and not publicly accessible.
+   *
+   * <p>Within the test infrastructure, do not call this method directly, instead use the static
+   * factory methods on the corresponding {@code TestSecrets} class.
+   *
+   * @param accessToken A secret token to only permit instantiation via the corresponding secrets
+   *     class.
+   * @return An instance of the secrets class; the return type is hidden from the public API.
+   * @lucene.internal
+   */
+  public Object getTestSecrets(Object accessToken) {
+    return new SegmentReaderSecrets(accessToken) {
+      @Override
+      public Object getCore() {
+        return SegmentReader.this.core;
+      }
+    };
   }
 }

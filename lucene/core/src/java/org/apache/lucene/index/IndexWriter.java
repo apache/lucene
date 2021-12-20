@@ -55,6 +55,7 @@ import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
 import org.apache.lucene.index.DocValuesUpdate.NumericDocValuesUpdate;
 import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.internal.tests.IndexWriterSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -6272,5 +6273,58 @@ public class IndexWriter
       assert Thread.holdsLock(IndexWriter.this);
       mergesEnabled = true;
     }
+  }
+
+  /**
+   * This method returns a test accessor that exposes some of index writer internals to test
+   * infrastructure. Everything here is internal, subject to change without notice and not publicly
+   * accessible.
+   *
+   * <p>Within the test infrastructure, do not call this method directly, instead use the static
+   * factory methods on the corresponding {@code TestSecrets} class.
+   *
+   * @param accessToken A secret token to only permit instantiation via the corresponding secrets
+   *     class.
+   * @return An instance of the secrets class; the return type is hidden from the public API.
+   * @lucene.internal
+   */
+  public final Object getTestSecrets(Object accessToken) {
+    return new IndexWriterSecrets(accessToken) {
+      @Override
+      public String segString() {
+        return IndexWriter.this.segString();
+      }
+
+      @Override
+      public int getSegmentCount() {
+        return IndexWriter.this.getSegmentCount();
+      }
+
+      @Override
+      public boolean isClosed() {
+        return IndexWriter.this.isClosed();
+      }
+
+      @Override
+      public DirectoryReader getReader(boolean applyDeletions, boolean writeAllDeletes)
+          throws IOException {
+        return IndexWriter.this.getReader(applyDeletions, writeAllDeletes);
+      }
+
+      @Override
+      public int getDocWriterThreadPoolSize() {
+        return IndexWriter.this.docWriter.perThreadPool.size();
+      }
+
+      @Override
+      public boolean isDeleterClosed() {
+        return IndexWriter.this.isDeleterClosed();
+      }
+
+      @Override
+      public SegmentCommitInfo newestSegment() {
+        return IndexWriter.this.newestSegment();
+      }
+    };
   }
 }

@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.util.IOUtils;
 
 /** A {@link MultiReader} that has its own cache key, occasionally useful for testing purposes. */
@@ -30,7 +31,7 @@ public final class OwnCacheKeyMultiReader extends MultiReader {
 
   private final CacheHelper cacheHelper =
       new CacheHelper() {
-        private final CacheKey cacheKey = new CacheKey();
+        private final CacheKey cacheKey = TestSecrets.getIndexPackageSecrets().newCacheKey();
 
         @Override
         public CacheKey getKey() {
@@ -55,7 +56,7 @@ public final class OwnCacheKeyMultiReader extends MultiReader {
   }
 
   @Override
-  void notifyReaderClosedListeners() throws IOException {
+  protected void notifyReaderClosedListeners() throws IOException {
     synchronized (readerClosedListeners) {
       IOUtils.applyToAll(readerClosedListeners, l -> l.onClose(cacheHelper.getKey()));
     }

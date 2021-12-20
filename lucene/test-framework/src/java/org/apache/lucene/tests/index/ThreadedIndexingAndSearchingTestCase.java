@@ -38,11 +38,12 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.SegmentCoreReaders;
 import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.tests.IndexWriterSecrets;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
@@ -77,6 +78,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
   protected Directory dir;
   protected IndexWriter writer;
+  protected IndexWriterSecrets writerSecrets;
 
   private static class SubDocs {
     public final String packID;
@@ -407,7 +409,8 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                                 + diagnostics
                                 + " si="
                                 + segReader.getSegmentInfo(),
-                            !assertMergedSegmentsWarmed || warmed.containsKey(segReader.core));
+                            !assertMergedSegmentsWarmed
+                                || warmed.containsKey(TestSecrets.getSecrets(segReader).getCore()));
                       }
                     }
                     if (s.getIndexReader().numDocs() > 0) {
@@ -479,8 +482,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
   protected boolean assertMergedSegmentsWarmed = true;
 
-  private final Map<SegmentCoreReaders, Boolean> warmed =
-      Collections.synchronizedMap(new WeakHashMap<SegmentCoreReaders, Boolean>());
+  private final Map<Object, Boolean> warmed = Collections.synchronizedMap(new WeakHashMap<>());
 
   public void runTest(String testName) throws Exception {
 
@@ -514,7 +516,8 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           if (VERBOSE) {
             System.out.println("TEST: now warm merged reader=" + reader);
           }
-          warmed.put(((SegmentReader) reader).core, Boolean.TRUE);
+          var core = TestSecrets.getSecrets((SegmentReader) reader).getCore();
+          warmed.put(core, Boolean.TRUE);
           final int maxDoc = reader.maxDoc();
           final Bits liveDocs = reader.getLiveDocs();
           int sum = 0;
@@ -547,6 +550,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           });
     }
     writer = new IndexWriter(dir, conf);
+    writerSecrets = TestSecrets.getSecrets(writer);
     TestUtil.reduceOpenFiles(writer);
 
     final ExecutorService es =
@@ -713,7 +717,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     assertFalse(doFail);
 
     assertEquals(
-        "index=" + writer.segString() + " addCount=" + addCount + " delCount=" + delCount,
+        "index=" + writerSecrets.segString() + " addCount=" + addCount + " delCount=" + delCount,
         addCount.get() - delCount.get(),
         s.getIndexReader().numDocs());
     releaseSearcher(s);
@@ -721,7 +725,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     writer.commit();
 
     assertEquals(
-        "index=" + writer.segString() + " addCount=" + addCount + " delCount=" + delCount,
+        "index=" + writerSecrets.segString() + " addCount=" + addCount + " delCount=" + delCount,
         addCount.get() - delCount.get(),
         writer.getDocStats().numDocs);
 

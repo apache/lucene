@@ -47,6 +47,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -653,7 +654,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
     if (expectExceptions) {
       MergeScheduler ms = iwc.getMergeScheduler();
       if (ms instanceof ConcurrentMergeScheduler) {
-        ((ConcurrentMergeScheduler) ms).setSuppressExceptions();
+        TestSecrets.getSecrets(((ConcurrentMergeScheduler) ms)).setSuppressExceptions();
       }
     }
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
@@ -702,7 +703,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       if (expectExceptions) {
         MergeScheduler ms = iwc.getMergeScheduler();
         if (ms instanceof ConcurrentMergeScheduler) {
-          ((ConcurrentMergeScheduler) ms).setSuppressExceptions();
+          TestSecrets.getSecrets(((ConcurrentMergeScheduler) ms)).setSuppressExceptions();
         }
       }
       w = new RandomIndexWriter(random(), dir, iwc);

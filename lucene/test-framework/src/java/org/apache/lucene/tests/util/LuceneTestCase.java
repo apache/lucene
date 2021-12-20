@@ -110,6 +110,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.*;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LRUQueryCache;
@@ -132,7 +133,6 @@ import org.apache.lucene.tests.index.AlcoholicMergePolicy;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
 import org.apache.lucene.tests.index.AssertingLeafReader;
 import org.apache.lucene.tests.index.FieldFilterLeafReader;
-import org.apache.lucene.tests.index.IndexWriterMaxDocsChanger;
 import org.apache.lucene.tests.index.MergingCodecReader;
 import org.apache.lucene.tests.index.MergingDirectoryReaderWrapper;
 import org.apache.lucene.tests.index.MismatchedDirectoryReader;
@@ -736,12 +736,12 @@ public abstract class LuceneTestCase extends Assert {
    * one index; call {@link #restoreIndexWriterMaxDocs} once your test is done.
    */
   public void setIndexWriterMaxDocs(int limit) {
-    IndexWriterMaxDocsChanger.setMaxDocs(limit);
+    TestSecrets.getIndexPackageSecrets().setIndexWriterMaxDocs(limit);
   }
 
   /** Returns to the default {@link IndexWriter#MAX_DOCS} limit. */
   public void restoreIndexWriterMaxDocs() {
-    IndexWriterMaxDocsChanger.restoreMaxDocs();
+    TestSecrets.getIndexPackageSecrets().setIndexWriterMaxDocs(IndexWriter.MAX_DOCS);
   }
 
   // -----------------------------------------------------------------

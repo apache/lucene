@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.index.MergePolicy.OneMerge;
+import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerSecrets;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
@@ -896,5 +897,26 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   private static String getSegmentName(MergePolicy.OneMerge merge) {
     return merge.info != null ? merge.info.info.name : "_na_";
+  }
+
+  /**
+   * This method returns a test accessor that exposes some internals to test infrastructure.
+   * Everything here is internal, subject to change without notice and not publicly accessible.
+   *
+   * <p>Within the test infrastructure, do not call this method directly, instead use the static
+   * factory methods on the corresponding {@code TestSecrets} class.
+   *
+   * @param accessToken A secret token to only permit instantiation via the corresponding secrets
+   *     class.
+   * @return An instance of the secrets class; the return type is hidden from the public API.
+   * @lucene.internal
+   */
+  public final Object getTestSecrets(Object accessToken) {
+    return new ConcurrentMergeSchedulerSecrets(accessToken) {
+      @Override
+      public void setSuppressExceptions() {
+        ConcurrentMergeScheduler.this.setSuppressExceptions();
+      }
+    };
   }
 }
