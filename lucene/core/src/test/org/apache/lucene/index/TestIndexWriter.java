@@ -4279,7 +4279,8 @@ public class TestIndexWriter extends LuceneTestCase {
         IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig());
         SearcherManager manager = new SearcherManager(writer, new SearcherFactory())) {
       CountDownLatch start = new CountDownLatch(1);
-      int numDocs = 100 + random().nextInt(500);
+      int numDocs =
+          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 60);
       AtomicLong maxCompletedSeqID = new AtomicLong(-1);
       Thread[] threads = new Thread[2 + random().nextInt(2)];
       for (int i = 0; i < threads.length; i++) {

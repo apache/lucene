@@ -594,7 +594,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
       Document justBodyDoc = new Document();
       justBodyDoc.add(doc.getField("body"));
       w.addDocument(justBodyDoc);
-      bytesIndexed += RamUsageTester.sizeOf(justBodyDoc);
+      bytesIndexed += RamUsageTester.ramUsed(justBodyDoc);
     }
 
     IndexReader r = w.getReader();

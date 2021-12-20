@@ -19,14 +19,30 @@ package org.apache.lucene.util.automaton;
 /** Automaton representation for matching UTF-8 byte[]. */
 public class ByteRunAutomaton extends RunAutomaton {
 
-  /** Converts incoming automaton to byte-based (UTF32ToUTF8) first */
+  /**
+   * Converts incoming automaton to byte-based (UTF32ToUTF8) first
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
+   */
   public ByteRunAutomaton(Automaton a) {
-    this(a, false, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    this(a, false);
   }
 
-  /** expert: if isBinary is true, the input is already byte-based */
-  public ByteRunAutomaton(Automaton a, boolean isBinary, int determinizeWorkLimit) {
-    super(isBinary ? a : new UTF32ToUTF8().convert(a), 256, determinizeWorkLimit);
+  /**
+   * expert: if isBinary is true, the input is already byte-based
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
+   */
+  public ByteRunAutomaton(Automaton a, boolean isBinary) {
+    super(isBinary ? a : convert(a), 256);
+  }
+
+  static Automaton convert(Automaton a) {
+    if (!a.isDeterministic()) {
+      throw new IllegalArgumentException("Automaton must be deterministic");
+    }
+    // we checked the input is a DFA, according to mike this determinization is contained :)
+    return Operations.determinize(new UTF32ToUTF8().convert(a), Integer.MAX_VALUE);
   }
 
   /** Returns true if the given byte array is accepted by this automaton */

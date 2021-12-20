@@ -139,9 +139,9 @@ public class RegexpQuery extends AutomatonQuery {
       int determinizeWorkLimit) {
     super(
         term,
-        new RegExp(term.text(), syntax_flags, match_flags)
-            .toAutomaton(provider, determinizeWorkLimit),
-        determinizeWorkLimit);
+        Operations.determinize(
+            new RegExp(term.text(), syntax_flags, match_flags).toAutomaton(provider),
+            determinizeWorkLimit));
   }
 
   /** Returns the regexp of this query wrapped in a Term. */

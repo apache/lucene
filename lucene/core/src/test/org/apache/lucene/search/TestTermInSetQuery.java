@@ -183,7 +183,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
       terms.add(newBytesRef(RandomStrings.randomUnicodeOfLength(random(), 10)));
     }
     TermInSetQuery query = new TermInSetQuery("f", terms);
-    final long actualRamBytesUsed = RamUsageTester.sizeOf(query);
+    final long actualRamBytesUsed = RamUsageTester.ramUsed(query);
     final long expectedRamBytesUsed = query.ramBytesUsed();
     // error margin within 5%
     assertEquals(expectedRamBytesUsed, actualRamBytesUsed, actualRamBytesUsed / 20);

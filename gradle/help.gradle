@@ -29,7 +29,7 @@ configure(rootProject) {
       ["Regeneration", "help/regeneration.txt", "How to refresh generated and derived resources."],
       ["Git", "help/git.txt", "Git assistance and guides."],
       ["IDEs", "help/IDEs.txt", "IDE support."],
-      ["GpgSigning", "help/gpgSigning.txt", "Signing artifacts with GPG."]
+      ["Publishing", "help/publishing.txt", "Maven and other artifact publishing, signing, etc."],
   ]
 
   helpFiles.each { section, path, sectionInfo ->
@@ -53,7 +53,7 @@ configure(rootProject) {
             "  gradlew :help%-16s # %s", section, sectionInfo)
       }
       println ""
-      println "For the impatient, build the project with 'gradlew assemble' or 'gradlew dev' "
+      println "For the impatient, build the project with 'gradlew assemble'"
     }
   }
 

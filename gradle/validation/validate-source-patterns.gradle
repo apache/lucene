@@ -61,44 +61,8 @@ def extensions = [
     'xsl',
 ]
 
-// Create source validation task local for each project's files.
-subprojects {
-  task validateSourcePatterns(type: ValidateSourcePatternsTask) { task ->
-    group = 'Verification'
-    description = 'Validate Source Patterns'
-
-    sourceFiles = fileTree(projectDir) {
-      extensions.each{
-        include "**/*.${it}"
-      }
-      
-      // Don't go into child projects (scanned separately).
-      childProjects.keySet().each{
-        exclude "${it}/**"
-      }
-
-      // default excludes.
-      exclude 'build/**'
-      exclude '**/.idea/**'
-
-      // ignore txt files in source resources and tests.
-      exclude 'src/**/*.txt'
-    }
-  }
-
-  // Add source validation to per-project checks as well.
-  check.dependsOn validateSourcePatterns
-}
-
-configure(project(':lucene:benchmark')) {
-  project.tasks.withType(ValidateSourcePatternsTask) {
-    sourceFiles.exclude 'data/**'
-    // Known .txt offenders.
-    sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
-  }
-}
-
-configure(rootProject) {
+// Create source validation task local to each project
+allprojects {
   task validateSourcePatterns(type: ValidateSourcePatternsTask) { task ->
     group = 'Verification'
     description = 'Validate Source Patterns'
@@ -115,26 +79,56 @@ configure(rootProject) {
 
       // default excludes.
       exclude '**/build/**'
+      exclude '**/.idea/**'
 
-      // ourselves :-)
-      exclude 'gradle/validation/validate-source-patterns.gradle'
+      if (project == rootProject) {
+        // ourselves :-)
+        exclude 'gradle/validation/validate-source-patterns.gradle'
+
+        // gradle and idea folders.
+        exclude '.gradle/**'
+        exclude '.idea/**'
+      } else {
+        // ignore txt files in source resources and tests.
+        exclude 'src/**/*.txt'
+      }
     }
   }
 
+  // Add source validation to per-project checks as well.
   check.dependsOn validateSourcePatterns
+
+  // Ensure validation runs prior to any compilation task. This also means
+  // no executable code can leak out to other modules.
+  tasks.withType(JavaCompile).configureEach {
+    mustRunAfter validateSourcePatterns
+  }
 }
 
+configure(project(':lucene:benchmark')) {
+  project.tasks.withType(ValidateSourcePatternsTask) {
+    sourceFiles.exclude 'data/**'
+
+    // Known .txt offenders.
+    sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
+  }
+}
+
+
+@CacheableTask
 class ValidateSourcePatternsTask extends DefaultTask {
   private ProgressLoggerFactory progressLoggerFactory
 
   @InputFiles
+  @PathSensitive(PathSensitivity.RELATIVE)
+  @IgnoreEmptyDirectories
   FileTree sourceFiles
 
   @Inject
   ValidateSourcePatternsTask(ProgressLoggerFactory progressLoggerFactory) {
     this.progressLoggerFactory = progressLoggerFactory
   }
-  
+
   @TaskAction
   public void check() {
     def invalidPatterns = [
@@ -142,6 +136,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
       (~$/(?i)\bno(n|)commit\b/$) : 'nocommit',
       (~$/\bTOOD:/$) : 'TOOD instead TODO',
       (~$/\t/$) : 'tabs instead spaces',
+      (~$/[\u202A-\u202E\u2066-\u2069]/$) : 'misuse of RTL/LTR (https://trojansource.codes)',
       (~$/\Q/**\E((?:\s)|(?:\*))*\Q{@inheritDoc}\E((?:\s)|(?:\*))*\Q*/\E/$) : '{@inheritDoc} on its own is unnecessary',
       (~$/\$$(?:LastChanged)?Date\b/$) : 'svn keyword',
       (~$/\$$(?:(?:LastChanged)?Revision|Rev)\b/$) : 'svn keyword',

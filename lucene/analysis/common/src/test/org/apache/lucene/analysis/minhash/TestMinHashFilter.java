@@ -31,6 +31,7 @@ import org.apache.lucene.analysis.minhash.MinHashFilter.FixedSizeTreeSet;
 import org.apache.lucene.analysis.minhash.MinHashFilter.LongPair;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.Test;
 
@@ -365,8 +366,10 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     MockTokenizer tokenizer =
         new MockTokenizer(
             new CharacterRunAutomaton(
-                new RegExp("[^ \t\r\n]+([ \t\r\n]+[^ \t\r\n]+){" + (shingleSize - 1) + "}")
-                    .toAutomaton()),
+                Operations.determinize(
+                    new RegExp("[^ \t\r\n]+([ \t\r\n]+[^ \t\r\n]+){" + (shingleSize - 1) + "}")
+                        .toAutomaton(),
+                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT)),
             true);
     tokenizer.setEnableChecks(true);
     if (shingles != null) {

@@ -20,7 +20,6 @@ package org.apache.lucene.luke.app.desktop.components;
 import java.io.IOException;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextArea;
 import org.apache.lucene.luke.app.DirectoryHandler;
 import org.apache.lucene.luke.app.DirectoryObserver;
 import org.apache.lucene.luke.app.IndexHandler;
@@ -35,7 +34,7 @@ public final class TabbedPaneProvider implements TabSwitcherProxy.TabSwitcher {
 
   private final MessageBroker messageBroker;
 
-  private final JTabbedPane tabbedPane = new JTabbedPane();
+  private final JTabbedPane tabbedPane;
 
   private final JPanel overviewPanel;
 
@@ -49,13 +48,15 @@ public final class TabbedPaneProvider implements TabSwitcherProxy.TabSwitcher {
 
   private final JPanel logsPanel;
 
-  public TabbedPaneProvider(JTextArea logTextArea) throws IOException {
+  public TabbedPaneProvider() throws IOException {
+    this.tabbedPane = new JTabbedPane();
+
     this.overviewPanel = new OverviewPanelProvider().get();
     this.documentsPanel = new DocumentsPanelProvider().get();
     this.searchPanel = new SearchPanelProvider().get();
     this.analysisPanel = new AnalysisPanelProvider().get();
     this.commitsPanel = new CommitsPanelProvider().get();
-    this.logsPanel = new LogsPanelProvider(logTextArea).get();
+    this.logsPanel = new LogsPanelProvider().get();
 
     this.messageBroker = MessageBroker.getInstance();
 

@@ -25,7 +25,7 @@ import org.apache.lucene.store.RandomAccessInput;
 /** A {@link IndexInput} wrapper that changes the endianness of the provided index input. */
 final class EndiannessReverserIndexInput extends IndexInput {
 
-  private final IndexInput in;
+  final IndexInput in;
 
   EndiannessReverserIndexInput(IndexInput in) {
     super("Endianness reverser Index Input wrapper");
@@ -74,14 +74,19 @@ final class EndiannessReverserIndexInput extends IndexInput {
 
   @Override
   public void readLongs(long[] dst, int offset, int length) throws IOException {
-    // used to be called readLELongs
     in.readLongs(dst, offset, length);
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] = Long.reverseBytes(dst[offset + i]);
+    }
   }
 
   @Override
   public void readFloats(float[] dst, int offset, int length) throws IOException {
-    // used to be called readLEFloats
     in.readFloats(dst, offset, length);
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] =
+          Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(dst[offset + i])));
+    }
   }
 
   @Override
