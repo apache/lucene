@@ -41,8 +41,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
   @SuppressWarnings({"rawtypes", "unchecked"})
   private FST.Arc<Output>[] arcs = new FST.Arc[5];
 
-  final ByteRunnable runAutomaton;
-  protected final TransitionAccessor automaton;
+  final ByteRunnable byteRunnable;
+  protected final TransitionAccessor transitionAccessor;
   private final BytesRef commonSuffixRef;
 
   private OrdsIntersectTermsEnumFrame currentFrame;
@@ -64,15 +64,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
     // brToString(compiled.commonSuffixRef));
     // }
     this.fr = fr;
-    if (compiled.nfaRunAutomaton != null) {
-      // run directly on NFA if nfaRunAutomaton is not null
-      this.runAutomaton = compiled.nfaRunAutomaton;
-      this.automaton = compiled.nfaRunAutomaton;
-    } else {
-      this.runAutomaton = compiled.runAutomaton;
-      assert this.runAutomaton != null;
-      this.automaton = compiled.automaton;
-    }
+    this.byteRunnable = compiled.getByteRunnable();
+    this.transitionAccessor = compiled.getTransitionAccessor();
     commonSuffixRef = compiled.commonSuffixRef;
     in = fr.parent.in.clone();
     stack = new OrdsIntersectTermsEnumFrame[5];
@@ -230,7 +223,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
     int state = currentFrame.state;
     for (int idx = 0; idx < currentFrame.suffix; idx++) {
       state =
-          runAutomaton.step(
+          byteRunnable.step(
               state, currentFrame.suffixBytes[currentFrame.startBytePos + idx] & 0xff);
       assert state != -1;
     }
@@ -400,7 +393,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
             continue nextTerm;
           }
           currentFrame.transitionIndex++;
-          automaton.getNextTransition(currentFrame.transition);
+          transitionAccessor.getNextTransition(currentFrame.transition);
           currentFrame.curTransitionMax = currentFrame.transition.max;
           // if (DEBUG) System.out.println("      next trans=" +
           // currentFrame.transitions[currentFrame.transitionIndex]);
@@ -469,7 +462,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
       int state = currentFrame.state;
       for (int idx = 0; idx < currentFrame.suffix; idx++) {
         state =
-            runAutomaton.step(
+            byteRunnable.step(
                 state, currentFrame.suffixBytes[currentFrame.startBytePos + idx] & 0xff);
         if (state == -1) {
           // No match
@@ -492,7 +485,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
         // currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
         // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
         // currentFrame.outputPrefix);
-      } else if (runAutomaton.isAccept(state)) {
+      } else if (byteRunnable.isAccept(state)) {
         copyTerm();
         // if (DEBUG) System.out.println("      term match to state=" + state + "; return term=" +
         // brToString(term));

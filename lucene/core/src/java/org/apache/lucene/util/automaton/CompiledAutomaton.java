@@ -83,8 +83,10 @@ public class CompiledAutomaton implements Accountable {
   /**
    * Matcher directly run on a NFA, it will determinize the state on need and caches it, note that
    * this field and {@link #runAutomaton} will not be non-null at the same time
+   *
+   * <p>TODO: merge this with runAutomaton
    */
-  public final NFARunAutomaton nfaRunAutomaton;
+  final NFARunAutomaton nfaRunAutomaton;
 
   /**
    * Shared common suffix accepted by the automaton. Only valid for {@link AUTOMATON_TYPE#NORMAL},
@@ -483,6 +485,24 @@ public class CompiledAutomaton implements Accountable {
         idx++;
       }
     }
+  }
+
+  public ByteRunnable getByteRunnable() {
+    // they can be both null but not both non-null
+    assert nfaRunAutomaton == null || runAutomaton == null;
+    if (nfaRunAutomaton == null) {
+      return runAutomaton;
+    }
+    return nfaRunAutomaton;
+  }
+
+  public TransitionAccessor getTransitionAccessor() {
+    // they can be both null but not both non-null
+    assert nfaRunAutomaton == null || automaton == null;
+    if (nfaRunAutomaton == null) {
+      return automaton;
+    }
+    return nfaRunAutomaton;
   }
 
   @Override

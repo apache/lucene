@@ -39,16 +39,11 @@ public class TestNFARunAutomaton extends LuceneTestCase {
 
   private static final String FIELD = "field";
 
+  @SuppressWarnings("unused")
   public void testWithRandomRegex() {
     for (int i = 0; i < 100; i++) {
-      RegExp regExp = null;
-      while (regExp == null) {
-        try {
-          regExp = new RegExp(AutomatonTestUtil.randomRegexp(random()));
-        } catch (IllegalArgumentException e) {
-          ignoreException(e);
-        }
-      }
+      RegExp regExp = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
+      ;
       Automaton nfa = regExp.toAutomaton();
       if (nfa.isDeterministic()) {
         i--;
@@ -60,7 +55,6 @@ public class TestNFARunAutomaton extends LuceneTestCase {
       try {
         randomStringGen = new AutomatonTestUtil.RandomAcceptedStrings(dfa);
       } catch (IllegalArgumentException e) {
-        ignoreException(e);
         i--;
         continue; // sometimes the automaton accept nothing and throw this exception
       }
@@ -178,9 +172,5 @@ public class TestNFARunAutomaton extends LuceneTestCase {
           Operations.run(dfa, new IntsRef(randomString, 0, randomString.length)),
           candidate.run(randomString));
     }
-  }
-
-  private void ignoreException(Exception e) {
-    // do nothing, otherwise will fail ecjLintTest
   }
 }

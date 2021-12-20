@@ -464,11 +464,7 @@ public class FSTTermsReader extends FieldsProducer {
         this.fst = dict;
         this.fstReader = fst.getBytesReader();
         this.fstOutputs = dict.outputs;
-        if (compiled.nfaRunAutomaton != null) {
-          this.fsa = compiled.nfaRunAutomaton;
-        } else {
-          this.fsa = compiled.runAutomaton;
-        }
+        this.fsa = compiled.getByteRunnable();
         this.level = -1;
         this.stack = new Frame[16];
         for (int i = 0; i < stack.length; i++) {
