@@ -240,8 +240,10 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       return null;
     }
 
-    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+    // bound k by total number of vectors to prevent oversizing data structures
+    k = Math.min(k, fieldEntry.size());
 
+    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final SplittableRandom random = new SplittableRandom(checksumSeed);
     NeighborQueue results =

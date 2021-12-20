@@ -29,7 +29,7 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
   private final IntervalsSource reference;
 
   OverlappingIntervalsSource(IntervalsSource source, IntervalsSource reference) {
-    super(Arrays.asList(source, reference), false);
+    super(Arrays.asList(source, reference));
     this.source = source;
     this.reference = reference;
   }
@@ -60,6 +60,14 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
         return IntervalIterator.NO_MORE_INTERVALS;
       }
     };
+  }
+
+  @Override
+  protected IntervalMatchesIterator createMatchesIterator(
+      IntervalIterator it, List<IntervalMatchesIterator> subs) {
+    assert subs.size() == 2;
+    // the only sub source we care is the "real" source
+    return new ConjunctionMatchesIterator(it, List.of(subs.get(0)));
   }
 
   @Override

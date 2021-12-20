@@ -47,7 +47,7 @@ class BlockIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   private BlockIntervalsSource(List<IntervalsSource> sources) {
-    super(flatten(sources), true);
+    super(flatten(sources));
   }
 
   @Override

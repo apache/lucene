@@ -1175,7 +1175,11 @@ public final class TestUtil {
 
   /** Returns a random binary term. */
   public static BytesRef randomBinaryTerm(Random r) {
-    int length = r.nextInt(15);
+    return randomBinaryTerm(r, r.nextInt(15));
+  }
+
+  /** Returns a random binary with a given length */
+  public static BytesRef randomBinaryTerm(Random r, int length) {
     BytesRef b = new BytesRef(length);
     r.nextBytes(b.bytes);
     b.length = length;

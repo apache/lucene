@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
@@ -102,11 +103,8 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
     this.mlt.setAnalyzer(analyzer);
     this.mlt.setFieldNames(textFieldNames);
     this.indexSearcher = new IndexSearcher(indexReader);
-    if (similarity != null) {
-      this.indexSearcher.setSimilarity(similarity);
-    } else {
-      this.indexSearcher.setSimilarity(new BM25Similarity());
-    }
+    this.indexSearcher.setSimilarity(
+        Objects.requireNonNullElseGet(similarity, BM25Similarity::new));
     if (minDocsFreq > 0) {
       mlt.setMinDocFreq(minDocsFreq);
     }
@@ -199,7 +197,7 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
         if (singleStorableField != null) {
           BytesRef cl = new BytesRef(singleStorableField.stringValue());
           // update count
-          classCounts.merge(cl, 1, (a, b) -> a + b);
+          classCounts.merge(cl, 1, Integer::sum);
           // update boost, the boost is based on the best score
           Double totalBoost = classBoosts.get(cl);
           double singleBoost = scoreDoc.score / maxScore;

@@ -67,7 +67,7 @@ from consolemenu.screen import Screen
 from scriptutil import BranchType, Version, download, run
 
 # Lucene-to-Java version mapping
-java_versions = {6: 8, 7: 8, 8: 8, 9: 11}
+java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 11}
 editor = None
 
 # Edit this to add other global jinja2 variables or filters
@@ -1950,6 +1950,25 @@ def prepare_announce_lucene(todo):
         print("Draft already exist, not re-generating")
     return True
 
+
+def check_artifacts_available(todo):
+  try:
+    cdnUrl = expand_jinja("https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc")
+    load(cdnUrl)
+    print("Found %s" % cdnUrl)
+  except Exception as e:
+    print("Could not fetch %s (%s)" % (cdnUrl, e))
+    return False
+
+  try:
+    mavenUrl = expand_jinja("https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.pom.asc")
+    load(mavenUrl)
+    print("Found %s" % mavenUrl)
+  except Exception as e:
+    print("Could not fetch %s (%s)" % (mavenUrl, e))
+    return False
+
+  return True
 
 def set_java_home(version):
     os.environ['JAVA_HOME'] = state.get_java_home_for_version(version)

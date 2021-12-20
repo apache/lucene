@@ -71,10 +71,11 @@ configure(rootProject) {
      */
     modifyFile = { File path, Function<String, String> modify ->
       Function<String, String> normalizeEols = { text -> text.replace("\r\n", "\n") }
-      modify = normalizeEols.andThen(modify).andThen(normalizeEols)
 
       String original = path.getText("UTF-8")
-      String modified = modify.apply(original)
+      String modified = normalizeEols.apply(original)
+      modified = modify.apply(modified)
+      modified = normalizeEols.apply(modified)
       if (!original.equals(modified)) {
         path.write(modified, "UTF-8")
       }
@@ -178,7 +179,7 @@ configure([
               expected = expected - same
 
               throw new GradleException("Checksums mismatch for derived resources; you might have" +
-                  " modified a generated resource (regenerate task: ${sourceTask.name}):\n" +
+                  " modified a generated resource (regenerate task: ${sourceTaskName}):\n" +
                   "Current:\n  ${current.entrySet().join('\n  ')}\n\n" +
                   "Expected:\n  ${expected.entrySet().join('\n  ')}"
               )
@@ -222,7 +223,13 @@ configure([
         })
 
         // Load checksums before the source task executes, otherwise it's always ignored.
-        sourceTask.dependsOn checksumLoadTask
+        project.afterEvaluate {
+          resolveTaskRefs([sourceTask, *ignoreWithSource]).each { t ->
+            t.configure {
+              dependsOn checksumLoadTask
+            }
+          }
+        }
 
         // Copy the description and group from the source task.
         project.afterEvaluate {

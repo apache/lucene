@@ -742,6 +742,7 @@ public class TestNRTReplication extends LuceneTestCase {
     }
   }
 
+  @Nightly
   public void testCrashReplica() throws Exception {
 
     Path path1 = createTempDir("1");

@@ -25,6 +25,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.comparators.DoubleComparator;
 
 /**
@@ -325,7 +326,13 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     }
   }
 
-  /** Returns a DoubleValues instance that wraps scores returned by a Scorer */
+  /**
+   * Returns a DoubleValues instance that wraps scores returned by a Scorer.
+   *
+   * <p>Note: If you intend to call {@link Scorable#score()} on the provided {@code scorer}
+   * separately, you may want to consider wrapping it with {@link
+   * ScoreCachingWrappingScorer#wrap(Scorable)} to avoid computing the actual score multiple times.
+   */
   public static DoubleValues fromScorer(Scorable scorer) {
     return new DoubleValues() {
       @Override
@@ -490,6 +497,11 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
                 LeafReaderContext context, String field) {
               ctx = context;
               return asNumericDocValues(holder, Double::doubleToLongBits);
+            }
+
+            @Override
+            protected PointValues getPointValues(LeafReaderContext context, String field) {
+              return null;
             }
 
             @Override

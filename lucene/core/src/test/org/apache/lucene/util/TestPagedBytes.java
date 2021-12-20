@@ -218,9 +218,9 @@ public class TestPagedBytes extends LuceneTestCase {
       BytesRef bytes = newBytesRef(TestUtil.randomSimpleString(random(), 10));
       pointer = b.copyUsingLengthPrefix(bytes);
     }
-    assertEquals(RamUsageTester.sizeOf(b), b.ramBytesUsed());
+    assertEquals(RamUsageTester.ramUsed(b), b.ramBytesUsed());
     final PagedBytes.Reader reader = b.freeze(random().nextBoolean());
-    assertEquals(RamUsageTester.sizeOf(b), b.ramBytesUsed());
-    assertEquals(RamUsageTester.sizeOf(reader), reader.ramBytesUsed());
+    assertEquals(RamUsageTester.ramUsed(b), b.ramBytesUsed());
+    assertEquals(RamUsageTester.ramUsed(reader), reader.ramBytesUsed());
   }
 }

@@ -29,9 +29,11 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.TestUtil;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestIndexedDISI extends LuceneTestCase {
 
   public void testEmpty() throws IOException {

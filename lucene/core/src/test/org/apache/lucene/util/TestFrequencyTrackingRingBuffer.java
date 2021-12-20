@@ -72,6 +72,6 @@ public class TestFrequencyTrackingRingBuffer extends LuceneTestCase {
     for (int i = 0; i < 10000; ++i) {
       buffer.add(random().nextInt());
     }
-    assertEquals(RamUsageTester.sizeOf(buffer), buffer.ramBytesUsed());
+    assertEquals(RamUsageTester.ramUsed(buffer), buffer.ramBytesUsed());
   }
 }

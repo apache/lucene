@@ -135,8 +135,10 @@ import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.store.MockDirectoryWrapper.Throttling;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.store.RawDirectoryWrapper;
+import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -216,7 +218,6 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_MONSTER = "tests.monster";
   public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
   public static final String SYSPROP_SLOW = "tests.slow";
-  public static final String SYSPROP_BADAPPLES = "tests.badapples";
 
   /** @see #ignoreAfterMaxFailures */
   public static final String SYSPROP_MAXFAILURES = "tests.maxfailures";
@@ -266,27 +267,6 @@ public abstract class LuceneTestCase extends Assert {
   @Retention(RetentionPolicy.RUNTIME)
   @TestGroup(enabled = true, sysProperty = SYSPROP_SLOW)
   public @interface Slow {}
-
-  /**
-   * Annotation for tests that fail frequently and are not executed in Jenkins builds to not spam
-   * mailing lists with false reports.
-   *
-   * <p>Tests are turned on for developers by default. If you want to disable them, set:
-   *
-   * <pre>
-   * -Dtests.badapples=false
-   * </pre>
-   *
-   * (or do this through {@code ~./lucene.build.properties}).
-   */
-  @Documented
-  @Inherited
-  @Retention(RetentionPolicy.RUNTIME)
-  @TestGroup(enabled = true, sysProperty = SYSPROP_BADAPPLES)
-  public @interface BadApple {
-    /** Point to JIRA entry. */
-    public String bugUrl();
-  }
 
   /**
    * Annotation for test classes that should avoid certain codec types (because they are expensive,
@@ -440,11 +420,6 @@ public abstract class LuceneTestCase extends Assert {
   public static final boolean TEST_AWAITSFIX =
       systemPropertyAsBoolean(
           SYSPROP_AWAITSFIX, AwaitsFix.class.getAnnotation(TestGroup.class).enabled());
-
-  /** Whether or not {@link BadApple} tests should run. */
-  public static final boolean TEST_BADAPPLES =
-      systemPropertyAsBoolean(
-          SYSPROP_BADAPPLES, BadApple.class.getAnnotation(TestGroup.class).enabled());
 
   /** Whether or not {@link Slow} tests should run. */
   public static final boolean TEST_SLOW =
@@ -2140,8 +2115,9 @@ public abstract class LuceneTestCase extends Assert {
       int numIntersections = atLeast(3);
       for (int i = 0; i < numIntersections; i++) {
         String re = AutomatonTestUtil.randomRegexp(random());
-        CompiledAutomaton automaton =
-            new CompiledAutomaton(new RegExp(re, RegExp.NONE).toAutomaton());
+        Automaton a = new RegExp(re, RegExp.NONE).toAutomaton();
+        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        CompiledAutomaton automaton = new CompiledAutomaton(a);
         if (automaton.type == CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
           // TODO: test start term too
           TermsEnum leftIntersection = leftTerms.intersect(automaton, null);
@@ -2852,6 +2828,12 @@ public abstract class LuceneTestCase extends Assert {
   @FunctionalInterface
   public interface ThrowingRunnable {
     void run() throws Throwable;
+  }
+
+  /** A {@link java.util.function.Consumer} that can throw any checked exception. */
+  @FunctionalInterface
+  public interface ThrowingConsumer<T> {
+    void accept(T t) throws Exception;
   }
 
   /** Checks a specific exception class is thrown by the given runnable, and returns it. */

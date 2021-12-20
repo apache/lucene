@@ -235,16 +235,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     searcher.search(new MatchAllDocsQuery(), c);
 
     // Uses default $facets field:
-    Facets facets;
-    if (random().nextBoolean()) {
-      facets = new FastTaxonomyFacetCounts(taxoReader, config, c);
-    } else {
-      OrdinalsReader ordsReader = new DocValuesOrdinalsReader();
-      if (random().nextBoolean()) {
-        ordsReader = new CachedOrdinalsReader(ordsReader);
-      }
-      facets = new TaxonomyFacetCounts(ordsReader, taxoReader, config, c);
-    }
+    Facets facets = new FastTaxonomyFacetCounts(taxoReader, config, c);
 
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);

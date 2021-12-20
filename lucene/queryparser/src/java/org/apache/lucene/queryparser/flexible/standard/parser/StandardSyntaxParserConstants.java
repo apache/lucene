@@ -29,11 +29,11 @@ public interface StandardSyntaxParserConstants {
   /** RegularExpression Id. */
   int NOT = 10;
   /** RegularExpression Id. */
-  int PLUS = 11;
+  int FN_PREFIX = 11;
   /** RegularExpression Id. */
-  int MINUS = 12;
+  int PLUS = 12;
   /** RegularExpression Id. */
-  int LPAREN = 13;
+  int MINUS = 13;
   /** RegularExpression Id. */
   int RPAREN = 14;
   /** RegularExpression Id. */
@@ -65,20 +65,64 @@ public interface StandardSyntaxParserConstants {
   /** RegularExpression Id. */
   int RANGEEX_START = 28;
   /** RegularExpression Id. */
-  int RANGE_TO = 29;
+  int LPAREN = 29;
   /** RegularExpression Id. */
-  int RANGEIN_END = 30;
+  int ATLEAST = 30;
   /** RegularExpression Id. */
-  int RANGEEX_END = 31;
+  int AFTER = 31;
   /** RegularExpression Id. */
-  int RANGE_QUOTED = 32;
+  int BEFORE = 32;
   /** RegularExpression Id. */
-  int RANGE_GOOP = 33;
+  int CONTAINED_BY = 33;
+  /** RegularExpression Id. */
+  int CONTAINING = 34;
+  /** RegularExpression Id. */
+  int EXTEND = 35;
+  /** RegularExpression Id. */
+  int FN_OR = 36;
+  /** RegularExpression Id. */
+  int MAXGAPS = 37;
+  /** RegularExpression Id. */
+  int MAXWIDTH = 38;
+  /** RegularExpression Id. */
+  int NON_OVERLAPPING = 39;
+  /** RegularExpression Id. */
+  int NOT_CONTAINED_BY = 40;
+  /** RegularExpression Id. */
+  int NOT_CONTAINING = 41;
+  /** RegularExpression Id. */
+  int NOT_WITHIN = 42;
+  /** RegularExpression Id. */
+  int ORDERED = 43;
+  /** RegularExpression Id. */
+  int OVERLAPPING = 44;
+  /** RegularExpression Id. */
+  int PHRASE = 45;
+  /** RegularExpression Id. */
+  int UNORDERED = 46;
+  /** RegularExpression Id. */
+  int UNORDERED_NO_OVERLAPS = 47;
+  /** RegularExpression Id. */
+  int WILDCARD = 48;
+  /** RegularExpression Id. */
+  int WITHIN = 49;
+  /** RegularExpression Id. */
+  int RANGE_TO = 50;
+  /** RegularExpression Id. */
+  int RANGEIN_END = 51;
+  /** RegularExpression Id. */
+  int RANGEEX_END = 52;
+  /** RegularExpression Id. */
+  int RANGE_QUOTED = 53;
+  /** RegularExpression Id. */
+  int RANGE_GOOP = 54;
 
   /** Lexical state. */
-  int Range = 0;
+  int Function = 0;
   /** Lexical state. */
-  int DEFAULT = 1;
+  int Range = 1;
+  /** Lexical state. */
+  int DEFAULT = 2;
 
   /** Literal token values. */
   String[] tokenImage = {
@@ -93,9 +137,9 @@ public interface StandardSyntaxParserConstants {
     "<AND>",
     "<OR>",
     "<NOT>",
+    "\"fn:\"",
     "\"+\"",
     "\"-\"",
-    "\"(\"",
     "\")\"",
     "\":\"",
     "\"=\"",
@@ -111,11 +155,33 @@ public interface StandardSyntaxParserConstants {
     "<REGEXPTERM>",
     "\"[\"",
     "\"{\"",
+    "\"(\"",
+    "<ATLEAST>",
+    "\"after\"",
+    "\"before\"",
+    "<CONTAINED_BY>",
+    "\"containing\"",
+    "\"extend\"",
+    "\"or\"",
+    "<MAXGAPS>",
+    "<MAXWIDTH>",
+    "<NON_OVERLAPPING>",
+    "<NOT_CONTAINED_BY>",
+    "<NOT_CONTAINING>",
+    "<NOT_WITHIN>",
+    "\"ordered\"",
+    "\"overlapping\"",
+    "\"phrase\"",
+    "\"unordered\"",
+    "<UNORDERED_NO_OVERLAPS>",
+    "\"wildcard\"",
+    "\"within\"",
     "\"TO\"",
     "\"]\"",
     "\"}\"",
     "<RANGE_QUOTED>",
     "<RANGE_GOOP>",
+    "\"@\"",
   };
 
 }
