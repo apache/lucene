@@ -487,6 +487,10 @@ public class CompiledAutomaton implements Accountable {
     }
   }
 
+  /**
+   * Get a {@link ByteRunnable} instance, it will be different depending on whether a NFA or DFA is
+   * passed in, and does not guarantee returning non-null object
+   */
   public ByteRunnable getByteRunnable() {
     // they can be both null but not both non-null
     assert nfaRunAutomaton == null || runAutomaton == null;
@@ -496,6 +500,10 @@ public class CompiledAutomaton implements Accountable {
     return nfaRunAutomaton;
   }
 
+  /**
+   * Get a {@link TransitionAccessor} instance, it will be different depending on whether a NFA or
+   * DFA is passed in, and does not guarantee returning non-null object
+   */
   public TransitionAccessor getTransitionAccessor() {
     // they can be both null but not both non-null
     assert nfaRunAutomaton == null || automaton == null;
