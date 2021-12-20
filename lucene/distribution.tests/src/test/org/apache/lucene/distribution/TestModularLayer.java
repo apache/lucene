@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
@@ -255,6 +256,7 @@ public class TestModularLayer {
   public void testAllOpenPackagesInSync() throws IOException {
     for (var module : allCoreModules) {
       Set<String> jarPackages = getJarPackages(module);
+      Set<ModuleDescriptor.Exports> moduleExports = new HashSet<>(module.descriptor().exports());
 
       if (module.descriptor().name().equals("org.apache.lucene.luke")) {
         jarPackages.removeIf(
@@ -264,7 +266,25 @@ public class TestModularLayer {
             });
       }
 
-      Set<ModuleDescriptor.Exports> moduleExports = module.descriptor().exports();
+      if (module.descriptor().name().equals("org.apache.lucene.core")) {
+        // Internal packages should not be exported to unqualified targets.
+        jarPackages.removeIf(
+            entry -> {
+              return entry.startsWith("org.apache.lucene.internal");
+            });
+
+        // Internal packages should use qualified exports.
+        moduleExports.removeIf(
+            export -> {
+              boolean isInternal = export.source().startsWith("org.apache.lucene.internal");
+              if (isInternal) {
+                Assertions.assertThat(export.targets())
+                    .containsExactlyInAnyOrder("org.apache.lucene.test_framework");
+              }
+              return isInternal;
+            });
+      }
+
       Assertions.assertThat(moduleExports)
           .as("Exported packages in module: " + module.descriptor().name())
           .allSatisfy(
