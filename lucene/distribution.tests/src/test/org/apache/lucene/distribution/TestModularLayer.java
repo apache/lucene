@@ -18,7 +18,6 @@ package org.apache.lucene.distribution;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.module.Configuration;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
@@ -292,18 +291,5 @@ public class TestModularLayer {
           .map(entry -> entry.replace('/', '.'))
           .collect(Collectors.toCollection(TreeSet::new));
     }
-  }
-
-  /** Tests if the core module can successfully unmap our MMapDirectory buffers. */
-  @Test
-  public void testCoreMMap() throws IOException, ReflectiveOperationException {
-    final String name = "org.apache.lucene.core";
-    final ModuleLayer boot = ModuleLayer.boot();
-    final Configuration cf =
-        boot.configuration().resolve(coreModulesFinder, ModuleFinder.of(), Set.of(name));
-    final ModuleLayer layer = boot.defineModulesWithOneLoader(cf, getClass().getClassLoader());
-    final Class<?> c = layer.findLoader(name).loadClass("org.apache.lucene.store.MMapDirectory");
-    final String reason = (String) c.getField("UNMAP_NOT_SUPPORTED_REASON").get(null);
-    Assertions.assertThat((Boolean) c.getField("UNMAP_SUPPORTED").get(null)).as(reason).isTrue();
   }
 }
