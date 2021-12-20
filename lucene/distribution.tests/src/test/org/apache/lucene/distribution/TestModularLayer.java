@@ -147,7 +147,8 @@ public class TestModularLayer {
             "org.apache.lucene.sandbox",
             "org.apache.lucene.spatial3d",
             "org.apache.lucene.spatial_extras",
-            "org.apache.lucene.suggest");
+            "org.apache.lucene.suggest",
+            "org.apache.lucene.test_framework");
   }
 
   /** Make sure we don't publish automatic modules. */

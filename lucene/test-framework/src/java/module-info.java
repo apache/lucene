@@ -46,4 +46,28 @@ module org.apache.lucene.test_framework {
   exports org.apache.lucene.tests.util.automaton;
   exports org.apache.lucene.tests.util.fst;
   exports org.apache.lucene.tests.util;
+
+  provides org.apache.lucene.codecs.Codec with
+      org.apache.lucene.tests.codecs.asserting.AssertingCodec,
+      org.apache.lucene.tests.codecs.cheapbastard.CheapBastardCodec,
+      org.apache.lucene.tests.codecs.compressing.DeflateWithPresetCompressingCodec,
+      org.apache.lucene.tests.codecs.compressing.FastCompressingCodec,
+      org.apache.lucene.tests.codecs.compressing.FastDecompressionCompressingCodec,
+      org.apache.lucene.tests.codecs.compressing.HighCompressionCompressingCodec,
+      org.apache.lucene.tests.codecs.compressing.LZ4WithPresetCompressingCodec,
+      org.apache.lucene.tests.codecs.compressing.dummy.DummyCompressingCodec;
+  provides org.apache.lucene.codecs.DocValuesFormat with
+      org.apache.lucene.tests.codecs.asserting.AssertingDocValuesFormat;
+  provides org.apache.lucene.codecs.KnnVectorsFormat with
+      org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
+  provides org.apache.lucene.codecs.PostingsFormat with
+      org.apache.lucene.tests.codecs.mockrandom.MockRandomPostingsFormat,
+      org.apache.lucene.tests.codecs.ramonly.RAMOnlyPostingsFormat,
+      org.apache.lucene.tests.codecs.blockterms.LuceneFixedGap,
+      org.apache.lucene.tests.codecs.blockterms.LuceneVarGapFixedInterval,
+      org.apache.lucene.tests.codecs.blockterms.LuceneVarGapDocFreqInterval,
+      org.apache.lucene.tests.codecs.bloom.TestBloomFilteredLucenePostings,
+      org.apache.lucene.tests.codecs.asserting.AssertingPostingsFormat,
+      org.apache.lucene.tests.codecs.uniformsplit.UniformSplitRot13PostingsFormat,
+      org.apache.lucene.tests.codecs.uniformsplit.sharedterms.STUniformSplitRot13PostingsFormat;
 }
