@@ -20,9 +20,10 @@ from fractions import gcd
 """Code generation for ForUtil.java"""
 
 BLOCK_SIZE = 512
-MAX_SPECIALIZED_BITS_PER_VALUE = 32
+MAX_SPECIALIZED_BITS_PER_VALUE = 24
 OUTPUT_FILE = "ForUtil.java"
 PRIMITIVE_SIZE = [8, 16, 32]
+SPECIALIZED_BITS_PER_VALUES = [i for i in range(1, MAX_SPECIALIZED_BITS_PER_VALUE + 1)] + [32]
 HEADER = """// This file has been automatically generated, DO NOT EDIT
 
 /*
@@ -56,7 +57,7 @@ import org.apache.lucene.util.MathUtil;
 final class ForUtil {
 
   static final int BLOCK_SIZE = """ + str(BLOCK_SIZE) + """;
-  private static final int BLOCK_SIZE_DIV_2 = BLOCK_SIZE >> 1;
+  static final int BLOCK_SIZE_DIV_2 = BLOCK_SIZE >> 1;
   private static final int BLOCK_SIZE_DIV_4 = BLOCK_SIZE >> 2;
   private static final int BLOCK_SIZE_DIV_8 = BLOCK_SIZE >> 3;
   private static final int BLOCK_SIZE_DIV_64 = BLOCK_SIZE >> 6;
@@ -67,7 +68,6 @@ final class ForUtil {
   private static final int BLOCK_SIZE_DIV_8_MUL_5 = BLOCK_SIZE_DIV_8 * 5;
   private static final int BLOCK_SIZE_DIV_8_MUL_6 = BLOCK_SIZE_DIV_8 * 6;
   private static final int BLOCK_SIZE_DIV_8_MUL_7 = BLOCK_SIZE_DIV_8 * 7;
-  private static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
 
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
@@ -107,16 +107,6 @@ final class ForUtil {
     }
   }
 
-  private static void expand8To32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
-      long l = arr[i];
-      arr[i] = (l >>> 24) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 16) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 8) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = l & 0x000000FF000000FFL;
-    }
-  }
-
   private static void collapse8(long[] arr) {
     for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
       arr[i] =
@@ -141,17 +131,13 @@ final class ForUtil {
     }
   }
 
-  private static void expand16To32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
-      long l = arr[i];
-      arr[i] = (l >>> 16) & 0x0000FFFF0000FFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = l & 0x0000FFFF0000FFFFL;
-    }
-  }
-
   private static void collapse16(long[] arr) {
     for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
-      arr[i] = (arr[i] << 48) | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 32) | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 16) | arr[BLOCK_SIZE_DIV_8_MUL_6 + i];
+      arr[i] =
+          (arr[i] << 48)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 32)
+              | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 16)
+              | arr[BLOCK_SIZE_DIV_8_MUL_6 + i];
     }
   }
 
@@ -171,7 +157,7 @@ final class ForUtil {
 
   private final long[] tmp = new long[BLOCK_SIZE_DIV_2];
 
-  /** Encode 512 integers from {@code longs} into {@code out}. */
+  /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
     final int nextPrimitive;
     final int numLongs;
@@ -243,15 +229,10 @@ final class ForUtil {
       out.writeLong(tmp[i]);
     }
   }
-
-  /** Number of bytes required to encode 512 integers of {@code bitsPerValue} bits per value. */
-  int numBytes(int bitsPerValue) {
-    return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
-  }
-
+  
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
       throws IOException {
-    final int numLongs = bitsPerValue << 1;
+    final int numLongs = bitsPerValue * BLOCK_SIZE_DIV_64;
     in.readLongs(tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
     int longsIdx = 0;
@@ -395,11 +376,11 @@ if __name__ == '__main__':
         f.write('  private static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive_size, bpv, primitive_size, bpv))
 
   f.write("""
-  /** Decode 512 integers into {@code longs}. */
+  /** Decode 128 integers into {@code longs}. */
   void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
-  for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
+  for bpv in SPECIALIZED_BITS_PER_VALUES:
     next_primitive = 32
     if bpv <= 8:
       next_primitive = 8
@@ -416,35 +397,8 @@ if __name__ == '__main__':
   f.write('    }\n')
   f.write('  }\n')
 
-  f.write("""
-  /**
-   * Decodes 512 integers into 64 {@code longs} such that each long contains two values, each
-   * represented with 32 bits. Values [0..63] are encoded in the high-order bits of {@code longs}
-   * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [0..63]. This
-   * representation may allow subsequent operations to be performed on two values at a time.
-   */
-  void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
-    switch (bitsPerValue) {
-""")
-  for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
-    next_primitive = 32
-    if bpv <= 8:
-      next_primitive = 8
-    elif bpv <= 16:
-      next_primitive = 16
-    f.write('      case %d:\n' %bpv)
-    f.write('        decode%d(in, tmp, longs);\n' %bpv)
-    if next_primitive <= 16:
-      f.write('        expand%dTo32(longs);\n' %next_primitive)
-    f.write('        break;\n')
-  f.write('      default:\n')
-  f.write('        decodeSlow(bitsPerValue, in, tmp, longs);\n')
-  f.write('        break;\n')
-  f.write('    }\n')
-  f.write('  }\n')
-
   f.write('\n')
-  for i in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
+  for i in SPECIALIZED_BITS_PER_VALUES:
     writeDecode(i, f)
     if i < MAX_SPECIALIZED_BITS_PER_VALUE:
       f.write('\n')
