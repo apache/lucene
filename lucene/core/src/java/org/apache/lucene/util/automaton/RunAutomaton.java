@@ -130,7 +130,12 @@ public abstract class RunAutomaton implements Accountable {
     return size;
   }
 
-  /** Returns acceptance status for given state. */
+  /**
+   * Returns acceptance status for given state.
+   *
+   * @param state the state
+   * @return whether the state is accepted
+   */
   public final boolean isAccept(int state) {
     return accept.get(state);
   }
