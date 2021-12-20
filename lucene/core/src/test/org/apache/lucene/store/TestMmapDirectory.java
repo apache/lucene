@@ -37,7 +37,7 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    assumeTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
+    assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 
   @Ignore(
