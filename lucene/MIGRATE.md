@@ -27,6 +27,13 @@ behind the scenes. It is the responsibility of the caller to to call
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 
+### Test framework package migration and module (LUCENE-10301)
+
+The test framework is now a module. All the classes have been moved from
+`org.apache.lucene.*` to `org.apache.lucene.tests.*` to avoid package name conflicts
+with the core module. If you were using the Lucene test framework, the migration should be
+fairly automatic (package prefix).
+
 ### Minor syntactical changes in StandardQueryParser (LUCENE-10223)
 
 Added interval functions and min-should-match support to `StandardQueryParser`. This
