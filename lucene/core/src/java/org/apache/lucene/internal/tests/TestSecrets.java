@@ -28,17 +28,14 @@ import org.apache.lucene.index.SegmentReader;
  * Lucene.
  */
 public final class TestSecrets {
-  /*
-   * The JDK uses unsafe to ensure the secrets-initializing classes have their static blocks
-   * invoked. We could just leverage the JLS and invoke a static method (or a constructor) on the
-   * class but the method below seems simpler and has no side-effects.
-   */
   static {
     Consumer<Class<?>> ensureInitialized =
         clazz -> {
           try {
-            // A no-op forName call has a side-effect of initializing the class. This only happens
-            // once and has no side-effects.
+            // A no-op forName here has a side-effect of ensuring the class is loaded and
+            // initialized.
+            // This only happens once. We could just leverage the JLS and invoke a static
+            // method (or a constructor) on the target class but the method below seems simpler.
             Class.forName(clazz.getName());
           } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
