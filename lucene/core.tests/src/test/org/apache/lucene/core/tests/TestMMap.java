@@ -24,9 +24,9 @@ public class TestMMap {
   @Test
   public void testUnmapSupported() throws Exception {
     final Module module = MMapDirectory.class.getModule();
-    Assert.assertTrue("Lucene Core loaded as a module.", module.isNamed());
+    Assert.assertTrue("Lucene Core is not loaded as module", module.isNamed());
     Assert.assertTrue(
-        "Lucene Core can read 'jdk.unsupported' module",
+        "Lucene Core can't read 'jdk.unsupported' module",
         module.getLayer().findModule("jdk.unsupported").map(module::canRead).orElse(false));
 
     // check that MMapDirectory can unmap by running the autodetection logic:
