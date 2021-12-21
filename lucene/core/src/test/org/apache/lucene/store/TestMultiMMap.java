@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.junit.BeforeClass;
 
 /**
  * Tests MMapDirectory's MultiMMapIndexInput
@@ -34,10 +35,9 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
     return new MMapDirectory(path, maxChunkSize);
   }
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    assumeTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 
   // TODO: can we improve ByteBuffersDirectory (without overhead) and move these clone safety tests

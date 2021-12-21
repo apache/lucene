@@ -97,8 +97,10 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
   @Test
   public void testUnifiedHighlighterExtensibility() {
     final int maxLength = 1000;
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder(null, new MockAnalyzer(random()));
     UnifiedHighlighter uh =
-        new UnifiedHighlighter(null, new MockAnalyzer(random())) {
+        new UnifiedHighlighter(uhBuilder) {
 
           @Override
           protected Map<String, Object[]> highlightFieldsAsObjects(
@@ -252,7 +254,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
    * Tests maintaining extensibility/visibility of {@link
    * org.apache.lucene.search.uhighlight.FieldHighlighter} out of package.
    */
-  private static class CustomFieldHighlighter extends FieldHighlighter {
+  protected static class CustomFieldHighlighter extends FieldHighlighter {
     CustomFieldHighlighter(
         String field,
         FieldOffsetStrategy fieldOffsetStrategy,
