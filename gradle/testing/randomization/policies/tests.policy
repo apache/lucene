@@ -58,7 +58,6 @@ grant {
   // needed by cyberneko usage by benchmarks on J9
   permission java.lang.RuntimePermission "accessClassInPackage.org.apache.xerces.util";
   permission java.lang.RuntimePermission "getClassLoader";
-  permission java.lang.RuntimePermission "setContextClassLoader";
 
   // Needed for loading native library (lucene:misc:native) in lucene:misc
   permission java.lang.RuntimePermission "getFileStoreAttributes";
