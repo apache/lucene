@@ -45,7 +45,7 @@ public final class TestSecrets {
         };
 
     ensureInitialized.accept(ConcurrentMergeScheduler.class);
-    ensureInitialized.accept(SegmentReaderAccess.class);
+    ensureInitialized.accept(SegmentReader.class);
     ensureInitialized.accept(IndexWriter.class);
   }
 
