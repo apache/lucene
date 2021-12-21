@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.internal.tests;
 
+import java.lang.StackWalker.StackFrame;
 import java.util.Objects;
 import java.util.function.Consumer;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
@@ -56,39 +57,47 @@ public final class TestSecrets {
 
   /** Return the accessor to internal secrets for an {@link IndexReader}. */
   public static IndexPackageAccess getIndexPackageAccess() {
+    ensureCaller();
     return Objects.requireNonNull(indexPackageAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link ConcurrentMergeScheduler}. */
   public static ConcurrentMergeSchedulerAccess getConcurrentMergeSchedulerAccess() {
+    ensureCaller();
     return Objects.requireNonNull(cmsAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link SegmentReader}. */
   public static SegmentReaderAccess getSegmentReaderAccess() {
+    ensureCaller();
     return Objects.requireNonNull(segmentReaderAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link IndexWriter}. */
   public static IndexWriterAccess getIndexWriterAccess() {
+    ensureCaller();
     return Objects.requireNonNull(indexWriterAccess);
   }
 
+  /** For internal initialization only. */
   public static void setIndexWriterAccess(IndexWriterAccess indexWriterAccess) {
     ensureNull(TestSecrets.indexWriterAccess);
     TestSecrets.indexWriterAccess = indexWriterAccess;
   }
 
+  /** For internal initialization only. */
   public static void setIndexPackageAccess(IndexPackageAccess indexPackageAccess) {
     ensureNull(TestSecrets.indexPackageAccess);
     TestSecrets.indexPackageAccess = indexPackageAccess;
   }
 
+  /** For internal initialization only. */
   public static void setConcurrentMergeSchedulerAccess(ConcurrentMergeSchedulerAccess cmsAccess) {
     ensureNull(TestSecrets.cmsAccess);
     TestSecrets.cmsAccess = cmsAccess;
   }
 
+  /** For internal initialization only. */
   public static void setSegmentReaderAccess(SegmentReaderAccess segmentReaderAccess) {
     ensureNull(TestSecrets.segmentReaderAccess);
     TestSecrets.segmentReaderAccess = segmentReaderAccess;
@@ -96,7 +105,23 @@ public final class TestSecrets {
 
   private static void ensureNull(Object ob) {
     if (ob != null) {
-      throw new AssertionError("The accessor is already set.");
+      throw new AssertionError(
+          "The accessor is already set. It can only be called from inside Lucene Core.");
+    }
+  }
+
+  private static void ensureCaller() {
+    final boolean validCaller =
+        StackWalker.getInstance()
+            .walk(
+                s ->
+                    s.skip(2)
+                        .limit(1)
+                        .map(StackFrame::getClassName)
+                        .allMatch(c -> c.startsWith("org.apache.lucene.tests.")));
+    if (!validCaller) {
+      throw new UnsupportedOperationException(
+          "Lucene TestSecrets can only be used by the test-framework.");
     }
   }
 }
