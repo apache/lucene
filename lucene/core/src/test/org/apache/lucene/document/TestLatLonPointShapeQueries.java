@@ -19,9 +19,9 @@ package org.apache.lucene.document;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
-import org.apache.lucene.geo.GeoTestUtil;
 import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
+import org.apache.lucene.tests.geo.GeoTestUtil;
 
 /**
  * random bounding box, line, and polygon query tests for random generated {@code latitude,

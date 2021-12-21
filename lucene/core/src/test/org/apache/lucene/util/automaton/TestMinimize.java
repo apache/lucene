@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.util.automaton;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 /** This test builds some randomish NFA/DFA and minimizes them. */
 public class TestMinimize extends LuceneTestCase {

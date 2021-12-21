@@ -18,11 +18,11 @@ package org.apache.lucene.analysis.pattern;
 
 import java.io.IOException;
 import java.util.regex.Pattern;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.pattern.PatternTypingFilter.PatternTypingRule;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
 
 /** Test that this filter sets a type for tokens matching patterns defined in a patterns.txt file */
 public class TestPatternTypingFilter extends BaseTokenStreamTestCase {

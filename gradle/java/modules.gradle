@@ -17,6 +17,9 @@
 
 // Configure miscellaneous aspects required for supporting the java module system layer.
 
+// Debugging utilities.
+apply from: buildscript.sourceFile.toPath().resolveSibling("modules-debugging.gradle")
+
 allprojects {
   plugins.withType(JavaPlugin) {
     // We won't be using gradle's built-in automatic module finder.

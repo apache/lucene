@@ -19,7 +19,7 @@ package org.apache.lucene.queries.intervals;
 
 import static org.apache.lucene.queries.intervals.Intervals.*;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDisjunctionRewrites extends LuceneTestCase {
 

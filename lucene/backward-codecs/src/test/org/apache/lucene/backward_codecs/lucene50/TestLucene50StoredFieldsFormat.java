@@ -18,7 +18,7 @@ package org.apache.lucene.backward_codecs.lucene50;
 
 import org.apache.lucene.backward_codecs.lucene86.Lucene86RWCodec;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseStoredFieldsFormatTestCase;
+import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 
 public class TestLucene50StoredFieldsFormat extends BaseStoredFieldsFormatTestCase {
   @Override

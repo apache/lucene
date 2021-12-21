@@ -19,16 +19,17 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.DocHelper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestPerSegmentDeletes extends LuceneTestCase {
   public void testDeletes1() throws Exception {
@@ -74,7 +75,7 @@ public class TestPerSegmentDeletes extends LuceneTestCase {
 
     // get reader flushes pending deletes
     // so there should not be anymore
-    IndexReader r1 = writer.getReader();
+    IndexReader r1 = DirectoryReader.open(writer);
     assertFalse(writer.hasChangesInRam());
     r1.close();
 
@@ -93,7 +94,7 @@ public class TestPerSegmentDeletes extends LuceneTestCase {
 
     // id:2 shouldn't exist anymore because
     // it's been applied in the merge and now it's gone
-    IndexReader r2 = writer.getReader();
+    IndexReader r2 = DirectoryReader.open(writer);
     int[] id2docs = toDocsArray(new Term("id", "2"), null, r2);
     assertTrue(id2docs == null);
     r2.close();

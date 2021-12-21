@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.en;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure the Porter stem filter factory is working. */
 public class TestPorterStemFilterFactory extends BaseTokenStreamFactoryTestCase {

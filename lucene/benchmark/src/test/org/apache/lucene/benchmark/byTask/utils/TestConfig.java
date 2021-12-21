@@ -17,7 +17,7 @@
 package org.apache.lucene.benchmark.byTask.utils;
 
 import java.util.Properties;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestConfig extends LuceneTestCase {
