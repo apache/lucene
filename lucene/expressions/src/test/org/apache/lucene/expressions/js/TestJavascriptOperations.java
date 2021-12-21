@@ -17,7 +17,7 @@
 package org.apache.lucene.expressions.js;
 
 import org.apache.lucene.expressions.Expression;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestJavascriptOperations extends LuceneTestCase {
   private void assertEvaluatesTo(String expression, long expected) throws Exception {

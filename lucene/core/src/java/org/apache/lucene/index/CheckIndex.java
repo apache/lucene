@@ -2285,6 +2285,11 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  /**
+   * For use in tests only.
+   *
+   * @lucene.internal
+   */
   static void checkImpacts(Impacts impacts, int lastTarget) {
     final int numLevels = impacts.numLevels();
     if (numLevels < 1) {

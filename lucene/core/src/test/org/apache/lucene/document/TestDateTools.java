@@ -19,7 +19,7 @@ package org.apache.lucene.document;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDateTools extends LuceneTestCase {
   public void testStringToDate() throws ParseException {
