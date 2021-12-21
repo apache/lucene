@@ -21,7 +21,6 @@ package org.apache.lucene.util.bkd;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.MathUtil;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
 // Encodes multiple integers in a long to get SIMD-like speedups.
@@ -203,7 +202,7 @@ final class ForUtil {
       out.writeLong(tmp[i]);
     }
   }
-  
+
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
       throws IOException {
     final int numLongs = bitsPerValue * BLOCK_SIZE_DIV_64;
@@ -945,6 +944,7 @@ final class ForUtil {
       longs[longsIdx + 0] = l0;
     }
   }
+
   private static void decode32(DataInput in, long[] tmp, long[] longs) throws IOException {
     in.readLongs(longs, 0, 256);
   }
