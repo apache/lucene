@@ -11,6 +11,8 @@ Bug Fixes
 * LUCENE-10330: Provide better message if unmmaping failed in MMapDirectory by module system.
   (Uwe Schindler)
 
+* LUCENE-10316: fix TestLRUQueryCache.testCachingAccountableQuery failure. (Patrick Zhai)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
@@ -381,14 +383,14 @@ Bug fixes
 
 * LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
   (Greg Miller)
-  
+
 * LUCENE-10101, LUCENE-9281: Use getField() instead of getDeclaredField() to
   minimize security impact by analysis SPI discovery. (Uwe Schindler)
 
 * LUCENE-10114: Remove unused byte order mark in Lucene90PostingsWriter. This
   was initially introduced by accident in Lucene 8.4. (Uwe Schindler)
 
-* LUCENE-10140: Fix cases where minimizing interval iterators could return 
+* LUCENE-10140: Fix cases where minimizing interval iterators could return
   incorrect matches (Nikolay Khitrin, Alan Woodward)
 
 Changes in Backwards Compatibility Policy
@@ -408,7 +410,7 @@ Changes in Backwards Compatibility Policy
 Build
 ---------------------
 
-* LUCENE-10198: LUCENE-10198: Allow external JAVA_OPTS in gradlew scripts; use sane defaults 
+* LUCENE-10198: LUCENE-10198: Allow external JAVA_OPTS in gradlew scripts; use sane defaults
   (balmukund.mandal@intel.com, Dawid Weiss)
 
 * LUCENE-10163: Move LICENSE and NOTICE files to top level to satisfy src artifact requirements (janhoy)
