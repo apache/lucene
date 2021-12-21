@@ -64,7 +64,6 @@ import org.apache.lucene.search.SortField;
  * @see JavascriptCompiler#compile
  * @lucene.experimental
  */
-// TODO: Support MultiDoubleValues/MultiDoubleValuesSource?
 public abstract class Expression {
 
   /** The original source text */

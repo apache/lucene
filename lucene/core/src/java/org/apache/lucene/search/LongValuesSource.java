@@ -26,8 +26,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.comparators.LongComparator;
 
 /**
- * Base class for producing {@link LongValues}. See also {@link MultiLongValuesSource} for a
- * multi-valued version.
+ * Base class for producing {@link LongValues}
  *
  * <p>To obtain a {@link LongValues} object for a leaf reader, clients should call {@link
  * #rewrite(IndexSearcher)} against the top-level searcher, and then {@link

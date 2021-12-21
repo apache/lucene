@@ -14,13 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.facet;
 
-import java.io.IOException;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.LongValues;
+import org.apache.lucene.search.LongValuesSource;
 
 public class TestMultiLongValuesSource extends MultiValuesSourceTestCase {
 
@@ -31,7 +32,7 @@ public class TestMultiLongValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(valuesSource);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_int");
-      MultiLongValues values = valuesSource.getValues(ctx, null);
+      MultiLongValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
 
@@ -39,21 +40,21 @@ public class TestMultiLongValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(valuesSource);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_long");
-      MultiLongValues values = valuesSource.getValues(ctx, null);
+      MultiLongValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
 
     valuesSource = MultiLongValuesSource.fromIntField("multi_int");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_int");
-      MultiLongValues values = valuesSource.getValues(ctx, null);
+      MultiLongValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
 
     valuesSource = MultiLongValuesSource.fromLongField("multi_long");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_long");
-      MultiLongValues values = valuesSource.getValues(ctx, null);
+      MultiLongValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
   }
@@ -68,7 +69,7 @@ public class TestMultiLongValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(singleton);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_int");
-      MultiLongValues values = valuesSource.getValues(ctx, null);
+      MultiLongValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
 
       NumericDocValues singletonDv = DocValues.getNumeric(ctx.reader(), "single_int");
@@ -82,7 +83,7 @@ public class TestMultiLongValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(singleton);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_long");
-      MultiLongValues values = valuesSource.getValues(ctx, null);
+      MultiLongValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
 
       NumericDocValues singletonDv = DocValues.getNumeric(ctx.reader(), "single_long");
@@ -96,43 +97,19 @@ public class TestMultiLongValuesSource extends MultiValuesSourceTestCase {
         MultiLongValuesSource.fromLongField("multi_long").toMultiDoubleValuesSource();
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_long");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
   }
 
-  public void testNoScoreNeed() throws Exception {
+  public void testCacheable() {
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("multi_long");
-    // field-backed instances shouldn't need scores:
-    assertFalse(valuesSource.needsScores());
-  }
-
-  public void testRewriteSame() throws Exception {
-    MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("multi_long");
-    MultiLongValuesSource rewritten = valuesSource.rewrite(searcher);
-    // field-backed instances shouldn't do anything interesting when rewritten:
-    assertSame(valuesSource, rewritten);
-  }
-
-  public void testRewriteDifferent() throws Exception {
-    LongValuesSource rewritingSingleton = new RewritingLongValuesSource();
-    MultiLongValuesSource valuesSource = MultiLongValuesSource.fromSingleValued(rewritingSingleton);
-    MultiLongValuesSource rewritten = valuesSource.rewrite(searcher);
-    assertNotSame(valuesSource, rewritten);
-
-    LongValuesSource unwrappedOriginal = MultiLongValuesSource.unwrapSingleton(valuesSource);
-    LongValuesSource unwrappedRewritten = MultiLongValuesSource.unwrapSingleton(rewritten);
-    assertNotSame(unwrappedOriginal, unwrappedRewritten);
-  }
-
-  public void testCacheable() throws Exception {
-    MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("multi_long");
-    for (LeafReaderContext ctx : searcher.leafContexts) {
+    for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       assertEquals(DocValues.isCacheable(ctx, "multi_long"), valuesSource.isCacheable(ctx));
     }
   }
 
-  public void testEqualsAndHashcode() throws Exception {
+  public void testEqualsAndHashcode() {
     MultiLongValuesSource valuesSource1 = MultiLongValuesSource.fromLongField("multi_long");
     MultiLongValuesSource valuesSource2 = MultiLongValuesSource.fromLongField("multi_long");
     MultiLongValuesSource valuesSource3 = MultiLongValuesSource.fromLongField("multi_int");
@@ -167,43 +144,5 @@ public class TestMultiLongValuesSource extends MultiValuesSourceTestCase {
     assertNotEquals(doubleValuesSource1, doubleValuesSource3);
     assertEquals(doubleValuesSource1.hashCode(), doubleValuesSource2.hashCode());
     assertNotEquals(doubleValuesSource1.hashCode(), doubleValuesSource3.hashCode());
-  }
-
-  private static class RewritingLongValuesSource extends LongValuesSource {
-
-    @Override
-    public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      return null;
-    }
-
-    @Override
-    public boolean needsScores() {
-      return false;
-    }
-
-    @Override
-    public int hashCode() {
-      return 0;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      return false;
-    }
-
-    @Override
-    public String toString() {
-      return null;
-    }
-
-    @Override
-    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return new RewritingLongValuesSource();
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return false;
-    }
   }
 }

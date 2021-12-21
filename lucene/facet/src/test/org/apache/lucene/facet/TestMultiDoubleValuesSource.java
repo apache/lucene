@@ -14,13 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.facet;
 
-import java.io.IOException;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.DoubleValues;
+import org.apache.lucene.search.DoubleValuesSource;
 
 public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
 
@@ -31,7 +32,7 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(valuesSource);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_int");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
 
@@ -39,21 +40,21 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(valuesSource);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_long");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
 
     valuesSource = MultiDoubleValuesSource.fromIntField("multi_int");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_int");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
 
     valuesSource = MultiDoubleValuesSource.fromLongField("multi_long");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_long");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
     }
 
@@ -61,7 +62,7 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(valuesSource);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_float");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), false);
     }
 
@@ -69,21 +70,21 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(valuesSource);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_double");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), true);
     }
 
     valuesSource = MultiDoubleValuesSource.fromFloatField("multi_float");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_float");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), false);
     }
 
     valuesSource = MultiDoubleValuesSource.fromDoubleField("multi_double");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_double");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), true);
     }
   }
@@ -98,7 +99,7 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(singleton);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_float");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), false);
 
       NumericDocValues singletonDv = DocValues.getNumeric(ctx.reader(), "single_float");
@@ -113,7 +114,7 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     assertNotNull(singleton);
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_double");
-      MultiDoubleValues values = valuesSource.getValues(ctx, null);
+      MultiDoubleValues values = valuesSource.getValues(ctx);
       validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), true);
 
       NumericDocValues singletonDv = DocValues.getNumeric(ctx.reader(), "single_double");
@@ -122,40 +123,14 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     }
   }
 
-  public void testNoScoreNeed() throws Exception {
+  public void testCacheable() {
     MultiDoubleValuesSource valuesSource = MultiDoubleValuesSource.fromDoubleField("multi_double");
-    // field-backed instances shouldn't need scores:
-    assertFalse(valuesSource.needsScores());
-  }
-
-  public void testRewriteSame() throws Exception {
-    MultiDoubleValuesSource valuesSource = MultiDoubleValuesSource.fromDoubleField("multi_double");
-    MultiDoubleValuesSource rewritten = valuesSource.rewrite(searcher);
-    // field-backed instances shouldn't do anything interesting when rewritten:
-    assertSame(valuesSource, rewritten);
-  }
-
-  public void testRewriteDifferent() throws Exception {
-    DoubleValuesSource rewritingSingleton =
-        new TestMultiDoubleValuesSource.RewritingDoubleValuesSource();
-    MultiDoubleValuesSource valuesSource =
-        MultiDoubleValuesSource.fromSingleValued(rewritingSingleton);
-    MultiDoubleValuesSource rewritten = valuesSource.rewrite(searcher);
-    assertNotSame(valuesSource, rewritten);
-
-    DoubleValuesSource unwrappedOriginal = MultiDoubleValuesSource.unwrapSingleton(valuesSource);
-    DoubleValuesSource unwrappedRewritten = MultiDoubleValuesSource.unwrapSingleton(rewritten);
-    assertNotSame(unwrappedOriginal, unwrappedRewritten);
-  }
-
-  public void testCacheable() throws Exception {
-    MultiDoubleValuesSource valuesSource = MultiDoubleValuesSource.fromDoubleField("multi_double");
-    for (LeafReaderContext ctx : searcher.leafContexts) {
+    for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       assertEquals(DocValues.isCacheable(ctx, "multi_double"), valuesSource.isCacheable(ctx));
     }
   }
 
-  public void testEqualsAndHashcode() throws Exception {
+  public void testEqualsAndHashcode() {
     MultiDoubleValuesSource valuesSource1 = MultiDoubleValuesSource.fromLongField("multi_long");
     MultiDoubleValuesSource valuesSource2 = MultiDoubleValuesSource.fromLongField("multi_long");
     MultiDoubleValuesSource valuesSource3 = MultiDoubleValuesSource.fromLongField("multi_int");
@@ -190,43 +165,5 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     assertNotEquals(valuesSource1, valuesSource3);
     assertNotEquals(valuesSource1.hashCode(), valuesSource2.hashCode());
     assertNotEquals(valuesSource1.hashCode(), valuesSource3.hashCode());
-  }
-
-  private static class RewritingDoubleValuesSource extends DoubleValuesSource {
-
-    @Override
-    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      return null;
-    }
-
-    @Override
-    public boolean needsScores() {
-      return false;
-    }
-
-    @Override
-    public int hashCode() {
-      return 0;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      return false;
-    }
-
-    @Override
-    public String toString() {
-      return null;
-    }
-
-    @Override
-    public DoubleValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return new RewritingDoubleValuesSource();
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return false;
-    }
   }
 }

@@ -26,7 +26,6 @@ import org.apache.lucene.search.DoubleValuesSource;
  *
  * @lucene.experimental
  */
-// TODO: Support MultiDoubleValuesSource?
 public abstract class Bindings {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */

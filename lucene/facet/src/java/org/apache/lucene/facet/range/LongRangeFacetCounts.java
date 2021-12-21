@@ -21,13 +21,13 @@ import java.util.List;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
+import org.apache.lucene.facet.MultiLongValues;
+import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
-import org.apache.lucene.search.MultiLongValues;
-import org.apache.lucene.search.MultiLongValuesSource;
 import org.apache.lucene.search.Query;
 
 /**
@@ -192,7 +192,7 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
     LongRangeCounter counter = LongRangeCounter.create(ranges, counts);
 
     for (MatchingDocs hits : matchingDocs) {
-      MultiLongValues multiValues = valueSource.getValues(hits.context, null);
+      MultiLongValues multiValues = valueSource.getValues(hits.context);
 
       final DocIdSetIterator it = createIterator(hits);
       if (it == null) {

@@ -66,9 +66,10 @@ New Features
   been upgraded to Unicode 12.1  (Robert Muir)
 
 * LUCENE-10245: MultiDoubleValues(Source) and MultiLongValues(Source) were added as multi-valued versions of
-  DoubleValues(Source) and LongValues(Source). LongValueFacetCounts, LongRangeFacetCounts and DoubleRangeFacetCounts
-  were augmented to support these new multi-valued abstractions instead of the single-valued versions (with the
-  single-valued versions marked as deprecated). (Greg Miller)
+  DoubleValues(Source) and LongValues(Source) to the facets module. LongValueFacetCounts, LongRangeFacetCounts
+  and DoubleRangeFacetCounts were augmented to support these new multi-valued abstractions instead of the
+  single-valued versions (with the single-valued versions marked as deprecated). DoubleRange and LongRange also
+  support creating queries from these multi-valued sources in place of the single-valued ones. (Greg Miller)
 
 Improvements
 ---------------------

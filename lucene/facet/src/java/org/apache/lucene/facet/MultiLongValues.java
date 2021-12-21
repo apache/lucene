@@ -14,15 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.facet;
 
 import java.io.IOException;
+import org.apache.lucene.search.LongValues;
 
 /**
- * Per-segment, per-document double values, which can be calculated at search-time. Documents may
- * produce multiple values. See also {@link DoubleValues} for a single-valued version.
+ * Per-segment, per-document long values, which can be calculated at search-time. Documents may
+ * produce multiple values. See also {@link LongValues} for a single-valued version.
+ *
+ * <p>Currently meant only for use within the faceting module. Could be further generalized and made
+ * available for more use-cases outside faceting if there is a desire to do so.
+ *
+ * @lucene.experimental
  */
-public abstract class MultiDoubleValues {
+public abstract class MultiLongValues {
 
   /**
    * Retrieves the number of values for the current document. This must always be greater than zero.
@@ -34,8 +40,8 @@ public abstract class MultiDoubleValues {
    * Iterates to the next value in the current document. Do not call this more than {@link
    * #getValueCount} times for the document.
    */
-  public abstract double nextValue() throws IOException;
+  public abstract long nextValue() throws IOException;
 
-  /** Advance to exactly {@code doc} and return whether {@code doc} has a value. */
+  /** Advance to exactly {@code target} and return whether {@code target} has a value. */
   public abstract boolean advanceExact(int doc) throws IOException;
 }

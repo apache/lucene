@@ -14,21 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LongValues;
+import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.search.SegmentCacheable;
 
 /**
  * Base class for producing {@link MultiLongValues}. See also {@link LongValuesSource} for a
  * single-valued version.
- *
- * <p>To obtain a {@link MultiLongValues} object for a leaf reader, clients should call {@link
- * #rewrite(IndexSearcher)} against the top-level searcher, and then {@link
- * #getValues(LeafReaderContext, DoubleValues)}.
  *
  * <p>MultiLongValuesSource objects for long and int-valued NumericDocValues/SortedNumericDocValues
  * fields can be obtained by calling {@link #fromLongField(String)} and {@link
@@ -42,36 +42,27 @@ import org.apache.lucene.index.SortedNumericDocValues;
  *
  * <p>To obtain a MultiLongValuesSource from an existing {@link LongValuesSource}, see {@link
  * #fromSingleValued(LongValuesSource)}. Instances created in this way can be "unwrapped" using
- * {@link #unwrapSingleton(MultiLongValuesSource)} if necessary.
+ * {@link #unwrapSingleton(MultiLongValuesSource)} if necessary. Note that scores are never provided
+ * to the underlying {@code LongValuesSource}. {@link LongValuesSource#rewrite(IndexSearcher)} will
+ * also never be called. The user should be aware of this if using a {@code LongValuesSource} that
+ * relies on rewriting or scores. The faceting use-cases don't call rewrite or provide scores, which
+ * is why this simplification was made.
+ *
+ * <p>Currently meant only for use within the faceting module. Could be further generalized and made
+ * available for more use-cases outside faceting if there is a desire to do so.
+ *
+ * @lucene.experimental
  */
-// TODO: Add support for converting to single-valued (e.g., by min/max/sum/avg/etc)?
 public abstract class MultiLongValuesSource implements SegmentCacheable {
 
-  /**
-   * Returns a {@link MultiLongValues} instance for the passed-in LeafReaderContext and scores
-   *
-   * <p>If scores are not needed to calculate the values (ie {@link #needsScores() returns false},
-   * callers may safely pass {@code null} for the {@code scores} parameter.
-   */
-  public abstract MultiLongValues getValues(LeafReaderContext ctx, DoubleValues scores)
-      throws IOException;
-
-  /** Return true if document scores are needed to calculate values */
-  public abstract boolean needsScores();
-
-  /**
-   * Return a MultiLongValuesSource specialised for the given IndexSearcher
-   *
-   * <p>Implementations should assume that this will only be called once. IndexSearcher-independent
-   * implementations can just return {@code this}
-   */
-  public abstract MultiLongValuesSource rewrite(IndexSearcher searcher) throws IOException;
+  /** Returns a {@link MultiLongValues} instance for the passed-in LeafReaderContext */
+  public abstract MultiLongValues getValues(LeafReaderContext ctx) throws IOException;
 
   @Override
   public abstract int hashCode();
 
   @Override
-  public abstract boolean equals(Object obj);
+  public abstract boolean equals(Object o);
 
   @Override
   public abstract String toString();
@@ -116,8 +107,7 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
     }
 
     @Override
-    public MultiLongValues getValues(LeafReaderContext ctx, DoubleValues scores)
-        throws IOException {
+    public MultiLongValues getValues(LeafReaderContext ctx) throws IOException {
       final SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), field);
       return new MultiLongValues() {
         @Override
@@ -135,16 +125,6 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
           return docValues.advanceExact(doc);
         }
       };
-    }
-
-    @Override
-    public boolean needsScores() {
-      return false;
-    }
-
-    @Override
-    public MultiLongValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return this;
     }
 
     @Override
@@ -179,9 +159,8 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
     }
 
     @Override
-    public MultiLongValues getValues(LeafReaderContext ctx, DoubleValues scores)
-        throws IOException {
-      final LongValues singleValued = in.getValues(ctx, scores);
+    public MultiLongValues getValues(LeafReaderContext ctx) throws IOException {
+      final LongValues singleValued = in.getValues(ctx, null);
       return new MultiLongValues() {
         @Override
         public long getValueCount() {
@@ -198,21 +177,6 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
           return singleValued.advanceExact(doc);
         }
       };
-    }
-
-    @Override
-    public boolean needsScores() {
-      return in.needsScores();
-    }
-
-    @Override
-    public MultiLongValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      LongValuesSource rewritten = in.rewrite(searcher);
-      if (rewritten != in) {
-        return new SingleValuedAsMultiValued(rewritten);
-      } else {
-        return this;
-      }
     }
 
     @Override
@@ -247,9 +211,8 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
     }
 
     @Override
-    public MultiDoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
-        throws IOException {
-      final MultiLongValues longValues = in.getValues(ctx, scores);
+    public MultiDoubleValues getValues(LeafReaderContext ctx) throws IOException {
+      final MultiLongValues longValues = in.getValues(ctx);
       return new MultiDoubleValues() {
         @Override
         public long getValueCount() {
@@ -266,21 +229,6 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
           return longValues.advanceExact(doc);
         }
       };
-    }
-
-    @Override
-    public boolean needsScores() {
-      return in.needsScores();
-    }
-
-    @Override
-    public MultiDoubleValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      MultiLongValuesSource rewritten = in.rewrite(searcher);
-      if (rewritten != in) {
-        return new DoubleLongValuesSources(rewritten);
-      } else {
-        return this;
-      }
     }
 
     @Override

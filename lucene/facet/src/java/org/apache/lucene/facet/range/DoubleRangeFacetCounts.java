@@ -22,13 +22,13 @@ import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
+import org.apache.lucene.facet.MultiDoubleValues;
+import org.apache.lucene.facet.MultiDoubleValuesSource;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
-import org.apache.lucene.search.MultiDoubleValues;
-import org.apache.lucene.search.MultiDoubleValuesSource;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.NumericUtils;
 
@@ -214,7 +214,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
 
     int missingCount = 0;
     for (MatchingDocs hits : matchingDocs) {
-      MultiDoubleValues multiValues = valueSource.getValues(hits.context, null);
+      MultiDoubleValues multiValues = valueSource.getValues(hits.context);
 
       final DocIdSetIterator it = createIterator(hits);
       if (it == null) {

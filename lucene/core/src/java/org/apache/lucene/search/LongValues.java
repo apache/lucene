@@ -19,10 +19,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 
-/**
- * Per-segment, per-document long values, which can be calculated at search-time. See also {@link
- * MultiLongValues} for a multi-valued version.
- */
+/** Per-segment, per-document long values, which can be calculated at search-time */
 public abstract class LongValues {
 
   /** Get the long value for the current document */

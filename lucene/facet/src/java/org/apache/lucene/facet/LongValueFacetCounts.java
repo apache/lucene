@@ -34,8 +34,6 @@ import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
-import org.apache.lucene.search.MultiLongValues;
-import org.apache.lucene.search.MultiLongValuesSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.PriorityQueue;
@@ -193,7 +191,7 @@ public class LongValueFacetCounts extends Facets {
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
 
-      MultiLongValues multiValues = valuesSource.getValues(hits.context, null);
+      MultiLongValues multiValues = valuesSource.getValues(hits.context);
 
       DocIdSetIterator docs = hits.bits.iterator();
       for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
@@ -291,7 +289,7 @@ public class LongValueFacetCounts extends Facets {
       throws IOException {
 
     for (LeafReaderContext context : reader.leaves()) {
-      MultiLongValues multiValues = valueSource.getValues(context, null);
+      MultiLongValues multiValues = valueSource.getValues(context);
       int maxDoc = context.reader().maxDoc();
 
       for (int doc = 0; doc < maxDoc; doc++) {

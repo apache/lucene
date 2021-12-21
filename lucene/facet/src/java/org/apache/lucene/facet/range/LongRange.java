@@ -18,6 +18,8 @@ package org.apache.lucene.facet.range;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.facet.MultiLongValues;
+import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -26,8 +28,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
-import org.apache.lucene.search.MultiLongValues;
-import org.apache.lucene.search.MultiLongValuesSource;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -274,7 +274,7 @@ public final class LongRange extends Range {
             approximation = s.iterator();
           }
 
-          final MultiLongValues values = valuesSource.getValues(context, null);
+          final MultiLongValues values = valuesSource.getValues(context);
           final TwoPhaseIterator twoPhase =
               new TwoPhaseIterator(approximation) {
                 @Override

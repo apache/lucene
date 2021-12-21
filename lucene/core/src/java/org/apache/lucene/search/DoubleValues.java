@@ -19,10 +19,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 
-/**
- * Per-segment, per-document double values, which can be calculated at search-time. See also {@link
- * MultiDoubleValues} for a multi-valued version.
- */
+/** Per-segment, per-document double values, which can be calculated at search-time */
 public abstract class DoubleValues {
 
   /** Get the double value for the current document */
