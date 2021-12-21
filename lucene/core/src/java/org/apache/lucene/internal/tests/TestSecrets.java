@@ -26,7 +26,8 @@ import org.apache.lucene.index.SegmentReader;
 
 /**
  * A set of static methods returning accessors for internal, package-private functionality in
- * Lucene.
+ * Lucene. All getters may only be called by the Lucene Test Framework module. Setters are
+ * initialized once on startup.
  */
 public final class TestSecrets {
   static {
