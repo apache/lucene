@@ -235,7 +235,9 @@ public class DirectReader {
         int i = in.readShort(offset + (index >>> 3)) >>> shift;
         twin.first = i & 0x1;
         twin.second = (i >>> 1) & 0x1;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -268,7 +270,9 @@ public class DirectReader {
         int i = in.readShort(offset + (index >>> 2)) >>> shift;
         twin.first = i & 0x3;
         twin.second = (i >>> 2) & 0x3;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -301,7 +305,9 @@ public class DirectReader {
         int l = in.readShort(offset + (index >>> 1)) >>> shift;
         twin.first = l & 0xF;
         twin.second = (l >>> 4) & 0xF;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -332,7 +338,9 @@ public class DirectReader {
         short s = in.readShort(offset + index);
         twin.first = s & 0xFF;
         twin.second = (s >>> 8) & 0xFF;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -367,7 +375,9 @@ public class DirectReader {
         int i = in.readInt(this.offset + offset) >>> shift;
         twin.first = i & 0xFFF;
         twin.second = (i >>> 12) & 0xFFF;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -398,7 +408,9 @@ public class DirectReader {
         int i = in.readInt(offset + (index << 1));
         twin.first = i & 0xFFFF;
         twin.second = (i >>> 16) & 0xFFFF;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -433,7 +445,9 @@ public class DirectReader {
         long l = in.readLong(this.offset + offset) >>> shift;
         twin.first = l & 0xFFFFF;
         twin.second = (l >>> 20) & 0xFFFFF;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -464,7 +478,9 @@ public class DirectReader {
         long l = in.readLong(this.offset + index * 3);
         twin.first = l & 0xFFFFFF;
         twin.second = (l >>> 24) & 0xFFFFFF;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -491,6 +507,7 @@ public class DirectReader {
       }
     }
 
+    @Override
     public void get(long index, Twin twin) {
       try {
         long offset = (index * 28) >>> 3;
@@ -498,7 +515,9 @@ public class DirectReader {
         long l = in.readLong(this.offset + offset) >>> shift;
         twin.first = l & 0xFFFFFFF;
         twin.second = (l >>> 28) & 0xFFFFFFF;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
@@ -529,7 +548,9 @@ public class DirectReader {
         long l = in.readLong(this.offset + (index << 2));
         twin.first = l & 0xFFFFFFFFL;
         twin.second = (l >>> 32) & 0xFFFFFFFFL;
-      } catch (Exception e) {
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
         super.get(index, twin);
       }
       assert twinImplementIsRight(index, twin);
