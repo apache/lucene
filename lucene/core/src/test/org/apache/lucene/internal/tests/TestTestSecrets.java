@@ -22,9 +22,13 @@ public class TestTestSecrets extends LuceneTestCase {
 
   public void testCallerOfGetter() {
     final UnsupportedOperationException expected =
-        expectThrows(UnsupportedOperationException.class, () -> TestSecrets.getIndexWriterAccess());
+        expectThrows(UnsupportedOperationException.class, TestTestSecrets::illegalCaller);
     assertEquals(
         "Lucene TestSecrets can only be used by the test-framework.", expected.getMessage());
+  }
+
+  private static void illegalCaller() {
+    TestSecrets.getIndexWriterAccess();
   }
 
   public void testCannotSet() {
