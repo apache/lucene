@@ -86,6 +86,8 @@ Optimizations
 Bug Fixes
 ---------------------
 
+* LUCENE-10316: fix TestLRUQueryCache.testCachingAccountableQuery failure. (Patrick Zhai)
+
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
 * LUCENE-10287: Fix Luke startup script to add jdk.unsupported module so
