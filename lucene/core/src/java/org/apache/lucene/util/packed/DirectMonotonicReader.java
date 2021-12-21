@@ -127,6 +127,7 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   }
 
   private final int blockShift;
+  private final long blockMask;
   private final LongValues[] readers;
   private final long[] mins;
   private final float[] avgs;
@@ -136,6 +137,7 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   private DirectMonotonicReader(
       int blockShift, LongValues[] readers, long[] mins, float[] avgs, byte[] bpvs) {
     this.blockShift = blockShift;
+    this.blockMask = (1L << blockShift) - 1;
     this.readers = readers;
     this.mins = mins;
     this.avgs = avgs;
@@ -157,9 +159,27 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   @Override
   public long get(long index) {
     final int block = (int) (index >>> blockShift);
-    final long blockIndex = index & ((1 << blockShift) - 1);
+    final long blockIndex = index & blockMask;
     final long delta = readers[block].get(blockIndex);
     return mins[block] + (long) (avgs[block] * blockIndex) + delta;
+  }
+
+  @Override
+  public void get(long index, Twin twin) {
+    int block = (int) (index >>> blockShift);
+    long blockIndex = index & blockMask;
+    if (blockIndex == blockMask) {
+      twin.first = readers[block].get(blockIndex) + mins[block] + (long) (avgs[block] * blockIndex);
+      block++;
+      twin.second = readers[block].get(0) + mins[block];
+    } else {
+      readers[block].get(blockIndex, twin);
+      long min = mins[block];
+      float avg = avgs[block];
+      twin.first = twin.first + min + (long) (avg * blockIndex);
+      twin.second = twin.second + min + (long) (avg * (blockIndex + 1));
+    }
+    assert twinImplementIsRight(index, twin);
   }
 
   /** Get lower/upper bounds for the value at a given index without hitting the direct reader. */
