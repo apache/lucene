@@ -58,7 +58,11 @@ configure(rootProject) {
             jars += prj.configurations.testCompileClasspath.resolve()
           }
 
-          classpath.entries += sources.sort().collect {name -> new SourceFolder(name, "build/eclipse/" + name) }
+          classpath.entries += sources.sort().collect { name -> 
+            def sourceFolder = new SourceFolder(name, "build/eclipse/" + name) 
+            sourceFolder.setExcludes(["module-info.java"])
+            return sourceFolder
+          }
           classpath.entries += jars.unique().findAll { location -> location.isFile() }.collect { location ->
             new LibEntry(location.toString())
           }

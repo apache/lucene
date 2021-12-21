@@ -20,7 +20,9 @@ apply plugin: 'java-library'
 description = 'Lucene codecs and postings formats'
 
 dependencies {
+
     implementation project(':lucene:core')
-    implementation 'com.github.luben:zstd-jni:1.5.0-4'
+    moduleImplementation project(':lucene:core')
+	implementation 'com.github.luben:zstd-jni:1.5.0-4'
     testImplementation project(':lucene:test-framework')
 }

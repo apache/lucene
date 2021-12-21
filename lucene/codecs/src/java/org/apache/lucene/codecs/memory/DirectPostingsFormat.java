@@ -44,9 +44,10 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.RunAutomaton;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 
 // TODO:
 //   - build depth-N prefix hash?
@@ -943,8 +944,9 @@ public final class DirectPostingsFormat extends PostingsFormat {
     }
 
     private final class DirectIntersectTermsEnum extends BaseTermsEnum {
-      private final RunAutomaton runAutomaton;
-      private final CompiledAutomaton compiledAutomaton;
+      private final ByteRunnable byteRunnable;
+      protected final TransitionAccessor transitionAccessor;
+      private final BytesRef commonSuffixRef;
       private int termOrd;
       private final BytesRef scratch = new BytesRef();
 
@@ -962,15 +964,16 @@ public final class DirectPostingsFormat extends PostingsFormat {
       private int stateUpto;
 
       public DirectIntersectTermsEnum(CompiledAutomaton compiled, BytesRef startTerm) {
-        runAutomaton = compiled.runAutomaton;
-        compiledAutomaton = compiled;
+        this.byteRunnable = compiled.getByteRunnable();
+        this.transitionAccessor = compiled.getTransitionAccessor();
+        commonSuffixRef = compiled.commonSuffixRef;
         termOrd = -1;
         states = new State[1];
         states[0] = new State();
         states[0].changeOrd = terms.length;
         states[0].state = 0;
-        states[0].transitionCount = compiledAutomaton.automaton.getNumTransitions(states[0].state);
-        compiledAutomaton.automaton.initTransition(states[0].state, states[0].transition);
+        states[0].transitionCount = transitionAccessor.getNumTransitions(states[0].state);
+        transitionAccessor.initTransition(states[0].state, states[0].transition);
         states[0].transitionUpto = -1;
         states[0].transitionMax = -1;
 
@@ -992,7 +995,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
               while (label > states[i].transitionMax) {
                 states[i].transitionUpto++;
                 assert states[i].transitionUpto < states[i].transitionCount;
-                compiledAutomaton.automaton.getNextTransition(states[i].transition);
+                transitionAccessor.getNextTransition(states[i].transition);
                 states[i].transitionMin = states[i].transition.min;
                 states[i].transitionMax = states[i].transition.max;
                 assert states[i].transitionMin >= 0;
@@ -1045,7 +1048,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
                   if (skipUpto < numSkips) {
                     grow();
 
-                    final int nextState = runAutomaton.step(states[stateUpto].state, label);
+                    final int nextState = byteRunnable.step(states[stateUpto].state, label);
 
                     // Automaton is required to accept startTerm:
                     assert nextState != -1;
@@ -1054,8 +1057,8 @@ public final class DirectPostingsFormat extends PostingsFormat {
                     states[stateUpto].changeOrd = skips[skipOffset + skipUpto++];
                     states[stateUpto].state = nextState;
                     states[stateUpto].transitionCount =
-                        compiledAutomaton.automaton.getNumTransitions(nextState);
-                    compiledAutomaton.automaton.initTransition(
+                        transitionAccessor.getNumTransitions(nextState);
+                    transitionAccessor.initTransition(
                         states[stateUpto].state, states[stateUpto].transition);
                     states[stateUpto].transitionUpto = -1;
                     states[stateUpto].transitionMax = -1;
@@ -1154,7 +1157,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
           // if (DEBUG) {
           //   System.out.println("  visit empty string");
           // }
-          if (runAutomaton.isAccept(states[0].state)) {
+          if (byteRunnable.isAccept(states[0].state)) {
             scratch.bytes = termBytes;
             scratch.offset = 0;
             scratch.length = 0;
@@ -1236,7 +1239,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
               }
               continue nextTerm;
             }
-            compiledAutomaton.automaton.getNextTransition(state.transition);
+            transitionAccessor.getNextTransition(state.transition);
             assert state.transitionUpto < state.transitionCount
                 : " state.transitionUpto=" + state.transitionUpto + " vs " + state.transitionCount;
             state.transitionMin = state.transition.min;
@@ -1304,7 +1307,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
             }
           }
 
-          int nextState = runAutomaton.step(states[stateUpto].state, label);
+          int nextState = byteRunnable.step(states[stateUpto].state, label);
 
           if (nextState == -1) {
             // Skip
@@ -1340,9 +1343,8 @@ public final class DirectPostingsFormat extends PostingsFormat {
             stateUpto++;
             states[stateUpto].state = nextState;
             states[stateUpto].changeOrd = skips[skipOffset + skipUpto++];
-            states[stateUpto].transitionCount =
-                compiledAutomaton.automaton.getNumTransitions(nextState);
-            compiledAutomaton.automaton.initTransition(nextState, states[stateUpto].transition);
+            states[stateUpto].transitionCount = transitionAccessor.getNumTransitions(nextState);
+            transitionAccessor.initTransition(nextState, states[stateUpto].transition);
             states[stateUpto].transitionUpto = -1;
             states[stateUpto].transitionMax = -1;
 
@@ -1350,7 +1352,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
               // if (DEBUG) {
               //   System.out.println("  term ends after push");
               // }
-              if (runAutomaton.isAccept(nextState)) {
+              if (byteRunnable.isAccept(nextState)) {
                 // if (DEBUG) {
                 //   System.out.println("  automaton accepts: return");
                 // }
@@ -1374,17 +1376,17 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
             // TODO: add assert that we don't inc too many times
 
-            if (compiledAutomaton.commonSuffixRef != null) {
-              // System.out.println("suffix " + compiledAutomaton.commonSuffixRef.utf8ToString());
-              assert compiledAutomaton.commonSuffixRef.offset == 0;
-              if (termLength < compiledAutomaton.commonSuffixRef.length) {
+            if (commonSuffixRef != null) {
+              // System.out.println("suffix " + commonSuffixRef.utf8ToString());
+              assert commonSuffixRef.offset == 0;
+              if (termLength < commonSuffixRef.length) {
                 termOrd++;
                 skipUpto = 0;
                 continue nextTerm;
               }
-              int offset = termOffset + termLength - compiledAutomaton.commonSuffixRef.length;
-              for (int suffix = 0; suffix < compiledAutomaton.commonSuffixRef.length; suffix++) {
-                if (termBytes[offset + suffix] != compiledAutomaton.commonSuffixRef.bytes[suffix]) {
+              int offset = termOffset + termLength - commonSuffixRef.length;
+              for (int suffix = 0; suffix < commonSuffixRef.length; suffix++) {
+                if (termBytes[offset + suffix] != commonSuffixRef.bytes[suffix]) {
                   termOrd++;
                   skipUpto = 0;
                   continue nextTerm;
@@ -1394,7 +1396,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
             int upto = stateUpto + 1;
             while (upto < termLength) {
-              nextState = runAutomaton.step(nextState, termBytes[termOffset + upto] & 0xFF);
+              nextState = byteRunnable.step(nextState, termBytes[termOffset + upto] & 0xFF);
               if (nextState == -1) {
                 termOrd++;
                 skipUpto = 0;
@@ -1406,7 +1408,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
               upto++;
             }
 
-            if (runAutomaton.isAccept(nextState)) {
+            if (byteRunnable.isAccept(nextState)) {
               scratch.bytes = termBytes;
               scratch.offset = termOffsets[termOrd];
               scratch.length = termOffsets[1 + termOrd] - scratch.offset;
