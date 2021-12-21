@@ -54,7 +54,7 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
    *     better efficiency
    */
   public NFARunAutomaton(Automaton automaton) {
-    this(automaton, Character.MAX_CODE_POINT);
+    this(automaton, Character.MAX_CODE_POINT + 1);
   }
 
   /**
