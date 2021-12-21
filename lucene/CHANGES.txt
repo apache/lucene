@@ -7,7 +7,9 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10330: Provide better message if unmmaping failed in MMapDirectory by module system.
+  (Uwe Schindler)
 
 ======================= Lucene 9.0.0 =======================
 
