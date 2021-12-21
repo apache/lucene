@@ -14,7 +14,8 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
 
 Improvements
 ---------------------
@@ -41,7 +42,7 @@ API Changes
 
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
-  
+
 * LUCENE-10197: UnifiedHighlighter now has a Builder to construct it.  The UH's setters are now
   deprecated.  (Animesh Pandey, David Smiley)
 
@@ -50,6 +51,9 @@ New Features
 
 * LUCENE-10255: Lucene JARs are now proper modules, with module descriptors and dependency information.
   (Chris Hegarty, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
+
+* LUCENE-10330: Make MMapDirectory tests fail by default, if unmapping does not work.
+  (Uwe Schindler, Dawid Weiss)
 
 * LUCENE-10223: Add interval function support to StandardQueryParser. Add min-should-match operator
   support to StandardQueryParser. Update and clean up package documentation in flexible query parser
@@ -108,11 +112,13 @@ Optimizations
 Bug Fixes
 ---------------------
 
+* LUCENE-10316: fix TestLRUQueryCache.testCachingAccountableQuery failure. (Patrick Zhai)
+
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
 * LUCENE-10287: Fix Luke startup script to add jdk.unsupported module so
   MMapDirectory is used when opening indexes. (Uwe Schindler)
-  
+
 * LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
   (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 

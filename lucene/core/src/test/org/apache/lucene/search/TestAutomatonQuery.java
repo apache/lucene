@@ -127,18 +127,6 @@ public class TestAutomatonQuery extends LuceneTestCase {
             DEFAULT_DETERMINIZE_WORK_LIMIT));
   }
 
-  /** Test that a nondeterministic automaton fails, it should throw Exception */
-  public void testNFA() throws IOException {
-    // accept this or three, the union is an NFA (two transitions for 't' from
-    // initial state)
-    Automaton nfa = Operations.union(Automata.makeString("this"), Automata.makeString("three"));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          assertAutomatonHits(2, nfa);
-        });
-  }
-
   public void testEquals() {
     AutomatonQuery a1 = new AutomatonQuery(newTerm("foobar"), Automata.makeString("foobar"));
     // reference to a1

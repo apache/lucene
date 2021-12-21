@@ -53,6 +53,7 @@ public final class MinimizationOperations {
    *     what to specify.
    */
   public static Automaton minimize(Automaton a, int determinizeWorkLimit) {
+
     if (a.getNumStates() == 0 || (a.isAccept(0) == false && a.getNumTransitions(0) == 0)) {
       // Fastmatch for common case
       return new Automaton();
