@@ -17,7 +17,7 @@
 package org.apache.lucene.backward_codecs.lucene80;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests Lucene80DocValuesFormat */
 public class TestBestCompressionLucene80DocValuesFormat

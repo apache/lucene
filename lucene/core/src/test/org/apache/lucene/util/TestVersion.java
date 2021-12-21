@@ -21,6 +21,7 @@ import java.lang.reflect.Modifier;
 import java.text.ParseException;
 import java.util.Locale;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 @SuppressWarnings("deprecation")
 public class TestVersion extends LuceneTestCase {

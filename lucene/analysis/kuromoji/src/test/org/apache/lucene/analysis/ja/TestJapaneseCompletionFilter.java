@@ -19,10 +19,10 @@ package org.apache.lucene.analysis.ja;
 import java.io.IOException;
 import java.io.Reader;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.cjk.CJKWidthCharFilter;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 

@@ -18,8 +18,8 @@ package org.apache.lucene.util.automaton;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestRegExp extends LuceneTestCase {
 

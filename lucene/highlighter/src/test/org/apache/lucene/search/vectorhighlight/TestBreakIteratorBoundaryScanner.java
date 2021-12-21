@@ -18,7 +18,7 @@ package org.apache.lucene.search.vectorhighlight;
 
 import java.text.BreakIterator;
 import java.util.Locale;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestBreakIteratorBoundaryScanner extends LuceneTestCase {
   static final String TEXT =

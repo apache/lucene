@@ -24,10 +24,10 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.icu.tokenattributes.ScriptAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestICUTokenizer extends BaseTokenStreamTestCase {
 

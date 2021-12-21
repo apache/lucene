@@ -20,7 +20,7 @@ import java.io.StringReader;
 import java.util.Locale;
 import java.util.Properties;
 import org.apache.lucene.benchmark.byTask.feeds.DemoHTMLParser.Parser;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestHtmlParser extends LuceneTestCase {
 

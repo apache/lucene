@@ -24,9 +24,10 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Set;
-import org.apache.lucene.mockfile.FilterFileChannel;
-import org.apache.lucene.mockfile.FilterPath;
-import org.apache.lucene.mockfile.LeakFS;
+import org.apache.lucene.tests.mockfile.FilterFileChannel;
+import org.apache.lucene.tests.mockfile.FilterPath;
+import org.apache.lucene.tests.mockfile.LeakFS;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 
 /** Tests NIOFSDirectory */
 public class TestNIOFSDirectory extends BaseDirectoryTestCase {

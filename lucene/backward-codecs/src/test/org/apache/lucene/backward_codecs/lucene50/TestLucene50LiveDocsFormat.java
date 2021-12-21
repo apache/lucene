@@ -18,7 +18,7 @@ package org.apache.lucene.backward_codecs.lucene50;
 
 import org.apache.lucene.backward_codecs.lucene86.Lucene86RWCodec;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseLiveDocsFormatTestCase;
+import org.apache.lucene.tests.index.BaseLiveDocsFormatTestCase;
 
 public class TestLucene50LiveDocsFormat extends BaseLiveDocsFormatTestCase {
 

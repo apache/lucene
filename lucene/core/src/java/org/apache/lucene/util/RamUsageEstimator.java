@@ -607,7 +607,7 @@ public final class RamUsageEstimator {
    * <p>The returned offset will be the maximum of whatever was measured so far and <code>f</code>
    * field's offset and representation size (unaligned).
    */
-  static long adjustForField(long sizeSoFar, final Field f) {
+  public static long adjustForField(long sizeSoFar, final Field f) {
     final Class<?> type = f.getType();
     final int fsize = type.isPrimitive() ? primitiveSizes.get(type) : NUM_BYTES_OBJECT_REF;
     // TODO: No alignments based on field type/ subclass fields alignments?
