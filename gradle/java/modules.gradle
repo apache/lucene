@@ -1,3 +1,5 @@
+import org.gradle.api.internal.artifacts.configurations.ConfigurationInternal
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -171,21 +173,26 @@ class ModularPathsExtension {
     // This part of convention configurations seems like a very esoteric use case, leave out for now.
     // sourceSet.compileOnlyApiConfigurationName
 
+    // We have to ensure configurations are using assembled resources and classes (jar variant) as a single
+    // module can't be expanded into multiple folders.
+    Closure<Void> ensureJarVariant = { Configuration c ->
+      c.attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.objects.named(LibraryElements, LibraryElements.JAR))
+    }
+
     // Set up compilation module path configuration combining corresponding convention configurations.
     Closure<Configuration> createResolvableModuleConfiguration = { String configurationName ->
       Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
       Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(conventionConfiguration.name))
       moduleConfiguration.canBeConsumed(false)
       moduleConfiguration.canBeResolved(true)
-      moduleConfiguration.attributes {
-        // Prefer class folders over JARs because modules cannot be split and Gradle
-        // separates classes and resources for the same source set.
-        it.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.objects.named(LibraryElements, LibraryElements.JAR))
-      }
+      ensureJarVariant(moduleConfiguration)
 
       project.logger.info("Created resolvable module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
       return moduleConfiguration
     }
+
+    ensureJarVariant(configurations.maybeCreate(sourceSet.compileClasspathConfigurationName))
+    ensureJarVariant(configurations.maybeCreate(sourceSet.runtimeClasspathConfigurationName))
 
     this.compileModulePathConfiguration = createResolvableModuleConfiguration(sourceSet.compileClasspathConfigurationName)
     compileModulePathConfiguration.extendsFrom(moduleCompileOnly, moduleImplementation)
