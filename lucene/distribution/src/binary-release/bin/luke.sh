@@ -19,4 +19,5 @@
 #MODULES=`cd "$MODULES" && pwd`
 #java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
 #exit $?
+echo "[Vader] Hello, Luke."
 exit 0
