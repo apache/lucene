@@ -110,6 +110,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.*;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -736,13 +737,16 @@ public abstract class LuceneTestCase extends Assert {
    * one index; call {@link #restoreIndexWriterMaxDocs} once your test is done.
    */
   public void setIndexWriterMaxDocs(int limit) {
-    TestSecrets.getIndexPackageAccess().setIndexWriterMaxDocs(limit);
+    INDEX_PACKAGE_ACCESS.setIndexWriterMaxDocs(limit);
   }
 
   /** Returns to the default {@link IndexWriter#MAX_DOCS} limit. */
   public void restoreIndexWriterMaxDocs() {
-    TestSecrets.getIndexPackageAccess().setIndexWriterMaxDocs(IndexWriter.MAX_DOCS);
+    INDEX_PACKAGE_ACCESS.setIndexWriterMaxDocs(IndexWriter.MAX_DOCS);
   }
+
+  private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =
+      TestSecrets.getIndexPackageAccess();
 
   // -----------------------------------------------------------------
   // Test facilities and facades for subclasses.
