@@ -15,7 +15,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-MODULES=`dirname "$0"`/..
-MODULES=`cd "$MODULES" && pwd`
-java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
-exit $?
+#MODULES=`dirname "$0"`/..
+#MODULES=`cd "$MODULES" && pwd`
+#java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
+#exit $?
+exit 0
