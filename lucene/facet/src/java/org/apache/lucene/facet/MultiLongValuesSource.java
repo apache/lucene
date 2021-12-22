@@ -55,6 +55,9 @@ import org.apache.lucene.search.SegmentCacheable;
  */
 public abstract class MultiLongValuesSource implements SegmentCacheable {
 
+  /** Instantiates a new MultiLongValuesSource */
+  public MultiLongValuesSource() {}
+
   /** Returns a {@link MultiLongValues} instance for the passed-in LeafReaderContext */
   public abstract MultiLongValues getValues(LeafReaderContext ctx) throws IOException;
 

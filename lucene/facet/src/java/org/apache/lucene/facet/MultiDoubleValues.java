@@ -30,6 +30,9 @@ import org.apache.lucene.search.DoubleValues;
  */
 public abstract class MultiDoubleValues {
 
+  /** Instantiates a new MultiDoubleValues */
+  public MultiDoubleValues() {}
+
   /**
    * Retrieves the number of values for the current document. This must always be greater than zero.
    * It is illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
