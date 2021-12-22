@@ -26,8 +26,8 @@ public class TestMMap {
     final Module module = MMapDirectory.class.getModule();
     Assert.assertTrue("Lucene Core is not loaded as module", module.isNamed());
     Assert.assertTrue(
-        "Lucene Core can't read 'jdk.unsupported' module",
-        module.getLayer().findModule("jdk.unsupported").map(module::canRead).orElse(false));
+        "Lucene Core can't read 'jdk.incubator.foreign' module",
+        module.getLayer().findModule("jdk.incubator.foreign").map(module::canRead).orElse(false));
 
     // check that MMapDirectory can unmap by running the autodetection logic:
     Assert.assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
