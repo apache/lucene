@@ -17,5 +17,7 @@
 
 MODULES=`dirname "$0"`/..
 MODULES=`cd "$MODULES" && pwd`
+ls "$MODULES/modules"
+ls "$MODULES/modules-thirdparty"
 java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
 exit $?
