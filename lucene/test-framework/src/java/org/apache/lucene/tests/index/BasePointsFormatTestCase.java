@@ -47,6 +47,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
@@ -66,6 +67,9 @@ import org.apache.lucene.util.NumericUtils;
  * in a given PointsFormat that this test fails to catch then this test needs to be improved!
  */
 public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCase {
+
+  private static final ConcurrentMergeSchedulerAccess CONCURRENT_MERGE_SCHEDULER_ACCESS =
+      TestSecrets.getConcurrentMergeSchedulerAccess();
 
   @Override
   protected void addRandomFields(Document doc) {
@@ -654,8 +658,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
     if (expectExceptions) {
       MergeScheduler ms = iwc.getMergeScheduler();
       if (ms instanceof ConcurrentMergeScheduler) {
-        TestSecrets.getConcurrentMergeSchedulerAccess()
-            .setSuppressExceptions((ConcurrentMergeScheduler) ms);
+        CONCURRENT_MERGE_SCHEDULER_ACCESS.setSuppressExceptions((ConcurrentMergeScheduler) ms);
       }
     }
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
@@ -704,8 +707,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       if (expectExceptions) {
         MergeScheduler ms = iwc.getMergeScheduler();
         if (ms instanceof ConcurrentMergeScheduler) {
-          TestSecrets.getConcurrentMergeSchedulerAccess()
-              .setSuppressExceptions((ConcurrentMergeScheduler) ms);
+          CONCURRENT_MERGE_SCHEDULER_ACCESS.setSuppressExceptions((ConcurrentMergeScheduler) ms);
         }
       }
       w = new RandomIndexWriter(random(), dir, iwc);

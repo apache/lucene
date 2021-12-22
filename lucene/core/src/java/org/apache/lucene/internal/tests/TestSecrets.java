@@ -38,6 +38,7 @@ public final class TestSecrets {
             // initialized.
             // This only happens once. We could just leverage the JLS and invoke a static
             // method (or a constructor) on the target class but the method below seems simpler.
+            // TODO: In Java 15 there's MethodHandles.lookup().ensureInitialized(clazz)
             Class.forName(clazz.getName());
           } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
