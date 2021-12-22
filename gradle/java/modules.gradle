@@ -1,5 +1,3 @@
-import org.gradle.api.internal.artifacts.configurations.ConfigurationInternal
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -60,6 +58,15 @@ allprojects {
       })
     }
 
+    // Connect modular configurations between their "test" and "main" source sets, this reflects
+    // the conventions set by the Java plugin.
+    project.configurations {
+      moduleTestApi.extendsFrom moduleApi
+      moduleTestImplementation.extendsFrom moduleImplementation
+      moduleTestRuntimeOnly.extendsFrom moduleRuntimeOnly
+      moduleTestCompileOnly.extendsFrom moduleCompileOnly
+    }
+
     //
     // Configures a Test task associated with the provided source set to use module paths.
     //
@@ -72,16 +79,24 @@ allprojects {
       task.configure {
         ModularPathsExtension modularPaths = sourceSet.modularPaths
 
-        task.dependsOn modularPaths.runtimeModulePathConfiguration
+        dependsOn modularPaths.runtimeModulePathConfiguration
 
         // Add modular dependencies and their transitive dependencies to module path.
-        task.jvmArgumentProviders.add(modularPaths.runtimeArguments)
+        jvmArgumentProviders.add(modularPaths.runtimeArguments)
 
         // Modify the default classpath.
-        task.classpath = modularPaths.runtimeClasspath
+        classpath = modularPaths.runtimeClasspath
 
-        task.doFirst {
-          task.logger.lifecycle(modularPaths.runtimePathsToString())
+        // Disable automatic test class detection, rely on class names. This is needed for testing
+        // against JDKs where the bytecode is unparseable by Gradle, for example.
+        // We require all tests to start with Test*, this simplifies include patterns.
+        scanForTestClasses = false
+        include '**/Test*'
+        exclude '**/*$*'
+        exclude '**/*TestBase*'
+
+        doFirst {
+          logger.lifecycle(modularPaths.runtimePathsToString())
         }
       }
     }
@@ -140,28 +155,12 @@ class ModularPathsExtension {
   Configuration runtimeModulePathConfiguration
 
   ModularPathsExtension(Project project, SourceSet sourceSet) {
-    this.project =  project
+    this.project = project
     this.sourceSet = sourceSet
-
-    // Map convention configuration names to "modular" corresponding configurations.
-    Closure<String> moduleConfigurationNameFor = { String configurationName ->
-      return "module" + configurationName.capitalize().replace("Classpath", "Path")
-    }
 
     ConfigurationContainer configurations = project.configurations
 
     // Create modular configurations for gradle's java plugin convention configurations.
-    Closure<Configuration> createModuleConfigurationForConvention = { String configurationName ->
-      Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
-      Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
-      moduleConfiguration.canBeConsumed(false)
-      moduleConfiguration.canBeResolved(false)
-      conventionConfiguration.extendsFrom(moduleConfiguration)
-
-      project.logger.info("Created module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
-      return moduleConfiguration
-    }
-
     Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
     Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
     Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
@@ -322,5 +321,23 @@ class ModularPathsExtension {
     return "Modular extension, runtime paths:\n" +
         "  Module path:${toList(runtimeModulePath)}\n" +
         "  Class path: ${toList(runtimeClasspath)}"
+  }
+
+  // Map convention configuration names to "modular" corresponding configurations.
+  static String moduleConfigurationNameFor(String configurationName) {
+    return "module" + configurationName.capitalize().replace("Classpath", "Path")
+  }
+
+  // Create module configuration for the corresponding convention configuration.
+  private Configuration createModuleConfigurationForConvention(String configurationName) {
+    ConfigurationContainer configurations = project.configurations
+    Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+    Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
+    moduleConfiguration.canBeConsumed(false)
+    moduleConfiguration.canBeResolved(false)
+    conventionConfiguration.extendsFrom(moduleConfiguration)
+
+    project.logger.info("Created module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
+    return moduleConfiguration
   }
 }

@@ -21,7 +21,7 @@ description = 'Analyzers for indexing content in different languages and domains
 
 dependencies {
   moduleApi project(':lucene:core')
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }
 
 // Fetch the data and enable regression tests against woorm/ libreoffice dictionaries.

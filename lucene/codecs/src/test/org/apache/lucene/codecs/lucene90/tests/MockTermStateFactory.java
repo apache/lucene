@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene90.tests;
+
+import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 
 /** Test utility class to create mock {@link Lucene90PostingsFormat.IntBlockTermState}. */
 public class MockTermStateFactory {
-
   /** Creates an empty {@link Lucene90PostingsFormat.IntBlockTermState}. */
   public static Lucene90PostingsFormat.IntBlockTermState create() {
     return new Lucene90PostingsFormat.IntBlockTermState();

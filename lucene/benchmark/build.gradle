@@ -40,7 +40,7 @@ dependencies {
 
   moduleRuntimeOnly project(':lucene:analysis:icu')
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }
 
 // We add 'conf' to resources because we validate *.alg script correctness in one of the tests.
