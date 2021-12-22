@@ -20,8 +20,8 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 class MockVectorValues extends VectorValues
     implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {

@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.cn.smart;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.IOUtils;
 
 public class TestSmartChineseAnalyzer extends BaseTokenStreamTestCase {

@@ -17,8 +17,8 @@
 package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseStoredFieldsFormatTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene90StoredFieldsFormat extends BaseStoredFieldsFormatTestCase {
   @Override

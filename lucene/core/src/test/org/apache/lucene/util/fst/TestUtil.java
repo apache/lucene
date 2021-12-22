@@ -18,9 +18,9 @@ package org.apache.lucene.util.fst;
 
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestUtil extends LuceneTestCase {
 

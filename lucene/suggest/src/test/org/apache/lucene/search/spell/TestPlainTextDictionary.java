@@ -19,7 +19,7 @@ package org.apache.lucene.search.spell;
 import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Test case for PlainTextDictionary */
 public class TestPlainTextDictionary extends LuceneTestCase {

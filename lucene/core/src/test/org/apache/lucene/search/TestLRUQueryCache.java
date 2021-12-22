@@ -56,18 +56,20 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingIndexSearcher;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.RamUsageTester;
-import org.apache.lucene.util.TestUtil;
 
 public class TestLRUQueryCache extends LuceneTestCase {
 
@@ -564,10 +566,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
       final Query query = new AccountableDummyQuery();
       searcher.count(query);
     }
-    long queryRamBytesUsed =
-        numQueries * (10 * QUERY_DEFAULT_RAM_BYTES_USED + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY);
-    // allow 10% error for other ram bytes used estimation inside query cache
-    assertEquals(queryRamBytesUsed, queryCache.ramBytesUsed(), 10 * queryRamBytesUsed / 100);
+    long queryRamBytesUsed = numQueries * (10 * QUERY_DEFAULT_RAM_BYTES_USED);
+    // make sure the query cache reflects the big queries
+    assertTrue(queryCache.ramBytesUsed() > queryRamBytesUsed);
 
     reader.close();
     w.close();

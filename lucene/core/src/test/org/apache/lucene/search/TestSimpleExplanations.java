@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.util.Arrays;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.tests.search.BaseExplanationTestCase;
 import org.junit.Test;
 
 /** TestExplanations subclass focusing on basic query types */

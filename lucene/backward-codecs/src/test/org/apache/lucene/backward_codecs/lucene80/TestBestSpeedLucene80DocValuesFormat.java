@@ -17,8 +17,8 @@
 package org.apache.lucene.backward_codecs.lucene80;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.util.LuceneTestCase.Nightly;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests Lucene80DocValuesFormat */
 @Nightly // N-2 formats are only tested on nightly runs
