@@ -17,7 +17,11 @@
 
 MODULES=`dirname "$0"`/..
 MODULES=`cd "$MODULES" && pwd`
+echo "files in $MODULES/modules"
 ls "$MODULES/modules"
+echo "files in $MODULES/module-thirdparty"
 ls "$MODULES/modules-thirdparty"
+echo "files in $MODULES/modules-test-framework"
+ls "$MODULES/modules-test-framework"
 java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
 exit $?
