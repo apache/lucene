@@ -70,12 +70,10 @@ public class LukeMain {
   }
 
   public static void main(String[] args) throws Exception {
+    Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke.");
+    Runtime.getRuntime().exit(0);
+    /*
     boolean sanityCheck = Arrays.asList(args).contains("--sanity-check");
-
-    if (sanityCheck) {
-      Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke.");
-      Runtime.getRuntime().exit(0);
-    }
 
     if (sanityCheck && GraphicsEnvironment.isHeadless()) {
       Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke. Can't do much in headless mode.");
@@ -122,5 +120,6 @@ public class LukeMain {
       Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke. We seem to be fine.");
       Runtime.getRuntime().exit(0);
     }
+     */
   }
 }
