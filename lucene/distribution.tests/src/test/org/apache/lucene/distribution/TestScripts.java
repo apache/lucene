@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ThrowingConsumer;
@@ -62,6 +63,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
     execute(
         launcher,
         0,
+        5,
         (output) -> {
           Assertions.assertThat(output).contains("[Vader] Hello, Luke.");
         });
@@ -100,14 +102,23 @@ public class TestScripts extends AbstractLuceneDistributionTest {
       };
 
   protected String execute(
-      Launcher launcher, int expectedExitCode, ThrowingConsumer<String> consumer) throws Exception {
+      Launcher launcher,
+      int expectedExitCode,
+      long timeoutInSeconds,
+      ThrowingConsumer<String> consumer)
+      throws Exception {
 
     try (ForkedProcess forkedProcess = launcher.execute()) {
       String command = forkedProcess.getProcess().info().command().orElse("(unset command name)");
 
       Charset charset = forkedProcessCharset.get();
       try {
-        int exitStatus = forkedProcess.waitFor();
+        Process p = forkedProcess.getProcess();
+        if (!p.waitFor(timeoutInSeconds, TimeUnit.SECONDS)) {
+          throw new AssertionError("Forked process did not terminate in the expected time");
+        }
+
+        int exitStatus = p.exitValue();
 
         Assertions.assertThat(exitStatus)
             .as("forked process exit status")
