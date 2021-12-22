@@ -72,6 +72,11 @@ public class LukeMain {
   public static void main(String[] args) throws Exception {
     boolean sanityCheck = Arrays.asList(args).contains("--sanity-check");
 
+    if (sanityCheck) {
+      Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke.");
+      Runtime.getRuntime().exit(0);
+    }
+
     if (sanityCheck && GraphicsEnvironment.isHeadless()) {
       Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke. Can't do much in headless mode.");
       Runtime.getRuntime().exit(0);
