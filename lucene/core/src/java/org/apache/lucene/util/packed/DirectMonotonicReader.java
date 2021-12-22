@@ -127,6 +127,7 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   }
 
   private final int blockShift;
+  private final long blockMask;
   private final LongValues[] readers;
   private final long[] mins;
   private final float[] avgs;
@@ -136,6 +137,7 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   private DirectMonotonicReader(
       int blockShift, LongValues[] readers, long[] mins, float[] avgs, byte[] bpvs) {
     this.blockShift = blockShift;
+    this.blockMask = (1L << blockShift) - 1;
     this.readers = readers;
     this.mins = mins;
     this.avgs = avgs;
@@ -157,7 +159,7 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   @Override
   public long get(long index) {
     final int block = (int) (index >>> blockShift);
-    final long blockIndex = index & ((1 << blockShift) - 1);
+    final long blockIndex = index & blockMask;
     final long delta = readers[block].get(blockIndex);
     return mins[block] + (long) (avgs[block] * blockIndex) + delta;
   }
@@ -165,7 +167,7 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   /** Get lower/upper bounds for the value at a given index without hitting the direct reader. */
   private long[] getBounds(long index) {
     final int block = Math.toIntExact(index >>> blockShift);
-    final long blockIndex = index & ((1 << blockShift) - 1);
+    final long blockIndex = index & blockMask;
     final long lowerBound = mins[block] + (long) (avgs[block] * blockIndex);
     final long upperBound = lowerBound + (1L << bpvs[block]) - 1;
     if (bpvs[block] == 64 || upperBound < lowerBound) { // overflow
