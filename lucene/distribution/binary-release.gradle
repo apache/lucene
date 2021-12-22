@@ -108,9 +108,9 @@ configure(project(":lucene:distribution")) {
     from(configurations.jars, {
       into 'modules'
     })
-    from(configurations.jarsTestFramework, {
-      into 'modules-test-framework'
-    })
+    //from(configurations.jarsTestFramework, {
+    //  into 'modules-test-framework'
+    //})
 
     // Binary modules (with dependencies). Don't duplicate project artifacts.
     from((configurations.jarsThirdParty - configurations.jars), {
