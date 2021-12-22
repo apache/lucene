@@ -57,7 +57,7 @@ allprojects {
     project.sourceSets.all { SourceSet sourceSet ->
       ConfigurationContainer configurations = project.configurations
 
-      // Create modular configurations for convention configurations.
+      // Create modular configurations for gradle's java plugin convention configurations.
       Closure<Configuration> createModuleConfigurationForConvention = { String configurationName ->
         Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
         Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
@@ -71,10 +71,14 @@ allprojects {
 
       Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
       Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
-      moduleImplementation.extendsFrom(moduleApi)
       Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
       Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
-      // sourceSet.compileOnlyApiConfigurationName  // This seems like a very esoteric use case, leave out.
+
+      // Apply hierarchy relationships to modular configurations.
+      moduleImplementation.extendsFrom(moduleApi)
+
+      // This part of convention configurations seems like a very esoteric use case, leave out for now.
+      // sourceSet.compileOnlyApiConfigurationName
 
       // Set up compilation module path configuration combining corresponding convention configurations.
       Closure<Configuration> createResolvableModuleConfiguration = { String configurationName ->
@@ -130,8 +134,6 @@ allprojects {
             extraArgs += ["--module-path", modularPathFiles.join(File.pathSeparator)]
           }
 
-          task.logger.info("Module path for ${task.path}:\n  " + modularPathFiles.sort().join("\n  "))
-
           return extraArgs
         })
 
@@ -143,9 +145,19 @@ allprojects {
           // provider to delay computation of the actual path.
           task.classpath = files({ ->
             def trimmedClasspath = sourceSet.compileClasspath - modularPaths.compileModulePathConfiguration
-            task.logger.info("Class path for ${task.path}:\n  " + trimmedClasspath.files.sort().join("\n  "))
             return trimmedClasspath
           })
+        }
+
+        task.doFirst {
+          def modulePathFiles = sourceSet.modularPaths.compileModulePathConfiguration.files
+          def classPathFiles = (sourceSet.compileClasspath - modularPaths.compileModulePathConfiguration).files
+          Closure<String> toList = { Set<File> files ->
+            return files.isEmpty() ? " [empty]" : ("\n    " + files.sort().join("\n    "))
+          }
+          task.logger.lifecycle("Modular paths for task ${task.path}:\n" +
+              "  Module path:${toList(modulePathFiles)}\n" +
+              "  Class path :${toList(classPathFiles)}")
         }
       })
     }
