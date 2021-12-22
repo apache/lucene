@@ -44,9 +44,6 @@ final class Sync {
         Files.createDirectories(dst);
         sync(src.path, dst);
       } else {
-        if (src.name.equals("lucene-test-framework-10.0.0-SNAPSHOT.jar")) {
-          continue;
-        }
         if (!Files.exists(dst)
             || Files.size(dst) != Files.size(src.path)
             || Files.getLastModifiedTime(dst).compareTo(Files.getLastModifiedTime(src.path)) != 0) {

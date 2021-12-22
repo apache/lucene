@@ -40,8 +40,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
   @Test
   public void testLukeCanBeLaunched() throws Exception {
     Path distributionPath;
-    //if (randomBoolean()) {
-    if (true) {
+    if (randomBoolean()) {
       // Occasionally, be evil: put the distribution in a folder with a space inside. For Uwe.
       distributionPath = RandomizedTest.newTempDir(LifecycleScope.TEST).resolve("uh oh");
       Files.createDirectory(distributionPath);
