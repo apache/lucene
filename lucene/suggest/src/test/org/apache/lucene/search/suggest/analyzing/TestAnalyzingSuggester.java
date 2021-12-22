@@ -32,14 +32,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CannedBinaryTokenStream;
-import org.apache.lucene.analysis.CannedBinaryTokenStream.BinaryToken;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.MockUTF16TermAttributeImpl;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -51,11 +43,19 @@ import org.apache.lucene.search.suggest.Input;
 import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.CannedBinaryTokenStream;
+import org.apache.lucene.tests.analysis.CannedBinaryTokenStream.BinaryToken;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.MockUTF16TermAttributeImpl;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestAnalyzingSuggester extends LuceneTestCase {
 

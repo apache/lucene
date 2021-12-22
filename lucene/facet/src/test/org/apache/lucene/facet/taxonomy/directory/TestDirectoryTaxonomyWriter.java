@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetField;
@@ -44,8 +43,9 @@ import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Test;
 
 public class TestDirectoryTaxonomyWriter extends FacetTestCase {

@@ -18,7 +18,8 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestUpgradeIndexMergePolicy extends BaseMergePolicyTestCase {
 

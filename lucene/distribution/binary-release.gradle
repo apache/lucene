@@ -26,7 +26,6 @@ configure(project(":lucene:distribution")) {
     docs
 
     jars
-    jarsTestFramework
     jarsThirdParty
 
     binaryDirForTests
@@ -35,24 +34,15 @@ configure(project(":lucene:distribution")) {
   dependencies { DependencyHandler handler ->
     docs project(path: ':lucene:documentation', configuration: 'site')
 
-    // Maven-published submodule JARs are part of the binary distribution
-    // (with a few exceptions explicitly filtered below).
+    // Maven-published submodule JARs are part of the binary distribution.
     // We don't copy their transitive dependencies.
-    def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p in [
-        // Placed in a separate folder (module layer conflicts).
-        project(":lucene:test-framework"),
-    ]) }
+    def binaryModules = rootProject.ext.mavenProjects
     for (Project module : binaryModules) {
       jars(module, {
         transitive = false
       })
     }
 
-    // The test framework has split packages and breaks the module system layer so
-    // it's in a separate folder.
-    jarsTestFramework(project(":lucene:test-framework"), {
-      transitive = false
-    })
 
     // The third-party JARs consist of all the transitive dependencies from these modules.
     // Not sure whether we have to include all the thirdparty JARs from across all the modules.
@@ -107,9 +97,6 @@ configure(project(":lucene:distribution")) {
     // Binary modules (Lucene).
     from(configurations.jars, {
       into 'modules'
-    })
-    from(configurations.jarsTestFramework, {
-      into 'modules-test-framework'
     })
 
     // Binary modules (with dependencies). Don't duplicate project artifacts.

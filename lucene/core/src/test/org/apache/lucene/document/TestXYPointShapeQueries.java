@@ -20,9 +20,9 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.Random;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
-import org.apache.lucene.geo.ShapeTestUtil;
 import org.apache.lucene.geo.XYLine;
 import org.apache.lucene.geo.XYPoint;
+import org.apache.lucene.tests.geo.ShapeTestUtil;
 
 /**
  * random cartesian bounding box, line, and polygon query tests for random generated {@code x, y}

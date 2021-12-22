@@ -21,7 +21,8 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import org.apache.lucene.document.InetAddressPoint;
 import org.apache.lucene.document.InetAddressRange;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.search.BaseRangeFieldQueryTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 
 /** Random testing for {@link InetAddressRange} */
 @SuppressCodecs({"Direct"})

@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 import java.util.Random;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
-import org.apache.lucene.geo.ShapeTestUtil;
 import org.apache.lucene.geo.Tessellator;
 import org.apache.lucene.geo.XYCircle;
 import org.apache.lucene.geo.XYGeometry;
@@ -28,14 +27,15 @@ import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.geo.XYPolygon;
 import org.apache.lucene.geo.XYRectangle;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.geo.ShapeTestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** Test case for indexing cartesian shapes and search by bounding box, lines, and polygons */
 public class TestXYShape extends LuceneTestCase {

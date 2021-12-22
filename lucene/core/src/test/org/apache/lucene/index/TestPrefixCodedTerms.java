@@ -20,8 +20,8 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestPrefixCodedTerms extends LuceneTestCase {
 

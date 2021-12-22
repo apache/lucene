@@ -22,6 +22,8 @@ import org.apache.lucene.search.suggest.*;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
 import org.apache.lucene.search.suggest.fst.FSTCompletion.Completion;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.*;
 
 /** Unit tests for {@link FSTCompletion}. */

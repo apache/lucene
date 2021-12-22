@@ -26,11 +26,11 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestBlockJoinSelector extends LuceneTestCase {
 

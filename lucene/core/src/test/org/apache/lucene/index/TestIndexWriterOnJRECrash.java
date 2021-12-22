@@ -32,10 +32,10 @@ import java.nio.file.SimpleFileVisitor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
-import org.apache.lucene.util.TestUtil;
 
 /**
  * Runs TestNRTThreads in a separate process, crashes the JRE in the middle of execution, then runs
