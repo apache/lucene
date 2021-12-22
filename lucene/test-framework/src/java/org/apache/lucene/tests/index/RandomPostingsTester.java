@@ -63,6 +63,7 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
@@ -84,6 +85,8 @@ import org.apache.lucene.util.automaton.Operations;
 /** Helper class extracted from BasePostingsFormatTestCase to exercise a postings format. */
 public class RandomPostingsTester {
 
+  private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =
+      TestSecrets.getIndexPackageAccess();
   private static final IntToLongFunction DOC_TO_NORM = doc -> 1 + (doc & 0x0f);
 
   /** Which features to test. */
@@ -1243,7 +1246,7 @@ public class RandomPostingsTester {
         if (doc > max) {
           impactsEnum.advanceShallow(doc);
           Impacts impacts = impactsEnum.getImpacts();
-          TestSecrets.getIndexPackageAccess().checkImpacts(impacts, doc);
+          INDEX_PACKAGE_ACCESS.checkImpacts(impacts, doc);
           impactsCopy =
               impacts.getImpacts(0).stream()
                   .map(i -> new Impact(i.freq, i.norm))
@@ -1289,7 +1292,7 @@ public class RandomPostingsTester {
 
           impactsEnum.advanceShallow(target);
           Impacts impacts = impactsEnum.getImpacts();
-          TestSecrets.getIndexPackageAccess().checkImpacts(impacts, target);
+          INDEX_PACKAGE_ACCESS.checkImpacts(impacts, target);
           impactsCopy = Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
@@ -1330,7 +1333,7 @@ public class RandomPostingsTester {
           int delta = Math.min(1 + random.nextInt(512), DocIdSetIterator.NO_MORE_DOCS - doc);
           max = doc + delta;
           Impacts impacts = impactsEnum.getImpacts();
-          TestSecrets.getIndexPackageAccess().checkImpacts(impacts, doc);
+          INDEX_PACKAGE_ACCESS.checkImpacts(impacts, doc);
           impactsCopy = Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
