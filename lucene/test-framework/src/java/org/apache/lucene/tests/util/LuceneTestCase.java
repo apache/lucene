@@ -62,6 +62,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
@@ -2060,18 +2061,14 @@ public abstract class LuceneTestCase extends Assert {
     try {
       return Paths.get(
           IOUtils.requireResourceNonNull(this.getClass().getResource(name), name).toURI());
-    } catch (Exception e) {
-      throw new IOException("Cannot find resource: " + name, e);
+    } catch (URISyntaxException e) {
+      throw new AssertionError(e);
     }
   }
 
   /** Gets a resource from the test's classpath as {@link InputStream}. */
   protected InputStream getDataInputStream(String name) throws IOException {
-    InputStream in = this.getClass().getResourceAsStream(name);
-    if (in == null) {
-      throw new IOException("Cannot find resource: " + name);
-    }
-    return in;
+    return IOUtils.requireResourceNonNull(this.getClass().getResourceAsStream(name), name);
   }
 
   public void assertReaderEquals(String info, IndexReader leftReader, IndexReader rightReader)
