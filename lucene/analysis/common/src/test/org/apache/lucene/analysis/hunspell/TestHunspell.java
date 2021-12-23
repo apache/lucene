@@ -26,7 +26,7 @@ import java.text.ParseException;
 import java.util.Collections;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestHunspell extends LuceneTestCase {

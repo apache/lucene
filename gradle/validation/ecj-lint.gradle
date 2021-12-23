@@ -38,7 +38,7 @@ allprojects {
       def srcDirs = sourceSet.java.sourceDirectories
           .filter { dir -> dir.exists() }
 
-      tasks.create(sourceSet.getTaskName("ecjLint", null), JavaExec, {JavaExec task ->
+      tasks.create(sourceSet.getTaskName("ecjLint", null), JavaExec, { JavaExec task ->
         // This dependency is on a configuration; technically it causes
         // all dependencies to be resolved before this task executes
         // (this includes scheduling tasks that compile the
@@ -61,24 +61,6 @@ allprojects {
         def tmpDst = getTemporaryDir()
         workingDir tmpDst
 
-        // Place input files in an external file to dodge command line argument
-        // limits. We could pass a directory but ecj seems to be buggy: when it
-        // encounters a module-info.java file it no longer compiles other source files.
-        def inputsFile = file("${tmpDst}/ecj-inputs.txt")
-        // escape filename accoring to ECJ's rules:
-        // https://github.com/eclipse/aspectj.eclipse.jdt.core/blob/a05312e746b9bc2b48b4b039f6e7b5e061b5b393/org.eclipse.jdt.core/batch/org/eclipse/jdt/internal/compiler/batch/Main.java#L1533-L1537
-        // Basically surround all whitespace by quotes:
-        def escapeFileName = { String s -> s.replaceAll(/ +/, /"$0"/) }
-        inputsFile.setText(
-            srcDirs.collectMany { dir ->
-              project.fileTree(dir: dir, include: "**/*.java" ).files
-            }
-            // Try to sort all input files; a side-effect of this should be that module-info.java
-            // is placed first on the list, which works around ECJ bug:
-            // https://bugs.eclipse.org/bugs/show_bug.cgi?id=569833
-            .sort()
-            .collect {file -> escapeFileName(file.absolutePath.toString())}.join("\n"), "UTF-8")
-
         args += [ "-d", "none" ]
 
         // Compilation environment.
@@ -94,6 +76,11 @@ allprojects {
         // We depend on modular paths.
         def modularPaths = sourceSet.modularPaths
         dependsOn modularPaths.compileModulePathConfiguration
+
+        // Place input files in an external file to dodge command line argument
+        // limits. We could pass a directory but ecj seems to be buggy: when it
+        // encounters a module-info.java file it no longer compiles other source files.
+        def inputsFile = file("${tmpDst}/ecj-inputs.txt")
 
         task.argumentProviders.add((CommandLineArgumentProvider) {
           // Add modular dependencies and their transitive dependencies to module path.
@@ -118,14 +105,26 @@ allprojects {
             extraArgs += ["-classpath", cpath.join(File.pathSeparator)]
           }
 
-          // Add source location(s) in an external file to avoid command line argument limits.
           extraArgs += ["@" + inputsFile.absolutePath]
-
           return extraArgs
         })
 
         doFirst {
           tmpDst.mkdirs()
+
+          // escape filename accoring to ECJ's rules:
+          // https://github.com/eclipse/aspectj.eclipse.jdt.core/blob/a05312e746b9bc2b48b4b039f6e7b5e061b5b393/org.eclipse.jdt.core/batch/org/eclipse/jdt/internal/compiler/batch/Main.java#L1533-L1537
+          // Basically surround all whitespace by quotes:
+          def escapeFileName = { String s -> s.replaceAll(/ +/, /"$0"/) }
+          inputsFile.setText(
+            srcDirs.collectMany { dir ->
+              project.fileTree(dir: dir, include: "**/*.java" ).files
+            }
+            // Try to sort all input files; a side-effect of this should be that module-info.java
+            // is placed first on the list, which works around ECJ bug:
+            // https://bugs.eclipse.org/bugs/show_bug.cgi?id=569833
+            .sort()
+            .collect {file -> escapeFileName(file.absolutePath.toString())}.join("\n"), "UTF-8")
         }
       })
     }

@@ -25,7 +25,9 @@ import java.lang.module.ModuleReference;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
@@ -62,6 +64,11 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
    */
   @BeforeClass
   public static void checkModulePathProvided() {
+    String modulesPropertyValue = System.getProperty(DISTRIBUTION_PROPERTY);
+    if (modulesPropertyValue == null) {
+      throw new AssertionError(DISTRIBUTION_PROPERTY + " property is required for this test.");
+    }
+
     Path modulesPath = getDistributionPath().resolve("modules");
     if (!Files.isDirectory(modulesPath)) {
       throw new AssertionError(
@@ -70,7 +77,15 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               + modulesPath.toAbsolutePath());
     }
 
-    Path thirdPartyModulesPath = getDistributionPath().resolve("modules-thirdparty");
+    Path testModulesPath = Paths.get(modulesPropertyValue).resolve("modules-test-framework");
+    if (!Files.isDirectory(testModulesPath)) {
+      throw new AssertionError(
+          DISTRIBUTION_PROPERTY
+              + " property does not point to a directory where this path is present: "
+              + modulesPath.toAbsolutePath());
+    }
+
+    Path thirdPartyModulesPath = Paths.get(modulesPropertyValue).resolve("modules-thirdparty");
     if (!Files.isDirectory(thirdPartyModulesPath)) {
       throw new AssertionError(
           DISTRIBUTION_PROPERTY
@@ -78,7 +93,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               + thirdPartyModulesPath.toAbsolutePath());
     }
 
-    coreModulesFinder = ModuleFinder.of(modulesPath);
+    coreModulesFinder = ModuleFinder.of(modulesPath, testModulesPath);
     allCoreModules = coreModulesFinder.findAll();
   }
 
@@ -124,7 +139,8 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             "org.apache.lucene.sandbox",
             "org.apache.lucene.spatial3d",
             "org.apache.lucene.spatial_extras",
-            "org.apache.lucene.suggest");
+            "org.apache.lucene.suggest",
+            "org.apache.lucene.test_framework");
   }
 
   /** Make sure we don't publish automatic modules. */
@@ -233,6 +249,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   public void testAllOpenPackagesInSync() throws IOException {
     for (var module : allCoreModules) {
       Set<String> jarPackages = getJarPackages(module);
+      Set<ModuleDescriptor.Exports> moduleExports = new HashSet<>(module.descriptor().exports());
 
       if (module.descriptor().name().equals("org.apache.lucene.luke")) {
         jarPackages.removeIf(
@@ -242,7 +259,25 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             });
       }
 
-      Set<ModuleDescriptor.Exports> moduleExports = module.descriptor().exports();
+      if (module.descriptor().name().equals("org.apache.lucene.core")) {
+        // Internal packages should not be exported to unqualified targets.
+        jarPackages.removeIf(
+            entry -> {
+              return entry.startsWith("org.apache.lucene.internal");
+            });
+
+        // Internal packages should use qualified exports.
+        moduleExports.removeIf(
+            export -> {
+              boolean isInternal = export.source().startsWith("org.apache.lucene.internal");
+              if (isInternal) {
+                Assertions.assertThat(export.targets())
+                    .containsExactlyInAnyOrder("org.apache.lucene.test_framework");
+              }
+              return isInternal;
+            });
+      }
+
       Assertions.assertThat(moduleExports)
           .as("Exported packages in module: " + module.descriptor().name())
           .allSatisfy(

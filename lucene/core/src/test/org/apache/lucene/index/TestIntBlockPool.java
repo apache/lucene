@@ -18,9 +18,9 @@ package org.apache.lucene.index;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
-import org.apache.lucene.util.LuceneTestCase;
 
 /** tests basic {@link IntBlockPool} functionality */
 public class TestIntBlockPool extends LuceneTestCase {

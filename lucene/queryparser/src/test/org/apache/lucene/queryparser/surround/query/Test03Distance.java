@@ -18,7 +18,7 @@ package org.apache.lucene.queryparser.surround.query;
 
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class Test03Distance extends LuceneTestCase {
   public static void main(String[] args) {

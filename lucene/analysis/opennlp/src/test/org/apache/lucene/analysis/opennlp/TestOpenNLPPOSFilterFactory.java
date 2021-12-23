@@ -20,9 +20,9 @@ package org.apache.lucene.analysis.opennlp;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.analysis.payloads.TypeAsPayloadTokenFilterFactory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
 
 /**

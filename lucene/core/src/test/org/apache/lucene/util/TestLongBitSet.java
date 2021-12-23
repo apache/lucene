@@ -17,6 +17,8 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLongBitSet extends LuceneTestCase {
 

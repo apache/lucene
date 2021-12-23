@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestVectorUtil extends LuceneTestCase {
 
