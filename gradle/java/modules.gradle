@@ -35,6 +35,20 @@ allprojects {
       ModularPathsExtension modularPaths = new ModularPathsExtension(project, sourceSet)
       sourceSet.extensions.add("modularPaths", modularPaths)
 
+      // TODO, NOCOMMIT: the tests of these projects currently don't compile or work in
+      //  module-path mode. Make the modular paths extension use class path only.
+      if (sourceSet.name == "test" && project.path in [
+        // Circular dependency between artifacts or source set outputs,
+        // causing package split issues at runtime.
+        ":lucene:core",
+        ":lucene:codecs",
+        ":lucene:spatial3d",
+        ":lucene:spatial-extras",
+        ":lucene:test-framework",
+      ]) {
+        modularPaths.useClasspathOnly = true
+      }
+
       // Configure the JavaCompile task associated with this source set.
       tasks.named(sourceSet.getCompileJavaTaskName()).configure({ JavaCompile task ->
         task.dependsOn modularPaths.compileModulePathConfiguration
@@ -145,6 +159,7 @@ class ModularPathsExtension {
   SourceSet sourceSet
   Configuration compileModulePathConfiguration
   Configuration runtimeModulePathConfiguration
+  boolean useClasspathOnly
 
   ModularPathsExtension(Project project, SourceSet sourceSet) {
     this.project = project
@@ -192,15 +207,25 @@ class ModularPathsExtension {
     runtimeModulePathConfiguration.extendsFrom(moduleRuntimeOnly, moduleImplementation)
   }
 
-  FileCollection getCompilationModulePath() {
+  private FileCollection getCompilationModulePath() {
+    if (useClasspathOnly) {
+      return project.files()
+    }
     return compileModulePathConfiguration
   }
 
-  FileCollection getRuntimeModulePath() {
+  private FileCollection getRuntimeModulePath() {
+    if (useClasspathOnly) {
+      return project.files()
+    }
     return runtimeModulePathConfiguration
   }
 
   FileCollection getCompilationClasspath() {
+    if (useClasspathOnly) {
+      return sourceSet.compileClasspath
+    }
+
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
     project.files({ ->
@@ -235,6 +260,10 @@ class ModularPathsExtension {
   }
 
   FileCollection getRuntimeClasspath() {
+    if (useClasspathOnly) {
+      return sourceSet.runtimeClasspath
+    }
+
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
     project.files({ ->
@@ -261,6 +290,11 @@ class ModularPathsExtension {
         def extraArgs = []
         if (sourceSetIsAModule) {
           // The source set is itself a module.
+
+          if (useClasspathOnly) {
+            throw new GradleException("Source set contains a module but classpath-only" +
+                " dependencies requested: ${project.path}, source set '${sourceSet.name}'")
+          }
 
           // TODO, NOCOMMIT: we should depend on a task combining classes and resources into a single directory/ jar
           // and then include this JAR in the module path.
