@@ -35,7 +35,7 @@ allprojects {
       ModularPathsExtension modularPaths = new ModularPathsExtension(project, sourceSet)
       sourceSet.extensions.add("modularPaths", modularPaths)
 
-      // TODO, NOCOMMIT: the tests of these projects currently don't compile or work in
+      // TODO: the tests of these projects currently don't compile or work in
       //  module-path mode. Make the modular paths extension use class path only.
       if (sourceSet.name == "test" && project.path in [
         // Circular dependency between artifacts or source set outputs,
@@ -296,7 +296,7 @@ class ModularPathsExtension {
                 " dependencies requested: ${project.path}, source set '${sourceSet.name}'")
           }
 
-          // TODO, NOCOMMIT: we should depend on a task combining classes and resources into a single directory/ jar
+          // TODO: we should depend on a task combining classes and resources into a single directory/ jar
           // and then include this JAR in the module path.
 
           // Add source set outputs to module path. // TODO: this is wrong as resources will be missing.
