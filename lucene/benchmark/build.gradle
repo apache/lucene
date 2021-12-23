@@ -41,7 +41,9 @@ dependencies {
   })
 
   // LUCENE-10337: Include xercesImpl on regular classpath where it won't cause conflicts.
-  implementation "xerces:xercesImpl"
+  implementation ("xerces:xercesImpl", {
+    exclude module: "xml-apis"
+  })
 
   moduleRuntimeOnly project(':lucene:analysis:icu')
 
