@@ -87,7 +87,10 @@ public final class SmartChineseAnalyzer extends Analyzer {
       return CharArraySet.unmodifiableSet(
           WordlistLoader.getWordSet(
               IOUtils.getDecodingReader(
-                  SmartChineseAnalyzer.class, DEFAULT_STOPWORD_FILE, StandardCharsets.UTF_8),
+                  IOUtils.requireResourceNonNull(
+                      SmartChineseAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                      DEFAULT_STOPWORD_FILE),
+                  StandardCharsets.UTF_8),
               STOPWORD_FILE_COMMENT));
     }
   }

@@ -65,7 +65,10 @@ public final class SoraniAnalyzer extends StopwordAnalyzerBase {
         DEFAULT_STOP_SET =
             WordlistLoader.getWordSet(
                 IOUtils.getDecodingReader(
-                    SoraniAnalyzer.class, DEFAULT_STOPWORD_FILE, StandardCharsets.UTF_8));
+                    IOUtils.requireResourceNonNull(
+                        SoraniAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                        DEFAULT_STOPWORD_FILE),
+                    StandardCharsets.UTF_8));
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)

@@ -152,6 +152,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
@@ -2057,7 +2058,8 @@ public abstract class LuceneTestCase extends Assert {
    */
   protected Path getDataPath(String name) throws IOException {
     try {
-      return Paths.get(this.getClass().getResource(name).toURI());
+      return Paths.get(
+          IOUtils.requireResourceNonNull(this.getClass().getResource(name), name).toURI());
     } catch (Exception e) {
       throw new IOException("Cannot find resource: " + name, e);
     }
