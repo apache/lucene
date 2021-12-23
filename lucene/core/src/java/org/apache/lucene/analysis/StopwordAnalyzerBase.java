@@ -82,6 +82,11 @@ public abstract class StopwordAnalyzerBase extends Analyzer {
       final String resource,
       final String comment)
       throws IOException {
+    var argModule = aClass.getModule();
+    if (argModule.isNamed() && argModule != StopwordAnalyzerBase.class.getModule()) {
+      throw new UnsupportedOperationException(
+          "loadStopwordSet(class,...) does not work when Java Module System is enabled.");
+    }
     try (Reader reader =
         IOUtils.getDecodingReader(
             IOUtils.requireResourceNonNull(aClass.getResourceAsStream(resource), resource),
