@@ -39,6 +39,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.lucene.store.Directory;
 
 /**
@@ -157,6 +158,27 @@ public final class IOUtils {
   }
 
   /**
+   * Opens a Reader for the stream supplied by the provided {@link Supplier} using a {@link
+   * CharsetDecoder}. Unlike Java's defaults this reader will throw an exception if your it detects
+   * the read charset doesn't match the expected {@link Charset}.
+   *
+   * <p>Decoding readers are useful to load configuration files, stopword lists or synonym files to
+   * detect character set problems. However, it's not recommended to use as a common purpose reader.
+   *
+   * @param streamSupplier A supplier of the input stream for docoding.
+   * @param charSet the expected charset
+   * @return a reader to read the given file
+   */
+  public static Reader getDecodingReader(Supplier<InputStream> streamSupplier, Charset charSet)
+      throws IOException {
+    var is = streamSupplier.get();
+    if (is == null) {
+      throw new IOException("The input stream for decoding must not be null.");
+    }
+    return getDecodingReader(is, charSet);
+  }
+
+  /**
    * Opens a Reader for the given resource using a {@link CharsetDecoder}. Unlike Java's defaults
    * this reader will throw an exception if your it detects the read charset doesn't match the
    * expected {@link Charset}.
@@ -168,7 +190,10 @@ public final class IOUtils {
    * @param resource the resource name to load
    * @param charSet the expected charset
    * @return a reader to read the given file
+   * @deprecated This method is caller sensitive and may not work with the module system. Please use
+   *     {@link #getDecodingReader(Supplier, Charset)} instead.
    */
+  @Deprecated
   public static Reader getDecodingReader(Class<?> clazz, String resource, Charset charSet)
       throws IOException {
     InputStream stream = null;

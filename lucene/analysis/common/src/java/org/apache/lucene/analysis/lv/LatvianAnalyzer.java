@@ -64,7 +64,8 @@ public final class LatvianAnalyzer extends StopwordAnalyzerBase {
         DEFAULT_STOP_SET =
             WordlistLoader.getWordSet(
                 IOUtils.getDecodingReader(
-                    LatvianAnalyzer.class, DEFAULT_STOPWORD_FILE, StandardCharsets.UTF_8));
+                    () -> LatvianAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    StandardCharsets.UTF_8));
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)
