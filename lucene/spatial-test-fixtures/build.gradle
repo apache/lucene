@@ -17,20 +17,11 @@
 
 apply plugin: 'java-library'
 
-description = 'Geospatial search'
+description = '3D spatial planar geometry test fixtures'
 
 dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:spatial3d')
-
-  moduleApi 'org.locationtech.spatial4j:spatial4j'
-  moduleApi 'io.sgr:s2-geometry-library-java'
-
-  moduleTestImplementation project(':lucene:test-framework')
-  moduleTestImplementation project(':lucene:spatial-test-fixtures')
-
-  testImplementation 'org.locationtech.jts:jts-core'
-  testImplementation 'org.locationtech.spatial4j:spatial4j::tests'
+  // moduleApi project(':lucene:core')
+  // testFixturesApi project(':lucene:test-framework')
+  moduleImplementation project(':lucene:test-framework')
+  moduleImplementation project(':lucene:spatial3d')
 }
-
-
