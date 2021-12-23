@@ -76,8 +76,7 @@ public final class GermanAnalyzer extends StopwordAnalyzerBase {
         DEFAULT_SET =
             WordlistLoader.getSnowballWordSet(
                 IOUtils.getDecodingReader(
-                    () -> SnowballFilter.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
-                    StandardCharsets.UTF_8));
+                    SnowballFilter.class, DEFAULT_STOPWORD_FILE, StandardCharsets.UTF_8));
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)

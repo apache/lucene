@@ -732,9 +732,8 @@ public final class JavascriptCompiler {
       final Properties props = new Properties();
       try (Reader in =
           IOUtils.getDecodingReader(
-              () ->
-                  JavascriptCompiler.class.getResourceAsStream(
-                      JavascriptCompiler.class.getSimpleName() + ".properties"),
+              JavascriptCompiler.class,
+              JavascriptCompiler.class.getSimpleName() + ".properties",
               StandardCharsets.UTF_8)) {
         props.load(in);
       }
