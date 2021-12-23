@@ -165,7 +165,7 @@ allprojects {
       // against JDKs where the bytecode is unparseable by Gradle, for example.
       // We require all tests to start with Test*, this simplifies include patterns greatly.
       scanForTestClasses = false
-      include '**/Test*'
+      include '**/Test*.class'
       exclude '**/*$*'
       exclude '**/TestBase*'
 
