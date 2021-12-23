@@ -167,7 +167,6 @@ allprojects {
       scanForTestClasses = false
       include '**/Test*.class'
       exclude '**/*$*'
-      exclude '**/TestBase*'
 
       // Set up custom test output handler.
       doFirst {
