@@ -87,14 +87,6 @@ allprojects {
         // Modify the default classpath.
         classpath = modularPaths.runtimeClasspath
 
-        // Disable automatic test class detection, rely on class names. This is needed for testing
-        // against JDKs where the bytecode is unparseable by Gradle, for example.
-        // We require all tests to start with Test*, this simplifies include patterns.
-        scanForTestClasses = false
-        include '**/Test*'
-        exclude '**/*$*'
-        exclude '**/*TestBase*'
-
         doFirst {
           logger.lifecycle(modularPaths.runtimePathsToString())
         }
