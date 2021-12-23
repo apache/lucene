@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.spatial.spatial4j;
 
-import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.*;
 import static org.locationtech.spatial4j.distance.DistanceUtils.DEGREES_TO_RADIANS;
 
 import java.io.IOException;
