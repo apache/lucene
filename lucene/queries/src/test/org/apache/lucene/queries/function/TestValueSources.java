@@ -81,6 +81,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
@@ -782,7 +783,7 @@ public class TestValueSources extends LuceneTestCase {
             new AssertScoreComputedOnceQuery(new TermQuery(new Term("text", "test"))),
             new DoubleFieldSource("double").asDoubleValuesSource());
 
-    var topFieldDocs = searcher.search(q, 1, Sort.RELEVANCE);
+    var topFieldDocs = searcher.search(q, 1);
     assertTrue(topFieldDocs.scoreDocs.length > 0);
 
     // assert that the query has not cached a reference to the IndexSearcher
@@ -791,6 +792,51 @@ public class TestValueSources extends LuceneTestCase {
     ValueSource.WrappedDoubleValuesSource source2 =
         (ValueSource.WrappedDoubleValuesSource) source1.boost;
     assertNull(source2.searcher);
+  }
+
+  /** Tests "scorer" key-value inside the Map context to ValueSource */
+  public void testScorerContext() throws IOException {
+    // a VS that yields the score
+    class ScoreValueSource extends ValueSource {
+      @Override
+      public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
+          throws IOException {
+        var scorer = (Scorable) context.get("scorer");
+        assertNotNull(scorer);
+        return new FloatDocValues(this) {
+          @Override
+          public float floatVal(int doc) throws IOException {
+            assertEquals(doc, scorer.docID());
+            return scorer.score();
+          }
+        };
+      }
+
+      @Override
+      public boolean equals(Object o) {
+        return this == o; // just for a test
+      }
+
+      @Override
+      public int hashCode() {
+        return 0; // just for a test
+      }
+
+      @Override
+      public String description() {
+        return "score";
+      }
+    }
+
+    var plainQ = new TermQuery(new Term("text", "test"));
+    float origScore = searcher.search(plainQ, 1).scoreDocs[0].score;
+
+    // boosts the score by the value source (which is the score), thus score^2
+    var scoreSquaredQ =
+        FunctionScoreQuery.boostByValue(plainQ, new ScoreValueSource().asDoubleValuesSource());
+    var topFieldDocs = searcher.search(scoreSquaredQ, 1);
+    assertTrue(topFieldDocs.scoreDocs.length > 0);
+    assertEquals(origScore * origScore, topFieldDocs.scoreDocs[0].score, 0.00001);
   }
 
   public void testBuildingFromDoubleValues() throws Exception {

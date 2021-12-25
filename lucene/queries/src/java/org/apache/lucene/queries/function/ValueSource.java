@@ -99,6 +99,7 @@ public abstract class ValueSource {
 
     @Override
     public float score() throws IOException {
+      // ensure we calculate the score at most once
       if (scoresDocId != docId) {
         scoresDocId = docId;
         if (scores.advanceExact(docId)) {
