@@ -19,6 +19,7 @@
 @SuppressWarnings("module") // the test framework is compiled after the core...
 module org.apache.lucene.core {
   requires jdk.unsupported; // this is needed for MMapDirectory to unmap
+  requires static jdk.management; // this is needed to make RamUsageEstimator correctly works
 
   exports org.apache.lucene.analysis;
   exports org.apache.lucene.analysis.standard;
