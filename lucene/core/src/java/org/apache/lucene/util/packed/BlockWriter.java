@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.util.packed;
 
-import org.apache.lucene.store.DataOutput;
-
 import java.io.IOException;
-import java.util.Arrays;
+import org.apache.lucene.store.DataOutput;
 
 /**
  * Class for writing packed longs to be blockly read from Directory. Longs can be read on-the-fly
@@ -91,10 +89,5 @@ public class BlockWriter {
       return;
     }
     forUtil.encode(buffer, bpv, output);
-//    DirectWriter directWriter = DirectWriter.getInstance(output, bufferIndex, bpv);
-//    for (int i=0; i<bufferIndex; i++) {
-//      directWriter.add(buffer[i]);
-//    }
-//    directWriter.finish();
   }
 }

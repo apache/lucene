@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.util.packed;
 
+import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.LongValues;
-
-import java.io.IOException;
 
 /**
  * Retrieves an instance previously written by {@link BlockWriter}.
@@ -65,7 +64,7 @@ public class BlockReader extends LongValues {
   }
 
   BlockReader(
-          IndexInput input, int bpv, long offset, ForUtil forUtil, long[] buffer, long numValues) {
+      IndexInput input, int bpv, long offset, ForUtil forUtil, long[] buffer, long numValues) {
     this.buffer = buffer;
     this.input = input;
     this.blockBytes = forUtil.numBytes(bpv);
@@ -90,10 +89,4 @@ public class BlockReader extends LongValues {
     }
   }
 
-//  private long readRemainder(long index) throws IOException {
-//    if (remainderReader == null) {
-//      remainderReader = DirectReader.getInstance(input.randomAccessSlice(0, input.length()), bpv);
-//    }
-//    return remainderReader.get(index);
-//  }
 }

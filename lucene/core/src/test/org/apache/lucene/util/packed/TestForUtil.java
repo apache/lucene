@@ -38,10 +38,12 @@ public class TestForUtil extends LuceneTestCase {
       final long[] values = new long[iterations * ForUtil.BLOCK_SIZE];
 
       for (int i = 0; i < iterations; ++i) {
-        final int bpv = SUPPORTED_BITS_PER_VALUE[TestUtil.nextInt(random(), 0, SUPPORTED_BITS_PER_VALUE.length - 1)];
+        final int bpv =
+            SUPPORTED_BITS_PER_VALUE[
+                TestUtil.nextInt(random(), 0, SUPPORTED_BITS_PER_VALUE.length - 1)];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           values[i * ForUtil.BLOCK_SIZE + j] =
-                  RandomNumbers.randomLongBetween(random(), 0, PackedInts.maxValue(bpv));
+              RandomNumbers.randomLongBetween(random(), 0, PackedInts.maxValue(bpv));
         }
       }
 
@@ -79,9 +81,10 @@ public class TestForUtil extends LuceneTestCase {
           ForUtil.Decoder decoder = forUtil.decoder(bitsPerValue);
           decoder.decode(in, restored);
           assertArrayEquals(
-                  Arrays.toString(restored),
-                  ArrayUtil.copyOfSubArray(values, i * ForUtil.BLOCK_SIZE, (i + 1) * ForUtil.BLOCK_SIZE),
-                  restored);
+              Arrays.toString(restored),
+              ArrayUtil.copyOfSubArray(
+                  values, i * ForUtil.BLOCK_SIZE, (i + 1) * ForUtil.BLOCK_SIZE),
+              restored);
           assertEquals(forUtil.numBytes(bitsPerValue), in.getFilePointer() - currentFilePointer);
         }
         assertEquals(endPointer, in.getFilePointer());

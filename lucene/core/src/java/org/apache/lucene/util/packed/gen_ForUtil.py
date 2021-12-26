@@ -48,7 +48,6 @@ package org.apache.lucene.util.packed;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.MathUtil;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
@@ -400,11 +399,8 @@ if __name__ == '__main__':
     f.write('    }\n')
     f.write('  }\n')
 
-
-
-    f.write('\n')
     for bpv in BITS_PER_VALUES:
-        writeDecode(bpv, f)
         f.write('\n')
+        writeDecode(bpv, f)
 
     f.write('}\n')

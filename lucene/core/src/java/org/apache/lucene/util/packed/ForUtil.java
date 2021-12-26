@@ -21,7 +21,6 @@ package org.apache.lucene.util.packed;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.MathUtil;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
@@ -580,5 +579,4 @@ final class ForUtil {
   private static void decode64(DataInput in, long[] tmp, long[] longs) throws IOException {
     in.readLongs(longs, 0, 128);
   }
-
 }
