@@ -52,4 +52,13 @@ public interface RandomAccessInput {
    * @see BitUtil#VH_LE_LONG
    */
   public long readLong(long pos) throws IOException;
+
+  /**
+   * Batch read a couple of longs, some impls are faster than reading one by one.
+   */
+  default void readLongs(long pos, long[] dst, int off, int len) throws IOException {
+    for (int i=0; i<len; i++) {
+      dst[off + i] = readLong(pos + ((long) i << 3));
+    }
+  }
 }

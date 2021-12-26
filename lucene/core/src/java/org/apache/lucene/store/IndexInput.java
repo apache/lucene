@@ -173,6 +173,12 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
+        public void readLongs(long pos, long[] dst, int off, int len) throws IOException {
+          slice.seek(pos);
+          slice.readLongs(dst, off, len);
+        }
+
+        @Override
         public String toString() {
           return "RandomAccessInput(" + IndexInput.this.toString() + ")";
         }

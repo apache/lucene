@@ -48,6 +48,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.compress.LZ4;
+import org.apache.lucene.util.packed.DirectForwardReader;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectReader;
 
@@ -470,11 +471,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   private LongValues getDirectReaderInstance(
       RandomAccessInput slice, int bitsPerValue, long offset, long numValues) {
-    if (merging) {
-      return DirectReader.getMergeInstance(slice, bitsPerValue, offset, numValues);
-    } else {
-      return DirectReader.getInstance(slice, bitsPerValue, offset);
-    }
+//    if (merging) {
+//      return DirectReader.getMergeInstance(slice, bitsPerValue, offset, numValues);
+//    } else {
+//      return DirectReader.getInstance(slice, bitsPerValue, offset);
+//    }
+    return DirectForwardReader.getInstance(slice, bitsPerValue, offset, numValues);
   }
 
   private NumericDocValues getNumeric(NumericEntry entry) throws IOException {

@@ -272,6 +272,12 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     return buffer.getLong((int) index);
   }
 
+  @Override
+  public void readLongs(long pos, long[] dst, int off, int len) throws IOException {
+    seek(pos);
+    readLongs(dst, off, len);
+  }
+
   private void refill() throws IOException {
     long start = bufferStart + buffer.position();
     long end = start + bufferSize;

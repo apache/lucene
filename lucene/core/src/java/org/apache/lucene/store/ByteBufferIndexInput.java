@@ -381,6 +381,12 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   }
 
   @Override
+  public void readLongs(long pos, long[] dst, int off, int len) throws IOException {
+    seek(pos);
+    readLongs(dst, off, len);
+  }
+
+  @Override
   public final long length() {
     return length;
   }
@@ -618,6 +624,11 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         throw new AlreadyClosedException("Already closed: " + this);
       }
     }
+
+    @Override
+    public void readLongs(long pos, long[] dst, int off, int len) throws IOException {
+      super.readLongs(pos, dst, off, len);
+    }
   }
 
   /** This class adds offset support to ByteBufferIndexInput, which is needed for slices. */
@@ -669,6 +680,11 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     @Override
     public long readLong(long pos) throws IOException {
       return super.readLong(pos + offset);
+    }
+
+    @Override
+    public void readLongs(long pos, long[] dst, int off, int len) throws IOException {
+      super.readLongs(pos, dst, off, len);
     }
 
     @Override

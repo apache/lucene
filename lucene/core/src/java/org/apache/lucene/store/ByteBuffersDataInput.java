@@ -260,6 +260,12 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
+  public void readLongs(long pos, long[] dst, int off, int len) throws IOException {
+    seek(pos);
+    readLongs(dst, off, len);
+  }
+
+  @Override
   public void readFloats(float[] arr, int off, int len) throws EOFException {
     try {
       while (len > 0) {
