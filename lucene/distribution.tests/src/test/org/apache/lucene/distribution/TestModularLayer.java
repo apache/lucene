@@ -93,6 +93,14 @@ public class TestModularLayer {
               + modulesPath.toAbsolutePath());
     }
 
+    Path testModulesPath = Paths.get(modulesPropertyValue).resolve("modules-test-framework");
+    if (!Files.isDirectory(testModulesPath)) {
+      throw new AssertionError(
+          DISTRIBUTION_PROPERTY
+              + " property does not point to a directory where this path is present: "
+              + modulesPath.toAbsolutePath());
+    }
+
     Path thirdPartyModulesPath = Paths.get(modulesPropertyValue).resolve("modules-thirdparty");
     if (!Files.isDirectory(thirdPartyModulesPath)) {
       throw new AssertionError(
@@ -101,7 +109,7 @@ public class TestModularLayer {
               + thirdPartyModulesPath.toAbsolutePath());
     }
 
-    coreModulesFinder = ModuleFinder.of(modulesPath);
+    coreModulesFinder = ModuleFinder.of(modulesPath, testModulesPath);
     allCoreModules = coreModulesFinder.findAll();
   }
 
