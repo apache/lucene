@@ -160,7 +160,8 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final String META_CODEC = "Lucene90DocValuesMetadata";
   static final String META_EXTENSION = "dvm";
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_BLOCK_READER = 1;
+  static final int VERSION_CURRENT = VERSION_BLOCK_READER;
 
   // indicates docvalues type
   static final byte NUMERIC = 0;

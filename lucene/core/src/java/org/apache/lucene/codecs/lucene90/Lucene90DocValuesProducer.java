@@ -48,6 +48,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.compress.LZ4;
+import org.apache.lucene.util.packed.BlockReader;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectReader;
 
@@ -468,8 +469,32 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
   }
 
+  private LongValues getReaderInstance(NumericEntry entry, long offset) throws IOException {
+    if (version >= Lucene90DocValuesFormat.VERSION_BLOCK_READER) {
+      return getBlockReaderInstance(
+          entry.valuesOffset, entry.valuesLength, entry.bitsPerValue, offset, entry.numValues);
+    } else {
+      return getDirectReaderInstance(
+          entry.valuesOffset, entry.valuesLength, entry.bitsPerValue, offset, entry.numValues);
+    }
+  }
+
+  private LongValues getBlockReaderInstance(
+      long valuesOffset, long valuesLength, int bitsPerValue, long offset, long numValues)
+      throws IOException {
+    IndexInput slice = data.slice("numeric-docvalues", valuesOffset, valuesLength);
+    return new BlockReader(slice, bitsPerValue, offset, numValues);
+  }
+
   private LongValues getDirectReaderInstance(
-      RandomAccessInput slice, int bitsPerValue, long offset, long numValues) {
+      long valuesOffset, long valuesLength, int bitsPerValue, long offset, long numValues)
+      throws IOException {
+    RandomAccessInput slice = data.randomAccessSlice(valuesOffset, valuesLength);
+    return getDirectReaderInstance(slice, bitsPerValue, offset, numValues);
+  }
+
+  private LongValues getDirectReaderInstance(
+      RandomAccessInput slice, int bitsPerValue, long offset, long numValues) throws IOException {
     if (merging) {
       return DirectReader.getMergeInstance(slice, bitsPerValue, offset, numValues);
     } else {
@@ -491,12 +516,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
         };
       } else {
-        final RandomAccessInput slice =
-            data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
         if (entry.blockShift >= 0) {
           // dense but split into blocks of different bits per value
           return new DenseNumericDocValues(maxDoc) {
-            final VaryingBPVReader vBPVReader = new VaryingBPVReader(entry, slice);
+            final VaryingBPVReader vBPVReader = new VaryingBPVReader(entry);
 
             @Override
             public long longValue() throws IOException {
@@ -504,8 +527,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             }
           };
         } else {
-          final LongValues values =
-              getDirectReaderInstance(slice, entry.bitsPerValue, 0L, entry.numValues);
+          final LongValues values = getReaderInstance(entry, 0L);
           if (entry.table != null) {
             final long[] table = entry.table;
             return new DenseNumericDocValues(maxDoc) {
@@ -552,12 +574,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
         };
       } else {
-        final RandomAccessInput slice =
-            data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
         if (entry.blockShift >= 0) {
           // sparse and split into blocks of different bits per value
           return new SparseNumericDocValues(disi) {
-            final VaryingBPVReader vBPVReader = new VaryingBPVReader(entry, slice);
+            final VaryingBPVReader vBPVReader = new VaryingBPVReader(entry);
 
             @Override
             public long longValue() throws IOException {
@@ -566,8 +586,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             }
           };
         } else {
-          final LongValues values =
-              getDirectReaderInstance(slice, entry.bitsPerValue, 0L, entry.numValues);
+          final LongValues values = getReaderInstance(entry, 0L);
           if (entry.table != null) {
             final long[] table = entry.table;
             return new SparseNumericDocValues(disi) {
@@ -607,11 +626,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
       };
     } else {
-      final RandomAccessInput slice =
-          data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
       if (entry.blockShift >= 0) {
         return new LongValues() {
-          final VaryingBPVReader vBPVReader = new VaryingBPVReader(entry, slice);
+          final VaryingBPVReader vBPVReader = new VaryingBPVReader(entry);
 
           @Override
           public long get(long index) {
@@ -623,8 +640,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
         };
       } else {
-        final LongValues values =
-            getDirectReaderInstance(slice, entry.bitsPerValue, 0L, entry.numValues);
+        final LongValues values = getReaderInstance(entry, 0L);
         if (entry.table != null) {
           final long[] table = entry.table;
           return new LongValues() {
@@ -836,10 +852,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         throw new IllegalStateException("Ordinals shouldn't use GCD, offset or table compression");
       }
 
-      final RandomAccessInput slice =
-          data.randomAccessSlice(ordsEntry.valuesOffset, ordsEntry.valuesLength);
-      final LongValues values =
-          getDirectReaderInstance(slice, ordsEntry.bitsPerValue, 0L, ordsEntry.numValues);
+      final LongValues values = getReaderInstance(ordsEntry, 0L);
 
       if (ordsEntry.docsWithFieldOffset == -1) { // dense
         return new BaseSortedDocValues(entry) {
@@ -1493,9 +1506,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     long blockEndOffset;
     LongValues values;
 
-    VaryingBPVReader(NumericEntry entry, RandomAccessInput slice) throws IOException {
+    VaryingBPVReader(NumericEntry entry) throws IOException {
       this.entry = entry;
-      this.slice = slice;
+      this.slice = data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
       this.rankSlice =
           entry.valueJumpTableOffset == -1
               ? null
