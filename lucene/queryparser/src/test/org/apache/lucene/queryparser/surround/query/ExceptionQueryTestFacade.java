@@ -19,11 +19,11 @@ package org.apache.lucene.queryparser.surround.query;
 import org.apache.lucene.queryparser.surround.parser.ParseException;
 import org.apache.lucene.queryparser.surround.parser.QueryParser;
 
-public class TestExceptionQuery {
+public class ExceptionQueryTestFacade {
   private String queryText;
   private boolean verbose;
 
-  public TestExceptionQuery(String queryText, boolean verbose) {
+  public ExceptionQueryTestFacade(String queryText, boolean verbose) {
     this.queryText = queryText;
     this.verbose = verbose;
   }
@@ -53,7 +53,7 @@ public class TestExceptionQuery {
   public static String getFailQueries(String[] exceptionQueries, boolean verbose) {
     StringBuilder failQueries = new StringBuilder();
     for (int i = 0; i < exceptionQueries.length; i++) {
-      new TestExceptionQuery(exceptionQueries[i], verbose).doTest(failQueries);
+      new ExceptionQueryTestFacade(exceptionQueries[i], verbose).doTest(failQueries);
     }
     return failQueries.toString();
   }
