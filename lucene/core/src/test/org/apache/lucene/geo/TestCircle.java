@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.geo;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCircle extends LuceneTestCase {
 

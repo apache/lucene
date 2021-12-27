@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 
 public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override

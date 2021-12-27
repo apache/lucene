@@ -18,10 +18,10 @@ package org.apache.lucene.analysis.miscellaneous;
 
 import java.util.Collections;
 import java.util.Set;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
 
 /**
  * Test that this filter moves the value in type to a synonym token with the same offsets. This is

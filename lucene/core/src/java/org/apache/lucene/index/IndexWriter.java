@@ -55,6 +55,9 @@ import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
 import org.apache.lucene.index.DocValuesUpdate.NumericDocValuesUpdate;
 import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.internal.tests.IndexPackageAccess;
+import org.apache.lucene.internal.tests.IndexWriterAccess;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -447,10 +450,6 @@ public class IndexWriter
           eventQueue.add(w -> w.publishFlushedSegments(true));
         }
       };
-
-  DirectoryReader getReader() throws IOException {
-    return getReader(true, false);
-  }
 
   /**
    * Expert: returns a readonly reader, covering all committed as well as un-committed changes to
@@ -6276,5 +6275,85 @@ public class IndexWriter
       assert Thread.holdsLock(IndexWriter.this);
       mergesEnabled = true;
     }
+  }
+
+  static {
+    TestSecrets.setIndexWriterAccess(
+        new IndexWriterAccess() {
+          @Override
+          public String segString(IndexWriter iw) {
+            return iw.segString();
+          }
+
+          @Override
+          public int getSegmentCount(IndexWriter iw) {
+            return iw.getSegmentCount();
+          }
+
+          @Override
+          public boolean isClosed(IndexWriter iw) {
+            return iw.isClosed();
+          }
+
+          @Override
+          public DirectoryReader getReader(
+              IndexWriter iw, boolean applyDeletions, boolean writeAllDeletes) throws IOException {
+            return iw.getReader(applyDeletions, writeAllDeletes);
+          }
+
+          @Override
+          public int getDocWriterThreadPoolSize(IndexWriter iw) {
+            return iw.docWriter.perThreadPool.size();
+          }
+
+          @Override
+          public boolean isDeleterClosed(IndexWriter iw) {
+            return iw.isDeleterClosed();
+          }
+
+          @Override
+          public SegmentCommitInfo newestSegment(IndexWriter iw) {
+            return iw.newestSegment();
+          }
+        });
+
+    // Piggyback general package-scope accessors.
+    TestSecrets.setIndexPackageAccess(
+        new IndexPackageAccess() {
+
+          @Override
+          public IndexReader.CacheKey newCacheKey() {
+            return new IndexReader.CacheKey();
+          }
+
+          @Override
+          public void setIndexWriterMaxDocs(int limit) {
+            IndexWriter.setMaxDocs(limit);
+          }
+
+          @Override
+          public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
+            return new FieldInfosBuilder() {
+              private FieldInfos.Builder builder =
+                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+
+              @Override
+              public FieldInfosBuilder add(FieldInfo fi) {
+                builder.add(fi);
+                return this;
+              }
+
+              @Override
+              public FieldInfos finish() {
+                return builder.finish();
+              }
+            };
+          }
+
+          @Override
+          public void checkImpacts(Impacts impacts, int max) {
+            CheckIndex.checkImpacts(impacts, max);
+          }
+        });
   }
 }

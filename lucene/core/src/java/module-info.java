@@ -16,6 +16,7 @@
  */
 
 /** Lucene Core. */
+@SuppressWarnings("module") // the test framework is compiled after the core...
 module org.apache.lucene.core {
   requires jdk.unsupported; // this is needed for MMapDirectory to unmap
 
@@ -45,6 +46,10 @@ module org.apache.lucene.core {
   exports org.apache.lucene.util.hppc;
   exports org.apache.lucene.util.mutable;
   exports org.apache.lucene.util.packed;
+
+  // Only export internal packages to the test framework.
+  exports org.apache.lucene.internal.tests to
+      org.apache.lucene.test_framework;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;

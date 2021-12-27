@@ -46,6 +46,10 @@ API Changes
 * LUCENE-10197: UnifiedHighlighter now has a Builder to construct it.  The UH's setters are now
   deprecated.  (Animesh Pandey, David Smiley)
 
+* LUCENE-10301: the test framework is now a module. All the classes have been moved from
+  org.apache.lucene.* to org.apache.lucene.tests.* to avoid package name conflicts with the
+  core module. (Dawid Weiss)
+
 New Features
 ---------------------
 
@@ -100,6 +104,8 @@ Improvements
 Optimizations
 ---------------------
 
+* LUCENE-10329: Use computed block mask for DirectMonotonicReader#get. (Guo Feng)
+
 * LUCENE-10280: Optimize BKD leaves' doc IDs codec when they are continuous. (Guo Feng)
 
 * LUCENE-10233: Store BKD leaves' doc IDs as bitset in some cases (typically for low cardinality fields
@@ -111,6 +117,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
+* LUCENE-10316: fix TestLRUQueryCache.testCachingAccountableQuery failure. (Patrick Zhai)
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 

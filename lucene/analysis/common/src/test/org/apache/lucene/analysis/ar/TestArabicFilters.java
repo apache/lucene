@@ -18,9 +18,9 @@ package org.apache.lucene.analysis.ar;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure the Arabic filter Factories are working. */
 public class TestArabicFilters extends BaseTokenStreamFactoryTestCase {

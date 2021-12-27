@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis;
 
 import java.util.*;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.SuppressForbidden;
 
 public class TestCharArraySet extends LuceneTestCase {

@@ -624,7 +624,7 @@ public class Automaton implements Accountable, TransitionAccessor {
   }
 
   /** Returns sorted array of all interval start points. */
-  int[] getStartPoints() {
+  public int[] getStartPoints() {
     Set<Integer> pointset = new HashSet<>();
     pointset.add(Character.MIN_CODE_POINT);
     // System.out.println("getStartPoints");
