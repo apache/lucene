@@ -77,6 +77,14 @@ allprojects {
           }
         }
       })
+
+      // For source sets that contain a module descriptor, configure a jar task that combines
+      // classes and resources into a single module.
+      if (modularPaths.hasModuleDescriptor()) {
+        tasks.maybeCreate(sourceSet.getJarTaskName(), org.gradle.jvm.tasks.Jar).configure({
+          from(sourceSet.output)
+        })
+      }
     }
 
     // Connect modular configurations between their "test" and "main" source sets, this reflects
@@ -86,6 +94,35 @@ allprojects {
       moduleTestImplementation.extendsFrom moduleImplementation
       moduleTestRuntimeOnly.extendsFrom moduleRuntimeOnly
       moduleTestCompileOnly.extendsFrom moduleCompileOnly
+    }
+
+    // Gradle's java plugin sets the compile and runtime classpath to be a combination
+    // of configuration dependencies and source set's outputs. For source sets with modules,
+    // this leads to split class and resource folders.
+    //
+    // We tweak the default source set path configurations here by assembling jar task outputs
+    // of the respective source set, instead of their source set output folders. We also attach
+    // the main source set's jar to the modular test implementation configuration.
+    SourceSet mainSourceSet = project.sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
+    boolean mainIsModular = mainSourceSet.modularPaths.hasModuleDescriptor()
+    SourceSet testSourceSet = project.sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME)
+    boolean testIsModular = testSourceSet.modularPaths.hasModuleDescriptor()
+    if (testIsModular) {
+      def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
+      def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
+      testSourceSet.compileClasspath = project.objects.fileCollection().from(
+          jarTask.outputs,
+          project.configurations.getByName(testSourceSet.getCompileClasspathConfigurationName()),
+      )
+      testSourceSet.runtimeClasspath = project.objects.fileCollection().from(
+          jarTask.outputs,
+          testJarTask.outputs,
+          project.configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName()),
+      )
+
+      project.dependencies {
+        moduleTestImplementation files(jarTask.outputs)
+      }
     }
 
     //
@@ -118,7 +155,7 @@ allprojects {
       }
     }
 
-    // Configure (tasks.test, sourceSets.test)
+    // Lazily configure (tasks.test, sourceSets.test)
     tasks.matching { it.name == "test" }.all { Test task ->
       configureTestTaskForSourceSet(task, task.project.sourceSets.test)
     }
@@ -246,8 +283,15 @@ class ModularPathsExtension {
 
   private FileCollection getRuntimeModulePath() {
     if (mode == Mode.CLASSPATH_ONLY) {
+      if (hasModuleDescriptor()) {
+        // The source set is itself a module.
+        throw new GradleException("Source set contains a module but classpath-only" +
+            " dependencies requested: ${project.path}, source set '${sourceSet.name}'")
+      }
+
       return project.files()
     }
+
     return runtimeModulePathConfiguration
   }
 
@@ -297,12 +341,7 @@ class ModularPathsExtension {
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
     project.files({ ->
-      boolean sourceSetIsAModule = hasModuleDescriptor()
-      if (sourceSetIsAModule) {
-        return sourceSet.runtimeClasspath - runtimeModulePath - sourceSet.output
-      } else {
-        return sourceSet.runtimeClasspath - runtimeModulePath
-      }
+      return sourceSet.runtimeClasspath - runtimeModulePath
     })
   }
 
@@ -311,46 +350,20 @@ class ModularPathsExtension {
       @Override
       Iterable<String> asArguments() {
         FileCollection modulePath = ModularPathsExtension.this.runtimeModulePath
-        boolean sourceSetIsAModule = hasModuleDescriptor()
 
-        if (modulePath.isEmpty() && !sourceSetIsAModule) {
+        if (modulePath.isEmpty()) {
           return []
         }
 
         def extraArgs = []
-        if (sourceSetIsAModule) {
-          // The source set is itself a module.
 
-          if (mode == Mode.CLASSPATH_ONLY) {
-            throw new GradleException("Source set contains a module but classpath-only" +
-                " dependencies requested: ${project.path}, source set '${sourceSet.name}'")
-          }
+        // Add source set outputs to module path.
+        extraArgs += ["--module-path", modulePath.files.join(File.pathSeparator)]
 
-          // TODO: we should depend on a task combining classes and resources into a single directory/ jar
-          // and then include this JAR in the module path.
-
-          // Add source set outputs to module path. // TODO: this is wrong as resources will be missing.
-          extraArgs += ["--module-path", (modulePath + sourceSet.output.classesDirs).files.join(File.pathSeparator)]
-
-          // Ideally, we should only add the sourceset's module here, everything else would be resolved via the
-          // module descriptor. But this would require parsing the module descriptor and may cause JVM version conflicts
-          // so keeping it simple.
-          //
-          // TODO: maybe we should require a configured module name (gradle has options for it) and use it here?
-          extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
-        } else {
-          // The source set is NOT a module but may have modular dependencies. If it does, put them on module path and
-          // load them eagerly.
-          if (!modulePath.isEmpty()) {
-            extraArgs += ["--module-path", modulePath.files.join(File.pathSeparator)]
-            // In this case we're running a non-module against things on the module path so let's bring in
-            // everything on module path into the resolution graph.
-            //
-            // TODO: Perhaps this decision should be left for the project's configuration? This would make it explicit
-            // what the test task actually brings into the module graph.
-            extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
-          }
-        }
+        // Ideally, we should only add the sourceset's module here, everything else would be resolved via the
+        // module descriptor. But this would require parsing the module descriptor and may cause JVM version conflicts
+        // so keeping it simple.
+        extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
 
         return extraArgs
       }
@@ -368,13 +381,13 @@ class ModularPathsExtension {
   }
 
   String compilationPathsToString() {
-    return "Modular extension, compilation paths, mode=${mode}:\n" +
+    return "Modular extension, compilation paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
         "  Module path:${toList(compilationModulePath)}\n" +
         "  Class path: ${toList(compilationClasspath)}"
   }
 
   String runtimePathsToString() {
-    return "Modular extension, runtime paths, mode=${mode}:\n" +
+    return "Modular extension, runtime paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
         "  Module path:${toList(runtimeModulePath)}\n" +
         "  Class path: ${toList(runtimeClasspath)}"
   }
