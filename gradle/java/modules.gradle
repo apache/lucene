@@ -111,21 +111,25 @@ allprojects {
     SourceSet testSourceSet = project.sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME)
     boolean testIsModular = testSourceSet.modularPaths.hasModuleDescriptor()
     if (testIsModular) {
-      def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
-      def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
-      testSourceSet.compileClasspath = project.objects.fileCollection().from(
-          jarTask.outputs,
-          project.configurations.getByName(testSourceSet.getCompileClasspathConfigurationName()),
-      )
-      testSourceSet.runtimeClasspath = project.objects.fileCollection().from(
-          jarTask.outputs,
-          testJarTask.outputs,
-          project.configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName()),
-      )
+      // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
+      // dependencies, don't know why.
+      if (!rootProject.ext.isIdea) {
+        def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
+        def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
+        testSourceSet.compileClasspath = project.objects.fileCollection().from(
+            jarTask.outputs,
+            project.configurations.getByName(testSourceSet.getCompileClasspathConfigurationName()),
+        )
+        testSourceSet.runtimeClasspath = project.objects.fileCollection().from(
+            jarTask.outputs,
+            testJarTask.outputs,
+            project.configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName()),
+        )
 
-      project.dependencies {
-        moduleTestImplementation files(jarTask.outputs)
-        moduleTestRuntimeOnly files(testJarTask.outputs)
+        project.dependencies {
+          moduleTestImplementation files(jarTask.outputs)
+          moduleTestRuntimeOnly files(testJarTask.outputs)
+        }
       }
     }
 
