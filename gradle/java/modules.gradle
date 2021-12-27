@@ -27,6 +27,9 @@ allprojects {
       modularity.inferModulePath.set(false)
     }
 
+    // More verbose debugging for paths.
+    boolean debugPaths = Boolean.parseBoolean(propertyOrDefault('build.debug.paths', 'false'))
+
     //
     // Configure modular extensions for each source set.
     //
@@ -36,7 +39,7 @@ allprojects {
       sourceSet.extensions.add("modularPaths", modularPaths)
 
       // TODO: the tests of these projects currently don't compile or work in
-      //  module-path mode. Make the modular paths extension use class path only.
+      // module-path mode. Make the modular paths extension use class path only.
       if (sourceSet.name == "test" && project.path in [
         // Circular dependency between artifacts or source set outputs,
         // causing package split issues at runtime.
@@ -46,7 +49,7 @@ allprojects {
         ":lucene:spatial-extras",
         ":lucene:test-framework",
       ]) {
-        modularPaths.useClasspathOnly = true
+        modularPaths.mode = ModularPathsExtension.Mode.CLASSPATH_ONLY
       }
 
       // Configure the JavaCompile task associated with this source set.
@@ -66,8 +69,12 @@ allprojects {
           task.classpath = modularPaths.compilationClasspath
         }
 
-        task.doFirst {
-          task.logger.lifecycle(modularPaths.compilationPathsToString())
+        doFirst {
+          if (debugPaths) {
+            logger.lifecycle(modularPaths.compilationPathsToString())
+          } else {
+            logger.info(modularPaths.compilationPathsToString())
+          }
         }
       })
     }
@@ -102,7 +109,11 @@ allprojects {
         classpath = modularPaths.runtimeClasspath
 
         doFirst {
-          logger.lifecycle(modularPaths.runtimePathsToString())
+          if (debugPaths) {
+            logger.lifecycle(modularPaths.runtimePathsToString())
+          } else {
+            logger.info(modularPaths.runtimePathsToString())
+          }
         }
       }
     }
@@ -155,11 +166,30 @@ allprojects {
 // moduleCompileOnly    - 'requires static'
 //
 class ModularPathsExtension {
+  /**
+   * Determines how paths are split between module path and classpath.
+   */
+  enum Mode {
+    /**
+     * Dependencies and source set outputs are placed on classpath, even if declared on modular
+     * configurations. This would be the 'default' backward-compatible mode.
+     */
+    CLASSPATH_ONLY,
+
+    /**
+     * Dependencies from modular configurations are placed on module path. Source set outputs
+     * are placed on classpath.
+     */
+    DEPENDENCIES_ON_MODULE_PATH
+  }
+
   Project project
   SourceSet sourceSet
   Configuration compileModulePathConfiguration
   Configuration runtimeModulePathConfiguration
-  boolean useClasspathOnly
+
+  // The mode of splitting paths for this source set.
+  Mode mode = Mode.DEPENDENCIES_ON_MODULE_PATH
 
   ModularPathsExtension(Project project, SourceSet sourceSet) {
     this.project = project
@@ -208,21 +238,21 @@ class ModularPathsExtension {
   }
 
   private FileCollection getCompilationModulePath() {
-    if (useClasspathOnly) {
+    if (mode == Mode.CLASSPATH_ONLY) {
       return project.files()
     }
     return compileModulePathConfiguration
   }
 
   private FileCollection getRuntimeModulePath() {
-    if (useClasspathOnly) {
+    if (mode == Mode.CLASSPATH_ONLY) {
       return project.files()
     }
     return runtimeModulePathConfiguration
   }
 
   FileCollection getCompilationClasspath() {
-    if (useClasspathOnly) {
+    if (mode == Mode.CLASSPATH_ONLY) {
       return sourceSet.compileClasspath
     }
 
@@ -260,7 +290,7 @@ class ModularPathsExtension {
   }
 
   FileCollection getRuntimeClasspath() {
-    if (useClasspathOnly) {
+    if (mode == Mode.CLASSPATH_ONLY) {
       return sourceSet.runtimeClasspath
     }
 
@@ -291,7 +321,7 @@ class ModularPathsExtension {
         if (sourceSetIsAModule) {
           // The source set is itself a module.
 
-          if (useClasspathOnly) {
+          if (mode == Mode.CLASSPATH_ONLY) {
             throw new GradleException("Source set contains a module but classpath-only" +
                 " dependencies requested: ${project.path}, source set '${sourceSet.name}'")
           }
@@ -338,13 +368,13 @@ class ModularPathsExtension {
   }
 
   String compilationPathsToString() {
-    return "Modular extension, compilation paths:\n" +
+    return "Modular extension, compilation paths, mode=${mode}:\n" +
         "  Module path:${toList(compilationModulePath)}\n" +
         "  Class path: ${toList(compilationClasspath)}"
   }
 
   String runtimePathsToString() {
-    return "Modular extension, runtime paths:\n" +
+    return "Modular extension, runtime paths, mode=${mode}:\n" +
         "  Module path:${toList(runtimeModulePath)}\n" +
         "  Class path: ${toList(runtimeClasspath)}"
   }
