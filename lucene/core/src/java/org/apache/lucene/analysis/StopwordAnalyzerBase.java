@@ -70,9 +70,9 @@ public abstract class StopwordAnalyzerBase extends Analyzer {
    * @param resource name of the resource file associated with the given class
    * @param comment comment string to ignore in the stopword file
    * @return a CharArraySet containing the distinct stopwords from the given file
-   * @throws IOException if loading the stopwords throws an {@link IOException}
-   * deprecated {@link Class#getResourceAsStream(String)} is caller sensitive and cannot load
-   *     resources across Java Modules. Please call the {@code getResourceAsStream()} and {@link
+   * @throws IOException if loading the stopwords throws an {@link IOException} deprecated {@link
+   *     Class#getResourceAsStream(String)} is caller sensitive and cannot load resources across
+   *     Java Modules. Please call the {@code getResourceAsStream()} and {@link
    *     WordlistLoader#getWordSet(Reader, String, CharArraySet)} directly.
    */
   // @Deprecated(forRemoval = true, since = "9.1")
