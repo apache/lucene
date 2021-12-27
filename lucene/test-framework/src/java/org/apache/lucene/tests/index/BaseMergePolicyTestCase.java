@@ -42,6 +42,7 @@ import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -58,6 +59,8 @@ import org.apache.lucene.util.Version;
 
 /** Base test case for {@link MergePolicy}. */
 public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
+
+  private static final IndexWriterAccess INDEX_WRITER_ACCESS = TestSecrets.getIndexWriterAccess();
 
   /** Create a new {@link MergePolicy} instance. */
   protected abstract MergePolicy mergePolicy();
@@ -115,7 +118,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
         DirectoryReader.open(writer).close();
       }
       for (int i = 5; i >= 0; --i) {
-        final int segmentCount = TestSecrets.getIndexWriterAccess().getSegmentCount(writer);
+        final int segmentCount = INDEX_WRITER_ACCESS.getSegmentCount(writer);
         final int maxNumSegments = i == 0 ? 1 : TestUtil.nextInt(random(), 1, 10);
         mayMerge.set(segmentCount > maxNumSegments);
         if (VERBOSE) {

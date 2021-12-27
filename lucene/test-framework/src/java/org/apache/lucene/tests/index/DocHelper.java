@@ -33,6 +33,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.similarities.Similarity;
@@ -42,6 +43,8 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Helper functions for tests that handles documents */
 public class DocHelper {
+
+  private static final IndexWriterAccess INDEX_WRITER_ACCESS = TestSecrets.getIndexWriterAccess();
 
   public static final FieldType customType;
   public static final String FIELD_1_TEXT = "field one text";
@@ -298,7 +301,7 @@ public class DocHelper {
     // writer.setNoCFSRatio(0.0);
     writer.addDocument(doc);
     writer.commit();
-    SegmentCommitInfo info = TestSecrets.getIndexWriterAccess().newestSegment(writer);
+    SegmentCommitInfo info = INDEX_WRITER_ACCESS.newestSegment(writer);
     writer.close();
     return info;
   }

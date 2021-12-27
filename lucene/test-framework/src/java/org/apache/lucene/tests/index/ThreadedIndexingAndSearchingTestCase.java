@@ -42,6 +42,8 @@ import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.tests.IndexWriterAccess;
+import org.apache.lucene.internal.tests.SegmentReaderAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
@@ -69,6 +71,10 @@ import org.apache.lucene.util.PrintStreamInfoStream;
 
 /** Utility class that spawns multiple indexing and searching threads. */
 public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCase {
+
+  private static final IndexWriterAccess INDEX_WRITER_ACCESS = TestSecrets.getIndexWriterAccess();
+  private static final SegmentReaderAccess SEGMENT_READER_ACCESS =
+      TestSecrets.getSegmentReaderAccess();
 
   protected final AtomicBoolean failed = new AtomicBoolean();
   protected final AtomicInteger addCount = new AtomicInteger();
@@ -408,8 +414,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                                 + " si="
                                 + segReader.getSegmentInfo(),
                             !assertMergedSegmentsWarmed
-                                || warmed.containsKey(
-                                    TestSecrets.getSegmentReaderAccess().getCore(segReader)));
+                                || warmed.containsKey(SEGMENT_READER_ACCESS.getCore(segReader)));
                       }
                     }
                     if (s.getIndexReader().numDocs() > 0) {
@@ -515,7 +520,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           if (VERBOSE) {
             System.out.println("TEST: now warm merged reader=" + reader);
           }
-          var core = TestSecrets.getSegmentReaderAccess().getCore((SegmentReader) reader);
+          var core = SEGMENT_READER_ACCESS.getCore((SegmentReader) reader);
           warmed.put(core, Boolean.TRUE);
           final int maxDoc = reader.maxDoc();
           final Bits liveDocs = reader.getLiveDocs();
@@ -716,7 +721,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
     assertEquals(
         "index="
-            + TestSecrets.getIndexWriterAccess().segString(writer)
+            + INDEX_WRITER_ACCESS.segString(writer)
             + " addCount="
             + addCount
             + " delCount="
@@ -729,7 +734,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
     assertEquals(
         "index="
-            + TestSecrets.getIndexWriterAccess().segString(writer)
+            + INDEX_WRITER_ACCESS.segString(writer)
             + " addCount="
             + addCount
             + " delCount="
