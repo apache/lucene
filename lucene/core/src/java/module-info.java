@@ -18,7 +18,8 @@
 /** Lucene Core. */
 @SuppressWarnings("module") // the test framework is compiled after the core...
 module org.apache.lucene.core {
-  requires jdk.unsupported; // this is needed for MMapDirectory to unmap
+  requires java.logging;
+  requires static jdk.unsupported; // this is optional but without it MMapDirectory won't be enabled
   requires static jdk.management; // this is optional but explicit declaration is recommended
 
   exports org.apache.lucene.analysis;

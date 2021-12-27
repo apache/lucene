@@ -554,7 +554,7 @@ public abstract class LuceneTestCase extends Assert {
       if (maxFailures == Integer.MAX_VALUE) {
         maxFailures = 1;
       } else {
-        Logger.getLogger(LuceneTestCase.class.getSimpleName())
+        Logger.getLogger(LuceneTestCase.class.getName())
             .warning(
                 "Property '"
                     + SYSPROP_MAXFAILURES
