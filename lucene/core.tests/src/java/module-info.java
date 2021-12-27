@@ -15,12 +15,10 @@
  * limitations under the License.
  */
 
-/** Test module for {@code org.apache.lucene.core}. */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.core.tests {
-  requires org.apache.lucene.core;
-  requires junit;
-  requires org.apache.lucene.core.tests.main;
-
-  exports org.apache.lucene.core.tests;
+/**
+ * A placeholder module descriptor just so that we can check whether referencing it from the actual
+ * test module works.
+ */
+module org.apache.lucene.core.tests.main {
+  exports org.apache.lucene.core.tests.main;
 }

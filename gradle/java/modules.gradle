@@ -83,6 +83,9 @@ allprojects {
       if (modularPaths.hasModuleDescriptor()) {
         tasks.maybeCreate(sourceSet.getJarTaskName(), org.gradle.jvm.tasks.Jar).configure({
           from(sourceSet.output)
+          if (sourceSet.name != SourceSet.MAIN_SOURCE_SET_NAME) {
+            archiveClassifier = sourceSet.name
+          }
         })
       }
     }
@@ -122,6 +125,7 @@ allprojects {
 
       project.dependencies {
         moduleTestImplementation files(jarTask.outputs)
+        moduleTestRuntimeOnly files(testJarTask.outputs)
       }
     }
 
