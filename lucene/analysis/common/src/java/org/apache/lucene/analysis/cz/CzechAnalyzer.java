@@ -61,7 +61,10 @@ public final class CzechAnalyzer extends StopwordAnalyzerBase {
         DEFAULT_SET =
             WordlistLoader.getWordSet(
                 IOUtils.getDecodingReader(
-                    CzechAnalyzer.class, DEFAULT_STOPWORD_FILE, StandardCharsets.UTF_8),
+                    IOUtils.requireResourceNonNull(
+                        CzechAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                        DEFAULT_STOPWORD_FILE),
+                    StandardCharsets.UTF_8),
                 "#");
       } catch (IOException ex) {
         // default set should always be present as it is part of the

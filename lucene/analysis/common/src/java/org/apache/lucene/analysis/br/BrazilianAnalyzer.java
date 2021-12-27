@@ -65,7 +65,10 @@ public final class BrazilianAnalyzer extends StopwordAnalyzerBase {
         DEFAULT_STOP_SET =
             WordlistLoader.getWordSet(
                 IOUtils.getDecodingReader(
-                    BrazilianAnalyzer.class, DEFAULT_STOPWORD_FILE, StandardCharsets.UTF_8),
+                    IOUtils.requireResourceNonNull(
+                        BrazilianAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                        DEFAULT_STOPWORD_FILE),
+                    StandardCharsets.UTF_8),
                 "#");
       } catch (IOException ex) {
         // default set should always be present as it is part of the

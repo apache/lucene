@@ -980,7 +980,7 @@ public final class RandomGeo3dShapeGenerator {
    * @param points The points to order.
    * @return The list of ordered points anti-clockwise.
    */
-  protected static List<GeoPoint> orderPoints(List<GeoPoint> points) {
+  public static List<GeoPoint> orderPoints(List<GeoPoint> points) {
     double x = 0;
     double y = 0;
     double z = 0;
