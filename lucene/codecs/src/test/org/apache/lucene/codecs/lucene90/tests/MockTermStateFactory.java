@@ -17,12 +17,12 @@
 
 package org.apache.lucene.codecs.lucene90.tests;
 
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermState;
 
-/** Test utility class to create mock {@link Lucene90PostingsFormat.IntBlockTermState}. */
+/** Test utility class to create mock {@link IntBlockTermState}. */
 public class MockTermStateFactory {
-  /** Creates an empty {@link Lucene90PostingsFormat.IntBlockTermState}. */
-  public static Lucene90PostingsFormat.IntBlockTermState create() {
-    return new Lucene90PostingsFormat.IntBlockTermState();
+  /** Creates an empty {@link IntBlockTermState}. */
+  public static IntBlockTermState create() {
+    return new IntBlockTermState();
   }
 }
