@@ -151,7 +151,7 @@ public abstract class GeoBaseCompositeShape<T extends GeoShape> extends BasePlan
     return super.equals(other) && shapes.equals(other.shapes);
   }
 
-  /** @return Returns an unmodifiable list of composed shapes. */
+  /** Returns an unmodifiable list of composed shapes. */
   public List<T> getShapes() {
     return Collections.unmodifiableList(shapes);
   }
