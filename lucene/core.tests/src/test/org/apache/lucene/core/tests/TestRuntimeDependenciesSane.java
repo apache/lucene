@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.core.tests;
 
+import org.apache.lucene.core.tests.main.*;
 import org.apache.lucene.index.IndexWriter;
 import org.junit.Test;
-import org.apache.lucene.core.tests.main.*;
 
 /** Intentionally not a subclass of {@code LuceneTestCase}. */
 public class TestRuntimeDependenciesSane {

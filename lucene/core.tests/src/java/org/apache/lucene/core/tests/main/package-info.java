@@ -14,10 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.core.tests.main;
 
-/** Just an empty class to reference from the actual tests. */
-public class EmptyReference {
-  /** No instantiation. */
-  private EmptyReference() {}
-}
+/** Contains a placeholder class for referencing in tests. */
+package org.apache.lucene.core.tests.main;
