@@ -20,7 +20,6 @@
 module org.apache.lucene.core.tests {
   requires org.apache.lucene.core;
   requires junit;
-  requires org.apache.lucene.core.tests.main;
 
   exports org.apache.lucene.core.tests;
 }

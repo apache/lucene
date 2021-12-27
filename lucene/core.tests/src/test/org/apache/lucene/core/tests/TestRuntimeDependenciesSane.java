@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.core.tests;
 
-import org.apache.lucene.core.tests.main.*;
 import org.apache.lucene.index.IndexWriter;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Intentionally not a subclass of {@code LuceneTestCase}. */
@@ -39,10 +39,13 @@ public class TestRuntimeDependenciesSane {
     isModule(getClass());
   }
 
+  @Ignore(
+      "TODO: worked with gradle in b6ae29b but can't make intellij idea to digest this "
+          + "configuration, so abandoning.")
   @Test
   public void testMainSourceSetIsAModule() {
     // The test source set itself should be loaded as a module.
-    isModule(EmptyReference.class);
+    // isModule(EmptyReference.class);
   }
 
   private static void isModule(Class<?> clazz) {
