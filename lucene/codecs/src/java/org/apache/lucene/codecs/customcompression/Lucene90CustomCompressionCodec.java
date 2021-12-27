@@ -31,13 +31,17 @@ public final class Lucene90CustomCompressionCodec extends FilterCodec {
   public static enum Mode {
 
     // Currently Zstandard is supported, other compression algorithms can be implemented and
-    // respective modes can be added
-    // for e.g. ZSTD, ZSTD_DICT, ZSTD_FAST or any other compression algos
-    ZSTD_COMPRESSION
+    // respective modes can be added for e.g. ZSTD, ZSTD_DICT, ZSTD_FAST or any other compression
+    // algos
+
+    // Zstandard without dictionary
+    ZSTD,
+    // Zstandard with dictionary
+    ZSTD_DICT
   }
   /** Default codec */
   public Lucene90CustomCompressionCodec() {
-    this(Mode.ZSTD_COMPRESSION, defaultCompressionLevel);
+    this(Mode.ZSTD_DICT, defaultCompressionLevel);
   }
 
   /** new codec for a given compression algorithm and compression level */
@@ -46,13 +50,20 @@ public final class Lucene90CustomCompressionCodec extends FilterCodec {
     this.compressionLevel = compressionLevel;
 
     switch (compressionMode) {
-      case ZSTD_COMPRESSION:
+      case ZSTD:
         if (this.compressionLevel < 1 || this.compressionLevel > 22)
           throw new IllegalArgumentException("Invalid compression level");
 
         this.storedFieldsFormat =
-            new Lucene90CustomCompressionStoredFieldsFormat(
-                Mode.ZSTD_COMPRESSION, compressionLevel);
+            new Lucene90CustomCompressionStoredFieldsFormat(Mode.ZSTD, compressionLevel);
+        break;
+
+      case ZSTD_DICT:
+        if (this.compressionLevel < 1 || this.compressionLevel > 22)
+          throw new IllegalArgumentException("Invalid compression level");
+
+        this.storedFieldsFormat =
+            new Lucene90CustomCompressionStoredFieldsFormat(Mode.ZSTD_DICT, compressionLevel);
         break;
 
       default:

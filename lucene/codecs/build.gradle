@@ -23,6 +23,6 @@ dependencies {
 
     implementation project(':lucene:core')
     moduleImplementation project(':lucene:core')
-	implementation 'com.github.luben:zstd-jni:1.5.0-4'
+    moduleImplementation 'com.github.luben:zstd-jni:1.5.0-4'
     testImplementation project(':lucene:test-framework')
 }

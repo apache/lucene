@@ -31,7 +31,7 @@ import org.apache.lucene.store.IOContext;
 /** Stored field format used by plugaable codec */
 public class Lucene90CustomCompressionStoredFieldsFormat extends StoredFieldsFormat {
   // chunk size for zstandard
-  private static final int ZSTD_BLOCK_LENGTH = 10 * 60 * 1024;
+  private static final int ZSTD_BLOCK_LENGTH = 10 * 8 * 1024;
 
   public static final String MODE_KEY =
       Lucene90CustomCompressionStoredFieldsFormat.class.getSimpleName() + ".mode";
@@ -43,7 +43,7 @@ public class Lucene90CustomCompressionStoredFieldsFormat extends StoredFieldsFor
   /** default constructor */
   public Lucene90CustomCompressionStoredFieldsFormat() {
     this(
-        Lucene90CustomCompressionCodec.Mode.ZSTD_COMPRESSION,
+        Lucene90CustomCompressionCodec.Mode.ZSTD_DICT,
         Lucene90CustomCompressionCodec.defaultCompressionLevel);
   }
 
@@ -85,14 +85,19 @@ public class Lucene90CustomCompressionStoredFieldsFormat extends StoredFieldsFor
 
   StoredFieldsFormat impl(Lucene90CustomCompressionCodec.Mode mode) {
     switch (mode) {
-      case ZSTD_COMPRESSION:
+      case ZSTD:
         return new Lucene90CompressingStoredFieldsFormat(
-            "CustomCompressionStoredFieldsZSTD", ZSTD_MODE, ZSTD_BLOCK_LENGTH, 1024, 10);
+            "CustomCompressionStoredFieldsZSTD", ZSTD_MODE_NO_DICT, ZSTD_BLOCK_LENGTH, 1024, 10);
 
+      case ZSTD_DICT:
+        return new Lucene90CompressingStoredFieldsFormat(
+            "CustomCompressionStoredFieldsZSTD", ZSTD_MODE_DICT, ZSTD_BLOCK_LENGTH, 1024, 10);
       default:
         throw new AssertionError();
     }
   }
 
-  public static final CompressionMode ZSTD_MODE = new ZstdCompressionMode(compressionLevel);
+  public static final CompressionMode ZSTD_MODE_NO_DICT = new ZstdCompressionMode(compressionLevel);
+  public static final CompressionMode ZSTD_MODE_DICT =
+      new ZstdDictCompressionMode(compressionLevel);
 }

@@ -17,12 +17,11 @@
 package org.apache.lucene.codecs.customcompression;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseStoredFieldsFormatTestCase;
+import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 
 public class TestLucene90CustomCompressionCodec extends BaseStoredFieldsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    // TODO Auto-generated method stub
     return new Lucene90CustomCompressionCodec();
   }
 }
