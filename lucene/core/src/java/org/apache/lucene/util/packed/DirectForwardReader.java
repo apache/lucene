@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.util.packed;
 
+import java.io.IOException;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.LongValues;
-
-import java.io.IOException;
 
 /**
  * Retrieves an instance previously written by {@link DirectWriter}
@@ -49,7 +48,8 @@ public class DirectForwardReader {
    * Retrieves an instance from the specified {@code offset} of the given slice decoding {@code
    * bitsPerValue} for each value
    */
-  public static LongValues getInstance(RandomAccessInput slice, int bitsPerValue, long offset, long numValues) {
+  public static LongValues getInstance(
+      RandomAccessInput slice, int bitsPerValue, long offset, long numValues) {
     switch (bitsPerValue) {
       case 1:
         return new DirectForwardReader1(slice, offset, numValues);
@@ -84,7 +84,7 @@ public class DirectForwardReader {
     }
   }
 
-  private static abstract class ForwardWarmUpDirectReader extends LongValues {
+  private abstract static class ForwardWarmUpDirectReader extends LongValues {
     private final long[] buffer = new long[BLOCK_SIZE];
     private final long remainderIndex;
     private boolean checking = true;
@@ -143,7 +143,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader1 extends ForwardWarmUpDirectReader {
     static final int BPV = 1;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     static final int NUM_VALUES_PER_LONG = Long.SIZE / BPV;
     final long[] tmp = new long[TMP_LENGTH];
@@ -175,7 +175,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader2 extends ForwardWarmUpDirectReader {
     static final int BPV = 2;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     static final int NUM_VALUES_PER_LONG = Long.SIZE / BPV;
     final long[] tmp = new long[TMP_LENGTH];
@@ -207,7 +207,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader4 extends ForwardWarmUpDirectReader {
     static final int BPV = 4;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     static final int NUM_VALUES_PER_LONG = Long.SIZE / BPV;
     final long[] tmp = new long[TMP_LENGTH];
@@ -250,7 +250,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader8 extends ForwardWarmUpDirectReader {
     static final int BPV = 8;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     static final int NUM_VALUES_PER_LONG = Long.SIZE / BPV;
     final long[] tmp = new long[TMP_LENGTH];
@@ -284,7 +284,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader12 extends ForwardWarmUpDirectReader {
     static final int BPV = 12;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -329,7 +329,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader16 extends ForwardWarmUpDirectReader {
     static final int BPV = 16;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -358,7 +358,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader20 extends ForwardWarmUpDirectReader {
     static final int BPV = 20;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -405,7 +405,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader24 extends ForwardWarmUpDirectReader {
     static final int BPV = 24;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -440,7 +440,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader28 extends ForwardWarmUpDirectReader {
     static final int BPV = 28;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -482,7 +482,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader32 extends ForwardWarmUpDirectReader {
     static final int BPV = 32;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -509,7 +509,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader40 extends ForwardWarmUpDirectReader {
     static final int BPV = 40;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -528,12 +528,15 @@ public class DirectForwardReader {
       int pos = 0, tmpIndex = -1;
       while (pos < BLOCK_SIZE) {
         buffer[pos++] = tmp[++tmpIndex] & 0xFFFFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 40) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 24);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 40) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 24);
         buffer[pos++] = (tmp[tmpIndex] >>> 16) & 0xFFFFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 56) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 8);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 56) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 8);
         buffer[pos++] = (tmp[tmpIndex] >>> 32) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFL) << 32);
         buffer[pos++] = (tmp[tmpIndex] >>> 8) & 0xFFFFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFL) << 16);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFL) << 16);
         buffer[pos++] = (tmp[tmpIndex] >>> 24) & 0xFFFFFFFFFFL;
       }
     }
@@ -541,7 +544,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader48 extends ForwardWarmUpDirectReader {
     static final int BPV = 48;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -560,8 +563,10 @@ public class DirectForwardReader {
       int pos = 0, tmpIndex = -1;
       while (pos < BLOCK_SIZE) {
         buffer[pos++] = tmp[++tmpIndex] & 0xFFFFFFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 16);
-        buffer[pos++] = (tmp[tmpIndex] >>> 32) & 0xFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 32);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 16);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 32) & 0xFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 32);
         buffer[pos++] = (tmp[tmpIndex] >>> 16) & 0xFFFFFFFFFFFFL;
       }
     }
@@ -569,7 +574,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader56 extends ForwardWarmUpDirectReader {
     static final int BPV = 56;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
     final long[] tmp = new long[TMP_LENGTH];
 
@@ -588,12 +593,18 @@ public class DirectForwardReader {
       int pos = 0, tmpIndex = -1;
       while (pos < BLOCK_SIZE) {
         buffer[pos++] = tmp[++tmpIndex] & 0xFFFFFFFFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 56) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFFFFFL) << 8);
-        buffer[pos++] = (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFFFL) << 16);
-        buffer[pos++] = (tmp[tmpIndex] >>> 40) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 24);
-        buffer[pos++] = (tmp[tmpIndex] >>> 32) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFL) << 32);
-        buffer[pos++] = (tmp[tmpIndex] >>> 24) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 40);
-        buffer[pos++] = (tmp[tmpIndex] >>> 16) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFL) << 48);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 56) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFFFFFL) << 8);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFFFL) << 16);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 40) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 24);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 32) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFL) << 32);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 24) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 40);
+        buffer[pos++] =
+            (tmp[tmpIndex] >>> 16) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFL) << 48);
         buffer[pos++] = (tmp[tmpIndex] >>> 8) & 0xFFFFFFFFFFFFFFL;
       }
     }
@@ -601,7 +612,7 @@ public class DirectForwardReader {
 
   static final class DirectForwardReader64 extends ForwardWarmUpDirectReader {
     static final int BPV = 64;
-    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE ;
+    static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
 
     public DirectForwardReader64(RandomAccessInput in, long offset, long numValues) {
       super(in, offset, numValues);

@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.util.packed;
 
-import org.apache.lucene.store.ByteArrayDataInput;
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
+import java.util.Random;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -25,13 +26,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.LongValues;
 
-import java.util.Random;
-
 public class TestDirectForward extends LuceneTestCase {
 
-  /**
-   * simple encode/decode
-   */
+  /** simple encode/decode */
   public void testSimple() throws Exception {
     Directory dir = newDirectory();
     int bitsPerValue = DirectWriter.bitsRequired(2);
@@ -46,7 +43,8 @@ public class TestDirectForward extends LuceneTestCase {
     output.close();
     IndexInput input = dir.openInput("foo", IOContext.DEFAULT);
     LongValues reader =
-            DirectForwardReader.getInstance(input.randomAccessSlice(0, input.length()), bitsPerValue, 0, 5);
+        DirectForwardReader.getInstance(
+            input.randomAccessSlice(0, input.length()), bitsPerValue, 0, 5);
     assertEquals(1, reader.get(0));
     assertEquals(0, reader.get(1));
     assertEquals(2, reader.get(2));
@@ -56,9 +54,7 @@ public class TestDirectForward extends LuceneTestCase {
     dir.close();
   }
 
-  /**
-   * test exception is delivered if you add the wrong number of values
-   */
+  /** test exception is delivered if you add the wrong number of values */
   public void testNotEnoughValues() throws Exception {
     Directory dir = newDirectory();
     int bitsPerValue = DirectWriter.bitsRequired(2);
@@ -68,12 +64,7 @@ public class TestDirectForward extends LuceneTestCase {
     writer.add(0);
     writer.add(2);
     writer.add(1);
-    IllegalStateException expected =
-            expectThrows(
-                    IllegalStateException.class,
-                    () -> {
-                      writer.finish();
-                    });
+    IllegalStateException expected = expectThrows(IllegalStateException.class, writer::finish);
     assertTrue(expected.getMessage().startsWith("Wrong number of values added"));
 
     output.close();
@@ -83,7 +74,7 @@ public class TestDirectForward extends LuceneTestCase {
   public void testRandom() throws Exception {
     Directory dir = newDirectory();
     for (int bpv = 1; bpv <= 64; bpv++) {
-      doTestBpv(dir, bpv, 0, false);
+      doTestBpv(dir, bpv, 0);
     }
     dir.close();
   }
@@ -92,31 +83,13 @@ public class TestDirectForward extends LuceneTestCase {
     Directory dir = newDirectory();
     final int offset = TestUtil.nextInt(random(), 1, 100);
     for (int bpv = 1; bpv <= 64; bpv++) {
-      doTestBpv(dir, bpv, offset, false);
+      doTestBpv(dir, bpv, offset);
     }
     dir.close();
   }
 
-  public void testRandomMerge() throws Exception {
-    Directory dir = newDirectory();
-    for (int bpv = 1; bpv <= 64; bpv++) {
-      doTestBpv(dir, bpv, 0, true);
-    }
-    dir.close();
-  }
-
-  public void testRandomMergeWithOffset() throws Exception {
-    Directory dir = newDirectory();
-    final int offset = TestUtil.nextInt(random(), 1, 100);
-    for (int bpv = 1; bpv <= 64; bpv++) {
-      doTestBpv(dir, bpv, offset, true);
-    }
-    dir.close();
-  }
-
-  private void doTestBpv(Directory directory, int bpv, long offset, boolean merge)
-          throws Exception {
-    MyRandom random = new MyRandom(random().nextLong());
+  private void doTestBpv(Directory directory, int bpv, long offset) throws Exception {
+    Random random = random();
     int numIters = TEST_NIGHTLY ? 100 : 10;
     for (int i = 0; i < numIters; i++) {
       long[] original = randomLongs(random, bpv);
@@ -135,8 +108,8 @@ public class TestDirectForward extends LuceneTestCase {
       IndexInput input = directory.openInput(name, IOContext.DEFAULT);
       LongValues reader;
       reader =
-              DirectForwardReader.getInstance(
-                      input.randomAccessSlice(0, input.length()), bitsRequired, offset, original.length);
+          DirectForwardReader.getInstance(
+              input.randomAccessSlice(0, input.length()), bitsRequired, offset, original.length);
       for (int j = 0; j < original.length; j++) {
         assertEquals("bpv=" + bpv + ", j=" + j, original[j], reader.get(j));
       }
@@ -144,29 +117,13 @@ public class TestDirectForward extends LuceneTestCase {
     }
   }
 
-  private long[] randomLongs(MyRandom random, int bpv) {
-    int amount = random.nextInt(5000) + 1000;
+  private long[] randomLongs(Random random, int bpv) {
+    int amount = random.nextInt(5000);
     long[] longs = new long[amount];
+    long max = PackedInts.maxValue(bpv);
     for (int i = 0; i < longs.length; i++) {
-      longs[i] = random.nextLong(bpv);
+      longs[i] = RandomNumbers.randomLongBetween(random, 0, max);
     }
     return longs;
-  }
-
-  // java.util.Random only returns 48bits of randomness in nextLong...
-  static class MyRandom extends Random {
-    byte[] buffer = new byte[8];
-    ByteArrayDataInput input = new ByteArrayDataInput();
-
-    MyRandom(long seed) {
-      super(seed);
-    }
-
-    public synchronized long nextLong(int bpv) {
-      nextBytes(buffer);
-      input.reset(buffer);
-      long bits = input.readLong();
-      return bits >>> (64 - bpv);
-    }
   }
 }
