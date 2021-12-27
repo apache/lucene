@@ -120,4 +120,9 @@ public abstract class FilterDirectory extends Directory {
   public Set<String> getPendingDeletions() throws IOException {
     return in.getPendingDeletions();
   }
+
+  @Override
+  protected void ensureOpen() throws AlreadyClosedException {
+    in.ensureOpen();
+  }
 }

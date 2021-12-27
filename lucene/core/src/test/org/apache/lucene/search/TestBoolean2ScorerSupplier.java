@@ -25,8 +25,8 @@ import java.util.EnumMap;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestBoolean2ScorerSupplier extends LuceneTestCase {
 

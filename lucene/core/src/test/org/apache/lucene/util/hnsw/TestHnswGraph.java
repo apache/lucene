@@ -45,11 +45,11 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
 /** Tests HNSW KNN graphs */

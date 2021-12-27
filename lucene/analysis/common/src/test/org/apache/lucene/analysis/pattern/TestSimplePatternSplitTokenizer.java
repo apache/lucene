@@ -21,7 +21,6 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -29,7 +28,8 @@ import org.apache.lucene.analysis.charfilter.MappingCharFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.automaton.Automaton;
 
 public class TestSimplePatternSplitTokenizer extends BaseTokenStreamTestCase {

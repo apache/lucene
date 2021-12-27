@@ -24,8 +24,8 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestSpellChecking extends LuceneTestCase {
 

@@ -17,7 +17,7 @@
 
 package org.apache.lucene.search;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMaxScoreAccumulator extends LuceneTestCase {
   public void testSimple() {

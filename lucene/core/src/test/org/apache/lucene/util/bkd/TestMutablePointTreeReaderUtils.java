@@ -20,10 +20,10 @@ import java.util.Arrays;
 import java.util.Comparator;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
 

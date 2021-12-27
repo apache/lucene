@@ -161,6 +161,13 @@ allprojects {
         showStandardStreams false
       }
 
+      // Disable automatic test class detection, rely on class names only. This is needed for testing
+      // against JDKs where the bytecode is unparseable by Gradle, for example.
+      // We require all tests to start with Test*, this simplifies include patterns greatly.
+      scanForTestClasses = false
+      include '**/Test*.class'
+      exclude '**/*$*'
+
       // Set up custom test output handler.
       doFirst {
         project.delete testOutputsDir

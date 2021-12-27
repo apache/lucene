@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import static org.apache.lucene.tests.util.RamUsageTester.ramUsed;
 import static org.apache.lucene.util.RamUsageEstimator.*;
-import static org.apache.lucene.util.RamUsageTester.ramUsed;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +31,7 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestRamUsageEstimator extends LuceneTestCase {
 

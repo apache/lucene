@@ -21,9 +21,9 @@ import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestTermsEnumTokenFilter extends LuceneTestCase {
 

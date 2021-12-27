@@ -17,7 +17,7 @@
 package org.apache.lucene.queries.spans;
 
 import java.lang.reflect.Method;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestFilterSpans extends LuceneTestCase {
