@@ -165,7 +165,7 @@ public final class RamUsageEstimator {
                   + "is readable [please add 'jdk.management' to modular application either by command line or its module descriptor]");
         } else {
           log.warning(
-              "Lucene cannot correctly calculate object sizes on 64bit JVMs that are not based on Hotspot.");
+              "Lucene cannot correctly calculate object sizes on 64bit JVMs that are not based on Hotspot or a compatible implementation.");
         }
       }
       JVM_IS_HOTSPOT_64BIT = isHotspot;
