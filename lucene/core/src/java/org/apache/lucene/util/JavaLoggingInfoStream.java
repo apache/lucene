@@ -91,6 +91,8 @@ public final class JavaLoggingInfoStream extends InfoStream {
   }
 
   private Logger getLogger(String component) {
-    return cache.computeIfAbsent(component, c -> Logger.getLogger(componentToLoggerName.apply(c)));
+    return cache.computeIfAbsent(
+        Objects.requireNonNull(component, "component"),
+        c -> Logger.getLogger(componentToLoggerName.apply(c)));
   }
 }
