@@ -190,6 +190,10 @@ allprojects {
           }
 
           task.logger.info("Module path for ${task.path}:\n  " + modulePath.files.sort().join("\n  "))
+          
+          // Lucene needs to optional modules at runtime, which we want to enforce for testing
+          // (if the runner JVM does not support them it will fail tests):
+          extraArgs += ["--add-modules", "jdk.unsupported,jdk.management"]
 
           return extraArgs
         })
