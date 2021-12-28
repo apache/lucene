@@ -344,9 +344,7 @@ public class MMapDirectory extends FSDirectory {
       CLEANER = null;
       UNMAP_SUPPORTED = false;
       UNMAP_NOT_SUPPORTED_REASON = hack.toString();
-      Logger.getLogger(MMapDirectory.class.getName())
-          .warning(
-              "Use of MMapDirectory was disabled by default: ".concat(UNMAP_NOT_SUPPORTED_REASON));
+      Logger.getLogger(MMapDirectory.class.getName()).warning(UNMAP_NOT_SUPPORTED_REASON);
     }
   }
 
