@@ -51,7 +51,6 @@ public abstract class ShapeFieldCacheProvider<T extends Shape> {
     if (idx != null) {
       return idx;
     }
-    long startTime = System.currentTimeMillis();
 
     idx = new ShapeFieldCache<>(reader.maxDoc(), defaultSize);
     int count = 0;
@@ -75,7 +74,6 @@ public abstract class ShapeFieldCacheProvider<T extends Shape> {
       }
     }
     sidx.put(reader, idx);
-    long elapsed = System.currentTimeMillis() - startTime;
     return idx;
   }
 }
