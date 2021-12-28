@@ -16,19 +16,35 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Enumeration;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestJavaLoggingInfoStream extends LuceneTestCase {
 
   public void test() throws Exception {
     assumeTrue(
-        "invalid logging configuration for testing", Logger.getGlobal().isLoggable(Level.INFO));
-    try (InfoStream stream = new JavaLoggingInfoStream(Level.INFO)) {
-      assertTrue(stream.isEnabled("IW"));
-      stream.message("IW", "Test message to be logged.");
-      // TODO: How to verify that it was logged with correct name?
+        "invalid logging configuration for testing", Logger.getGlobal().isLoggable(Level.WARNING));
+    final var component = "TESTCOMPONENT" + random().nextInt();
+    final var loggerName = "org.apache.lucene." + component;
+    try (var stream = new JavaLoggingInfoStream(Level.WARNING)) {
+      assertTrue(stream.isEnabled(component));
+      stream.message(component, "Test message to be logged.");
     }
+    assertTrue(
+        "logger with correct name not found",
+        streamOfEnumeration(LogManager.getLogManager().getLoggerNames())
+            .anyMatch(loggerName::equals));
+  }
+
+  private static <T> Stream<T> streamOfEnumeration(Enumeration<T> e) {
+    return StreamSupport.stream(
+        Spliterators.spliteratorUnknownSize(e.asIterator(), Spliterator.ORDERED), false);
   }
 }
