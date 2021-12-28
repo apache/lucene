@@ -18,7 +18,6 @@ package org.apache.lucene.spatial.util;
 
 import java.io.IOException;
 import java.util.WeakHashMap;
-import java.util.logging.Logger;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
@@ -34,10 +33,8 @@ import org.locationtech.spatial4j.shape.Shape;
  * @lucene.internal
  */
 public abstract class ShapeFieldCacheProvider<T extends Shape> {
-  private Logger log = Logger.getLogger(getClass().getName());
-
   // it may be a List<T> or T
-  WeakHashMap<IndexReader, ShapeFieldCache<T>> sidx = new WeakHashMap<>();
+  final WeakHashMap<IndexReader, ShapeFieldCache<T>> sidx = new WeakHashMap<>();
 
   protected final int defaultSize;
   protected final String shapeField;
@@ -56,7 +53,6 @@ public abstract class ShapeFieldCacheProvider<T extends Shape> {
     }
     long startTime = System.currentTimeMillis();
 
-    log.fine("Building Cache [" + reader.maxDoc() + "]");
     idx = new ShapeFieldCache<>(reader.maxDoc(), defaultSize);
     int count = 0;
     PostingsEnum docs = null;
@@ -80,7 +76,6 @@ public abstract class ShapeFieldCacheProvider<T extends Shape> {
     }
     sidx.put(reader, idx);
     long elapsed = System.currentTimeMillis() - startTime;
-    log.fine("Cached: [" + count + " in " + elapsed + "ms] " + idx);
     return idx;
   }
 }
