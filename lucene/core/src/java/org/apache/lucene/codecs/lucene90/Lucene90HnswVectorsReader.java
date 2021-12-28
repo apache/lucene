@@ -498,7 +498,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = (entry.maxConn + 1) * 4;
+      this.bytesForConns = ((long) entry.maxConn + 1) * 4;
     }
 
     @Override
