@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.packed;
 
+import static org.apache.lucene.util.packed.UnrollingDecoder.*;
+
 import java.io.IOException;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.LongValues;
@@ -41,8 +43,8 @@ public class DirectForwardReader {
   static final int BLOCK_SHIFT = 7;
   private static final int BLOCK_SIZE = 1 << BLOCK_SHIFT;
   private static final int BLOCK_MASK = BLOCK_SIZE - 1;
-  private static final int WARM_UP_SAMPLE_TIME = BLOCK_SIZE;
-  private static final int WARM_UP_DELTA_THRESHOLD = (WARM_UP_SAMPLE_TIME * 3) >> 1;
+  // warm up if we read more than 4/5 times in the first block
+  private static final int WARM_UP_THRESHOLD = (int) (BLOCK_SIZE * 0.8);
 
   /**
    * Retrieves an instance from the specified {@code offset} of the given slice decoding {@code
@@ -86,10 +88,10 @@ public class DirectForwardReader {
 
   private abstract static class ForwardWarmUpDirectReader extends LongValues {
     private final long[] buffer = new long[BLOCK_SIZE];
-    private final long remainderIndex;
+    private final int remainderBlock;
     private boolean checking = true;
     private boolean warm = false;
-    private long firstIndex;
+    private long maxIndex;
     private int counter = 0;
     final RandomAccessInput in;
     final long offset;
@@ -98,38 +100,38 @@ public class DirectForwardReader {
     public ForwardWarmUpDirectReader(RandomAccessInput in, long offset, long numValues) {
       this.in = in;
       this.offset = offset;
-      this.remainderIndex = numValues - (numValues & BLOCK_MASK);
+      this.remainderBlock = (numValues & BLOCK_MASK) == 0 ? -1 : (int) (numValues >>> BLOCK_SHIFT);
     }
 
     @Override
     public long get(long index) {
       if (checking) {
-        check(index);
+        if (counter++ == 0) {
+          maxIndex = index + BLOCK_SIZE;
+        }
+        if (index >= maxIndex) {
+          warm = counter >= WARM_UP_THRESHOLD;
+          checking = false;
+        }
       }
       try {
-        return (warm && index < remainderIndex) ? warm(index) : doGet(index);
+        if (warm) {
+          final long block = index >> BLOCK_SHIFT;
+          if (block == currentBlock) {
+            return buffer[(int) (index & BLOCK_MASK)];
+          } else if (block == remainderBlock) {
+            return doGet(index);
+          } else {
+            fillBuffer(block, buffer);
+            currentBlock = block;
+            return buffer[(int) (index & BLOCK_MASK)];
+          }
+        } else {
+          return doGet(index);
+        }
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
-    }
-
-    private void check(long index) {
-      if (counter == 0) {
-        firstIndex = index;
-      } else if (counter == WARM_UP_SAMPLE_TIME) {
-        warm = index - firstIndex <= WARM_UP_DELTA_THRESHOLD;
-        checking = false;
-      }
-      counter++;
-    }
-
-    private long warm(long index) throws IOException {
-      final long block = index >> BLOCK_SHIFT;
-      if (block != currentBlock) {
-        fillBuffer(block, buffer);
-        currentBlock = block;
-      }
-      return buffer[(int) (index & BLOCK_MASK)];
     }
 
     protected void readLongs(long pos, long[] dst, int off, int len) throws IOException {
@@ -161,15 +163,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      for (int i = 0; i < TMP_LENGTH; i++) {
-        long l = tmp[i];
-        int pos = i << 6;
-        int end = pos + NUM_VALUES_PER_LONG;
-        while (pos < end) {
-          buffer[pos++] = l & 1L;
-          l >>>= BPV;
-        }
-      }
+      decode1(tmp, buffer);
     }
   }
 
@@ -193,15 +187,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      for (int i = 0; i < TMP_LENGTH; i++) {
-        long l = tmp[i];
-        int pos = i << 5;
-        int end = pos + NUM_VALUES_PER_LONG;
-        while (pos < end) {
-          buffer[pos++] = l & 3L;
-          l >>>= BPV;
-        }
-      }
+      decode2(tmp, buffer);
     }
   }
 
@@ -209,7 +195,6 @@ public class DirectForwardReader {
     static final int BPV = 4;
     static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
-    static final int NUM_VALUES_PER_LONG = Long.SIZE / BPV;
     final long[] tmp = new long[TMP_LENGTH];
 
     public DirectForwardReader4(RandomAccessInput in, long offset, long numValues) {
@@ -225,26 +210,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        final long l = tmp[++tmpIndex];
-        buffer[pos++] = l & 0xFL;
-        buffer[pos++] = (l >>> 4) & 0xFL;
-        buffer[pos++] = (l >>> 8) & 0xFL;
-        buffer[pos++] = (l >>> 12) & 0xFL;
-        buffer[pos++] = (l >>> 16) & 0xFL;
-        buffer[pos++] = (l >>> 20) & 0xFL;
-        buffer[pos++] = (l >>> 24) & 0xFL;
-        buffer[pos++] = (l >>> 28) & 0xFL;
-        buffer[pos++] = (l >>> 32) & 0xFL;
-        buffer[pos++] = (l >>> 36) & 0xFL;
-        buffer[pos++] = (l >>> 40) & 0xFL;
-        buffer[pos++] = (l >>> 44) & 0xFL;
-        buffer[pos++] = (l >>> 48) & 0xFL;
-        buffer[pos++] = (l >>> 52) & 0xFL;
-        buffer[pos++] = (l >>> 56) & 0xFL;
-        buffer[pos++] = (l >>> 60) & 0xFL;
-      }
+      decode4(tmp, buffer);
     }
   }
 
@@ -252,7 +218,6 @@ public class DirectForwardReader {
     static final int BPV = 8;
     static final int BLOCK_BYTES = BLOCK_SIZE * BPV / Byte.SIZE;
     static final int TMP_LENGTH = BLOCK_BYTES / Long.BYTES;
-    static final int NUM_VALUES_PER_LONG = Long.SIZE / BPV;
     final long[] tmp = new long[TMP_LENGTH];
 
     public DirectForwardReader8(RandomAccessInput in, long offset, long numValues) {
@@ -267,18 +232,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        final long l = tmp[++tmpIndex];
-        buffer[pos++] = l & 0xFFL;
-        buffer[pos++] = (l >>> 8) & 0xFFL;
-        buffer[pos++] = (l >>> 16) & 0xFFL;
-        buffer[pos++] = (l >>> 24) & 0xFFL;
-        buffer[pos++] = (l >>> 32) & 0xFFL;
-        buffer[pos++] = (l >>> 40) & 0xFFL;
-        buffer[pos++] = (l >>> 48) & 0xFFL;
-        buffer[pos++] = (l >>> 56) & 0xFFL;
-      }
+      decode8(tmp, buffer);
     }
   }
 
@@ -302,28 +256,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        final long l1 = tmp[++tmpIndex];
-        final long l2 = tmp[++tmpIndex];
-        final long l3 = tmp[++tmpIndex];
-        buffer[pos++] = l1 & 0xFFFL;
-        buffer[pos++] = (l1 >>> 12) & 0xFFFL;
-        buffer[pos++] = (l1 >>> 24) & 0XFFFL;
-        buffer[pos++] = (l1 >>> 36) & 0xFFFL;
-        buffer[pos++] = (l1 >>> 48) & 0xFFFL;
-        buffer[pos++] = ((l1 >>> 60) & 0xFFFL) | ((l2 & 0xFFL) << 4);
-        buffer[pos++] = (l2 >>> 8) & 0xFFFL;
-        buffer[pos++] = (l2 >>> 20) & 0xFFFL;
-        buffer[pos++] = (l2 >>> 32) & 0xFFFL;
-        buffer[pos++] = (l2 >>> 44) & 0xFFFL;
-        buffer[pos++] = ((l2 >>> 56) & 0xFFFL) | ((l3 & 0xFL) << 8);
-        buffer[pos++] = (l3 >>> 4) & 0xFFFL;
-        buffer[pos++] = (l3 >>> 16) & 0xFFFL;
-        buffer[pos++] = (l3 >>> 28) & 0xFFFL;
-        buffer[pos++] = (l3 >>> 40) & 0xFFFL;
-        buffer[pos++] = (l3 >>> 52) & 0xFFFL;
-      }
+      decode12(tmp, buffer);
     }
   }
 
@@ -345,14 +278,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        final long l = tmp[++tmpIndex];
-        buffer[pos++] = l & 0xFFFFL;
-        buffer[pos++] = (l >>> 16) & 0xFFFFL;
-        buffer[pos++] = (l >>> 32) & 0xFFFFL;
-        buffer[pos++] = (l >>> 48) & 0xFFFFL;
-      }
+      decode16(tmp, buffer);
     }
   }
 
@@ -376,30 +302,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        final long l1 = tmp[++tmpIndex];
-        final long l2 = tmp[++tmpIndex];
-        final long l3 = tmp[++tmpIndex];
-        final long l4 = tmp[++tmpIndex];
-        final long l5 = tmp[++tmpIndex];
-        buffer[pos++] = l1 & 0xFFFFFL;
-        buffer[pos++] = (l1 >>> 20) & 0xFFFFFL;
-        buffer[pos++] = (l1 >>> 40) & 0XFFFFFL;
-        buffer[pos++] = (l1 >>> 60) & 0XFFFFFL | ((l2 & 0xFFFFL) << 4);
-        buffer[pos++] = (l2 >>> 16) & 0xFFFFFL;
-        buffer[pos++] = (l2 >>> 36) & 0xFFFFFL;
-        buffer[pos++] = (l2 >>> 56) & 0xFFFFFL | ((l3 & 0xFFFL) << 8);
-        buffer[pos++] = (l3 >>> 12) & 0xFFFFFL;
-        buffer[pos++] = (l3 >>> 32) & 0xFFFFFL;
-        buffer[pos++] = (l3 >>> 52) & 0xFFFFFL | ((l4 & 0xFFL) << 12);
-        buffer[pos++] = (l4 >>> 8) & 0xFFFFFL;
-        buffer[pos++] = (l4 >>> 28) & 0xFFFFFL;
-        buffer[pos++] = (l4 >>> 48) & 0xFFFFFL | ((l5 & 0xFL) << 16);
-        buffer[pos++] = (l5 >>> 4) & 0xFFFFFL;
-        buffer[pos++] = (l5 >>> 24) & 0xFFFFFL;
-        buffer[pos++] = (l5 >>> 44) & 0xFFFFFL;
-      }
+      decode20(tmp, buffer);
     }
   }
 
@@ -421,20 +324,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        final long l1 = tmp[++tmpIndex];
-        final long l2 = tmp[++tmpIndex];
-        final long l3 = tmp[++tmpIndex];
-        buffer[pos++] = l1 & 0xFFFFFFL;
-        buffer[pos++] = (l1 >>> 24) & 0xFFFFFFL;
-        buffer[pos++] = (l1 >>> 48) & 0XFFFFFFL | ((l2 & 0xFFL) << 16);
-        buffer[pos++] = (l2 >>> 8) & 0xFFFFFFL;
-        buffer[pos++] = (l2 >>> 32) & 0xFFFFFFL;
-        buffer[pos++] = (l2 >>> 56) & 0xFFFFFFL | ((l3 & 0xFFFFL) << 8);
-        buffer[pos++] = (l3 >>> 16) & 0xFFFFFFL;
-        buffer[pos++] = (l3 >>> 40) & 0xFFFFFFL;
-      }
+      decode24(tmp, buffer);
     }
   }
 
@@ -458,25 +348,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        buffer[pos++] = tmp[++tmpIndex] & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 28) & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 56) & 0XFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFL) << 8);
-        buffer[pos++] = (tmp[tmpIndex] >>> 20) & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 48) & 0xFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFL) << 16);
-        buffer[pos++] = (tmp[tmpIndex] >>> 12) & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 40) & 0xFFFFFFFL | ((tmp[++tmpIndex] & 0xFL) << 24);
-        buffer[pos++] = (tmp[tmpIndex] >>> 4) & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 32) & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 60) & 0xFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFL) << 4);
-        buffer[pos++] = (tmp[tmpIndex] >>> 24) & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 52) & 0xFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 12);
-        buffer[pos++] = (tmp[tmpIndex] >>> 16) & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 44) & 0xFFFFFFFL | ((tmp[++tmpIndex] & 0xFFL) << 20);
-        buffer[pos++] = (tmp[tmpIndex] >>> 8) & 0xFFFFFFFL;
-        buffer[pos++] = (tmp[tmpIndex] >>> 36) & 0xFFFFFFFL;
-      }
+      decode28(tmp, buffer);
     }
   }
 
@@ -498,12 +370,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        final long l = tmp[++tmpIndex];
-        buffer[pos++] = l & 0xFFFFFFFFL;
-        buffer[pos++] = (l >>> 32) & 0xFFFFFFFFL;
-      }
+      decode32(tmp, buffer);
     }
   }
 
@@ -525,20 +392,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        buffer[pos++] = tmp[++tmpIndex] & 0xFFFFFFFFFFL;
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 40) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 24);
-        buffer[pos++] = (tmp[tmpIndex] >>> 16) & 0xFFFFFFFFFFL;
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 56) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 8);
-        buffer[pos++] = (tmp[tmpIndex] >>> 32) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFL) << 32);
-        buffer[pos++] = (tmp[tmpIndex] >>> 8) & 0xFFFFFFFFFFL;
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFL) << 16);
-        buffer[pos++] = (tmp[tmpIndex] >>> 24) & 0xFFFFFFFFFFL;
-      }
+      decode40(tmp, buffer);
     }
   }
 
@@ -560,15 +414,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        buffer[pos++] = tmp[++tmpIndex] & 0xFFFFFFFFFFFFL;
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 16);
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 32) & 0xFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 32);
-        buffer[pos++] = (tmp[tmpIndex] >>> 16) & 0xFFFFFFFFFFFFL;
-      }
+      decode48(tmp, buffer);
     }
   }
 
@@ -590,23 +436,7 @@ public class DirectForwardReader {
     @Override
     void fillBuffer(long block, long[] buffer) throws IOException {
       readLongs(offset + BLOCK_BYTES * block, tmp, 0, TMP_LENGTH);
-      int pos = 0, tmpIndex = -1;
-      while (pos < BLOCK_SIZE) {
-        buffer[pos++] = tmp[++tmpIndex] & 0xFFFFFFFFFFFFFFL;
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 56) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFFFFFL) << 8);
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 48) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFFFL) << 16);
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 40) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFFFL) << 24);
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 32) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFFFL) << 32);
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 24) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFFFL) << 40);
-        buffer[pos++] =
-            (tmp[tmpIndex] >>> 16) & 0xFFFFFFFFFFFFFFL | ((tmp[++tmpIndex] & 0xFFL) << 48);
-        buffer[pos++] = (tmp[tmpIndex] >>> 8) & 0xFFFFFFFFFFFFFFL;
-      }
+      decode56(tmp, buffer);
     }
   }
 
