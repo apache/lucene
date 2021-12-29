@@ -226,22 +226,6 @@ configure(project(":lucene:core")) {
   }
 }
 
-// Fix for Java 11 Javadoc tool that cannot handle split packages between modules correctly.
-// (by removing all the packages which are part of lucene-core)
-// See: https://issues.apache.org/jira/browse/LUCENE-8738?focusedCommentId=16818106&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-16818106
-// LUCENE-9499: This workaround should be applied only to test-framework (we have no split package in other modules).
-configure(project(":lucene:test-framework")) {
-  project.tasks.withType(RenderJavadocTask) {
-    doLast {
-      Set luceneCorePackages = file("${project(':lucene:core').tasks[name].outputDir}/element-list").readLines('UTF-8').toSet();
-      File elementFile = file("${outputDir}/element-list");
-      List elements = elementFile.readLines('UTF-8');
-      elements.removeAll(luceneCorePackages)
-      elementFile.write(elements.join('\n').concat('\n'), 'UTF-8');
-    }
-  }
-}
-
 configure(project(':lucene:demo')) {
   project.tasks.withType(RenderJavadocTask) {
     // For the demo, we link the example source in the javadocs, as it's ref'ed elsewhere
@@ -415,9 +399,6 @@ class RenderJavadocTask extends DefaultTask {
     // - find all (enabled) tasks this tasks depends on (with same name), calling findRenderTasksInDependencies()
     // - sort the tasks preferring those whose project name equals 'core', then lexigraphical by path
     // - for each task get output dir to create relative or absolute link
-    // NOTE: explicitly exclude solr/test-framework, or attempting to link to lucene-test-framework because if we did javadoc would
-    // attempt to link class refs in in org.apache.lucene, causing broken links. (either broken links to things like "Directory" if
-    // lucene-test-framework was first, or broken links to things like LuceneTestCase if lucene-core was first)
     findRenderTasksInDependencies()
         .sort(false, Comparator.comparing { (it.project.name != 'core') as Boolean }.thenComparing(Comparator.comparing { it.path }))
         .each { otherTask ->

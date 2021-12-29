@@ -18,7 +18,8 @@ package org.apache.lucene.util.automaton;
 
 import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 /** Not completely thorough, but tries to test determinism correctness somewhat randomly. */
 public class TestDeterminism extends LuceneTestCase {

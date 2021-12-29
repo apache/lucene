@@ -20,6 +20,7 @@
 module org.apache.lucene.replicator {
   requires javax.servlet.api;
   requires org.apache.httpcomponents.httpclient;
+  requires org.apache.httpcomponents.httpcore;
   requires org.apache.lucene.core;
   requires org.apache.lucene.facet;
 

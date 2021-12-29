@@ -17,8 +17,8 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BasePostingsFormatTestCase;
-import org.apache.lucene.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 
 /** Tests SimpleText's postings */
 @Nightly // please figure out why I am so horrendously slow!

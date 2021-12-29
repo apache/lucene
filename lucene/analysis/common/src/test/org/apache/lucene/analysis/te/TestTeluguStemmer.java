@@ -18,10 +18,10 @@ package org.apache.lucene.analysis.te;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Test TeluguStemmer */
 public class TestTeluguStemmer extends BaseTokenStreamTestCase {

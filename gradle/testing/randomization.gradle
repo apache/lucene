@@ -167,10 +167,10 @@ allprojects {
           if (project.path.endsWith(".tests")) {
             // LUCENE-10301: for now, do not use the security manager for modular tests (test framework is not available).
           } else if (project.path == ":lucene:replicator") {
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
+            systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/replicator-tests.policy")
           } else if (project.path.startsWith(":lucene")) {
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
+            systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")
           }
 

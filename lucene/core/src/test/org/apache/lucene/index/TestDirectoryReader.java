@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -39,13 +38,16 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.DocHelper;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.junit.Assume;
 
@@ -874,7 +876,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     Document d = new Document();
     d.add(newTextField("f", "a a b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls totalTermFreq (eg PreFlex doesn't)
@@ -897,7 +899,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -918,7 +920,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "a", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -939,7 +941,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "a a b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -963,7 +965,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     writer.addDocument(new Document());
     writer.commit();
-    final DirectoryReader reader = writer.getReader();
+    final DirectoryReader reader = DirectoryReader.open(writer);
     final int[] closeCount = new int[1];
     final IndexReader.ClosedListener listener =
         new IndexReader.ClosedListener() {
@@ -994,7 +996,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     writer.addDocument(new Document());
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     r.document(0);
     expectThrows(

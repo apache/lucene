@@ -19,7 +19,7 @@ package org.apache.lucene.spatial3d.geom;
 
 import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Random test to check relationship between GeoAreaShapes and GeoShapes. */

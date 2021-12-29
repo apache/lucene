@@ -138,6 +138,16 @@ public class IndexSearcher {
   }
 
   /**
+   * Expert: returns leaf contexts associated with this searcher. This is an internal method exposed
+   * for tests only.
+   *
+   * @lucene.internal
+   */
+  public List<LeafReaderContext> getLeafContexts() {
+    return leafContexts;
+  }
+
+  /**
    * Expert: Get the default {@link QueryCache} or {@code null} if the cache is disabled.
    *
    * @lucene.internal

@@ -17,7 +17,8 @@
 package org.apache.lucene.geo;
 
 import java.util.Arrays;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.geo.ShapeTestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestXYLine extends LuceneTestCase {
 

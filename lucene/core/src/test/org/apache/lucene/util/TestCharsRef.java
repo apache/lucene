@@ -17,6 +17,8 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestCharsRef extends LuceneTestCase {
 

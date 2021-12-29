@@ -17,9 +17,9 @@
 package org.apache.lucene.analysis.core;
 
 import java.util.Set;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
 import org.apache.lucene.analysis.TokenFilterFactory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
 
 /** Testcase for {@link TypeTokenFilterFactory} */
 public class TestTypeTokenFilterFactory extends BaseTokenStreamFactoryTestCase {

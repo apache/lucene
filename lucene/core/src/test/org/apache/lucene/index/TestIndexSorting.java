@@ -36,8 +36,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -79,12 +77,15 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestIndexSorting extends LuceneTestCase {
   static class AssertingNeedsIndexSortCodec extends FilterCodec {
@@ -1733,7 +1734,7 @@ public class TestIndexSorting extends LuceneTestCase {
       doc.add(new NumericDocValuesField("id", i));
       w.addDocument(doc);
       if (random().nextInt(5) == 0) {
-        w.getReader().close();
+        DirectoryReader.open(w).close();
       } else if (random().nextInt(30) == 0) {
         w.forceMerge(2);
       } else if (random().nextInt(4) == 0) {
@@ -1744,7 +1745,7 @@ public class TestIndexSorting extends LuceneTestCase {
     }
 
     // Check that segments are sorted
-    DirectoryReader reader = w.getReader();
+    DirectoryReader reader = DirectoryReader.open(w);
     for (LeafReaderContext ctx : reader.leaves()) {
       final SegmentReader leaf = (SegmentReader) ctx.reader();
       SegmentInfo info = leaf.getSegmentInfo().info;
@@ -1806,7 +1807,7 @@ public class TestIndexSorting extends LuceneTestCase {
       doc.add(new NumericDocValuesField("id", i));
       w.addDocument(doc);
       if (random().nextInt(5) == 0) {
-        w.getReader().close();
+        DirectoryReader.open(w).close();
       } else if (random().nextInt(30) == 0) {
         w.forceMerge(2);
       } else if (random().nextInt(4) == 0) {
@@ -1816,7 +1817,7 @@ public class TestIndexSorting extends LuceneTestCase {
       }
     }
 
-    DirectoryReader reader = w.getReader();
+    DirectoryReader reader = DirectoryReader.open(w);
     // Now check that the index is consistent
     IndexSearcher searcher = newSearcher(reader);
     for (int i = 0; i < numDocs; ++i) {
@@ -2093,7 +2094,7 @@ public class TestIndexSorting extends LuceneTestCase {
       }
       IndexWriter w2 = new IndexWriter(dir2, iwc2);
       w2.addDocument(new Document());
-      final IndexReader reader = w2.getReader();
+      final IndexReader reader = DirectoryReader.open(w2);
       w2.close();
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addIndexes(dir2));
@@ -2158,7 +2159,7 @@ public class TestIndexSorting extends LuceneTestCase {
     } else {
       w2.addIndexes(dir);
     }
-    final IndexReader reader2 = w2.getReader();
+    final IndexReader reader2 = DirectoryReader.open(w2);
     final IndexSearcher searcher = newSearcher(reader);
     final IndexSearcher searcher2 = newSearcher(reader2);
     for (int i = 0; i < numDocs; ++i) {
