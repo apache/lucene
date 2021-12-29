@@ -29,7 +29,7 @@ import java.util.logging.Logger;
  *
  * @lucene.internal
  */
-// We export class 'java.util.logging.Level', but we won't don't want a transitive dependency in
+// We export class 'java.util.logging.Level', but we won't want a transitive dependency in
 // module descriptor:
 @SuppressWarnings("exports")
 public final class JavaLoggingInfoStream extends InfoStream {
