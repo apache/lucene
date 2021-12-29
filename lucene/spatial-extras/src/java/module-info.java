@@ -18,7 +18,6 @@
 /** Geospatial search */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.spatial_extras {
-  requires java.logging;
   requires spatial4j;
   requires s2.geometry.library.java;
   requires org.apache.lucene.core;
