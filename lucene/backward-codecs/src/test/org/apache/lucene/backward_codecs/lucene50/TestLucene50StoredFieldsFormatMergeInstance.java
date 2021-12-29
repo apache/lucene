@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.backward_codecs.lucene50;
 
-import org.apache.lucene.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 
 /** Test the merge instance of the Lucene50 stored fields format. */
 @Nightly // N-2 formats are only tested on nightly runs

@@ -22,15 +22,14 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitudeCeil;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitudeCeil;
-import static org.apache.lucene.geo.GeoTestUtil.nextLatitude;
-import static org.apache.lucene.geo.GeoTestUtil.nextLongitude;
+import static org.apache.lucene.tests.geo.GeoTestUtil.nextLatitude;
+import static org.apache.lucene.tests.geo.GeoTestUtil.nextLongitude;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.util.Arrays;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Circle;
 import org.apache.lucene.geo.Component2D;
-import org.apache.lucene.geo.GeoTestUtil;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Line;
@@ -39,7 +38,8 @@ import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.geo.Tessellator;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Base test case for testing geospatial indexing and search functionality * */
 public abstract class BaseLatLonSpatialTestCase extends BaseSpatialTestCase {

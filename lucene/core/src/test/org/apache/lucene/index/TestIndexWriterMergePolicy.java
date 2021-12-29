@@ -22,18 +22,20 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.mockfile.HandleLimitFS;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.MockIndexWriterEventListener;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.mockfile.HandleLimitFS;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 @HandleLimitFS.MaxOpenHandles(limit = HandleLimitFS.MaxOpenHandles.MAX_OPEN_FILES * 2)
 // Some of these tests are too intense for SimpleText
@@ -382,7 +384,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     assertEquals(1, mergedReader.leaves().size());
     mergedReader.close();
 
-    try (IndexReader reader = writerWithMergePolicy.getReader()) {
+    try (IndexReader reader = DirectoryReader.open(writerWithMergePolicy)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       assertEquals(6, reader.numDocs());
       assertEquals(6, searcher.count(new MatchAllDocsQuery()));
@@ -591,7 +593,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
                   boolean success = false;
                   try {
                     if (useGetReader) {
-                      writer.getReader().close();
+                      DirectoryReader.open(writer).close();
                     } else {
                       writer.commit();
                     }
@@ -648,7 +650,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         Thread t =
             new Thread(
                 () -> {
-                  try (DirectoryReader reader = writer.getReader()) {
+                  try (DirectoryReader reader = DirectoryReader.open(writer)) {
                     assertEquals(2, reader.maxDoc());
                   } catch (IOException e) {
                     throw new AssertionError(e);
@@ -694,7 +696,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         writer.addDocument(d2);
         writer.flush();
         mergeAndFail.set(true);
-        try (DirectoryReader reader = writer.getReader()) {
+        try (DirectoryReader reader = DirectoryReader.open(writer)) {
           assertNotNull(reader); // make compiler happy and use the reader
           fail();
         } catch (RuntimeException e) {
@@ -830,7 +832,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     }
 
     TestIndexWriter.addDoc(writerWithMergePolicy);
-    try (DirectoryReader mergedReader = writerWithMergePolicy.getReader()) {
+    try (DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy)) {
       // Doc added, do merge on getReader.
       assertEquals(1, mergedReader.leaves().size());
     }

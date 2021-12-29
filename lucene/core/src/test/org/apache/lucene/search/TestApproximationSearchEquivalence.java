@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.tests.search.RandomApproximationQuery;
+import org.apache.lucene.tests.search.SearchEquivalenceTestBase;
 
 /** Basic equivalence tests for approximations. */
 public class TestApproximationSearchEquivalence extends SearchEquivalenceTestBase {

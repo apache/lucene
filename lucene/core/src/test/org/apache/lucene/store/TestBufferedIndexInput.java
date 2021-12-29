@@ -19,8 +19,8 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestBufferedIndexInput extends LuceneTestCase {
 

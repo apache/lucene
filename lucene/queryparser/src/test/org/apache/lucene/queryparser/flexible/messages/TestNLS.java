@@ -17,7 +17,7 @@
 package org.apache.lucene.queryparser.flexible.messages;
 
 import java.util.Locale;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** */
 public class TestNLS extends LuceneTestCase {

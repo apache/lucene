@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Test Korean morphological analyzer */
 public class TestKoreanAnalyzer extends BaseTokenStreamTestCase {
