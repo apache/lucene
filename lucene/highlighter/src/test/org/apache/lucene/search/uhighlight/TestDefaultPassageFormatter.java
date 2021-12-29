@@ -17,7 +17,7 @@
 
 package org.apache.lucene.search.uhighlight;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDefaultPassageFormatter extends LuceneTestCase {
   public void testBasic() throws Exception {

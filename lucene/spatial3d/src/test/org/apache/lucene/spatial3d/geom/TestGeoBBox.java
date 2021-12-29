@@ -18,7 +18,7 @@ package org.apache.lucene.spatial3d.geom;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestGeoBBox extends LuceneTestCase {

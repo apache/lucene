@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.fr;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Test case for FrenchAnalyzer. */
 public class TestFrenchAnalyzer extends BaseTokenStreamTestCase {

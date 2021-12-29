@@ -17,10 +17,10 @@
 package org.apache.lucene.analysis.payloads;
 
 import java.nio.charset.StandardCharsets;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestDelimitedPayloadTokenFilter extends BaseTokenStreamTestCase {
