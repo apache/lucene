@@ -20,8 +20,6 @@ apply plugin: 'java-library'
 description = '3D spatial planar geometry test fixtures'
 
 dependencies {
-  // moduleApi project(':lucene:core')
-  // testFixturesApi project(':lucene:test-framework')
   moduleImplementation project(':lucene:test-framework')
   moduleImplementation project(':lucene:spatial3d')
 }

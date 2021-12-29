@@ -45,7 +45,7 @@ allprojects {
         // causing package split issues at runtime.
         ":lucene:core",
         ":lucene:codecs",
-        ":lucene:spatial3d",
+        //":lucene:spatial3d",
         ":lucene:spatial-extras",
         ":lucene:test-framework",
       ]) {
