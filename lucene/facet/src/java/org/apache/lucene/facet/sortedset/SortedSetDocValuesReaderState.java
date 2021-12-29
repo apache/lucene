@@ -17,6 +17,10 @@
 package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.PrimitiveIterator;
+
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.Accountable;
@@ -36,7 +40,7 @@ import org.apache.lucene.util.Accountable;
 public abstract class SortedSetDocValuesReaderState implements Accountable {
 
   /** Holder class for a dimension along with it's corresponding ordinal */
-  public static class DimAndOrd {
+  public static final class DimAndOrd {
     String dim;
     int ord;
 
@@ -47,8 +51,43 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
     }
   }
 
+  /**
+   * Holds start/end range of ords, which maps to one dimension. Only used for flat hierarchies.
+   */
+  public static final class OrdRange {
+    /** Start of range, inclusive: */
+    public final int start;
+    /** End of range, inclusive: */
+    public final int end;
+
+    /** Start and end are inclusive. */
+    public OrdRange(int start, int end) {
+      this.start = start;
+      this.end = end;
+    }
+
+    public PrimitiveIterator.OfInt iterator() {
+      return new PrimitiveIterator.OfInt() {
+        int current = start;
+
+        @Override
+        public int nextInt() {
+          if (current > end) {
+            return INVALID_ORDINAL;
+          }
+          return current++;
+        }
+
+        @Override
+        public boolean hasNext() {
+          return current <= end;
+        }
+      };
+    }
+  }
+
   /** Invalid ordinal const */
-  public static int INVALID_ORDINAL = -1;
+  public static final int INVALID_ORDINAL = -1;
 
   /** Sole constructor. */
   protected SortedSetDocValuesReaderState() {}
@@ -65,8 +104,21 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
   /** Number of unique labels. */
   public abstract int getSize();
 
+  /** Checks if field is hierarchical or not */
+  public abstract boolean isHierarchical();
+
+  /*** Only used for flat facets (dim/value) ***/
+
+  /** Returns the {@link OrdRange} for this dimension. */
+  public abstract OrdRange getOrdRange(String dim);
+
+  /** Returns mapping from prefix to {@link OrdRange}. */
+  public abstract Map<String, OrdRange> getPrefixToOrdRange();
+
+  /*** Only used for hierarchical facets ***/
+
   /** Gets all child ords for a given path ordinal */
-  public abstract Iterable<Integer> childOrds(int pathOrd);
+  public abstract PrimitiveIterator.OfInt childOrds(int pathOrd);
 
   /** Returns a list of all dimensions and their respective ordinals */
   public abstract Iterable<DimAndOrd> getDims();

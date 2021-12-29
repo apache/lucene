@@ -18,11 +18,15 @@ package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.PrimitiveIterator;
+import java.util.Stack;
+
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
@@ -48,30 +52,57 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   private final String field;
   private final int valueCount;
 
-  // denotes whether next ord is child or not
-  private FixedBitSet children;
-  // maps an ord to its first sibling
-  private int[] siblings;
-
-  private List<DimAndOrd> dims;
-
   /** {@link IndexReader} passed to the constructor. */
   public final IndexReader reader;
 
   private final Map<String, OrdinalMap> cachedOrdMaps = new HashMap<>();
 
+  private final boolean hierarchicalField;
+
+  /*** Used for hierarchical dims ***/
+  // specified whether an ord i has a child or not, if it has children, ord i + 1 is guaranteed to be a child of ord i
+  private final FixedBitSet hasChildren;
+  // maps an ord to its first sibling
+  private final int[] siblings;
+
+  private final List<DimAndOrd> dims = new ArrayList<>();
+
+  /*** Used for flat dims ***/
+  private final Map<String, OrdRange> prefixToOrdRange = new HashMap<>();
+
   /**
-   * Creates this, pulling doc values from the default {@link
+   * Creates this with a config, pulling doc values from the default {@link
+   * FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
+   */
+  public DefaultSortedSetDocValuesReaderState(IndexReader reader, FacetsConfig config) throws IOException {
+    this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME, config);
+  }
+
+  /**
+   * Creates this without a config, pulling doc values from the default {@link
    * FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
    */
   public DefaultSortedSetDocValuesReaderState(IndexReader reader) throws IOException {
-    this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
+    this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME, null);
+  }
+
+  /** Creates this without a config, pulling doc values from the specified field. */
+  public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field) throws IOException {
+    this(reader, field, null);
   }
 
   /** Creates this, pulling doc values from the specified field. */
-  public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field) throws IOException {
+  public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field, FacetsConfig config) throws IOException {
     this.field = field;
     this.reader = reader;
+
+    if (config == null) {
+      this.hierarchicalField = false;
+    } else {
+      // assumes the user has a facet config per facet field, in addition even one dim configured as hierarchical
+      // will change the entire field to hierarchical
+      this.hierarchicalField = config.hasHierarchicalDim();
+    }
 
     // We need this to create thread-safe MultiSortedSetDV
     // per collector:
@@ -86,21 +117,28 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     }
     valueCount = (int) dv.getValueCount();
 
-    // keeps track of last path with length i where the path has an unfilled sibling
-    Map<Integer, OrdAndComponent> pathsWithUnfilledSiblings = new HashMap<>();
+    if (hierarchicalField) {
+      hasChildren = new FixedBitSet(valueCount);
+      //TODO: can this be made more efficient? It can take up a lot of memory for high cardinality fields
+      siblings = new int[valueCount];
+      createHierarchicalFacetState(dv);
+    } else {
+      hasChildren = null;
+      siblings = null;
+      createFlatFacetState(dv);
+    }
+  }
 
-    BytesRef nextTerm = null;
+  private void createHierarchicalFacetState(SortedSetDocValues dv) throws IOException {
+    // stack of paths with unfulfilled siblings
+    Stack<OrdAndComponent> siblingStack = new Stack<>();
+
     String[] nextComponents = null;
 
     for (int ord = 0; ord < valueCount; ord++) {
-      if (children == null) {
-        children = new FixedBitSet(valueCount);
-        siblings = new int[valueCount];
-      }
-
       String[] components;
 
-      if (nextTerm == null) {
+      if (nextComponents == null) {
         BytesRef term = dv.lookupOrd(ord);
         components = FacetsConfig.stringToPath(term.utf8ToString());
       } else {
@@ -109,27 +147,28 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
       if (components.length == 1) {
         // current ord is a dim
-        if (dims == null) {
-          dims = new ArrayList<>();
-        }
         dims.add(new DimAndOrd(components[0], ord));
       }
 
-      if (pathsWithUnfilledSiblings.containsKey(components.length - 1)) {
-        OrdAndComponent possibleSibling = pathsWithUnfilledSiblings.get(components.length - 1);
-        boolean isSibling = true;
-        for (int i = 0; i < possibleSibling.component.length - 1; i++) {
-          if (!possibleSibling.component[i].equals(components[i])) {
-            isSibling = false;
-            break;
+      while (siblingStack.empty() == false && siblingStack.peek().component.length >= components.length) {
+        OrdAndComponent possibleSibling = siblingStack.pop();
+        if (possibleSibling.component.length > components.length) {
+          siblings[possibleSibling.ord] = INVALID_ORDINAL;
+        } else {
+          // lengths are equal
+          boolean isSibling = true;
+          for (int i = 0; i < possibleSibling.component.length - 1; i++) {
+            if (possibleSibling.component[i].equals(components[i]) == false) {
+              isSibling = false;
+              break;
+            }
+          }
+          if (isSibling) {
+            siblings[possibleSibling.ord] = ord;
+          } else {
+            siblings[possibleSibling.ord] = INVALID_ORDINAL;
           }
         }
-        if (isSibling) {
-          siblings[possibleSibling.ord] = ord;
-        } else {
-          siblings[possibleSibling.ord] = INVALID_ORDINAL;
-        }
-        pathsWithUnfilledSiblings.remove(components.length - 1);
       }
 
       if (ord + 1 == valueCount) {
@@ -138,16 +177,17 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
         break;
       }
 
-      nextTerm = dv.lookupOrd(ord + 1);
+      BytesRef nextTerm = dv.lookupOrd(ord + 1);
       nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
 
       if (components.length < nextComponents.length) {
-        // next ord must be a direct child of current ord
-        children.set(ord);
+        // next ord must be a direct child of current ord, this is because we are indexing all ancestral paths
+        hasChildren.set(ord);
         // we don't know if this ord has a sibling or where it's sibling could be yet
-        pathsWithUnfilledSiblings.put(components.length - 1, new OrdAndComponent(ord, components));
+        siblingStack.push(new OrdAndComponent(ord, components));
       } else if (components.length == nextComponents.length) {
-        // next ord must be a sibling of current and there are no direct children or current
+        // next ord must be a sibling of current and there are no direct children or current, this is because we
+        // are indexing all ancestral paths
         siblings[ord] = ord + 1;
       } else {
         // components.length > nextComponents.length
@@ -156,8 +196,39 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
       }
     }
 
-    for (OrdAndComponent path : pathsWithUnfilledSiblings.values()) {
+    for (OrdAndComponent path : siblingStack) {
       siblings[path.ord] = INVALID_ORDINAL;
+    }
+  }
+
+  private void createFlatFacetState(SortedSetDocValues dv) throws IOException {
+    // TODO: we can make this more efficient if eg we can be
+    // "involved" when OrdinalMap is being created?  Ie see
+    // each term/ord it's assigning as it goes...
+    String lastDim = null;
+    int startOrd = -1;
+
+    for (int ord = 0; ord < valueCount; ord++) {
+      final BytesRef term = dv.lookupOrd(ord);
+      String[] components = FacetsConfig.stringToPath(term.utf8ToString());
+      if (components.length != 2) {
+        throw new IllegalArgumentException(
+            "dimension not configured to handle hierarchical field; got: "
+                + Arrays.toString(components)
+                + " "
+                + term.utf8ToString());
+      }
+      if (components[0].equals(lastDim) == false) {
+        if (lastDim != null) {
+          prefixToOrdRange.put(lastDim, new OrdRange(startOrd, ord - 1));
+        }
+        startOrd = ord;
+        lastDim = components[0];
+      }
+    }
+
+    if (lastDim != null) {
+      prefixToOrdRange.put(lastDim, new OrdRange(startOrd, valueCount - 1));
     }
   }
 
@@ -260,47 +331,89 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   }
 
   @Override
-  public Iterable<Integer> childOrds(int pathOrd) {
-    return () ->
-        new Iterator<>() {
+  public boolean isHierarchical() {
+    return hierarchicalField;
+  }
 
-          boolean atStart = true;
-          int currentOrd = pathOrd;
+  /*** Flat facet operations ***/
 
-          @Override
-          public boolean hasNext() {
-            if (atStart) {
-              if (currentOrd < 0 || currentOrd >= children.length()) {
-                return false;
-              }
-              return children.get(currentOrd);
-            } else {
-              return siblings[currentOrd] != INVALID_ORDINAL;
-            }
+  /** Returns mapping from prefix to {@link OrdRange}. */
+  @Override
+  public Map<String, OrdRange> getPrefixToOrdRange() {
+    if (hierarchicalField) {
+      throw new UnsupportedOperationException("This operation is only supported for flat facets");
+    }
+    return prefixToOrdRange;
+  }
+
+  /** Returns the {@link OrdRange} for this dimension. */
+  @Override
+  public OrdRange getOrdRange(String dim) {
+    if (hierarchicalField) {
+      throw new UnsupportedOperationException("This operation is only supported for flat facets");
+    }
+    OrdRange ordRange = prefixToOrdRange.get(dim);
+    if (ordRange == null) {
+      return null;
+    }
+    return ordRange;
+  }
+
+  /*** Hierarchical facet operations ***/
+
+  @Override
+  public PrimitiveIterator.OfInt childOrds(int pathOrd) {
+    if (hierarchicalField == false) {
+      throw new UnsupportedOperationException("This operation is only supported for hierarchical facets");
+    }
+
+    return new PrimitiveIterator.OfInt() {
+
+      boolean atStart = true;
+      int currentOrd = pathOrd;
+
+      @Override
+      public int nextInt() {
+        if (atStart) {
+          assert hasChildren != null;
+          if (currentOrd < 0 || currentOrd >= hasChildren.length()) {
+            return INVALID_ORDINAL;
           }
-
-          @Override
-          public Integer next() {
-            if (atStart) {
-              if (currentOrd < 0 || currentOrd >= children.length()) {
-                return INVALID_ORDINAL;
-              }
-              atStart = false;
-              if (children.get(currentOrd)) {
-                return ++currentOrd;
-              } else {
-                return INVALID_ORDINAL;
-              }
-            } else {
-              currentOrd = siblings[currentOrd];
-              return currentOrd;
-            }
+          atStart = false;
+          if (hasChildren.get(currentOrd)) {
+            currentOrd++;
+            return currentOrd;
+          } else {
+            return INVALID_ORDINAL;
           }
-        };
+        } else {
+          assert siblings != null;
+          currentOrd = siblings[currentOrd];
+          return currentOrd;
+        }
+      }
+
+      @Override
+      public boolean hasNext() {
+        if (atStart) {
+          assert hasChildren != null;
+          if (currentOrd < 0 || currentOrd >= hasChildren.length()) {
+            return false;
+          }
+          return hasChildren.get(currentOrd);
+        } else {
+          assert siblings != null;
+          return siblings[currentOrd] != INVALID_ORDINAL;
+        }
+      }
+    };
   }
 
   @Override
   public Iterable<DimAndOrd> getDims() {
+    if (hierarchicalField == false) {
+      throw new UnsupportedOperationException("This operation is only supported for hierarchical facets");
+    }
     return dims;
   }
 

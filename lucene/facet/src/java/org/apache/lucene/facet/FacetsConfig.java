@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -136,6 +138,11 @@ public class FacetsConfig {
   /** Default per-dimension configuration. */
   public static final DimConfig DEFAULT_DIM_CONFIG = new DimConfig();
 
+  /** Counts number of hierarchical dims, if not 0, will change how
+   *  SSDV fields are processed and counted to support hierarchical SSDV facets
+   */
+  private final AtomicInteger hierarchicalDimCounter = new AtomicInteger(0);
+
   /** Default constructor. */
   public FacetsConfig() {}
 
@@ -173,6 +180,15 @@ public class FacetsConfig {
     if (dimConfig == null) {
       dimConfig = new DimConfig();
       fieldTypes.put(dimName, dimConfig);
+      if (v) {
+        hierarchicalDimCounter.incrementAndGet();
+      }
+    } else {
+      if (dimConfig.hierarchical && v == false) {
+        hierarchicalDimCounter.decrementAndGet();
+      } else if (dimConfig.hierarchical == false && v) {
+        hierarchicalDimCounter.incrementAndGet();
+      }
     }
     dimConfig.hierarchical = v;
   }
@@ -228,6 +244,10 @@ public class FacetsConfig {
   /** Returns map of field name to {@link DimConfig}. */
   public Map<String, DimConfig> getDimConfigs() {
     return fieldTypes;
+  }
+
+  public boolean hasHierarchicalDim() {
+    return hierarchicalDimCounter.get() > 0;
   }
 
   private static void checkSeen(Set<String> seenDims, String dim) {
@@ -471,7 +491,6 @@ public class FacetsConfig {
 
   private void processSSDVFacetFields(
       Map<String, List<SortedSetDocValuesFacetField>> byField, Document doc) {
-    Set<String> addedPaths = new HashSet<>();
 
     for (Map.Entry<String, List<SortedSetDocValuesFacetField>> ent : byField.entrySet()) {
 
@@ -479,15 +498,26 @@ public class FacetsConfig {
 
       for (SortedSetDocValuesFacetField facetField : ent.getValue()) {
         FacetLabel facetLabel = new FacetLabel(facetField.dim, facetField.path);
-        for (int i = 0; i < facetLabel.length; i++) {
-          String fullPath = pathToString(facetLabel.components, i + 1);
-          if (addedPaths.add(fullPath)) {
+        if (hasHierarchicalDim()) {
+          for (int i = 0; i < facetLabel.length; i++) {
+            String fullPath = pathToString(facetLabel.components, i + 1);
             // For facet counts:
             doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
 
             // For drill-down:
             indexDrillDownTerms(doc, indexFieldName, getDimConfig(facetField.dim), facetLabel);
           }
+        } else {
+          if (facetLabel.length != 2) {
+            throw new IllegalArgumentException("Dim " + facetField.dim + " not hierarchical but got facet label: " + facetLabel);
+          }
+          String fullPath = pathToString(facetLabel.components, facetLabel.length);
+
+          // For facet counts:
+          doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
+
+          // For drill-down:
+          indexDrillDownTerms(doc, indexFieldName, getDimConfig(facetField.dim), facetLabel);
         }
       }
     }
