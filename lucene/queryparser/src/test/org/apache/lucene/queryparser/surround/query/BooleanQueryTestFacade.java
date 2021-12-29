@@ -28,7 +28,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.junit.Assert;
 
-public class TestBooleanQuery {
+public class BooleanQueryTestFacade {
   String queryText;
   final int[] expectedDocNrs;
   SingleFieldTestDb dBase;
@@ -37,7 +37,7 @@ public class TestBooleanQuery {
   BasicQueryFactory qf;
   boolean verbose = true;
 
-  public TestBooleanQuery(
+  public BooleanQueryTestFacade(
       String queryText,
       int[] expectedDocNrs,
       SingleFieldTestDb dBase,
