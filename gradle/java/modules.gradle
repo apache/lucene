@@ -45,8 +45,6 @@ allprojects {
         // causing package split issues at runtime.
         ":lucene:core",
         ":lucene:codecs",
-        //":lucene:spatial3d",
-        ":lucene:spatial-extras",
         ":lucene:test-framework",
       ]) {
         modularPaths.mode = ModularPathsExtension.Mode.CLASSPATH_ONLY
@@ -232,9 +230,16 @@ class ModularPathsExtension {
   SourceSet sourceSet
   Configuration compileModulePathConfiguration
   Configuration runtimeModulePathConfiguration
+  Configuration modulePatchOnlyConfiguration
 
   // The mode of splitting paths for this source set.
   Mode mode = Mode.DEPENDENCIES_ON_MODULE_PATH
+
+  /**
+   * A list of module name - path provider entries that will be converted
+   * into {@code --patch-module} options.
+   */
+  private List<Map.Entry<String, Provider<Path>>> modulePatches = new ArrayList<>()
 
   ModularPathsExtension(Project project, SourceSet sourceSet) {
     this.project = project
@@ -248,8 +253,17 @@ class ModularPathsExtension {
     Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
     Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
 
+
     // Apply hierarchy relationships to modular configurations.
     moduleImplementation.extendsFrom(moduleApi)
+
+    // Patched modules have to end up in the implementation configuration for IDEs, which
+    // otherwise get terribly confused.
+    Configuration modulePatchOnly = createModuleConfigurationForConvention(
+        SourceSet.isMain(sourceSet) ? "patchOnly" : sourceSet.name + "PatchOnly")
+    modulePatchOnly.canBeResolved(true)
+    moduleImplementation.extendsFrom(modulePatchOnly)
+    this.modulePatchOnlyConfiguration = modulePatchOnly
 
     // This part of convention configurations seems like a very esoteric use case, leave out for now.
     // sourceSet.compileOnlyApiConfigurationName
@@ -282,11 +296,22 @@ class ModularPathsExtension {
     runtimeModulePathConfiguration.extendsFrom(moduleRuntimeOnly, moduleImplementation)
   }
 
+  /**
+   * Adds {@code --patch-module} option for the provided module name and the provider of a
+   * folder or JAR file.
+   *
+   * @param moduleName
+   * @param pathProvider
+   */
+  void patchModule(String moduleName, Provider<Path> pathProvider) {
+    modulePatches.add(Map.entry(moduleName, pathProvider));
+  }
+
   private FileCollection getCompilationModulePath() {
     if (mode == Mode.CLASSPATH_ONLY) {
       return project.files()
     }
-    return compileModulePathConfiguration
+    return compileModulePathConfiguration - modulePatchOnlyConfiguration
   }
 
   private FileCollection getRuntimeModulePath() {
@@ -300,7 +325,7 @@ class ModularPathsExtension {
       return project.files()
     }
 
-    return runtimeModulePathConfiguration
+    return runtimeModulePathConfiguration - modulePatchOnlyConfiguration
   }
 
   FileCollection getCompilationClasspath() {
@@ -311,7 +336,7 @@ class ModularPathsExtension {
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
     project.files({ ->
-      return sourceSet.compileClasspath - compileModulePathConfiguration
+      return sourceSet.compileClasspath - compileModulePathConfiguration - modulePatchOnlyConfiguration
     })
   }
 
@@ -336,6 +361,9 @@ class ModularPathsExtension {
           extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
         }
 
+        // Add module-patching.
+        extraArgs += getPatchModuleArguments(modulePatches)
+
         return extraArgs
       }
     }
@@ -349,7 +377,7 @@ class ModularPathsExtension {
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
     project.files({ ->
-      return sourceSet.runtimeClasspath - runtimeModulePath
+      return sourceSet.runtimeClasspath - runtimeModulePath - modulePatchOnlyConfiguration
     })
   }
 
@@ -373,6 +401,9 @@ class ModularPathsExtension {
         // so keeping it simple.
         extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
 
+        // Add module-patching.
+        extraArgs += getPatchModuleArguments(modulePatches)
+
         return extraArgs
       }
     }
@@ -384,20 +415,35 @@ class ModularPathsExtension {
         .anyMatch(file -> file.exists())
   }
 
+  private List<String> getPatchModuleArguments(List<Map.Entry<String, Provider<Path>>> patches) {
+    def args = []
+    patches.each {
+      args.add("--patch-module");
+      args.add(it.key + "=" + it.value.get())
+    }
+    return args
+  }
+
   private static String toList(FileCollection files) {
     return files.isEmpty() ? " [empty]" : ("\n    " + files.sort().join("\n    "))
+  }
+
+  private static String toList(List<Map.Entry<String, Provider<Path>>> patches) {
+    return patches.isEmpty() ? " [empty]" : ("\n    " + patches.collect {"${it.key}=${it.value.get()}"}.join("\n    "))
   }
 
   String compilationPathsToString() {
     return "Modular extension, compilation paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
         "  Module path:${toList(compilationModulePath)}\n" +
-        "  Class path: ${toList(compilationClasspath)}"
+        "  Class path: ${toList(compilationClasspath)}\n" +
+        "  Patches:    ${toList(modulePatches)}"
   }
 
   String runtimePathsToString() {
     return "Modular extension, runtime paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
         "  Module path:${toList(runtimeModulePath)}\n" +
-        "  Class path: ${toList(runtimeClasspath)}"
+        "  Class path: ${toList(runtimeClasspath)}\n" +
+        "  Patches   : ${toList(modulePatches)}"
   }
 
   // Map convention configuration names to "modular" corresponding configurations.

@@ -28,6 +28,5 @@ dependencies {
   // dependency twice - on classpath and in module path.
   moduleTestImplementation(project(':lucene:spatial-test-fixtures'), {
     exclude module: "spatial3d"
-    // transitive false
   })
 }
