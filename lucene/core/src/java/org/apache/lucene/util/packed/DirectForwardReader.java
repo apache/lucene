@@ -90,7 +90,7 @@ public class DirectForwardReader {
     private final long[] buffer = new long[BLOCK_SIZE];
     private final int remainderBlock;
     private boolean checking = true;
-    private boolean warm = false;
+    private boolean warm = true;
     private long maxIndex;
     private int counter = 0;
     final RandomAccessInput in;
