@@ -73,7 +73,7 @@ public abstract class StopwordAnalyzerBase extends Analyzer {
    * @throws IOException if loading the stopwords throws an {@link IOException}
    * @deprecated {@link Class#getResourceAsStream(String)} is caller sensitive and cannot load
    *     resources across Java Modules. Please call the {@code getResourceAsStream()} and {@link
-   *     WordlistLoader#getWordSet(Reader, String, CharArraySet)} directly.
+   *     WordlistLoader#getWordSet(Reader, String, CharArraySet)} or other methods directly.
    */
   @Deprecated(forRemoval = true, since = "9.1")
   protected static CharArraySet loadStopwordSet(
