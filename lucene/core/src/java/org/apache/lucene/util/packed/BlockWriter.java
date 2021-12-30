@@ -88,6 +88,9 @@ public class BlockWriter {
     if (bufferIndex == 0) {
       return;
     }
+    // directly write all values even [bufferIndex, BLOCK_SIZE) of values are meaningless.
+    // this won't make size larger much (< 0.1%) but help read side do not need to check the
+    // reminder block, increasing QPS of some tasks nearly 5%.
     forUtil.encode(buffer, bpv, output);
   }
 }
