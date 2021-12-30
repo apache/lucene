@@ -25,7 +25,8 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 /** Simple example of a filter that seems to show some problems with LookaheadTokenFilter. */
-public final class TrivialLookaheadFilter extends LookaheadTokenFilter<TestPosition> {
+public final class TrivialLookaheadFilter
+    extends LookaheadTokenFilter<TrivialLookaheadFilter.TestPosition> {
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final PositionIncrementAttribute posIncAtt =
@@ -33,6 +34,18 @@ public final class TrivialLookaheadFilter extends LookaheadTokenFilter<TestPosit
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
 
   private int insertUpto;
+
+  public static class TestPosition extends LookaheadTokenFilter.Position {
+    private String fact;
+
+    public String getFact() {
+      return fact;
+    }
+
+    public void setFact(String fact) {
+      this.fact = fact;
+    }
+  }
 
   protected TrivialLookaheadFilter(TokenStream input) {
     super(input);
