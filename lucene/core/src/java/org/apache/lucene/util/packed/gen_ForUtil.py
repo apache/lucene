@@ -25,6 +25,7 @@ BLOCK_SIZE = 128
 BITS_PER_VALUES = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64]
 OUTPUT_FILE = "ForUtil.java"
 PRIMITIVE_SIZE = [8, 16, 32, 64]
+USING_MASKS = {8:[], 16:[], 32:[], 64:[]}
 HEADER = """// This file has been automatically generated, DO NOT EDIT
 
 /*
@@ -275,6 +276,7 @@ def writeRemainderWithSIMDOptimize(bpv, next_primitive, remaining_bits_per_long,
         iteration *= 2
 
     f.write('    shiftLongs(tmp, %d, tmp, 0, 0, MASK%d_%d);\n' % (iteration * num_longs, next_primitive, remaining_bits_per_long))
+    use_mask(next_primitive, remaining_bits_per_long)
     f.write('    for (int iter = 0, tmpIdx = 0, longsIdx = %d; iter < %d; ++iter, tmpIdx += %d, longsIdx += %d) {\n' %(o, iteration, num_longs, num_values))
     tmp_idx = 0
     b = bpv
@@ -305,20 +307,26 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
         if remaining_bits == 0:
             b -= remaining_bits_per_long
             f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits_per_long, b))
+            use_mask(next_primitive, remaining_bits_per_long)
         else:
             b -= remaining_bits
             f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
+            use_mask(next_primitive, remaining_bits)
         tmp_idx += 1
         while b >= remaining_bits_per_long:
             b -= remaining_bits_per_long
             f.write('      l%d |= (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits_per_long, b))
+            use_mask(next_primitive, remaining_bits_per_long)
             tmp_idx += 1
         if b > 0:
             f.write('      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_long-b, next_primitive, b))
+            use_mask(next_primitive, b)
             remaining_bits = remaining_bits_per_long-b
         f.write('      longs[longsIdx + %d] = l%d;\n' %(i, i))
     f.write('    }\n')
 
+def use_mask(next_primitive, bpv):
+    USING_MASKS[next_primitive].append(bpv)
 
 def writeDecode(bpv, f):
     next_primitive = 64
@@ -338,6 +346,7 @@ def writeDecode(bpv, f):
         o = 0
         while shift >= 0:
             f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*(BLOCK_SIZE / 64), o, shift, next_primitive, bpv))
+            use_mask(next_primitive, bpv)
             o += bpv*(BLOCK_SIZE / 64)
             shift -= bpv
         if shift + bpv > 0:
@@ -350,24 +359,6 @@ def writeDecode(bpv, f):
 if __name__ == '__main__':
     f = open(OUTPUT_FILE, 'w')
     f.write(HEADER)
-    for primitive_size in PRIMITIVE_SIZE:
-        f.write('  private static final long[] MASKS%d = new long[%d];\n' %(primitive_size, primitive_size))
-    f.write('\n')
-    f.write('  static {\n')
-    for primitive_size in PRIMITIVE_SIZE:
-        f.write('    for (int i = 0; i < %d; ++i) {\n' %primitive_size)
-        f.write('      MASKS%d[i] = mask%d(i);\n' %(primitive_size, primitive_size))
-        f.write('    }\n')
-    f.write('  }')
-    f.write("""
-  // mark values in array as final longs to avoid the cost of reading array, arrays should only be
-  // used when the idx is a variable
-""")
-    for primitive_size in PRIMITIVE_SIZE:
-        for bpv in BITS_PER_VALUES:
-            if bpv < primitive_size:
-                f.write('  private static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive_size, bpv, primitive_size, bpv))
-    f.write('\n')
     f.write("""  interface Decoder {
     void decode(DataInput in, long[] longs) throws IOException;
   }\n""")
@@ -398,9 +389,30 @@ if __name__ == '__main__':
     f.write('        throw new AssertionError();\n')
     f.write('    }\n')
     f.write('  }\n')
+    f.write('\n')
 
     for bpv in BITS_PER_VALUES:
-        f.write('\n')
         writeDecode(bpv, f)
+        f.write('\n')
+
+    for primitive_size in PRIMITIVE_SIZE:
+        f.write('  private static final long[] MASKS%d = new long[%d];\n' %(primitive_size, primitive_size))
+    f.write('\n')
+    f.write('  static {\n')
+    for primitive_size in PRIMITIVE_SIZE:
+        f.write('    for (int i = 0; i < %d; ++i) {\n' %primitive_size)
+        f.write('      MASKS%d[i] = mask%d(i);\n' %(primitive_size, primitive_size))
+        f.write('    }\n')
+    f.write('  }')
+    f.write("""
+  // mark values in array as final longs to avoid the cost of reading array, arrays should only be
+  // used when the idx is a variable
+""")
+    for primitive in PRIMITIVE_SIZE:
+        bpvs = USING_MASKS[primitive]
+        bpvs = {}.fromkeys(bpvs).keys()
+        bpvs.sort()
+        for bpv in bpvs:
+            f.write('  private static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive, bpv, primitive, bpv))
 
     f.write('}\n')

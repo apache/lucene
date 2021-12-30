@@ -237,58 +237,6 @@ final class ForUtil {
     }
   }
 
-  private static final long[] MASKS8 = new long[8];
-  private static final long[] MASKS16 = new long[16];
-  private static final long[] MASKS32 = new long[32];
-  private static final long[] MASKS64 = new long[64];
-
-  static {
-    for (int i = 0; i < 8; ++i) {
-      MASKS8[i] = mask8(i);
-    }
-    for (int i = 0; i < 16; ++i) {
-      MASKS16[i] = mask16(i);
-    }
-    for (int i = 0; i < 32; ++i) {
-      MASKS32[i] = mask32(i);
-    }
-    for (int i = 0; i < 64; ++i) {
-      MASKS64[i] = mask64(i);
-    }
-  }
-  // mark values in array as final longs to avoid the cost of reading array, arrays should only be
-  // used when the idx is a variable
-  private static final long MASK8_1 = MASKS8[1];
-  private static final long MASK8_2 = MASKS8[2];
-  private static final long MASK8_4 = MASKS8[4];
-  private static final long MASK16_1 = MASKS16[1];
-  private static final long MASK16_2 = MASKS16[2];
-  private static final long MASK16_4 = MASKS16[4];
-  private static final long MASK16_8 = MASKS16[8];
-  private static final long MASK16_12 = MASKS16[12];
-  private static final long MASK32_1 = MASKS32[1];
-  private static final long MASK32_2 = MASKS32[2];
-  private static final long MASK32_4 = MASKS32[4];
-  private static final long MASK32_8 = MASKS32[8];
-  private static final long MASK32_12 = MASKS32[12];
-  private static final long MASK32_16 = MASKS32[16];
-  private static final long MASK32_20 = MASKS32[20];
-  private static final long MASK32_24 = MASKS32[24];
-  private static final long MASK32_28 = MASKS32[28];
-  private static final long MASK64_1 = MASKS64[1];
-  private static final long MASK64_2 = MASKS64[2];
-  private static final long MASK64_4 = MASKS64[4];
-  private static final long MASK64_8 = MASKS64[8];
-  private static final long MASK64_12 = MASKS64[12];
-  private static final long MASK64_16 = MASKS64[16];
-  private static final long MASK64_20 = MASKS64[20];
-  private static final long MASK64_24 = MASKS64[24];
-  private static final long MASK64_28 = MASKS64[28];
-  private static final long MASK64_32 = MASKS64[32];
-  private static final long MASK64_40 = MASKS64[40];
-  private static final long MASK64_48 = MASKS64[48];
-  private static final long MASK64_56 = MASKS64[56];
-
   interface Decoder {
     void decode(DataInput in, long[] longs) throws IOException;
   }
@@ -579,4 +527,43 @@ final class ForUtil {
   private static void decode64(DataInput in, long[] tmp, long[] longs) throws IOException {
     in.readLongs(longs, 0, 128);
   }
+
+  private static final long[] MASKS8 = new long[8];
+  private static final long[] MASKS16 = new long[16];
+  private static final long[] MASKS32 = new long[32];
+  private static final long[] MASKS64 = new long[64];
+
+  static {
+    for (int i = 0; i < 8; ++i) {
+      MASKS8[i] = mask8(i);
+    }
+    for (int i = 0; i < 16; ++i) {
+      MASKS16[i] = mask16(i);
+    }
+    for (int i = 0; i < 32; ++i) {
+      MASKS32[i] = mask32(i);
+    }
+    for (int i = 0; i < 64; ++i) {
+      MASKS64[i] = mask64(i);
+    }
+  }
+  // mark values in array as final longs to avoid the cost of reading array, arrays should only be
+  // used when the idx is a variable
+  private static final long MASK8_1 = MASKS8[1];
+  private static final long MASK8_2 = MASKS8[2];
+  private static final long MASK8_4 = MASKS8[4];
+  private static final long MASK16_4 = MASKS16[4];
+  private static final long MASK16_12 = MASKS16[12];
+  private static final long MASK32_4 = MASKS32[4];
+  private static final long MASK32_8 = MASKS32[8];
+  private static final long MASK32_12 = MASKS32[12];
+  private static final long MASK32_20 = MASKS32[20];
+  private static final long MASK32_24 = MASKS32[24];
+  private static final long MASK32_28 = MASKS32[28];
+  private static final long MASK64_8 = MASKS64[8];
+  private static final long MASK64_16 = MASKS64[16];
+  private static final long MASK64_24 = MASKS64[24];
+  private static final long MASK64_40 = MASKS64[40];
+  private static final long MASK64_48 = MASKS64[48];
+  private static final long MASK64_56 = MASKS64[56];
 }
