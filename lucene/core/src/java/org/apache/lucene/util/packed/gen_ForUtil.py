@@ -336,11 +336,12 @@ def writeDecode(bpv, f):
         next_primitive = 16
     elif bpv <= 32:
         next_primitive = 32
-    f.write('  private static void decode%d(DataInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
     num_values_per_long = 64 / next_primitive
     if bpv == next_primitive:
+        f.write('  private static void decode%d(DataInput in, long[] longs) throws IOException {\n' %bpv)
         f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*(BLOCK_SIZE / 64)))
     else:
+        f.write('  private static void decode%d(DataInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
         f.write('    in.readLongs(tmp, 0, %d);\n' %(bpv*(BLOCK_SIZE / 64)))
         shift = next_primitive - bpv
         o = 0
@@ -370,13 +371,21 @@ if __name__ == '__main__':
             next_primitive = 16
         elif bpv <= 32:
             next_primitive = 32
-        f.write("""\n  class Decoder""" + str(bpv) + """ implements Decoder {
-    @Override
-    public void decode(DataInput in, long[] longs) throws IOException {
-      decode""" + str(bpv) + """(in, tmp, longs);"""
-                + ('\n      expand%d(longs);' % next_primitive if next_primitive != 64 else '') + """
-    }
-  }\n""")
+        f.write('\n')
+        if bpv == next_primitive:
+            f.write('  static class Decoder%d implements Decoder {\n' % bpv)
+        else:
+            f.write('  class Decoder%d implements Decoder {\n' % bpv)
+        f.write('    @Override\n')
+        f.write('    public void decode(DataInput in, long[] longs) throws IOException {\n')
+        if bpv != next_primitive:
+            f.write('      decode%d(in, tmp, longs);\n' % bpv)
+        else:
+            f.write('      decode%d(in, longs);\n' % bpv)
+        if next_primitive != 64:
+            f.write('      expand%d(longs);\n' % next_primitive)
+        f.write('    }\n')
+        f.write('  }\n')
 
     f.write("""
   Decoder decoder(int bitsPerValue) {

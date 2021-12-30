@@ -265,10 +265,10 @@ final class ForUtil {
     }
   }
 
-  class Decoder8 implements Decoder {
+  static class Decoder8 implements Decoder {
     @Override
     public void decode(DataInput in, long[] longs) throws IOException {
-      decode8(in, tmp, longs);
+      decode8(in, longs);
       expand8(longs);
     }
   }
@@ -281,10 +281,10 @@ final class ForUtil {
     }
   }
 
-  class Decoder16 implements Decoder {
+  static class Decoder16 implements Decoder {
     @Override
     public void decode(DataInput in, long[] longs) throws IOException {
-      decode16(in, tmp, longs);
+      decode16(in, longs);
       expand16(longs);
     }
   }
@@ -313,10 +313,10 @@ final class ForUtil {
     }
   }
 
-  class Decoder32 implements Decoder {
+  static class Decoder32 implements Decoder {
     @Override
     public void decode(DataInput in, long[] longs) throws IOException {
-      decode32(in, tmp, longs);
+      decode32(in, longs);
       expand32(longs);
     }
   }
@@ -342,10 +342,10 @@ final class ForUtil {
     }
   }
 
-  class Decoder64 implements Decoder {
+  static class Decoder64 implements Decoder {
     @Override
     public void decode(DataInput in, long[] longs) throws IOException {
-      decode64(in, tmp, longs);
+      decode64(in, longs);
     }
   }
 
@@ -410,7 +410,7 @@ final class ForUtil {
     shiftLongs(tmp, 8, longs, 8, 0, MASK8_4);
   }
 
-  private static void decode8(DataInput in, long[] tmp, long[] longs) throws IOException {
+  private static void decode8(DataInput in, long[] longs) throws IOException {
     in.readLongs(longs, 0, 16);
   }
 
@@ -426,7 +426,7 @@ final class ForUtil {
     }
   }
 
-  private static void decode16(DataInput in, long[] tmp, long[] longs) throws IOException {
+  private static void decode16(DataInput in, long[] longs) throws IOException {
     in.readLongs(longs, 0, 32);
   }
 
@@ -475,7 +475,7 @@ final class ForUtil {
     }
   }
 
-  private static void decode32(DataInput in, long[] tmp, long[] longs) throws IOException {
+  private static void decode32(DataInput in, long[] longs) throws IOException {
     in.readLongs(longs, 0, 64);
   }
 
@@ -524,7 +524,7 @@ final class ForUtil {
     }
   }
 
-  private static void decode64(DataInput in, long[] tmp, long[] longs) throws IOException {
+  private static void decode64(DataInput in, long[] longs) throws IOException {
     in.readLongs(longs, 0, 128);
   }
 
