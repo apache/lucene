@@ -20,46 +20,24 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Simple {@link ResourceLoader} that uses {@link ClassLoader#getResourceAsStream(String)} and
- * {@link Class#forName(String,boolean,ClassLoader)} to open resources and classes, respectively.
+ * Simple {@link ResourceLoader} that uses {@link Module#getResourceAsStream(String)} and {@link
+ * Class#forName(Module,String)} to open resources and classes, respectively. Resource paths must be
+ * absolute to module's root.
  *
- * <p>To use this class with the Java Module System, you must open all modules on classpath that
- * contain resources to the {@code org.apache.lucene.core} module, otherwise resources can't be
- * looked up. It is recommended to use {@link ModuleResourceLoader} for such use cases.
- *
- * @see ModuleResourceLoader
+ * <p>To use this class, you must open the module to the {@code org.apache.lucene.core} module,
+ * otherwise resources can't be looked up.
  */
-public final class ClasspathResourceLoader implements ResourceLoader {
-  private final Class<?> clazz;
-  private final ClassLoader loader;
+public final class ModuleResourceLoader implements ResourceLoader {
+  private final Module module;
 
-  /**
-   * Creates an instance using the given classloader to load Resources and classes. Resource paths
-   * must be absolute.
-   */
-  public ClasspathResourceLoader(ClassLoader loader) {
-    this(null, loader);
-  }
-
-  /**
-   * Creates an instance using the context classloader to load Resources and classes Resources are
-   * resolved relative to the given class, if path is not absolute.
-   */
-  public ClasspathResourceLoader(Class<?> clazz) {
-    this(clazz, clazz.getClassLoader());
-  }
-
-  private ClasspathResourceLoader(Class<?> clazz, ClassLoader loader) {
-    this.clazz = clazz;
-    this.loader = loader;
+  /** Creates an instance using the given Java Module to load resources and classes. */
+  public ModuleResourceLoader(Module module) {
+    this.module = module;
   }
 
   @Override
   public InputStream openResource(String resource) throws IOException {
-    final InputStream stream =
-        (clazz != null)
-            ? clazz.getResourceAsStream(resource)
-            : loader.getResourceAsStream(resource);
+    final var stream = module.getResourceAsStream(resource);
     if (stream == null) throw new IOException("Resource not found: " + resource);
     return stream;
   }
@@ -67,7 +45,9 @@ public final class ClasspathResourceLoader implements ResourceLoader {
   @Override
   public <T> Class<? extends T> findClass(String cname, Class<T> expectedType) {
     try {
-      return Class.forName(cname, true, loader).asSubclass(expectedType);
+      final var clazz = Class.forName(module, cname);
+      if (clazz == null) throw new ClassNotFoundException(cname);
+      return clazz.asSubclass(expectedType);
     } catch (Exception e) {
       throw new RuntimeException("Cannot load class: " + cname, e);
     }
@@ -75,7 +55,7 @@ public final class ClasspathResourceLoader implements ResourceLoader {
 
   @Override
   public <T> T newInstance(String cname, Class<T> expectedType) {
-    Class<? extends T> clazz = findClass(cname, expectedType);
+    final var clazz = findClass(cname, expectedType);
     try {
       return clazz.getConstructor().newInstance();
     } catch (Exception e) {
