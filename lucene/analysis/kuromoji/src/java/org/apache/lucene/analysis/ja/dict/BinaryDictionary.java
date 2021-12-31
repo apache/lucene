@@ -77,6 +77,9 @@ public abstract class BinaryDictionary implements Dictionary {
       }
       this.resourcePath = getClass().getSimpleName();
     } else {
+      if (resourceScheme == ResourceScheme.CLASSPATH && !resourcePath.startsWith("/")) {
+        resourcePath = "/".concat(resourcePath);
+      }
       this.resourcePath = resourcePath;
     }
     InputStream mapIS = null, dictIS = null, posIS = null;

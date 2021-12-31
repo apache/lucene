@@ -43,7 +43,7 @@ public final class ConnectionCosts {
     try (InputStream is =
         new BufferedInputStream(
             BinaryDictionary.getResource(
-                scheme, resourcePath.replace('.', '/') + FILENAME_SUFFIX))) {
+                scheme, "/" + resourcePath.replace('.', '/') + FILENAME_SUFFIX))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       this.forwardSize = in.readVInt();
@@ -64,7 +64,7 @@ public final class ConnectionCosts {
   }
 
   private ConnectionCosts() throws IOException {
-    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getSimpleName());
+    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
   }
 
   public int get(int forwardId, int backwardId) {

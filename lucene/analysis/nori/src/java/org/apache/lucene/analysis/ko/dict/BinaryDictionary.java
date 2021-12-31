@@ -74,9 +74,11 @@ public abstract class BinaryDictionary implements Dictionary {
         throw new IllegalArgumentException(
             "resourcePath must be supplied with FILE resource scheme");
       }
-      // this.resourcePath = getClass().getName().replace('.', '/');
       this.resourcePath = getClass().getSimpleName();
     } else {
+      if (resourceScheme == ResourceScheme.CLASSPATH && !resourcePath.startsWith("/")) {
+        resourcePath = "/".concat(resourcePath);
+      }
       this.resourcePath = resourcePath;
     }
     InputStream mapIS = null, dictIS = null, posIS = null;
