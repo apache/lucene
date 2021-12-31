@@ -23,14 +23,14 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class TestModuleResourceLoader {
+public class TestModuleResourceLoader extends Assert {
   private static final Module MODULE = TestModuleResourceLoader.class.getModule();
 
   private ResourceLoader loader = new ModuleResourceLoader(MODULE);
 
   @BeforeClass
   public static void beforeClass() {
-    Assert.assertTrue("Test class must be in a named module", MODULE.isNamed());
+    assertTrue("Test class must be in a named module", MODULE.isNamed());
   }
 
   @Test
@@ -39,26 +39,30 @@ public class TestModuleResourceLoader {
       stream.available();
     }
 
+    assertNotNull(
+        "resource should exist when loaded by test from classloader",
+        getClass().getResource("/org/apache/lucene/core/testresources/accessible.txt"));
+
     try (var stream = loader.openResource("org/apache/lucene/core/tests/nonaccessible.txt")) {
       stream.available();
-      Assert.fail("Should throw exception");
+      fail("Should throw exception");
     } catch (IOException e) {
-      Assert.assertTrue(e.getMessage().startsWith("Resource not found:"));
+      assertTrue(e.getMessage().startsWith("Resource not found:"));
     }
   }
 
   @Test
   public void testModuleClassloading() throws Exception {
-    Assert.assertSame(
+    assertSame(
         TestModuleResourceLoader.class,
         loader.findClass(TestModuleResourceLoader.class.getName(), Object.class));
 
     var cname = "org.foobar.Something";
     try {
       loader.findClass(cname, Object.class);
-      Assert.fail("Should throw exception");
+      fail("Should throw exception");
     } catch (RuntimeException e) {
-      Assert.assertEquals("Cannot load class: " + cname, e.getMessage());
+      assertEquals("Cannot load class: " + cname, e.getMessage());
     }
   }
 }
