@@ -61,7 +61,12 @@ public final class ClasspathResourceLoader implements ResourceLoader {
         (clazz != null)
             ? clazz.getResourceAsStream(resource)
             : loader.getResourceAsStream(resource);
-    if (stream == null) throw new IOException("Resource not found: " + resource);
+    if (stream == null) {
+      throw new IOException(
+          "Resource not found (if you use Java Module System, make sure to open "
+              + "module and package containing resources to 'org.apache.lucene.core' module): "
+              + resource);
+    }
     return stream;
   }
 
