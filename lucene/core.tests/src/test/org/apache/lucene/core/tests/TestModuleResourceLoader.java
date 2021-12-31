@@ -26,7 +26,7 @@ import org.junit.Test;
 public class TestModuleResourceLoader extends Assert {
   private static final Module MODULE = TestModuleResourceLoader.class.getModule();
 
-  private ResourceLoader loader = new ModuleResourceLoader(MODULE);
+  private final ResourceLoader loader = new ModuleResourceLoader(MODULE);
 
   @BeforeClass
   public static void beforeClass() {
