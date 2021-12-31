@@ -52,14 +52,4 @@ public final class ModuleResourceLoader implements ResourceLoader {
       throw new RuntimeException("Cannot load class: " + cname, e);
     }
   }
-
-  @Override
-  public <T> T newInstance(String cname, Class<T> expectedType) {
-    final var clazz = findClass(cname, expectedType);
-    try {
-      return clazz.getConstructor().newInstance();
-    } catch (Exception e) {
-      throw new RuntimeException("Cannot create instance: " + cname, e);
-    }
-  }
 }
