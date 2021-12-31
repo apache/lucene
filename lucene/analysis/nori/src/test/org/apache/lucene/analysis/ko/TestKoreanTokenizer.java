@@ -477,12 +477,9 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
     Tokenizer tokenizer =
         new KoreanTokenizer(
             newAttributeFactory(),
-            new TokenInfoDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/TokenInfoDictionary"),
-            new UnknownDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/UnknownDictionary"),
-            new ConnectionCosts(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/ConnectionCosts"),
+            new TokenInfoDictionary(ResourceScheme.CLASSPATH, "TokenInfoDictionary"),
+            new UnknownDictionary(ResourceScheme.CLASSPATH, "UnknownDictionary"),
+            new ConnectionCosts(ResourceScheme.CLASSPATH, "ConnectionCosts"),
             readDict(),
             DecompoundMode.NONE,
             false,

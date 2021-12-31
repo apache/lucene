@@ -75,7 +75,7 @@ public abstract class BinaryDictionary implements Dictionary {
         throw new IllegalArgumentException(
             "resourcePath must be supplied with FILE resource scheme");
       }
-      this.resourcePath = getClass().getName().replace('.', '/');
+      this.resourcePath = getClass().getSimpleName();
     } else {
       this.resourcePath = resourcePath;
     }
@@ -204,8 +204,7 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   private static InputStream getClassResource(String path) throws IOException {
-    return IOUtils.requireResourceNonNull(
-        BinaryDictionary.class.getClassLoader().getResourceAsStream(path), path);
+    return IOUtils.requireResourceNonNull(BinaryDictionary.class.getResourceAsStream(path), path);
   }
 
   public void lookupWordIds(int sourceId, IntsRef ref) {

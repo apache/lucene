@@ -62,7 +62,7 @@ public final class ConnectionCosts {
   }
 
   private ConnectionCosts() throws IOException {
-    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
+    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getSimpleName());
   }
 
   public int get(int forwardId, int backwardId) {

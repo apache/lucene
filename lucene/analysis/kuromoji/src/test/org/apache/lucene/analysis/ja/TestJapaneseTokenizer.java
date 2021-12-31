@@ -495,12 +495,9 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     Tokenizer tokenizer =
         new JapaneseTokenizer(
             newAttributeFactory(),
-            new TokenInfoDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/TokenInfoDictionary"),
-            new UnknownDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/UnknownDictionary"),
-            new ConnectionCosts(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/ConnectionCosts"),
+            new TokenInfoDictionary(ResourceScheme.CLASSPATH, "TokenInfoDictionary"),
+            new UnknownDictionary(ResourceScheme.CLASSPATH, "UnknownDictionary"),
+            new ConnectionCosts(ResourceScheme.CLASSPATH, "ConnectionCosts"),
             readDict(),
             true,
             false,
