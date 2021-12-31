@@ -46,10 +46,10 @@ public final class FilesystemResourceLoader implements ResourceLoader {
    * Creates a resource loader that resolves resources against the given base directory. Files not
    * found in file system and class lookups are delegated to {@link ClassLoader}.
    *
-   * <p>To use this class with the Java Module System, you must open all modules on classpath that
-   * contain resources to the {@code org.apache.lucene.core} module, otherwise resources can't be
-   * looked up. It is recommended to use {@link #FilesystemResourceLoader(Path, Module)} for such
-   * use cases as this would limit to certain modules.
+   * <p>To use this constructor with the Java Module System, you must open all modules that contain
+   * resources to the {@code org.apache.lucene.core} module, otherwise resources can't be looked up.
+   * It is recommended to use {@link #FilesystemResourceLoader(Path, Module)} for such use cases as
+   * this would limit to certain modules.
    */
   public FilesystemResourceLoader(Path baseDirectory, ClassLoader delegate) {
     this(baseDirectory, new ClasspathResourceLoader(delegate));
@@ -59,8 +59,8 @@ public final class FilesystemResourceLoader implements ResourceLoader {
    * Creates a resource loader that resolves resources against the given base directory. Files not
    * found in file system and class lookups are delegated to {@link ModuleResourceLoader}.
    *
-   * <p>To use this class, you must open the module to the {@code org.apache.lucene.core} module,
-   * otherwise resources can't be looked up.
+   * <p>To use this constructor, you must open the module to the {@code org.apache.lucene.core}
+   * module, otherwise resources can't be looked up.
    */
   public FilesystemResourceLoader(Path baseDirectory, Module delegate) {
     this(baseDirectory, new ModuleResourceLoader(delegate));
