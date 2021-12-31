@@ -156,27 +156,23 @@ public class WordlistLoader {
    * @return A CharArraySet with the reader's words
    */
   public static CharArraySet getWordSet(InputStream stream, String comment) throws IOException {
-    return getWordSet(stream, StandardCharsets.UTF_8, comment, false);
+    return getWordSet(stream, StandardCharsets.UTF_8, comment);
   }
 
   /**
    * Reads lines from an InputStream with the given charset and adds every non-comment line as an
    * entry to a CharArraySet (omitting leading and trailing whitespace). Every line of the Reader
-   * should contain only one word.
+   * should contain only one word. The words need to be in lowercase if you make use of an Analyzer
+   * which uses LowerCaseFilter (like StandardAnalyzer).
    *
    * @param stream InputStream containing the wordlist
    * @param charset Charset of the wordlist
    * @param comment The string representing a comment.
-   * @param caseSensitive {@code true} if the set should make lookup case insensitive.
    * @return A CharArraySet with the reader's words
    */
-  public static CharArraySet getWordSet(
-      InputStream stream, Charset charset, String comment, boolean caseSensitive)
+  public static CharArraySet getWordSet(InputStream stream, Charset charset, String comment)
       throws IOException {
-    return getWordSet(
-        IOUtils.getDecodingReader(stream, charset),
-        comment,
-        new CharArraySet(INITIAL_CAPACITY, caseSensitive));
+    return getWordSet(IOUtils.getDecodingReader(stream, charset), comment);
   }
 
   /**

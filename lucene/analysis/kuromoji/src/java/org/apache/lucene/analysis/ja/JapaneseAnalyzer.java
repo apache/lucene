@@ -81,18 +81,18 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
       try {
         DEFAULT_STOP_SET =
             WordlistLoader.getWordSet(
-                IOUtils.requireResourceNonNull(
-                    JapaneseAnalyzer.class.getResourceAsStream("stopwords.txt"), "stopwords.txt"),
-                StandardCharsets.UTF_8,
+                IOUtils.getDecodingReader(
+                    IOUtils.requireResourceNonNull(
+                        JapaneseAnalyzer.class.getResourceAsStream("stopwords.txt"),
+                        "stopwords.txt"),
+                    StandardCharsets.UTF_8),
                 "#",
-                true);
+                new CharArraySet(16, true)); // ignore case
         final CharArraySet tagset =
             WordlistLoader.getWordSet(
                 IOUtils.requireResourceNonNull(
                     JapaneseAnalyzer.class.getResourceAsStream("stoptags.txt"), "stoptags.txt"),
-                StandardCharsets.UTF_8,
-                "#",
-                false);
+                "#");
         DEFAULT_STOP_TAGS = new HashSet<>();
         for (Object element : tagset) {
           char[] chars = (char[]) element;
