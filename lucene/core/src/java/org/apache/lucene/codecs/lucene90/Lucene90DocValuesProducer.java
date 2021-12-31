@@ -494,7 +494,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private LongValues getDirectReaderInstance(
-      RandomAccessInput slice, int bitsPerValue, long offset, long numValues) throws IOException {
+      RandomAccessInput slice, int bitsPerValue, long offset, long numValues) {
     if (merging) {
       return DirectReader.getMergeInstance(slice, bitsPerValue, offset, numValues);
     } else {
