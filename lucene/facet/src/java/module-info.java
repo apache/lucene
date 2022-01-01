@@ -18,6 +18,7 @@
 /** Faceted indexing and search capabilities */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.facet {
+  requires java.logging;
   requires com.carrotsearch.hppc;
   requires org.apache.lucene.core;
 

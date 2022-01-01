@@ -26,11 +26,9 @@ import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.core.DecimalDigitFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
-import org.apache.lucene.util.IOUtils;
 
 /**
  * {@link Analyzer} for Arabic.
@@ -76,12 +74,7 @@ public final class ArabicAnalyzer extends StopwordAnalyzerBase {
 
     static {
       try {
-        DEFAULT_STOP_SET =
-            WordlistLoader.getWordSet(
-                IOUtils.requireResourceNonNull(
-                    ArabicAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
-                    DEFAULT_STOPWORD_FILE),
-                "#");
+        DEFAULT_STOP_SET = loadStopwordSet(false, ArabicAnalyzer.class, DEFAULT_STOPWORD_FILE, "#");
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)

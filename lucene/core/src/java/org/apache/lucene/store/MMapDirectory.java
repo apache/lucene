@@ -35,7 +35,6 @@ import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.Future;
-import java.util.logging.Logger;
 import org.apache.lucene.store.ByteBufferGuard.BufferCleaner;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -344,7 +343,6 @@ public class MMapDirectory extends FSDirectory {
       CLEANER = null;
       UNMAP_SUPPORTED = false;
       UNMAP_NOT_SUPPORTED_REASON = hack.toString();
-      Logger.getLogger(MMapDirectory.class.getName()).warning(UNMAP_NOT_SUPPORTED_REASON);
     }
   }
 
@@ -375,8 +373,7 @@ public class MMapDirectory extends FSDirectory {
       // classpath / unnamed module has no layer, so we need to check:
       if (layer != null
           && layer.findModule("jdk.unsupported").map(module::canRead).orElse(false) == false) {
-        return "Unmapping is not supported, because Lucene cannot read 'jdk.unsupported' module "
-            + "[please add 'jdk.unsupported' to modular application either by command line or its module descriptor]";
+        return "Unmapping is not supported, because Lucene cannot read 'jdk.unsupported' module.";
       }
       return "Unmapping is not supported on this platform, because internal Java APIs are not compatible with this Lucene version: "
           + e;

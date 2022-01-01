@@ -98,6 +98,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import junit.framework.AssertionFailedError;
@@ -555,13 +556,14 @@ public abstract class LuceneTestCase extends Assert {
       if (maxFailures == Integer.MAX_VALUE) {
         maxFailures = 1;
       } else {
-        System.err.println(
-            "Property '"
-                + SYSPROP_MAXFAILURES
-                + "'="
-                + maxFailures
-                + ", 'failfast' is"
-                + " ignored.");
+        Logger.getLogger(LuceneTestCase.class.getSimpleName())
+            .warning(
+                "Property '"
+                    + SYSPROP_MAXFAILURES
+                    + "'="
+                    + maxFailures
+                    + ", 'failfast' is"
+                    + " ignored.");
       }
     }
 
@@ -576,6 +578,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   static {
     TestRuleLimitSysouts.checkCaptureStreams();
+    Logger.getGlobal().getHandlers();
   }
 
   /**

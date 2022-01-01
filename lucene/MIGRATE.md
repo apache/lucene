@@ -29,7 +29,7 @@ behind the scenes. It is the responsibility of the caller to to call
 
 ### Test framework package migration and module (LUCENE-10301)
 
-The test framework is now a Java module. All the classes have been moved from
+The test framework is now a module. All the classes have been moved from
 `org.apache.lucene.*` to `org.apache.lucene.tests.*` to avoid package name conflicts
 with the core module. If you were using the Lucene test framework, the migration should be
 fairly automatic (package prefix).
@@ -41,23 +41,6 @@ means that interval function prefixes (`fn:`) and the `@` character after parent
 parse differently than before. If you need the exact previous behavior, clone the
 `StandardSyntaxParser` from the previous version of Lucene and create a custom query parser
 with that parser.
-
-### Lucene Core now depends on java.logging (JUL) module (LUCENE-10342)
-
-Lucene Core now logs certain warnings and errors using Java Util Logging (JUL).
-It is therefore recommended to install wrapper libraries with JUL logging handlers to
-feed the log events into your app's own logging system.
-
-Under normal circumstances Lucene won't log anything, but in the case of a problem
-users should find the logged information in the usual log files.
-
-Lucene also provides a `JavaLoggingInfoStream` implementation that logs `IndexWriter`
-events using JUL.
-
-To feed Lucene's log events into the well-known Log4J system, we refer to
-the [Log4j JDK Logging Adapter](https://logging.apache.org/log4j/2.x/log4j-jul/index.html)
-in combination with the corresponding system property:
-`java.util.logging.manager=org.apache.logging.log4j.jul.LogManager`.
 
 ## Migration from Lucene 8.x to Lucene 9.0
 

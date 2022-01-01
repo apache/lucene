@@ -56,15 +56,6 @@ New Features
 * LUCENE-10255: Lucene JARs are now proper modules, with module descriptors and dependency information.
   (Chris Hegarty, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
 
-* LUCENE-10342: Lucene Core now depends on java.logging (JUL) module and reports
-  if MMapDirectory cannot unmap mapped ByteBuffers or RamUsageEstimator's object size
-  calculations may be off. This was added especially for users running Lucene with the
-  Java Module System where some optional features are not available by default or supported.
-  For all apps using Lucene it is strongly recommended, to explicitely require non-standard
-  JDK modules: jdk.unsupported (unmapping) and jdk.management (OOP size for RAM usage calculatons).
-  It is also recommended to install JUL logging adapters to feed the log events into your app's
-  logging system.  (Uwe Schindler, Dawid Weiss, Tomoko Uchida, Robert Muir)
-  
 * LUCENE-10330: Make MMapDirectory tests fail by default, if unmapping does not work.
   (Uwe Schindler, Dawid Weiss)
 

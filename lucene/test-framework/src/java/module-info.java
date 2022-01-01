@@ -20,6 +20,7 @@
 module org.apache.lucene.test_framework {
   requires org.apache.lucene.core;
   requires org.apache.lucene.codecs;
+  requires java.logging;
   requires junit;
   requires randomizedtesting.runner;
 
