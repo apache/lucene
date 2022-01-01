@@ -19,7 +19,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10346: Optimize facet counting for single-valued TaxonomyFacetCounts. (Guo Feng)
 
 Optimizations
 ---------------------
