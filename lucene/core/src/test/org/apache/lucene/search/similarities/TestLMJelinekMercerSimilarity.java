@@ -17,6 +17,7 @@
 package org.apache.lucene.search.similarities;
 
 import java.util.Random;
+import org.apache.lucene.tests.search.similarities.BaseSimilarityTestCase;
 
 public class TestLMJelinekMercerSimilarity extends BaseSimilarityTestCase {
 

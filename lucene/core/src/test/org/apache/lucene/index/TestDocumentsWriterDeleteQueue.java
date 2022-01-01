@@ -27,8 +27,8 @@ import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Unit test for {@link DocumentsWriterDeleteQueue} */

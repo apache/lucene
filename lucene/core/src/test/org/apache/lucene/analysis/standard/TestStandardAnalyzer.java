@@ -24,13 +24,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockGraphTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
+import org.apache.lucene.tests.analysis.standard.EmojiTokenizationTestUnicode_12_1;
+import org.apache.lucene.tests.analysis.standard.WordBreakTestUnicode_12_1_0;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TestUtil;
 
 public class TestStandardAnalyzer extends BaseTokenStreamTestCase {
 

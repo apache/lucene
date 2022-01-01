@@ -20,8 +20,8 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** basic tests for {@link ICUNormalizer2FilterFactory} */
 public class TestICUNormalizer2FilterFactory extends BaseTokenStreamTestCase {

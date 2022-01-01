@@ -132,7 +132,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
           leafContext.reader().getNumericDocValues(Consts.FIELD_PARENT_ORDINAL_NDV);
       if (parentValues == null) {
         throw new CorruptIndexException(
-            "Parent data field " + Consts.FIELD_PARENT_ORDINAL_NDV + " not exists",
+            "Parent data field " + Consts.FIELD_PARENT_ORDINAL_NDV + " does not exist",
             leafContext.reader().toString());
       }
 

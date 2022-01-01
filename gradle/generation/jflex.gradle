@@ -150,10 +150,14 @@ configure(project(":lucene:analysis:common")) {
   }
 
   def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  // UAX29URLEmailTokenizerImpl.jflex includes: ASCIITLD.jflex
+  // so we make sure it is up to date. Also, make sure the ordering of internal
+  // tasks is enforced (just scheduling top-level wrappers doesn't mean their subtask graphs cannot be reordered).
   configure (generateUAX29URLEmailTokenizer) {
-    // UAX29URLEmailTokenizerImpl.jflex includes: ASCIITLD.jflex
-    // so we make sure it is up to date.
     dependsOn "generateTlds"
+  }
+  configure (generateUAX29URLEmailTokenizerInternal) {
+    mustRunAfter "generateTldsInternal"
   }
 
   task generateHTMLCharacterEntitiesInternal() {
@@ -194,9 +198,12 @@ configure(project(":lucene:analysis:common")) {
   }
 
   def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
   configure(generateHTMLStripCharFilter) {
-    // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
     dependsOn "generateHTMLCharacterEntities"
+  }
+  configure(generateHTMLStripCharFilterInternal) {
+    dependsOn "generateHTMLCharacterEntitiesInternal"
   }
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),

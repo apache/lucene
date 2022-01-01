@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.BaseBitSetTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
@@ -456,9 +458,10 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     int count1 = TestUtil.nextInt(random, 0, numBits1 - 1);
     int count2 = TestUtil.nextInt(random, 0, numBits2 - 1);
 
-    int offSetWord1 = FixedBitSet.bits2words(TestUtil.nextInt(random, 0, count1));
+    int min = TestUtil.nextInt(random, 0, numBits1 - 1);
+    int offSetWord1 = min >> 6;
     int offset1 = offSetWord1 << 6;
-    int[] bits1 = makeIntArray(random, count1, offset1, numBits1 - 1);
+    int[] bits1 = makeIntArray(random, count1, min, numBits1 - 1);
     int[] bits2 = makeIntArray(random, count2, 0, numBits2 - 1);
 
     java.util.BitSet bitSet1 = makeBitSet(bits1);

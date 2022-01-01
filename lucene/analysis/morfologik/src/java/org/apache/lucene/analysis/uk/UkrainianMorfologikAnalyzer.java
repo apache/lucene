@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import morfologik.stemming.Dictionary;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
@@ -42,11 +43,8 @@ import org.apache.lucene.util.IOUtils;
  * @since 6.2.0
  */
 public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
-
+  private final Dictionary dictionary;
   private final CharArraySet stemExclusionSet;
-
-  /** File containing default Ukrainian stopwords. */
-  public static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
 
   private static final NormalizeCharMap NORMALIZER_MAP;
 
@@ -67,47 +65,72 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
     NORMALIZER_MAP = builder.build();
   }
 
-  /**
-   * Returns an unmodifiable instance of the default stop words set.
-   *
-   * @return default stop words set.
-   */
-  public static CharArraySet getDefaultStopSet() {
-    return DefaultSetHolder.DEFAULT_STOP_SET;
+  /** Returns a lazy singleton with the default Ukrainian resources. */
+  private static volatile DefaultResources defaultResources;
+
+  private static DefaultResources getDefaultResources() {
+    if (defaultResources == null) {
+      synchronized (DefaultResources.class) {
+        try {
+          CharArraySet wordList;
+          try (var is = UkrainianMorfologikAnalyzer.class.getResourceAsStream("stopwords.txt")) {
+            if (is == null) {
+              throw new IOException("Could not locate the required stopwords resource.");
+            }
+            wordList =
+                WordlistLoader.getSnowballWordSet(
+                    IOUtils.getDecodingReader(is, StandardCharsets.UTF_8));
+          }
+
+          // First, try to look up the resource module by name.
+          Dictionary dictionary;
+          Module ourModule = DefaultResources.class.getModule();
+          if (ourModule.isNamed() && ourModule.getLayer() != null) {
+            var module =
+                ourModule
+                    .getLayer()
+                    .findModule("morfologik.ukrainian.search")
+                    .orElseThrow(
+                        () ->
+                            new IOException(
+                                "Can't find the resource module: morfologik.ukrainian.search"));
+
+            try (var fsaStream = module.getResourceAsStream("ua/net/nlp/ukrainian.dict");
+                var metaStream = module.getResourceAsStream("ua/net/nlp/ukrainian.info")) {
+              dictionary = Dictionary.read(fsaStream, metaStream);
+            }
+          } else {
+            dictionary =
+                Dictionary.read(
+                    Objects.requireNonNull(
+                        UkrainianMorfologikAnalyzer.class
+                            .getClassLoader()
+                            .getResource("ua/net/nlp/ukrainian.dict"),
+                        "Could not locate the required Ukrainian dictionary resource."));
+          }
+          defaultResources = new DefaultResources(wordList, dictionary);
+        } catch (IOException e) {
+          throw new UncheckedIOException(
+              "Could not load the required resources for the Ukrainian analyzer.", e);
+        }
+      }
+    }
+    return defaultResources;
   }
 
-  /**
-   * Atomically loads the DEFAULT_STOP_SET and DICTIONARY in a lazy fashion once the outer class
-   * accesses the static final set the first time.;
-   */
-  private static class DefaultSetHolder {
-    static final CharArraySet DEFAULT_STOP_SET;
-    static final Dictionary DICTIONARY;
+  private static class DefaultResources {
+    final CharArraySet stopSet;
+    final Dictionary dictionary;
 
-    static {
-      try {
-        DEFAULT_STOP_SET =
-            WordlistLoader.getSnowballWordSet(
-                IOUtils.getDecodingReader(
-                    UkrainianMorfologikAnalyzer.class,
-                    DEFAULT_STOPWORD_FILE,
-                    StandardCharsets.UTF_8));
-        DICTIONARY =
-            Dictionary.read(
-                UkrainianMorfologikAnalyzer.class
-                    .getClassLoader()
-                    .getResource("ua/net/nlp/ukrainian.dict"));
-      } catch (IOException ex) {
-        // default set should always be present as it is part of the
-        // distribution (JAR)
-        throw new UncheckedIOException("Unable to load analyzer resources", ex);
-      }
+    private DefaultResources(CharArraySet stopSet, Dictionary dictionary) {
+      this.stopSet = stopSet;
+      this.dictionary = dictionary;
     }
   }
 
-  /** Builds an analyzer with the default stop words: {@link #DEFAULT_STOPWORD_FILE}. */
+  /** Builds an analyzer with the default stop words. */
   public UkrainianMorfologikAnalyzer() {
-    this(DefaultSetHolder.DEFAULT_STOP_SET);
+    this(getDefaultResources().stopSet);
   }
 
   /**
@@ -129,6 +152,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
   public UkrainianMorfologikAnalyzer(CharArraySet stopwords, CharArraySet stemExclusionSet) {
     super(stopwords);
     this.stemExclusionSet = CharArraySet.unmodifiableSet(CharArraySet.copy(stemExclusionSet));
+    this.dictionary = getDefaultResources().dictionary;
   }
 
   @Override
@@ -155,7 +179,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
       result = new SetKeywordMarkerFilter(result, stemExclusionSet);
     }
 
-    result = new MorfologikFilter(result, DefaultSetHolder.DICTIONARY);
+    result = new MorfologikFilter(result, dictionary);
     return new TokenStreamComponents(source, result);
   }
 }

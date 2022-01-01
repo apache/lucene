@@ -26,8 +26,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestDocIdsWriter extends LuceneTestCase {
 
@@ -71,6 +71,21 @@ public class TestDocIdsWriter extends LuceneTestCase {
           set.add(small + random().nextInt(size * 16));
         }
         int[] docIDs = set.stream().mapToInt(t -> t).sorted().toArray();
+        test(dir, docIDs);
+      }
+    }
+  }
+
+  public void testContinuousIds() throws Exception {
+    int numIters = atLeast(100);
+    try (Directory dir = newDirectory()) {
+      for (int iter = 0; iter < numIters; ++iter) {
+        int size = 1 + random().nextInt(5000);
+        int[] docIDs = new int[size];
+        int start = random().nextInt(1000000);
+        for (int i = 0; i < docIDs.length; i++) {
+          docIDs[i] = start + i;
+        }
         test(dir, docIDs);
       }
     }
