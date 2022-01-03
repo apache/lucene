@@ -43,7 +43,7 @@ public final class ConnectionCosts {
     try (InputStream is =
         new BufferedInputStream(
             BinaryDictionary.getResource(
-                scheme, resourcePath.replace('.', '/') + FILENAME_SUFFIX))) {
+                scheme, "/" + resourcePath.replace('.', '/') + FILENAME_SUFFIX))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       this.forwardSize = in.readVInt();
