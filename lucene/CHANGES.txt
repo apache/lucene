@@ -19,8 +19,7 @@ New Features
 
 Improvements
 ---------------------
-
-* LUCENE-10346: Optimize facet counting for single-valued TaxonomyFacetCounts. (Guo Feng)
+(No changes)
 
 Optimizations
 ---------------------
@@ -136,6 +135,8 @@ Optimizations
 * LUCENE-10252: ValueSource.asDoubleValues and asLongValues should not compute the score unless
   asked to -- typically never.  This fixes a performance regression since 7.3 LUCENE-8099 when some
   older boosting queries were replaced with this. (David Smiley)
+
+* LUCENE-10346: Optimize facet counting for single-valued TaxonomyFacetCounts. (Guo Feng)
 
 Bug Fixes
 ---------------------
