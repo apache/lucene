@@ -19,7 +19,6 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
@@ -100,18 +99,35 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
       Bits liveDocs = context.reader().getLiveDocs();
       NumericDocValues ndv = DocValues.unwrapSingleton(dv);
-      DocIdSetIterator valuesIt = ndv != null ? ndv : dv;
-      DocIdSetIterator it =
-          liveDocs != null ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
 
       if (ndv != null) {
-        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          values[(int) ndv.longValue()]++;
+        if (liveDocs == null) {
+          while (ndv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            values[(int) ndv.longValue()]++;
+          }
+        } else {
+          for (int doc = ndv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ndv.nextDoc()) {
+            if (liveDocs.get(doc)) {
+              values[(int) ndv.longValue()]++;
+            }
+          }
         }
       } else {
-        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          for (int i = 0; i < dv.docValueCount(); i++) {
-            values[(int) dv.nextValue()]++;
+        if (liveDocs == null) {
+          while (dv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            final int dvCount = dv.docValueCount();
+            for (int i = 0; i < dvCount; i++) {
+              values[(int) dv.nextValue()]++;
+            }
+          }
+        } else {
+          for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
+            if (liveDocs.get(doc)) {
+              final int dvCount = dv.docValueCount();
+              for (int i = 0; i < dvCount; i++) {
+                values[(int) dv.nextValue()]++;
+              }
+            }
           }
         }
       }
