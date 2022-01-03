@@ -296,7 +296,7 @@ public class TestModularLayer {
       }
 
       Assertions.assertThat(moduleExports)
-          .as("Packages in module: " + module.descriptor().name())
+          .as("Exported packages in module: " + module.descriptor().name())
           .allSatisfy(
               export -> {
                 Assertions.assertThat(export.targets())
@@ -324,7 +324,7 @@ public class TestModularLayer {
       Set<ModuleDescriptor.Opens> moduleOpens = module.descriptor().opens();
 
       Assertions.assertThat(moduleOpens)
-          .as("Packages in module: " + module.descriptor().name())
+          .as("Open packages in module: " + module.descriptor().name())
           .allSatisfy(
               export -> {
                 Assertions.assertThat(export.targets())
