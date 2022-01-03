@@ -107,9 +107,6 @@ Bug Fixes
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
-* LUCENE-10287: Fix Luke startup script to add jdk.unsupported module so
-  MMapDirectory is used when opening indexes. (Uwe Schindler)
-
 Other
 ---------------------
 
