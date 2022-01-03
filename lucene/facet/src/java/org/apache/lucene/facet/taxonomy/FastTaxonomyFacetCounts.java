@@ -23,8 +23,10 @@ import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -97,6 +99,17 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       }
 
       Bits liveDocs = context.reader().getLiveDocs();
+
+      NumericDocValues ndv = DocValues.unwrapSingleton(dv);
+      if (ndv != null) {
+        for (int doc = ndv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ndv.nextDoc()) {
+          if (liveDocs != null && liveDocs.get(doc) == false) {
+            continue;
+          }
+          increment((int) ndv.longValue());
+        }
+        continue;
+      }
 
       for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
         if (liveDocs != null && liveDocs.get(doc) == false) {
