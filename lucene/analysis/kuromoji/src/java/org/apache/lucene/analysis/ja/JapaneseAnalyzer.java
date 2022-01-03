@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.CharArraySet;
@@ -96,8 +95,9 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
                     JapaneseAnalyzer.class.getResourceAsStream("stoptags.txt"), "stoptags.txt"),
                 "#");
         DEFAULT_STOP_TAGS =
-            Collections.unmodifiableSet(
-                tagset.stream().map(ca -> new String((char[]) ca)).collect(Collectors.toSet()));
+            tagset.stream()
+                .map(ca -> new String((char[]) ca))
+                .collect(Collectors.toUnmodifiableSet());
       } catch (IOException ex) {
         // default set should always be present as it is part of the distribution (JAR)
         throw new UncheckedIOException("Unable to load default stopword or stoptag set", ex);
