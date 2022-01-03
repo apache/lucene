@@ -100,6 +100,10 @@ Optimizations
 
 * LUCENE-10321: Tweak MultiRangeQuery interval tree creation to skip "pulling up" mins. (Greg Miller)
 
+* LUCENE-10252: ValueSource.asDoubleValues and asLongValues should not compute the score unless
+  asked to -- typically never.  This fixes a performance regression since 7.3 LUCENE-8099 when some
+  older boosting queries were replaced with this. (David Smiley)
+
 Bug Fixes
 ---------------------
 
