@@ -74,8 +74,8 @@ allprojects {
         args += [ "-properties", file("${resources}/ecj.javadocs.prefs").absolutePath ]
 
         // We depend on modular paths.
-        def modularPaths = sourceSet.modularPaths
-        dependsOn modularPaths.compileModulePathConfiguration
+        def modularPaths = sourceSet.modularPathsForEcj
+        dependsOn modularPaths
 
         // Add modular dependencies and their transitive dependencies to module path.
         task.argumentProviders.add(modularPaths.compilationArguments)
@@ -102,6 +102,8 @@ allprojects {
         })
 
         doFirst {
+          modularPaths.logCompilationPaths(logger)
+
           tmpDst.mkdirs()
 
           // escape filename accoring to ECJ's rules:

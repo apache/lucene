@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import java.nio.file.Path
+
 // Configure miscellaneous aspects required for supporting the java module system layer.
 
 // Debugging utilities.
@@ -27,9 +29,6 @@ allprojects {
       modularity.inferModulePath.set(false)
     }
 
-    // More verbose debugging for paths.
-    boolean debugPaths = Boolean.parseBoolean(propertyOrDefault('build.debug.paths', 'false'))
-
     //
     // Configure modular extensions for each source set.
     //
@@ -37,6 +36,17 @@ allprojects {
       // Create and register a source set extension for manipulating classpath/ module-path
       ModularPathsExtension modularPaths = new ModularPathsExtension(project, sourceSet)
       sourceSet.extensions.add("modularPaths", modularPaths)
+
+      // LUCENE-10344: We have to provide a special-case extension for ECJ because it does not
+      // support all of the module-specific javac options.
+      ModularPathsExtension modularPathsForEcj = modularPaths
+      if (sourceSet.name == SourceSet.TEST_SOURCE_SET_NAME && project.path in [
+          ":lucene:spatial-extras",
+          ":lucene:spatial3d",
+      ]) {
+        modularPathsForEcj = modularPaths.cloneWithMode(ModularPathsExtension.Mode.CLASSPATH_ONLY)
+      }
+      sourceSet.extensions.add("modularPathsForEcj", modularPathsForEcj)
 
       // TODO: the tests of these projects currently don't compile or work in
       // module-path mode. Make the modular paths extension use class path only.
@@ -68,11 +78,7 @@ allprojects {
         }
 
         doFirst {
-          if (debugPaths) {
-            logger.lifecycle(modularPaths.compilationPathsToString())
-          } else {
-            logger.info(modularPaths.compilationPathsToString())
-          }
+          modularPaths.logCompilationPaths(logger)
         }
       })
 
@@ -143,7 +149,7 @@ allprojects {
       task.configure {
         ModularPathsExtension modularPaths = sourceSet.modularPaths
 
-        dependsOn modularPaths.runtimeModulePathConfiguration
+        dependsOn modularPaths
 
         // Add modular dependencies and their transitive dependencies to module path.
         jvmArgumentProviders.add(modularPaths.runtimeArguments)
@@ -152,11 +158,7 @@ allprojects {
         classpath = modularPaths.runtimeClasspath
 
         doFirst {
-          if (debugPaths) {
-            logger.lifecycle(modularPaths.runtimePathsToString())
-          } else {
-            logger.info(modularPaths.runtimePathsToString())
-          }
+          modularPaths.logRuntimePaths(logger)
         }
       }
     }
@@ -208,7 +210,7 @@ allprojects {
 // moduleImplementation - 'requires'
 // moduleCompileOnly    - 'requires static'
 //
-class ModularPathsExtension {
+class ModularPathsExtension implements Cloneable, Iterable<Object> {
   /**
    * Determines how paths are split between module path and classpath.
    */
@@ -235,6 +237,9 @@ class ModularPathsExtension {
   // The mode of splitting paths for this source set.
   Mode mode = Mode.DEPENDENCIES_ON_MODULE_PATH
 
+  // More verbose debugging for paths.
+  private boolean debugPaths
+
   /**
    * A list of module name - path provider entries that will be converted
    * into {@code --patch-module} options.
@@ -244,6 +249,8 @@ class ModularPathsExtension {
   ModularPathsExtension(Project project, SourceSet sourceSet) {
     this.project = project
     this.sourceSet = sourceSet
+
+    debugPaths = Boolean.parseBoolean(project.propertyOrDefault('build.debug.paths', 'false'))
 
     ConfigurationContainer configurations = project.configurations
 
@@ -432,18 +439,40 @@ class ModularPathsExtension {
     return patches.isEmpty() ? " [empty]" : ("\n    " + patches.collect {"${it.key}=${it.value.get()}"}.join("\n    "))
   }
 
-  String compilationPathsToString() {
-    return "Modular extension, compilation paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
+  public void logCompilationPaths(Logger logger) {
+    def value = "Modular extension, compilation paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
         "  Module path:${toList(compilationModulePath)}\n" +
         "  Class path: ${toList(compilationClasspath)}\n" +
         "  Patches:    ${toList(modulePatches)}"
+
+    if (debugPaths) {
+      logger.lifecycle(value)
+    } else {
+      logger.info(value)
+    }
   }
 
-  String runtimePathsToString() {
-    return "Modular extension, runtime paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
+  public void logRuntimePaths(Logger logger) {
+    def value = "Modular extension, runtime paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
         "  Module path:${toList(runtimeModulePath)}\n" +
         "  Class path: ${toList(runtimeClasspath)}\n" +
         "  Patches   : ${toList(modulePatches)}"
+
+    if (debugPaths) {
+      logger.lifecycle(value)
+    } else {
+      logger.info(value)
+    }
+  }
+
+  public ModularPathsExtension clone() {
+    return (ModularPathsExtension) super.clone()
+  }
+
+  ModularPathsExtension cloneWithMode(Mode newMode) {
+    def cloned = this.clone()
+    cloned.mode = newMode
+    return cloned
   }
 
   // Map convention configuration names to "modular" corresponding configurations.
@@ -462,5 +491,16 @@ class ModularPathsExtension {
 
     project.logger.info("Created module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
     return moduleConfiguration
+  }
+
+  /**
+   * Provide internal dependencies for tasks willing to depend on this modular paths object.
+   */
+  @Override
+  Iterator<Object> iterator() {
+    return [
+        compileModulePathConfiguration,
+        runtimeModulePathConfiguration
+    ].iterator()
   }
 }
