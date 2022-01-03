@@ -19,7 +19,6 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
@@ -102,7 +101,8 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       Bits liveDocs = context.reader().getLiveDocs();
       NumericDocValues ndv = DocValues.unwrapSingleton(dv);
       DocIdSetIterator valuesIt = ndv != null ? ndv : dv;
-      DocIdSetIterator it = (liveDocs != null) ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
+      DocIdSetIterator it =
+          liveDocs != null ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
 
       if (ndv != null) {
         while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
