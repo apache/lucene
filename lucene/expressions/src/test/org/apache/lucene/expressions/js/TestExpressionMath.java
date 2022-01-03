@@ -20,7 +20,7 @@ package org.apache.lucene.expressions.js;
 import static org.apache.lucene.expressions.js.ExpressionMath.haversinKilometers;
 
 import java.util.Random;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestExpressionMath extends LuceneTestCase {
 

@@ -24,7 +24,7 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestUTF8TaxonomyWriterCache extends FacetTestCase {
   public void testPageOverflow() throws Exception {

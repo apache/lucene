@@ -27,9 +27,9 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.RunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Outputs;
@@ -53,8 +53,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   @SuppressWarnings({"rawtypes", "unchecked"})
   private FST.Arc<BytesRef>[] arcs = new FST.Arc[5];
 
-  final RunAutomaton runAutomaton;
-  final Automaton automaton;
+  final ByteRunnable runAutomaton;
+  final TransitionAccessor automaton;
   final BytesRef commonSuffix;
 
   private IntersectTermsEnumFrame currentFrame;
@@ -72,8 +72,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   // regexp foo*bar must be at least length 6 bytes
   public IntersectTermsEnum(
       FieldReader fr,
-      Automaton automaton,
-      RunAutomaton runAutomaton,
+      TransitionAccessor automaton,
+      ByteRunnable runAutomaton,
       BytesRef commonSuffix,
       BytesRef startTerm)
       throws IOException {

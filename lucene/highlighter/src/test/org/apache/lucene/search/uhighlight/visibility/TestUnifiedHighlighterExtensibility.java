@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -44,8 +43,9 @@ import org.apache.lucene.search.uhighlight.PhraseHelper;
 import org.apache.lucene.search.uhighlight.SplittingBreakIterator;
 import org.apache.lucene.search.uhighlight.UHComponents;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Helps us be aware of visibility/extensibility concerns. */
@@ -97,8 +97,10 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
   @Test
   public void testUnifiedHighlighterExtensibility() {
     final int maxLength = 1000;
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder(null, new MockAnalyzer(random()));
     UnifiedHighlighter uh =
-        new UnifiedHighlighter(null, new MockAnalyzer(random())) {
+        new UnifiedHighlighter(uhBuilder) {
 
           @Override
           protected Map<String, Object[]> highlightFieldsAsObjects(
@@ -252,7 +254,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
    * Tests maintaining extensibility/visibility of {@link
    * org.apache.lucene.search.uhighlight.FieldHighlighter} out of package.
    */
-  private static class CustomFieldHighlighter extends FieldHighlighter {
+  protected static class CustomFieldHighlighter extends FieldHighlighter {
     CustomFieldHighlighter(
         String field,
         FieldOffsetStrategy fieldOffsetStrategy,

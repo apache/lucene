@@ -19,7 +19,7 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * Simple unit tests for RegExp parsing.

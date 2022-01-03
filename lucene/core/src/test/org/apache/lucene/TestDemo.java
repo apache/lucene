@@ -31,8 +31,8 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 /**
  * A very simple demo used in the API documentation (src/java/overview.html).

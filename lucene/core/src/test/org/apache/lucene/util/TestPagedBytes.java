@@ -18,13 +18,16 @@ package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.util.*;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Ignore;
 
 public class TestPagedBytes extends LuceneTestCase {

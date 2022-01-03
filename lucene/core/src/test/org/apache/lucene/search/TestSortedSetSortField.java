@@ -21,10 +21,10 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for SortedSetSortField, indexing the sortedset up front */
 public class TestSortedSetSortField extends LuceneTestCase {

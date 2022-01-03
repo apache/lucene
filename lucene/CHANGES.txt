@@ -14,7 +14,8 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
 
 Improvements
 ---------------------
@@ -42,11 +43,33 @@ API Changes
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
 
+* LUCENE-10197: UnifiedHighlighter now has a Builder to construct it.  The UH's setters are now
+  deprecated.  (Animesh Pandey, David Smiley)
+
+* LUCENE-10301: the test framework is now a module. All the classes have been moved from
+  org.apache.lucene.* to org.apache.lucene.tests.* to avoid package name conflicts with the
+  core module. (Dawid Weiss)
+
 * LUCENE-10183: KnnVectorsWriter#writeField to take KnnVectorsReader instead of VectorValues.
   (Zach Chen, Michael Sokolov, Julie Tibshirani, Adrien Grand)
 
 New Features
 ---------------------
+
+* LUCENE-10255: Lucene JARs are now proper modules, with module descriptors and dependency information.
+  (Chris Hegarty, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
+
+* LUCENE-10342: Lucene Core now depends on java.logging (JUL) module and reports
+  if MMapDirectory cannot unmap mapped ByteBuffers or RamUsageEstimator's object size
+  calculations may be off. This was added especially for users running Lucene with the
+  Java Module System where some optional features are not available by default or supported.
+  For all apps using Lucene it is strongly recommended, to explicitely require non-standard
+  JDK modules: jdk.unsupported (unmapping) and jdk.management (OOP size for RAM usage calculatons).
+  It is also recommended to install JUL logging adapters to feed the log events into your app's
+  logging system.  (Uwe Schindler, Dawid Weiss, Tomoko Uchida, Robert Muir)
+  
+* LUCENE-10330: Make MMapDirectory tests fail by default, if unmapping does not work.
+  (Uwe Schindler, Dawid Weiss)
 
 * LUCENE-10223: Add interval function support to StandardQueryParser. Add min-should-match operator
   support to StandardQueryParser. Update and clean up package documentation in flexible query parser
@@ -71,6 +94,10 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-10313: use java util logging in Luke. Add dynamic log filtering. Drop
+  the persistent log previously written to ~/.luke.d/luke.log. Configure Java's default
+  logging handlers to persist Luke logs according to your needs. (Tomoko Uchida, Dawid Weiss)
+
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
 * LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
@@ -89,6 +116,8 @@ Improvements
 Optimizations
 ---------------------
 
+* LUCENE-10329: Use computed block mask for DirectMonotonicReader#get. (Guo Feng)
+
 * LUCENE-10280: Optimize BKD leaves' doc IDs codec when they are continuous. (Guo Feng)
 
 * LUCENE-10233: Store BKD leaves' doc IDs as bitset in some cases (typically for low cardinality fields
@@ -96,13 +125,20 @@ Optimizations
 
 * LUCENE-10225: Improve IntroSelector with 3-ways partitioning. (Bruno Roustant, Adrien Grand)
 
+* LUCENE-10321: Tweak MultiRangeQuery interval tree creation to skip "pulling up" mins. (Greg Miller)
+
 Bug Fixes
 ---------------------
+
+* LUCENE-10316: fix TestLRUQueryCache.testCachingAccountableQuery failure. (Patrick Zhai)
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
 * LUCENE-10287: Fix Luke startup script to add jdk.unsupported module so
   MMapDirectory is used when opening indexes. (Uwe Schindler)
+
+* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
+  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 
 Other
 ---------------------
@@ -111,7 +147,8 @@ Other
 
 * LUCENE-10284: Upgrade morfologik-stemming to 2.1.8. (Dawid Weiss)
 
-* LUCENE-10303: Upgrade log4j to 2.15.0. (Tomoko Uchida)
+* LUCENE-10310: TestXYDocValuesQueries#doRandomDistanceTest does not produce random circles with radius
+  with '0' value any longer.
 
 ======================= Lucene 9.0.0 =======================
 
@@ -574,6 +611,12 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.1 =======================
+
+Bug Fixes
+---------------------
+* SOLR-15843: Update Log4J to 2.16 (Mike Drob, janhoy)
 
 ======================= Lucene 8.11.0 =======================
 

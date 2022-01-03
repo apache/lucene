@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.analysis.tr;
 
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestApostropheFilter extends BaseTokenStreamTestCase {
 

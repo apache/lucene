@@ -23,7 +23,7 @@ import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Test to check Serialization */

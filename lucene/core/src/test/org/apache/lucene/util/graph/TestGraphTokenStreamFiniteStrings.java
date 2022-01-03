@@ -17,14 +17,14 @@
 package org.apache.lucene.util.graph;
 
 import java.util.Iterator;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** {@link GraphTokenStreamFiniteStrings} tests. */
 public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
