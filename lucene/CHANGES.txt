@@ -50,6 +50,11 @@ API Changes
   org.apache.lucene.* to org.apache.lucene.tests.* to avoid package name conflicts with the
   core module. (Dawid Weiss)
 
+* LUCENE-10335: Deprecate helper methods for resource loading in IOUtils and StopwordAnalyzerBase
+  that are not compatible with module system (Class#getResourceAsStream() and Class#getResource()
+  are caller sensitive in Java 11). Instead add utility method IOUtils#requireResourceNonNull(T)
+  to test existence of resource based on null return value.  (Uwe Schindler, Dawid Weiss)
+
 New Features
 ---------------------
 
@@ -87,6 +92,9 @@ New Features
 
 * LUCENE-10243: StandardTokenizer, UAX29URLEmailTokenizer, and HTMLStripCharFilter have
   been upgraded to Unicode 12.1  (Robert Muir)
+
+* LUCENE-10335: Add ModuleResourceLoader as complement to ClasspathResourceLoader.
+  (Uwe Schindler)
 
 Improvements
 ---------------------
