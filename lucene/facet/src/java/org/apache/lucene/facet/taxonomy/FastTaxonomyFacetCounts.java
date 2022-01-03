@@ -19,6 +19,8 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
@@ -90,6 +92,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   }
 
   private final void countAll(IndexReader reader) throws IOException {
+    assert values != null;
     for (LeafReaderContext context : reader.leaves()) {
       SortedNumericDocValues dv = context.reader().getSortedNumericDocValues(indexFieldName);
       if (dv == null) {
@@ -97,25 +100,19 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       }
 
       Bits liveDocs = context.reader().getLiveDocs();
-
       NumericDocValues ndv = DocValues.unwrapSingleton(dv);
+      DocIdSetIterator valuesIt = ndv != null ? ndv : dv;
+      DocIdSetIterator it = (liveDocs != null) ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
+
       if (ndv != null) {
-        for (int doc = ndv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ndv.nextDoc()) {
-          if (liveDocs != null && liveDocs.get(doc) == false) {
-            continue;
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          values[(int) ndv.longValue()]++;
+        }
+      } else {
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          for (int i = 0; i < dv.docValueCount(); i++) {
+            values[(int) dv.nextValue()]++;
           }
-          increment((int) ndv.longValue());
-        }
-        continue;
-      }
-
-      for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
-        if (liveDocs != null && liveDocs.get(doc) == false) {
-          continue;
-        }
-
-        for (int i = 0; i < dv.docValueCount(); i++) {
-          increment((int) dv.nextValue());
         }
       }
     }
