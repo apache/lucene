@@ -28,6 +28,7 @@ import java.util.function.Predicate;
  * <p>Use this with {@code
  * -Djava.security.manager=org.apache.lucene.tests.util.TestSecurityManager}.
  */
+@SuppressWarnings("removal")
 public final class TestSecurityManager extends SecurityManager {
 
   private static final String JUNIT4_TEST_RUNNER_PACKAGE = "com.carrotsearch.ant.tasks.junit4.";

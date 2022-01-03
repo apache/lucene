@@ -3103,6 +3103,7 @@ public abstract class LuceneTestCase extends Assert {
    * execution. If enabled, it needs the following {@link SecurityPermission}: {@code
    * "createAccessControlContext"}
    */
+  @SuppressWarnings("removal")
   public static <T> T runWithRestrictedPermissions(
       PrivilegedExceptionAction<T> action, Permission... permissions) throws Exception {
     assumeTrue(

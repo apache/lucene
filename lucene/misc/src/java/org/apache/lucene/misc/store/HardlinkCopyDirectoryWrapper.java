@@ -65,7 +65,8 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
       if (Files.isReadable(fromPath.resolve(srcFile)) && Files.isWritable(toPath)) {
         // only try hardlinks if we have permission to access the files
         // if not super.copyFrom() will give us the right exceptions
-        suppressedException =
+        @SuppressWarnings("removal")
+        final Exception e =
             AccessController.doPrivileged(
                 (PrivilegedAction<Exception>)
                     () -> {
@@ -87,6 +88,7 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
                       }
                       return null;
                     });
+        suppressedException = e;
         tryCopy = suppressedException != null;
       }
     }

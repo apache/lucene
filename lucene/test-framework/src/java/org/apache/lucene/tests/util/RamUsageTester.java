@@ -323,7 +323,8 @@ public final class RamUsageTester {
   /** Create a cached information about shallow size and reference fields for a given class. */
   @SuppressForbidden(reason = "We need to access private fields of measured objects.")
   private static ClassCache createCacheEntry(final Class<?> clazz) {
-    return AccessController.doPrivileged(
+    @SuppressWarnings("removal")
+    ClassCache cache = AccessController.doPrivileged(
         (PrivilegedAction<ClassCache>)
             () -> {
               ClassCache cachedInfo;
@@ -363,6 +364,7 @@ public final class RamUsageTester {
                       referenceFields.toArray(new Field[referenceFields.size()]));
               return cachedInfo;
             });
+    return cache;
   }
 
   private static long byteArraySize(int len) {

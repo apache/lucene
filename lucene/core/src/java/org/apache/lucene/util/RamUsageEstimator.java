@@ -584,9 +584,10 @@ public final class RamUsageEstimator {
       final Class<?> target = clazz;
       final Field[] fields;
       try {
-        fields =
-            AccessController.doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
-      } catch (AccessControlException e) {
+        @SuppressWarnings("removal")
+        Field[] f = AccessController.doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
+        fields = f;
+      } catch (@SuppressWarnings("removal") AccessControlException e) {
         throw new RuntimeException("Can't access fields of class: " + target, e);
       }
 

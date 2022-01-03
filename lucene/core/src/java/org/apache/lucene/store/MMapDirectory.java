@@ -334,6 +334,7 @@ public class MMapDirectory extends FSDirectory {
   private static final BufferCleaner CLEANER;
 
   static {
+    @SuppressWarnings("removal")
     final Object hack =
         AccessController.doPrivileged((PrivilegedAction<Object>) MMapDirectory::unmapHackImpl);
     if (hack instanceof BufferCleaner) {
@@ -389,6 +390,7 @@ public class MMapDirectory extends FSDirectory {
       if (!buffer.isDirect()) {
         throw new IllegalArgumentException("unmapping only works with direct buffers");
       }
+      @SuppressWarnings("removal")
       final Throwable error =
           AccessController.doPrivileged(
               (PrivilegedAction<Throwable>)
