@@ -23,6 +23,8 @@ API Changes
   are caller sensitive in Java 11). Instead add utility method IOUtils#requireResourceNonNull(T)
   to test existence of resource based on null return value.  (Uwe Schindler, Dawid Weiss)
 
+* LUCENE-10349: WordListLoader methods now return unmodifiable CharArraySets.  (Uwe Schindler)
+
 New Features
 ---------------------
 
@@ -110,6 +112,9 @@ Bug Fixes
 * LUCENE-10316: fix TestLRUQueryCache.testCachingAccountableQuery failure. (Patrick Zhai)
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
+
+* LUCENE-10349: Fix all analyzers to behave according to their documentation:
+  getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
 
 Other
 ---------------------
