@@ -34,8 +34,9 @@ dependencies {
   moduleTestImplementation project(':lucene:spatial-test-fixtures')
   moduleTestImplementation 'org.locationtech.jts:jts-core'
 
-  // We keep patches modules because otherwise IDEs would not see the
-  // dependency at all, even in classpath mode.
+  // We add patched modules to this configuration because otherwise IDEs would not see the
+  // dependency at all, even in classpath mode (they don't see --patch-module commands we
+  // add to the compiler and test tasks).
   moduleTestPatchOnly 'org.locationtech.spatial4j:spatial4j::tests'
   spatial4jTestPatch 'org.locationtech.spatial4j:spatial4j::tests'
 }
