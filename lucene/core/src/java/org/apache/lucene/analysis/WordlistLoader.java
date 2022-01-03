@@ -66,10 +66,11 @@ public class WordlistLoader {
    * StandardAnalyzer).
    *
    * @param reader Reader containing the wordlist
-   * @return A {@link CharArraySet} with the reader's words
+   * @return An unmodifiable {@link CharArraySet} with the reader's words
    */
   public static CharArraySet getWordSet(Reader reader) throws IOException {
-    return getWordSet(reader, new CharArraySet(INITIAL_CAPACITY, false));
+    return CharArraySet.unmodifiableSet(
+        getWordSet(reader, new CharArraySet(INITIAL_CAPACITY, false)));
   }
 
   /**
@@ -79,7 +80,7 @@ public class WordlistLoader {
    * uses LowerCaseFilter (like StandardAnalyzer).
    *
    * @param stream InputStream containing the wordlist
-   * @return A {@link CharArraySet} with the reader's words
+   * @return An unmodifiable {@link CharArraySet} with the reader's words
    */
   public static CharArraySet getWordSet(InputStream stream) throws IOException {
     return getWordSet(stream, StandardCharsets.UTF_8);
@@ -93,7 +94,7 @@ public class WordlistLoader {
    *
    * @param stream InputStream containing the wordlist
    * @param charset Charset of the wordlist
-   * @return A {@link CharArraySet} with the reader's words
+   * @return An unmodifiable {@link CharArraySet} with the reader's words
    */
   public static CharArraySet getWordSet(InputStream stream, Charset charset) throws IOException {
     return getWordSet(IOUtils.getDecodingReader(stream, charset));
@@ -131,10 +132,11 @@ public class WordlistLoader {
    *
    * @param reader Reader containing the wordlist
    * @param comment The string representing a comment.
-   * @return A CharArraySet with the reader's words
+   * @return An unmodifiable CharArraySet with the reader's words
    */
   public static CharArraySet getWordSet(Reader reader, String comment) throws IOException {
-    return getWordSet(reader, comment, new CharArraySet(INITIAL_CAPACITY, false));
+    return CharArraySet.unmodifiableSet(
+        getWordSet(reader, comment, new CharArraySet(INITIAL_CAPACITY, false)));
   }
 
   /**
@@ -145,7 +147,7 @@ public class WordlistLoader {
    *
    * @param stream InputStream in UTF-8 encoding containing the wordlist
    * @param comment The string representing a comment.
-   * @return A CharArraySet with the reader's words
+   * @return An unmodifiable CharArraySet with the reader's words
    */
   public static CharArraySet getWordSet(InputStream stream, String comment) throws IOException {
     return getWordSet(stream, StandardCharsets.UTF_8, comment);
@@ -160,7 +162,7 @@ public class WordlistLoader {
    * @param stream InputStream containing the wordlist
    * @param charset Charset of the wordlist
    * @param comment The string representing a comment.
-   * @return A CharArraySet with the reader's words
+   * @return An unmodifiable CharArraySet with the reader's words
    */
   public static CharArraySet getWordSet(InputStream stream, Charset charset, String comment)
       throws IOException {
@@ -210,10 +212,11 @@ public class WordlistLoader {
    * </ul>
    *
    * @param reader Reader containing a Snowball stopword list
-   * @return A {@link CharArraySet} with the reader's words
+   * @return An unmodifiable {@link CharArraySet} with the reader's words
    */
   public static CharArraySet getSnowballWordSet(Reader reader) throws IOException {
-    return getSnowballWordSet(reader, new CharArraySet(INITIAL_CAPACITY, false));
+    return CharArraySet.unmodifiableSet(
+        getSnowballWordSet(reader, new CharArraySet(INITIAL_CAPACITY, false)));
   }
 
   /**
@@ -228,7 +231,7 @@ public class WordlistLoader {
    * </ul>
    *
    * @param stream InputStream in UTF-8 encoding containing a Snowball stopword list
-   * @return A {@link CharArraySet} with the reader's words
+   * @return An unmodifiable {@link CharArraySet} with the reader's words
    */
   public static CharArraySet getSnowballWordSet(InputStream stream) throws IOException {
     return getSnowballWordSet(stream, StandardCharsets.UTF_8);
@@ -247,7 +250,7 @@ public class WordlistLoader {
    *
    * @param stream InputStream containing a Snowball stopword list
    * @param charset Charset of the stopword list
-   * @return A {@link CharArraySet} with the reader's words
+   * @return An unmodifiable {@link CharArraySet} with the reader's words
    */
   public static CharArraySet getSnowballWordSet(InputStream stream, Charset charset)
       throws IOException {
