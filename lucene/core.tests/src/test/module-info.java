@@ -22,4 +22,8 @@ module org.apache.lucene.core.tests {
   requires junit;
 
   exports org.apache.lucene.core.tests;
+
+  // this is to test ModuleResourceLoader
+  opens org.apache.lucene.core.testresources to
+      org.apache.lucene.core;
 }

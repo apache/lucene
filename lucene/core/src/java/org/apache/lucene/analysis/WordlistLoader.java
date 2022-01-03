@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.util.IOUtils;
@@ -76,17 +77,30 @@ public class WordlistLoader {
   }
 
   /**
-   * Reads lines from a Reader and adds every non-comment line as an entry to a CharArraySet
-   * (omitting leading and trailing whitespace). Every line of the Reader should contain only one
-   * word. The words need to be in lowercase if you make use of an Analyzer which uses
-   * LowerCaseFilter (like StandardAnalyzer).
+   * Reads lines from an InputStream with UTF-8 charset and adds every line as an entry to a
+   * CharArraySet (omitting leading and trailing whitespace). Every line of the Reader should
+   * contain only one word. The words need to be in lowercase if you make use of an Analyzer which
+   * uses LowerCaseFilter (like StandardAnalyzer).
    *
-   * @param reader Reader containing the wordlist
-   * @param comment The string representing a comment.
-   * @return A CharArraySet with the reader's words
+   * @param stream InputStream containing the wordlist
+   * @return A {@link CharArraySet} with the reader's words
    */
-  public static CharArraySet getWordSet(Reader reader, String comment) throws IOException {
-    return getWordSet(reader, comment, new CharArraySet(INITIAL_CAPACITY, false));
+  public static CharArraySet getWordSet(InputStream stream) throws IOException {
+    return getWordSet(stream, StandardCharsets.UTF_8);
+  }
+
+  /**
+   * Reads lines from an InputStream with the given charset and adds every line as an entry to a
+   * CharArraySet (omitting leading and trailing whitespace). Every line of the Reader should
+   * contain only one word. The words need to be in lowercase if you make use of an Analyzer which
+   * uses LowerCaseFilter (like StandardAnalyzer).
+   *
+   * @param stream InputStream containing the wordlist
+   * @param charset Charset of the wordlist
+   * @return A {@link CharArraySet} with the reader's words
+   */
+  public static CharArraySet getWordSet(InputStream stream, Charset charset) throws IOException {
+    return getWordSet(IOUtils.getDecodingReader(stream, charset));
   }
 
   /**
@@ -115,6 +129,50 @@ public class WordlistLoader {
       IOUtils.close(br);
     }
     return result;
+  }
+
+  /**
+   * Reads lines from a Reader and adds every non-comment line as an entry to a CharArraySet
+   * (omitting leading and trailing whitespace). Every line of the Reader should contain only one
+   * word. The words need to be in lowercase if you make use of an Analyzer which uses
+   * LowerCaseFilter (like StandardAnalyzer).
+   *
+   * @param reader Reader containing the wordlist
+   * @param comment The string representing a comment.
+   * @return A CharArraySet with the reader's words
+   */
+  public static CharArraySet getWordSet(Reader reader, String comment) throws IOException {
+    return getWordSet(reader, comment, new CharArraySet(INITIAL_CAPACITY, false));
+  }
+
+  /**
+   * Reads lines from an InputStream with UTF-8 charset and adds every non-comment line as an entry
+   * to a CharArraySet (omitting leading and trailing whitespace). Every line of the Reader should
+   * contain only one word. The words need to be in lowercase if you make use of an Analyzer which
+   * uses LowerCaseFilter (like StandardAnalyzer).
+   *
+   * @param stream InputStream in UTF-8 encoding containing the wordlist
+   * @param comment The string representing a comment.
+   * @return A CharArraySet with the reader's words
+   */
+  public static CharArraySet getWordSet(InputStream stream, String comment) throws IOException {
+    return getWordSet(stream, StandardCharsets.UTF_8, comment);
+  }
+
+  /**
+   * Reads lines from an InputStream with the given charset and adds every non-comment line as an
+   * entry to a CharArraySet (omitting leading and trailing whitespace). Every line of the Reader
+   * should contain only one word. The words need to be in lowercase if you make use of an Analyzer
+   * which uses LowerCaseFilter (like StandardAnalyzer).
+   *
+   * @param stream InputStream containing the wordlist
+   * @param charset Charset of the wordlist
+   * @param comment The string representing a comment.
+   * @return A CharArraySet with the reader's words
+   */
+  public static CharArraySet getWordSet(InputStream stream, Charset charset, String comment)
+      throws IOException {
+    return getWordSet(IOUtils.getDecodingReader(stream, charset), comment);
   }
 
   /**
@@ -168,6 +226,44 @@ public class WordlistLoader {
    */
   public static CharArraySet getSnowballWordSet(Reader reader) throws IOException {
     return getSnowballWordSet(reader, new CharArraySet(INITIAL_CAPACITY, false));
+  }
+
+  /**
+   * Reads stopwords from a stopword list in Snowball format.
+   *
+   * <p>The snowball format is the following:
+   *
+   * <ul>
+   *   <li>Lines may contain multiple words separated by whitespace.
+   *   <li>The comment character is the vertical line (&#124;).
+   *   <li>Lines may contain trailing comments.
+   * </ul>
+   *
+   * @param stream InputStream in UTF-8 encoding containing a Snowball stopword list
+   * @return A {@link CharArraySet} with the reader's words
+   */
+  public static CharArraySet getSnowballWordSet(InputStream stream) throws IOException {
+    return getSnowballWordSet(stream, StandardCharsets.UTF_8);
+  }
+
+  /**
+   * Reads stopwords from a stopword list in Snowball format.
+   *
+   * <p>The snowball format is the following:
+   *
+   * <ul>
+   *   <li>Lines may contain multiple words separated by whitespace.
+   *   <li>The comment character is the vertical line (&#124;).
+   *   <li>Lines may contain trailing comments.
+   * </ul>
+   *
+   * @param stream InputStream containing a Snowball stopword list
+   * @param charset Charset of the stopword list
+   * @return A {@link CharArraySet} with the reader's words
+   */
+  public static CharArraySet getSnowballWordSet(InputStream stream, Charset charset)
+      throws IOException {
+    return getSnowballWordSet(IOUtils.getDecodingReader(stream, charset));
   }
 
   /**
