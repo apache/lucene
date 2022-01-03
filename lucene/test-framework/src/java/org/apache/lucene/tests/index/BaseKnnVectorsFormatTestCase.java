@@ -42,6 +42,8 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -559,6 +561,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         VectorValues values = getOnlyLeafReader(r).getVectorValues("v");
         assertNotNull(values);
         assertEquals(0, values.size());
+
+        // assert that knn search doesn't fail on a field with all deleted docs
+        IndexSearcher searcher = newSearcher(r);
+        KnnVectorQuery query = new KnnVectorQuery("v", randomVector(3), 1);
+        TopDocs results = searcher.search(query, 1);
+        assertEquals(0, results.scoreDocs.length);
       }
     }
   }
