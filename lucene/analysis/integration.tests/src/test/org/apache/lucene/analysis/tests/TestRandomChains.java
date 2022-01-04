@@ -224,7 +224,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
   @BeforeClass
   public static void beforeClass() throws Exception {
-    List<Class<?>> analysisClasses = getClassesForPackage("org.apache.lucene.analysis");
+    List<Class<?>> analysisClasses = ModuleClassDiscovery.getClassesForPackage("org.apache.lucene.analysis");
     tokenizers = new ArrayList<>();
     tokenfilters = new ArrayList<>();
     charfilters = new ArrayList<>();
@@ -303,51 +303,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
   @SuppressWarnings("unchecked")
   private static <T> Constructor<T> castConstructor(Class<T> instanceClazz, Constructor<?> ctor) {
     return (Constructor<T>) ctor;
-  }
-
-  public static List<Class<?>> getClassesForPackage(String pckgname) throws Exception {
-    final List<Class<?>> classes = new ArrayList<>();
-    collectClassesForPackage(pckgname, classes);
-    assertFalse(
-        "No classes found in package '"
-            + pckgname
-            + "'; maybe your test classes are packaged as JAR file?",
-        classes.isEmpty());
-    return classes;
-  }
-
-  private static void collectClassesForPackage(String pckgname, List<Class<?>> classes)
-      throws Exception {
-    final ClassLoader cld = TestRandomChains.class.getClassLoader();
-    final String path = pckgname.replace('.', '/');
-    final Enumeration<URL> resources = cld.getResources(path);
-    while (resources.hasMoreElements()) {
-      final URI uri = resources.nextElement().toURI();
-      if (!"file".equalsIgnoreCase(uri.getScheme())) continue;
-      final Path directory = Paths.get(uri);
-      if (Files.exists(directory)) {
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
-          for (Path file : stream) {
-            if (Files.isDirectory(file)) {
-              // recurse
-              String subPackage = pckgname + "." + file.getFileName().toString();
-              collectClassesForPackage(subPackage, classes);
-            }
-            String fname = file.getFileName().toString();
-            if (fname.endsWith(".class")) {
-              String clazzName = fname.substring(0, fname.length() - 6);
-              // exclude Test classes that happen to be in these packages.
-              // class.ForName'ing some of them can cause trouble.
-              if (!clazzName.endsWith("Test") && !clazzName.startsWith("Test")) {
-                // Don't run static initializers, as we won't use most of them.
-                // Java will do that automatically once accessed/instantiated.
-                classes.add(Class.forName(pckgname + '.' + clazzName, false, cld));
-              }
-            }
-          }
-        }
-      }
-    }
   }
 
   private static final Map<Class<?>, Function<Random, Object>> argProducers =

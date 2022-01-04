@@ -131,7 +131,7 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
 
   public void test() throws Exception {
     List<Class<?>> analysisClasses =
-        TestRandomChains.getClassesForPackage("org.apache.lucene.analysis");
+        ModuleClassDiscovery.getClassesForPackage("org.apache.lucene.analysis");
 
     for (final Class<?> c : analysisClasses) {
       final int modifiers = c.getModifiers();
