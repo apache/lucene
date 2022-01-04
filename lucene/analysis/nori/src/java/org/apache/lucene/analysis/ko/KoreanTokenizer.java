@@ -40,6 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.util.RollingCharBuffer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeFactory;
+import org.apache.lucene.util.IgnoreRandomChains;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
@@ -205,6 +206,7 @@ public final class KoreanTokenizer extends Tokenizer {
    * @param discardPunctuation true if punctuation tokens should be dropped from the output.
    * @lucene.experimental
    */
+  @IgnoreRandomChains(reason = "Parameters are too complex to be tested")
   public KoreanTokenizer(
       AttributeFactory factory,
       TokenInfoDictionary systemDictionary,

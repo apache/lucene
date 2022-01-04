@@ -43,18 +43,14 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.boost.DelimitedBoostTokenFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
-import org.apache.lucene.analysis.cjk.CJKBigramFilter;
 import org.apache.lucene.analysis.commongrams.CommonGramsFilter;
-import org.apache.lucene.analysis.commongrams.CommonGramsQueryFilter;
 import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
@@ -67,18 +63,12 @@ import org.apache.lucene.analysis.ko.KoreanTokenizer;
 import org.apache.lucene.analysis.minhash.MinHashFilter;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilter;
-import org.apache.lucene.analysis.miscellaneous.DelimitedTermFrequencyTokenFilter;
 import org.apache.lucene.analysis.miscellaneous.FingerprintFilter;
-import org.apache.lucene.analysis.miscellaneous.HyphenatedWordsFilter;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenCountFilter;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenOffsetFilter;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenPositionFilter;
 import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter;
 import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter.StemmerOverrideMap;
-import org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter;
-import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
-import org.apache.lucene.analysis.path.PathHierarchyTokenizer;
-import org.apache.lucene.analysis.path.ReversePathHierarchyTokenizer;
 import org.apache.lucene.analysis.pattern.PatternTypingFilter;
 import org.apache.lucene.analysis.payloads.IdentityEncoder;
 import org.apache.lucene.analysis.payloads.PayloadEncoder;
@@ -86,10 +76,8 @@ import org.apache.lucene.analysis.shingle.FixedShingleFilter;
 import org.apache.lucene.analysis.shingle.ShingleFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.synonym.SynonymMap;
-import org.apache.lucene.analysis.wikipedia.WikipediaTokenizer;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.tests.analysis.CrankyTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.analysis.ValidatingTokenFilter;
@@ -99,6 +87,7 @@ import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.CharsRef;
+import org.apache.lucene.util.IgnoreRandomChains;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
@@ -145,11 +134,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
       new HashMap<>();
 
   static {
-    initBrokenConstructors();
-  }
-
-  @SuppressWarnings("deprecation")
-  private static void initBrokenConstructors() {
     try {
       brokenConstructors.put(
           LimitTokenCountFilter.class.getConstructor(TokenStream.class, int.class), ALWAYS);
@@ -176,70 +160,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
             assert args.length == 3;
             return !((Boolean) args[2]); // args are broken if consumeAllTokens is false
           });
-      // TODO: Make this one protected or remove at all:
-      brokenConstructors.put(
-          JapaneseTokenizer.class.getConstructor(
-              AttributeFactory.class,
-              org.apache.lucene.analysis.ja.dict.TokenInfoDictionary.class,
-              org.apache.lucene.analysis.ja.dict.UnknownDictionary.class,
-              org.apache.lucene.analysis.ja.dict.ConnectionCosts.class,
-              org.apache.lucene.analysis.ja.dict.UserDictionary.class,
-              boolean.class,
-              boolean.class,
-              JapaneseTokenizer.Mode.class),
-          ALWAYS);
-      // TODO: Make this one protected or remove at all:
-      brokenConstructors.put(
-          KoreanTokenizer.class.getConstructor(
-              AttributeFactory.class,
-              org.apache.lucene.analysis.ko.dict.TokenInfoDictionary.class,
-              org.apache.lucene.analysis.ko.dict.UnknownDictionary.class,
-              org.apache.lucene.analysis.ko.dict.ConnectionCosts.class,
-              org.apache.lucene.analysis.ko.dict.UserDictionary.class,
-              KoreanTokenizer.DecompoundMode.class,
-              boolean.class,
-              boolean.class),
-          ALWAYS);
-      for (Class<?> c :
-          Arrays.<Class<?>>asList(
-              // doesn't actual reset itself!  TODO this statement is probably obsolete as of
-              // LUCENE-6121 ?
-              CachingTokenFilter.class,
-              // LUCENE-8092: doesn't handle graph inputs
-              CJKBigramFilter.class,
-              // TODO: LUCENE-4983
-              CommonGramsFilter.class,
-              // TODO: doesn't handle graph inputs
-              CommonGramsQueryFilter.class,
-              // Not broken, simulates brokenness:
-              CrankyTokenFilter.class,
-              // TODO: doesn't handle graph inputs (or even look at positionIncrement)
-              HyphenatedWordsFilter.class,
-              // broken offsets
-              PathHierarchyTokenizer.class,
-              // broken offsets
-              ReversePathHierarchyTokenizer.class,
-              // Not broken: we forcefully add this, so we shouldn't
-              // also randomly pick it:
-              ValidatingTokenFilter.class,
-              // TODO: it seems to mess up offsets!?
-              WikipediaTokenizer.class,
-              // TODO: needs to be a tokenizer, doesnt handle graph inputs properly (a shingle or
-              // similar following will then cause pain)
-              WordDelimiterFilter.class,
-              // Cannot correct offsets when a char filter had changed them:
-              WordDelimiterGraphFilter.class,
-              // requires a special encoded token value, so it may fail with random data:
-              DelimitedTermFrequencyTokenFilter.class,
-              // requires a special encoded token value, so it may fail with random data:
-              DelimitedBoostTokenFilter.class,
-              // clones of core's filters:
-              org.apache.lucene.analysis.core.StopFilter.class,
-              org.apache.lucene.analysis.core.LowerCaseFilter.class)) {
-        for (Constructor<?> ctor : c.getConstructors()) {
-          brokenConstructors.put(ctor, ALWAYS);
-        }
-      }
     } catch (Exception e) {
       throw new Error(e);
     }
@@ -255,7 +175,8 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     for (final Class<?> c : analysisClasses) {
       final int modifiers = c.getModifiers();
       if (
-      // don't waste time with abstract classes or deprecated known-buggy ones
+      // don't waste time with abstract classes, deprecated, or @IgnoreRandomChains annotated
+      // classes:
       Modifier.isAbstract(modifiers)
           || !Modifier.isPublic(modifiers)
           || c.isSynthetic()
@@ -263,6 +184,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
           || c.isMemberClass()
           || c.isInterface()
           || c.isAnnotationPresent(Deprecated.class)
+          || c.isAnnotationPresent(IgnoreRandomChains.class)
           || !(Tokenizer.class.isAssignableFrom(c)
               || TokenFilter.class.isAssignableFrom(c)
               || CharFilter.class.isAssignableFrom(c))) {
@@ -270,9 +192,11 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
       }
 
       for (final Constructor<?> ctor : c.getConstructors()) {
-        // don't test synthetic or deprecated ctors, they likely have known bugs:
+        // don't test synthetic, deprecated, or @IgnoreRandomChains annotated ctors, they likely
+        // have known bugs:
         if (ctor.isSynthetic()
             || ctor.isAnnotationPresent(Deprecated.class)
+            || ctor.isAnnotationPresent(IgnoreRandomChains.class)
             || brokenConstructors.get(ctor) == ALWAYS) {
           continue;
         }

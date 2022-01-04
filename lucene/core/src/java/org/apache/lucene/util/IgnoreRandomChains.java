@@ -14,29 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.core;
+package org.apache.lucene.util;
 
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.util.IgnoreRandomChains;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Normalizes token text to lower case.
+ * Annotation to not test a class or constructor with {@code TestRandomChains} integration test.
  *
- * <p>This class moved to Lucene Core, but a reference in the {@code analysis/common} module is
- * preserved for documentation purposes and consistency with filter factory.
- *
- * @see org.apache.lucene.analysis.LowerCaseFilter
- * @see LowerCaseFilterFactory
+ * @lucene.internal
  */
-@IgnoreRandomChains(reason = "clones of core's filters")
-public final class LowerCaseFilter extends org.apache.lucene.analysis.LowerCaseFilter {
-
-  /**
-   * Create a new LowerCaseFilter, that normalizes token text to lower case.
-   *
-   * @param in TokenStream to filter
-   */
-  public LowerCaseFilter(TokenStream in) {
-    super(in);
-  }
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.CONSTRUCTOR, ElementType.TYPE})
+public @interface IgnoreRandomChains {
+  /** A reason for ignoring should always be given. */
+  String reason();
 }
