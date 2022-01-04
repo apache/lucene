@@ -57,7 +57,8 @@ abstract class ModuleClassDiscovery {
       if (Objects.equals(name, THIS_MODULE.getName())) {
         continue;
       }
-      if (name.equals("org.apache.lucene.core") || name.startsWith("org.apache.lucene.analysis.")) {
+      if (name.equals("org.apache.lucene.core") || name.equals("org.apache.lucene.analysis.common")) {
+      //nocommit (enable all modules): if (name.equals("org.apache.lucene.core") || name.startsWith("org.apache.lucene.analysis.")) {
         result.put(name, mod);
       }
     }
