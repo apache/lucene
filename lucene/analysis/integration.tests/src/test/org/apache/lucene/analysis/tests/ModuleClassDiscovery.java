@@ -53,7 +53,8 @@ abstract class ModuleClassDiscovery {
       ModuleLayer layer, Map<String, ResolvedModule> result) {
     for (var mod : layer.configuration().modules()) {
       String name = mod.name();
-      if (name.startsWith("org.apache.lucene.analysis.") && !name.contains(".tests")) {
+      if (name.startsWith("org.apache.lucene.analysis.")
+          && !Objects.equals(name, THIS_MODULE.getName())) {
         result.put(name, mod);
       }
     }
