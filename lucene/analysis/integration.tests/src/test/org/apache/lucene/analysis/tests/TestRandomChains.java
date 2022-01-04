@@ -23,20 +23,13 @@ import java.io.StringReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
-import java.net.URI;
-import java.net.URL;
 import java.nio.CharBuffer;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -47,6 +40,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.CharArrayMap;
@@ -61,11 +56,9 @@ import org.apache.lucene.analysis.cjk.CJKBigramFilter;
 import org.apache.lucene.analysis.commongrams.CommonGramsFilter;
 import org.apache.lucene.analysis.commongrams.CommonGramsQueryFilter;
 import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
-//import org.apache.lucene.analysis.compound.TestCompoundWordTokenFilter;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.hunspell.Dictionary;
-//import org.apache.lucene.analysis.hunspell.TestHunspellStemFilter;
 import org.apache.lucene.analysis.minhash.MinHashFilter;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilter;
@@ -86,7 +79,6 @@ import org.apache.lucene.analysis.payloads.IdentityEncoder;
 import org.apache.lucene.analysis.payloads.PayloadEncoder;
 import org.apache.lucene.analysis.shingle.FixedShingleFilter;
 import org.apache.lucene.analysis.shingle.ShingleFilter;
-//import org.apache.lucene.analysis.snowball.TestSnowball;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.analysis.wikipedia.WikipediaTokenizer;
@@ -118,6 +110,8 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
   static List<Constructor<? extends Tokenizer>> tokenizers;
   static List<Constructor<? extends TokenFilter>> tokenfilters;
   static List<Constructor<? extends CharFilter>> charfilters;
+  
+  static List<Class<? extends SnowballStemmer>> snowballStemmers;
 
   private static final Predicate<Object[]> ALWAYS = (objects -> true);
 
@@ -287,6 +281,17 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
       System.out.println("tokenfilters = " + tokenfilters);
       System.out.println("charfilters = " + charfilters);
     }
+    
+    // TODO: Eclipse does not get that cast right, so make explicit:
+    final Function<Class<?>, Class<? extends SnowballStemmer>> stemmerCast = c -> c.asSubclass(SnowballStemmer.class);
+    snowballStemmers = ModuleClassDiscovery.getClassesForPackage("org.tartarus.snowball.ext").stream()
+        .filter(c -> c.getSimpleName().endsWith("Stemmer"))
+        .map(stemmerCast)
+        .sorted(Comparator.comparing(Class::getName))
+        .collect(Collectors.toList());
+    if (VERBOSE) {
+      System.out.println("snowballStemmers = " + snowballStemmers);
+    }
   }
 
   @AfterClass
@@ -388,15 +393,14 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               random ->
                   new IdentityEncoder()); // the other encoders will throw exceptions if tokens
           // arent numbers?
-          /* nocommit
           put(
               Dictionary.class,
               random -> {
                 // TODO: make nastier
                 InputStream affixStream =
-                    TestHunspellStemFilter.class.getResourceAsStream("simple.aff");
+                    TestRandomChains.class.getResourceAsStream("simple.aff");
                 InputStream dictStream =
-                    TestHunspellStemFilter.class.getResourceAsStream("simple.dic");
+                    TestRandomChains.class.getResourceAsStream("simple.dic");
                 try {
                   return new Dictionary(
                       new ByteBuffersDirectory(), "dictionary", affixStream, dictStream);
@@ -412,7 +416,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                 try {
                   InputSource is =
                       new InputSource(
-                          TestCompoundWordTokenFilter.class
+                          TestRandomChains.class
                               .getResource("da_UTF8.xml")
                               .toExternalForm());
                   HyphenationTree hyphenator =
@@ -427,19 +431,15 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               SnowballStemmer.class,
               random -> {
                 try {
-                  String lang =
-                      TestSnowball.SNOWBALL_LANGS.get(
-                          random.nextInt(TestSnowball.SNOWBALL_LANGS.size()));
                   Class<? extends SnowballStemmer> clazz =
-                      Class.forName("org.tartarus.snowball.ext." + lang + "Stemmer")
-                          .asSubclass(SnowballStemmer.class);
+                      snowballStemmers.get(
+                          random.nextInt(snowballStemmers.size()));
                   return clazz.getConstructor().newInstance();
                 } catch (Exception ex) {
                   Rethrow.rethrow(ex);
                   return null; // unreachable code
                 }
               });
-          */
           put(
               String.class,
               random -> {
