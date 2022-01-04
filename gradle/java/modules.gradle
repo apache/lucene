@@ -84,12 +84,10 @@ allprojects {
 
       // For source sets that contain a module descriptor, configure a jar task that combines
       // classes and resources into a single module.
-      if (modularPaths.hasModuleDescriptor()) {
+      if (sourceSet.name != SourceSet.MAIN_SOURCE_SET_NAME) {
         tasks.maybeCreate(sourceSet.getJarTaskName(), org.gradle.jvm.tasks.Jar).configure({
+          archiveClassifier = sourceSet.name
           from(sourceSet.output)
-          if (sourceSet.name != SourceSet.MAIN_SOURCE_SET_NAME) {
-            archiveClassifier = sourceSet.name
-          }
         })
       }
     }
@@ -112,27 +110,54 @@ allprojects {
     // the main source set's jar to the modular test implementation configuration.
     SourceSet mainSourceSet = project.sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
     boolean mainIsModular = mainSourceSet.modularPaths.hasModuleDescriptor()
+    boolean mainIsEmpty = mainSourceSet.allJava.isEmpty()
     SourceSet testSourceSet = project.sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME)
     boolean testIsModular = testSourceSet.modularPaths.hasModuleDescriptor()
-    if (testIsModular) {
-      // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
-      // dependencies, don't know why.
-      if (!rootProject.ext.isIdea) {
-        def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
-        def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
-        testSourceSet.compileClasspath = project.objects.fileCollection().from(
-            jarTask.outputs,
-            project.configurations.getByName(testSourceSet.getCompileClasspathConfigurationName()),
-        )
-        testSourceSet.runtimeClasspath = project.objects.fileCollection().from(
-            jarTask.outputs,
-            testJarTask.outputs,
-            project.configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName()),
-        )
 
-        project.dependencies {
-          moduleTestImplementation files(jarTask.outputs)
-          moduleTestRuntimeOnly files(testJarTask.outputs)
+    // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
+    // dependencies, don't know why.
+    if (!rootProject.ext.isIdea) {
+      def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
+      def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
+
+      // Consider various combinations of module/classpath configuration between the main and test source set.
+      if (testIsModular) {
+        if (mainIsModular || mainIsEmpty) {
+          // If the main source set is empty, skip the jar task.
+          def jarTaskOutputs = mainIsEmpty ? [] :  jarTask.outputs
+
+          // Fully modular tests - must have no split packages, proper access, etc.
+          // Work around the split classes/resources problem by adjusting classpaths to
+          // rely on JARs rather than source set output folders.
+          testSourceSet.compileClasspath = project.objects.fileCollection().from(
+              jarTaskOutputs,
+              project.configurations.getByName(testSourceSet.getCompileClasspathConfigurationName()),
+          )
+          testSourceSet.runtimeClasspath = project.objects.fileCollection().from(
+              jarTaskOutputs,
+              testJarTask.outputs,
+              project.configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName()),
+          )
+
+          project.dependencies {
+            moduleTestImplementation files(jarTaskOutputs)
+            moduleTestRuntimeOnly files(testJarTask.outputs)
+          }
+        } else {
+          // This combination simply does not make any sense (in my opinion).
+          throw GradleException("Test source set is modular and main source set is class-based, this makes no sense: " + project.path)
+        }
+      } else {
+        if (mainIsModular) {
+          // This combination is a potential candidate for patching the main sourceset's module with test classes. I could
+          // not resolve all the difficulties that arise when you try to do it though:
+          // - either a separate module descriptor is needed that opens test packages, adds dependencies via requires clauses
+          // or a series of jvm arguments (--add-reads, --add-opens, etc.) has to be generated and maintained. This is
+          // very low-level (ECJ doesn't support a full set of these instructions, for example).
+          //
+          // Fall back to classpath mode.
+        } else {
+          // This is the 'plain old classpath' mode: neither the main source set nor the test set are modular.
         }
       }
     }
@@ -164,7 +189,7 @@ allprojects {
     }
 
     // Lazily configure (tasks.test, sourceSets.test)
-    tasks.matching { it.name == "test" }.all { Test task ->
+    tasks.matching { it.name ==~ /test(_[0-9]+)?/ }.all { Test task ->
       configureTestTaskForSourceSet(task, task.project.sourceSets.test)
     }
 
