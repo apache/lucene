@@ -45,7 +45,8 @@ abstract class ModuleClassDiscovery {
               "org.apache.lucene.analysis.kuromoji",
               "org.apache.lucene.analysis.nori",
               "org.apache.lucene.analysis.morfologik",
-              "org.apache.lucene.analysis.opennlp")
+              "org.apache.lucene.analysis.opennlp",
+              "org.apache.lucene.analysis.phonetic")
           ::contains;
 
   // nocommit!

@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * TokenFilter for Beider-Morse phonetic encoding.
@@ -72,6 +73,7 @@ public final class BeiderMorseFilter extends TokenFilter {
    * @param languages optional Set of original languages. Can be null (which means it will be
    *     guessed).
    */
+  @IgnoreRandomChains(reason = "LUCENE-10352: Add support for LanguageSet randomization")
   public BeiderMorseFilter(TokenStream input, PhoneticEngine engine, LanguageSet languages) {
     super(input);
     this.engine = engine;

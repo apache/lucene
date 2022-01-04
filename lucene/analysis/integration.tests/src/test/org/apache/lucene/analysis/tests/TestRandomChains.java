@@ -42,6 +42,15 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.codec.Encoder;
+import org.apache.commons.codec.language.Caverphone2;
+import org.apache.commons.codec.language.ColognePhonetic;
+import org.apache.commons.codec.language.DoubleMetaphone;
+import org.apache.commons.codec.language.Metaphone;
+import org.apache.commons.codec.language.Nysiis;
+import org.apache.commons.codec.language.RefinedSoundex;
+import org.apache.commons.codec.language.Soundex;
+import org.apache.commons.codec.language.bm.PhoneticEngine;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
@@ -590,6 +599,37 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               KoreanTokenizer.DecompoundMode.class,
               random -> koComplFilterModes[random.nextInt(koComplFilterModes.length)]);
           put(org.apache.lucene.analysis.ko.dict.UserDictionary.class, random -> null);
+
+          // Phonetic:
+          final var bmNameTypes = org.apache.commons.codec.language.bm.NameType.values();
+          final var bmRuleTypes = org.apache.commons.codec.language.bm.RuleType.values();
+          put(
+              PhoneticEngine.class,
+              random ->
+                  new PhoneticEngine(
+                      bmNameTypes[random.nextInt(bmNameTypes.length)],
+                      bmRuleTypes[random.nextInt(bmRuleTypes.length)],
+                      random.nextBoolean()));
+          put(
+              Encoder.class,
+              random -> {
+                switch (random.nextInt(7)) {
+                  case 0:
+                    return new DoubleMetaphone();
+                  case 1:
+                    return new Metaphone();
+                  case 2:
+                    return new Soundex();
+                  case 3:
+                    return new RefinedSoundex();
+                  case 4:
+                    return new Caverphone2();
+                  case 5:
+                    return new ColognePhonetic();
+                  default:
+                    return new Nysiis();
+                }
+              });
         }
       };
 
