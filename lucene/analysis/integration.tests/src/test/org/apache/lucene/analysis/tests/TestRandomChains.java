@@ -81,9 +81,11 @@ import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter.StemmerOve
 import org.apache.lucene.analysis.pattern.PatternTypingFilter;
 import org.apache.lucene.analysis.payloads.IdentityEncoder;
 import org.apache.lucene.analysis.payloads.PayloadEncoder;
+import org.apache.lucene.analysis.pl.PolishAnalyzer;
 import org.apache.lucene.analysis.shingle.FixedShingleFilter;
 import org.apache.lucene.analysis.shingle.ShingleFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
+import org.apache.lucene.analysis.stempel.StempelStemmer;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
@@ -630,6 +632,9 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                     return new Nysiis();
                 }
               });
+
+          // Stempel
+          put(StempelStemmer.class, random -> PolishAnalyzer.getDefaultTable());
         }
       };
 

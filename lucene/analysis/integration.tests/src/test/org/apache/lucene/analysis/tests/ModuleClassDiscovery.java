@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Predicate;
@@ -38,20 +37,6 @@ abstract class ModuleClassDiscovery {
   private static final SortedMap<String, ResolvedModule> ALL_ANALYSIS_MODULES;
 
   private static final Predicate<String> ALLOW_MODULES =
-      Set.of(
-              "org.apache.lucene.core",
-              "org.apache.lucene.analysis.common",
-              "org.apache.lucene.analysis.icu",
-              "org.apache.lucene.analysis.kuromoji",
-              "org.apache.lucene.analysis.nori",
-              "org.apache.lucene.analysis.morfologik",
-              "org.apache.lucene.analysis.opennlp",
-              "org.apache.lucene.analysis.phonetic",
-              "org.apache.lucene.analysis.smartcn")
-          ::contains;
-
-  // nocommit!
-  private static final Predicate<String> ALLOW_MODULES_FINAL =
       name ->
           name.equals("org.apache.lucene.core") || name.startsWith("org.apache.lucene.analysis.");
 

@@ -42,19 +42,7 @@ import org.apache.lucene.analysis.path.ReversePathHierarchyTokenizer;
 import org.apache.lucene.analysis.sinks.TeeSinkTokenFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.sr.SerbianNormalizationRegularFilter;
-import org.apache.lucene.tests.analysis.CrankyTokenFilter;
-import org.apache.lucene.tests.analysis.MockCharFilter;
-import org.apache.lucene.tests.analysis.MockFixedLengthPayloadFilter;
-import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
-import org.apache.lucene.tests.analysis.MockHoleInjectingTokenFilter;
-import org.apache.lucene.tests.analysis.MockLowerCaseFilter;
-import org.apache.lucene.tests.analysis.MockRandomLookaheadTokenFilter;
-import org.apache.lucene.tests.analysis.MockSynonymFilter;
-import org.apache.lucene.tests.analysis.MockTokenFilter;
-import org.apache.lucene.tests.analysis.MockTokenizer;
-import org.apache.lucene.tests.analysis.MockVariableLengthPayloadFilter;
-import org.apache.lucene.tests.analysis.SimplePayloadFilter;
-import org.apache.lucene.tests.analysis.ValidatingTokenFilter;
+import org.apache.lucene.analysis.stempel.StempelFilter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.ResourceLoader;
@@ -66,28 +54,6 @@ import org.apache.lucene.util.Version;
  * that the SPI configuration is correct)
  */
 public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
-
-  // these are test-only components (e.g. test-framework)
-  private static final Set<Class<?>> testComponents =
-      Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-
-  static {
-    Collections.<Class<?>>addAll(
-        testComponents,
-        MockTokenizer.class,
-        MockCharFilter.class,
-        MockFixedLengthPayloadFilter.class,
-        MockGraphTokenFilter.class,
-        MockHoleInjectingTokenFilter.class,
-        MockLowerCaseFilter.class,
-        MockRandomLookaheadTokenFilter.class,
-        MockSynonymFilter.class,
-        MockTokenFilter.class,
-        MockVariableLengthPayloadFilter.class,
-        ValidatingTokenFilter.class,
-        CrankyTokenFilter.class,
-        SimplePayloadFilter.class);
-  }
 
   // these are 'crazy' components like cachingtokenfilter. does it make sense to add factories for
   // these?
@@ -111,6 +77,7 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
         // this is supported via an option to PathHierarchyTokenizer's factory
         ReversePathHierarchyTokenizer.class,
         SnowballFilter.class, // this is called SnowballPorterFilterFactory
+        StempelFilter.class, // this is called StempelPolishStemFilterFactory
         PatternKeywordMarkerFilter.class,
         SetKeywordMarkerFilter.class,
         UnicodeWhitespaceTokenizer.class, // a supported option via WhitespaceTokenizerFactory
@@ -143,7 +110,6 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
           || c.isAnonymousClass()
           || c.isMemberClass()
           || c.isInterface()
-          || testComponents.contains(c)
           || crazyComponents.contains(c)
           || oddlyNamedComponents.contains(c)
           || tokenFiltersWithoutFactory.contains(c)
