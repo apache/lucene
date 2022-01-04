@@ -71,17 +71,27 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
   private final void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      SortedNumericDocValues dv = hits.context.reader().getSortedNumericDocValues(indexFieldName);
-      if (dv == null) {
+      SortedNumericDocValues multiValued =
+          hits.context.reader().getSortedNumericDocValues(indexFieldName);
+      if (multiValued == null) {
         continue;
       }
 
-      DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
 
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        for (int i = 0; i < dv.docValueCount(); i++) {
-          increment((int) dv.nextValue());
+      DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
+      DocIdSetIterator it =
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+
+      if (singleValued != null) {
+        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+          increment((int) singleValued.longValue());
+        }
+      } else {
+        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+          for (int i = 0; i < multiValued.docValueCount(); i++) {
+            increment((int) multiValued.nextValue());
+          }
         }
       }
     }
@@ -91,31 +101,36 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
   private final void countAll(IndexReader reader) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
-      SortedNumericDocValues dv = context.reader().getSortedNumericDocValues(indexFieldName);
-      if (dv == null) {
+      SortedNumericDocValues multiValued =
+          context.reader().getSortedNumericDocValues(indexFieldName);
+      if (multiValued == null) {
         continue;
       }
 
       Bits liveDocs = context.reader().getLiveDocs();
 
-      NumericDocValues ndv = DocValues.unwrapSingleton(dv);
-      if (ndv != null) {
-        for (int doc = ndv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ndv.nextDoc()) {
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
+      if (singleValued != null) {
+        for (int doc = singleValued.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = singleValued.nextDoc()) {
           if (liveDocs != null && liveDocs.get(doc) == false) {
             continue;
           }
-          increment((int) ndv.longValue());
+          increment((int) singleValued.longValue());
         }
         continue;
       }
 
-      for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
+      for (int doc = multiValued.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = multiValued.nextDoc()) {
         if (liveDocs != null && liveDocs.get(doc) == false) {
           continue;
         }
 
-        for (int i = 0; i < dv.docValueCount(); i++) {
-          increment((int) dv.nextValue());
+        for (int i = 0; i < multiValued.docValueCount(); i++) {
+          increment((int) multiValued.nextValue());
         }
       }
     }
