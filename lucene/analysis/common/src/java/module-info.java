@@ -89,6 +89,61 @@ module org.apache.lucene.analysis.common {
   exports org.tartarus.snowball.ext;
   exports org.tartarus.snowball;
 
+  opens org.apache.lucene.analysis.ar to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.bg to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.bn to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.br to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.ca to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.cjk to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.ckb to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.cz to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.el to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.et to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.eu to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.fa to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.ga to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.gl to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.hi to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.hy to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.id to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.lt to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.lv to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.ne to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.ro to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.snowball to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.sr to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.ta to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.te to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.th to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.tr to
+      org.apache.lucene.core;
+
   provides org.apache.lucene.analysis.CharFilterFactory with
       org.apache.lucene.analysis.charfilter.HTMLStripCharFilterFactory,
       org.apache.lucene.analysis.charfilter.MappingCharFilterFactory,

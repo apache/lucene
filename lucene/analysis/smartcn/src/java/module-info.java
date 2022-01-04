@@ -23,6 +23,9 @@ module org.apache.lucene.analysis.smartcn {
   exports org.apache.lucene.analysis.cn.smart;
   exports org.apache.lucene.analysis.cn.smart.hhmm;
 
+  opens org.apache.lucene.analysis.cn.smart to
+      org.apache.lucene.core;
+
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.cn.smart.HMMChineseTokenizerFactory;
 }
