@@ -61,11 +61,11 @@ import org.apache.lucene.analysis.cjk.CJKBigramFilter;
 import org.apache.lucene.analysis.commongrams.CommonGramsFilter;
 import org.apache.lucene.analysis.commongrams.CommonGramsQueryFilter;
 import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
-import org.apache.lucene.analysis.compound.TestCompoundWordTokenFilter;
+//import org.apache.lucene.analysis.compound.TestCompoundWordTokenFilter;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.hunspell.Dictionary;
-import org.apache.lucene.analysis.hunspell.TestHunspellStemFilter;
+//import org.apache.lucene.analysis.hunspell.TestHunspellStemFilter;
 import org.apache.lucene.analysis.minhash.MinHashFilter;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilter;
@@ -86,7 +86,7 @@ import org.apache.lucene.analysis.payloads.IdentityEncoder;
 import org.apache.lucene.analysis.payloads.PayloadEncoder;
 import org.apache.lucene.analysis.shingle.FixedShingleFilter;
 import org.apache.lucene.analysis.shingle.ShingleFilter;
-import org.apache.lucene.analysis.snowball.TestSnowball;
+//import org.apache.lucene.analysis.snowball.TestSnowball;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.analysis.wikipedia.WikipediaTokenizer;
@@ -433,6 +433,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               random ->
                   new IdentityEncoder()); // the other encoders will throw exceptions if tokens
           // arent numbers?
+          /* nocommit
           put(
               Dictionary.class,
               random -> {
@@ -483,6 +484,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   return null; // unreachable code
                 }
               });
+          */
           put(
               String.class,
               random -> {
