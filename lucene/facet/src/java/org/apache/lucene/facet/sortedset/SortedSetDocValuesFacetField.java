@@ -51,6 +51,9 @@ public class SortedSetDocValuesFacetField extends Field {
       FacetField.verifyLabel(label);
     }
     FacetField.verifyLabel(dim);
+    if (path.length == 0) {
+      throw new IllegalArgumentException("path must have at least one element");
+    }
     this.dim = dim;
     this.path = path;
   }

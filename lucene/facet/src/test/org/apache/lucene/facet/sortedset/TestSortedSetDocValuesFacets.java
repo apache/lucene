@@ -18,14 +18,19 @@ package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -47,6 +52,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestSortedSetDocValuesFacets extends FacetTestCase {
@@ -112,7 +118,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     config.setMultiValued("c", true);
     config.setHierarchical("c", true);
     try (Directory dir = newDirectory();
-         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
       Document doc = new Document();
       doc.add(new SortedSetDocValuesFacetField("a", "foo"));
       doc.add(new SortedSetDocValuesFacetField("a", "bar"));
@@ -140,24 +146,26 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-                new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
           Facets facets = getAllFacets(searcher, state, exec);
 
+          // since a is not set to be hierarchical, it's value count will be bugged as ancestral
+          // paths are not indexed
           assertEquals(
-                  "dim=a path=[] value=2 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
-                  facets.getTopChildren(10, "a").toString());
+              "dim=a path=[] value=4 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
+              facets.getTopChildren(10, "a").toString());
           assertEquals(
-                  "dim=b path=[] value=1 childCount=1\n  baz (1)\n",
-                  facets.getTopChildren(10, "b").toString());
+              "dim=b path=[] value=1 childCount=1\n  baz (1)\n",
+              facets.getTopChildren(10, "b").toString());
           assertEquals(
-                  "dim=c path=[buzz] value=2 childCount=3\n  bif (2)\n  bee (1)\n  biz (1)\n",
-                  facets.getTopChildren(10, "c", "buzz").toString());
+              "dim=c path=[buzz] value=2 childCount=3\n  bif (2)\n  bee (1)\n  biz (1)\n",
+              facets.getTopChildren(10, "c", "buzz").toString());
           assertEquals(
-                  "dim=c path=[buzz, bif] value=2 childCount=1\n  baf (2)\n",
-                  facets.getTopChildren(10, "c", "buzz", "bif").toString());
+              "dim=c path=[buzz, bif] value=2 childCount=1\n  baf (2)\n",
+              facets.getTopChildren(10, "c", "buzz", "bif").toString());
 
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
@@ -237,7 +245,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
   public void testHierarchicalCountAll() throws Exception {
     try (Directory dir = newDirectory();
-         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
       FacetsConfig config = new FacetsConfig();
       config.setHierarchical("b", true);
 
@@ -261,34 +269,34 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-                new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         Facets facets = new SortedSetDocValuesFacetCounts(state);
 
         assertEquals(
-                "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
-                facets.getTopChildren(10, "a").toString());
+            "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
+            facets.getTopChildren(10, "a").toString());
         assertEquals(
-                "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
-                facets.getTopChildren(10, "b", "buzz").toString());
+            "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
+            facets.getTopChildren(10, "b", "buzz").toString());
 
         ExecutorService exec =
-                new ThreadPoolExecutor(
-                        1,
-                        TestUtil.nextInt(random(), 2, 6),
-                        Long.MAX_VALUE,
-                        TimeUnit.MILLISECONDS,
-                        new LinkedBlockingQueue<Runnable>(),
-                        new NamedThreadFactory("TestIndexSearcher"));
+            new ThreadPoolExecutor(
+                1,
+                TestUtil.nextInt(random(), 2, 6),
+                Long.MAX_VALUE,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<Runnable>(),
+                new NamedThreadFactory("TestIndexSearcher"));
         try {
           facets = new ConcurrentSortedSetDocValuesFacetCounts(state, exec);
 
           assertEquals(
-                  "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
-                  facets.getTopChildren(10, "a").toString());
+              "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
+              facets.getTopChildren(10, "a").toString());
           assertEquals(
-                  "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
-                  facets.getTopChildren(10, "b", "buzz").toString());
+              "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
+              facets.getTopChildren(10, "b", "buzz").toString());
         } finally {
           exec.shutdownNow();
         }
@@ -352,7 +360,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("c", true);
     try (Directory dir = newDirectory();
-         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
       Document doc = new Document();
       doc.add(new SortedSetDocValuesFacetField("c", "buzz", "bar"));
       writer.addDocument(config.build(doc));
@@ -373,15 +381,15 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-                new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
           Facets facets = getAllFacets(searcher, state, exec);
 
           assertEquals(
-                  "dim=c path=[buzz] value=2 childCount=2\n  bar (1)\n  baz (1)\n",
-                  facets.getTopChildren(10, "c", "buzz").toString());
+              "dim=c path=[buzz] value=2 childCount=2\n  bar (1)\n  baz (1)\n",
+              facets.getTopChildren(10, "c", "buzz").toString());
 
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("c", "buzz");
@@ -486,7 +494,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     FacetsConfig config = new FacetsConfig();
     config.setDrillDownTermsIndexing("c", FacetsConfig.DrillDownTermsIndexing.NONE);
     config.setDrillDownTermsIndexing(
-            "d", FacetsConfig.DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH);
+        "d", FacetsConfig.DrillDownTermsIndexing.DIMENSION_AND_FULL_PATH);
     config.setDrillDownTermsIndexing("e", FacetsConfig.DrillDownTermsIndexing.ALL_PATHS_NO_DIM);
     config.setDrillDownTermsIndexing("f", FacetsConfig.DrillDownTermsIndexing.FULL_PATH_ONLY);
     config.setDrillDownTermsIndexing("g", FacetsConfig.DrillDownTermsIndexing.ALL);
@@ -496,7 +504,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     config.setHierarchical("f", true);
     config.setHierarchical("g", true);
     try (Directory dir = newDirectory();
-         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
 
       Document doc = new Document();
       doc.add(new SortedSetDocValuesFacetField("c", "biz", "baz"));
@@ -663,7 +671,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
   // LUCENE-5333
   public void testSparseFacets() throws Exception {
     try (Directory dir = newDirectory();
-         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
 
       FacetsConfig config = new FacetsConfig();
 
@@ -696,7 +704,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-                new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader());
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader());
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -707,13 +715,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           assertEquals(3, results.size());
           assertEquals(
-                  "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n  foo2 (1)\n  foo3 (1)\n",
-                  results.get(0).toString());
+              "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n  foo2 (1)\n  foo3 (1)\n",
+              results.get(0).toString());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n  bar2 (1)\n",
-                  results.get(1).toString());
+              "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n  bar2 (1)\n",
+              results.get(1).toString());
           assertEquals(
-                  "dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", results.get(2).toString());
+              "dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", results.get(2).toString());
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -734,7 +742,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
   public void testHierarchicalSparseFacets() throws Exception {
     try (Directory dir = newDirectory();
-         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
 
       FacetsConfig config = new FacetsConfig();
       config.setHierarchical("d", true);
@@ -766,7 +774,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-                new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -777,9 +785,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           assertEquals(2, results.size());
           assertEquals(
-                  "dim=d path=[] value=2 childCount=1\n  foo (2)\n", results.get(0).toString());
+              "dim=d path=[] value=2 childCount=1\n  foo (2)\n", results.get(0).toString());
           assertEquals(
-                  "dim=e path=[] value=1 childCount=1\n  biz (1)\n", results.get(1).toString());
+              "dim=e path=[] value=1 childCount=1\n  biz (1)\n", results.get(1).toString());
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -843,7 +851,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
   public void testHierarchicalSomeSegmentsMissing() throws Exception {
     try (Directory dir = newDirectory();
-         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
 
       FacetsConfig config = new FacetsConfig();
       config.setHierarchical("b", true);
@@ -870,7 +878,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-                new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -878,14 +886,14 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           // Ask for top 10 labels for any dims that have counts:
           assertEquals(
-                  "dim=a path=[] value=2 childCount=2\n  foo1 (1)\n  foo2 (1)\n",
-                  facets.getTopChildren(10, "a").toString());
+              "dim=a path=[] value=2 childCount=2\n  foo1 (1)\n  foo2 (1)\n",
+              facets.getTopChildren(10, "a").toString());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=1\n  foo (2)\n",
-                  facets.getTopChildren(10, "b").toString());
+              "dim=b path=[] value=2 childCount=1\n  foo (2)\n",
+              facets.getTopChildren(10, "b").toString());
           assertEquals(
-                  "dim=b path=[foo] value=2 childCount=2\n  bar (1)\n  buzz (1)\n",
-                  facets.getTopChildren(10, "b", "foo").toString());
+              "dim=b path=[foo] value=2 childCount=2\n  bar (1)\n  buzz (1)\n",
+              facets.getTopChildren(10, "b", "foo").toString());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -1007,6 +1015,274 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     }
   }
 
+  public void testRandomHierarchicalFlatMix() throws Exception {
+    int fullIterations = LuceneTestCase.TEST_NIGHTLY ? 20 : 3;
+    for (int fullIter = 0; fullIter < fullIterations; fullIter++) {
+      String[] tokens = getRandomTokens(10);
+
+      try (Directory indexDir = newDirectory();
+          RandomIndexWriter w = new RandomIndexWriter(random(), indexDir)) {
+        FacetsConfig config = new FacetsConfig();
+        int numDocs = atLeast(1000);
+        // Most of the time allow up to 7 dims per doc, but occasionally limit all docs to a single
+        // dim:
+        int numDims;
+        if (random().nextInt(10) < 8) {
+          numDims = TestUtil.nextInt(random(), 1, 7);
+        } else {
+          numDims = 1;
+        }
+        boolean[] hierarchicalDims = new boolean[numDims];
+        for (int i = 0; i < numDims; i++) {
+          boolean isHierarchicalDim = random().nextBoolean();
+          config.setHierarchical("dim" + i, isHierarchicalDim);
+          hierarchicalDims[i] = isHierarchicalDim;
+        }
+        List<TestDoc> testDocs = getRandomDocs(tokens, numDocs, numDims);
+        List<Set<SortedSetDocValuesFacetField>> testDocFacets = new ArrayList<>();
+        for (TestDoc testDoc : testDocs) {
+          Document doc = new Document();
+          Set<SortedSetDocValuesFacetField> docFacets = new HashSet<>();
+          doc.add(newStringField("content", testDoc.content, Field.Store.NO));
+          for (int i = 0; i < numDims; i++) {
+            if (hierarchicalDims[i]) {
+              int pathLength;
+              if (numDims == 1) {
+                pathLength = 1;
+              } else {
+                pathLength = random().nextInt(numDims - 1) + 1;
+              }
+              List<String> path = new ArrayList<>();
+              for (int j = 0; j < pathLength; j++) {
+                if (testDoc.dims[j] != null) {
+                  path.add(testDoc.dims[j]);
+                }
+              }
+              doc.add(new SortedSetDocValuesFacetField("dim" + i, path.toArray(String[]::new)));
+              for (int j = 0; j < path.size(); j++) {
+                docFacets.add(
+                    new SortedSetDocValuesFacetField(
+                        "dim" + i, path.subList(0, j + 1).toArray(String[]::new)));
+              }
+            } else if (testDoc.dims[i] != null) {
+              doc.add(new SortedSetDocValuesFacetField("dim" + i, testDoc.dims[i]));
+              docFacets.add(new SortedSetDocValuesFacetField("dim" + i, testDoc.dims[i]));
+            }
+          }
+          testDocFacets.add(docFacets);
+          w.addDocument(config.build(doc));
+        }
+
+        // NRT open
+        try (IndexReader r = w.getReader()) {
+          IndexSearcher searcher = newSearcher(r);
+
+          // Per-top-reader state:
+          SortedSetDocValuesReaderState state =
+              new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+          ExecutorService exec = randomExecutorServiceOrNull();
+          try {
+            int iters = atLeast(100);
+            for (int iter = 0; iter < iters; iter++) {
+              String searchToken = tokens[random().nextInt(tokens.length)];
+              if (VERBOSE) {
+                System.out.println("\nTEST: iter content=" + searchToken);
+              }
+              FacetsCollector fc = new FacetsCollector();
+              FacetsCollector.search(
+                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+              Facets facets;
+              if (exec != null) {
+                facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);
+              } else {
+                facets = new SortedSetDocValuesFacetCounts(state, fc);
+              }
+              // Slow, yet hopefully bug-free, faceting:
+              Map<String, FacetResult> expectedResults = new HashMap<>();
+
+              for (int i = 0; i < testDocs.size(); i++) {
+                TestDoc doc = testDocs.get(i);
+                if (doc.content.equals(searchToken)) {
+                  // goes through all facets paths in the doc
+                  for (SortedSetDocValuesFacetField facetField : testDocFacets.get(i)) {
+                    String[] path = facetField.path;
+                    String parentDimPathString;
+                    if (path.length == 1) {
+                      parentDimPathString = facetField.dim;
+                    } else {
+                      parentDimPathString =
+                          facetField.dim
+                              + FacetsConfig.DELIM_CHAR
+                              + FacetsConfig.pathToString(path, path.length - 1);
+                    }
+                    FacetResult result = expectedResults.get(parentDimPathString);
+                    if (result == null) {
+                      String[] resultPath = new String[path.length - 1];
+                      System.arraycopy(path, 0, resultPath, 0, resultPath.length);
+                      result =
+                          new FacetResult(facetField.dim, resultPath, 0, new LabelAndValue[0], 0);
+                    }
+                    String child = path[path.length - 1];
+                    LabelAndValue[] labelAndValues = result.labelValues;
+                    boolean containsChild = false;
+                    for (int k = 0; k < labelAndValues.length; k++) {
+                      if (labelAndValues[k].label.equals(child)) {
+                        containsChild = true;
+                        labelAndValues[k] =
+                            new LabelAndValue(
+                                labelAndValues[k].label, labelAndValues[k].value.intValue() + 1);
+                        break;
+                      }
+                    }
+                    LabelAndValue[] newLabelAndValues;
+                    int childCount = result.childCount;
+                    if (containsChild == false) {
+                      newLabelAndValues = new LabelAndValue[labelAndValues.length + 1];
+                      System.arraycopy(
+                          labelAndValues, 0, newLabelAndValues, 0, labelAndValues.length);
+                      newLabelAndValues[newLabelAndValues.length - 1] = new LabelAndValue(child, 1);
+                      childCount++;
+                    } else {
+                      newLabelAndValues = labelAndValues;
+                    }
+                    newLabelAndValues =
+                        Arrays.stream(newLabelAndValues)
+                            .sorted(
+                                (o1, o2) -> {
+                                  if (o1.value.equals(o2.value)) {
+                                    return new BytesRef(o1.label).compareTo(new BytesRef(o2.label));
+                                  } else {
+                                    return o2.value.intValue() - o1.value.intValue();
+                                  }
+                                })
+                            .collect(Collectors.toList())
+                            .toArray(LabelAndValue[]::new);
+                    FacetResult newResult =
+                        new FacetResult(result.dim, result.path, 0, newLabelAndValues, childCount);
+                    expectedResults.put(parentDimPathString, newResult);
+                  }
+                }
+              }
+
+              // second pass to update values
+              for (int i = 0; i < testDocs.size(); i++) {
+                TestDoc doc = testDocs.get(i);
+                if (doc.content.equals(searchToken)) {
+                  Set<String> dimsCounted = new HashSet<>();
+                  for (SortedSetDocValuesFacetField facetField : testDocFacets.get(i)) {
+                    String dimPathString =
+                        FacetsConfig.pathToString(facetField.dim, facetField.path);
+                    FacetResult result = expectedResults.get(dimPathString);
+                    FacetResult dimResult = expectedResults.get(facetField.dim);
+                    if (result != null) {
+                      expectedResults.put(
+                          dimPathString,
+                          new FacetResult(
+                              result.dim,
+                              result.path,
+                              result.value.intValue() + 1,
+                              result.labelValues,
+                              result.childCount));
+                    }
+                    if (dimResult != null && dimsCounted.add(facetField.dim)) {
+                      expectedResults.put(
+                          facetField.dim,
+                          new FacetResult(
+                              dimResult.dim,
+                              dimResult.path,
+                              dimResult.value.intValue() + 1,
+                              dimResult.labelValues,
+                              dimResult.childCount));
+                    }
+                  }
+                }
+              }
+
+              List<FacetResult> expected = new ArrayList<>(expectedResults.values());
+
+              List<FacetResult> expectedAllDims = new ArrayList<>();
+              for (FacetResult result : expected) {
+                if (result.path.length == 0) {
+                  expectedAllDims.add(result);
+                  if (expectedAllDims.size() >= 10) {
+                    break;
+                  }
+                }
+              }
+              sortFacetResults(expectedAllDims);
+
+              List<FacetResult> actualAllDims = facets.getAllDims(10);
+
+              assertEquals(expectedAllDims, actualAllDims);
+
+              // Dfs through top children
+              for (FacetResult dimResult : actualAllDims) {
+                if (config.getDimConfig(dimResult.dim).hierarchical) {
+                  Stack<String[]> stack = new Stack<>();
+                  for (LabelAndValue labelAndValue : dimResult.labelValues) {
+                    String[] path = new String[1];
+                    path[0] = labelAndValue.label;
+                    stack.add(path);
+                  }
+                  while (stack.empty() == false) {
+                    String[] currPath = stack.pop();
+                    FacetResult expectedResult =
+                        getFacetResultForPath(expected, dimResult.dim, currPath);
+                    FacetResult actualResult = facets.getTopChildren(10, dimResult.dim, currPath);
+                    try {
+                      assertEquals(expectedResult, actualResult);
+                    } catch (AssertionError e) {
+                      System.out.println(iter);
+                      System.out.println(config.getDimConfig(dimResult.dim).hierarchical);
+                      throw e;
+                    }
+                    if (actualResult != null) {
+                      for (LabelAndValue labelAndValue : actualResult.labelValues) {
+                        String[] path = new String[currPath.length + 1];
+                        System.arraycopy(currPath, 0, path, 0, currPath.length);
+                        path[path.length - 1] = labelAndValue.label;
+                        stack.add(path);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } finally {
+            if (exec != null) exec.shutdownNow();
+          }
+        }
+      }
+    }
+  }
+
+  private static FacetResult getFacetResultForPath(
+      List<FacetResult> allPaths, String dim, String[] path) {
+    for (FacetResult result : allPaths) {
+      if (path.length == 0) {
+        if (result.path.length == 0 && result.dim.equals(dim)) {
+          return result;
+        }
+      } else {
+        boolean isEqualPath = true;
+        if (path.length != result.path.length) {
+          isEqualPath = false;
+        } else {
+          for (int i = 0; i < path.length; i++) {
+            if (path[i].equals(result.path[i]) == false) {
+              isEqualPath = false;
+              break;
+            }
+          }
+        }
+        if (isEqualPath && result.dim.equals(dim)) {
+          return result;
+        }
+      }
+    }
+    return null;
+  }
+
   public void testNonExistentDimension() throws Exception {
     try (Directory dir = newDirectory();
         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
@@ -1039,7 +1315,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
   public void testHierarchicalNonExistentDimension() throws Exception {
     try (Directory dir = newDirectory();
-         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
       FacetsConfig config = new FacetsConfig();
       config.setHierarchical("fizz", true);
 
@@ -1053,7 +1329,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         IndexSearcher searcher = newSearcher(r);
 
         SortedSetDocValuesReaderState state =
-                new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -1063,8 +1339,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           // make sure the result is null (and no exception was thrown)
           assertNull(result);
 
-          result = facets.getTopChildren(5, "non-existent dimention", "with a path");
-          assertNull(result);
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                facets.getTopChildren(5, "non-existent dimension", "with a path");
+              });
         } finally {
           if (exec != null) exec.shutdownNow();
         }

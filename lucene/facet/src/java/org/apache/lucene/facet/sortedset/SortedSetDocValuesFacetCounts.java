@@ -22,9 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.PrimitiveIterator;
-
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.Facets;
@@ -33,7 +31,7 @@ import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
-import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.DimAndOrd;
+import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.DimTree;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.OrdRange;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
@@ -72,7 +70,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   final SortedSetDocValues dv;
   final String field;
   final int[] counts;
-  private final boolean isHierarchical;
 
   /** Returns all facet counts, same result as searching on {@link MatchAllDocsQuery} but faster. */
   public SortedSetDocValuesFacetCounts(SortedSetDocValuesReaderState state) throws IOException {
@@ -86,7 +83,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     this.field = state.getField();
     dv = state.getDocValues();
     counts = new int[state.getSize()];
-    this.isHierarchical = state.isHierarchical();
     if (hits == null) {
       // browse only
       countAll();
@@ -101,18 +97,21 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
     }
 
-    if (isHierarchical) {
+    if (state.isHierarchicalDim(dim)) {
       int pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
       if (pathOrd == -1) {
         // path was never indexed
         return null;
       }
-
-      PrimitiveIterator.OfInt childOrds = state.childOrds(pathOrd);
-      return getDim(dim, path, pathOrd, childOrds, topN);
+      DimTree dimTree = state.getDimTree(dim);
+      if (dimTree == null) {
+        return null;
+      }
+      return getDim(dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
     } else {
       if (path.length > 0) {
-        throw new IllegalArgumentException("Field is not configured as hierarchical, path should be 0 length");
+        throw new IllegalArgumentException(
+            "Field is not configured as hierarchical, path should be 0 length");
       }
       OrdRange ordRange = state.getOrdRange(dim);
       if (ordRange == null) {
@@ -123,7 +122,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   }
 
   private FacetResult getDim(
-          String dim, String[] path, int pathOrd, PrimitiveIterator.OfInt childOrds, int topN)
+      String dim, String[] path, int pathOrd, PrimitiveIterator.OfInt childOrds, int topN)
       throws IOException {
 
     TopOrdAndIntQueue q = null;
@@ -344,17 +343,16 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   public List<FacetResult> getAllDims(int topN) throws IOException {
 
     List<FacetResult> results = new ArrayList<>();
-    if (isHierarchical) {
-      for (DimAndOrd dim : state.getDims()) {
-        PrimitiveIterator.OfInt childOrds = state.childOrds(dim.ord);
-        FacetResult fr = getDim(dim.dim, new String[0], dim.ord, childOrds, topN);
+    for (String dim : state.getDims()) {
+      if (state.isHierarchicalDim(dim)) {
+        DimTree dimTree = state.getDimTree(dim);
+        FacetResult fr = getDim(dim, new String[0], dimTree.dimStartOrd, dimTree.iterator(), topN);
         if (fr != null) {
           results.add(fr);
         }
-      }
-    } else {
-      for (Map.Entry<String, SortedSetDocValuesReaderState.OrdRange> ent : state.getPrefixToOrdRange().entrySet()) {
-        FacetResult fr = getDim(ent.getKey(), null, -1, ent.getValue().iterator(), topN);
+      } else {
+        OrdRange ordRange = state.getOrdRange(dim);
+        FacetResult fr = getDim(dim, new String[0], -1, ordRange.iterator(), topN);
         if (fr != null) {
           results.add(fr);
         }

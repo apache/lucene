@@ -25,8 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -138,11 +136,6 @@ public class FacetsConfig {
   /** Default per-dimension configuration. */
   public static final DimConfig DEFAULT_DIM_CONFIG = new DimConfig();
 
-  /** Counts number of hierarchical dims, if not 0, will change how
-   *  SSDV fields are processed and counted to support hierarchical SSDV facets
-   */
-  private final AtomicInteger hierarchicalDimCounter = new AtomicInteger(0);
-
   /** Default constructor. */
   public FacetsConfig() {}
 
@@ -180,15 +173,6 @@ public class FacetsConfig {
     if (dimConfig == null) {
       dimConfig = new DimConfig();
       fieldTypes.put(dimName, dimConfig);
-      if (v) {
-        hierarchicalDimCounter.incrementAndGet();
-      }
-    } else {
-      if (dimConfig.hierarchical && v == false) {
-        hierarchicalDimCounter.decrementAndGet();
-      } else if (dimConfig.hierarchical == false && v) {
-        hierarchicalDimCounter.incrementAndGet();
-      }
     }
     dimConfig.hierarchical = v;
   }
@@ -244,10 +228,6 @@ public class FacetsConfig {
   /** Returns map of field name to {@link DimConfig}. */
   public Map<String, DimConfig> getDimConfigs() {
     return fieldTypes;
-  }
-
-  public boolean hasHierarchicalDim() {
-    return hierarchicalDimCounter.get() > 0;
   }
 
   private static void checkSeen(Set<String> seenDims, String dim) {
@@ -498,7 +478,7 @@ public class FacetsConfig {
 
       for (SortedSetDocValuesFacetField facetField : ent.getValue()) {
         FacetLabel facetLabel = new FacetLabel(facetField.dim, facetField.path);
-        if (hasHierarchicalDim()) {
+        if (getDimConfig(facetField.dim).hierarchical) {
           for (int i = 0; i < facetLabel.length; i++) {
             String fullPath = pathToString(facetLabel.components, i + 1);
             // For facet counts:
@@ -509,7 +489,8 @@ public class FacetsConfig {
           }
         } else {
           if (facetLabel.length != 2) {
-            throw new IllegalArgumentException("Dim " + facetField.dim + " not hierarchical but got facet label: " + facetLabel);
+            throw new IllegalArgumentException(
+                "Dim " + facetField.dim + " not hierarchical but got facet label: " + facetLabel);
           }
           String fullPath = pathToString(facetLabel.components, facetLabel.length);
 
@@ -573,7 +554,7 @@ public class FacetsConfig {
   private static final char ESCAPE_CHAR = '\u001E';
 
   /** Turns a dim + path into an encoded string. */
-  public static String pathToString(String dim, String[] path) {
+  public static String pathToString(String dim, String... path) {
     String[] fullPath = new String[1 + path.length];
     fullPath[0] = dim;
     System.arraycopy(path, 0, fullPath, 1, path.length);

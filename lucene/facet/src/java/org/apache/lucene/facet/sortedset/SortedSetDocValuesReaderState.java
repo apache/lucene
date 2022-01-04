@@ -17,13 +17,13 @@
 package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.PrimitiveIterator;
-
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Wraps a {@link IndexReader} and resolves ords using existing {@link SortedSetDocValues} APIs
@@ -39,21 +39,7 @@ import org.apache.lucene.util.Accountable;
  */
 public abstract class SortedSetDocValuesReaderState implements Accountable {
 
-  /** Holder class for a dimension along with it's corresponding ordinal */
-  public static final class DimAndOrd {
-    String dim;
-    int ord;
-
-    /** sole constructor */
-    public DimAndOrd(String dim, int ord) {
-      this.dim = dim;
-      this.ord = ord;
-    }
-  }
-
-  /**
-   * Holds start/end range of ords, which maps to one dimension. Only used for flat hierarchies.
-   */
+  /** Holds start/end range of ords, which maps to one dimension. Only used for flat hierarchies. */
   public static final class OrdRange {
     /** Start of range, inclusive: */
     public final int start;
@@ -66,6 +52,7 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
       this.end = end;
     }
 
+    /** Iterates from start to end ord (inclusive) * */
     public PrimitiveIterator.OfInt iterator() {
       return new PrimitiveIterator.OfInt() {
         int current = start;
@@ -81,6 +68,80 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
         @Override
         public boolean hasNext() {
           return current <= end;
+        }
+      };
+    }
+  }
+
+  /**
+   * Holds children and sibling information for a single dimension. Only used with hierarchical
+   * dimensions.
+   */
+  public static final class DimTree {
+    private final FixedBitSet hasChildren;
+    // TODO: This array can take up a lot of space. Change type based on input size maybe?
+    private final int[] siblings;
+
+    /** The first ord of the dimension * */
+    public final int dimStartOrd;
+
+    /** Sibling and children must be of same length * */
+    public DimTree(int dimStartOrd, List<Integer> sibling, List<Boolean> hasChildren) {
+      assert sibling.size() == hasChildren.size();
+      this.hasChildren = new FixedBitSet(hasChildren.size());
+      this.siblings = new int[sibling.size()];
+      for (int i = 0; i < sibling.size(); i++) {
+        if (hasChildren.get(i)) {
+          assert i < sibling.size() - 1;
+          this.hasChildren.set(i);
+        }
+        assert this.siblings[i] < sibling.size();
+        this.siblings[i] = sibling.get(i);
+      }
+      this.dimStartOrd = dimStartOrd;
+    }
+
+    /** Iterates through all first level children of dimension * */
+    public PrimitiveIterator.OfInt iterator() {
+      return iterator(dimStartOrd);
+    }
+
+    /** Iterates through all children of given pathOrd * */
+    public PrimitiveIterator.OfInt iterator(int pathOrd) {
+      return new PrimitiveIterator.OfInt() {
+
+        boolean atStart = true;
+        int currentOrd = pathOrd - dimStartOrd;
+
+        @Override
+        public int nextInt() {
+          if (atStart) {
+            if (currentOrd < 0 || currentOrd >= hasChildren.length()) {
+              return INVALID_ORDINAL;
+            }
+            atStart = false;
+            if (hasChildren.get(currentOrd)) {
+              currentOrd++;
+              return currentOrd + dimStartOrd;
+            } else {
+              return INVALID_ORDINAL;
+            }
+          } else {
+            currentOrd = siblings[currentOrd];
+            return currentOrd + dimStartOrd;
+          }
+        }
+
+        @Override
+        public boolean hasNext() {
+          if (atStart) {
+            if (currentOrd < 0 || currentOrd >= hasChildren.length()) {
+              return false;
+            }
+            return hasChildren.get(currentOrd);
+          } else {
+            return siblings[currentOrd] != INVALID_ORDINAL;
+          }
         }
       };
     }
@@ -104,8 +165,8 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
   /** Number of unique labels. */
   public abstract int getSize();
 
-  /** Checks if field is hierarchical or not */
-  public abstract boolean isHierarchical();
+  /** Returns if dim is configured as hierarchical ** */
+  public abstract boolean isHierarchicalDim(String dim);
 
   /*** Only used for flat facets (dim/value) ***/
 
@@ -117,9 +178,8 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
 
   /*** Only used for hierarchical facets ***/
 
-  /** Gets all child ords for a given path ordinal */
-  public abstract PrimitiveIterator.OfInt childOrds(int pathOrd);
+  public abstract DimTree getDimTree(String dim);
 
   /** Returns a list of all dimensions and their respective ordinals */
-  public abstract Iterable<DimAndOrd> getDims();
+  public abstract Iterable<String> getDims();
 }
