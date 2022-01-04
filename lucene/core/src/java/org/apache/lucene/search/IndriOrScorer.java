@@ -42,7 +42,7 @@ public class IndriOrScorer extends IndriDisjunctionScorer {
   }
 
   private float scoreDoc(List<Scorer> subScorers, int docId) throws IOException {
-    float score = 1;
+    double score = 1;
     for (Scorer scorer : subScorers) {
       int scorerDocId = scorer.docID();
       // If the query exists in the document, score the document
@@ -56,6 +56,6 @@ public class IndriOrScorer extends IndriDisjunctionScorer {
       }
       score *= tempScore;
     }
-    return (float) (Math.log(1.0 - score));
+    return (float) Math.log(1.0 - score);
   }
 }

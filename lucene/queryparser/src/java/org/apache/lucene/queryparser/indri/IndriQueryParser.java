@@ -108,7 +108,7 @@ public class IndriQueryParser {
     QueryParserOperatorQuery operatorQuery = new QueryParserOperatorQuery();
 
     int operatorDistance = 0;
-    String operatorNameLowerCase = (new String(operatorName)).toLowerCase(Locale.ROOT);
+    String operatorNameLowerCase = new String(operatorName).toLowerCase(Locale.ROOT);
     operatorNameLowerCase = operatorNameLowerCase.replace("#", "");
     operatorNameLowerCase = operatorNameLowerCase.replace("~", "");
 
@@ -120,7 +120,7 @@ public class IndriQueryParser {
     return operatorQuery;
   }
 
-  private class PopWeight {
+  private static class PopWeight {
     private Float weight;
     private String queryString;
 
@@ -144,7 +144,7 @@ public class IndriQueryParser {
   /**
    * Remove a weight from an argument string. Return the weight and the modified argument string.
    */
-  private PopWeight popWeight(String argString, Float weight) {
+  private PopWeight popWeight(String argString) {
 
     String[] substrings = argString.split("[ \t]+", 2);
 
@@ -260,10 +260,10 @@ public class IndriQueryParser {
       // this loop must handle "weight arg". Handle the weight first.
 
       Float weight = null;
-      if ((queryTree.getOperator().equals(WEIGHT))
-          || (queryTree.getOperator().equals(WAND))
+      if (queryTree.getOperator().equals(WEIGHT)
+          || queryTree.getOperator().equals(WAND)
           || queryTree.getOperator().equals(WSUM)) {
-        PopWeight popWeight = popWeight(queryString, weight);
+        PopWeight popWeight = popWeight(queryString);
         weight = popWeight.getWeight();
         queryString = popWeight.getQueryString();
       }

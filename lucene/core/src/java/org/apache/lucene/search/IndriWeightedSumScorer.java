@@ -42,7 +42,7 @@ public class IndriWeightedSumScorer extends IndriDisjunctionScorer {
   }
 
   private float scoreDoc(List<Scorer> subScorers, int docId) throws IOException {
-    float score = 0;
+    double score = 0;
     for (Scorer scorer : subScorers) {
       int scorerDocId = scorer.docID();
       double subScore = 0;
@@ -53,6 +53,6 @@ public class IndriWeightedSumScorer extends IndriDisjunctionScorer {
       }
       score += subScore;
     }
-    return (float) (Math.log(score));
+    return (float) Math.log(score);
   }
 }

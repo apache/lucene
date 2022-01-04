@@ -48,7 +48,7 @@ public class IndriAndScorer extends IndriDisjunctionScorer {
       // If the query exists in the document, score the document
       // Otherwise, compute a smoothing score, which acts like an idf
       // for subqueries/terms
-      double tempScore = 0;
+      float tempScore = 0;
       if (docId == scorerDocId) {
         tempScore = scorer.score();
       } else {
