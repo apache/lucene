@@ -70,44 +70,6 @@ public abstract class KnnVectorsWriter implements Closeable {
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
     }
-    List<VectorValuesSub> subs = new ArrayList<>();
-    int dimension = -1;
-    VectorSimilarityFunction similarityFunction = null;
-    int nonEmptySegmentIndex = 0;
-    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (knnVectorsReader != null) {
-        if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
-          int segmentDimension = mergeFieldInfo.getVectorDimension();
-          VectorSimilarityFunction segmentSimilarityFunction =
-              mergeFieldInfo.getVectorSimilarityFunction();
-          if (dimension == -1) {
-            dimension = segmentDimension;
-            similarityFunction = mergeFieldInfo.getVectorSimilarityFunction();
-          } else if (dimension != segmentDimension) {
-            throw new IllegalStateException(
-                "Varying dimensions for vector-valued field "
-                    + mergeFieldInfo.name
-                    + ": "
-                    + dimension
-                    + "!="
-                    + segmentDimension);
-          } else if (similarityFunction != segmentSimilarityFunction) {
-            throw new IllegalStateException(
-                "Varying similarity functions for vector-valued field "
-                    + mergeFieldInfo.name
-                    + ": "
-                    + similarityFunction
-                    + "!="
-                    + segmentSimilarityFunction);
-          }
-          VectorValues values = knnVectorsReader.getVectorValues(mergeFieldInfo.name);
-          if (values != null) {
-            subs.add(new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
-          }
-        }
-      }
-    }
     // Create a new VectorValues by iterating over the sub vectors, mapping the resulting
     // docids using docMaps in the mergeState.
     writeField(
@@ -130,6 +92,45 @@ public abstract class KnnVectorsWriter implements Closeable {
 
           @Override
           public VectorValues getVectorValues(String field) throws IOException {
+            List<VectorValuesSub> subs = new ArrayList<>();
+            int dimension = -1;
+            VectorSimilarityFunction similarityFunction = null;
+            int nonEmptySegmentIndex = 0;
+            for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+              KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
+              if (knnVectorsReader != null) {
+                if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
+                  int segmentDimension = mergeFieldInfo.getVectorDimension();
+                  VectorSimilarityFunction segmentSimilarityFunction =
+                      mergeFieldInfo.getVectorSimilarityFunction();
+                  if (dimension == -1) {
+                    dimension = segmentDimension;
+                    similarityFunction = mergeFieldInfo.getVectorSimilarityFunction();
+                  } else if (dimension != segmentDimension) {
+                    throw new IllegalStateException(
+                        "Varying dimensions for vector-valued field "
+                            + mergeFieldInfo.name
+                            + ": "
+                            + dimension
+                            + "!="
+                            + segmentDimension);
+                  } else if (similarityFunction != segmentSimilarityFunction) {
+                    throw new IllegalStateException(
+                        "Varying similarity functions for vector-valued field "
+                            + mergeFieldInfo.name
+                            + ": "
+                            + similarityFunction
+                            + "!="
+                            + segmentSimilarityFunction);
+                  }
+                  VectorValues values = knnVectorsReader.getVectorValues(mergeFieldInfo.name);
+                  if (values != null) {
+                    subs.add(
+                        new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
+                  }
+                }
+              }
+            }
             return new VectorValuesMerger(subs, mergeState);
           }
 
