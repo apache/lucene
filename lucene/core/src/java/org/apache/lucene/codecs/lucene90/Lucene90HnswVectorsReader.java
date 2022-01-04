@@ -239,6 +239,9 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     if (fieldEntry == null || fieldEntry.dimension == 0) {
       return null;
     }
+    if (fieldEntry.size() == 0) {
+      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    }
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
