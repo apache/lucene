@@ -63,6 +63,7 @@ import org.apache.lucene.analysis.icu.segmentation.DefaultICUTokenizerConfig;
 import org.apache.lucene.analysis.icu.segmentation.ICUTokenizerConfig;
 import org.apache.lucene.analysis.ja.JapaneseCompletionFilter;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer;
+import org.apache.lucene.analysis.ko.KoreanTokenizer;
 import org.apache.lucene.analysis.minhash.MinHashFilter;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilter;
@@ -186,6 +187,18 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               boolean.class,
               boolean.class,
               JapaneseTokenizer.Mode.class),
+          ALWAYS);
+      // TODO: Make this one protected or remove at all:
+      brokenConstructors.put(
+          KoreanTokenizer.class.getConstructor(
+              AttributeFactory.class,
+              org.apache.lucene.analysis.ko.dict.TokenInfoDictionary.class,
+              org.apache.lucene.analysis.ko.dict.UnknownDictionary.class,
+              org.apache.lucene.analysis.ko.dict.ConnectionCosts.class,
+              org.apache.lucene.analysis.ko.dict.UserDictionary.class,
+              KoreanTokenizer.DecompoundMode.class,
+              boolean.class,
+              boolean.class),
           ALWAYS);
       for (Class<?> c :
           Arrays.<Class<?>>asList(
@@ -637,15 +650,22 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               random -> new DefaultICUTokenizerConfig(random.nextBoolean(), random.nextBoolean()));
 
           // Kuromoji:
-          final var japComplFilterModes = JapaneseCompletionFilter.Mode.values();
+          final var jaComplFilterModes = JapaneseCompletionFilter.Mode.values();
           put(
               JapaneseCompletionFilter.Mode.class,
-              random -> japComplFilterModes[random.nextInt(japComplFilterModes.length)]);
-          final var japTokModes = JapaneseTokenizer.Mode.values();
+              random -> jaComplFilterModes[random.nextInt(jaComplFilterModes.length)]);
+          final var jaTokModes = JapaneseTokenizer.Mode.values();
           put(
               JapaneseTokenizer.Mode.class,
-              random -> japTokModes[random.nextInt(japTokModes.length)]);
+              random -> jaTokModes[random.nextInt(jaTokModes.length)]);
           put(org.apache.lucene.analysis.ja.dict.UserDictionary.class, random -> null);
+
+          // Nori:
+          final var koComplFilterModes = KoreanTokenizer.DecompoundMode.values();
+          put(
+              KoreanTokenizer.DecompoundMode.class,
+              random -> koComplFilterModes[random.nextInt(koComplFilterModes.length)]);
+          put(org.apache.lucene.analysis.ko.dict.UserDictionary.class, random -> null);
         }
       };
 
