@@ -23,7 +23,6 @@ import java.io.StringReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
-import java.nio.CharBuffer;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,7 +40,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.CharArrayMap;
@@ -110,7 +108,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
   static List<Constructor<? extends Tokenizer>> tokenizers;
   static List<Constructor<? extends TokenFilter>> tokenfilters;
   static List<Constructor<? extends CharFilter>> charfilters;
-  
+
   static List<Class<? extends SnowballStemmer>> snowballStemmers;
 
   private static final Predicate<Object[]> ALWAYS = (objects -> true);
@@ -218,7 +216,8 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
   @BeforeClass
   public static void beforeClass() throws Exception {
-    List<Class<?>> analysisClasses = ModuleClassDiscovery.getClassesForPackage("org.apache.lucene.analysis");
+    List<Class<?>> analysisClasses =
+        ModuleClassDiscovery.getClassesForPackage("org.apache.lucene.analysis");
     tokenizers = new ArrayList<>();
     tokenfilters = new ArrayList<>();
     charfilters = new ArrayList<>();
@@ -281,14 +280,16 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
       System.out.println("tokenfilters = " + tokenfilters);
       System.out.println("charfilters = " + charfilters);
     }
-    
+
     // TODO: Eclipse does not get that cast right, so make explicit:
-    final Function<Class<?>, Class<? extends SnowballStemmer>> stemmerCast = c -> c.asSubclass(SnowballStemmer.class);
-    snowballStemmers = ModuleClassDiscovery.getClassesForPackage("org.tartarus.snowball.ext").stream()
-        .filter(c -> c.getSimpleName().endsWith("Stemmer"))
-        .map(stemmerCast)
-        .sorted(Comparator.comparing(Class::getName))
-        .collect(Collectors.toList());
+    final Function<Class<?>, Class<? extends SnowballStemmer>> stemmerCast =
+        c -> c.asSubclass(SnowballStemmer.class);
+    snowballStemmers =
+        ModuleClassDiscovery.getClassesForPackage("org.tartarus.snowball.ext").stream()
+            .filter(c -> c.getSimpleName().endsWith("Stemmer"))
+            .map(stemmerCast)
+            .sorted(Comparator.comparing(Class::getName))
+            .collect(Collectors.toList());
     if (VERBOSE) {
       System.out.println("snowballStemmers = " + snowballStemmers);
     }
@@ -397,10 +398,8 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               Dictionary.class,
               random -> {
                 // TODO: make nastier
-                InputStream affixStream =
-                    TestRandomChains.class.getResourceAsStream("simple.aff");
-                InputStream dictStream =
-                    TestRandomChains.class.getResourceAsStream("simple.dic");
+                InputStream affixStream = TestRandomChains.class.getResourceAsStream("simple.aff");
+                InputStream dictStream = TestRandomChains.class.getResourceAsStream("simple.dic");
                 try {
                   return new Dictionary(
                       new ByteBuffersDirectory(), "dictionary", affixStream, dictStream);
@@ -416,9 +415,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                 try {
                   InputSource is =
                       new InputSource(
-                          TestRandomChains.class
-                              .getResource("da_UTF8.xml")
-                              .toExternalForm());
+                          TestRandomChains.class.getResource("da_UTF8.xml").toExternalForm());
                   HyphenationTree hyphenator =
                       HyphenationCompoundWordTokenFilter.getHyphenationTree(is);
                   return hyphenator;
@@ -432,8 +429,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               random -> {
                 try {
                   Class<? extends SnowballStemmer> clazz =
-                      snowballStemmers.get(
-                          random.nextInt(snowballStemmers.size()));
+                      snowballStemmers.get(random.nextInt(snowballStemmers.size()));
                   return clazz.getConstructor().newInstance();
                 } catch (Exception ex) {
                   Rethrow.rethrow(ex);
@@ -863,69 +859,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
       spec.toString = descr.toString();
       return spec;
-    }
-  }
-
-  static class CheckThatYouDidntReadAnythingReaderWrapper extends CharFilter {
-    boolean readSomething;
-
-    CheckThatYouDidntReadAnythingReaderWrapper(Reader in) {
-      super(in);
-    }
-
-    @Override
-    public int correct(int currentOff) {
-      return currentOff; // we don't change any offsets
-    }
-
-    @Override
-    public int read(char[] cbuf, int off, int len) throws IOException {
-      readSomething = true;
-      return input.read(cbuf, off, len);
-    }
-
-    @Override
-    public int read() throws IOException {
-      readSomething = true;
-      return input.read();
-    }
-
-    @Override
-    public int read(CharBuffer target) throws IOException {
-      readSomething = true;
-      return input.read(target);
-    }
-
-    @Override
-    public int read(char[] cbuf) throws IOException {
-      readSomething = true;
-      return input.read(cbuf);
-    }
-
-    @Override
-    public long skip(long n) throws IOException {
-      readSomething = true;
-      return input.skip(n);
-    }
-
-    @Override
-    public void mark(int readAheadLimit) throws IOException {
-      input.mark(readAheadLimit);
-    }
-
-    @Override
-    public boolean markSupported() {
-      return input.markSupported();
-    }
-
-    @Override
-    public boolean ready() throws IOException {
-      return input.ready();
-    }
-
-    @Override
-    public void reset() throws IOException {
-      input.reset();
     }
   }
 

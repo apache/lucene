@@ -41,10 +41,8 @@ import org.apache.lucene.tests.analysis.MockCharFilter;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
-import org.junit.Ignore;
 
 @SuppressCodecs("Direct")
-@Ignore
 public class TestBugInSomething extends BaseTokenStreamTestCase {
   public void test() throws Exception {
     final CharArraySet cas = new CharArraySet(3, false);
@@ -71,7 +69,7 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
           protected Reader initReader(String fieldName, Reader reader) {
             reader = new MockCharFilter(reader, 0);
             reader = new MappingCharFilter(map, reader);
-            //nocommit: reader = new TestRandomChains.CheckThatYouDidntReadAnythingReaderWrapper(reader);
+            reader = new CheckThatYouDidntReadAnythingReaderWrapper(reader);
             return reader;
           }
         };
@@ -139,7 +137,7 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
       };
 
   public void testWrapping() throws Exception {
-    CharFilter cs = null; // nocommit: new TestRandomChains.CheckThatYouDidntReadAnythingReaderWrapper(wrappedStream);
+    CharFilter cs = new CheckThatYouDidntReadAnythingReaderWrapper(wrappedStream);
     Exception expected =
         expectThrows(
             Exception.class,
@@ -222,6 +220,69 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
   }
 
   // todo: test framework?
+
+  static class CheckThatYouDidntReadAnythingReaderWrapper extends CharFilter {
+    boolean readSomething;
+
+    CheckThatYouDidntReadAnythingReaderWrapper(Reader in) {
+      super(in);
+    }
+
+    @Override
+    public int correct(int currentOff) {
+      return currentOff; // we don't change any offsets
+    }
+
+    @Override
+    public int read(char[] cbuf, int off, int len) throws IOException {
+      readSomething = true;
+      return input.read(cbuf, off, len);
+    }
+
+    @Override
+    public int read() throws IOException {
+      readSomething = true;
+      return input.read();
+    }
+
+    @Override
+    public int read(CharBuffer target) throws IOException {
+      readSomething = true;
+      return input.read(target);
+    }
+
+    @Override
+    public int read(char[] cbuf) throws IOException {
+      readSomething = true;
+      return input.read(cbuf);
+    }
+
+    @Override
+    public long skip(long n) throws IOException {
+      readSomething = true;
+      return input.skip(n);
+    }
+
+    @Override
+    public void mark(int readAheadLimit) throws IOException {
+      input.mark(readAheadLimit);
+    }
+
+    @Override
+    public boolean markSupported() {
+      return input.markSupported();
+    }
+
+    @Override
+    public boolean ready() throws IOException {
+      return input.ready();
+    }
+
+    @Override
+    public void reset() throws IOException {
+      input.reset();
+    }
+  }
 
   static final class SopTokenFilter extends TokenFilter {
 
