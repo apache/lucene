@@ -569,29 +569,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  public void testNonVectorField() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
-      Document doc = new Document();
-      doc.add(new StringField("id", "0", Field.Store.NO));
-      w.addDocument(doc);
-      w.commit();
-
-      try (DirectoryReader r = DirectoryReader.open(w)) {
-        LeafReader leafReader = getOnlyLeafReader(r);
-        // knn search on non-vector field returns null
-        TopDocs results =
-            leafReader.searchNearestVectors("id", randomVector(3), 1, leafReader.getLiveDocs());
-        assertNull(results);
-        // knn search on non-existent field returns null
-        TopDocs results2 =
-            leafReader.searchNearestVectors(
-                "non-existent", randomVector(3), 1, leafReader.getLiveDocs());
-        assertNull(results2);
-      }
-    }
-  }
-
   public void testKnnVectorFieldMissingFromOneSegment() throws Exception {
     try (Directory dir = FSDirectory.open(createTempDir());
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
