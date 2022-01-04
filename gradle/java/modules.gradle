@@ -50,7 +50,7 @@ allprojects {
 
       // TODO: the tests of these projects currently don't compile or work in
       // module-path mode. Make the modular paths extension use class path only.
-      if (sourceSet.name == "test" && project.path in [
+      if (sourceSet.name == SourceSet.TEST_SOURCE_SET_NAME && project.path in [
         // Circular dependency between artifacts or source set outputs,
         // causing package split issues at runtime.
         ":lucene:core",
