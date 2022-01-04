@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.core;
+package org.apache.lucene.analysis.tests;
 
 import java.io.Reader;
 import java.io.StringReader;
@@ -34,13 +34,14 @@ import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.TokenizerFactory;
+import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.analysis.core.UnicodeWhitespaceTokenizer;
 import org.apache.lucene.analysis.miscellaneous.PatternKeywordMarkerFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.path.ReversePathHierarchyTokenizer;
 import org.apache.lucene.analysis.sinks.TeeSinkTokenFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.sr.SerbianNormalizationRegularFilter;
-import org.apache.lucene.analysis.util.StringMockResourceLoader;
 import org.apache.lucene.tests.analysis.CrankyTokenFilter;
 import org.apache.lucene.tests.analysis.MockCharFilter;
 import org.apache.lucene.tests.analysis.MockFixedLengthPayloadFilter;
@@ -55,6 +56,7 @@ import org.apache.lucene.tests.analysis.MockVariableLengthPayloadFilter;
 import org.apache.lucene.tests.analysis.SimplePayloadFilter;
 import org.apache.lucene.tests.analysis.ValidatingTokenFilter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.ResourceLoader;
 import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.Version;
