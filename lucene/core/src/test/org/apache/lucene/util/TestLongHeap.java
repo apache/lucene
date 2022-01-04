@@ -21,6 +21,8 @@ import static org.apache.lucene.util.LongHeap.Order.MIN;
 
 import java.util.ArrayList;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLongHeap extends LuceneTestCase {
 

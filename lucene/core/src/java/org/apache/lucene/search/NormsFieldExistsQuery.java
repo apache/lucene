@@ -80,6 +80,20 @@ public final class NormsFieldExistsQuery extends Query {
       }
 
       @Override
+      public int count(LeafReaderContext context) throws IOException {
+        final LeafReader reader = context.reader();
+        final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+        if (fieldInfo == null || fieldInfo.hasNorms() == false) {
+          return 0;
+        }
+        // If every field has a value then we can shortcut
+        if (reader.getDocCount(field) == reader.maxDoc()) {
+          return reader.numDocs();
+        }
+        return super.count(context);
+      }
+
+      @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
       }

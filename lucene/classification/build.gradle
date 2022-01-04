@@ -20,10 +20,10 @@ apply plugin: 'java-library'
 description = 'Classification module for Lucene'
 
 dependencies {
-  api project(':lucene:core')
+  moduleApi project(':lucene:core')
 
-  implementation project(':lucene:queries')
-  implementation project(':lucene:grouping')
+  moduleImplementation project(':lucene:queries')
+  moduleImplementation project(':lucene:grouping')
 
   testImplementation project(':lucene:test-framework')
   testImplementation project(':lucene:analysis:common')

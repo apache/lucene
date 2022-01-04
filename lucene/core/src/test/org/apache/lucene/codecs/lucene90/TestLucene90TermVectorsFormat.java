@@ -17,8 +17,8 @@
 package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseTermVectorsFormatTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.BaseTermVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene90TermVectorsFormat extends BaseTermVectorsFormatTestCase {
   @Override

@@ -22,10 +22,10 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestConjunctionDISI extends LuceneTestCase {
 

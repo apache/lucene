@@ -20,6 +20,7 @@ import java.util.Arrays;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
+import org.apache.lucene.tests.search.BaseExplanationTestCase;
 
 /**
  * TestExplanations subclass that builds up super crazy complex queries on the assumption that if

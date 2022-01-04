@@ -349,7 +349,7 @@ final class SimpleTextBKDWriter implements Closeable {
         new int[config.maxPointsInLeafNode]);
 
     long indexFP = out.getFilePointer();
-    writeIndex(out, leafBlockFPs, splitPackedValues);
+    writeIndex(out, leafBlockFPs, splitPackedValues, Math.toIntExact(countPerLeaf));
     return indexFP;
   }
 
@@ -478,7 +478,7 @@ final class SimpleTextBKDWriter implements Closeable {
       for (int i = 0; i < leafBlockFPs.size(); i++) {
         arr[i] = leafBlockFPs.get(i);
       }
-      writeIndex(out, arr, index);
+      writeIndex(out, arr, index, config.maxPointsInLeafNode);
       return indexFP;
     }
 
@@ -714,16 +714,15 @@ final class SimpleTextBKDWriter implements Closeable {
       }
     }
 
-    // System.out.println("Total nodes: " + innerNodeCount);
-
     // Write index:
     long indexFP = out.getFilePointer();
-    writeIndex(out, leafBlockFPs, splitPackedValues);
+    writeIndex(out, leafBlockFPs, splitPackedValues, Math.toIntExact(countPerLeaf));
     return indexFP;
   }
 
   /** Subclass can change how it writes the index. */
-  private void writeIndex(IndexOutput out, long[] leafBlockFPs, byte[] splitPackedValues)
+  private void writeIndex(
+      IndexOutput out, long[] leafBlockFPs, byte[] splitPackedValues, int maxPointsInLeafNode)
       throws IOException {
     write(out, NUM_DATA_DIMS);
     writeInt(out, config.numDims);
@@ -738,7 +737,7 @@ final class SimpleTextBKDWriter implements Closeable {
     newline(out);
 
     write(out, MAX_LEAF_POINTS);
-    writeInt(out, config.maxPointsInLeafNode);
+    writeInt(out, maxPointsInLeafNode);
     newline(out);
 
     write(out, INDEX_COUNT);

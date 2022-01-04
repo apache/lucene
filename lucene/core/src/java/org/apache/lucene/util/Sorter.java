@@ -21,6 +21,18 @@ import java.util.Comparator;
 /**
  * Base class for sorting algorithms implementations.
  *
+ * <p>There are a number of subclasses to choose from that vary in performance and <a
+ * href="https://en.wikipedia.org/wiki/Sorting_algorithm#Stability">stability</a>. We suggest that
+ * you pick the first from this ranked list that meets your requirements:
+ *
+ * <ol>
+ *   <li>{@link MSBRadixSorter} for strings (array of bytes/chars). Not a stable sort.
+ *   <li>{@link StableMSBRadixSorter} for strings (array of bytes/chars). Stable sort.
+ *   <li>{@link IntroSorter}. Not a stable sort.
+ *   <li>{@link InPlaceMergeSorter}. When the data to sort is typically small. Stable sort.
+ *   <li>{@link TimSorter}. Stable sort.
+ * </ol>
+ *
  * @lucene.internal
  */
 public abstract class Sorter {
@@ -193,7 +205,8 @@ public abstract class Sorter {
   /**
    * A binary sort implementation. This performs {@code O(n*log(n))} comparisons and {@code O(n^2)}
    * swaps. It is typically used by more sophisticated implementations as a fall-back when the
-   * number of items to sort has become less than {@value #BINARY_SORT_THRESHOLD}.
+   * number of items to sort has become less than {@value #BINARY_SORT_THRESHOLD}. This algorithm is
+   * stable.
    */
   void binarySort(int from, int to) {
     binarySort(from, to, from + 1);
@@ -222,7 +235,7 @@ public abstract class Sorter {
   /**
    * Sorts between from (inclusive) and to (exclusive) with insertion sort. Runs in {@code O(n^2)}.
    * It is typically used by more sophisticated implementations as a fall-back when the number of
-   * items to sort becomes less than {@value #INSERTION_SORT_THRESHOLD}.
+   * items to sort becomes less than {@value #INSERTION_SORT_THRESHOLD}. This algorithm is stable.
    */
   void insertionSort(int from, int to) {
     for (int i = from + 1; i < to; ) {
@@ -240,7 +253,8 @@ public abstract class Sorter {
 
   /**
    * Use heap sort to sort items between {@code from} inclusive and {@code to} exclusive. This runs
-   * in {@code O(n*log(n))} and is used as a fall-back by {@link IntroSorter}.
+   * in {@code O(n*log(n))} and is used as a fall-back by {@link IntroSorter}. This algorithm is NOT
+   * stable.
    */
   void heapSort(int from, int to) {
     if (to - from <= 1) {

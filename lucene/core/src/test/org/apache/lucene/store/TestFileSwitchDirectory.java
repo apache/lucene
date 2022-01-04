@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexNotFoundException;
@@ -34,10 +33,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.TestIndexWriterReader;
-import org.apache.lucene.mockfile.FilterPath;
-import org.apache.lucene.mockfile.WindowsFS;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.mockfile.FilterPath;
+import org.apache.lucene.tests.mockfile.WindowsFS;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.TestUtil;
 
 public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
 

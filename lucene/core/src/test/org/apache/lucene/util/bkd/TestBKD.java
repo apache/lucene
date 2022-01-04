@@ -29,20 +29,20 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.mockfile.ExtrasFS;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.CorruptingIndexOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.mockfile.ExtrasFS;
+import org.apache.lucene.tests.store.CorruptingIndexOutput;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestBKD extends LuceneTestCase {
 
@@ -890,30 +890,60 @@ public class TestBKD extends LuceneTestCase {
   private void assertSize(PointValues.PointTree tree) throws IOException {
     final PointValues.PointTree clone = tree.clone();
     assertEquals(clone.size(), tree.size());
-    final long[] size = new long[] {0};
-    clone.visitDocIDs(
+    // rarely continue with the clone tree
+    tree = rarely() ? clone : tree;
+    final long[] visitDocIDSize = new long[] {0};
+    final long[] visitDocValuesSize = new long[] {0};
+    final IntersectVisitor visitor =
         new IntersectVisitor() {
           @Override
           public void visit(int docID) {
-            size[0]++;
+            visitDocIDSize[0]++;
           }
 
           @Override
           public void visit(int docID, byte[] packedValue) {
-            throw new UnsupportedOperationException();
+            visitDocValuesSize[0]++;
           }
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-            throw new UnsupportedOperationException();
+            return Relation.CELL_CROSSES_QUERY;
           }
-        });
-    assertEquals(size[0], tree.size());
+        };
+    if (random().nextBoolean()) {
+      tree.visitDocIDs(visitor);
+      tree.visitDocValues(visitor);
+    } else {
+      tree.visitDocValues(visitor);
+      tree.visitDocIDs(visitor);
+    }
+    assertEquals(visitDocIDSize[0], visitDocValuesSize[0]);
+    assertEquals(visitDocIDSize[0], tree.size());
     if (tree.moveToChild()) {
       do {
+        randomPointTreeNavigation(tree);
         assertSize(tree);
       } while (tree.moveToSibling());
+      tree.moveToParent();
     }
+  }
+
+  private void randomPointTreeNavigation(PointValues.PointTree tree) throws IOException {
+    byte[] minPackedValue = tree.getMinPackedValue().clone();
+    byte[] maxPackedValue = tree.getMaxPackedValue().clone();
+    long size = tree.size();
+    if (random().nextBoolean() && tree.moveToChild()) {
+      randomPointTreeNavigation(tree);
+      if (random().nextBoolean() && tree.moveToSibling()) {
+        randomPointTreeNavigation(tree);
+      }
+      tree.moveToParent();
+    }
+    // we always finish on the same node we started
+    assertArrayEquals(minPackedValue, tree.getMinPackedValue());
+    assertArrayEquals(maxPackedValue, tree.getMaxPackedValue());
+    assertEquals(size, tree.size());
   }
 
   private void assertHits(BitSet hits, BitSet expected) {

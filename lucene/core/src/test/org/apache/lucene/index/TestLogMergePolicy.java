@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
+import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
 
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
