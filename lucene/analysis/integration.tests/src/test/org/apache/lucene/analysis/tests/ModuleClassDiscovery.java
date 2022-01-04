@@ -23,8 +23,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.Predicate;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Assert;
 
@@ -34,6 +36,14 @@ abstract class ModuleClassDiscovery {
   private static final Module THIS_MODULE = ModuleClassDiscovery.class.getModule();
   private static final ModuleLayer LAYER = THIS_MODULE.getLayer();
   private static final SortedMap<String, ResolvedModule> ALL_ANALYSIS_MODULES;
+
+  private static final Predicate<String> ALLOW_MODULES =
+      Set.of("org.apache.lucene.core", "org.apache.lucene.analysis.common")::contains;
+
+  // nocommit!
+  private static final Predicate<String> ALLOW_MODULES_FINAL =
+      name ->
+          name.equals("org.apache.lucene.core") || name.startsWith("org.apache.lucene.analysis.");
 
   static {
     Assert.assertTrue(
@@ -54,11 +64,7 @@ abstract class ModuleClassDiscovery {
       ModuleLayer layer, Map<String, ResolvedModule> result) {
     for (var mod : layer.configuration().modules()) {
       String name = mod.name();
-      if (Objects.equals(name, THIS_MODULE.getName())) {
-        continue;
-      }
-      if (name.equals("org.apache.lucene.core") || name.equals("org.apache.lucene.analysis.common")) {
-      //nocommit (enable all modules): if (name.equals("org.apache.lucene.core") || name.startsWith("org.apache.lucene.analysis.")) {
+      if (ALLOW_MODULES.test(name) && !Objects.equals(name, THIS_MODULE.getName())) {
         result.put(name, mod);
       }
     }
