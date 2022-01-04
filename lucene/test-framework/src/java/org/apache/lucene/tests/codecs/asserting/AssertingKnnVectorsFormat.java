@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
@@ -45,7 +46,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new AssertingKnnVectorsReader(delegate.fieldsReader(state));
+    return new AssertingKnnVectorsReader(delegate.fieldsReader(state), state.fieldInfos);
   }
 
   static class AssertingKnnVectorsWriter extends KnnVectorsWriter {
@@ -76,10 +77,12 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
   static class AssertingKnnVectorsReader extends KnnVectorsReader {
     final KnnVectorsReader delegate;
+    final FieldInfos fis;
 
-    AssertingKnnVectorsReader(KnnVectorsReader delegate) {
+    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
       assert delegate != null;
       this.delegate = delegate;
+      this.fis = fis;
     }
 
     @Override
@@ -89,17 +92,20 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public VectorValues getVectorValues(String field) throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null && fi.getVectorDimension() > 0;
       VectorValues values = delegate.getVectorValues(field);
-      if (values != null) {
-        assert values.docID() == -1;
-        assert values.size() >= 0;
-        assert values.dimension() > 0;
-      }
+      assert values != null;
+      assert values.docID() == -1;
+      assert values.size() >= 0;
+      assert values.dimension() > 0;
       return values;
     }
 
     @Override
     public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null && fi.getVectorDimension() > 0;
       TopDocs hits = delegate.search(field, target, k, acceptDocs);
       assert hits != null;
       assert hits.scoreDocs.length <= k;

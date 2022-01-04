@@ -226,19 +226,12 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.dimension == 0) {
-      return null;
-    }
-
     return getOffHeapVectorValues(fieldEntry);
   }
 
   @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.dimension == 0) {
-      return null;
-    }
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
