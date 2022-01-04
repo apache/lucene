@@ -20,10 +20,11 @@ import java.io.IOException;
 import java.lang.module.ResolvedModule;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Assert;
 
@@ -32,7 +33,7 @@ abstract class ModuleClassDiscovery {
 
   private static final Module THIS_MODULE = ModuleClassDiscovery.class.getModule();
   private static final ModuleLayer LAYER = THIS_MODULE.getLayer();
-  private static final Map<String, ResolvedModule> ALL_ANALYSIS_MODULES;
+  private static final SortedMap<String, ResolvedModule> ALL_ANALYSIS_MODULES;
 
   static {
     Assert.assertTrue(
@@ -40,9 +41,9 @@ abstract class ModuleClassDiscovery {
         THIS_MODULE.isNamed());
     Assert.assertNotNull("Module layer is missing", LAYER);
 
-    var mods = new LinkedHashMap<String, ResolvedModule>();
+    var mods = new TreeMap<String, ResolvedModule>();
     discoverAnalysisModules(LAYER, mods);
-    ALL_ANALYSIS_MODULES = Collections.unmodifiableMap(mods);
+    ALL_ANALYSIS_MODULES = Collections.unmodifiableSortedMap(mods);
     if (LuceneTestCase.VERBOSE) {
       System.err.println(
           "Discovered the following analysis modules: " + ALL_ANALYSIS_MODULES.keySet());
@@ -53,8 +54,10 @@ abstract class ModuleClassDiscovery {
       ModuleLayer layer, Map<String, ResolvedModule> result) {
     for (var mod : layer.configuration().modules()) {
       String name = mod.name();
-      if (name.startsWith("org.apache.lucene.analysis.")
-          && !Objects.equals(name, THIS_MODULE.getName())) {
+      if (Objects.equals(name, THIS_MODULE.getName())) {
+        continue;
+      }
+      if (name.equals("org.apache.lucene.core") || name.startsWith("org.apache.lucene.analysis.")) {
         result.put(name, mod);
       }
     }
@@ -64,42 +67,27 @@ abstract class ModuleClassDiscovery {
   }
 
   /** Finds all classes in package across all analysis modules */
-  public static List<Class<?>> getClassesForPackage(String pckgname) throws IOException {
-    final List<Class<?>> classes = new ArrayList<>();
-    for (var mod : ALL_ANALYSIS_MODULES.values()) {
-      collectClassesForPackage(mod, pckgname, classes);
-    }
-    Assert.assertFalse("No classes found in package:" + pckgname, classes.isEmpty());
-    return classes;
-  }
-
-  /** Finds all classes in package for the given module name */
-  public static List<Class<?>> getClassesForPackage(String modname, String pckgname)
-      throws IOException {
-    final List<Class<?>> classes = new ArrayList<>();
-    collectClassesForPackage(
-        Objects.requireNonNull(ALL_ANALYSIS_MODULES.get(modname), "Module not found: " + modname),
-        pckgname,
-        classes);
-    Assert.assertFalse("No classes found in package:" + pckgname, classes.isEmpty());
-    return classes;
-  }
-
-  private static void collectClassesForPackage(
-      ResolvedModule resolvedModule, String pkgname, List<Class<?>> classes) throws IOException {
+  public static List<Class<?>> getClassesForPackage(String pkgname) throws IOException {
     final var prefix = pkgname.concat(".");
-    final var module = LAYER.findModule(resolvedModule.name()).orElseThrow();
-    try (var reader = resolvedModule.reference().open()) {
-      reader
-          .list()
-          .filter(entry -> entry.endsWith(".class"))
-          .map(entry -> entry.substring(0, entry.length() - 6).replace('/', '.'))
-          .filter(clazzname -> clazzname.startsWith(prefix))
-          .map(
-              clazzname ->
-                  Objects.requireNonNull(
-                      Class.forName(module, clazzname), "Class '" + clazzname + "' not found"))
-          .forEach(classes::add);
+    final var classes = new ArrayList<Class<?>>();
+    for (var resolvedModule : ALL_ANALYSIS_MODULES.values()) {
+      final var module = LAYER.findModule(resolvedModule.name()).orElseThrow();
+      try (var reader = resolvedModule.reference().open()) {
+        reader
+            .list()
+            .filter(entry -> entry.endsWith(".class"))
+            .map(entry -> entry.substring(0, entry.length() - 6).replace('/', '.'))
+            .filter(clazzname -> clazzname.startsWith(prefix))
+            .sorted()
+            .map(
+                clazzname ->
+                    Objects.requireNonNull(
+                        Class.forName(module, clazzname),
+                        "Class '" + clazzname + "' not found in module '" + module.getName() + "'"))
+            .forEach(classes::add);
+      }
     }
+    Assert.assertFalse("No classes found in package:" + pkgname, classes.isEmpty());
+    return classes;
   }
 }
