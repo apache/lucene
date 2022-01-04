@@ -41,7 +41,8 @@ abstract class ModuleClassDiscovery {
       Set.of(
               "org.apache.lucene.core",
               "org.apache.lucene.analysis.common",
-              "org.apache.lucene.analysis.icu")
+              "org.apache.lucene.analysis.icu",
+              "org.apache.lucene.analysis.kuromoji")
           ::contains;
 
   // nocommit!

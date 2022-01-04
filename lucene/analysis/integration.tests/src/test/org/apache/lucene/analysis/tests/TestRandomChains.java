@@ -61,6 +61,8 @@ import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.hunspell.Dictionary;
 import org.apache.lucene.analysis.icu.segmentation.DefaultICUTokenizerConfig;
 import org.apache.lucene.analysis.icu.segmentation.ICUTokenizerConfig;
+import org.apache.lucene.analysis.ja.JapaneseCompletionFilter;
+import org.apache.lucene.analysis.ja.JapaneseTokenizer;
 import org.apache.lucene.analysis.minhash.MinHashFilter;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilter;
@@ -173,6 +175,18 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
             assert args.length == 3;
             return !((Boolean) args[2]); // args are broken if consumeAllTokens is false
           });
+      // TODO: Make this one protected or remove at all:
+      brokenConstructors.put(
+          JapaneseTokenizer.class.getConstructor(
+              AttributeFactory.class,
+              org.apache.lucene.analysis.ja.dict.TokenInfoDictionary.class,
+              org.apache.lucene.analysis.ja.dict.UnknownDictionary.class,
+              org.apache.lucene.analysis.ja.dict.ConnectionCosts.class,
+              org.apache.lucene.analysis.ja.dict.UserDictionary.class,
+              boolean.class,
+              boolean.class,
+              JapaneseTokenizer.Mode.class),
+          ALWAYS);
       for (Class<?> c :
           Arrays.<Class<?>>asList(
               // doesn't actual reset itself!  TODO this statement is probably obsolete as of
@@ -274,8 +288,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
       }
     }
 
-    final Comparator<Constructor<?>> ctorComp =
-        (arg0, arg1) -> arg0.toGenericString().compareTo(arg1.toGenericString());
+    final Comparator<Constructor<?>> ctorComp = Comparator.comparing(Constructor::toGenericString);
     Collections.sort(tokenizers, ctorComp);
     Collections.sort(tokenfilters, ctorComp);
     Collections.sort(charfilters, ctorComp);
@@ -304,6 +317,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     tokenizers = null;
     tokenfilters = null;
     charfilters = null;
+    snowballStemmers = null;
   }
 
   /**
@@ -593,6 +607,8 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                 }
                 return patternTypingRules;
               });
+
+          // ICU:
           put(
               Normalizer2.class,
               random -> {
@@ -619,6 +635,17 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
           put(
               ICUTokenizerConfig.class,
               random -> new DefaultICUTokenizerConfig(random.nextBoolean(), random.nextBoolean()));
+
+          // Kuromoji:
+          final var japComplFilterModes = JapaneseCompletionFilter.Mode.values();
+          put(
+              JapaneseCompletionFilter.Mode.class,
+              random -> japComplFilterModes[random.nextInt(japComplFilterModes.length)]);
+          final var japTokModes = JapaneseTokenizer.Mode.values();
+          put(
+              JapaneseTokenizer.Mode.class,
+              random -> japTokModes[random.nextInt(japTokModes.length)]);
+          put(org.apache.lucene.analysis.ja.dict.UserDictionary.class, random -> null);
         }
       };
 
