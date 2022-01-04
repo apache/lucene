@@ -634,7 +634,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               });
 
           // Stempel
-          put(StempelStemmer.class, random -> PolishAnalyzer.getDefaultTable());
+          put(StempelStemmer.class, random -> new StempelStemmer(PolishAnalyzer.getDefaultTable()));
         }
       };
 
