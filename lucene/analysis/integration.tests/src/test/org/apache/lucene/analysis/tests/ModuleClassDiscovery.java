@@ -45,7 +45,7 @@ abstract class ModuleClassDiscovery {
     discoverAnalysisModules(LAYER, mods);
     ALL_ANALYSIS_MODULES = Collections.unmodifiableSortedMap(mods);
     if (LuceneTestCase.VERBOSE) {
-      System.err.println(
+      System.out.println(
           "Discovered the following analysis modules: " + ALL_ANALYSIS_MODULES.keySet());
     }
   }
