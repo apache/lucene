@@ -38,7 +38,11 @@ abstract class ModuleClassDiscovery {
   private static final SortedMap<String, ResolvedModule> ALL_ANALYSIS_MODULES;
 
   private static final Predicate<String> ALLOW_MODULES =
-      Set.of("org.apache.lucene.core", "org.apache.lucene.analysis.common")::contains;
+      Set.of(
+              "org.apache.lucene.core",
+              "org.apache.lucene.analysis.common",
+              "org.apache.lucene.analysis.icu")
+          ::contains;
 
   // nocommit!
   private static final Predicate<String> ALLOW_MODULES_FINAL =

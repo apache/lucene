@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.tests;
 
+import com.ibm.icu.text.Normalizer2;
+import com.ibm.icu.text.Transliterator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
@@ -57,6 +59,8 @@ import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.hunspell.Dictionary;
+import org.apache.lucene.analysis.icu.segmentation.DefaultICUTokenizerConfig;
+import org.apache.lucene.analysis.icu.segmentation.ICUTokenizerConfig;
 import org.apache.lucene.analysis.minhash.MinHashFilter;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilter;
@@ -589,6 +593,32 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                 }
                 return patternTypingRules;
               });
+          put(
+              Normalizer2.class,
+              random -> {
+                switch (random.nextInt(5)) {
+                  case 0:
+                    return Normalizer2.getNFCInstance();
+                  case 1:
+                    return Normalizer2.getNFDInstance();
+                  case 2:
+                    return Normalizer2.getNFKCInstance();
+                  case 3:
+                    return Normalizer2.getNFKDInstance();
+                  default:
+                    return Normalizer2.getNFKCCasefoldInstance();
+                }
+              });
+          final var icuTransliterators = Collections.list(Transliterator.getAvailableIDs());
+          Collections.sort(icuTransliterators);
+          put(
+              Transliterator.class,
+              random ->
+                  Transliterator.getInstance(
+                      icuTransliterators.get(random.nextInt(icuTransliterators.size()))));
+          put(
+              ICUTokenizerConfig.class,
+              random -> new DefaultICUTokenizerConfig(random.nextBoolean(), random.nextBoolean()));
         }
       };
 
