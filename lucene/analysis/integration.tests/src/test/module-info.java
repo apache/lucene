@@ -15,7 +15,10 @@
  * limitations under the License.
  */
 
-/** Test module for global integration tests of all {@code org.apache.lucene.analysis} packages/modules. */
+/**
+ * Test module for global integration tests of all {@code org.apache.lucene.analysis}
+ * packages/modules.
+ */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.analysis.tests {
   requires java.xml;
