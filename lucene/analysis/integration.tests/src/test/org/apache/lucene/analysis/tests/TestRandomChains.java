@@ -42,6 +42,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.codec.Encoder;
 import org.apache.commons.codec.language.Caverphone2;
 import org.apache.commons.codec.language.ColognePhonetic;
@@ -604,7 +605,10 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
           // Phonetic:
           final var bmNameTypes = org.apache.commons.codec.language.bm.NameType.values();
-          final var bmRuleTypes = org.apache.commons.codec.language.bm.RuleType.values();
+          final var bmRuleTypes =
+              Stream.of(org.apache.commons.codec.language.bm.RuleType.values())
+                  .filter(e -> e != org.apache.commons.codec.language.bm.RuleType.RULES)
+                  .toArray(org.apache.commons.codec.language.bm.RuleType[]::new);
           put(
               PhoneticEngine.class,
               random ->
