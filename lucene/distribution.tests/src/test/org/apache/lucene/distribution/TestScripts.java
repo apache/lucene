@@ -86,12 +86,11 @@ public class TestScripts extends AbstractLuceneDistributionTest {
       candidates.add(scriptPath.resolveSibling(fileName + ".sh"));
     }
 
-    Optional<Path> script = candidates.stream().sequential().filter(Files::exists).findFirst();
-    if (script.isEmpty()) {
-      throw new AssertionError("No script found for the base path: " + scriptPath);
-    }
-
-    return script.get();
+    return candidates.stream()
+        .sequential()
+        .filter(Files::exists)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("No script found for the base path: " + scriptPath));
   }
 
   private static Supplier<Charset> forkedProcessCharset =
