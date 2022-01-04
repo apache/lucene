@@ -16,12 +16,12 @@
  */
 
 /** Lucene test framework. */
-@SuppressWarnings({"module", "requires-automatic"})
+@SuppressWarnings({"module", "requires-automatic", "requires-transitive-automatic"})
 module org.apache.lucene.test_framework {
   requires org.apache.lucene.core;
   requires org.apache.lucene.codecs;
-  requires junit;
-  requires randomizedtesting.runner;
+  requires transitive junit;
+  requires transitive randomizedtesting.runner;
 
   exports org.apache.lucene.tests.analysis.standard;
   exports org.apache.lucene.tests.analysis;
