@@ -53,6 +53,13 @@ API Changes
 * LUCENE-10183: KnnVectorsWriter#writeField to take KnnVectorsReader instead of VectorValues.
   (Zach Chen, Michael Sokolov, Julie Tibshirani, Adrien Grand)
 
+* LUCENE-10335: Deprecate helper methods for resource loading in IOUtils and StopwordAnalyzerBase
+  that are not compatible with module system (Class#getResourceAsStream() and Class#getResource()
+  are caller sensitive in Java 11). Instead add utility method IOUtils#requireResourceNonNull(T)
+  to test existence of resource based on null return value.  (Uwe Schindler, Dawid Weiss)
+
+* LUCENE-10349: WordListLoader methods now return unmodifiable CharArraySets.  (Uwe Schindler)
+
 New Features
 ---------------------
 
@@ -91,6 +98,9 @@ New Features
 * LUCENE-10243: StandardTokenizer, UAX29URLEmailTokenizer, and HTMLStripCharFilter have
   been upgraded to Unicode 12.1  (Robert Muir)
 
+* LUCENE-10335: Add ModuleResourceLoader as complement to ClasspathResourceLoader.
+  (Uwe Schindler)
+
 Improvements
 ---------------------
 
@@ -127,6 +137,12 @@ Optimizations
 
 * LUCENE-10321: Tweak MultiRangeQuery interval tree creation to skip "pulling up" mins. (Greg Miller)
 
+* LUCENE-10252: ValueSource.asDoubleValues and asLongValues should not compute the score unless
+  asked to -- typically never.  This fixes a performance regression since 7.3 LUCENE-8099 when some
+  older boosting queries were replaced with this. (David Smiley)
+
+* LUCENE-10346: Optimize facet counting for single-valued TaxonomyFacetCounts. (Guo Feng)
+
 Bug Fixes
 ---------------------
 
@@ -134,11 +150,11 @@ Bug Fixes
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
-* LUCENE-10287: Fix Luke startup script to add jdk.unsupported module so
-  MMapDirectory is used when opening indexes. (Uwe Schindler)
-
 * LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
   (Zach Chen, Jim Ferenczi, Julie Tibshirani)
+
+* LUCENE-10349: Fix all analyzers to behave according to their documentation:
+  getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
 
 Other
 ---------------------
