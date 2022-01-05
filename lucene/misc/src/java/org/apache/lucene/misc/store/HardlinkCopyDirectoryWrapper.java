@@ -29,7 +29,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.LegacySecurityManager;
-import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * This directory wrapper overrides {@link Directory#copyFrom(Directory, String, String, IOContext)}
@@ -50,7 +49,6 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
   }
 
   @Override
-  @SuppressForbidden(reason = "security manager")
   public void copyFrom(Directory from, String srcFile, String destFile, IOContext context)
       throws IOException {
     final Directory fromUnwrapped = FilterDirectory.unwrap(from);

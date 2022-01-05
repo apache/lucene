@@ -583,10 +583,9 @@ public final class RamUsageEstimator {
       final Class<?> target = clazz;
       final Field[] fields;
       try {
-        final Field[] f =
+        fields =
             LegacySecurityManager.doPrivileged(
                 (PrivilegedAction<Field[]>) target::getDeclaredFields);
-        fields = f;
       } catch (
           @SuppressWarnings("removal")
           AccessControlException e) {

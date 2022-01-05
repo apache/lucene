@@ -19,7 +19,11 @@ package org.apache.lucene.util;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-/** Encapsulates access to the security manager, which is deprecated as of Java 17. */
+/**
+ * Encapsulates access to the security manager, which is deprecated as of Java 17.
+ *
+ * @lucene.internal
+ */
 @SuppressWarnings("removal")
 @SuppressForbidden(reason = "security manager")
 public final class LegacySecurityManager {
