@@ -572,7 +572,6 @@ public final class RamUsageEstimator {
    * @see #shallowSizeOf(Object)
    * @throws IllegalArgumentException if {@code clazz} is an array class.
    */
-  @SuppressForbidden(reason = "security manager")
   public static long shallowSizeOfInstance(Class<?> clazz) {
     if (clazz.isArray())
       throw new IllegalArgumentException("This method does not work with array classes.");
@@ -585,10 +584,7 @@ public final class RamUsageEstimator {
       final Class<?> target = clazz;
       final Field[] fields;
       try {
-        @SuppressWarnings("removal")
-        Field[] f =
-            AccessController.doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
-        fields = f;
+        fields = doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
       } catch (
           @SuppressWarnings("removal")
           AccessControlException e) {
@@ -602,6 +598,13 @@ public final class RamUsageEstimator {
       }
     }
     return alignObjectSize(size);
+  }
+
+  // Extracted to a method to give the SuppressForbidden annotation the smallest possible scope
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 
   /** Return shallow size of any <code>array</code>. */
