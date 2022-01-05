@@ -23,12 +23,13 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.security.AccessController;
 import java.security.PrivilegedAction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.LegacySecurityManager;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * This directory wrapper overrides {@link Directory#copyFrom(Directory, String, String, IOContext)}
@@ -66,7 +67,7 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
         // only try hardlinks if we have permission to access the files
         // if not super.copyFrom() will give us the right exceptions
         suppressedException =
-            LegacySecurityManager.doPrivileged(
+            doPrivileged(
                 (PrivilegedAction<Exception>)
                     () -> {
                       try {
@@ -100,5 +101,12 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
         throw ex;
       }
     }
+  }
+
+  // Extracted to a method to give the SuppressForbidden annotation the smallest possible scope
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 }

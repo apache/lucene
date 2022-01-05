@@ -30,6 +30,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
@@ -37,7 +38,6 @@ import java.util.concurrent.Future;
 import java.util.logging.Logger;
 import org.apache.lucene.store.ByteBufferGuard.BufferCleaner;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.LegacySecurityManager;
 import org.apache.lucene.util.SuppressForbidden;
 
 /**
@@ -334,8 +334,7 @@ public class MMapDirectory extends FSDirectory {
   private static final BufferCleaner CLEANER;
 
   static {
-    final Object hack =
-        LegacySecurityManager.doPrivileged((PrivilegedAction<Object>) MMapDirectory::unmapHackImpl);
+    final Object hack = doPrivileged((PrivilegedAction<Object>) MMapDirectory::unmapHackImpl);
     if (hack instanceof BufferCleaner) {
       CLEANER = (BufferCleaner) hack;
       UNMAP_SUPPORTED = true;
@@ -346,6 +345,13 @@ public class MMapDirectory extends FSDirectory {
       UNMAP_NOT_SUPPORTED_REASON = hack.toString();
       Logger.getLogger(MMapDirectory.class.getName()).warning(UNMAP_NOT_SUPPORTED_REASON);
     }
+  }
+
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 
   @SuppressForbidden(reason = "Needs access to sun.misc.Unsafe to enable hack")
@@ -390,7 +396,7 @@ public class MMapDirectory extends FSDirectory {
         throw new IllegalArgumentException("unmapping only works with direct buffers");
       }
       final Throwable error =
-          LegacySecurityManager.doPrivileged(
+          doPrivileged(
               (PrivilegedAction<Throwable>)
                   () -> {
                     try {

@@ -21,6 +21,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.security.AccessControlException;
+import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -571,6 +572,7 @@ public final class RamUsageEstimator {
    * @see #shallowSizeOf(Object)
    * @throws IllegalArgumentException if {@code clazz} is an array class.
    */
+  @SuppressForbidden(reason = "security manager")
   public static long shallowSizeOfInstance(Class<?> clazz) {
     if (clazz.isArray())
       throw new IllegalArgumentException("This method does not work with array classes.");
@@ -583,9 +585,10 @@ public final class RamUsageEstimator {
       final Class<?> target = clazz;
       final Field[] fields;
       try {
-        fields =
-            LegacySecurityManager.doPrivileged(
-                (PrivilegedAction<Field[]>) target::getDeclaredFields);
+        @SuppressWarnings("removal")
+        Field[] f =
+            AccessController.doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
+        fields = f;
       } catch (
           @SuppressWarnings("removal")
           AccessControlException e) {
