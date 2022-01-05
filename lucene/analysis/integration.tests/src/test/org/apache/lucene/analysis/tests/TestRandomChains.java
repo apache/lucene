@@ -144,7 +144,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
   static {
     try {
-      // LimitTokenXxxFilter can only use special ctor when last arg is true
+      // LimitToken*Filter can only use special ctor when last arg is true
       for (final var c :
           List.of(
               LimitTokenCountFilter.class,
@@ -161,6 +161,384 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
       throw new Error(e);
     }
   }
+
+  private static final Map<Class<?>, Function<Random, Object>> argProducers =
+      Collections.unmodifiableMap(
+          new IdentityHashMap<Class<?>, Function<Random, Object>>() {
+            {
+              put(
+                  int.class,
+                  random -> {
+                    // TODO: could cause huge ram usage to use full int range for some filters
+                    // (e.g. allocate enormous arrays)
+                    // return Integer.valueOf(random.nextInt());
+                    return Integer.valueOf(TestUtil.nextInt(random, -50, 50));
+                  });
+              put(
+                  char.class,
+                  random -> {
+                    // TODO: fix any filters that care to throw IAE instead.
+                    // also add a unicode validating filter to validate termAtt?
+                    // return Character.valueOf((char)random.nextInt(65536));
+                    while (true) {
+                      char c = (char) random.nextInt(65536);
+                      if (c < '\uD800' || c > '\uDFFF') {
+                        return Character.valueOf(c);
+                      }
+                    }
+                  });
+              put(float.class, Random::nextFloat);
+              put(boolean.class, Random::nextBoolean);
+              put(byte.class, random -> (byte) random.nextInt(256));
+              put(
+                  byte[].class,
+                  random -> {
+                    byte[] bytes = new byte[random.nextInt(256)];
+                    random.nextBytes(bytes);
+                    return bytes;
+                  });
+              put(Random.class, random -> new Random(random.nextLong()));
+              put(Version.class, random -> Version.LATEST);
+              put(AttributeFactory.class, BaseTokenStreamTestCase::newAttributeFactory);
+              put(AttributeSource.class, random -> null); // force IAE/NPE
+              put(
+                  Set.class,
+                  random -> {
+                    // TypeTokenFilter
+                    Set<String> set = new HashSet<>();
+                    int num = random.nextInt(5);
+                    for (int i = 0; i < num; i++) {
+                      set.add(
+                          StandardTokenizer.TOKEN_TYPES[
+                              random.nextInt(StandardTokenizer.TOKEN_TYPES.length)]);
+                    }
+                    return set;
+                  });
+              put(
+                  Collection.class,
+                  random -> {
+                    // CapitalizationFilter
+                    Collection<char[]> col = new ArrayList<>();
+                    int num = random.nextInt(5);
+                    for (int i = 0; i < num; i++) {
+                      col.add(TestUtil.randomSimpleString(random).toCharArray());
+                    }
+                    return col;
+                  });
+              put(
+                  CharArraySet.class,
+                  random -> {
+                    int num = random.nextInt(10);
+                    CharArraySet set = new CharArraySet(num, random.nextBoolean());
+                    for (int i = 0; i < num; i++) {
+                      // TODO: make nastier
+                      set.add(TestUtil.randomSimpleString(random));
+                    }
+                    return set;
+                  });
+              // TODO: don't want to make the exponentially slow ones Dawid documents
+              // in TestPatternReplaceFilter, so dont use truly random patterns (for now)
+              put(Pattern.class, random -> Pattern.compile("a"));
+              put(
+                  Pattern[].class,
+                  random ->
+                      new Pattern[] {Pattern.compile("([a-z]+)"), Pattern.compile("([0-9]+)")});
+              put(
+                  PayloadEncoder.class,
+                  random ->
+                      new IdentityEncoder()); // the other encoders will throw exceptions if tokens
+              // arent numbers?
+              put(
+                  Dictionary.class,
+                  random -> {
+                    // TODO: make nastier
+                    InputStream affixStream =
+                        TestRandomChains.class.getResourceAsStream("simple.aff");
+                    InputStream dictStream =
+                        TestRandomChains.class.getResourceAsStream("simple.dic");
+                    try {
+                      return new Dictionary(
+                          new ByteBuffersDirectory(), "dictionary", affixStream, dictStream);
+                    } catch (Exception ex) {
+                      Rethrow.rethrow(ex);
+                      return null; // unreachable code
+                    }
+                  });
+              put(
+                  HyphenationTree.class,
+                  random -> {
+                    // TODO: make nastier
+                    try {
+                      InputSource is =
+                          new InputSource(
+                              TestRandomChains.class.getResource("da_UTF8.xml").toExternalForm());
+                      HyphenationTree hyphenator =
+                          HyphenationCompoundWordTokenFilter.getHyphenationTree(is);
+                      return hyphenator;
+                    } catch (Exception ex) {
+                      Rethrow.rethrow(ex);
+                      return null; // unreachable code
+                    }
+                  });
+              put(
+                  SnowballStemmer.class,
+                  random -> {
+                    try {
+                      var clazz = snowballStemmers.get(random.nextInt(snowballStemmers.size()));
+                      return clazz.getConstructor().newInstance();
+                    } catch (Exception ex) {
+                      Rethrow.rethrow(ex);
+                      return null; // unreachable code
+                    }
+                  });
+              put(
+                  String.class,
+                  random -> {
+                    // TODO: make nastier
+                    if (random.nextBoolean()) {
+                      // a token type
+                      return StandardTokenizer.TOKEN_TYPES[
+                          random.nextInt(StandardTokenizer.TOKEN_TYPES.length)];
+                    } else {
+                      return TestUtil.randomSimpleString(random);
+                    }
+                  });
+              put(
+                  NormalizeCharMap.class,
+                  random -> {
+                    NormalizeCharMap.Builder builder = new NormalizeCharMap.Builder();
+                    // we can't add duplicate keys, or NormalizeCharMap gets angry
+                    Set<String> keys = new HashSet<>();
+                    int num = random.nextInt(5);
+                    // System.out.println("NormalizeCharMap=");
+                    for (int i = 0; i < num; i++) {
+                      String key = TestUtil.randomSimpleString(random);
+                      if (!keys.contains(key) && key.length() > 0) {
+                        String value = TestUtil.randomSimpleString(random);
+                        builder.add(key, value);
+                        keys.add(key);
+                        // System.out.println("mapping: '" + key + "' => '" + value + "'");
+                      }
+                    }
+                    return builder.build();
+                  });
+              put(
+                  CharacterRunAutomaton.class,
+                  random -> {
+                    // TODO: could probably use a purely random automaton
+                    switch (random.nextInt(5)) {
+                      case 0:
+                        return MockTokenizer.KEYWORD;
+                      case 1:
+                        return MockTokenizer.SIMPLE;
+                      case 2:
+                        return MockTokenizer.WHITESPACE;
+                      case 3:
+                        return MockTokenFilter.EMPTY_STOPSET;
+                      default:
+                        return MockTokenFilter.ENGLISH_STOPSET;
+                    }
+                  });
+              put(
+                  CharArrayMap.class,
+                  random -> {
+                    int num = random.nextInt(10);
+                    CharArrayMap<String> map = new CharArrayMap<>(num, random.nextBoolean());
+                    for (int i = 0; i < num; i++) {
+                      // TODO: make nastier
+                      map.put(
+                          TestUtil.randomSimpleString(random), TestUtil.randomSimpleString(random));
+                    }
+                    return map;
+                  });
+              put(
+                  StemmerOverrideMap.class,
+                  random -> {
+                    int num = random.nextInt(10);
+                    StemmerOverrideFilter.Builder builder =
+                        new StemmerOverrideFilter.Builder(random.nextBoolean());
+                    for (int i = 0; i < num; i++) {
+                      String input = "";
+                      do {
+                        input = TestUtil.randomRealisticUnicodeString(random);
+                      } while (input.isEmpty());
+                      String out = "";
+                      TestUtil.randomSimpleString(random);
+                      do {
+                        out = TestUtil.randomRealisticUnicodeString(random);
+                      } while (out.isEmpty());
+                      builder.add(input, out);
+                    }
+                    try {
+                      return builder.build();
+                    } catch (Exception ex) {
+                      Rethrow.rethrow(ex);
+                      return null; // unreachable code
+                    }
+                  });
+              put(
+                  SynonymMap.class,
+                  new Function<Random, Object>() {
+                    @Override
+                    public Object apply(Random random) {
+                      SynonymMap.Builder b = new SynonymMap.Builder(random.nextBoolean());
+                      final int numEntries = atLeast(10);
+                      for (int j = 0; j < numEntries; j++) {
+                        addSyn(
+                            b,
+                            randomNonEmptyString(random),
+                            randomNonEmptyString(random),
+                            random.nextBoolean());
+                      }
+                      try {
+                        return b.build();
+                      } catch (Exception ex) {
+                        Rethrow.rethrow(ex);
+                        return null; // unreachable code
+                      }
+                    }
+
+                    private void addSyn(
+                        SynonymMap.Builder b, String input, String output, boolean keepOrig) {
+                      b.add(
+                          new CharsRef(input.replaceAll(" +", "\u0000")),
+                          new CharsRef(output.replaceAll(" +", "\u0000")),
+                          keepOrig);
+                    }
+
+                    private String randomNonEmptyString(Random random) {
+                      while (true) {
+                        final String s = TestUtil.randomUnicodeString(random).trim();
+                        if (s.length() != 0 && s.indexOf('\u0000') == -1) {
+                          return s;
+                        }
+                      }
+                    }
+                  });
+              put(
+                  DateFormat.class,
+                  random -> {
+                    if (random.nextBoolean()) return null;
+                    return DateFormat.getDateInstance(DateFormat.DEFAULT, randomLocale(random));
+                  });
+              put(
+                  Automaton.class,
+                  random -> {
+                    return Operations.determinize(
+                        new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE)
+                            .toAutomaton(),
+                        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+                  });
+              put(
+                  PatternTypingFilter.PatternTypingRule[].class,
+                  random -> {
+                    int numRules = TestUtil.nextInt(random, 1, 3);
+                    PatternTypingFilter.PatternTypingRule[] patternTypingRules =
+                        new PatternTypingFilter.PatternTypingRule[numRules];
+                    for (int i = 0; i < patternTypingRules.length; i++) {
+                      String s = TestUtil.randomSimpleString(random, 1, 2);
+                      // random regex with one group
+                      String regex = s + "(.*)";
+                      // pattern rule with a template that accepts one group.
+                      patternTypingRules[i] =
+                          new PatternTypingFilter.PatternTypingRule(
+                              Pattern.compile(regex), TestUtil.nextInt(random, 1, 8), s + "_$1");
+                    }
+                    return patternTypingRules;
+                  });
+
+              // ICU:
+              put(
+                  Normalizer2.class,
+                  random -> {
+                    switch (random.nextInt(5)) {
+                      case 0:
+                        return Normalizer2.getNFCInstance();
+                      case 1:
+                        return Normalizer2.getNFDInstance();
+                      case 2:
+                        return Normalizer2.getNFKCInstance();
+                      case 3:
+                        return Normalizer2.getNFKDInstance();
+                      default:
+                        return Normalizer2.getNFKCCasefoldInstance();
+                    }
+                  });
+              final var icuTransliterators = Collections.list(Transliterator.getAvailableIDs());
+              Collections.sort(icuTransliterators);
+              put(
+                  Transliterator.class,
+                  random ->
+                      Transliterator.getInstance(
+                          icuTransliterators.get(random.nextInt(icuTransliterators.size()))));
+              put(
+                  ICUTokenizerConfig.class,
+                  random ->
+                      new DefaultICUTokenizerConfig(random.nextBoolean(), random.nextBoolean()));
+
+              // Kuromoji:
+              final var jaComplFilterModes = JapaneseCompletionFilter.Mode.values();
+              put(
+                  JapaneseCompletionFilter.Mode.class,
+                  random -> jaComplFilterModes[random.nextInt(jaComplFilterModes.length)]);
+              final var jaTokModes = JapaneseTokenizer.Mode.values();
+              put(
+                  JapaneseTokenizer.Mode.class,
+                  random -> jaTokModes[random.nextInt(jaTokModes.length)]);
+              put(org.apache.lucene.analysis.ja.dict.UserDictionary.class, random -> null);
+
+              // Nori:
+              final var koComplFilterModes = KoreanTokenizer.DecompoundMode.values();
+              put(
+                  KoreanTokenizer.DecompoundMode.class,
+                  random -> koComplFilterModes[random.nextInt(koComplFilterModes.length)]);
+              put(org.apache.lucene.analysis.ko.dict.UserDictionary.class, random -> null);
+
+              // Phonetic:
+              final var bmNameTypes = org.apache.commons.codec.language.bm.NameType.values();
+              final var bmRuleTypes =
+                  Stream.of(org.apache.commons.codec.language.bm.RuleType.values())
+                      .filter(e -> e != org.apache.commons.codec.language.bm.RuleType.RULES)
+                      .toArray(org.apache.commons.codec.language.bm.RuleType[]::new);
+              put(
+                  PhoneticEngine.class,
+                  random ->
+                      new PhoneticEngine(
+                          bmNameTypes[random.nextInt(bmNameTypes.length)],
+                          bmRuleTypes[random.nextInt(bmRuleTypes.length)],
+                          random.nextBoolean()));
+              put(
+                  Encoder.class,
+                  random -> {
+                    switch (random.nextInt(7)) {
+                      case 0:
+                        return new DoubleMetaphone();
+                      case 1:
+                        return new Metaphone();
+                      case 2:
+                        return new Soundex();
+                      case 3:
+                        return new RefinedSoundex();
+                      case 4:
+                        return new Caverphone2();
+                      case 5:
+                        return new ColognePhonetic();
+                      default:
+                        return new Nysiis();
+                    }
+                  });
+
+              // Stempel
+              put(
+                  StempelStemmer.class,
+                  random -> new StempelStemmer(PolishAnalyzer.getDefaultTable()));
+            }
+          });
+
+  static final Set<Class<?>> allowedTokenizerArgs = argProducers.keySet(),
+      allowedTokenFilterArgs =
+          union(argProducers.keySet(), List.of(TokenStream.class, CommonGramsFilter.class)),
+      allowedCharFilterArgs = union(argProducers.keySet(), List.of(Reader.class));
 
   @BeforeClass
   public static void beforeClass() throws Exception {
@@ -254,6 +632,11 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     snowballStemmers = null;
   }
 
+  /** Creates a static/unmodifiable set from 2 collections as union. */
+  private static <T> Set<T> union(Collection<T> c1, Collection<T> c2) {
+    return Stream.concat(c1.stream(), c2.stream()).collect(Collectors.toUnmodifiableSet());
+  }
+
   /**
    * Hack to work around the stupidness of Oracle's strict Java backwards compatibility. {@code
    * Class<T>#getConstructors()} should return unmodifiable {@code List<Constructor<T>>} not array!
@@ -262,380 +645,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
   private static <T> Constructor<T> castConstructor(Class<T> instanceClazz, Constructor<?> ctor) {
     return (Constructor<T>) ctor;
   }
-
-  private static final Map<Class<?>, Function<Random, Object>> argProducers =
-      new IdentityHashMap<Class<?>, Function<Random, Object>>() {
-        {
-          put(
-              int.class,
-              random -> {
-                // TODO: could cause huge ram usage to use full int range for some filters
-                // (e.g. allocate enormous arrays)
-                // return Integer.valueOf(random.nextInt());
-                return Integer.valueOf(TestUtil.nextInt(random, -50, 50));
-              });
-          put(
-              char.class,
-              random -> {
-                // TODO: fix any filters that care to throw IAE instead.
-                // also add a unicode validating filter to validate termAtt?
-                // return Character.valueOf((char)random.nextInt(65536));
-                while (true) {
-                  char c = (char) random.nextInt(65536);
-                  if (c < '\uD800' || c > '\uDFFF') {
-                    return Character.valueOf(c);
-                  }
-                }
-              });
-          put(float.class, Random::nextFloat);
-          put(boolean.class, Random::nextBoolean);
-          put(byte.class, random -> (byte) random.nextInt(256));
-          put(
-              byte[].class,
-              random -> {
-                byte[] bytes = new byte[random.nextInt(256)];
-                random.nextBytes(bytes);
-                return bytes;
-              });
-          put(Random.class, random -> new Random(random.nextLong()));
-          put(Version.class, random -> Version.LATEST);
-          put(AttributeFactory.class, BaseTokenStreamTestCase::newAttributeFactory);
-          put(AttributeSource.class, random -> null); // force IAE/NPE
-          put(
-              Set.class,
-              random -> {
-                // TypeTokenFilter
-                Set<String> set = new HashSet<>();
-                int num = random.nextInt(5);
-                for (int i = 0; i < num; i++) {
-                  set.add(
-                      StandardTokenizer.TOKEN_TYPES[
-                          random.nextInt(StandardTokenizer.TOKEN_TYPES.length)]);
-                }
-                return set;
-              });
-          put(
-              Collection.class,
-              random -> {
-                // CapitalizationFilter
-                Collection<char[]> col = new ArrayList<>();
-                int num = random.nextInt(5);
-                for (int i = 0; i < num; i++) {
-                  col.add(TestUtil.randomSimpleString(random).toCharArray());
-                }
-                return col;
-              });
-          put(
-              CharArraySet.class,
-              random -> {
-                int num = random.nextInt(10);
-                CharArraySet set = new CharArraySet(num, random.nextBoolean());
-                for (int i = 0; i < num; i++) {
-                  // TODO: make nastier
-                  set.add(TestUtil.randomSimpleString(random));
-                }
-                return set;
-              });
-          // TODO: don't want to make the exponentially slow ones Dawid documents
-          // in TestPatternReplaceFilter, so dont use truly random patterns (for now)
-          put(Pattern.class, random -> Pattern.compile("a"));
-          put(
-              Pattern[].class,
-              random -> new Pattern[] {Pattern.compile("([a-z]+)"), Pattern.compile("([0-9]+)")});
-          put(
-              PayloadEncoder.class,
-              random ->
-                  new IdentityEncoder()); // the other encoders will throw exceptions if tokens
-          // arent numbers?
-          put(
-              Dictionary.class,
-              random -> {
-                // TODO: make nastier
-                InputStream affixStream = TestRandomChains.class.getResourceAsStream("simple.aff");
-                InputStream dictStream = TestRandomChains.class.getResourceAsStream("simple.dic");
-                try {
-                  return new Dictionary(
-                      new ByteBuffersDirectory(), "dictionary", affixStream, dictStream);
-                } catch (Exception ex) {
-                  Rethrow.rethrow(ex);
-                  return null; // unreachable code
-                }
-              });
-          put(
-              HyphenationTree.class,
-              random -> {
-                // TODO: make nastier
-                try {
-                  InputSource is =
-                      new InputSource(
-                          TestRandomChains.class.getResource("da_UTF8.xml").toExternalForm());
-                  HyphenationTree hyphenator =
-                      HyphenationCompoundWordTokenFilter.getHyphenationTree(is);
-                  return hyphenator;
-                } catch (Exception ex) {
-                  Rethrow.rethrow(ex);
-                  return null; // unreachable code
-                }
-              });
-          put(
-              SnowballStemmer.class,
-              random -> {
-                try {
-                  Class<? extends SnowballStemmer> clazz =
-                      snowballStemmers.get(random.nextInt(snowballStemmers.size()));
-                  return clazz.getConstructor().newInstance();
-                } catch (Exception ex) {
-                  Rethrow.rethrow(ex);
-                  return null; // unreachable code
-                }
-              });
-          put(
-              String.class,
-              random -> {
-                // TODO: make nastier
-                if (random.nextBoolean()) {
-                  // a token type
-                  return StandardTokenizer.TOKEN_TYPES[
-                      random.nextInt(StandardTokenizer.TOKEN_TYPES.length)];
-                } else {
-                  return TestUtil.randomSimpleString(random);
-                }
-              });
-          put(
-              NormalizeCharMap.class,
-              random -> {
-                NormalizeCharMap.Builder builder = new NormalizeCharMap.Builder();
-                // we can't add duplicate keys, or NormalizeCharMap gets angry
-                Set<String> keys = new HashSet<>();
-                int num = random.nextInt(5);
-                // System.out.println("NormalizeCharMap=");
-                for (int i = 0; i < num; i++) {
-                  String key = TestUtil.randomSimpleString(random);
-                  if (!keys.contains(key) && key.length() > 0) {
-                    String value = TestUtil.randomSimpleString(random);
-                    builder.add(key, value);
-                    keys.add(key);
-                    // System.out.println("mapping: '" + key + "' => '" + value + "'");
-                  }
-                }
-                return builder.build();
-              });
-          put(
-              CharacterRunAutomaton.class,
-              random -> {
-                // TODO: could probably use a purely random automaton
-                switch (random.nextInt(5)) {
-                  case 0:
-                    return MockTokenizer.KEYWORD;
-                  case 1:
-                    return MockTokenizer.SIMPLE;
-                  case 2:
-                    return MockTokenizer.WHITESPACE;
-                  case 3:
-                    return MockTokenFilter.EMPTY_STOPSET;
-                  default:
-                    return MockTokenFilter.ENGLISH_STOPSET;
-                }
-              });
-          put(
-              CharArrayMap.class,
-              random -> {
-                int num = random.nextInt(10);
-                CharArrayMap<String> map = new CharArrayMap<>(num, random.nextBoolean());
-                for (int i = 0; i < num; i++) {
-                  // TODO: make nastier
-                  map.put(TestUtil.randomSimpleString(random), TestUtil.randomSimpleString(random));
-                }
-                return map;
-              });
-          put(
-              StemmerOverrideMap.class,
-              random -> {
-                int num = random.nextInt(10);
-                StemmerOverrideFilter.Builder builder =
-                    new StemmerOverrideFilter.Builder(random.nextBoolean());
-                for (int i = 0; i < num; i++) {
-                  String input = "";
-                  do {
-                    input = TestUtil.randomRealisticUnicodeString(random);
-                  } while (input.isEmpty());
-                  String out = "";
-                  TestUtil.randomSimpleString(random);
-                  do {
-                    out = TestUtil.randomRealisticUnicodeString(random);
-                  } while (out.isEmpty());
-                  builder.add(input, out);
-                }
-                try {
-                  return builder.build();
-                } catch (Exception ex) {
-                  Rethrow.rethrow(ex);
-                  return null; // unreachable code
-                }
-              });
-          put(
-              SynonymMap.class,
-              new Function<Random, Object>() {
-                @Override
-                public Object apply(Random random) {
-                  SynonymMap.Builder b = new SynonymMap.Builder(random.nextBoolean());
-                  final int numEntries = atLeast(10);
-                  for (int j = 0; j < numEntries; j++) {
-                    addSyn(
-                        b,
-                        randomNonEmptyString(random),
-                        randomNonEmptyString(random),
-                        random.nextBoolean());
-                  }
-                  try {
-                    return b.build();
-                  } catch (Exception ex) {
-                    Rethrow.rethrow(ex);
-                    return null; // unreachable code
-                  }
-                }
-
-                private void addSyn(
-                    SynonymMap.Builder b, String input, String output, boolean keepOrig) {
-                  b.add(
-                      new CharsRef(input.replaceAll(" +", "\u0000")),
-                      new CharsRef(output.replaceAll(" +", "\u0000")),
-                      keepOrig);
-                }
-
-                private String randomNonEmptyString(Random random) {
-                  while (true) {
-                    final String s = TestUtil.randomUnicodeString(random).trim();
-                    if (s.length() != 0 && s.indexOf('\u0000') == -1) {
-                      return s;
-                    }
-                  }
-                }
-              });
-          put(
-              DateFormat.class,
-              random -> {
-                if (random.nextBoolean()) return null;
-                return DateFormat.getDateInstance(DateFormat.DEFAULT, randomLocale(random));
-              });
-          put(
-              Automaton.class,
-              random -> {
-                return Operations.determinize(
-                    new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE).toAutomaton(),
-                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-              });
-          put(
-              PatternTypingFilter.PatternTypingRule[].class,
-              random -> {
-                int numRules = TestUtil.nextInt(random, 1, 3);
-                PatternTypingFilter.PatternTypingRule[] patternTypingRules =
-                    new PatternTypingFilter.PatternTypingRule[numRules];
-                for (int i = 0; i < patternTypingRules.length; i++) {
-                  String s = TestUtil.randomSimpleString(random, 1, 2);
-                  // random regex with one group
-                  String regex = s + "(.*)";
-                  // pattern rule with a template that accepts one group.
-                  patternTypingRules[i] =
-                      new PatternTypingFilter.PatternTypingRule(
-                          Pattern.compile(regex), TestUtil.nextInt(random, 1, 8), s + "_$1");
-                }
-                return patternTypingRules;
-              });
-
-          // ICU:
-          put(
-              Normalizer2.class,
-              random -> {
-                switch (random.nextInt(5)) {
-                  case 0:
-                    return Normalizer2.getNFCInstance();
-                  case 1:
-                    return Normalizer2.getNFDInstance();
-                  case 2:
-                    return Normalizer2.getNFKCInstance();
-                  case 3:
-                    return Normalizer2.getNFKDInstance();
-                  default:
-                    return Normalizer2.getNFKCCasefoldInstance();
-                }
-              });
-          final var icuTransliterators = Collections.list(Transliterator.getAvailableIDs());
-          Collections.sort(icuTransliterators);
-          put(
-              Transliterator.class,
-              random ->
-                  Transliterator.getInstance(
-                      icuTransliterators.get(random.nextInt(icuTransliterators.size()))));
-          put(
-              ICUTokenizerConfig.class,
-              random -> new DefaultICUTokenizerConfig(random.nextBoolean(), random.nextBoolean()));
-
-          // Kuromoji:
-          final var jaComplFilterModes = JapaneseCompletionFilter.Mode.values();
-          put(
-              JapaneseCompletionFilter.Mode.class,
-              random -> jaComplFilterModes[random.nextInt(jaComplFilterModes.length)]);
-          final var jaTokModes = JapaneseTokenizer.Mode.values();
-          put(
-              JapaneseTokenizer.Mode.class,
-              random -> jaTokModes[random.nextInt(jaTokModes.length)]);
-          put(org.apache.lucene.analysis.ja.dict.UserDictionary.class, random -> null);
-
-          // Nori:
-          final var koComplFilterModes = KoreanTokenizer.DecompoundMode.values();
-          put(
-              KoreanTokenizer.DecompoundMode.class,
-              random -> koComplFilterModes[random.nextInt(koComplFilterModes.length)]);
-          put(org.apache.lucene.analysis.ko.dict.UserDictionary.class, random -> null);
-
-          // Phonetic:
-          final var bmNameTypes = org.apache.commons.codec.language.bm.NameType.values();
-          final var bmRuleTypes =
-              Stream.of(org.apache.commons.codec.language.bm.RuleType.values())
-                  .filter(e -> e != org.apache.commons.codec.language.bm.RuleType.RULES)
-                  .toArray(org.apache.commons.codec.language.bm.RuleType[]::new);
-          put(
-              PhoneticEngine.class,
-              random ->
-                  new PhoneticEngine(
-                      bmNameTypes[random.nextInt(bmNameTypes.length)],
-                      bmRuleTypes[random.nextInt(bmRuleTypes.length)],
-                      random.nextBoolean()));
-          put(
-              Encoder.class,
-              random -> {
-                switch (random.nextInt(7)) {
-                  case 0:
-                    return new DoubleMetaphone();
-                  case 1:
-                    return new Metaphone();
-                  case 2:
-                    return new Soundex();
-                  case 3:
-                    return new RefinedSoundex();
-                  case 4:
-                    return new Caverphone2();
-                  case 5:
-                    return new ColognePhonetic();
-                  default:
-                    return new Nysiis();
-                }
-              });
-
-          // Stempel
-          put(StempelStemmer.class, random -> new StempelStemmer(PolishAnalyzer.getDefaultTable()));
-        }
-      };
-
-  private static <T> Set<T> union(Collection<T> c1, Collection<T> c2) {
-    return Stream.concat(c1.stream(), c2.stream()).collect(Collectors.toUnmodifiableSet());
-  }
-
-  static final Set<Class<?>> allowedTokenizerArgs = argProducers.keySet(),
-      allowedTokenFilterArgs =
-          union(argProducers.keySet(), List.of(TokenStream.class, CommonGramsFilter.class)),
-      allowedCharFilterArgs = union(argProducers.keySet(), List.of(Reader.class));
 
   @SuppressWarnings("unchecked")
   static <T> T newRandomArg(Random random, Class<T> paramType) {
