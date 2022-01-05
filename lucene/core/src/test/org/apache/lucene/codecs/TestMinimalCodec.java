@@ -21,11 +21,9 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import java.io.IOException;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -37,47 +35,36 @@ import org.apache.lucene.util.TestUtil;
 public class TestMinimalCodec extends LuceneTestCase {
 
   public void testMinimalCodec() throws IOException {
-    runMinimalCodecTest(false, false);
-    runMinimalCodecTest(false, true);
-    runMinimalCodecTest(true, true);
-    runMinimalCodecTest(true, false);
+    runMinimalCodecTest(false);
   }
 
-  private void runMinimalCodecTest(boolean useCompoundFile, boolean useDeletes) throws IOException {
-    try (BaseDirectoryWrapper dir = newDirectory()) {
-      dir.setCheckIndexOnClose(false); // MinimalCodec is not registered with SPI
+  public void testMinimalCompoundCodec() throws IOException {
+    runMinimalCodecTest(true);
+  }
 
+  private void runMinimalCodecTest(boolean useCompoundFile) throws IOException {
+    try (BaseDirectoryWrapper dir = newDirectory()) {
       IndexWriterConfig writerConfig =
           newIndexWriterConfig(new MockAnalyzer(random()))
-              .setCodec(new MinimalCodec(useCompoundFile, useDeletes))
+              .setCodec(useCompoundFile ? new MinimalCompoundCodec() : new MinimalCodec())
               .setUseCompoundFile(useCompoundFile);
       if (!useCompoundFile) {
         writerConfig.getMergePolicy().setNoCFSRatio(0.0);
         writerConfig.getMergePolicy().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
       }
 
-      int expectedNumDocs = 0;
       try (IndexWriter writer = new IndexWriter(dir, writerConfig)) {
         writer.addDocument(basicDocument());
-        expectedNumDocs += 1;
-        writer.flush(); // create second segment
-        if (useDeletes && randomBoolean()) {
-          writer.deleteDocuments(new MatchAllDocsQuery());
-          expectedNumDocs = 0;
-        }
+        writer.flush();
+        // create second segment
         writer.addDocument(basicDocument());
-        expectedNumDocs += 1;
         writer.forceMerge(1); // test merges
-        if (useDeletes && randomBoolean()) {
-          writer.deleteDocuments(new MatchAllDocsQuery());
-          expectedNumDocs = 0;
-        }
         if (randomBoolean()) {
           writer.commit();
         }
 
         try (DirectoryReader reader = DirectoryReader.open(writer)) {
-          assertEquals(expectedNumDocs, reader.numDocs());
+          assertEquals(2, reader.numDocs());
         }
       }
     }
@@ -85,24 +72,20 @@ public class TestMinimalCodec extends LuceneTestCase {
 
   /** returns a basic document with no indexed fields */
   private static Document basicDocument() {
-    Document doc = new Document();
-    if (randomBoolean()) {
-      doc.add(new StoredField("field", "value"));
-    }
-    return doc;
+    return new Document();
   }
 
   /** Minimal codec implementation for working with the most basic documents */
-  private static class MinimalCodec extends Codec {
+  public static class MinimalCodec extends Codec {
 
-    private final Codec wrappedCodec = TestUtil.getDefaultCodec();
-    private final boolean useCompoundFormat;
-    private final boolean useDeletes;
+    protected final Codec wrappedCodec = TestUtil.getDefaultCodec();
 
-    protected MinimalCodec(boolean useCompoundFormat, boolean useDeletes) {
-      super("MinimalCodec");
-      this.useCompoundFormat = useCompoundFormat;
-      this.useDeletes = useDeletes;
+    public MinimalCodec() {
+      this("MinimalCodec");
+    }
+
+    protected MinimalCodec(String name) {
+      super(name);
     }
 
     @Override
@@ -117,20 +100,12 @@ public class TestMinimalCodec extends LuceneTestCase {
 
     @Override
     public CompoundFormat compoundFormat() {
-      if (useCompoundFormat) {
-        return wrappedCodec.compoundFormat();
-      } else {
-        throw new UnsupportedOperationException();
-      }
+      throw new UnsupportedOperationException();
     }
 
     @Override
     public LiveDocsFormat liveDocsFormat() {
-      if (useDeletes) {
-        return wrappedCodec.liveDocsFormat();
-      } else {
-        throw new UnsupportedOperationException();
-      }
+      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -167,6 +142,21 @@ public class TestMinimalCodec extends LuceneTestCase {
     @Override
     public KnnVectorsFormat knnVectorsFormat() {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  /**
+   * Minimal codec implementation for working with the most basic documents, supporting compound
+   * formats
+   */
+  public static class MinimalCompoundCodec extends MinimalCodec {
+    public MinimalCompoundCodec() {
+      super("MinimalCompoundCodec");
+    }
+
+    @Override
+    public CompoundFormat compoundFormat() {
+      return wrappedCodec.compoundFormat();
     }
   }
 }
