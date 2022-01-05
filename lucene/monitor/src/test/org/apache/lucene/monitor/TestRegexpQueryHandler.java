@@ -23,11 +23,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestRegexpQueryHandler extends BaseTokenStreamTestCase {
 

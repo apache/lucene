@@ -17,6 +17,9 @@
 
 import org.apache.lucene.gradle.Checksum
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+
 plugins {
   id 'signing'
 }
@@ -37,7 +40,6 @@ ext {
 apply from: buildscript.sourceFile.toPath().resolveSibling("source-release.gradle")
 
 // Prepare the "binary" distribution artifact.
-apply from: buildscript.sourceFile.toPath().resolveSibling("binary-artifacts.gradle")
 apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
 
 // Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
@@ -64,7 +66,6 @@ task computeChecksums(type: Checksum) {
   files = objects.fileCollection()
   [
       tasks.assembleSourceTgz,
-      tasks.assembleBinaryZip,
       tasks.assembleBinaryTgz,
   ].each { dep ->
     dependsOn dep
@@ -72,6 +73,20 @@ task computeChecksums(type: Checksum) {
   }
 
   outputDir = file("${buildDir}/checksums")
+}
+
+
+task prepareGitRev() {
+  dependsOn ":gitStatus"
+
+  ext.outputFile = file("${buildDir}/.gitrev")
+
+  outputs.file(ext.outputFile)
+  inputs.property("gitrev", provider { -> rootProject.ext.gitRev })
+
+  doFirst {
+    Files.writeString(ext.outputFile.toPath(), rootProject.ext.gitRev, StandardCharsets.UTF_8)
+  }
 }
 
 
@@ -87,8 +102,8 @@ task assembleRelease(type: Sync) {
     into "maven"
   })
 
+  from tasks.prepareGitRev
   from tasks.assembleSourceTgz
-  from tasks.assembleBinaryZip
   from tasks.assembleBinaryTgz
 
   from tasks.computeChecksums
@@ -106,7 +121,6 @@ task assembleRelease(type: Sync) {
 // sense at the user-level help.
 tasks.matching {it.name in [
     "assembleSourceTgz",
-    "assembleBinaryZip",
     "assembleBinaryTgz",
     "assembleRelease",
 ]}.all {

@@ -24,9 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntUnaryOperator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.LRUHashMap;
@@ -61,8 +58,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountable {
-
-  private static final Logger log = Logger.getLogger(DirectoryTaxonomyReader.class.getName());
 
   private static final int DEFAULT_CACHE_VALUE = 4000;
 
@@ -338,10 +333,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
 
     if (values == null
         || values.advanceExact(ordinal - indexReader.leaves().get(readerIndex).docBase) == false) {
-      // The index uses the older StoredField format to store the mapping
-      // On recreating the index, the values will be stored using the BinaryDocValuesField format
-      Document doc = indexReader.document(ordinal);
-      ret = new FacetLabel(FacetsConfig.stringToPath(doc.get(Consts.FULL)));
+      throw new IllegalStateException();
     } else {
       // The index uses the BinaryDocValuesField format to store the mapping
       ret = new FacetLabel(FacetsConfig.stringToPath(values.binaryValue().utf8ToString()));
@@ -569,10 +561,10 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
           continue;
         }
         sb.append(i).append(": ").append(category.toString()).append("\n");
-      } catch (IOException e) {
-        if (log.isLoggable(Level.FINEST)) {
-          log.log(Level.FINEST, e.getMessage(), e);
-        }
+      } catch (
+          @SuppressWarnings("unused")
+          IOException e) {
+        sb.append(i).append(": EXCEPTION!! \n");
       }
     }
     return sb.toString();

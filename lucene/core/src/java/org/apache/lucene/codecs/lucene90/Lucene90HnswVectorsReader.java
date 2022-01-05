@@ -226,22 +226,21 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.dimension == 0) {
-      return null;
-    }
-
     return getOffHeapVectorValues(fieldEntry);
   }
 
   @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.dimension == 0) {
-      return null;
+
+    if (fieldEntry.size() == 0) {
+      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
 
-    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+    // bound k by total number of vectors to prevent oversizing data structures
+    k = Math.min(k, fieldEntry.size());
 
+    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final SplittableRandom random = new SplittableRandom(checksumSeed);
     NeighborQueue results =

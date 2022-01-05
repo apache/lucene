@@ -13,11 +13,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-org.apache.lucene.codecs.asserting.AssertingCodec
-org.apache.lucene.codecs.cheapbastard.CheapBastardCodec
-org.apache.lucene.codecs.compressing.DeflateWithPresetCompressingCodec
-org.apache.lucene.codecs.compressing.FastCompressingCodec
-org.apache.lucene.codecs.compressing.FastDecompressionCompressingCodec
-org.apache.lucene.codecs.compressing.HighCompressionCompressingCodec
-org.apache.lucene.codecs.compressing.LZ4WithPresetCompressingCodec
-org.apache.lucene.codecs.compressing.dummy.DummyCompressingCodec
+org.apache.lucene.tests.codecs.asserting.AssertingCodec
+org.apache.lucene.tests.codecs.cheapbastard.CheapBastardCodec
+org.apache.lucene.tests.codecs.compressing.DeflateWithPresetCompressingCodec
+org.apache.lucene.tests.codecs.compressing.FastCompressingCodec
+org.apache.lucene.tests.codecs.compressing.FastDecompressionCompressingCodec
+org.apache.lucene.tests.codecs.compressing.HighCompressionCompressingCodec
+org.apache.lucene.tests.codecs.compressing.LZ4WithPresetCompressingCodec
+org.apache.lucene.tests.codecs.compressing.dummy.DummyCompressingCodec

@@ -26,7 +26,6 @@ import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Circle;
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.GeoEncodingUtils;
-import org.apache.lucene.geo.GeoTestUtil;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Line;
@@ -38,15 +37,16 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Ignore;
 
 /** Test case for indexing polygons and querying by bounding box */
@@ -64,7 +64,7 @@ public class TestLatLonShape extends LuceneTestCase {
   }
 
   protected void addPolygonsToDoc(String field, Document doc, Polygon polygon) {
-    Field[] fields = LatLonShape.createIndexableFields(field, polygon);
+    Field[] fields = LatLonShape.createIndexableFields(field, polygon, random().nextBoolean());
     for (Field f : fields) {
       doc.add(f);
     }
@@ -304,14 +304,9 @@ public class TestLatLonShape extends LuceneTestCase {
             new double[] {15d, -7.5d, -15d, -10d, 15d, 15d},
             new double[] {180d, 180d, 176d, 174d, 176d, 180d});
 
-    Field[] fields = LatLonShape.createIndexableFields("test", indexPoly1);
-    for (Field f : fields) {
-      doc.add(f);
-    }
-    fields = LatLonShape.createIndexableFields("test", indexPoly2);
-    for (Field f : fields) {
-      doc.add(f);
-    }
+    addPolygonsToDoc("test", doc, indexPoly1);
+    addPolygonsToDoc("test", doc, indexPoly2);
+
     w.addDocument(doc);
     w.forceMerge(1);
 
@@ -369,14 +364,9 @@ public class TestLatLonShape extends LuceneTestCase {
         new Polygon(
             new double[] {-2d, -2d, 2d, 2d, -2d}, new double[] {-180d, -178d, -178d, -180d, -180d});
 
-    Field[] fields = LatLonShape.createIndexableFields("test", indexPoly1);
-    for (Field f : fields) {
-      doc.add(f);
-    }
-    fields = LatLonShape.createIndexableFields("test", indexPoly2);
-    for (Field f : fields) {
-      doc.add(f);
-    }
+    addPolygonsToDoc("test", doc, indexPoly1);
+    addPolygonsToDoc("test", doc, indexPoly2);
+
     w.addDocument(doc);
     w.forceMerge(1);
 
@@ -795,7 +785,7 @@ public class TestLatLonShape extends LuceneTestCase {
                   GeoEncodingUtils.encodeLongitude(polygon.getPolyLon(i)));
         }
         polygon = new Polygon(lats, lons);
-        Tessellator.tessellate(polygon);
+        Tessellator.tessellate(polygon, random().nextBoolean());
         break;
       } catch (
           @SuppressWarnings("unused")

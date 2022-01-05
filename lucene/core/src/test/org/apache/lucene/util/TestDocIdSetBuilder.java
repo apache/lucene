@@ -22,6 +22,8 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestDocIdSetBuilder extends LuceneTestCase {
 
@@ -308,12 +310,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
+    public PointTree getPointTree() {
       throw new UnsupportedOperationException();
     }
 

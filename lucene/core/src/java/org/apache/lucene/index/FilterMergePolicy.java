@@ -19,13 +19,14 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * A wrapper for {@link MergePolicy} instances.
  *
  * @lucene.experimental
  */
-public class FilterMergePolicy extends MergePolicy {
+public class FilterMergePolicy extends MergePolicy implements Unwrappable<MergePolicy> {
 
   /** The wrapped {@link MergePolicy}. */
   protected final MergePolicy in;
@@ -117,5 +118,10 @@ public class FilterMergePolicy extends MergePolicy {
       SegmentCommitInfo info, int delCount, IOSupplier<CodecReader> readerSupplier)
       throws IOException {
     return in.numDeletesToMerge(info, delCount, readerSupplier);
+  }
+
+  @Override
+  public MergePolicy unwrap() {
+    return in;
   }
 }

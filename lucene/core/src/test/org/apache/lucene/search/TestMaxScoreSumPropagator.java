@@ -25,8 +25,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestMaxScoreSumPropagator extends LuceneTestCase {
 

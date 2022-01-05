@@ -23,16 +23,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnVectorField;
-import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -40,13 +37,16 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomCodec;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.index.RandomCodec;
+import org.apache.lucene.tests.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
@@ -123,20 +123,27 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         for (int i = 0; i < 3; i++) {
           Document doc = new Document();
           doc.add(newTextField("id", "1", Field.Store.YES));
-          doc.add(new KnnVectorField("field", new float[] {1, 2, 3}));
+          doc.add(new KnnVectorField("field1", new float[] {1, 2, 3}));
+          doc.add(new KnnVectorField("field2", new float[] {1, 2, 3}));
           iw.addDocument(doc);
           iw.commit();
         }
       }
 
       IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingKnnVectorsFormat newFormat =
+      WriteRecordingKnnVectorsFormat format1 =
+          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+      WriteRecordingKnnVectorsFormat format2 =
           new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       newConfig.setCodec(
           new AssertingCodec() {
             @Override
             public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return newFormat;
+              if ("field1".equals(field)) {
+                return format1;
+              } else {
+                return format2;
+              }
             }
           });
 
@@ -145,7 +152,8 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       }
 
       // Check that the new format was used while merging
-      MatcherAssert.assertThat(newFormat.fieldsWritten, equalTo(Set.of("field")));
+      MatcherAssert.assertThat(format1.fieldsWritten, equalTo(Set.of("field1")));
+      MatcherAssert.assertThat(format2.fieldsWritten, equalTo(Set.of("field2")));
     }
   }
 

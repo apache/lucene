@@ -174,7 +174,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
     }
     writer.forceMerge(1);
     writer.commit();
-    DirectoryReader reader = writer.getReader();
+    DirectoryReader reader = DirectoryReader.open(writer);
     assertEquals(1, reader.leaves().size());
     SegmentReader segmentReader = (SegmentReader) reader.leaves().get(0).reader();
     PendingSoftDeletes deletes = newPendingDeletes(commitInfo);

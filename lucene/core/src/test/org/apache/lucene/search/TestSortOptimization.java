@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.SortField.FIELD_DOC;
 import static org.apache.lucene.search.SortField.FIELD_SCORE;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,17 +32,18 @@ import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.IntRange;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestSortOptimization extends LuceneTestCase {
 
@@ -706,7 +708,8 @@ public class TestSortOptimization extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     List<Long> seqNos = new ArrayList<>();
-    int iterations = 10000 + random().nextInt(10000);
+    int limit = TEST_NIGHTLY ? 10000 : 1000;
+    int iterations = limit + random().nextInt(limit);
     long seqNoGenerator = random().nextInt(1000);
     for (long i = 0; i < iterations; i++) {
       int copies = random().nextInt(100) <= 5 ? 1 : 1 + random().nextInt(5);
@@ -758,6 +761,86 @@ public class TestSortOptimization extends LuceneTestCase {
         visitedHits++;
       }
     }
+    reader.close();
+    dir.close();
+  }
+
+  // Test that sort on sorted numeric field without sort optimization and
+  // with sort optimization produce the same results
+  public void testSortOptimizationOnSortedNumericField() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    final int numDocs = atLeast(5000);
+    for (int i = 0; i < numDocs; ++i) {
+      int value = random().nextInt();
+      int value2 = random().nextInt();
+      final Document doc = new Document();
+      doc.add(new SortedNumericDocValuesField("my_field", value));
+      doc.add(new SortedNumericDocValuesField("my_field", value2));
+      doc.add(new LongPoint("my_field", value));
+      doc.add(new LongPoint("my_field", value2));
+      writer.addDocument(doc);
+    }
+    final IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    IndexSearcher searcher = newSearcher(reader);
+
+    SortedNumericSelector.Type type =
+        RandomPicks.randomFrom(random(), SortedNumericSelector.Type.values());
+    boolean reverse = random().nextBoolean();
+    final SortField sortField =
+        new SortedNumericSortField("my_field", SortField.Type.LONG, reverse, type);
+    sortField.setOptimizeSortWithPoints(false);
+    final Sort sort = new Sort(sortField); // sort without sort optimization
+    final SortField sortField2 =
+        new SortedNumericSortField("my_field", SortField.Type.LONG, reverse, type);
+    final Sort sort2 = new Sort(sortField2); // sort with sort optimization
+    Query query = new MatchAllDocsQuery();
+    final int totalHitsThreshold = 3;
+
+    long expectedCollectedHits = 0;
+    long collectedHits = 0;
+    long collectedHits2 = 0;
+    int visitedHits = 0;
+    ScoreDoc after = null;
+    while (visitedHits < numDocs) {
+      int batch = 1 + random().nextInt(100);
+      int expectedHits = Math.min(numDocs - visitedHits, batch);
+
+      final TopFieldCollector collector =
+          TopFieldCollector.create(sort, batch, (FieldDoc) after, totalHitsThreshold);
+      searcher.search(query, collector);
+      TopDocs topDocs = collector.topDocs();
+      ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+
+      final TopFieldCollector collector2 =
+          TopFieldCollector.create(sort2, batch, (FieldDoc) after, totalHitsThreshold);
+      searcher.search(query, collector2);
+      TopDocs topDocs2 = collector2.topDocs();
+      ScoreDoc[] scoreDocs2 = topDocs2.scoreDocs;
+
+      // assert that the resulting hits are the same
+      assertEquals(expectedHits, topDocs.scoreDocs.length);
+      assertEquals(topDocs.scoreDocs.length, topDocs2.scoreDocs.length);
+      for (int i = 0; i < scoreDocs.length; i++) {
+        FieldDoc fieldDoc = (FieldDoc) scoreDocs[i];
+        FieldDoc fieldDoc2 = (FieldDoc) scoreDocs2[i];
+        assertEquals(fieldDoc.fields[0], fieldDoc2.fields[0]);
+        assertEquals(fieldDoc.doc, fieldDoc2.doc);
+        visitedHits++;
+      }
+
+      expectedCollectedHits += numDocs;
+      collectedHits += topDocs.totalHits.value;
+      collectedHits2 += topDocs2.totalHits.value;
+      after = scoreDocs[expectedHits - 1];
+    }
+    assertEquals(visitedHits, numDocs);
+    assertEquals(expectedCollectedHits, collectedHits);
+    // assert that the second sort with optimization collected less or equal hits
+    assertTrue(collectedHits >= collectedHits2);
+    // System.out.println(expectedCollectedHits + "\t" + collectedHits + "\t" + collectedHits2);
+
     reader.close();
     dir.close();
   }

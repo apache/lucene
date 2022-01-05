@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.cjk;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure the CJKWidthFilterFactory is working */
 public class TestCJKWidthFilterFactory extends BaseTokenStreamFactoryTestCase {

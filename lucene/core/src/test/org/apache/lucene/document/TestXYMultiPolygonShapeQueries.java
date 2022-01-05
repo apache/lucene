@@ -21,7 +21,7 @@ import java.util.List;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.XYPolygon;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * random cartesian bounding box, line, and polygon query tests for random indexed arrays of

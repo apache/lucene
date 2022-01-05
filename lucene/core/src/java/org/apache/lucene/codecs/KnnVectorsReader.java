@@ -19,6 +19,7 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Accountable;
@@ -40,14 +41,25 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    */
   public abstract void checkIntegrity() throws IOException;
 
-  /** Returns the {@link VectorValues} for the given {@code field} */
+  /**
+   * Returns the {@link VectorValues} for the given {@code field}. The behavior is undefined if the
+   * given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * never {@code null}.
+   */
   public abstract VectorValues getVectorValues(String field) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
-   * this field, to the given vector, by the field's search strategy. If the search strategy is
-   * reversed, lower values indicate nearer vectors, otherwise higher scores indicate nearer
-   * vectors. Unlike relevance scores, vector scores may be negative.
+   * this field, to the given vector, by the field's similarity function. The score of each document
+   * is derived from the vector similarity in a way that ensures scores are positive and that a
+   * larger score corresponds to a higher ranking.
+   *
+   * <p>The search is allowed to be approximate, meaning the results are not guaranteed to be the
+   * true k closest neighbors. For large values of k (for example when k is close to the total
+   * number of documents), the search may also retrieve fewer than k documents.
+   *
+   * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
+   * FieldInfo}. The return value is never {@code null}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query

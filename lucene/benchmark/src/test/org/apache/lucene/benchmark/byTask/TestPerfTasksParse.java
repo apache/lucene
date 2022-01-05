@@ -34,8 +34,8 @@ import org.apache.lucene.benchmark.byTask.tasks.TaskSequence;
 import org.apache.lucene.benchmark.byTask.utils.Algorithm;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.junit.Assert;
 
 /** Test very simply that perf tasks are parsed as expected. */

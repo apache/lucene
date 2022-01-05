@@ -19,6 +19,7 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 
 public class TestTrackingDirectoryWrapper extends BaseDirectoryTestCase {
 

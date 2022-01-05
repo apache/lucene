@@ -18,15 +18,22 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 
 public class TestNormsFieldExistsQuery extends LuceneTestCase {
 
@@ -198,5 +205,69 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
         assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-7);
       }
     }
+  }
+
+  public void testQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
+
+    FieldType noNormsFieldType = new FieldType();
+    noNormsFieldType.setOmitNorms(true);
+    noNormsFieldType.setIndexOptions(IndexOptions.DOCS);
+
+    Document doc = new Document();
+    doc.add(new TextField("text", "always here", Store.NO));
+    doc.add(new TextField("text_s", "", Store.NO));
+    doc.add(new Field("text_n", "always here", noNormsFieldType));
+    w.addDocument(doc);
+
+    for (int i = 1; i < randomNumDocs; i++) {
+      doc.clear();
+      doc.add(new TextField("text", "some text", Store.NO));
+      doc.add(new TextField("text_s", "some text", Store.NO));
+      doc.add(new Field("text_n", "some here", noNormsFieldType));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+
+    DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+
+    assertCountWithShortcut(searcher, "text", randomNumDocs);
+    assertCountWithShortcut(searcher, "doesNotExist", 0);
+    assertCountWithShortcut(searcher, "text_n", 0);
+
+    // docs that have a text field that analyzes to an empty token
+    // stream still have a recorded norm value but don't show up in
+    // Reader.getDocCount(field), so we can't use the shortcut for
+    // these fields
+    assertCountWithoutShortcut(searcher, "text_s", randomNumDocs);
+
+    // We can still shortcut with deleted docs
+    w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    w.deleteDocuments(new Term("text", "text")); // deletes all but the first doc
+    DirectoryReader reader2 = w.getReader();
+    final IndexSearcher searcher2 = new IndexSearcher(reader2);
+    assertCountWithShortcut(searcher2, "text", 1);
+
+    IOUtils.close(reader, reader2, w, dir);
+  }
+
+  private void assertCountWithoutShortcut(IndexSearcher searcher, String field, int expectedCount)
+      throws IOException {
+    final Query q = new NormsFieldExistsQuery(field);
+    final Weight weight = searcher.createWeight(q, ScoreMode.COMPLETE, 1);
+    assertEquals(-1, weight.count(searcher.reader.leaves().get(0)));
+    assertEquals(expectedCount, searcher.count(q));
+  }
+
+  private void assertCountWithShortcut(IndexSearcher searcher, String field, int numMatchingDocs)
+      throws IOException {
+    final Query testQuery = new NormsFieldExistsQuery(field);
+    assertEquals(numMatchingDocs, searcher.count(testQuery));
+    final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(numMatchingDocs, weight.count(searcher.reader.leaves().get(0)));
   }
 }
