@@ -33,7 +33,7 @@ Other
 ---------------------
 
 * LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
-  (Adrien Grand)
+  (Adrien Grand, Uwe Schindler, Dawid Weiss)
 
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
