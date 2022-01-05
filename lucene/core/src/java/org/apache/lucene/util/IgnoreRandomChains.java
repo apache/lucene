@@ -14,17 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
 
-apply plugin: 'java-library'
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-description = 'Analyzer for indexing phonetic signatures (for sounds-alike search)'
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:analysis:common')
-
-  moduleApi 'commons-codec:commons-codec'
-
-  testImplementation project(':lucene:test-framework')
-} 
-
+/**
+ * Annotation to not test a class or constructor with {@code TestRandomChains} integration test.
+ *
+ * @lucene.internal
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.CONSTRUCTOR, ElementType.TYPE})
+public @interface IgnoreRandomChains {
+  /** A reason for ignoring should always be given. */
+  String reason();
+}

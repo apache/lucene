@@ -15,16 +15,25 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+/**
+ * Test module for global integration tests of all {@code org.apache.lucene.analysis}
+ * packages/modules.
+ */
+@SuppressWarnings({"requires-automatic"})
+module org.apache.lucene.analysis.tests {
+  requires java.xml;
+  requires org.apache.lucene.core;
+  requires org.apache.lucene.analysis.common;
+  requires org.apache.lucene.analysis.icu;
+  requires org.apache.lucene.analysis.kuromoji;
+  requires org.apache.lucene.analysis.morfologik;
+  requires org.apache.lucene.analysis.nori;
+  requires org.apache.lucene.analysis.opennlp;
+  requires org.apache.lucene.analysis.phonetic;
+  requires org.apache.lucene.analysis.smartcn;
+  requires org.apache.lucene.analysis.stempel;
+  requires org.apache.lucene.test_framework;
+  requires junit;
 
-description = 'Analyzer for indexing phonetic signatures (for sounds-alike search)'
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:analysis:common')
-
-  moduleApi 'commons-codec:commons-codec'
-
-  testImplementation project(':lucene:test-framework')
-} 
-
+  exports org.apache.lucene.analysis.tests;
+}
