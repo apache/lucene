@@ -27,6 +27,8 @@ import org.apache.lucene.util.packed.PackedInts;
 final class PForUtil {
 
   private static final int MAX_EXCEPTIONS = 7;
+  private static final int HALF_BLOCK_SIZE = ForUtil.BLOCK_SIZE / 2;
+  private static final int HALF_BLOCK_SIZE_MASK = HALF_BLOCK_SIZE - 1;
 
   // IDENTITY_PLUS_ONE[i] == i + 1
   private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil.BLOCK_SIZE];
@@ -206,7 +208,7 @@ final class PForUtil {
    */
   private static void fillSameValue32(long[] longs, long val) {
     final long token = val << 32 | val;
-    Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE_DIV_2, token);
+    Arrays.fill(longs, 0, HALF_BLOCK_SIZE, token);
   }
 
   /** Apply the exceptions where the values are packed two-per-long in {@code longs}. */
@@ -217,11 +219,11 @@ final class PForUtil {
       final int exceptionPos = Byte.toUnsignedInt(exceptionBuff[i * 2]);
       final long exception = Byte.toUnsignedLong(exceptionBuff[i * 2 + 1]);
       // note that we pack two values per long, so the index is [0..63] for 128 values
-      final int idx = exceptionPos & (ForUtil.BLOCK_SIZE_DIV_2_MASK); // mod 64
+      final int idx = exceptionPos & (HALF_BLOCK_SIZE_MASK); // mod 64
       // we need to shift by 1) the bpv, and 2) 32 for positions [0..63] (and no 32 shift for
       // [64..127])
       final int shift =
-          bitsPerValue + ((1 ^ (exceptionPos >>> (ForUtil.BLOCK_SIZE_LOG2_MIN_1))) << 5);
+          bitsPerValue + ((1 ^ (exceptionPos >>> (ForUtil.BLOCK_SIZE_LOG2 - 1))) << 5);
       longs[idx] |= exception << shift;
     }
   }
@@ -231,8 +233,8 @@ final class PForUtil {
     longs[0] += base << 32;
     ForUtil.innerPrefixSum32(longs);
     expand32(longs);
-    final long l = longs[ForUtil.BLOCK_SIZE_DIV_2_MASK];
-    for (int i = ForUtil.BLOCK_SIZE_DIV_2; i < ForUtil.BLOCK_SIZE; ++i) {
+    final long l = longs[HALF_BLOCK_SIZE_MASK];
+    for (int i = HALF_BLOCK_SIZE; i < ForUtil.BLOCK_SIZE; ++i) {
       longs[i] += l;
     }
   }
@@ -242,10 +244,10 @@ final class PForUtil {
    * back into {@code longs}.
    */
   private static void expand32(long[] longs) {
-    for (int i = 0; i < ForUtil.BLOCK_SIZE_DIV_2; ++i) {
+    for (int i = 0; i < HALF_BLOCK_SIZE; ++i) {
       final long l = longs[i];
       longs[i] = l >>> 32;
-      longs[ForUtil.BLOCK_SIZE_DIV_2 + i] = l & 0xFFFFFFFFL;
+      longs[HALF_BLOCK_SIZE + i] = l & 0xFFFFFFFFL;
     }
   }
 }

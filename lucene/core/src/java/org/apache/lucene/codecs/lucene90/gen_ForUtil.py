@@ -70,11 +70,7 @@ import org.apache.lucene.util.MathUtil;
 final class ForUtil {{
 
   static final int BLOCK_SIZE = {BLOCK_SIZE};
-  static final int BLOCK_SIZE_DIV_2 = BLOCK_SIZE >> 1;
-  static final int BLOCK_SIZE_DIV_2_MASK = BLOCK_SIZE_DIV_2 - 1;
-  private static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
-  private static final int BLOCK_SIZE_LOG2_MIN_3 = BLOCK_SIZE_LOG2 - 3;
-  static final int BLOCK_SIZE_LOG2_MIN_1 = BLOCK_SIZE_LOG2 - 1;
+  static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
 
   private static long expandMask32(long mask32) {{
     return mask32 | (mask32 << 32);
@@ -257,7 +253,7 @@ final class ForUtil {{
 
   /** Number of bytes required to encode 128 integers of {{@code bitsPerValue}} bits per value. */
   int numBytes(int bitsPerValue) {{
-    return bitsPerValue << BLOCK_SIZE_LOG2_MIN_3;
+    return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }}
 
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
