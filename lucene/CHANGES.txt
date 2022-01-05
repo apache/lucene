@@ -87,7 +87,7 @@ Improvements
 
 * LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
   with or without offsets enabled. (Patrick Zhai)
-  
+
 Optimizations
 ---------------------
 
@@ -107,6 +107,12 @@ Optimizations
   older boosting queries were replaced with this. (David Smiley)
 
 * LUCENE-10346: Optimize facet counting for single-valued TaxonomyFacetCounts. (Guo Feng)
+
+Changes in runtime behavior
+---------------------
+
+* LUCENE-10291: Lucene now only writes files for terms and postings if at least
+  one field is indexed with postings. (Yannick Welsch)
 
 Bug Fixes
 ---------------------
