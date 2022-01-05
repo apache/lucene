@@ -22,6 +22,7 @@ import java.util.HashMap;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 
 /** Simple tests for {@link JapaneseKatakanaStemFilterFactory} */
 public class TestJapaneseKatakanaStemFilterFactory extends BaseTokenStreamTestCase {

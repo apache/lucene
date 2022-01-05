@@ -21,8 +21,5 @@ description = 'Module tests for :lucene:analysis:morfologik'
 
 dependencies {
   moduleTestImplementation project(':lucene:analysis:morfologik')
-  moduleTestImplementation("junit:junit", {
-    exclude group: "org.hamcrest"
-  })
-  moduleTestImplementation "org.hamcrest:hamcrest"
+  moduleTestImplementation project(':lucene:test-framework')
 }

@@ -25,11 +25,13 @@ import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.core.DecimalDigitFilter;
 import org.apache.lucene.analysis.in.IndicNormalizationFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
+import org.apache.lucene.util.IOUtils;
 import org.tartarus.snowball.ext.TamilStemmer;
 
 /**
@@ -68,7 +70,11 @@ public final class TamilAnalyzer extends StopwordAnalyzerBase {
     static {
       try {
         DEFAULT_STOP_SET =
-            loadStopwordSet(false, TamilAnalyzer.class, DEFAULT_STOPWORD_FILE, STOPWORDS_COMMENT);
+            WordlistLoader.getWordSet(
+                IOUtils.requireResourceNonNull(
+                    TamilAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    DEFAULT_STOPWORD_FILE),
+                STOPWORDS_COMMENT);
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)

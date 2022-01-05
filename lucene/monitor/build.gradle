@@ -25,6 +25,6 @@ dependencies {
   moduleImplementation project(':lucene:memory')
   moduleImplementation project(':lucene:analysis:common')
 
-  testImplementation project(':lucene:queryparser')
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:queryparser')
+  moduleTestImplementation project(':lucene:test-framework')
 }

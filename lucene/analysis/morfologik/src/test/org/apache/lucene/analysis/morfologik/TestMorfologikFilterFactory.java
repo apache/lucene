@@ -39,11 +39,6 @@ public class TestMorfologikFilterFactory extends BaseTokenStreamTestCase {
     public <T> Class<? extends T> findClass(String cname, Class<T> expectedType) {
       throw new UnsupportedOperationException();
     }
-
-    @Override
-    public <T> T newInstance(String cname, Class<T> expectedType) {
-      throw new UnsupportedOperationException();
-    }
   }
 
   public void testDefaultDictionary() throws Exception {

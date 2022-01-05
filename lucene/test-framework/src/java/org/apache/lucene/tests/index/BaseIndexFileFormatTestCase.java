@@ -72,6 +72,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -97,6 +98,8 @@ import org.apache.lucene.util.Version;
 
 /** Common tests to all index formats. */
 abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
+
+  private static final IndexWriterAccess INDEX_WRITER_ACCESS = TestSecrets.getIndexWriterAccess();
 
   // metadata or Directory-level objects
   private static final Set<Class<?>> EXCLUDED_CLASSES =
@@ -626,7 +629,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           // OK: writer was closed by abort; we just reopen now:
           dir.setRandomIOExceptionRateOnOpen(
               0.0); // disable exceptions on openInput until next iteration
-          assertTrue(TestSecrets.getIndexWriterAccess().isDeleterClosed(iw));
+          assertTrue(INDEX_WRITER_ACCESS.isDeleterClosed(iw));
           assertTrue(allowAlreadyClosed);
           allowAlreadyClosed = false;
           conf = newIndexWriterConfig(analyzer);
@@ -667,7 +670,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             // OK: writer was closed by abort; we just reopen now:
             dir.setRandomIOExceptionRateOnOpen(
                 0.0); // disable exceptions on openInput until next iteration
-            assertTrue(TestSecrets.getIndexWriterAccess().isDeleterClosed(iw));
+            assertTrue(INDEX_WRITER_ACCESS.isDeleterClosed(iw));
             assertTrue(allowAlreadyClosed);
             allowAlreadyClosed = false;
             conf = newIndexWriterConfig(analyzer);

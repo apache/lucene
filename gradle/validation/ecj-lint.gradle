@@ -74,42 +74,36 @@ allprojects {
         args += [ "-properties", file("${resources}/ecj.javadocs.prefs").absolutePath ]
 
         // We depend on modular paths.
-        def modularPaths = sourceSet.modularPaths
-        dependsOn modularPaths.compileModulePathConfiguration
+        def modularPaths = sourceSet.modularPathsForEcj
+        dependsOn modularPaths
+
+        // Add modular dependencies and their transitive dependencies to module path.
+        task.argumentProviders.add(modularPaths.compilationArguments)
+
+        // Add classpath, if needed.
+        task.argumentProviders.add((CommandLineArgumentProvider) {
+          // Add classpath locations in a lazy provider (can't resolve the
+          // configuration at evaluation time). Filter out non-existing entries
+          // (output folders for non-existing input source dirs like resources).
+          FileCollection cpath = modularPaths.compilationClasspath.filter { p -> p.exists() }
+          if (!cpath.isEmpty()) {
+            return ["-classpath", cpath.join(File.pathSeparator)]
+          } else {
+            return []
+          }
+        })
 
         // Place input files in an external file to dodge command line argument
         // limits. We could pass a directory but ecj seems to be buggy: when it
         // encounters a module-info.java file it no longer compiles other source files.
         def inputsFile = file("${tmpDst}/ecj-inputs.txt")
-
         task.argumentProviders.add((CommandLineArgumentProvider) {
-          // Add modular dependencies and their transitive dependencies to module path.
-          def modularPathFiles = modularPaths.compileModulePathConfiguration.files
-          def extraArgs = []
-          if (!modularPathFiles.isEmpty()) {
-            if (!modularPaths.hasModuleDescriptor()) {
-              // We're compiling a non-module so we'll bring everything on module path in
-              // otherwise things wouldn't be part of the resolved module graph.
-              extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
-            }
-
-            extraArgs += ["--module-path", modularPathFiles.join(File.pathSeparator)]
-          }
-
-          // Add classpath locations in a lazy provider (can't resolve the
-          // configuration at evaluation time). Filter out non-existing entries
-          // (output folders for non-existing input source dirs like resources).
-          def cpath = sourceSet.compileClasspath.filter { p -> p.exists() }
-          cpath = cpath - modularPathFiles
-          if (!cpath.isEmpty()) {
-            extraArgs += ["-classpath", cpath.join(File.pathSeparator)]
-          }
-
-          extraArgs += ["@" + inputsFile.absolutePath]
-          return extraArgs
+          return ["@" + inputsFile.absolutePath]
         })
 
         doFirst {
+          modularPaths.logCompilationPaths(logger)
+
           tmpDst.mkdirs()
 
           // escape filename accoring to ECJ's rules:
@@ -118,7 +112,12 @@ allprojects {
           def escapeFileName = { String s -> s.replaceAll(/ +/, /"$0"/) }
           inputsFile.setText(
             srcDirs.collectMany { dir ->
-              project.fileTree(dir: dir, include: "**/*.java" ).files
+              project.fileTree(
+                  dir: dir,
+                  include: "**/*.java",
+                  // Exclude the benchmark class with dependencies on nekohtml, which causes module-classpath conflicts and breaks ecj.
+                  exclude: "**/DemoHTMLParser.java"
+              ).files
             }
             // Try to sort all input files; a side-effect of this should be that module-info.java
             // is placed first on the list, which works around ECJ bug:

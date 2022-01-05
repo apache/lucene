@@ -27,8 +27,10 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /** Run OpenNLP POS tagger. Tags all terms in the TypeAttribute. */
+@IgnoreRandomChains(reason = "LUCENE-10352: add argument providers for this one")
 public final class OpenNLPPOSFilter extends TokenFilter {
 
   private List<AttributeSource> sentenceTokenAttrs = new ArrayList<>();

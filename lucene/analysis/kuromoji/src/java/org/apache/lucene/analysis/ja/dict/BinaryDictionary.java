@@ -75,8 +75,11 @@ public abstract class BinaryDictionary implements Dictionary {
         throw new IllegalArgumentException(
             "resourcePath must be supplied with FILE resource scheme");
       }
-      this.resourcePath = getClass().getName().replace('.', '/');
+      this.resourcePath = getClass().getSimpleName();
     } else {
+      if (resourceScheme == ResourceScheme.CLASSPATH && !resourcePath.startsWith("/")) {
+        resourcePath = "/".concat(resourcePath);
+      }
       this.resourcePath = resourcePath;
     }
     InputStream mapIS = null, dictIS = null, posIS = null;
@@ -204,11 +207,7 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   private static InputStream getClassResource(String path) throws IOException {
-    final InputStream is = BinaryDictionary.class.getClassLoader().getResourceAsStream(path);
-    if (is == null) {
-      throw new FileNotFoundException("Not in classpath: " + path);
-    }
-    return is;
+    return IOUtils.requireResourceNonNull(BinaryDictionary.class.getResourceAsStream(path), path);
   }
 
   public void lookupWordIds(int sourceId, IntsRef ref) {
