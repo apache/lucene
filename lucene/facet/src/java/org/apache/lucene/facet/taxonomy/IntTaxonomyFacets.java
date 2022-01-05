@@ -34,7 +34,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
   /** Per-ordinal value. */
   protected final int[] values;
 
-  private final IntIntHashMap sparseValues;
+  protected final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
   protected IntTaxonomyFacets(

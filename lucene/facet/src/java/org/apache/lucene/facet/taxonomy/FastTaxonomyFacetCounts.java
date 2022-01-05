@@ -76,12 +76,33 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
         continue;
       }
 
+      NumericDocValues ndv = DocValues.unwrapSingleton(dv);
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), ndv != null ? ndv : dv));
 
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        for (int i = 0; i < dv.docValueCount(); i++) {
-          increment((int) dv.nextValue());
+      if (ndv != null) {
+        if (values != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            values[(int) ndv.longValue()]++;
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            sparseValues.addTo((int) ndv.longValue(), 1);
+          }
+        }
+      } else {
+        if (values != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < dv.docValueCount(); i++) {
+              values[(int) dv.nextValue()]++;
+            }
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < dv.docValueCount(); i++) {
+              sparseValues.addTo((int) dv.nextValue(), 1);
+            }
+          }
         }
       }
     }
