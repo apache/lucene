@@ -78,7 +78,8 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
       NumericDocValues ndv = DocValues.unwrapSingleton(dv);
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), ndv != null ? ndv : dv));
+          ConjunctionUtils.intersectIterators(
+              Arrays.asList(hits.bits.iterator(), ndv != null ? ndv : dv));
 
       if (ndv != null) {
         if (values != null) {
