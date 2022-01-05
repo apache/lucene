@@ -34,6 +34,8 @@ import org.apache.lucene.util.IgnoreRandomChains;
  * @see BeiderMorseEncoder
  * @lucene.experimental
  */
+@IgnoreRandomChains(
+    reason = "LUCENE-10360: cannot handle empty tokens (or those only dashes and whitespace)")
 public final class BeiderMorseFilter extends TokenFilter {
   private final PhoneticEngine engine;
   private final LanguageSet languages;
