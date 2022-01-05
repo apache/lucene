@@ -119,7 +119,7 @@ public abstract class IndexReader implements Closeable {
    *
    * @lucene.experimental
    */
-  public static interface CacheHelper {
+  public interface CacheHelper {
 
     /**
      * Get a key that the resource can be cached on. The given entry can be compared using identity,
@@ -133,6 +133,36 @@ public abstract class IndexReader implements Closeable {
      * #getKey()} is closed.
      */
     void addClosedListener(ClosedListener listener);
+  }
+
+  static class DelegatingCacheHelper implements CacheHelper {
+    private final CacheHelper delegate;
+    private final CacheKey cacheKey = new CacheKey();
+
+    private DelegatingCacheHelper(CacheHelper delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public CacheKey getKey() {
+      return cacheKey;
+    }
+
+    @Override
+    public void addClosedListener(ClosedListener listener) {
+      // here we wrap the listener and call it with our cache key
+      // this is important since this key will be used to cache the reader and otherwise we won't
+      // free caches etc.
+      delegate.addClosedListener(unused -> listener.onClose(cacheKey));
+    }
+
+    public static CacheHelper from(CacheHelper delegate) {
+      if (delegate == null) {
+        return null;
+      }
+
+      return new DelegatingCacheHelper(delegate);
+    }
   }
 
   /** A cache key identifying a resource that is being cached on. */

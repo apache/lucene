@@ -40,9 +40,8 @@ import org.apache.lucene.util.FixedBitSet;
  * @see IndexWriter#softUpdateDocument(Term, Iterable, Field...)
  * @see SoftDeletesRetentionMergePolicy
  */
-public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryReader {
+public final class SoftDeletesDirectoryReaderWrapper extends LastingFilterDirectoryReader {
   private final String field;
-  private final CacheHelper readerCacheHelper;
   /**
    * Creates a new soft deletes wrapper.
    *
@@ -57,10 +56,6 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
       throws IOException {
     super(in, wrapper);
     this.field = wrapper.field;
-    readerCacheHelper =
-        in.getReaderCacheHelper() == null
-            ? null
-            : new DelegatingCacheHelper(in.getReaderCacheHelper());
   }
 
   @Override
@@ -79,11 +74,6 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     }
     return new SoftDeletesDirectoryReaderWrapper(
         in, new SoftDeletesSubReaderWrapper(readerCache, field));
-  }
-
-  @Override
-  public CacheHelper getReaderCacheHelper() {
-    return readerCacheHelper;
   }
 
   private static class SoftDeletesSubReaderWrapper extends SubReaderWrapper {
@@ -184,21 +174,16 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     return true;
   }
 
-  static final class SoftDeletesFilterLeafReader extends FilterLeafReader {
+  static final class SoftDeletesFilterLeafReader extends LastingFilterLeafReader {
     private final LeafReader reader;
     private final FixedBitSet bits;
     private final int numDocs;
-    private final CacheHelper readerCacheHelper;
 
     private SoftDeletesFilterLeafReader(LeafReader reader, FixedBitSet bits, int numDocs) {
       super(reader);
       this.reader = reader;
       this.bits = bits;
       this.numDocs = numDocs;
-      this.readerCacheHelper =
-          reader.getReaderCacheHelper() == null
-              ? null
-              : new DelegatingCacheHelper(reader.getReaderCacheHelper());
     }
 
     @Override
@@ -215,28 +200,18 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     public CacheHelper getCoreCacheHelper() {
       return reader.getCoreCacheHelper();
     }
-
-    @Override
-    public CacheHelper getReaderCacheHelper() {
-      return readerCacheHelper;
-    }
   }
 
-  static final class SoftDeletesFilterCodecReader extends FilterCodecReader {
+  static final class SoftDeletesFilterCodecReader extends LastingFilterCodecReader {
     private final LeafReader reader;
     private final FixedBitSet bits;
     private final int numDocs;
-    private final CacheHelper readerCacheHelper;
 
     private SoftDeletesFilterCodecReader(CodecReader reader, FixedBitSet bits, int numDocs) {
       super(reader);
       this.reader = reader;
       this.bits = bits;
       this.numDocs = numDocs;
-      this.readerCacheHelper =
-          reader.getReaderCacheHelper() == null
-              ? null
-              : new DelegatingCacheHelper(reader.getReaderCacheHelper());
     }
 
     @Override
@@ -252,33 +227,6 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     @Override
     public CacheHelper getCoreCacheHelper() {
       return reader.getCoreCacheHelper();
-    }
-
-    @Override
-    public CacheHelper getReaderCacheHelper() {
-      return readerCacheHelper;
-    }
-  }
-
-  private static class DelegatingCacheHelper implements CacheHelper {
-    private final CacheHelper delegate;
-    private final CacheKey cacheKey = new CacheKey();
-
-    public DelegatingCacheHelper(CacheHelper delegate) {
-      this.delegate = delegate;
-    }
-
-    @Override
-    public CacheKey getKey() {
-      return cacheKey;
-    }
-
-    @Override
-    public void addClosedListener(ClosedListener listener) {
-      // here we wrap the listener and call it with our cache key
-      // this is important since this key will be used to cache the reader and otherwise we won't
-      // free caches etc.
-      delegate.addClosedListener(unused -> listener.onClose(cacheKey));
     }
   }
 }
