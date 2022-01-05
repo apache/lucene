@@ -22,5 +22,5 @@ description = 'Codecs for older versions of Lucene'
 
 dependencies {
   moduleApi project(':lucene:core')
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }
