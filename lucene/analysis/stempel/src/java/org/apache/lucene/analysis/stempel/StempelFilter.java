@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.stempel;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -58,7 +59,7 @@ public final class StempelFilter extends TokenFilter {
    */
   public StempelFilter(TokenStream in, StempelStemmer stemmer, int minLength) {
     super(in);
-    this.stemmer = stemmer;
+    this.stemmer = Objects.requireNonNull(stemmer);
     this.minLength = minLength;
   }
 

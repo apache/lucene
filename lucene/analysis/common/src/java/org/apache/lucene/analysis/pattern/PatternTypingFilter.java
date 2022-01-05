@@ -18,6 +18,7 @@
 package org.apache.lucene.analysis.pattern;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.TokenFilter;
@@ -46,7 +47,10 @@ public class PatternTypingFilter extends TokenFilter {
 
   public PatternTypingFilter(TokenStream input, PatternTypingRule... replacementAndFlagByPattern) {
     super(input);
-    this.replacementAndFlagByPattern = replacementAndFlagByPattern;
+    this.replacementAndFlagByPattern = Objects.requireNonNull(replacementAndFlagByPattern);
+    for (int i = 0; i < replacementAndFlagByPattern.length; i++) {
+      Objects.requireNonNull(replacementAndFlagByPattern[i]);
+    }
   }
 
   @Override

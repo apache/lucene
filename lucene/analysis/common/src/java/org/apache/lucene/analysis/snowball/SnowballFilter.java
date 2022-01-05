@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.snowball;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -53,7 +54,7 @@ public final class SnowballFilter extends TokenFilter {
 
   public SnowballFilter(TokenStream input, SnowballStemmer stemmer) {
     super(input);
-    this.stemmer = stemmer;
+    this.stemmer = Objects.requireNonNull(stemmer);
   }
 
   /**
@@ -72,7 +73,7 @@ public final class SnowballFilter extends TokenFilter {
     // the factory will use the other constructor so that the program is already loaded.
     try {
       Class<? extends SnowballStemmer> stemClass =
-          Class.forName("org.tartarus.snowball.ext." + name + "Stemmer")
+          Class.forName("org.tartarus.snowball.ext." + Objects.requireNonNull(name) + "Stemmer")
               .asSubclass(SnowballStemmer.class);
       stemmer = stemClass.getConstructor().newInstance();
     } catch (Exception e) {
