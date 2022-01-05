@@ -25,5 +25,5 @@ dependencies {
 
   moduleImplementation project(':lucene:queries')
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }

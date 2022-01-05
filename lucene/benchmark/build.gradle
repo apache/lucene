@@ -36,11 +36,18 @@ dependencies {
   moduleImplementation "org.locationtech.spatial4j:spatial4j"
   moduleImplementation ("net.sourceforge.nekohtml:nekohtml", {
     exclude module: "xml-apis"
+    // LUCENE-10337: Exclude xercesImpl from module path because it has split packages with the JDK (!)
+    exclude module: "xercesImpl"
+  })
+
+  // LUCENE-10337: Include xercesImpl on regular classpath where it won't cause conflicts.
+  implementation ("xerces:xercesImpl", {
+    exclude module: "xml-apis"
   })
 
   moduleRuntimeOnly project(':lucene:analysis:icu')
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }
 
 // We add 'conf' to resources because we validate *.alg script correctness in one of the tests.

@@ -59,7 +59,7 @@ allprojects {
       outputDir = project.javadoc.destinationDir
     }
 
-    if (project.path == ':lucene:luke' || project.path.endsWith(".tests")) {
+    if (project.path == ':lucene:luke' || !(project in rootProject.ext.mavenProjects)) {
       // These projects are not part of the public API so we don't render their javadocs
       // as part of the site's creation. A side-effect of this is that javadocs would not
       // be linted for these projects. To avoid this, we connect the regular javadoc task
@@ -167,30 +167,17 @@ configure(project(":lucene:test-framework")) {
   project.tasks.withType(RenderJavadocTask) {
     // TODO: fix missing javadocs
     javadocMissingLevel = "class"
-    // TODO: clean up split packages
-    javadocMissingIgnore = [
-        "org.apache.lucene.analysis",
-        "org.apache.lucene.analysis.standard",
-        "org.apache.lucene.codecs",
-        "org.apache.lucene.codecs.blockterms",
-        "org.apache.lucene.codecs.bloom",
-        "org.apache.lucene.codecs.compressing",
-        "org.apache.lucene.codecs.uniformsplit",
-        "org.apache.lucene.codecs.uniformsplit.sharedterms",
-        "org.apache.lucene.geo",
-        "org.apache.lucene.index",
-        "org.apache.lucene.search",
-        "org.apache.lucene.search.similarities",
-        "org.apache.lucene.search.spans",
-        "org.apache.lucene.store",
-        "org.apache.lucene.util",
-        "org.apache.lucene.util.automaton",
-        "org.apache.lucene.util.fst"
-    ]
   }
 }
 
 configure(project(":lucene:sandbox")) {
+  project.tasks.withType(RenderJavadocTask) {
+    // TODO: fix missing javadocs
+    javadocMissingLevel = "class"
+  }
+}
+
+configure(project(":lucene:spatial-test-fixtures")) {
   project.tasks.withType(RenderJavadocTask) {
     // TODO: fix missing javadocs
     javadocMissingLevel = "class"

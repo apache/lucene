@@ -22,7 +22,7 @@ description = 'Filters and Queries that add to core Lucene'
 dependencies {
   moduleApi project(':lucene:core')
 
-  testImplementation project(':lucene:test-framework')
-  testImplementation project(':lucene:expressions')
+  moduleTestImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:expressions')
 }
 
