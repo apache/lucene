@@ -68,26 +68,25 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
         // if not super.copyFrom() will give us the right exceptions
         suppressedException =
             doPrivileged(
-                (PrivilegedAction<Exception>)
-                    () -> {
-                      try {
-                        Files.createLink(toPath.resolve(destFile), fromPath.resolve(srcFile));
-                      } catch (FileNotFoundException
-                          | NoSuchFileException
-                          | FileAlreadyExistsException ex) {
-                        return ex; // in these cases we bubble up since it's a true error condition.
-                      } catch (IOException
-                          // if the FS doesn't support hard-links
-                          | UnsupportedOperationException
-                          // we don't have permission to use hard-links just fall back to byte copy
-                          | SecurityException ex) {
-                        // hard-links are not supported or the files are on different filesystems
-                        // we could go deeper and check if their filesstores are the same and opt
-                        // out earlier but for now we just fall back to normal file-copy
-                        return ex;
-                      }
-                      return null;
-                    });
+                () -> {
+                  try {
+                    Files.createLink(toPath.resolve(destFile), fromPath.resolve(srcFile));
+                  } catch (FileNotFoundException
+                      | NoSuchFileException
+                      | FileAlreadyExistsException ex) {
+                    return ex; // in these cases we bubble up since it's a true error condition.
+                  } catch (IOException
+                      // if the FS doesn't support hard-links
+                      | UnsupportedOperationException
+                      // we don't have permission to use hard-links just fall back to byte copy
+                      | SecurityException ex) {
+                    // hard-links are not supported or the files are on different filesystems
+                    // we could go deeper and check if their filesstores are the same and opt
+                    // out earlier but for now we just fall back to normal file-copy
+                    return ex;
+                  }
+                  return null;
+                });
         tryCopy = suppressedException != null;
       }
     }

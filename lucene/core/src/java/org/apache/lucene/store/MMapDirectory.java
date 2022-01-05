@@ -334,7 +334,7 @@ public class MMapDirectory extends FSDirectory {
   private static final BufferCleaner CLEANER;
 
   static {
-    final Object hack = doPrivileged((PrivilegedAction<Object>) MMapDirectory::unmapHackImpl);
+    final Object hack = doPrivileged(MMapDirectory::unmapHackImpl);
     if (hack instanceof BufferCleaner) {
       CLEANER = (BufferCleaner) hack;
       UNMAP_SUPPORTED = true;
@@ -397,15 +397,14 @@ public class MMapDirectory extends FSDirectory {
       }
       final Throwable error =
           doPrivileged(
-              (PrivilegedAction<Throwable>)
-                  () -> {
-                    try {
-                      unmapper.invokeExact(buffer);
-                      return null;
-                    } catch (Throwable t) {
-                      return t;
-                    }
-                  });
+              () -> {
+                try {
+                  unmapper.invokeExact(buffer);
+                  return null;
+                } catch (Throwable t) {
+                  return t;
+                }
+              });
       if (error != null) {
         throw new IOException("Unable to unmap the mapped buffer: " + resourceDescription, error);
       }
