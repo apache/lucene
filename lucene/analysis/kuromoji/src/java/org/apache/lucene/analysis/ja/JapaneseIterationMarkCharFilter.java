@@ -37,7 +37,8 @@ import org.apache.lucene.util.IgnoreRandomChains;
  * reached in order to not keep a copy of the character stream in memory. Vertical iteration marks,
  * which are even rarer than horizontal iteration marks in contemporary Japanese, are unsupported.
  */
-@IgnoreRandomChains(reason = "LUCENE-10358: fails with incorrect offsets or causes IndexOutOfBounds")
+@IgnoreRandomChains(
+    reason = "LUCENE-10358: fails with incorrect offsets or causes IndexOutOfBounds")
 public class JapaneseIterationMarkCharFilter extends CharFilter {
 
   /** Normalize kanji iteration marks by default */
