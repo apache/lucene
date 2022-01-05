@@ -119,8 +119,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
   static List<Class<? extends SnowballStemmer>> snowballStemmers;
 
-  private static final Predicate<Object[]> ALWAYS = (objects -> true);
-
   private static final Set<Class<?>> avoidConditionals =
       Set.of(
           FingerprintFilter.class,
@@ -139,24 +137,25 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
           LimitTokenCountFilter.class,
           LimitTokenPositionFilter.class);
 
-  private static final Map<Constructor<?>, Predicate<Object[]>> brokenConstructors =
-      new HashMap<>();
+  private static final Map<Constructor<?>, Predicate<Object[]>> brokenConstructors;
 
   static {
     try {
+      final Map<Constructor<?>, Predicate<Object[]>> map = new HashMap<>();
       // LimitToken*Filter can only use special ctor when last arg is true
       for (final var c :
           List.of(
               LimitTokenCountFilter.class,
               LimitTokenOffsetFilter.class,
               LimitTokenPositionFilter.class)) {
-        brokenConstructors.put(
+        map.put(
             c.getConstructor(TokenStream.class, int.class, boolean.class),
             args -> {
               assert args.length == 3;
               return false == ((Boolean) args[2]); // args are broken if consumeAllTokens is false
             });
       }
+      brokenConstructors = Collections.unmodifiableMap(map);
     } catch (Exception e) {
       throw new Error(e);
     }
@@ -571,8 +570,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
         // have known bugs:
         if (ctor.isSynthetic()
             || ctor.isAnnotationPresent(Deprecated.class)
-            || ctor.isAnnotationPresent(IgnoreRandomChains.class)
-            || brokenConstructors.get(ctor) == ALWAYS) {
+            || ctor.isAnnotationPresent(IgnoreRandomChains.class)) {
           continue;
         }
         // conditional filters are tested elsewhere
