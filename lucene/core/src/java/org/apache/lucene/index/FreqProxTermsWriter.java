@@ -99,6 +99,11 @@ final class FreqProxTermsWriter extends TermsHash {
       }
     }
 
+    if (!state.fieldInfos.hasPostings()) {
+      assert allFields.isEmpty();
+      return;
+    }
+
     // Sort by field name
     CollectionUtil.introSort(allFields);
 

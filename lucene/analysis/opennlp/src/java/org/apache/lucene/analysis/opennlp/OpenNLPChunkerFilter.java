@@ -27,12 +27,14 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Run OpenNLP chunker. Prerequisite: the OpenNLPTokenizer and OpenNLPPOSFilter must precede this
  * filter. Tags terms in the TypeAttribute, replacing the POS tags previously put there by
  * OpenNLPPOSFilter.
  */
+@IgnoreRandomChains(reason = "other filters must precede this one (see docs)")
 public final class OpenNLPChunkerFilter extends TokenFilter {
 
   private List<AttributeSource> sentenceTokenAttrs = new ArrayList<>();

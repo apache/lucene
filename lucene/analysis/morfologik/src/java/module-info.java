@@ -27,6 +27,9 @@ module org.apache.lucene.analysis.morfologik {
   exports org.apache.lucene.analysis.morfologik;
   exports org.apache.lucene.analysis.uk;
 
+  opens org.apache.lucene.analysis.uk to
+      org.apache.lucene.core;
+
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.analysis.morfologik.MorfologikFilterFactory;
 }

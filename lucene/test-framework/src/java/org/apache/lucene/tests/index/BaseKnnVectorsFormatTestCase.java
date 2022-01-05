@@ -556,9 +556,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       w.deleteDocuments(new Term("id", "0"));
       w.forceMerge(1);
       try (DirectoryReader r = DirectoryReader.open(w)) {
-        VectorValues values = getOnlyLeafReader(r).getVectorValues("v");
+        LeafReader leafReader = getOnlyLeafReader(r);
+        VectorValues values = leafReader.getVectorValues("v");
         assertNotNull(values);
         assertEquals(0, values.size());
+
+        // assert that knn search doesn't fail on a field with all deleted docs
+        TopDocs results =
+            leafReader.searchNearestVectors("v", randomVector(3), 1, leafReader.getLiveDocs());
+        assertEquals(0, results.scoreDocs.length);
       }
     }
   }

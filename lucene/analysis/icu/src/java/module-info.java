@@ -26,6 +26,9 @@ module org.apache.lucene.analysis.icu {
   exports org.apache.lucene.analysis.icu.segmentation;
   exports org.apache.lucene.analysis.icu.tokenattributes;
 
+  opens org.apache.lucene.analysis.icu.segmentation to
+      org.apache.lucene.core;
+
   provides org.apache.lucene.analysis.CharFilterFactory with
       org.apache.lucene.analysis.icu.ICUNormalizer2CharFilterFactory;
   provides org.apache.lucene.analysis.TokenizerFactory with

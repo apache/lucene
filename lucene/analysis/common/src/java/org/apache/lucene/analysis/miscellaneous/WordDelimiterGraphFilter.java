@@ -30,6 +30,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.IgnoreRandomChains;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -83,6 +84,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  * StandardTokenizer} immediately removes many intra-word delimiters, it is recommended that this
  * filter be used after a tokenizer that does not do this (such as {@link WhitespaceTokenizer}).
  */
+@IgnoreRandomChains(reason = "Cannot correct offsets when a char filter had changed them")
 public final class WordDelimiterGraphFilter extends TokenFilter {
 
   /**

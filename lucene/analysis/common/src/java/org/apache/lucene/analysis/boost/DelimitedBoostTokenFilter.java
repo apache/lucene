@@ -21,6 +21,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.search.BoostAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Characters before the delimiter are the "token", those after are the boost.
@@ -30,6 +31,8 @@ import org.apache.lucene.search.BoostAttribute;
  *
  * <p>Note make sure your Tokenizer doesn't split on the delimiter, or this won't work
  */
+@IgnoreRandomChains(
+    reason = "requires a special encoded token value, so it may fail with random data")
 public final class DelimitedBoostTokenFilter extends TokenFilter {
   private final char delimiter;
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);

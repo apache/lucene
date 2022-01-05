@@ -19,6 +19,7 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
@@ -37,31 +38,38 @@ public abstract class DocValuesProducer implements Closeable {
 
   /**
    * Returns {@link NumericDocValues} for this field. The returned instance need not be thread-safe:
-   * it will only be used by a single thread.
+   * it will only be used by a single thread. The behavior is undefined if the doc values type of
+   * the given field is not {@link DocValuesType#NUMERIC}. The return value is never {@code null}.
    */
   public abstract NumericDocValues getNumeric(FieldInfo field) throws IOException;
 
   /**
    * Returns {@link BinaryDocValues} for this field. The returned instance need not be thread-safe:
-   * it will only be used by a single thread.
+   * it will only be used by a single thread. The behavior is undefined if the doc values type of
+   * the given field is not {@link DocValuesType#BINARY}. The return value is never {@code null}.
    */
   public abstract BinaryDocValues getBinary(FieldInfo field) throws IOException;
 
   /**
    * Returns {@link SortedDocValues} for this field. The returned instance need not be thread-safe:
-   * it will only be used by a single thread.
+   * it will only be used by a single thread. The behavior is undefined if the doc values type of
+   * the given field is not {@link DocValuesType#SORTED}. The return value is never {@code null}.
    */
   public abstract SortedDocValues getSorted(FieldInfo field) throws IOException;
 
   /**
    * Returns {@link SortedNumericDocValues} for this field. The returned instance need not be
-   * thread-safe: it will only be used by a single thread.
+   * thread-safe: it will only be used by a single thread. The behavior is undefined if the doc
+   * values type of the given field is not {@link DocValuesType#SORTED_NUMERIC}. The return value is
+   * never {@code null}.
    */
   public abstract SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException;
 
   /**
    * Returns {@link SortedSetDocValues} for this field. The returned instance need not be
-   * thread-safe: it will only be used by a single thread.
+   * thread-safe: it will only be used by a single thread. The behavior is undefined if the doc
+   * values type of the given field is not {@link DocValuesType#SORTED_SET}. The return value is
+   * never {@code null}.
    */
   public abstract SortedSetDocValues getSortedSet(FieldInfo field) throws IOException;
 
