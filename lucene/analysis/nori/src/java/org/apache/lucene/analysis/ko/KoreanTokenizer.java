@@ -60,6 +60,7 @@ import org.apache.lucene.util.fst.FST;
  *
  * @lucene.experimental
  */
+@IgnoreRandomChains(reason = "LUCENE-10359: fails with incorrect offsets")
 public final class KoreanTokenizer extends Tokenizer {
 
   /** Token type reflecting the original source of this token */
