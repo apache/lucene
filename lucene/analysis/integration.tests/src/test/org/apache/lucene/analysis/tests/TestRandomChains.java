@@ -628,17 +628,14 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
         }
       };
 
+  private static <T> Set<T> union(Collection<T> c1, Collection<T> c2) {
+    return Stream.concat(c1.stream(), c2.stream()).collect(Collectors.toUnmodifiableSet());
+  }
+
   static final Set<Class<?>> allowedTokenizerArgs = argProducers.keySet(),
       allowedTokenFilterArgs =
-          Stream.concat(
-                  argProducers.keySet().stream(),
-                  Stream.of(
-                      TokenStream.class, CommonGramsFilter.class // this is broken
-                      ))
-              .collect(Collectors.toUnmodifiableSet()),
-      allowedCharFilterArgs =
-          Stream.concat(argProducers.keySet().stream(), Stream.of(Reader.class))
-              .collect(Collectors.toUnmodifiableSet());
+          union(argProducers.keySet(), List.of(TokenStream.class, CommonGramsFilter.class)),
+      allowedCharFilterArgs = union(argProducers.keySet(), List.of(Reader.class));
 
   @SuppressWarnings("unchecked")
   static <T> T newRandomArg(Random random, Class<T> paramType) {
