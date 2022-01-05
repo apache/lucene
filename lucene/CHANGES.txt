@@ -96,8 +96,6 @@ Optimizations
 Bug Fixes
 ---------------------
 
-* LUCENE-10319: Make ForUtil#BLOCK_SIZE changeable. (Guo Feng)
-
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
 * LUCENE-10287: Fix Luke startup script to add jdk.unsupported module so
@@ -105,6 +103,8 @@ Bug Fixes
 
 Other
 ---------------------
+
+* LUCENE-10319: Make ForUtil#BLOCK_SIZE changeable. (Guo Feng)
 
 * LUCENE-10273: Deprecate SpanishMinimalStemFilter in favor of SpanishPluralStemFilter. (Robert Muir)
 

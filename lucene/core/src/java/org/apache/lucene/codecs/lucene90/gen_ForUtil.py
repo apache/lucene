@@ -23,6 +23,20 @@ BLOCK_SIZE = 128
 MAX_SPECIALIZED_BITS_PER_VALUE = 24
 OUTPUT_FILE = "ForUtil.java"
 PRIMITIVE_SIZE = [8, 16, 32]
+CONSTANTS = {
+  'BLOCK_SIZE': 128,
+  'BLOCK_SIZE_DIV_2': BLOCK_SIZE / 2,
+  'BLOCK_SIZE_DIV_4': BLOCK_SIZE / 4,
+  'BLOCK_SIZE_DIV_8': BLOCK_SIZE / 8,
+  'BLOCK_SIZE_DIV_64': BLOCK_SIZE / 64,
+  'BLOCK_SIZE_DIV_8_MUL_1': BLOCK_SIZE / 8 * 1,
+  'BLOCK_SIZE_DIV_8_MUL_2': BLOCK_SIZE / 8 * 2,
+  'BLOCK_SIZE_DIV_8_MUL_3': BLOCK_SIZE / 8 * 3,
+  'BLOCK_SIZE_DIV_8_MUL_4': BLOCK_SIZE / 8 * 4,
+  'BLOCK_SIZE_DIV_8_MUL_5': BLOCK_SIZE / 8 * 5,
+  'BLOCK_SIZE_DIV_8_MUL_6': BLOCK_SIZE / 8 * 6,
+  'BLOCK_SIZE_DIV_8_MUL_7': BLOCK_SIZE / 8 * 7,
+}
 HEADER = """// This file has been automatically generated, DO NOT EDIT
 
 /*
@@ -53,252 +67,242 @@ import org.apache.lucene.util.MathUtil;
 // If bitsPerValue <= 8 then we pack 8 ints per long
 // else if bitsPerValue <= 16 we pack 4 ints per long
 // else we pack 2 ints per long
-final class ForUtil {
+final class ForUtil {{
 
-  static final int BLOCK_SIZE = """ + str(BLOCK_SIZE) + """;
+  static final int BLOCK_SIZE = {BLOCK_SIZE};
   static final int BLOCK_SIZE_DIV_2 = BLOCK_SIZE >> 1;
   static final int BLOCK_SIZE_DIV_2_MASK = BLOCK_SIZE_DIV_2 - 1;
-  private static final int BLOCK_SIZE_DIV_4 = BLOCK_SIZE >> 2;
-  private static final int BLOCK_SIZE_DIV_8 = BLOCK_SIZE >> 3;
-  private static final int BLOCK_SIZE_DIV_64 = BLOCK_SIZE >> 6;
-  private static final int BLOCK_SIZE_DIV_8_MUL_1 = BLOCK_SIZE_DIV_8;
-  private static final int BLOCK_SIZE_DIV_8_MUL_2 = BLOCK_SIZE_DIV_8 * 2;
-  private static final int BLOCK_SIZE_DIV_8_MUL_3 = BLOCK_SIZE_DIV_8 * 3;
-  private static final int BLOCK_SIZE_DIV_8_MUL_4 = BLOCK_SIZE_DIV_8 * 4;
-  private static final int BLOCK_SIZE_DIV_8_MUL_5 = BLOCK_SIZE_DIV_8 * 5;
-  private static final int BLOCK_SIZE_DIV_8_MUL_6 = BLOCK_SIZE_DIV_8 * 6;
-  private static final int BLOCK_SIZE_DIV_8_MUL_7 = BLOCK_SIZE_DIV_8 * 7;
   private static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
   private static final int BLOCK_SIZE_LOG2_MIN_3 = BLOCK_SIZE_LOG2 - 3;
   static final int BLOCK_SIZE_LOG2_MIN_1 = BLOCK_SIZE_LOG2 - 1;
 
-  private static long expandMask32(long mask32) {
+  private static long expandMask32(long mask32) {{
     return mask32 | (mask32 << 32);
-  }
+  }}
 
-  private static long expandMask16(long mask16) {
+  private static long expandMask16(long mask16) {{
     return expandMask32(mask16 | (mask16 << 16));
-  }
+  }}
 
-  private static long expandMask8(long mask8) {
+  private static long expandMask8(long mask8) {{
     return expandMask16(mask8 | (mask8 << 8));
-  }
+  }}
 
-  private static long mask32(int bitsPerValue) {
+  private static long mask32(int bitsPerValue) {{
     return expandMask32((1L << bitsPerValue) - 1);
-  }
+  }}
 
-  private static long mask16(int bitsPerValue) {
+  private static long mask16(int bitsPerValue) {{
     return expandMask16((1L << bitsPerValue) - 1);
-  }
+  }}
 
-  private static long mask8(int bitsPerValue) {
+  private static long mask8(int bitsPerValue) {{
     return expandMask8((1L << bitsPerValue) - 1);
-  }
+  }}
 
-  private static void expand8(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
+  private static void expand8(long[] arr) {{
+    for (int i = 0; i < {BLOCK_SIZE_DIV_8}; ++i) {{
       long l = arr[i];
       arr[i] = (l >>> 56) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 48) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 40) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = (l >>> 32) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = (l >>> 24) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_5 + i] = (l >>> 16) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_6 + i] = (l >>> 8) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_7 + i] = l & 0xFFL;
-    }
-  }
+      arr[{BLOCK_SIZE_DIV_8_MUL_1} + i] = (l >>> 48) & 0xFFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_2} + i] = (l >>> 40) & 0xFFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_3} + i] = (l >>> 32) & 0xFFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_4} + i] = (l >>> 24) & 0xFFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_5} + i] = (l >>> 16) & 0xFFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_6} + i] = (l >>> 8) & 0xFFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_7} + i] = l & 0xFFL;
+    }}
+  }}
 
-  private static void expand8To32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
+  private static void expand8To32(long[] arr) {{
+    for (int i = 0; i < {BLOCK_SIZE_DIV_8}; ++i) {{
       long l = arr[i];
       arr[i] = (l >>> 24) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 16) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 8) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = l & 0x000000FF000000FFL;
-    }
-  }
+      arr[{BLOCK_SIZE_DIV_8_MUL_1} + i] = (l >>> 16) & 0x000000FF000000FFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_2} + i] = (l >>> 8) & 0x000000FF000000FFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_3} + i] = l & 0x000000FF000000FFL;
+    }}
+  }}
 
-  private static void collapse8(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
+  private static void collapse8(long[] arr) {{
+    for (int i = 0; i < {BLOCK_SIZE_DIV_8}; ++i) {{
       arr[i] =
           (arr[i] << 56)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_1 + i] << 48)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 40)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_3 + i] << 32)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 24)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_5 + i] << 16)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_6 + i] << 8)
-              | arr[BLOCK_SIZE_DIV_8_MUL_7 + i];
-    }
-  }
+              | (arr[{BLOCK_SIZE_DIV_8_MUL_1} + i] << 48)
+              | (arr[{BLOCK_SIZE_DIV_8_MUL_2} + i] << 40)
+              | (arr[{BLOCK_SIZE_DIV_8_MUL_3} + i] << 32)
+              | (arr[{BLOCK_SIZE_DIV_8_MUL_4} + i] << 24)
+              | (arr[{BLOCK_SIZE_DIV_8_MUL_5} + i] << 16)
+              | (arr[{BLOCK_SIZE_DIV_8_MUL_6} + i] << 8)
+              | arr[{BLOCK_SIZE_DIV_8_MUL_7} + i];
+    }}
+  }}
 
-  private static void expand16(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
+  private static void expand16(long[] arr) {{
+    for (int i = 0; i < {BLOCK_SIZE_DIV_4}; ++i) {{
       long l = arr[i];
       arr[i] = (l >>> 48) & 0xFFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 32) & 0xFFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = (l >>> 16) & 0xFFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_6 + i] = l & 0xFFFFL;
-    }
-  }
+      arr[{BLOCK_SIZE_DIV_8_MUL_2} + i] = (l >>> 32) & 0xFFFFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_4} + i] = (l >>> 16) & 0xFFFFL;
+      arr[{BLOCK_SIZE_DIV_8_MUL_6} + i] = l & 0xFFFFL;
+    }}
+  }}
 
-  private static void expand16To32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
+  private static void expand16To32(long[] arr) {{
+    for (int i = 0; i < {BLOCK_SIZE_DIV_4}; ++i) {{
       long l = arr[i];
       arr[i] = (l >>> 16) & 0x0000FFFF0000FFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = l & 0x0000FFFF0000FFFFL;
-    }
-  }
+      arr[{BLOCK_SIZE_DIV_8_MUL_2} + i] = l & 0x0000FFFF0000FFFFL;
+    }}
+  }}
 
-  private static void collapse16(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
+  private static void collapse16(long[] arr) {{
+    for (int i = 0; i < {BLOCK_SIZE_DIV_4}; ++i) {{
       arr[i] =
           (arr[i] << 48)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 32)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 16)
-              | arr[BLOCK_SIZE_DIV_8_MUL_6 + i];
-    }
-  }
+              | (arr[{BLOCK_SIZE_DIV_8_MUL_2} + i] << 32)
+              | (arr[{BLOCK_SIZE_DIV_8_MUL_4} + i] << 16)
+              | arr[{BLOCK_SIZE_DIV_8_MUL_6} + i];
+    }}
+  }}
 
-  private static void expand32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
+  private static void expand32(long[] arr) {{
+    for (int i = 0; i < {BLOCK_SIZE_DIV_2}; ++i) {{
       long l = arr[i];
       arr[i] = l >>> 32;
-      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = l & 0xFFFFFFFFL;
-    }
-  }
+      arr[{BLOCK_SIZE_DIV_8_MUL_4} + i] = l & 0xFFFFFFFFL;
+    }}
+  }}
 
-  private static void collapse32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
-      arr[i] = (arr[i] << 32) | arr[BLOCK_SIZE_DIV_8_MUL_4 + i];
-    }
-  }
+  private static void collapse32(long[] arr) {{
+    for (int i = 0; i < {BLOCK_SIZE_DIV_2}; ++i) {{
+      arr[i] = (arr[i] << 32) | arr[{BLOCK_SIZE_DIV_8_MUL_4} + i];
+    }}
+  }}
 
-  private final long[] tmp = new long[BLOCK_SIZE_DIV_2];
+  private final long[] tmp = new long[{BLOCK_SIZE_DIV_2}];
 
-  /** Encode 128 integers from {@code longs} into {@code out}. */
-  void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
+  /** Encode 128 integers from {{@code longs}} into {{@code out}}. */
+  void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {{
     final int nextPrimitive;
     final int numLongs;
-    if (bitsPerValue <= 8) {
+    if (bitsPerValue <= 8) {{
       nextPrimitive = 8;
-      numLongs = BLOCK_SIZE_DIV_8;
+      numLongs = {BLOCK_SIZE_DIV_8};
       collapse8(longs);
-    } else if (bitsPerValue <= 16) {
+    }} else if (bitsPerValue <= 16) {{
       nextPrimitive = 16;
-      numLongs = BLOCK_SIZE_DIV_4;
+      numLongs = {BLOCK_SIZE_DIV_4};
       collapse16(longs);
-    } else {
+    }} else {{
       nextPrimitive = 32;
-      numLongs = BLOCK_SIZE_DIV_2;
+      numLongs = {BLOCK_SIZE_DIV_2};
       collapse32(longs);
-    }
+    }}
 
-    final int numLongsPerShift = bitsPerValue * BLOCK_SIZE_DIV_64;
+    final int numLongsPerShift = bitsPerValue * {BLOCK_SIZE_DIV_64};
     int idx = 0;
     int shift = nextPrimitive - bitsPerValue;
-    for (int i = 0; i < numLongsPerShift; ++i) {
+    for (int i = 0; i < numLongsPerShift; ++i) {{
       tmp[i] = longs[idx++] << shift;
-    }
-    for (shift = shift - bitsPerValue; shift >= 0; shift -= bitsPerValue) {
-      for (int i = 0; i < numLongsPerShift; ++i) {
+    }}
+    for (shift = shift - bitsPerValue; shift >= 0; shift -= bitsPerValue) {{
+      for (int i = 0; i < numLongsPerShift; ++i) {{
         tmp[i] |= longs[idx++] << shift;
-      }
-    }
+      }}
+    }}
 
     final int remainingBitsPerLong = shift + bitsPerValue;
     final long maskRemainingBitsPerLong;
-    if (nextPrimitive == 8) {
+    if (nextPrimitive == 8) {{
       maskRemainingBitsPerLong = MASKS8[remainingBitsPerLong];
-    } else if (nextPrimitive == 16) {
+    }} else if (nextPrimitive == 16) {{
       maskRemainingBitsPerLong = MASKS16[remainingBitsPerLong];
-    } else {
+    }} else {{
       maskRemainingBitsPerLong = MASKS32[remainingBitsPerLong];
-    }
+    }}
 
     int tmpIdx = 0;
     int remainingBitsPerValue = bitsPerValue;
-    while (idx < numLongs) {
-      if (remainingBitsPerValue >= remainingBitsPerLong) {
+    while (idx < numLongs) {{
+      if (remainingBitsPerValue >= remainingBitsPerLong) {{
         remainingBitsPerValue -= remainingBitsPerLong;
         tmp[tmpIdx++] |= (longs[idx] >>> remainingBitsPerValue) & maskRemainingBitsPerLong;
-        if (remainingBitsPerValue == 0) {
+        if (remainingBitsPerValue == 0) {{
           idx++;
           remainingBitsPerValue = bitsPerValue;
-        }
-      } else {
+        }}
+      }} else {{
         final long mask1, mask2;
-        if (nextPrimitive == 8) {
+        if (nextPrimitive == 8) {{
           mask1 = MASKS8[remainingBitsPerValue];
           mask2 = MASKS8[remainingBitsPerLong - remainingBitsPerValue];
-        } else if (nextPrimitive == 16) {
+        }} else if (nextPrimitive == 16) {{
           mask1 = MASKS16[remainingBitsPerValue];
           mask2 = MASKS16[remainingBitsPerLong - remainingBitsPerValue];
-        } else {
+        }} else {{
           mask1 = MASKS32[remainingBitsPerValue];
           mask2 = MASKS32[remainingBitsPerLong - remainingBitsPerValue];
-        }
+        }}
         tmp[tmpIdx] |= (longs[idx++] & mask1) << (remainingBitsPerLong - remainingBitsPerValue);
         remainingBitsPerValue = bitsPerValue - remainingBitsPerLong + remainingBitsPerValue;
         tmp[tmpIdx++] |= (longs[idx] >>> remainingBitsPerValue) & mask2;
-      }
-    }
+      }}
+    }}
 
-    for (int i = 0; i < numLongsPerShift; ++i) {
+    for (int i = 0; i < numLongsPerShift; ++i) {{
       out.writeLong(tmp[i]);
-    }
-  }
+    }}
+  }}
 
-  /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
-  int numBytes(int bitsPerValue) {
+  /** Number of bytes required to encode 128 integers of {{@code bitsPerValue}} bits per value. */
+  int numBytes(int bitsPerValue) {{
     return bitsPerValue << BLOCK_SIZE_LOG2_MIN_3;
-  }
+  }}
 
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
-      throws IOException {
-    final int numLongs = bitsPerValue * BLOCK_SIZE_DIV_64;
+      throws IOException {{
+    final int numLongs = bitsPerValue * {BLOCK_SIZE_DIV_64};
     in.readLongs(tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
     int longsIdx = 0;
     int shift = 32 - bitsPerValue;
-    for (; shift >= 0; shift -= bitsPerValue) {
+    for (; shift >= 0; shift -= bitsPerValue) {{
       shiftLongs(tmp, numLongs, longs, longsIdx, shift, mask);
       longsIdx += numLongs;
-    }
+    }}
     final int remainingBitsPerLong = shift + bitsPerValue;
     final long mask32RemainingBitsPerLong = MASKS32[remainingBitsPerLong];
     int tmpIdx = 0;
     int remainingBits = remainingBitsPerLong;
-    for (; longsIdx < BLOCK_SIZE_DIV_2; ++longsIdx) {
+    for (; longsIdx < {BLOCK_SIZE_DIV_2}; ++longsIdx) {{
       int b = bitsPerValue - remainingBits;
       long l = (tmp[tmpIdx++] & MASKS32[remainingBits]) << b;
-      while (b >= remainingBitsPerLong) {
+      while (b >= remainingBitsPerLong) {{
         b -= remainingBitsPerLong;
         l |= (tmp[tmpIdx++] & mask32RemainingBitsPerLong) << b;
-      }
-      if (b > 0) {
+      }}
+      if (b > 0) {{
         l |= (tmp[tmpIdx] >>> (remainingBitsPerLong - b)) & MASKS32[b];
         remainingBits = remainingBitsPerLong - b;
-      } else {
+      }} else {{
         remainingBits = remainingBitsPerLong;
-      }
+      }}
       longs[longsIdx] = l;
-    }
-  }
+    }}
+  }}
 
   /**
    * The pattern that this shiftLongs method applies is recognized by the C2 compiler, which
    * generates SIMD instructions for it in order to shift multiple longs at once.
    */
-  private static void shiftLongs(long[] a, int count, long[] b, int bi, int shift, long mask) {
-    for (int i = 0; i < count; ++i) {
+  private static void shiftLongs(long[] a, int count, long[] b, int bi, int shift, long mask) {{
+    for (int i = 0; i < count; ++i) {{
       b[bi + i] = (a[i] >>> shift) & mask;
-    }
-  }
+    }}
+  }}
 
-"""
+""".format(**CONSTANTS)
 
 def writeRemainderWithSIMDOptimize(bpv, next_primitive, remaining_bits_per_long, o, num_values, f):
   iteration = 1

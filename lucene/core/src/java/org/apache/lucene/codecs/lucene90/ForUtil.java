@@ -33,16 +33,6 @@ final class ForUtil {
   static final int BLOCK_SIZE = 128;
   static final int BLOCK_SIZE_DIV_2 = BLOCK_SIZE >> 1;
   static final int BLOCK_SIZE_DIV_2_MASK = BLOCK_SIZE_DIV_2 - 1;
-  private static final int BLOCK_SIZE_DIV_4 = BLOCK_SIZE >> 2;
-  private static final int BLOCK_SIZE_DIV_8 = BLOCK_SIZE >> 3;
-  private static final int BLOCK_SIZE_DIV_64 = BLOCK_SIZE >> 6;
-  private static final int BLOCK_SIZE_DIV_8_MUL_1 = BLOCK_SIZE_DIV_8;
-  private static final int BLOCK_SIZE_DIV_8_MUL_2 = BLOCK_SIZE_DIV_8 * 2;
-  private static final int BLOCK_SIZE_DIV_8_MUL_3 = BLOCK_SIZE_DIV_8 * 3;
-  private static final int BLOCK_SIZE_DIV_8_MUL_4 = BLOCK_SIZE_DIV_8 * 4;
-  private static final int BLOCK_SIZE_DIV_8_MUL_5 = BLOCK_SIZE_DIV_8 * 5;
-  private static final int BLOCK_SIZE_DIV_8_MUL_6 = BLOCK_SIZE_DIV_8 * 6;
-  private static final int BLOCK_SIZE_DIV_8_MUL_7 = BLOCK_SIZE_DIV_8 * 7;
   private static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
   private static final int BLOCK_SIZE_LOG2_MIN_3 = BLOCK_SIZE_LOG2 - 3;
   static final int BLOCK_SIZE_LOG2_MIN_1 = BLOCK_SIZE_LOG2 - 1;
@@ -72,86 +62,82 @@ final class ForUtil {
   }
 
   private static void expand8(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
+    for (int i = 0; i < 16; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 56) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 48) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 40) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = (l >>> 32) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = (l >>> 24) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_5 + i] = (l >>> 16) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_6 + i] = (l >>> 8) & 0xFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_7 + i] = l & 0xFFL;
+      arr[16 + i] = (l >>> 48) & 0xFFL;
+      arr[32 + i] = (l >>> 40) & 0xFFL;
+      arr[48 + i] = (l >>> 32) & 0xFFL;
+      arr[64 + i] = (l >>> 24) & 0xFFL;
+      arr[80 + i] = (l >>> 16) & 0xFFL;
+      arr[96 + i] = (l >>> 8) & 0xFFL;
+      arr[112 + i] = l & 0xFFL;
     }
   }
 
   private static void expand8To32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
+    for (int i = 0; i < 16; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 24) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_1 + i] = (l >>> 16) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 8) & 0x000000FF000000FFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_3 + i] = l & 0x000000FF000000FFL;
+      arr[16 + i] = (l >>> 16) & 0x000000FF000000FFL;
+      arr[32 + i] = (l >>> 8) & 0x000000FF000000FFL;
+      arr[48 + i] = l & 0x000000FF000000FFL;
     }
   }
 
   private static void collapse8(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_8; ++i) {
+    for (int i = 0; i < 16; ++i) {
       arr[i] =
           (arr[i] << 56)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_1 + i] << 48)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 40)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_3 + i] << 32)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 24)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_5 + i] << 16)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_6 + i] << 8)
-              | arr[BLOCK_SIZE_DIV_8_MUL_7 + i];
+              | (arr[16 + i] << 48)
+              | (arr[32 + i] << 40)
+              | (arr[48 + i] << 32)
+              | (arr[64 + i] << 24)
+              | (arr[80 + i] << 16)
+              | (arr[96 + i] << 8)
+              | arr[112 + i];
     }
   }
 
   private static void expand16(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
+    for (int i = 0; i < 32; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 48) & 0xFFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = (l >>> 32) & 0xFFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = (l >>> 16) & 0xFFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_6 + i] = l & 0xFFFFL;
+      arr[32 + i] = (l >>> 32) & 0xFFFFL;
+      arr[64 + i] = (l >>> 16) & 0xFFFFL;
+      arr[96 + i] = l & 0xFFFFL;
     }
   }
 
   private static void expand16To32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
+    for (int i = 0; i < 32; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 16) & 0x0000FFFF0000FFFFL;
-      arr[BLOCK_SIZE_DIV_8_MUL_2 + i] = l & 0x0000FFFF0000FFFFL;
+      arr[32 + i] = l & 0x0000FFFF0000FFFFL;
     }
   }
 
   private static void collapse16(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_4; ++i) {
-      arr[i] =
-          (arr[i] << 48)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_2 + i] << 32)
-              | (arr[BLOCK_SIZE_DIV_8_MUL_4 + i] << 16)
-              | arr[BLOCK_SIZE_DIV_8_MUL_6 + i];
+    for (int i = 0; i < 32; ++i) {
+      arr[i] = (arr[i] << 48) | (arr[32 + i] << 32) | (arr[64 + i] << 16) | arr[96 + i];
     }
   }
 
   private static void expand32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
+    for (int i = 0; i < 64; ++i) {
       long l = arr[i];
       arr[i] = l >>> 32;
-      arr[BLOCK_SIZE_DIV_8_MUL_4 + i] = l & 0xFFFFFFFFL;
+      arr[64 + i] = l & 0xFFFFFFFFL;
     }
   }
 
   private static void collapse32(long[] arr) {
-    for (int i = 0; i < BLOCK_SIZE_DIV_2; ++i) {
-      arr[i] = (arr[i] << 32) | arr[BLOCK_SIZE_DIV_8_MUL_4 + i];
+    for (int i = 0; i < 64; ++i) {
+      arr[i] = (arr[i] << 32) | arr[64 + i];
     }
   }
 
-  private final long[] tmp = new long[BLOCK_SIZE_DIV_2];
+  private final long[] tmp = new long[64];
 
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
@@ -159,19 +145,19 @@ final class ForUtil {
     final int numLongs;
     if (bitsPerValue <= 8) {
       nextPrimitive = 8;
-      numLongs = BLOCK_SIZE_DIV_8;
+      numLongs = 16;
       collapse8(longs);
     } else if (bitsPerValue <= 16) {
       nextPrimitive = 16;
-      numLongs = BLOCK_SIZE_DIV_4;
+      numLongs = 32;
       collapse16(longs);
     } else {
       nextPrimitive = 32;
-      numLongs = BLOCK_SIZE_DIV_2;
+      numLongs = 64;
       collapse32(longs);
     }
 
-    final int numLongsPerShift = bitsPerValue * BLOCK_SIZE_DIV_64;
+    final int numLongsPerShift = bitsPerValue * 2;
     int idx = 0;
     int shift = nextPrimitive - bitsPerValue;
     for (int i = 0; i < numLongsPerShift; ++i) {
@@ -233,7 +219,7 @@ final class ForUtil {
 
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
       throws IOException {
-    final int numLongs = bitsPerValue * BLOCK_SIZE_DIV_64;
+    final int numLongs = bitsPerValue * 2;
     in.readLongs(tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
     int longsIdx = 0;
@@ -246,7 +232,7 @@ final class ForUtil {
     final long mask32RemainingBitsPerLong = MASKS32[remainingBitsPerLong];
     int tmpIdx = 0;
     int remainingBits = remainingBitsPerLong;
-    for (; longsIdx < BLOCK_SIZE_DIV_2; ++longsIdx) {
+    for (; longsIdx < 64; ++longsIdx) {
       int b = bitsPerValue - remainingBits;
       long l = (tmp[tmpIdx++] & MASKS32[remainingBits]) << b;
       while (b >= remainingBitsPerLong) {
