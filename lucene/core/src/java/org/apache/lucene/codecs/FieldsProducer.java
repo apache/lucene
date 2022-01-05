@@ -18,10 +18,7 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.Terms;
 
 /**
  * Abstract API that produces terms, doc, freq, prox, offset and payloads postings.
@@ -44,14 +41,6 @@ public abstract class FieldsProducer extends Fields implements Closeable {
    * @lucene.internal
    */
   public abstract void checkIntegrity() throws IOException;
-
-  /**
-   * Get the {@link Terms} for this field. The behavior is undefined if the field doesn't have
-   * {@link IndexOptions} turned on on its {@link FieldInfo}. The return value is never {@code
-   * null}.
-   */
-  @Override
-  public abstract Terms terms(String field) throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

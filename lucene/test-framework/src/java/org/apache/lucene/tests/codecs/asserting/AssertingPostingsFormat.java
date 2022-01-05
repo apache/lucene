@@ -23,7 +23,6 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
@@ -52,16 +51,14 @@ public final class AssertingPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    return new AssertingFieldsProducer(in.fieldsProducer(state), state.fieldInfos);
+    return new AssertingFieldsProducer(in.fieldsProducer(state));
   }
 
   static class AssertingFieldsProducer extends FieldsProducer {
     private final FieldsProducer in;
-    private final FieldInfos fis;
 
-    AssertingFieldsProducer(FieldsProducer in, FieldInfos fis) {
+    AssertingFieldsProducer(FieldsProducer in) {
       this.in = in;
-      this.fis = fis;
       // do a few simple checks on init
       assert toString() != null;
     }
@@ -81,8 +78,6 @@ public final class AssertingPostingsFormat extends PostingsFormat {
 
     @Override
     public Terms terms(String field) throws IOException {
-      FieldInfo fi = fis.fieldInfo(field);
-      assert fi != null && fi.getIndexOptions() != IndexOptions.NONE;
       Terms terms = in.terms(field);
       return terms == null ? null : new AssertingLeafReader.AssertingTerms(terms);
     }
@@ -99,7 +94,7 @@ public final class AssertingPostingsFormat extends PostingsFormat {
 
     @Override
     public FieldsProducer getMergeInstance() {
-      return new AssertingFieldsProducer(in.getMergeInstance(), fis);
+      return new AssertingFieldsProducer(in.getMergeInstance());
     }
 
     @Override
