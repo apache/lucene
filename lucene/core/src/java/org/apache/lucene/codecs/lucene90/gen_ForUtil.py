@@ -67,35 +67,37 @@ import org.apache.lucene.util.MathUtil;
 // If bitsPerValue <= 8 then we pack 8 ints per long
 // else if bitsPerValue <= 16 we pack 4 ints per long
 // else we pack 2 ints per long
-final class ForUtil {{
+final class ForUtil {
 
-  static final int BLOCK_SIZE = {BLOCK_SIZE};
+  static final int BLOCK_SIZE = %d;
   static final int BLOCK_SIZE_LOG2 = MathUtil.log(BLOCK_SIZE, 2);
 
-  private static long expandMask32(long mask32) {{
+  private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
-  }}
+  }
 
-  private static long expandMask16(long mask16) {{
+  private static long expandMask16(long mask16) {
     return expandMask32(mask16 | (mask16 << 16));
-  }}
+  }
 
-  private static long expandMask8(long mask8) {{
+  private static long expandMask8(long mask8) {
     return expandMask16(mask8 | (mask8 << 8));
-  }}
+  }
 
-  private static long mask32(int bitsPerValue) {{
+  private static long mask32(int bitsPerValue) {
     return expandMask32((1L << bitsPerValue) - 1);
-  }}
+  }
 
-  private static long mask16(int bitsPerValue) {{
+  private static long mask16(int bitsPerValue) {
     return expandMask16((1L << bitsPerValue) - 1);
-  }}
+  }
 
-  private static long mask8(int bitsPerValue) {{
+  private static long mask8(int bitsPerValue) {
     return expandMask8((1L << bitsPerValue) - 1);
-  }}
+  }
+""" % BLOCK_SIZE
 
+HEADER += """
   private static void expand8(long[] arr) {{
     for (int i = 0; i < {BLOCK_SIZE_DIV_8}; ++i) {{
       long l = arr[i];
