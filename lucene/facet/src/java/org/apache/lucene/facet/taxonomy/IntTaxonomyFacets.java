@@ -32,9 +32,9 @@ import org.apache.lucene.facet.TopOrdAndIntQueue;
 public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   /** Per-ordinal value. */
-  protected final int[] values;
+  final int[] values;
 
-  protected final IntIntHashMap sparseValues;
+  final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
   protected IntTaxonomyFacets(
