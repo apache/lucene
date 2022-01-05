@@ -17,14 +17,17 @@
 
 apply plugin: 'java-library'
 
-description = 'Analyzer for indexing phonetic signatures (for sounds-alike search)'
+description = 'Module integration tests for all :lucene:analysis modules'
 
 dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:analysis:common')
-
-  moduleApi 'commons-codec:commons-codec'
-
-  testImplementation project(':lucene:test-framework')
-} 
-
+  moduleTestImplementation project(':lucene:analysis:common')
+  moduleTestImplementation project(':lucene:analysis:icu')
+  moduleTestImplementation project(':lucene:analysis:kuromoji')
+  moduleTestImplementation project(':lucene:analysis:morfologik')
+  moduleTestImplementation project(':lucene:analysis:nori')
+  moduleTestImplementation project(':lucene:analysis:opennlp')
+  moduleTestImplementation project(':lucene:analysis:phonetic')
+  moduleTestImplementation project(':lucene:analysis:smartcn')
+  moduleTestImplementation project(':lucene:analysis:stempel')
+  moduleTestImplementation project(':lucene:test-framework')
+}
