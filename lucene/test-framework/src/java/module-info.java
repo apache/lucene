@@ -23,6 +23,10 @@ module org.apache.lucene.test_framework {
   requires transitive junit;
   requires transitive randomizedtesting.runner;
 
+  // Open certain packages for junit because it scans methods via reflection.
+  opens org.apache.lucene.tests.index to
+      junit;
+
   exports org.apache.lucene.tests.analysis.standard;
   exports org.apache.lucene.tests.analysis;
   exports org.apache.lucene.tests.codecs.asserting;
