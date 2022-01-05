@@ -82,6 +82,7 @@ import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter.StemmerOve
 import org.apache.lucene.analysis.pattern.PatternTypingFilter;
 import org.apache.lucene.analysis.payloads.IdentityEncoder;
 import org.apache.lucene.analysis.payloads.PayloadEncoder;
+import org.apache.lucene.analysis.phonetic.BeiderMorseFilter;
 import org.apache.lucene.analysis.pl.PolishAnalyzer;
 import org.apache.lucene.analysis.shingle.FixedShingleFilter;
 import org.apache.lucene.analysis.shingle.ShingleFilter;
@@ -155,6 +156,13 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               return false == ((Boolean) args[2]); // args are broken if consumeAllTokens is false
             });
       }
+      map.put(
+          BeiderMorseFilter.class.getConstructor(TokenStream.class, PhoneticEngine.class),
+          args -> {
+            // https://issues.apache.org/jira/browse/LUCENE-10360
+            return ((PhoneticEngine) args[1]).getNameType()
+                == org.apache.commons.codec.language.bm.NameType.SEPHARDIC;
+          });
       brokenConstructors = Collections.unmodifiableMap(map);
     } catch (Exception e) {
       throw new Error(e);
