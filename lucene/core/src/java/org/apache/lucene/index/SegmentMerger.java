@@ -203,11 +203,8 @@ final class SegmentMerger {
         // Use the merge instance in order to reuse the same IndexInput for all terms
         normsMergeInstance = norms.getMergeInstance();
       }
-      try (FieldsConsumer consumer =
-          mergeState.mergeFieldInfos.hasPostings()
-              ? codec.postingsFormat().fieldsConsumer(segmentWriteState)
-              : null) {
-        if (consumer != null) {
+      if (mergeState.mergeFieldInfos.hasPostings()) {
+        try (FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(segmentWriteState)) {
           consumer.merge(mergeState, normsMergeInstance);
         }
       }
