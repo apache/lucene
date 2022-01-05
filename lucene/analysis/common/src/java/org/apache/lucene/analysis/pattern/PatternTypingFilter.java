@@ -48,7 +48,8 @@ public class PatternTypingFilter extends TokenFilter {
 
   public PatternTypingFilter(TokenStream input, PatternTypingRule... replacementAndFlagByPattern) {
     super(input);
-    if (replacementAndFlagByPattern == null || Stream.of(replacementAndFlagByPattern).anyMatch(Objects::isNull)) {
+    if (replacementAndFlagByPattern == null
+        || Stream.of(replacementAndFlagByPattern).anyMatch(Objects::isNull)) {
       throw new NullPointerException("replacementAndFlagByPattern");
     }
     this.replacementAndFlagByPattern = replacementAndFlagByPattern;
