@@ -45,6 +45,9 @@ public final class JapaneseKatakanaStemFilter extends TokenFilter {
 
   public JapaneseKatakanaStemFilter(TokenStream input, int minimumLength) {
     super(input);
+    if (minimumLength < 1) {
+      throw new IllegalArgumentException("minimumLength must be >=1");
+    }
     this.minimumKatakanaLength = minimumLength;
   }
 

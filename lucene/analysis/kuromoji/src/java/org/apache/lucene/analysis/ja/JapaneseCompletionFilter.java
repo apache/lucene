@@ -30,6 +30,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * A {@link org.apache.lucene.analysis.TokenFilter} that adds Japanese romanized tokens to the term
@@ -54,6 +55,7 @@ import org.apache.lucene.util.CharsRefBuilder;
  * WIDTH NORMALIZATION IS NOT PERFORMED, THIS DOES NOT WORK AS EXPECTED. See also: {@link
  * JapaneseCompletionAnalyzer}.
  */
+@IgnoreRandomChains(reason = "LUCENE-10363: fails with incorrect offsets")
 public final class JapaneseCompletionFilter extends TokenFilter {
   public static final Mode DEFAULT_MODE = Mode.INDEX;
 

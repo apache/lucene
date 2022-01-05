@@ -14,15 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.core;
+package org.apache.lucene.analysis.tests;
 
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Modifier;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,27 +31,17 @@ import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.TokenizerFactory;
+import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.analysis.core.UnicodeWhitespaceTokenizer;
 import org.apache.lucene.analysis.miscellaneous.PatternKeywordMarkerFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.path.ReversePathHierarchyTokenizer;
 import org.apache.lucene.analysis.sinks.TeeSinkTokenFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.sr.SerbianNormalizationRegularFilter;
-import org.apache.lucene.analysis.util.StringMockResourceLoader;
-import org.apache.lucene.tests.analysis.CrankyTokenFilter;
-import org.apache.lucene.tests.analysis.MockCharFilter;
-import org.apache.lucene.tests.analysis.MockFixedLengthPayloadFilter;
-import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
-import org.apache.lucene.tests.analysis.MockHoleInjectingTokenFilter;
-import org.apache.lucene.tests.analysis.MockLowerCaseFilter;
-import org.apache.lucene.tests.analysis.MockRandomLookaheadTokenFilter;
-import org.apache.lucene.tests.analysis.MockSynonymFilter;
-import org.apache.lucene.tests.analysis.MockTokenFilter;
-import org.apache.lucene.tests.analysis.MockTokenizer;
-import org.apache.lucene.tests.analysis.MockVariableLengthPayloadFilter;
-import org.apache.lucene.tests.analysis.SimplePayloadFilter;
-import org.apache.lucene.tests.analysis.ValidatingTokenFilter;
+import org.apache.lucene.analysis.stempel.StempelFilter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.ResourceLoader;
 import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.Version;
@@ -65,71 +52,37 @@ import org.apache.lucene.util.Version;
  */
 public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
 
-  // these are test-only components (e.g. test-framework)
-  private static final Set<Class<?>> testComponents =
-      Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-
-  static {
-    Collections.<Class<?>>addAll(
-        testComponents,
-        MockTokenizer.class,
-        MockCharFilter.class,
-        MockFixedLengthPayloadFilter.class,
-        MockGraphTokenFilter.class,
-        MockHoleInjectingTokenFilter.class,
-        MockLowerCaseFilter.class,
-        MockRandomLookaheadTokenFilter.class,
-        MockSynonymFilter.class,
-        MockTokenFilter.class,
-        MockVariableLengthPayloadFilter.class,
-        ValidatingTokenFilter.class,
-        CrankyTokenFilter.class,
-        SimplePayloadFilter.class);
-  }
-
   // these are 'crazy' components like cachingtokenfilter. does it make sense to add factories for
   // these?
   private static final Set<Class<?>> crazyComponents =
-      Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-
-  static {
-    Collections.<Class<?>>addAll(
-        crazyComponents, CachingTokenFilter.class, TeeSinkTokenFilter.class);
-  }
+      Set.of(CachingTokenFilter.class, TeeSinkTokenFilter.class);
 
   // these are oddly-named (either the actual analyzer, or its factory)
   // they do actually have factories.
   // TODO: clean this up!
   private static final Set<Class<?>> oddlyNamedComponents =
-      Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-
-  static {
-    Collections.<Class<?>>addAll(
-        oddlyNamedComponents,
-        // this is supported via an option to PathHierarchyTokenizer's factory
-        ReversePathHierarchyTokenizer.class,
-        SnowballFilter.class, // this is called SnowballPorterFilterFactory
-        PatternKeywordMarkerFilter.class,
-        SetKeywordMarkerFilter.class,
-        UnicodeWhitespaceTokenizer.class, // a supported option via WhitespaceTokenizerFactory
-        // class from core, but StopFilterFactory creates one from this module
-        org.apache.lucene.analysis.StopFilter.class,
-        // class from core, but LowerCaseFilterFactory creates one from this module
-        org.apache.lucene.analysis.LowerCaseFilter.class);
-  }
+      Set.of(
+          // this is supported via an option to PathHierarchyTokenizer's factory
+          ReversePathHierarchyTokenizer.class,
+          SnowballFilter.class, // this is called SnowballPorterFilterFactory
+          StempelFilter.class, // this is called StempelPolishStemFilterFactory
+          PatternKeywordMarkerFilter.class,
+          SetKeywordMarkerFilter.class,
+          UnicodeWhitespaceTokenizer.class, // a supported option via WhitespaceTokenizerFactory
+          // class from core, but StopFilterFactory creates one from this module
+          org.apache.lucene.analysis.StopFilter.class,
+          // class from core, but LowerCaseFilterFactory creates one from this module
+          org.apache.lucene.analysis.LowerCaseFilter.class);
 
   // The following token filters are excused from having their factory.
-  private static final Set<Class<?>> tokenFiltersWithoutFactory = new HashSet<>();
-
-  static {
-    tokenFiltersWithoutFactory.add(SerbianNormalizationRegularFilter.class);
-  }
+  private static final Set<Class<?>> tokenFiltersWithoutFactory =
+      Set.of(SerbianNormalizationRegularFilter.class);
 
   private static final ResourceLoader loader = new StringMockResourceLoader("");
 
   public void test() throws Exception {
     List<Class<?>> analysisClasses =
-        TestRandomChains.getClassesForPackage("org.apache.lucene.analysis");
+        ModuleClassDiscovery.getClassesForPackage("org.apache.lucene.analysis");
 
     for (final Class<?> c : analysisClasses) {
       final int modifiers = c.getModifiers();
@@ -141,7 +94,6 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
           || c.isAnonymousClass()
           || c.isMemberClass()
           || c.isInterface()
-          || testComponents.contains(c)
           || crazyComponents.contains(c)
           || oddlyNamedComponents.contains(c)
           || tokenFiltersWithoutFactory.contains(c)

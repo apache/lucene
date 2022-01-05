@@ -22,8 +22,8 @@ import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.cjk.CJKAnalyzer;
 import org.apache.lucene.analysis.pattern.PatternTokenizerFactory;
-import org.apache.lucene.analysis.util.StringMockResourceLoader;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.Version;
 
 @Deprecated

@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ResourceLoader;
 
