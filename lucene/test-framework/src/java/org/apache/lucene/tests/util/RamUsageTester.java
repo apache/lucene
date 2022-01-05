@@ -26,7 +26,6 @@ import java.nio.ByteOrder;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.nio.file.Path;
-import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -45,6 +44,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.LegacySecurityManager;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -323,50 +323,46 @@ public final class RamUsageTester {
   /** Create a cached information about shallow size and reference fields for a given class. */
   @SuppressForbidden(reason = "We need to access private fields of measured objects.")
   private static ClassCache createCacheEntry(final Class<?> clazz) {
-    @SuppressWarnings("removal")
-    ClassCache cache =
-        AccessController.doPrivileged(
-            (PrivilegedAction<ClassCache>)
-                () -> {
-                  ClassCache cachedInfo;
-                  long shallowInstanceSize = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
-                  final ArrayList<Field> referenceFields = new ArrayList<>(32);
-                  for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-                    if (c == Class.class) {
-                      // prevent inspection of Class' fields, throws SecurityException in Java 9!
-                      continue;
-                    }
-                    final Field[] fields = c.getDeclaredFields();
-                    for (final Field f : fields) {
-                      if (!Modifier.isStatic(f.getModifiers())) {
-                        shallowInstanceSize =
-                            RamUsageEstimator.adjustForField(shallowInstanceSize, f);
+    return LegacySecurityManager.doPrivileged(
+        (PrivilegedAction<ClassCache>)
+            () -> {
+              ClassCache cachedInfo;
+              long shallowInstanceSize = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+              final ArrayList<Field> referenceFields = new ArrayList<>(32);
+              for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+                if (c == Class.class) {
+                  // prevent inspection of Class' fields, throws SecurityException in Java 9!
+                  continue;
+                }
+                final Field[] fields = c.getDeclaredFields();
+                for (final Field f : fields) {
+                  if (!Modifier.isStatic(f.getModifiers())) {
+                    shallowInstanceSize = RamUsageEstimator.adjustForField(shallowInstanceSize, f);
 
-                        if (!f.getType().isPrimitive()) {
-                          try {
-                            f.setAccessible(true);
-                            referenceFields.add(f);
-                          } catch (RuntimeException re) {
-                            throw new RuntimeException(
-                                String.format(
-                                    Locale.ROOT,
-                                    "Can't access field '%s' of class '%s' for RAM estimation.",
-                                    f.getName(),
-                                    clazz.getName()),
-                                re);
-                          }
-                        }
+                    if (!f.getType().isPrimitive()) {
+                      try {
+                        f.setAccessible(true);
+                        referenceFields.add(f);
+                      } catch (RuntimeException re) {
+                        throw new RuntimeException(
+                            String.format(
+                                Locale.ROOT,
+                                "Can't access field '%s' of class '%s' for RAM estimation.",
+                                f.getName(),
+                                clazz.getName()),
+                            re);
                       }
                     }
                   }
+                }
+              }
 
-                  cachedInfo =
-                      new ClassCache(
-                          RamUsageEstimator.alignObjectSize(shallowInstanceSize),
-                          referenceFields.toArray(new Field[referenceFields.size()]));
-                  return cachedInfo;
-                });
-    return cache;
+              cachedInfo =
+                  new ClassCache(
+                      RamUsageEstimator.alignObjectSize(shallowInstanceSize),
+                      referenceFields.toArray(new Field[referenceFields.size()]));
+              return cachedInfo;
+            });
   }
 
   private static long byteArraySize(int len) {
