@@ -121,57 +121,42 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
   private static final Predicate<Object[]> ALWAYS = (objects -> true);
 
-  private static final Set<Class<?>> avoidConditionals = new HashSet<>();
-
-  static {
-    // These filters needs to consume the whole tokenstream, so conditionals don't make sense here
-    avoidConditionals.add(FingerprintFilter.class);
-    avoidConditionals.add(MinHashFilter.class);
-    avoidConditionals.add(ConcatenateGraphFilter.class);
-    // ShingleFilter doesn't handle input graphs correctly, so wrapping it in a condition can
-    // expose inconsistent offsets
-    // https://issues.apache.org/jira/browse/LUCENE-4170
-    avoidConditionals.add(ShingleFilter.class);
-    avoidConditionals.add(FixedShingleFilter.class);
-    // FlattenGraphFilter changes the output graph entirely, so wrapping it in a condition
-    // can break position lengths
-    avoidConditionals.add(FlattenGraphFilter.class);
-    // LimitToken*Filters don't set end offsets correctly
-    avoidConditionals.add(LimitTokenOffsetFilter.class);
-    avoidConditionals.add(LimitTokenCountFilter.class);
-    avoidConditionals.add(LimitTokenPositionFilter.class);
-  }
+  private static final Set<Class<?>> avoidConditionals =
+      Set.of(
+          FingerprintFilter.class,
+          MinHashFilter.class,
+          ConcatenateGraphFilter.class,
+          // ShingleFilter doesn't handle input graphs correctly, so wrapping it in a condition can
+          // expose inconsistent offsets
+          // https://issues.apache.org/jira/browse/LUCENE-4170
+          ShingleFilter.class,
+          FixedShingleFilter.class,
+          // FlattenGraphFilter changes the output graph entirely, so wrapping it in a condition
+          // can break position lengths
+          FlattenGraphFilter.class,
+          // LimitToken*Filters don't set end offsets correctly
+          LimitTokenOffsetFilter.class,
+          LimitTokenCountFilter.class,
+          LimitTokenPositionFilter.class);
 
   private static final Map<Constructor<?>, Predicate<Object[]>> brokenConstructors =
       new HashMap<>();
 
   static {
     try {
-      brokenConstructors.put(
-          LimitTokenCountFilter.class.getConstructor(TokenStream.class, int.class), ALWAYS);
-      brokenConstructors.put(
-          LimitTokenCountFilter.class.getConstructor(TokenStream.class, int.class, boolean.class),
-          args -> {
-            assert args.length == 3;
-            return !((Boolean) args[2]); // args are broken if consumeAllTokens is false
-          });
-      brokenConstructors.put(
-          LimitTokenOffsetFilter.class.getConstructor(TokenStream.class, int.class), ALWAYS);
-      brokenConstructors.put(
-          LimitTokenOffsetFilter.class.getConstructor(TokenStream.class, int.class, boolean.class),
-          args -> {
-            assert args.length == 3;
-            return !((Boolean) args[2]); // args are broken if consumeAllTokens is false
-          });
-      brokenConstructors.put(
-          LimitTokenPositionFilter.class.getConstructor(TokenStream.class, int.class), ALWAYS);
-      brokenConstructors.put(
-          LimitTokenPositionFilter.class.getConstructor(
-              TokenStream.class, int.class, boolean.class),
-          args -> {
-            assert args.length == 3;
-            return !((Boolean) args[2]); // args are broken if consumeAllTokens is false
-          });
+      // LimitTokenXxxFilter can only use special ctor when last arg is true
+      for (final var c :
+          List.of(
+              LimitTokenCountFilter.class,
+              LimitTokenOffsetFilter.class,
+              LimitTokenPositionFilter.class)) {
+        brokenConstructors.put(
+            c.getConstructor(TokenStream.class, int.class, boolean.class),
+            args -> {
+              assert args.length == 3;
+              return false == ((Boolean) args[2]); // args are broken if consumeAllTokens is false
+            });
+      }
     } catch (Exception e) {
       throw new Error(e);
     }
@@ -252,7 +237,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
         c -> c.asSubclass(SnowballStemmer.class);
     snowballStemmers =
         ModuleClassDiscovery.getClassesForPackage("org.tartarus.snowball.ext").stream()
-            .filter(c -> c.getSimpleName().endsWith("Stemmer"))
+            .filter(c -> c.getName().endsWith("Stemmer"))
             .map(stemmerCast)
             .sorted(Comparator.comparing(Class::getName))
             .collect(Collectors.toList());
@@ -315,6 +300,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
           put(Random.class, random -> new Random(random.nextLong()));
           put(Version.class, random -> Version.LATEST);
           put(AttributeFactory.class, BaseTokenStreamTestCase::newAttributeFactory);
+          put(AttributeSource.class, random -> null); // force IAE/NPE
           put(
               Set.class,
               random -> {
@@ -642,26 +628,17 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
         }
       };
 
-  static final Set<Class<?>> allowedTokenizerArgs, allowedTokenFilterArgs, allowedCharFilterArgs;
-
-  static {
-    allowedTokenizerArgs = Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-    allowedTokenizerArgs.addAll(argProducers.keySet());
-    allowedTokenizerArgs.add(Reader.class);
-    allowedTokenizerArgs.add(AttributeFactory.class);
-    allowedTokenizerArgs.add(AttributeSource.class);
-    allowedTokenizerArgs.add(Automaton.class);
-
-    allowedTokenFilterArgs = Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-    allowedTokenFilterArgs.addAll(argProducers.keySet());
-    allowedTokenFilterArgs.add(TokenStream.class);
-    // TODO: fix this one, thats broken:
-    allowedTokenFilterArgs.add(CommonGramsFilter.class);
-
-    allowedCharFilterArgs = Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-    allowedCharFilterArgs.addAll(argProducers.keySet());
-    allowedCharFilterArgs.add(Reader.class);
-  }
+  static final Set<Class<?>> allowedTokenizerArgs = argProducers.keySet(),
+      allowedTokenFilterArgs =
+          Stream.concat(
+                  argProducers.keySet().stream(),
+                  Stream.of(
+                      TokenStream.class, CommonGramsFilter.class // this is broken
+                      ))
+              .collect(Collectors.toUnmodifiableSet()),
+      allowedCharFilterArgs =
+          Stream.concat(argProducers.keySet().stream(), Stream.of(Reader.class))
+              .collect(Collectors.toUnmodifiableSet());
 
   @SuppressWarnings("unchecked")
   static <T> T newRandomArg(Random random, Class<T> paramType) {
@@ -674,13 +651,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     Object[] args = new Object[paramTypes.length];
     for (int i = 0; i < args.length; i++) {
       Class<?> paramType = paramTypes[i];
-      if (paramType == AttributeSource.class) {
-        // TODO: args[i] = new AttributeSource();
-        // this is currently too scary to deal with!
-        args[i] = null; // force IAE
-      } else {
-        args[i] = newRandomArg(random, paramType);
-      }
+      args[i] = newRandomArg(random, paramType);
     }
     return args;
   }

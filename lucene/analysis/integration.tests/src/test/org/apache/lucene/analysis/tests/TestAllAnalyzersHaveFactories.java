@@ -19,10 +19,7 @@ package org.apache.lucene.analysis.tests;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Modifier;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,41 +55,28 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
   // these are 'crazy' components like cachingtokenfilter. does it make sense to add factories for
   // these?
   private static final Set<Class<?>> crazyComponents =
-      Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-
-  static {
-    Collections.<Class<?>>addAll(
-        crazyComponents, CachingTokenFilter.class, TeeSinkTokenFilter.class);
-  }
+      Set.of(CachingTokenFilter.class, TeeSinkTokenFilter.class);
 
   // these are oddly-named (either the actual analyzer, or its factory)
   // they do actually have factories.
   // TODO: clean this up!
   private static final Set<Class<?>> oddlyNamedComponents =
-      Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
-
-  static {
-    Collections.<Class<?>>addAll(
-        oddlyNamedComponents,
-        // this is supported via an option to PathHierarchyTokenizer's factory
-        ReversePathHierarchyTokenizer.class,
-        SnowballFilter.class, // this is called SnowballPorterFilterFactory
-        StempelFilter.class, // this is called StempelPolishStemFilterFactory
-        PatternKeywordMarkerFilter.class,
-        SetKeywordMarkerFilter.class,
-        UnicodeWhitespaceTokenizer.class, // a supported option via WhitespaceTokenizerFactory
-        // class from core, but StopFilterFactory creates one from this module
-        org.apache.lucene.analysis.StopFilter.class,
-        // class from core, but LowerCaseFilterFactory creates one from this module
-        org.apache.lucene.analysis.LowerCaseFilter.class);
-  }
+      Set.of(
+          // this is supported via an option to PathHierarchyTokenizer's factory
+          ReversePathHierarchyTokenizer.class,
+          SnowballFilter.class, // this is called SnowballPorterFilterFactory
+          StempelFilter.class, // this is called StempelPolishStemFilterFactory
+          PatternKeywordMarkerFilter.class,
+          SetKeywordMarkerFilter.class,
+          UnicodeWhitespaceTokenizer.class, // a supported option via WhitespaceTokenizerFactory
+          // class from core, but StopFilterFactory creates one from this module
+          org.apache.lucene.analysis.StopFilter.class,
+          // class from core, but LowerCaseFilterFactory creates one from this module
+          org.apache.lucene.analysis.LowerCaseFilter.class);
 
   // The following token filters are excused from having their factory.
-  private static final Set<Class<?>> tokenFiltersWithoutFactory = new HashSet<>();
-
-  static {
-    tokenFiltersWithoutFactory.add(SerbianNormalizationRegularFilter.class);
-  }
+  private static final Set<Class<?>> tokenFiltersWithoutFactory =
+      Set.of(SerbianNormalizationRegularFilter.class);
 
   private static final ResourceLoader loader = new StringMockResourceLoader("");
 
