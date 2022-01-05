@@ -30,7 +30,6 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
@@ -38,6 +37,7 @@ import java.util.concurrent.Future;
 import java.util.logging.Logger;
 import org.apache.lucene.store.ByteBufferGuard.BufferCleaner;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.LegacySecurityManager;
 import org.apache.lucene.util.SuppressForbidden;
 
 /**
@@ -334,9 +334,8 @@ public class MMapDirectory extends FSDirectory {
   private static final BufferCleaner CLEANER;
 
   static {
-    @SuppressWarnings("removal")
     final Object hack =
-        AccessController.doPrivileged((PrivilegedAction<Object>) MMapDirectory::unmapHackImpl);
+        LegacySecurityManager.doPrivileged((PrivilegedAction<Object>) MMapDirectory::unmapHackImpl);
     if (hack instanceof BufferCleaner) {
       CLEANER = (BufferCleaner) hack;
       UNMAP_SUPPORTED = true;
@@ -390,9 +389,8 @@ public class MMapDirectory extends FSDirectory {
       if (!buffer.isDirect()) {
         throw new IllegalArgumentException("unmapping only works with direct buffers");
       }
-      @SuppressWarnings("removal")
       final Throwable error =
-          AccessController.doPrivileged(
+          LegacySecurityManager.doPrivileged(
               (PrivilegedAction<Throwable>)
                   () -> {
                     try {

@@ -324,46 +324,48 @@ public final class RamUsageTester {
   @SuppressForbidden(reason = "We need to access private fields of measured objects.")
   private static ClassCache createCacheEntry(final Class<?> clazz) {
     @SuppressWarnings("removal")
-    ClassCache cache = AccessController.doPrivileged(
-        (PrivilegedAction<ClassCache>)
-            () -> {
-              ClassCache cachedInfo;
-              long shallowInstanceSize = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
-              final ArrayList<Field> referenceFields = new ArrayList<>(32);
-              for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-                if (c == Class.class) {
-                  // prevent inspection of Class' fields, throws SecurityException in Java 9!
-                  continue;
-                }
-                final Field[] fields = c.getDeclaredFields();
-                for (final Field f : fields) {
-                  if (!Modifier.isStatic(f.getModifiers())) {
-                    shallowInstanceSize = RamUsageEstimator.adjustForField(shallowInstanceSize, f);
+    ClassCache cache =
+        AccessController.doPrivileged(
+            (PrivilegedAction<ClassCache>)
+                () -> {
+                  ClassCache cachedInfo;
+                  long shallowInstanceSize = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+                  final ArrayList<Field> referenceFields = new ArrayList<>(32);
+                  for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+                    if (c == Class.class) {
+                      // prevent inspection of Class' fields, throws SecurityException in Java 9!
+                      continue;
+                    }
+                    final Field[] fields = c.getDeclaredFields();
+                    for (final Field f : fields) {
+                      if (!Modifier.isStatic(f.getModifiers())) {
+                        shallowInstanceSize =
+                            RamUsageEstimator.adjustForField(shallowInstanceSize, f);
 
-                    if (!f.getType().isPrimitive()) {
-                      try {
-                        f.setAccessible(true);
-                        referenceFields.add(f);
-                      } catch (RuntimeException re) {
-                        throw new RuntimeException(
-                            String.format(
-                                Locale.ROOT,
-                                "Can't access field '%s' of class '%s' for RAM estimation.",
-                                f.getName(),
-                                clazz.getName()),
-                            re);
+                        if (!f.getType().isPrimitive()) {
+                          try {
+                            f.setAccessible(true);
+                            referenceFields.add(f);
+                          } catch (RuntimeException re) {
+                            throw new RuntimeException(
+                                String.format(
+                                    Locale.ROOT,
+                                    "Can't access field '%s' of class '%s' for RAM estimation.",
+                                    f.getName(),
+                                    clazz.getName()),
+                                re);
+                          }
+                        }
                       }
                     }
                   }
-                }
-              }
 
-              cachedInfo =
-                  new ClassCache(
-                      RamUsageEstimator.alignObjectSize(shallowInstanceSize),
-                      referenceFields.toArray(new Field[referenceFields.size()]));
-              return cachedInfo;
-            });
+                  cachedInfo =
+                      new ClassCache(
+                          RamUsageEstimator.alignObjectSize(shallowInstanceSize),
+                          referenceFields.toArray(new Field[referenceFields.size()]));
+                  return cachedInfo;
+                });
     return cache;
   }
 

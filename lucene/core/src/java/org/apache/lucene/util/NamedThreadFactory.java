@@ -39,9 +39,7 @@ public class NamedThreadFactory implements ThreadFactory {
    * @param threadNamePrefix the name prefix assigned to each thread created.
    */
   public NamedThreadFactory(String threadNamePrefix) {
-    @SuppressWarnings("removal")
-    final SecurityManager s = System.getSecurityManager();
-    group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+    group = LegacySecurityManager.getThreadGroup();
     this.threadNamePrefix =
         String.format(
             Locale.ROOT,
