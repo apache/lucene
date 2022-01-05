@@ -27,19 +27,19 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.Rethrow;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.Rethrow;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.automaton.Operations;
 
 public class TestAutomatonQuery extends LuceneTestCase {
@@ -125,18 +125,6 @@ public class TestAutomatonQuery extends LuceneTestCase {
             Automata.makeCharRange('a', 'b'),
             Automata.makeChar('a'),
             DEFAULT_DETERMINIZE_WORK_LIMIT));
-  }
-
-  /** Test that a nondeterministic automaton fails, it should throw Exception */
-  public void testNFA() throws IOException {
-    // accept this or three, the union is an NFA (two transitions for 't' from
-    // initial state)
-    Automaton nfa = Operations.union(Automata.makeString("this"), Automata.makeString("three"));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          assertAutomatonHits(2, nfa);
-        });
   }
 
   public void testEquals() {

@@ -23,14 +23,15 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CharsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.UnicodeUtil;
 
 public class TestIndexWriterUnicode extends LuceneTestCase {
@@ -233,7 +234,7 @@ public class TestIndexWriterUnicode extends LuceneTestCase {
     doc = new Document();
     doc.add(newTextField("field", "a", Field.Store.NO));
     w.addDocument(doc);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     assertEquals(1, r.docFreq(new Term("field", "a\uffffb")));
     r.close();
     w.close();

@@ -19,7 +19,7 @@ package org.apache.lucene.analysis;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestWordlistLoader extends LuceneTestCase {
 

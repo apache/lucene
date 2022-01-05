@@ -19,8 +19,9 @@ package org.apache.lucene.codecs.uniformsplit;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.index.BasePostingsFormatTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.codecs.uniformsplit.UniformSplitRot13PostingsFormat;
+import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.After;
 import org.junit.Before;
 

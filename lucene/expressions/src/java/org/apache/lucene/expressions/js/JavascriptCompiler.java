@@ -730,10 +730,11 @@ public final class JavascriptCompiler {
     Map<String, Method> map = new HashMap<>();
     try {
       final Properties props = new Properties();
+      var name = JavascriptCompiler.class.getSimpleName() + ".properties";
       try (Reader in =
           IOUtils.getDecodingReader(
-              JavascriptCompiler.class,
-              JavascriptCompiler.class.getSimpleName() + ".properties",
+              IOUtils.requireResourceNonNull(
+                  JavascriptCompiler.class.getResourceAsStream(name), name),
               StandardCharsets.UTF_8)) {
         props.load(in);
       }

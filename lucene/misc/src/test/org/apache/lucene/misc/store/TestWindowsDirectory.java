@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 

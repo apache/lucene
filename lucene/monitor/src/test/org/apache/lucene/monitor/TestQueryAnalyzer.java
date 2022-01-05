@@ -23,8 +23,8 @@ import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestQueryAnalyzer extends LuceneTestCase {
 

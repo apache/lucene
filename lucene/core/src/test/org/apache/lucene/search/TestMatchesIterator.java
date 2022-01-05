@@ -33,6 +33,8 @@ import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.tests.search.AssertingMatches;
+import org.apache.lucene.tests.search.MatchesTestBase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestMatchesIterator extends MatchesTestBase {

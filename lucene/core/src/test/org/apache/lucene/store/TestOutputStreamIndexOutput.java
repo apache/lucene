@@ -19,7 +19,7 @@ package org.apache.lucene.store;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestOutputStreamIndexOutput extends LuceneTestCase {
 
