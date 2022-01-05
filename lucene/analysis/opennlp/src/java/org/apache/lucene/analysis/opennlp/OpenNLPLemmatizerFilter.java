@@ -29,6 +29,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Runs OpenNLP dictionary-based and/or MaxEnt lemmatizers.
@@ -41,6 +42,7 @@ import org.apache.lucene.util.AttributeSource;
  * <p>The dictionary file must be encoded as UTF-8, with one entry per line, in the form <code>
  * word[tab]lemma[tab]part-of-speech</code>
  */
+@IgnoreRandomChains(reason = "LUCENE-10352: no dictionary support yet")
 public class OpenNLPLemmatizerFilter extends TokenFilter {
   private final NLPLemmatizerOp lemmatizerOp;
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);

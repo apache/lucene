@@ -214,7 +214,7 @@ allprojects {
     }
 
     // Configure (tasks.test, sourceSets.test)
-    tasks.matching { it.name == "test" }.all { Test task ->
+    tasks.matching { it.name ==~ /test(_[0-9]+)?/ }.all { Test task ->
       configureTestTaskForSourceSet(task, task.project.sourceSets.test)
     }
 
