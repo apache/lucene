@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Function;
@@ -758,11 +759,11 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
       } catch (InvocationTargetException ite) {
         final Throwable cause = ite.getCause();
         if (cause instanceof IllegalArgumentException
-            || cause instanceof NullPointerException
+            || (cause instanceof NullPointerException && Stream.of(args).anyMatch(Objects::isNull))
             || cause instanceof UnsupportedOperationException) {
           // thats ok, ignore
           if (VERBOSE) {
-            System.err.println("Ignoring IAE/UOE from ctor:");
+            System.err.println("Ignoring IAE/UOE/NPE from ctor:");
             cause.printStackTrace(System.err);
           }
         } else {
