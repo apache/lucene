@@ -23,9 +23,9 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.AfterClass;
 
 /** base class for hunspell stemmer tests */

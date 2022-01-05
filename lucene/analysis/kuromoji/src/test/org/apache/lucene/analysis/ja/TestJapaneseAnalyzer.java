@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.ja;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Test Kuromoji Japanese morphological analyzer */
 public class TestJapaneseAnalyzer extends BaseTokenStreamTestCase {

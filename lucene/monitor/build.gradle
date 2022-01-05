@@ -20,10 +20,10 @@ apply plugin: 'java-library'
 description = 'Reverse-search implementation for monitoring and classification'
 
 dependencies {
-  api project(':lucene:core')
+  moduleApi project(':lucene:core')
 
-  implementation project(':lucene:memory')
-  implementation project(':lucene:analysis:common')
+  moduleImplementation project(':lucene:memory')
+  moduleImplementation project(':lucene:analysis:common')
 
   testImplementation project(':lucene:queryparser')
   testImplementation project(':lucene:test-framework')

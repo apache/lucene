@@ -288,17 +288,19 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
         return;
       }
       lastSearcher = searcher;
+      UnifiedHighlighter.Builder uhBuilder =
+          new UnifiedHighlighter.Builder(searcher, analyzer)
+              .withBreakIterator(() -> BreakIterator.getSentenceInstance(Locale.ENGLISH))
+              .withMaxLength(maxDocCharsToAnalyze)
+              .withHighlightPhrasesStrictly(true)
+              .withHandleMultiTermQuery(true);
       highlighter =
-          new UnifiedHighlighter(searcher, analyzer) {
+          new UnifiedHighlighter(uhBuilder) {
             @Override
             protected OffsetSource getOffsetSource(String field) {
               return offsetSource != null ? offsetSource : super.getOffsetSource(field);
             }
           };
-      highlighter.setBreakIterator(() -> BreakIterator.getSentenceInstance(Locale.ENGLISH));
-      highlighter.setMaxLength(maxDocCharsToAnalyze);
-      highlighter.setHighlightPhrasesStrictly(true);
-      highlighter.setHandleMultiTermQuery(true);
     }
 
     @Override

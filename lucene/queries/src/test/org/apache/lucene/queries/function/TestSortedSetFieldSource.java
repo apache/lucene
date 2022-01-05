@@ -26,8 +26,8 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.queries.function.valuesource.SortedSetFieldSource;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestSortedSetFieldSource extends LuceneTestCase {
   public void testSimple() throws Exception {

@@ -21,7 +21,7 @@ import static org.apache.lucene.expressions.js.VariableContext.Type.MEMBER;
 import static org.apache.lucene.expressions.js.VariableContext.Type.METHOD;
 import static org.apache.lucene.expressions.js.VariableContext.Type.STR_INDEX;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestVariableContext extends LuceneTestCase {
 

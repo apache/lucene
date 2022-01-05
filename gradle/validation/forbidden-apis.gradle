@@ -146,5 +146,14 @@ allprojects { prj ->
           file("${resources}/defaults.tests.txt")
       )
     }
+
+    // apply logging patterns for all modules except Luke.
+    if (prj.path !in [
+        ":lucene:luke"
+    ]) {
+      forbiddenApisMain.signaturesFiles += files(
+          file("${resources}/defaults.logging.txt")
+      )
+    }
   })
 }

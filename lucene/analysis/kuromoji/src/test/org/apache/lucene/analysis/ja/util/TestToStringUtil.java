@@ -18,7 +18,7 @@ package org.apache.lucene.analysis.ja.util;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestToStringUtil extends LuceneTestCase {
   public void testPOS() {

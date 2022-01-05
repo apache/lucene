@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LatLonPoint;
 import org.apache.lucene.document.ShapeField;
-import org.apache.lucene.geo.BaseGeoPointTestCase;
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Polygon;
@@ -28,6 +27,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.geo.BaseGeoPointTestCase;
 import org.apache.lucene.util.bkd.BKDConfig;
 
 public class TestLatLonPointQueries extends BaseGeoPointTestCase {

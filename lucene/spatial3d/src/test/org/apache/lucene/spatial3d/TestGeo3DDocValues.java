@@ -19,8 +19,8 @@ package org.apache.lucene.spatial3d;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.spatial3d.geom.GeoPoint;
 import org.apache.lucene.spatial3d.geom.PlanetModel;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestGeo3DDocValues extends LuceneTestCase {
 
