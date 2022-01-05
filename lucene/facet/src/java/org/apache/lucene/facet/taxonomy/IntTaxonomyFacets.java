@@ -74,11 +74,6 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     return sumTotalHits < maxDoc / 10;
   }
 
-  /** Increment the count for this ordinal by 1. */
-  protected void increment(int ordinal) {
-    increment(ordinal, 1);
-  }
-
   /** Increment the count for this ordinal by {@code amount}.. */
   protected void increment(int ordinal, int amount) {
     if (sparseValues != null) {
