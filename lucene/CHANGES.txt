@@ -165,6 +165,9 @@ Bug Fixes
 * LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
   DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
 
+* LLUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
+  Uwe Schindler)
+
 Other
 ---------------------
 
