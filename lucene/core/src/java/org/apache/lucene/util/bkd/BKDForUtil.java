@@ -40,13 +40,13 @@ final class BKDForUtil {
     return expandMask32((1L << bitsPerValue) - 1);
   }
 
-  private static void expand16(long[] arr) {
+  private static void expand16(long[] arr, final long base) {
     for (int i = 0; i < 128; ++i) {
       long l = arr[i];
-      arr[i] = (l >>> 48) & 0xFFFFL;
-      arr[128 + i] = (l >>> 32) & 0xFFFFL;
-      arr[256 + i] = (l >>> 16) & 0xFFFFL;
-      arr[384 + i] = l & 0xFFFFL;
+      arr[i] = ((l >>> 48) & 0xFFFFL) + base;
+      arr[128 + i] = ((l >>> 32) & 0xFFFFL) + base;
+      arr[256 + i] = ((l >>> 16) & 0xFFFFL) + base;
+      arr[384 + i] = (l & 0xFFFFL) + base;
     }
   }
 
@@ -102,9 +102,9 @@ final class BKDForUtil {
     }
   }
 
-  void decode16(DataInput in, long[] longs) throws IOException {
+  void decode16(DataInput in, long[] longs, long base) throws IOException {
     in.readLongs(longs, 0, 128);
-    expand16(longs);
+    expand16(longs, base);
   }
 
   void decode24(DataInput in, long[] longs) throws IOException {

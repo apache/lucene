@@ -224,8 +224,7 @@ final class DocIdsWriter {
   private void readBKDForUtilDelta(IndexInput in, int count, long[] docIDs) throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
     final long min = in.readVInt();
-    forUtil.decode16(in, docIDs);
-    plus(docIDs, min, count);
+    forUtil.decode16(in, docIDs, min);
   }
 
   private void readBKDForUtil24(IndexInput in, int count, long[] docIDs) throws IOException {
@@ -392,8 +391,7 @@ final class DocIdsWriter {
       throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
     final int min = in.readVInt();
-    forUtil.decode16(in, scratch);
-    plus(scratch, min, count);
+    forUtil.decode16(in, scratch, min);
     for (int i = 0; i < count; i++) {
       visitor.visit((int) scratch[i]);
     }
@@ -414,12 +412,6 @@ final class DocIdsWriter {
     forUtil.decode32(in, scratch);
     for (int i = 0; i < count; i++) {
       visitor.visit((int) scratch[i]);
-    }
-  }
-
-  private static void plus(long[] a, long min, int count) {
-    for (int i = 0; i < count; i++) {
-      a[i] = a[i] + min;
     }
   }
 }
