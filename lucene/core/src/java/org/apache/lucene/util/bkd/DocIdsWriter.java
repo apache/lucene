@@ -198,23 +198,23 @@ class DocIdsWriter {
       case BITSET_IDS:
         readBitSet(in, count, docIDs);
         break;
-      case DELTA_VINT:
-        readDeltaVInts(in, count, docIDs);
-        break;
       case DELTA_FOR_UTIL:
         readBKDForUtilDelta(in, count, docIDs);
-        break;
-      case BPV_32:
-        readInts32(in, count, docIDs);
         break;
       case BPV_32_FOR_UTIL:
         readBKDForUtil32(in, count, docIDs);
         break;
-      case BPV_24:
-        readInts24(in, count, docIDs);
-        break;
       case BPV_24_FOR_UTIL:
         readBKDForUtil24(in, count, docIDs);
+        break;
+      case DELTA_VINT:
+        readDeltaVInts(in, count, docIDs);
+        break;
+      case BPV_32:
+        readInts32(in, count, docIDs);
+        break;
+      case BPV_24:
+        readInts24(in, count, docIDs);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
@@ -311,23 +311,23 @@ class DocIdsWriter {
       case BITSET_IDS:
         readBitSet(in, count, visitor);
         break;
-      case DELTA_VINT:
-        readDeltaVInts(in, count, visitor);
-        break;
       case DELTA_FOR_UTIL:
         readBKDForUtilDelta(in, count, visitor);
-        break;
-      case BPV_32:
-        readInts32(in, count, visitor);
         break;
       case BPV_32_FOR_UTIL:
         readBKDForUtil32(in, count, visitor);
         break;
-      case BPV_24:
-        readInts24(in, count, visitor);
-        break;
       case BPV_24_FOR_UTIL:
         readBKDForUtil24(in, count, visitor);
+        break;
+      case DELTA_VINT:
+        readDeltaVInts(in, count, visitor);
+        break;
+      case BPV_32:
+        readInts32(in, count, visitor);
+        break;
+      case BPV_24:
+        readInts24(in, count, visitor);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
